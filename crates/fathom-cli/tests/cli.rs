@@ -151,3 +151,131 @@ fn doctor_json_is_json_and_says_the_same_thing() {
     );
     assert_eq!(parsed["network_features"].as_array().map(Vec::len), Some(3));
 }
+
+/// A throwaway repository with three commits, for the verbs that read a real one.
+///
+/// Built with the `git` binary rather than with `gix` because the point of these tests is the process
+/// boundary: the fixture has to be a repository the way a user's is, warts and index file and all.
+#[cfg(feature = "sqlite-bundled")]
+fn repository() -> std::path::PathBuf {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "fathom-cli-index-{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create the fixture directory");
+    git(&dir, &["init", "-q", "--initial-branch=main"]);
+    for n in 0..3 {
+        std::fs::write(dir.join("src.rs"), format!("fn f{n}() -> u32 {{ {n} }}\n"))
+            .expect("write the fixture file");
+        git(&dir, &["add", "-A"]);
+        git(&dir, &["commit", "-q", "-m", &format!("commit {n}")]);
+    }
+    dir
+}
+
+/// One `git` call, with the identity and the dates pinned so two runs of this file are the same repository.
+#[cfg(feature = "sqlite-bundled")]
+fn git(cwd: &std::path::Path, args: &[&str]) {
+    let out = Command::new("git")
+        .current_dir(cwd)
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", cwd)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_AUTHOR_NAME", "Ada")
+        .env("GIT_AUTHOR_EMAIL", "ada@example.invalid")
+        .env("GIT_COMMITTER_NAME", "Ada")
+        .env("GIT_COMMITTER_EMAIL", "ada@example.invalid")
+        .env("GIT_AUTHOR_DATE", "1700000000 +0000")
+        .env("GIT_COMMITTER_DATE", "1700000000 +0000")
+        .args(args)
+        .output()
+        .expect("git is on PATH");
+    assert!(out.status.success(), "git {args:?}: {}", stderr(&out));
+}
+
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn index_writes_the_store_where_adr_004_puts_it() {
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    let out = fathom(&["index", root]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert!(
+        dir.join(".fathom").join("index.sqlite3").exists(),
+        "ADR-004 §3: the store is `.fathom/index.sqlite3` under the repository root"
+    );
+    assert!(stdout(&out).contains("3 new"), "{}", stdout(&out));
+
+    // Warm, and with the table acceptance criterion four asks for: one row per analyzer, with counters
+    // that say the second run did not recompute the first one's work. `--refresh` looks up every unit the
+    // store holds — a warm run with nothing new looks up nothing at all, which is the other promise
+    // (§6.1 R1) and is tested at the library level rather than here.
+    let stats = fathom(&["index", root, "--stats", "--refresh"]);
+    assert_eq!(code(&stats), 0, "{}", stderr(&stats));
+    let text = stdout(&stats);
+    assert!(text.contains("ANALYZER"), "{text}");
+    for id in ["ingest.normalize", "diff.per_file", "structure.delta"] {
+        assert!(text.contains(id), "{id} missing from --stats:\n{text}");
+    }
+    assert!(
+        text.matches("100.0%").count() >= 3,
+        "every analyzer found its whole answer on a repository that had not changed:\n{text}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn index_json_is_one_object_on_stdout_and_nothing_else_there() {
+    // ADR-002 §7.5: everything a human must act on goes to stderr, so `fathom index --json | jq` parses.
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    fathom(&["index", root]);
+    let out = fathom(&["index", root, "--json", "--refresh"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout(&out).trim()).expect("one JSON value on stdout");
+    assert_eq!(parsed["kind"].as_str(), Some("warm"));
+    assert_eq!(parsed["commits"]["new"].as_u64(), Some(0));
+    assert_eq!(parsed["interrupted"].as_bool(), Some(false));
+    let analyzers = parsed["analyzers"].as_array().expect("an analyzer array");
+    assert_eq!(analyzers.len(), 3, "one row per analyzer this build runs");
+    let per_file = analyzers
+        .iter()
+        .find(|row| row["id"].as_str() == Some("diff.per_file"))
+        .expect("diff.per_file is in the report");
+    assert!(per_file["lookups"].as_u64().unwrap_or_default() >= 3);
+    assert_eq!(
+        per_file["hit_rate"].as_f64(),
+        Some(100.0),
+        "and the numbers are the store's, not a parallel set: {parsed}"
+    );
+    assert!(parsed["failures"].as_array().is_some_and(|v| v.is_empty()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn indexing_a_directory_that_is_not_a_repository_exits_three() {
+    // ADR-002 §7.3: the exit code is the contract CI branches on, and §4 says `3` is "not a repository".
+    let dir = std::env::temp_dir().join(format!("fathom-cli-not-a-repo-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("create a plain directory");
+    let out = fathom(&["index", dir.to_str().expect("utf-8 path")]);
+    assert_eq!(code(&out), 3, "{}", stderr(&out));
+    assert!(stderr(&out).contains("code:"), "{}", stderr(&out));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(not(feature = "sqlite-bundled"))]
+#[test]
+fn index_names_the_feature_a_minimal_binary_is_missing() {
+    // The `minimal` binary has no SQLite and says so with the code that means "rebuild differently"
+    // rather than pretending to have indexed something (ADR-002 §6.1, §8.3's headless job).
+    let out = fathom(&["index", "."]);
+    assert_eq!(code(&out), 9, "{}", stderr(&out));
+    assert!(stderr(&out).contains("sqlite-bundled"), "{}", stderr(&out));
+}

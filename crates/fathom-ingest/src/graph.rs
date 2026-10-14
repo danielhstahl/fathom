@@ -36,6 +36,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet, VecDeque};
 
 use fathom_core::time::Timestamp;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, TruncationCause, Unavailable};
 use crate::oid::Oid;
@@ -45,7 +46,10 @@ use crate::repo::Repository;
 ///
 /// Author and committer differ under rebase and under `git am`, and episode boundaries (`e1.3`) turn on
 /// which of the two changed, so both are carried and neither is averaged.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Serialized because this is a field of [`crate::record::CommitRecord`], and the UTC offset is part of
+/// the normalized record the ticket asks for (the store keeps the instant; the offset is in the export).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signature {
     /// The display name, lossy-converted: git stores bytes and names are not always UTF-8.
     pub name: String,

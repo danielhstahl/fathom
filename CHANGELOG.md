@@ -53,7 +53,36 @@ No product behaviour is claimed by any entry on this page yet.
   streams in 441 ms with a 30 MiB peak-RSS delta
   (`benchmarks/reports/e1-1-git-walk.json`); `tests/no_git_subprocess.rs` re-executes the test binary
   behind a fake `git` on `PATH` and fails the build if the default path ever reaches for it.
-
+- **Commit ingestion and normalization** (`e1.2`/`reco-76g`): a commit becomes a `CommitRecord` — oid, tree,
+  parents, author and committer with their offsets, message head/hash/byte-length, parsed trailers, and one
+  row per path touched: change kind, old and new path as git stores them (bytes, git-quoted in JSON), modes,
+  blob ids, binary-or-not-examined-and-why, added/removed line counts, git-style `@@` hunk headers, and a
+  rename candidate carrying git's own similarity score. The record is the contract: `export::to_json`
+  produces canonical bytes — commits sorted by id, header naming the caps and merge policy that produced
+  them — and `tests/golden/e1-2-commits.json` is 500 of those commits, byte for byte, over a fixture that
+  rotates through add, modify, delete, rename, binary, mode-only, multi-file, trailer blocks, a non-UTF-8
+  path, an over-cap blob and two merges. The caps are values rather than prose: a blob's size comes from its
+  object header, so a file over `ingest.file_size_cap.mib` (8 MiB) is turned away *before* it is inflated and
+  a 32 MiB blob costs a header read and a few KiB instead of 32 MiB of RSS (`tests/memory_cap.rs` measures
+  the difference rather than asserting it); an over-cap file is recorded as unexamined with its size, never
+  counted as zero; hunk lists stop at 256 entries with the true total kept beside them; and a commit that
+  touches more paths than `files_per_commit` sets `files_truncated` instead of quietly looking small.
+  Per-commit work runs on rayon with one repository handle per worker and results scattered back by index,
+  so one worker and sixteen emit identical bytes — which a test asserts, because "deterministic" is not a
+  property you can eyeball. A run is idempotent and resumable: the sink names the oids it already has, each
+  batch is one transaction, parents are written with `ON CONFLICT DO NOTHING` (ADR-004 §4.0), a crashed run's
+  `index_run` row is stamped on the next open, and a second run of the same repository writes zero rows.
+  Measured: 500 mixed commits walk, normalize and store in 30 ms against the 1 500 ms `cold.index.ms.small`
+  budget — 1 220 B/commit against the 4 096 B byte model, a 7 MiB peak-RSS delta, 3.6× from rayon at 10k
+  commits (`benchmarks/reports/e1-2-ingest.json`).
+- **`fathom_store`'s spine** (`e1.2`/`reco-76g`): `spine::Store` carries ADR-004 Appendix A's DDL verbatim —
+  `meta`, `index_run`, `ref_tip` and the STRICT `git_commit`/`git_commit_file` tables with their indexes —
+  with §7's pragmas applied on every open (WAL, `synchronous=NORMAL`, `foreign_keys=ON`, `busy_timeout`,
+  an 8 MiB page cache) and a behavioural probe that fails at open, not later, if the linked SQLite cannot do
+  STRICT tables or JSON1, because a store that silently stores less is worse than one that refuses to start.
+  Run bookkeeping (`begin_run`, `finish_run`, `recover_runs`), `known_oids` for the resume path, and
+  `check`/`counts` for `doctor` live there too. `fathom-ingest` still never names SQLite: the sink that
+  connects them is in tests today and moves to the composition root at `e1.10` (ADR-002 §4.2).
 - **The change classifier** (`e2.1`/`reco-dsh`): every changed path in an episode gets one of the twelve
   taxonomy classes, a confidence, a band and one sentence saying why — `src/recommender/change/`
   (`markers`, `evidence`, `policy`, `engine`, `episode`, `cache`, `corpus`, `eval`, `explain` pure; `cli`
@@ -79,6 +108,45 @@ No product behaviour is claimed by any entry on this page yet.
   scored from paths alone (91.8%, 17 rows content-decided), because a fixture set a content-blind
   classifier could pass is not testing this ticket. No new store columns: `cls`/`noise`/`taxonomy_version`
   map onto ADR-004 §4.2's three, and the confidence and the reason live in the analyzer row instead.
+- **Incremental indexing with a tree-hash analysis cache** (`e1.4`/`reco-f28`): `fathom index` indexes.
+  `fathom_analyze::index::run` is three passes — the spine through `ingest::run`, the analyses, the
+  working tree — and there is no invalidation code in it, which is ADR-004 §2 rule 3 rather than an
+  omission: every derived row is keyed by the nine inputs that produced it (§5.3 — analyzer id, input kind
+  and input hash, analyzer version, dependency digest, config digest, schema version, store schema, epoch),
+  so editing one file changes one blob, which changes one `path_pair` digest, which misses while every
+  other key hits. `structure.delta` is at `tree` scope and keyed by the tree OID itself, so two commits
+  that reach the same tree are analysed once and a revert is a hit; its payload is the file inventory,
+  derived by merging the parent tree's cached inventory with this commit's changed paths (`derived:
+  "merged"`) and falling back to a full tree enumeration (`derived: "full"`) when the parent's payload is
+  absent or unreadable — a bad read degrades to re-derivation, never to a wrong answer (§7.6).
+  The warm path drives from the spine's `git_commit_file` rows rather than from a second two-tree walk:
+  normalize has already walked both trees, and it is the only place rename detection exists, so a
+  tree-comparison-driven warm path would score every `git mv` as a delete plus an add — a test asserts a
+  move is one analysis with `change_kind = rename`. `fathom_ingest::diff` publishes the two-tree walk,
+  blob measurement under the size caps and working-file measurement anyway, for consumers with no spine
+  to read from and as the independent cross-check (against `git diff --raw`) that those rows say what git
+  says.
+  Migration 2 adds `analyzer`, `cache`, `blob`, `blob_ref` and `counter`; the analyzer manifest is
+  compiled-in and re-registered on every open, so a store can never answer a lookup with yesterday's
+  version. One `put` is one immediate transaction over blob, blob-ref and cache row, so a `kill -9` can
+  strand an unreachable object file (content-addressed, prunable) but never a stranded row; the index's
+  `index_run` row is closed only after the analyses, so §9.2's `running → crashed` stamp stays the truth
+  and the next run's derivation list — this run's commits plus a crashed run's, bounded to exactly one
+  run's worth by the first later clean run — finishes what was interrupted. Counters are summed in memory
+  and flushed once per run (§7.3), `fathom index --stats` prints them per analyzer as the delta the store
+  itself holds, `--json` prints the same on stdout and nothing else there, and `--refresh` looks up every
+  stored unit so §6's invalidation matrix is measured rather than trusted (a version bump moves that
+  analyzer and everything downstream of it, a config key moves only the analyzer that declared it, a
+  schema bump makes every row unreachable without migrating any of them — each of those is a test).
+  The clock moved to `fathom_cli::clock`, which is now the only `SystemTime` read in the workspace.
+  Measured on the 500-commit fixture: cold index 1.4 s debug, warm re-index after one new commit **8 ms in
+  release against a 150 ms p95 budget** (`warm.reindex.ms.small`; 47 ms in a debug build), one commit
+  looked up, one `path_pair` computed, one tree computed, and a run with nothing new performing zero
+  lookups. The budget assertion is `#[ignore]`d and runs under `--release --ignored`, the house rule for
+  wall-clock tests (`fathom-ingest`'s bench says why: a debug build is three to ten times slower than the
+  release build the budget was written against). New features `fathom-analyze/{sqlite-bundled,sqlite-system}`
+  forward to `fathom-store`'s, because the index names both crates and ADR-002 §6 forbids forcing SQLite
+  into the `minimal` binary; `fathom index` in a binary built without them exits 9 naming the feature.
 
 ### Toolchain
 
@@ -117,3 +185,12 @@ No product behaviour is claimed by any entry on this page yet.
   [`benchmarks/reports/e1-1-git-walk.json`](benchmarks/reports/e1-1-git-walk.json) rather than in the
   table. The next budget round should promote it: `e1.2`'s indexer is the consumer that needs a number to
   regress against, and a walk is the first thing every `fathom` command does.
+  `e1.2` did not need a new family — its budget is the existing `cold.index.ms.small`, and the caps it has to
+  respect are `ingest.file_size_cap.mib` — but `rss.ingest.peak_mib` is still missing, and the ingest memory
+  bound is currently asserted in a test (`tests/memory_cap.rs`) rather than in the budget table.
+- The per-file taxonomy in a `FileRecord` is a real column set with a placeholder answer: `Taxonomy` is a
+  trait, `Unclassified` is what the pipeline uses, and `taxonomy_version` travels in the export header so a
+  golden file says which classifier produced it. `reco-dsh` fills the trait in; it must not add columns.
+  Likewise copy detection (`git log -C`): `Options` enables rename pairing but not copy tracking, because
+  gix's copy tracking *consumes* the source modification row that git's `-C` still prints — a copy is a row
+  `e2.x`/`reco-a0v` should add deliberately, not one that silently replaces a modify.

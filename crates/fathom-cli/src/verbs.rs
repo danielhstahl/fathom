@@ -54,6 +54,22 @@ pub struct IndexArgs {
     /// The repository to index.
     #[arg(default_value = ".")]
     pub root: String,
+    /// Print the per-analyzer cache table (ADR-004 §4.8).
+    #[arg(long)]
+    pub stats: bool,
+    /// Print the run report as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Look up every stored unit, and recompute the ones that hit too.
+    ///
+    /// This is the pass that *measures* ADR-004 §6's invalidation matrix instead of trusting it: after a
+    /// version or config bump it prints exactly the rows that moved, and after an unremarkable commit it
+    /// prints 100% hits.
+    #[arg(long)]
+    pub refresh: bool,
+    /// Do not analyse uncommitted paths (ADR-004 §6.4).
+    #[arg(long = "committed-only")]
+    pub committed_only: bool,
 }
 
 /// `fathom show`
@@ -109,10 +125,7 @@ pub enum McpAction {
 pub fn dispatch(verb: Option<&Verb>) -> eyre::Result<ExitCode> {
     match verb {
         None => open_terminal(),
-        Some(Verb::Index(args)) => Err(not_implemented(
-            &format!("fathom index {}", args.root),
-            "e1.2",
-        )),
+        Some(Verb::Index(args)) => index(args),
         Some(Verb::Show(args)) => Err(not_implemented(
             &format!("fathom show {}", args.episode),
             "e1.6",
@@ -135,6 +148,222 @@ fn open_terminal() -> eyre::Result<ExitCode> {
         "the terminal UI is compiled in but the shell is not implemented yet",
         Some("owned by e1.5 (reco-v6t); `fathom --help` lists what works today".to_owned()),
     ))
+}
+
+/// `fathom index`: the whole of ADR-004 §6 behind one verb.
+///
+/// The verb owns three things and no logic: the clock (this is the crate ADR-002 §4.4 lets read it, and
+/// [`clock`] reads it once for the run), the store's location (§3: `.fathom/index.sqlite3` under the
+/// repository), and what to print. The walk, the cache keys and the counters are `fathom-analyze`'s and
+/// `fathom-store`'s, so `--stats` and `fathom stats` cannot tell different stories.
+///
+/// Cancellation is not wired to ctrl-c yet: that is `fathom-watch`'s work (`e1.9`), and the driver's
+/// cancel handle is there and counted (`--stats` shows a cancelled run as a stated partial, exit 6) even
+/// though nothing in this binary pulls it yet.
+#[cfg(feature = "sqlite-bundled")]
+fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
+    use fathom_analyze::index::{self, Scope, Worktree};
+    use fathom_ingest::record::Unclassified;
+    use fathom_ingest::repo::Repository;
+    use fathom_store::spine::Store;
+
+    let root = std::path::Path::new(&args.root);
+    let repository = Repository::discover(root).map_err(failed)?;
+    let store_path = index::default_store_path(root);
+    if let Some(dir) = store_path.parent() {
+        std::fs::create_dir_all(dir).map_err(|err| {
+            Pending::new(
+                ExitCode::Error,
+                format!("cannot create {} for the store: {err}", dir.display()),
+                None,
+            )
+        })?;
+    }
+    let mut store = Store::open(&store_path).map_err(failed)?;
+
+    let options = index::Options {
+        // The instant is an argument, not a read, all the way down (ADR-002 §4.4); this is the one place
+        // it is read, and every row and counter this run writes carries this one value.
+        now: Some(crate::clock::now_millis()),
+        scope: if args.refresh {
+            Scope::Everything
+        } else {
+            Scope::NewCommits
+        },
+        refresh: args.refresh,
+        worktree: if args.committed_only {
+            Worktree::Ignore
+        } else {
+            Worktree::Analyse
+        },
+        ..index::Options::head()
+    };
+    let report = index::run(&repository, &mut store, &Unclassified, &options).map_err(failed)?;
+
+    if args.json {
+        output::line(format_args!("{}", json_report(&store_path, &report)));
+    } else if args.stats {
+        print_stats(&store_path, &report);
+    } else {
+        let added = report.spine.commits_written;
+        output::line(format_args!(
+            "{}: {} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
+            store_path.display(),
+            report.commits_walked,
+            added,
+            report.computed(),
+            report.elapsed.as_millis()
+        ));
+        if !report.worktree_skipped.is_empty() {
+            output::line(format_args!(
+                "  {} uncommitted path(s) were not analysed; pass --stats to see why",
+                report.worktree_skipped.len()
+            ));
+        }
+        output::line(format_args!(
+            "  pass --stats for the per-analyzer cache table, or --json for the same as data"
+        ));
+    }
+
+    Ok(match report.reason {
+        // Only a cancel is the user's act and therefore the user's exit code (§7.3). A run that stopped
+        // because its unit budget ran out did what it was told: that is a stated partial, exit 0, and the
+        // report says so.
+        Some(index::Interrupted::Cancelled) => ExitCode::Cancelled,
+        _ => ExitCode::Ok,
+    })
+}
+
+/// The `--json` shape, assembled here rather than derived from [`index::Report`]'s own serde so that the
+/// key names are the CLI's promise and not a struct's internals: a field renamed in `fathom-analyze` must
+/// not silently rename `fathom index --json`'s contract.
+#[cfg(feature = "sqlite-bundled")]
+fn json_report(
+    store: &std::path::Path,
+    report: &fathom_analyze::index::Report,
+) -> serde_json::Value {
+    use serde_json::json;
+
+    json!({
+        "store": store.display().to_string(),
+        "kind": report.kind.as_str(),
+        "elapsed_ms": report.elapsed.as_millis(),
+        "commits": {
+            "walked": report.commits_walked,
+            "new": report.commits_new,
+            "looked_up": report.commits_considered,
+            "written": report.spine.commits_written,
+        },
+        "interrupted": report.interrupted,
+        "reason": report.reason.map(|reason| format!("{reason:?}").to_ascii_lowercase()),
+        "analyzers": report
+            .analyzers
+            .iter()
+            .map(|(id, stats)| {
+                json!({
+                    "id": id,
+                    "lookups": stats.lookups,
+                    "hits": stats.hits,
+                    "negative_hits": stats.negative_hits,
+                    "cold": stats.cold,
+                    "bumped": stats.bumped,
+                    "epoch_stale": stats.epoch_stale,
+                    "puts": stats.puts,
+                    "bytes": stats.bytes,
+                    "cost_ms": stats.cost_ms,
+                    "hit_rate": stats.hit_rate(),
+                })
+            })
+            .collect::<Vec<_>>(),
+        "worktree": report
+            .worktree
+            .iter()
+            .map(|record| {
+                json!({
+                    "path": record.path,
+                    "staged": record.staged,
+                    "reason": record.reason.as_str(),
+                })
+            })
+            .collect::<Vec<_>>(),
+        "worktree_skipped": report
+            .worktree_skipped
+            .iter()
+            .map(|(path, reason)| json!({"path": path, "reason": reason}))
+            .collect::<Vec<_>>(),
+        "failures": report.failures,
+    })
+}
+
+/// The table acceptance criterion four asks for: one row per analyzer, read out of the store's own counters
+/// for this run, with the hit rate the run earned rather than the one the store has averaged all week.
+#[cfg(feature = "sqlite-bundled")]
+fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) {
+    output::line(format_args!(
+        "{} — {} run, {} commit(s) walked, {} looked up, {} ms",
+        store.display(),
+        report.kind.as_str(),
+        report.commits_walked,
+        report.commits_considered,
+        report.elapsed.as_millis()
+    ));
+    output::line(format_args!(
+        "{:<20} {:>8} {:>7} {:>6} {:>6} {:>7}  {:>9} {}",
+        "ANALYZER", "LOOKUPS", "HITS", "COLD", "BUMPED", "PUTS", "HIT %", "NOTES"
+    ));
+    for (id, stats) in &report.analyzers {
+        let rate = stats
+            .hit_rate()
+            .map_or_else(|| "     n/a".to_owned(), |rate| format!("{rate:6.1}%"));
+        output::line(format_args!(
+            "{:<20} {:>8} {:>7} {:>6} {:>6} {:>7}  {} {}",
+            id,
+            stats.lookups,
+            stats.hits,
+            stats.cold,
+            stats.bumped,
+            stats.puts,
+            rate,
+            if stats.negative_hits > 0 {
+                format!("{} stored failure(s)", stats.negative_hits)
+            } else if stats.epoch_stale > 0 {
+                format!("{} epoch-stale row(s)", stats.epoch_stale)
+            } else {
+                String::new()
+            }
+        ));
+    }
+    for record in &report.worktree {
+        output::line(format_args!(
+            "  uncommitted {}: {} ({})",
+            if record.staged { "staged" } else { "dirty" },
+            record.path,
+            record.reason.as_str()
+        ));
+    }
+    for (path, reason) in &report.worktree_skipped {
+        output::line(format_args!("  not analysed {path}: {reason}"));
+    }
+    for failure in &report.failures {
+        output::problem(format_args!("  analysis failed: {failure}"));
+    }
+    if let Some(reason) = report.reason {
+        output::problem(format_args!(
+            "the run stopped early: {}",
+            match reason {
+                fathom_analyze::index::Interrupted::Cancelled => "cancelled",
+                fathom_analyze::index::Interrupted::Budget => "out of its unit budget",
+            }
+        ));
+    }
+}
+
+/// The same verb in a binary that was built without SQLite: the feature gate is the point, and the answer
+/// is the exit code that says which flag to rebuild with (ADR-002 §6.1's `minimal` binary).
+#[cfg(not(feature = "sqlite-bundled"))]
+fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
+    let _ = args;
+    Err(feature_absent("fathom index", "sqlite-bundled"))
 }
 
 fn watch() -> eyre::Result<ExitCode> {

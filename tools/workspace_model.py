@@ -167,7 +167,7 @@ CRATES: tuple[Crate, ...] = (
                 "object database), commit normalisation, episode segmentation, the hook-event reader, "
                 "validator and replay (ADR-005), and watch-mode change detection.",
         allows=("fathom-core", "fathom-store"),
-        default_deps=("gix", "filetime", "serde", "serde_json", "thiserror"),
+        default_deps=("gix", "filetime", "serde", "serde_json", "sha2", "thiserror", "rayon"),
         features=(
             Feature("watch", "filesystem change detection (`notify`, inotify/FSE/ReadDirectoryChangesW "
                     "backend) for `fathom watch` and watch mode v1.", heavy=True, deps=("notify",),
@@ -224,6 +224,13 @@ CRATES: tuple[Crate, ...] = (
             Feature("net-advisories", "outbound HTTPS advisory/provenance lookups (OSV) for dependency "
                     "risk signals (`e2.7`). Requires runtime network consent; degrades to `unknown` "
                     "offline.", net=True, heavy=True, deps=("ureq", "rustls"), ticket="e2.7"),
+            Feature("sqlite-bundled", "the store-facing half of the crate (`index`, `sink`) — which is "
+                    "ADR-004 §6's incremental index — compiled in, by forwarding to `fathom-store`'s own "
+                    "feature of the same name. Same reason that crate gates: a library built with no "
+                    "features must still build and test.",
+                    heavy=True, enables=("fathom-store/sqlite-bundled",), ticket="e1.4"),
+            Feature("sqlite-system", "the same half, against the distro's libsqlite3.",
+                    heavy=True, enables=("fathom-store/sqlite-system",), ticket="e7.4"),
             Feature("net-llm", "optional LLM narrative polish (`e4.7`, spike `s5`). Off by default, "
                     "watermarked, citation-preserving, and silently absent when unavailable "
                     "(ADR-001 §8 non-goal 6).", net=True, heavy=True, deps=("ureq", "rustls"),
@@ -310,7 +317,8 @@ CRATES: tuple[Crate, ...] = (
                     "`fathom-ingest/watch`.", default=True, enables=("fathom-ingest/watch",),
                     ticket="e1.9"),
             Feature("sqlite-bundled", "the shipped SQLite story (ADR-004 D2).", default=True,
-                    enables=("fathom-store/sqlite-bundled",), ticket="e0.4"),
+                    enables=("fathom-store/sqlite-bundled", "fathom-analyze/sqlite-bundled"),
+                    ticket="e0.4"),
             Feature("langs-all", "every tree-sitter grammar; the product's differentiator ships.",
                     default=True, enables=("fathom-analyze/langs-all",), ticket="e3.1"),
             Feature("minimal", "the smallest useful headless binary: `--no-default-features --features "
@@ -445,7 +453,7 @@ ALLOWED_TOKIO_FEATURES = ("rt", "rt-multi-thread", "macros", "sync", "time", "io
 #: Git access: `gix` local-object-DB features only. Anything that names a remote or a transport is out.
 GIX_ALLOWED_FEATURES = (
     "max-performance-safe", "parallel", "packed", "sha1", "sha1-detect-collision", "zlib",
-    "serde", "attributes", "index", "worktree-missing", "revparse-regex",
+    "serde", "attributes", "index", "blob-diff", "worktree-missing", "revparse-regex",
 )
 
 #: Crates that cost real compile time or binary size and must therefore be behind a named, published

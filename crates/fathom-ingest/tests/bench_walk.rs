@@ -376,31 +376,6 @@ fn directory_bytes(path: &Path) -> u64 {
     total
 }
 
-/// `VmHWM` from `/proc/self/status`: the high-water mark, which is what "no allocation blowup" means.
-fn peak_rss_kib() -> Option<u64> {
-    proc_field("VmHWM")
-}
-
-fn current_rss_kib() -> Option<u64> {
-    proc_field("VmRSS")
-}
-
-fn proc_field(name: &str) -> Option<u64> {
-    let status = std::fs::read_to_string("/proc/self/status").ok()?;
-    for line in status.lines() {
-        if let Some(rest) = line.strip_prefix(name) {
-            let value = rest
-                .trim_start_matches(':')
-                .split_whitespace()
-                .next()?
-                .parse::<u64>()
-                .ok()?;
-            return Some(value);
-        }
-    }
-    None
-}
-
 fn utc_stamp() -> String {
     let secs = i64::try_from(
         SystemTime::now()

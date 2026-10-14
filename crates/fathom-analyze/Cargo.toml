@@ -47,6 +47,13 @@ lang-typescript = ["dep:tree-sitter", "dep:tree-sitter-typescript"]
 lang-ruby = ["dep:tree-sitter", "dep:tree-sitter-ruby"]
 lang-java = ["dep:tree-sitter", "dep:tree-sitter-java"]
 langs-all = ["lang-rust", "lang-python", "lang-go", "lang-typescript", "lang-ruby", "lang-java"]
+# The store-facing half of this crate — `index`, and the `sink` that writes what `fathom-ingest` produced —
+# needs a SQLite backend to exist, exactly as `fathom-store`'s own `spine` and `cache` modules do. The
+# feature names are the same three §6.2 publishes for `fathom-store`, forwarded rather than invented, so
+# `cargo build -p fathom-analyze --no-default-features` stays a valid build (ADR-002 §6.1) and the shipped
+# binary turns one on and gets the whole product.
+sqlite-bundled = ["fathom-store/sqlite-bundled"]
+sqlite-system = ["fathom-store/sqlite-system"]
 net-advisories = ["dep:ureq"]
 net-llm = ["dep:ureq"]
 

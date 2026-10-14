@@ -53,6 +53,11 @@ serde = { version = "1", features = ["derive"] }   # `derive` everywhere: every 
                                                    # versioned JSON (ADR-004 §5)
 serde_json = { version = "1" }
 thiserror = { version = "2" }
+# The digest ADR-004 §4.0 asks for: `git_commit.message_hash` and `git_commit_file.path_hash` are
+# sha256, not sha1 — git's own hash is a content hash of *objects*, and a path or a message is not an
+# object. `gix` is built with `sha1` only (ADR-002 §4.2), so the second digest is a second crate; it is
+# already in the lock through the terminal stack, so this adds no new vendor.
+sha2 = { version = "0.10" }
 schemars = { version = "1" }                                     # made optional per-crate, behind
                                                    # `fathom-core/json-schema` only (cargo does not
                                                    # allow `optional` in `[workspace.dependencies]`)

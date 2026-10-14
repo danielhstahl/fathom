@@ -15,11 +15,130 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 /// A path inside a repository, in git's own representation: `/`-separated bytes, relative to the root.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+///
+/// # JSON
+///
+/// Serialized as a **string**, and quoted the way git quotes paths (`core.quotePath`): printable UTF-8
+/// passes through, and anything that cannot be a JSON string byte — a control character, a byte that is
+/// not valid UTF-8 — becomes a three-digit octal escape (`doc/\303\251.md`). The alternative, a JSON array
+/// of numbers, is lossless and unreadable, and paths are the single most-read field in anything this crate
+/// emits. It is lossless in the same way: [`unquote`] is the exact inverse of [`quote`], including for a
+/// path whose bytes *are* a backslash followed by three octal digits.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RepoPath {
     /// The raw bytes, `/`-separated, never absolute.
     bytes: Vec<u8>,
+}
+
+impl Serialize for RepoPath {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&quote(&self.bytes))
+    }
+}
+
+impl<'de> Deserialize<'de> for RepoPath {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl serde::de::Visitor<'_> for Visitor {
+            type Value = RepoPath;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a repository path, git-quoted")
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(RepoPath { bytes: unquote(v) })
+            }
+        }
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+/// The JSON spelling of one path's bytes. See [`RepoPath`]'s notes.
+#[must_use]
+fn quote(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len());
+    let mut rest = bytes;
+    while !rest.is_empty() {
+        match std::str::from_utf8(rest) {
+            Ok(text) => {
+                escape(text, &mut out);
+                break;
+            }
+            Err(err) => {
+                let valid = err.valid_up_to();
+                // `valid_up_to` only ever names a valid prefix, so this cannot fail.
+                escape(
+                    std::str::from_utf8(&rest[..valid]).unwrap_or_default(),
+                    &mut out,
+                );
+                let bad = err.error_len().unwrap_or(1).min(rest.len() - valid);
+                for byte in &rest[valid..valid + bad] {
+                    out.push_str(&format!("\\{byte:03o}"));
+                }
+                rest = &rest[valid + bad..];
+            }
+        }
+    }
+    out
+}
+
+/// Escape the characters that would otherwise make the quoting ambiguous.
+fn escape(text: &str, out: &mut String) {
+    for ch in text.chars() {
+        match ch {
+            // Doubled, so `\\` in the quoted form is one backslash in the bytes — and so an octal escape
+            // can never be invented by a path that happened to contain a backslash.
+            '\\' => out.push_str("\\\\"),
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => {
+                let code = c as u32;
+                out.push_str(&format!("\\{code:03o}"));
+            }
+            c => out.push(c),
+        }
+    }
+}
+
+/// The exact inverse of [`quote`].
+#[must_use]
+fn unquote(text: &str) -> Vec<u8> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] != b'\\' {
+            out.push(bytes[index]);
+            index += 1;
+            continue;
+        }
+        match bytes.get(index + 1) {
+            Some(b'\\') => {
+                out.push(b'\\');
+                index += 2;
+            }
+            Some(_digit @ b'0'..=b'7') if octal_at(bytes, index + 1).is_some() => {
+                out.push(octal_at(bytes, index + 1).unwrap_or(0));
+                index += 4;
+            }
+            // Not one of our escapes. Kept literally rather than dropped: a reader that meets a stray
+            // backslash should report the path, not lose a byte of it.
+            _ => {
+                out.push(b'\\');
+                index += 1;
+            }
+        }
+    }
+    out
+}
+
+/// Decode three octal digits starting at `at`, if there are three and they are octal.
+fn octal_at(bytes: &[u8], at: usize) -> Option<u8> {
+    let digits = bytes.get(at..at + 3)?;
+    if !digits.iter().all(|byte| (b'0'..=b'7').contains(byte)) {
+        return None;
+    }
+    let text = std::str::from_utf8(digits).ok()?;
+    u8::from_str_radix(text, 8).ok()
 }
 
 impl RepoPath {
@@ -34,6 +153,14 @@ impl RepoPath {
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
+    }
+
+    /// The path in the form this type serializes to: valid UTF-8 as itself, anything else with git's octal
+    /// escapes. The store's `new_path` column holds exactly this, so a row and an export line cannot
+    /// disagree about what a path is, and neither one has to be lossy.
+    #[must_use]
+    pub fn quoted(&self) -> String {
+        quote(&self.bytes)
     }
 
     /// Lossy UTF-8, for display and for the lossy analyzers.
@@ -177,6 +304,44 @@ mod tests {
         let json = serde_json::to_string(&path).expect("serialisable");
         let back: RepoPath = serde_json::from_str(&json).expect("deserialisable");
         assert_eq!(back.as_bytes(), path.as_bytes());
+    }
+
+    #[test]
+    fn json_is_a_string_with_git_style_octal_escapes() {
+        let plain = RepoPath::new("src/lib.rs");
+        assert_eq!(serde_json::to_string(&plain).unwrap(), "\"src/lib.rs\"");
+
+        // "café.md" where the é really is those two bytes: printable text passes through as
+        // itself, because a golden file a human cannot read is a worse contract, not a better one.
+        let accented = RepoPath::new(vec![b'c', b'a', b'f', 0xc3, 0xa9, b'.', b'm', b'd']);
+        assert_eq!(
+            serde_json::to_string(&accented).unwrap(),
+            "\"café.md\"",
+            "valid UTF-8 passes through untouched"
+        );
+
+        let broken = RepoPath::new(vec![b'd', b'o', b'c', b'/', 0xff, b'.', b'm', b'd']);
+        let text = serde_json::to_string(&broken).unwrap();
+        assert_eq!(text, "\"doc/\\\\377.md\"");
+        assert_eq!(serde_json::from_str::<RepoPath>(&text).unwrap(), broken);
+
+        // A backslash in the bytes must not be confusable with an escape: it is doubled on the way out and
+        // single on the way back, and the round trip is the proof. Four backslashes in the file is not a
+        // mistake: the quoting doubles the one real backslash, and JSON then doubles each of those two.
+        let backslash = RepoPath::new("a\\b".to_owned());
+        let text = serde_json::to_string(&backslash).unwrap();
+        assert_eq!(text, r#""a\\\\b""#);
+        assert_eq!(
+            serde_json::from_str::<RepoPath>(&serde_json::to_string(&backslash).unwrap()).unwrap(),
+            backslash
+        );
+
+        // A path whose bytes *look* like an escape survives too, because a real backslash is doubled.
+        let tricky = RepoPath::new("a\\377b".to_owned());
+        assert_eq!(
+            serde_json::from_str::<RepoPath>(&serde_json::to_string(&tricky).unwrap()).unwrap(),
+            tricky
+        );
     }
 
     #[test]

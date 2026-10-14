@@ -17,6 +17,16 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod cancel;
 pub mod error;
 pub mod export;
 pub mod insight;
+
+/// The incremental index: what the cache is *for_ (ADR-004 §6). Present only when a SQLite backend is
+/// compiled in, because an index with nowhere to store its rows is not an index.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod index;
+
+/// The meeting point of `fathom-ingest`'s records and `fathom-store`'s tables (ADR-002 §3).
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod sink;

@@ -13,6 +13,9 @@ workspace = true
 [dependencies]
 rustix.workspace = true
 serde.workspace = true
+# ADR-004 §5's cache keys and §10.2's identity digest are sha256; the same digest `e1.2` uses for
+# `path_hash` and `message_hash`, so one crate serves both (`gix` speaks sha1 only, ADR-002 §4.2).
+sha2.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 fallible-iterator.workspace = true

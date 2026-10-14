@@ -15,6 +15,8 @@
 //! | [`oid`], [`paths`] | the two value types that cross the door: a 20-byte object id and a path in git's bytes |
 //! | [`revspec`] | the revision expressions fathom accepts, and a typed rejection of the ones it does not |
 //! | [`graph`] | the commit walk: orders, pruning, and what "the history is not whole" means |
+//! | [`record`], [`normalize`] | a commit as a stable normalized record: identity, people, message, trailers and per-file change records under size caps (`e1.2`) |
+//! | [`diff`] | the changed-path set between two trees, `blob_of(path, tree)`, and one file pair's measurement — the O(changed) read the warm path runs on (`e1.4`) |
 //! | [`state`] | the working tree: staged, unstaged, conflicted |
 //! | [`backend`] | the read interface, so a `git`-binary fallback can be added without touching call sites |
 //! | [`error`] | the failure vocabulary, each variant with a remedy a human can act on |
@@ -46,10 +48,15 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod backend;
+pub mod diff;
 pub mod error;
+pub mod export;
 pub mod graph;
+pub mod ingest;
+pub mod normalize;
 pub mod oid;
 pub mod paths;
+pub mod record;
 pub mod repo;
 pub mod revspec;
 pub mod state;

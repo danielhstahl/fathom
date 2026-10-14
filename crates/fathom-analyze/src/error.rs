@@ -34,6 +34,26 @@ pub enum Error {
         /// What was asked for, verbatim.
         given: String,
     },
+
+    /// A spine row whose content is not what its column claims it is.
+    ///
+    /// Distinct from [`Error::Store`]: the database answered perfectly well and it is the *value* that will
+    /// not parse. The exit code is still the store's, because the file needs rebuilding, but the message has
+    /// to name the column and the value — "corrupt" without that is a search rather than a diagnosis.
+    #[error("the store holds a row it cannot mean: {what}")]
+    SpineRowUnreadable {
+        /// Which column, what value, and why it is not one.
+        what: String,
+    },
+
+    /// The git side refused to answer. Forwarded whole, because `fathom-ingest`'s variants already carry
+    /// the exit code and the hint (§7.1: one value, so the message, the hint and the code cannot disagree).
+    #[error(transparent)]
+    Ingest(#[from] fathom_ingest::error::Error),
+
+    /// The store refused to answer.
+    #[error(transparent)]
+    Store(#[from] fathom_store::error::Error),
 }
 
 impl Diagnosable for Error {
@@ -41,6 +61,9 @@ impl Diagnosable for Error {
         match self {
             Error::NotImplemented { .. } => ErrorCode::NotImplemented,
             Error::InvalidRequest { .. } | Error::UnknownFormat { .. } => ErrorCode::Usage,
+            Error::SpineRowUnreadable { .. } => ErrorCode::StoreCorrupt,
+            Error::Ingest(err) => err.code(),
+            Error::Store(err) => err.code(),
         }
     }
 
@@ -49,6 +72,9 @@ impl Diagnosable for Error {
             Error::NotImplemented { ticket, .. } => Some(*ticket),
             Error::InvalidRequest { .. } => Some("ask the facade for a smaller window"),
             Error::UnknownFormat { .. } => Some("`fathom export --help` lists the three"),
+            Error::SpineRowUnreadable { .. } => Some("`fathom index --rebuild`"),
+            Error::Ingest(err) => err.hint(),
+            Error::Store(err) => err.hint(),
         }
     }
 }

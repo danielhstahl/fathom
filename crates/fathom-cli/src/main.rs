@@ -11,6 +11,10 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+// The clock is read once, here, and only by the verbs that stamp rows: a binary built without a store
+// has nothing to stamp, so it does not compile the clock in at all (ADR-002 §4.4, §6.1's `minimal`).
+#[cfg(feature = "sqlite-bundled")]
+mod clock;
 mod features;
 mod hooks;
 mod output;

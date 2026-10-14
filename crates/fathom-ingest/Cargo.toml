@@ -12,15 +12,25 @@ workspace = true
 
 [dependencies]
 # `index` is on the local-only allow-list (ADR-002 §4.2 / lint N05): it is what lets the
-# working-tree reader decode `.git/index` without a `git` subprocess.
-gix = { workspace = true, features = ["index"] }
+# working-tree reader decode `.git/index` without a `git` subprocess. `blob-diff` is on it for the
+# same reason: line-level diffing and rename scoring happen in-process against the local object
+# database, with `.gitattributes` applied, and no subprocess (`e1.2`).
+gix = { workspace = true, features = ["index", "blob-diff"] }
 filetime.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
+rayon.workspace = true
 fathom-core.workspace = true
 fathom-store.workspace = true
 notify = { workspace = true, optional = true }
+
+[dev-dependencies]
+# The ingestion pipeline ends in the store, so the store is part of this crate's test surface. The
+# feature is turned on *here* and nowhere in the library: `fathom-ingest`'s production code never
+# names SQLite (ADR-002 §3), and `fathom-cli` is what decides the store build (`e1.10`).
+fathom-store = { workspace = true, features = ["sqlite-bundled"] }
 
 # ADR-002 §6.2. `watch` and `watch-poll` are separate because inotify lies on NFS (ADR-004 §7.8) and
 # the polling backend is a different dependency cost, not a different boolean. `mmap-index` forwards to

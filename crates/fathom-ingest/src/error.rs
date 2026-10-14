@@ -30,6 +30,18 @@ pub enum Error {
         reason: String,
     },
 
+    /// A working-tree path that would not open: a permission bit, a broken symlink, a socket or a FIFO
+    /// where a file was expected. Per-path and recoverable — the scan of the other 40 000 paths is still
+    /// the truth — so it is its own variant rather than a `WorkingTreeUnavailable`, which means the whole
+    /// work tree is missing.
+    #[error("{path} could not be read: {reason}")]
+    PathUnreadable {
+        /// The path, as the repository names it.
+        path: String,
+        /// The OS's own words.
+        reason: String,
+    },
+
     /// A repository was found but is not owned by the current user and was therefore discarded.
     #[error("{root} contains a git repository owned by someone else, so it was not read")]
     RepositoryUntrusted {
@@ -83,6 +95,15 @@ pub enum Error {
         remedy: &'static str,
     },
 
+    /// An object that exists, is readable, and is not the kind of object the operation needs.
+    #[error("{oid} is not a commit ({detail})")]
+    NotACommit {
+        /// The object that was asked about.
+        oid: Oid,
+        /// What it is instead, as far as the repository can say.
+        detail: String,
+    },
+
     /// A revision expression was rejected.
     #[error("cannot resolve {spec:?}: {why}")]
     RevSpecRejected {
@@ -90,6 +111,24 @@ pub enum Error {
         spec: String,
         /// Why it was rejected.
         why: String,
+    },
+
+    /// The durable store refused a write.
+    ///
+    /// The ingest pipeline names the store as a sink and never as a database (ADR-002 §4.2), so this is the
+    /// one place a store failure enters this crate's vocabulary: whatever the database complained about is
+    /// carried as text, and the typed store error stays typed on the other side of the boundary.
+    #[error("the store could not write: {reason}")]
+    StoreWrite {
+        /// What the store said, verbatim.
+        reason: String,
+    },
+
+    /// The canonical commit export could not be read back.
+    #[error("reading the commit export: {detail}")]
+    Export {
+        /// What went wrong, in serde's words.
+        detail: String,
     },
 
     /// A published contract this build does not implement yet.
@@ -110,11 +149,16 @@ impl Diagnosable for Error {
                 ErrorCode::RepositoryUnsupported
             }
             Error::ObjectUnavailable { .. } => ErrorCode::ObjectUnavailable,
+            Error::NotACommit { .. } => ErrorCode::RepositoryUnsupported,
             Error::HistoryTruncated { .. } => ErrorCode::HistoryTruncated,
-            Error::WorkingTreeUnavailable { .. } => ErrorCode::WorkingTreeUnavailable,
+            Error::WorkingTreeUnavailable { .. } | Error::PathUnreadable { .. } => {
+                ErrorCode::WorkingTreeUnavailable
+            }
             Error::RepositoryUnsupported { .. } => ErrorCode::RepositoryUnsupported,
             Error::FallbackRequired { .. } => ErrorCode::FallbackRequired,
             Error::RevSpecRejected { .. } => ErrorCode::RevSpecRejected,
+            Error::Export { .. } => ErrorCode::Usage,
+            Error::StoreWrite { .. } => ErrorCode::StoreCorrupt,
             Error::NotImplemented { .. } => ErrorCode::NotImplemented,
         }
     }
@@ -132,6 +176,9 @@ impl Diagnosable for Error {
                 "if you trust it: git config --global --add safe.directory <path>, or pass --trust-repository",
             ),
             Error::ObjectUnavailable { why, .. } => Some(why.hint()),
+            Error::NotACommit { .. } => Some(
+                "fathom indexes commits; a tag that does not peel to one is skipped by the walk",
+            ),
             Error::HistoryTruncated { cause, .. } => Some(cause.hint()),
             Error::WorkingTreeUnavailable { .. } => {
                 Some("index a bare repository from its commits; there is no working tree to read")
@@ -140,10 +187,19 @@ impl Diagnosable for Error {
                 Some("see `fathom doctor`; an unsupported repository is reported, never guessed at")
             }
             Error::FallbackRequired { remedy, .. } => Some(*remedy),
+            Error::PathUnreadable { .. } => Some(
+                "check the path's permissions; a file fathom cannot open is reported, not guessed at",
+            ),
             Error::RevSpecRejected { .. } => Some(
                 "fathom resolves HEAD, refs, tags, short SHAs and the `~n`/`^n` suffixes; run the git \
                  command for anything rarer",
             ),
+            Error::StoreWrite { .. } => {
+                Some("the store is disposable: `fathom index --rebuild` rebuilds it (ADR-004 §12)")
+            }
+            Error::Export { .. } => {
+                Some("the export format is `fathom-commits` v1; a newer file needs a newer fathom")
+            }
             Error::NotImplemented { ticket, .. } => Some(*ticket),
         }
     }
@@ -155,7 +211,11 @@ impl Diagnosable for Error {
 /// needs more depth, a filtered clone needs the filter relaxed, and a genuinely absent object means the
 /// repository is damaged. Collapsing them into "object not found" is how a partial clone ends up looking
 /// like a corrupt one.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Serialized (it travels inside a [`crate::record::FileRecord`], and a record that cannot be written to
+/// JSON is not a durable record), and the spelling is the same one `--json` output uses.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case", tag = "unavailable")]
 pub enum Unavailable {
     /// The object is behind a shallow boundary: the clone was made with `--depth` and this commit is on
     /// the far side of the graft.
@@ -312,6 +372,24 @@ impl fmt::Display for WorkingTreeUnavailable {
             WorkingTreeUnavailable::UnreadableIndex { reason } => {
                 write!(f, "the index could not be read: {reason}")
             }
+        }
+    }
+}
+
+impl From<std::convert::Infallible> for Error {
+    /// A sink that cannot fail still has to name an error type; this is how `Infallible` becomes the
+    /// [`crate::ingest::Sink::Error`] of an infallible sink without an unwrap at the call site.
+    fn from(value: std::convert::Infallible) -> Self {
+        match value {}
+    }
+}
+
+impl From<fathom_store::error::Error> for Error {
+    /// Map a store failure into this crate's vocabulary at the sink boundary, where a store is a sink and
+    /// not a database (ADR-002 §4.2, §7.1).
+    fn from(value: fathom_store::error::Error) -> Self {
+        Error::StoreWrite {
+            reason: value.to_string(),
         }
     }
 }

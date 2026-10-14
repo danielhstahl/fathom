@@ -29,6 +29,7 @@ use crate::state::{ScanOptions, WorkingState};
 /// object store and ref store are shared behind an `Arc`, so a clone re-uses the loaded pack index
 /// instead of reading it again. The handle is `Send` and *not* `Sync` — its decode caches are
 /// `RefCell`s — so a thread owns its handle rather than sharing one behind a lock (ADR-002 §10).
+#[derive(Clone)]
 pub struct Repository {
     inner: gix::Repository,
     identity: RepoIdentity,
@@ -371,8 +372,34 @@ impl Repository {
     /// The cap is not politeness: `benchmarks/budgets.json`'s `ingest.file_size_cap.mib` exists because a
     /// review tool that slurps a 500 MB blob is a review tool that dies on someone's vendor directory.
     /// `Err` with [`Error::ObjectUnavailable`] when the blob is missing and classified as such.
+    ///
+    /// The header is read before the data, and that order *is* the guarantee: `try_find_header` reports a
+    /// blob's kind and length without inflating it, so a blob over the cap is turned away with its bytes
+    /// still in the pack. Checking the length after `try_find_object` would inflate a 500 MB blob to
+    /// discover it was too big to keep — the exact failure the cap exists to prevent. The second lookup on
+    /// the accepted path is the price of that guarantee, and `benchmarks/reports/e1-2-ingest.json` records
+    /// what it costs.
     pub fn blob(&self, oid: Oid, cap: usize) -> Result<BlobRead, Error> {
         let id = to_gix(oid, self.inner.object_hash());
+        let header = self
+            .inner
+            .try_find_header(id)
+            .map_err(|err| self.unreadable("reading a blob header", &err))?;
+        let Some(header) = header else {
+            return Err(Error::ObjectUnavailable {
+                oid,
+                why: self.why_unavailable(oid),
+            });
+        };
+        if header.kind() != gix::objs::Kind::Blob {
+            return Ok(BlobRead::WrongKind {
+                kind: ObjectKind::from(header.kind()),
+            });
+        }
+        let size = usize::try_from(header.size()).unwrap_or(usize::MAX);
+        if size > cap {
+            return Ok(BlobRead::Oversized { size });
+        }
         let object = self
             .inner
             .try_find_object(id)
@@ -383,15 +410,7 @@ impl Repository {
                 why: self.why_unavailable(oid),
             });
         };
-        if object.kind != gix::objs::Kind::Blob {
-            return Ok(BlobRead::WrongKind {
-                kind: ObjectKind::from(object.kind),
-            });
-        }
-        let size = object.data.len();
-        if size > cap {
-            return Ok(BlobRead::Oversized { size });
-        }
+        debug_assert_eq!(object.data.len(), size, "the header and the data agree");
         Ok(BlobRead::Present {
             oid,
             // `detach` rather than a field move: `gix::Object` borrows the repository, so it cannot be

@@ -189,7 +189,7 @@ cheapest way to keep them agreeing is to develop on the floor. CI then proves th
 | `fathom-tui` | lib | L4 | tui-shell / tui-views | `fathom-core`, `fathom-analyze` | `ratatui`, `crossterm`, `unicode-width`, `unicode-segmentation`, `thiserror`, `serde`, `serde_json` | forbidden |
 | `fathom-analyze` | lib | L3 | analyze-change / analyze-arch / analyze-agents / analyze-insight | `fathom-core`, `fathom-store`, `fathom-ingest` | `serde`, `serde_json`, `thiserror`, `regex`, `similar`, `toml_edit`, `globset`, `rayon`, `smallvec` | forbidden |
 | `fathom-fixtures` | dev | L3 | fixtures | `fathom-core`, `fathom-store`, `fathom-ingest` | `gix`, `serde`, `serde_json` | forbidden |
-| `fathom-ingest` | lib | L2 | ingest-git | `fathom-core`, `fathom-store` | `gix`, `filetime`, `serde`, `serde_json`, `thiserror` | forbidden |
+| `fathom-ingest` | lib | L2 | ingest-git | `fathom-core`, `fathom-store` | `gix`, `filetime`, `serde`, `serde_json`, `sha2`, `thiserror`, `rayon` | forbidden |
 | `fathom-store` | lib | L1 | store-index / store-cache | `fathom-core` | `rusqlite`, `rustix`, `serde`, `serde_json`, `thiserror`, `fallible-iterator` | `src/raw/` only, `cfg(mmap)` only |
 | `fathom-core` | lib | L0 | core | — | `serde`, `serde_json`, `thiserror` | forbidden |
 
@@ -439,6 +439,8 @@ meant to grow. One decision point makes that class of accident visible in one di
 | `fathom-analyze` | `lang-java` | no | — | yes | tree-sitter grammar for Java. | — | e3.1 |
 | `fathom-analyze` | `langs-all` | no | — | — | every grammar `s1` measured as worth shipping; the shipped binary enables this and nothing else needs to. | — | e3.1 |
 | `fathom-analyze` | `net-advisories` | no | **yes** | yes | outbound HTTPS advisory/provenance lookups (OSV) for dependency risk signals (`e2.7`). Requires runtime network consent; degrades to `unknown` offline. | `privacy.advisories` | e2.7 |
+| `fathom-analyze` | `sqlite-bundled` | no | — | yes | the store-facing half of the crate (`index`, `sink`) — which is ADR-004 §6's incremental index — compiled in, by forwarding to `fathom-store`'s own feature of the same name. Same reason that crate gates: a library built with no features must still build and test. | — | e1.4 |
+| `fathom-analyze` | `sqlite-system` | no | — | yes | the same half, against the distro's libsqlite3. | — | e7.4 |
 | `fathom-analyze` | `net-llm` | no | **yes** | yes | optional LLM narrative polish (`e4.7`, spike `s5`). Off by default, watermarked, citation-preserving, and silently absent when unavailable (ADR-001 §8 non-goal 6). | `privacy.llm` | e4.7 |
 | `fathom-tui` | `graph-layout` | no | — | yes | force-directed layout for the architecture map (`petgraph`). | — | e3.4 |
 | `fathom-mcp` | `net-http-transport` | no | **yes** | yes | streamable-HTTP/SSE transport in addition to stdio: this listens on a socket, so it is consent-gated like any egress and is off by default. | `privacy.mcp_http_transport` | e6.4 |
@@ -464,6 +466,7 @@ fathom-analyze/lang-ruby
 fathom-analyze/lang-rust
 fathom-analyze/lang-typescript
 fathom-analyze/langs-all
+fathom-analyze/sqlite-bundled
 fathom-cli/langs-all
 fathom-cli/mcp
 fathom-cli/sqlite-bundled

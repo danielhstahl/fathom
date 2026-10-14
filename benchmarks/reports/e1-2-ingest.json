@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "ticket": "reco-76g",
+  "generated_utc": "2026-10-14T12:17:58Z",
+  "environment": {
+    "platform": "linux aarch64",
+    "cpu_count": 8,
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "git": "git version 2.47.3",
+    "profile": "release"
+  },
+  "corpus": {
+    "commits": 500,
+    "size_class": "small",
+    "shape": "mixed rotation: add, modify, delete, rename, binary, mode-only, multi-file, trailer blocks, a non-UTF-8 path, one over-cap blob, and two merge commits",
+    "files": 623,
+    "pack_bytes": 248738,
+    "build_ms": 925
+  },
+  "budget": {
+    "cold_index_ms": 1500,
+    "id": "cold.index.ms.small",
+    "size_class": "small",
+    "source": "`benchmarks/budgets.json`; the ticket's own 500-commit fixture is the `small` class",
+    "store_bytes_per_commit_spine": 4096
+  },
+  "measured": {
+    "cold_normalize_ms": 13,
+    "cold_index_ms": 30,
+    "warm_index_ms": 5,
+    "one_worker_ms": 28,
+    "parallel_speedup": 2.1538461538461537,
+    "already_indexed_ms": 1,
+    "git_log_numstat_ms": 77,
+    "export_json_ms": 3,
+    "commits_per_s": 16666,
+    "ns_per_commit": 60000,
+    "files_per_s": 20766,
+    "workers": 8,
+    "commits_seen": 500,
+    "commits_written": 500,
+    "files_written": 623,
+    "rows_written": 1123,
+    "export_bytes": 992433,
+    "export_bytes_per_commit": 1984,
+    "store_bytes": 610304,
+    "store_bytes_per_commit": 1220,
+    "byte_model_met": true,
+    "peak_rss_kib_before": 13860,
+    "peak_rss_kib_after": 21240,
+    "rss_kib_after": 21248,
+    "rss_delta_kib": 7380,
+    "budget_met": true
+  },
+  "notes": [
+    "parallel speedup on the normalize phase was 2.15x against one worker, with 500 commits on 8 cpus; the store write is one transaction per batch and is deliberately serial, so this ratio is the diffable half - and at a few hundred commits the diffs are too small for the pool to show much",
+    "batches were 512 commits (about 1024 rows, counting a commit row plus its file rows), inside ADR-004 7.3's write.batch_rows of 5 000",
+    "cold = first ingest in this process; the OS page cache is not dropped (that needs root), so a first run on a cold machine will be slower than this",
+    "`cold_index_ms` is walk + normalize + one SQLite transaction per batch, into a WAL database with synchronous=NORMAL, which is ADR-004 §7's configuration and not a benchmark expedient",
+    "`already_indexed_ms` is the resume floor: the walk still runs, so it is a lower bound on re-running against a store that is already current, not a measurement of skipped work",
+    "`git_log_numstat_ms` is context, not a competitor: git does not normalize, dedupe, or write anything, and fathom never shells out to it (ADR-001 §8.2)",
+    "no `ingest.*` latency family exists in benchmarks/budgets.json; `cold.index.ms` is the family this ticket actually has a budget in, and the caps are `ingest.file_size_cap.mib`"
+  ]
+}
