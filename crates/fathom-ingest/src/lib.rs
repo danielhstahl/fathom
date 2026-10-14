@@ -7,11 +7,49 @@
 //! (lint `N05`), and `git2`/`libgit2` are banned outright in `deny.toml` (rules `D08`, and the
 //! `[bans] deny` entries that name them).
 //!
-//! The door itself is `e1.1`'s (`reco-cey`): discovery, object reads, normalisation, segmentation and
-//! the hook-event reader. At the scaffold the crate contributes the boundary, the pinned `gix`
-//! features, and an error type whose `NOT_A_REPOSITORY` is the exit code (3) a script branches on.
+//! # What is here
+//!
+//! | module | what it answers |
+//! |---|---|
+//! | [`repo`] | is there a repository here, what kind, where is `HEAD`, is the history whole |
+//! | [`oid`], [`paths`] | the two value types that cross the door: a 20-byte object id and a path in git's bytes |
+//! | [`revspec`] | the revision expressions fathom accepts, and a typed rejection of the ones it does not |
+//! | [`graph`] | the commit walk: orders, pruning, and what "the history is not whole" means |
+//! | [`state`] | the working tree: staged, unstaged, conflicted |
+//! | [`backend`] | the read interface, so a `git`-binary fallback can be added without touching call sites |
+//! | [`error`] | the failure vocabulary, each variant with a remedy a human can act on |
+//!
+//! Two rules hold across all of them. **No `gix` type crosses the boundary**: the value types above are
+//! ours, so `gix` can be upgraded — or replaced — without one upstream signature changing. **A repository
+//! that is unusual is reported, not refused**: a shallow clone, a filter clone, a bare repository, a
+//! detached `HEAD` or a missing worktree each produce an answer plus a stated limit, because a review
+//! tool that only works on the clean case is a review tool that goes quiet exactly when a human needs
+//! it (ADR-001 §9.3).
+//!
+//! # What is deliberately not here
+//!
+//! Nothing fetches (ADR-001 §8.2): a missing object is classified — behind a shallow graft, omitted by a
+//! clone filter, or simply gone — and the remedy names `git`, not fathom. Nothing writes to the
+//! repository either; fathom's own state lives in the store (`e1.4`). Untracked-file discovery is not
+//! implemented, because it needs `gix`'s `dirwalk`/`excludes` features, which are off the allow-list;
+//! [`state::StateNotice::UntrackedNotScanned`] says so instead of implying the scan was complete.
+//!
+//! # Cost
+//!
+//! The commit walk is the path a 100k-commit repository is judged on (ADR-004 §11's
+//! `cold.index.ms`). [`graph::Detail::Ids`] reads one commit object per commit and nothing else,
+//! the frontier holds ids rather than decoded commits, and the object-decode cache is bounded at open
+//! ([`repo::DiscoverOptions::object_cache_bytes`]). [`graph::CommitLog`] is lazy: a caller that shows the
+//! first hundred rows reads a hundred commits.
 
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod backend;
 pub mod error;
+pub mod graph;
+pub mod oid;
+pub mod paths;
+pub mod repo;
+pub mod revspec;
+pub mod state;

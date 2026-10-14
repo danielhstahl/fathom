@@ -11,7 +11,9 @@ publish = false
 workspace = true
 
 [dependencies]
-gix.workspace = true
+# `index` is on the local-only allow-list (ADR-002 §4.2 / lint N05): it is what lets the
+# working-tree reader decode `.git/index` without a `git` subprocess.
+gix = { workspace = true, features = ["index"] }
 filetime.workspace = true
 serde.workspace = true
 serde_json.workspace = true

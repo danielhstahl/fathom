@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "ticket": "reco-cey",
+  "generated_utc": "2026-10-14T10:30:58Z",
+  "environment": {
+    "platform": "linux aarch64",
+    "cpu_count": 8,
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "git": "git version 2.47.3",
+    "profile": "release"
+  },
+  "corpus": {
+    "commits": 100000,
+    "size_class": "xlarge",
+    "shape": "linear history, one file changed per commit, packed",
+    "packed": true,
+    "pack_bytes": 31838147,
+    "build_ms": 3275
+  },
+  "budget": {
+    "cold_walk_ms": 2000,
+    "id": "cold.walk.ms",
+    "size_class": "xlarge",
+    "source": "ticket reco-cey; `benchmarks/budgets.json` has no `cold.walk` family yet"
+  },
+  "measured": {
+    "cold_walk_ms": 441,
+    "warm_walk_ms": 453,
+    "first_parent_headers_ms": 640,
+    "full_history_ids_ms": 456,
+    "date_ordered_ms": 635,
+    "oldest_first_ms": 497,
+    "buffered_headers_ms": 641,
+    "git_rev_list_count_ms": 323,
+    "commits_per_s": 226757,
+    "ns_per_commit": 4410,
+    "peak_rss_kib_before": 3764,
+    "peak_rss_kib_after": 33868,
+    "rss_kib_after": 64976,
+    "entries_walked": 100000,
+    "buffered_peak_rss_kib": 97752,
+    "budget_met": true,
+    "rss_delta_kib_streaming": 30104
+  },
+  "notes": [
+    "cold = first walk in a fresh process; the OS page cache is not dropped (that needs root), so a first run on a cold machine will be slower than this",
+    "the budget walk is first-parent, ids only, streamed and dropped: it is what `fathom log` and the e1.2 store writer actually do",
+    "`git rev-list --count` is recorded as a floor, not a competitor: it never decodes a commit",
+    "no `cold.walk.ms` budget family exists in benchmarks/budgets.json; adding one (with `rss.walk.peak_mib`) is the follow-up this report argues for"
+  ]
+}

@@ -37,6 +37,22 @@ No product behaviour is claimed by any entry on this page yet.
 - **The façade's paging rule** (`fathom_analyze::insight::PageWindow`) and the runtime network-consent
   gate (`fathom_mcp::transport::check_consent`), both before their owning tickets, because both are the
   answer to a question three crates would otherwise answer three ways.
+- **`fathom_ingest`'s git read layer** (`e1.1`/`reco-cey`): repositories are found and read without
+  running `git` at all. Discovery from a path upward — worktree, bare, linked worktree, submodule,
+  detached and unborn `HEAD`, unicode paths, ceilings and trust — the ref store, `HEAD`'s three states,
+  and revision expressions (`main~3`, `HEAD^2`, `v1^{}`, `v1^{tree}`, short ids; anything outside that
+  grammar is a `RevSpecRejected` that names the grammar instead of guessing). Commit-graph walks take
+  first-parent, include/exclude, date-window and limit/skip options and are checked against
+  `git rev-list` commit-for-commit, and the working tree's staged/unstaged/conflict state comes from
+  `.git/index` plus the filesystem, with the stat shortcut and its one documented blind spot stated in
+  the API. A shallow or filtered clone's absent objects are a first-class state — `ObjectUnavailable`
+  and `HistoryTruncated` naming the object and the reason, with the remedy "fathom never fetches" — never
+  a panic and never an empty answer presented as a whole one. `backend::Reader` is the seam a later
+  ticket puts a `git`-binary fallback behind, and `fallback_eligible` is the whole policy: two failures
+  may reach a second backend, and a missing object never does. Measured: a 100k-commit first-parent walk
+  streams in 441 ms with a 30 MiB peak-RSS delta
+  (`benchmarks/reports/e1-1-git-walk.json`); `tests/no_git_subprocess.rs` re-executes the test binary
+  behind a fake `git` on `PATH` and fails the build if the default path ever reaches for it.
 
 ### Toolchain
 
@@ -70,3 +86,8 @@ No product behaviour is claimed by any entry on this page yet.
   scripts derive their download URLs from it.
 - cargo-deny 0.20 removed `[licenses] deny`, so copyleft refusal now lives in the allow-list plus rule
   `D03`; see ADR-002 §10.3.
+- `benchmarks/budgets.json` has no `cold.walk.ms` or `rss.walk.peak_mib` family, so the e1.1 walk budget
+  (2 s at 100k commits) lives in the ticket and in
+  [`benchmarks/reports/e1-1-git-walk.json`](benchmarks/reports/e1-1-git-walk.json) rather than in the
+  table. The next budget round should promote it: `e1.2`'s indexer is the consumer that needs a number to
+  regress against, and a walk is the first thing every `fathom` command does.

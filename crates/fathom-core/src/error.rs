@@ -25,6 +25,18 @@ pub enum ErrorCode {
     StoreCorrupt,
     /// the requested root is not a git repository
     NotARepository,
+    /// the repository is readable but a git object it needs is not in the local object database
+    ObjectUnavailable,
+    /// history could not be walked to its root: the repository is shallow or filter-cloned
+    HistoryTruncated,
+    /// the working tree or its index could not be read (bare repository, absent index)
+    WorkingTreeUnavailable,
+    /// the repository is readable but uses a form this build cannot interpret
+    RepositoryUnsupported,
+    /// the read needs a capability this binary does not carry; the `git`-binary fallback would serve it
+    FallbackRequired,
+    /// a revision expression was rejected
+    RevSpecRejected,
     /// a compiled-in `net-*` feature was asked to run without runtime consent
     NetworkConsentRequired,
     /// the verb needs a feature that is not compiled into this binary
@@ -56,6 +68,12 @@ impl ErrorCode {
             ErrorCode::ConfigInvalid => "CONFIG_INVALID",
             ErrorCode::StoreCorrupt => "STORE_CORRUPT",
             ErrorCode::NotARepository => "NOT_A_REPOSITORY",
+            ErrorCode::ObjectUnavailable => "OBJECT_UNAVAILABLE",
+            ErrorCode::HistoryTruncated => "HISTORY_TRUNCATED",
+            ErrorCode::WorkingTreeUnavailable => "WORKING_TREE_UNAVAILABLE",
+            ErrorCode::RepositoryUnsupported => "REPOSITORY_UNSUPPORTED",
+            ErrorCode::FallbackRequired => "FALLBACK_REQUIRED",
+            ErrorCode::RevSpecRejected => "REV_SPEC_REJECTED",
             ErrorCode::NetworkConsentRequired => "NETWORK_CONSENT_REQUIRED",
             ErrorCode::FeatureAbsent => "FEATURE_ABSENT",
             ErrorCode::NotImplemented => "NOT_IMPLEMENTED",
@@ -79,6 +97,16 @@ impl ErrorCode {
             ErrorCode::ConfigUnknownKey | ErrorCode::ConfigInvalid => ExitCode::ConfigInvalid,
             ErrorCode::StoreCorrupt => ExitCode::StoreCorrupt,
             ErrorCode::NotARepository => ExitCode::NotARepository,
+            // None of these mean "not a repository", and none of them get their own exit code: the exit
+            // code table in ADR-002 §7.3 is a published contract a script branches on, and adding a row
+            // to it is a change of that contract, not a detail of one crate. The remedy lives in the
+            // message and the hint; the code is what a `--json` reader keys on.
+            ErrorCode::ObjectUnavailable
+            | ErrorCode::HistoryTruncated
+            | ErrorCode::WorkingTreeUnavailable
+            | ErrorCode::RepositoryUnsupported => ExitCode::Error,
+            ErrorCode::FallbackRequired => ExitCode::FeatureAbsent,
+            ErrorCode::RevSpecRejected => ExitCode::Usage,
             ErrorCode::NetworkConsentRequired => ExitCode::NetworkConsentRequired,
             ErrorCode::FeatureAbsent => ExitCode::FeatureAbsent,
             ErrorCode::Cancelled => ExitCode::Cancelled,
