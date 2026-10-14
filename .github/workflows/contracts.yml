@@ -56,6 +56,30 @@ jobs:
           PYTHONPATH=src python3 -m recommender.taxonomy classes >/dev/null
           PYTHONPATH=src python3 -m recommender.taxonomy rules --class generated >/dev/null
           PYTHONPATH=src python3 -m recommender.taxonomy bench --repeat 2 | tail -1
+      - name: "e2.1 change classifier: accuracy on the labelled fixture set, reported (AC 1)"
+        # The gate is the number, printed. `score` exits non-zero under the bar and prints the
+        # per-class and per-shape tables plus every misclassification with the reason it got, so
+        # a red run is diagnosable from the log without reproducing it. The labels are written
+        # against the built-in table, so this step does not depend on this repo's fathom.toml.
+        run: PYTHONPATH=src python3 -m recommender.change score --min 0.95
+      - name: "e2.1 change classifier: the verb surface reads this repository's own bytes"
+        # The pytest suite asserts the ladder and the cache; this is the cheaper claim that the
+        # CLI is wired to the same engine, that it reads real blobs, and that the episode view
+        # aggregates. `--json` is what a pane would read, not prose for a human.
+        run: |
+          PYTHONPATH=src python3 -m recommender.change explain --repo . -q \
+            Cargo.lock README.md src/recommender/change/policy.py output/mozreco/ingest/timeline.py
+          PYTHONPATH=src python3 -m recommender.change explain --repo . --json Cargo.lock | head -1
+          cat > /tmp/self.json <<'JSON'
+          {"id": "self", "changes": [
+            {"path": "Cargo.lock"},
+            {"path": "src/recommender/change/markers.py", "content": "class Marker: pass\n"}
+          ]}
+          JSON
+          PYTHONPATH=src python3 -m recommender.change episode --repo . --manifest /tmp/self.json --show 2
+          PYTHONPATH=src python3 -m recommender.change classes >/dev/null
+          PYTHONPATH=src python3 -m recommender.change markers | head -3
+          PYTHONPATH=src python3 -m recommender.change bench --repeat 2 | tail -1
       - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
         # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
         # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap
@@ -77,7 +101,7 @@ jobs:
           PYTHONPATH=src python3 -m recommender.tui palette | tail -2
           PYTHONPATH=src python3 -m recommender.tui press "q j <Enter> d x"
           PYTHONPATH=src python3 -m recommender.tui keys --cheatsheet | head -3
-      - name: ADR-002 / ADR-004 / ADR-005 / e0.6 / e0.8 contract suites
+      - name: ADR-002 / ADR-004 / ADR-005 / e0.6 / e0.8 / e0.9 / e2.1 contract suites
         run: |
           python -m pip install --disable-pip-version-check pytest
           python3 -m pytest -q

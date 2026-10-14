@@ -35,6 +35,9 @@ The consequences worth writing down:
    consumes `Taxonomy.classify`; it does not get to have an opinion about what `vendor/` means.
    Neither does the store, the diff renderer, nor the TUI. A detector that needs a path
    predicate asks the taxonomy, and if the taxonomy has no rule it gets `other` and says so.
+   `e2.1` built on top of that rule rather than beside it — its content evidence sits above the
+   table and can never outrank a configured assertion, which is the subject of
+   [change-classification.md](change-classification.md) §2.
 2. **Every answer carries receipts.** A decision is a `Verdict`: the class, the noise level, the
    rule that won, the pattern that actually matched, the layer that declared it, the file and line
    it came from, and every rule that lost with the reason each one lost. "The classifier said
@@ -311,6 +314,11 @@ two-lists problem one directory over. The Rust crate split stays as ADR-002 drew
   generated and is hand-maintained is exactly the case a user must be able to overrule, and a path
   rule is overrulable in a way a sniff is not. Content evidence arrives in `e2.2` as `reformat` —
   the one level that needs it, on the one axis that can use it.
+  **How this refusal survived `e2.1`**: the classifier does read bytes, but it reads them in its
+  own layer, above the table, and `policy` ranks a rule from a config layer above every piece of
+  content evidence it has — so "overrulable by a person" stays true, and the table itself is
+  still path-only. See [change-classification.md](change-classification.md) §1–§2; the property
+  is asserted by a test, not promised here.
 - *A per-analyzer glob list.* This is the refusal the rest of the document is about.
 - *Deleting noise.* Suppression is a view. See §1.4.
 

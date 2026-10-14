@@ -43,6 +43,7 @@ exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fa
 | Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
 | Configuration: `fathom.toml`, five layers, schema, `config explain` | [docs/concepts/config.md](docs/concepts/config.md), `src/recommender/config/`, [schemas/fathom.schema.json](schemas/fathom.schema.json), `fathom.toml` | `e0.8` (`reco-dq3`) built: the schema and the key reference are generated and CI diffs them; this repo's own `fathom.toml` is validated in CI |
 | Path taxonomy and noise policy: what a path *is*, how noisy it is, which rule said so | [docs/concepts/paths.md](docs/concepts/paths.md), `src/recommender/taxonomy/`, `fathom.toml` | `e0.9` (`reco-5vz`) built: a 235-path decision table over 24 repo shapes, `fathom taxonomy explain <path>` prints the rule, its layer and the runners-up, and the storage fixture no longer keeps its own glob list |
+| Change classifier: per-episode file taxonomy — path rules plus content evidence, with confidence and a reason | [docs/concepts/change-classification.md](docs/concepts/change-classification.md), `src/recommender/change/` | `e2.1` (`reco-dsh`) built: 37 content markers plus parsed-content and build-config evidence over the `e0.9` table, `fathom change explain <path>` for the receipts, a 207-path labelled corpus scored in CI (`fathom change score`), and classifications cached per blob |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted |
 | The cargo workspace itself: eight compiling stub crates, shared lint config, three-OS CI, `cargo-dist` release skeleton | `Cargo.toml`, `crates/`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`dist-workspace.toml`](dist-workspace.toml), [`.github/workflows/release.yml`](.github/workflows/release.yml) | `e0.7` (`reco-e77`) built: `cargo build/test --workspace` green on linux/macOS/windows, `fmt` + `clippy -D warnings` + `cargo deny` are hard gates, every PR builds a `fathom` binary per platform |
@@ -58,12 +59,15 @@ fathom analyze <episode> --json    # the versioned delta model, one source of tr
 fathom export --episodes A..B      # the review artefact you post on the PR
 fathom config explain [--path P]   # which layer won every value, and what it beat
 fathom taxonomy explain <path>     # what a path is, how noisy it is, and which rule said so
+fathom change explain <path>       # what that path IS in this episode, with a confidence and a reason
+fathom change score                # the labelled-corpus accuracy report the CI gate runs
 ```
 
 Those verbs do not exist yet; they are the agreed surface, and the plan is written against them.
-Two exceptions exist on purpose: `fathom config …` and `fathom taxonomy …` have executable forms
-today (`python3 -m recommender.config explain --path src/foo.rs`,
-`python3 -m recommender.taxonomy explain src/foo.rs`), because every later feature's behaviour
+Two exceptions exist on purpose: `fathom config …`, `fathom taxonomy …` and `fathom change …`
+have executable forms today (`python3 -m recommender.config explain --path src/foo.rs`,
+`python3 -m recommender.taxonomy explain src/foo.rs`,
+`python3 -m recommender.change explain src/foo.rs`), because every later feature's behaviour
 has to be traceable to a file and a config system whose explanation is prose gets described three
 different ways by three teams — see [docs/concepts/config.md](docs/concepts/config.md) and
 [docs/concepts/paths.md](docs/concepts/paths.md).

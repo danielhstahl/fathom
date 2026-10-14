@@ -54,6 +54,32 @@ No product behaviour is claimed by any entry on this page yet.
   (`benchmarks/reports/e1-1-git-walk.json`); `tests/no_git_subprocess.rs` re-executes the test binary
   behind a fake `git` on `PATH` and fails the build if the default path ever reaches for it.
 
+- **The change classifier** (`e2.1`/`reco-dsh`): every changed path in an episode gets one of the twelve
+  taxonomy classes, a confidence, a band and one sentence saying why — `src/recommender/change/`
+  (`markers`, `evidence`, `policy`, `engine`, `episode`, `cache`, `corpus`, `eval`, `explain` pure; `cli`
+  the only half that touches a file, ADR-002 §4.5). The `e0.9` path table is consulted first and never
+  rewritten: with content evidence off, the answer is byte-for-byte `e0.9`'s on all 207 fixture rows and
+  on all 235 of the taxonomy's own, which is a test rather than an intention. Content evidence is layered
+  *above* the table in a fixed order — an assertion in a repository's own `fathom.toml` (0.98) outranks
+  everything, then the path conventions no header can refute (`vendor/`, lockfiles, 0.97), then byte facts
+  (NUL/undecodable, container magic, 0.94), then 37 decisive markers and parsed shapes (generated-code
+  banners, a resolver's lock header, `-- +goose Up`, OpenAPI, test attributes), then the table by
+  specificity, then suggestive hints — and two claims within 0.06 with neither decisive is answered
+  `other`, because guessing `source` inflates the reviewable line count and *lowers* the noise share,
+  which is the failure mode that makes a risk score lie. `fathom change explain <path>` prints the
+  receipts (the marker that won with the line it matched, the rule that agreed, the loser and its score)
+  and `--json` prints them structurally because a pane must not parse prose; `fathom change episode` adds
+  the per-change-set aggregates. Cost is bounded by construction — markers read only the first 4 KiB/40
+  lines, so a committed 400 MB model costs what a 2 KB source file costs: 70 µs/file cold, 38 µs cached,
+  1 000 files in ~70 ms. The cache is `change.classify`, `blob`-scoped and keyed by path **and** blob
+  **and** the taxonomy digest **and** the marker digest **and** the classifier version, because a stale
+  classification is invisible; payloads are canonical JSON with no clock in them, so two processes emit
+  identical bytes (a test runs the corpus twice and diffs). CI gates on the number: `fathom change score
+  --min 0.95` scores 207 labelled paths over 16 repo shapes (100% today) and also reports the same set
+  scored from paths alone (91.8%, 17 rows content-decided), because a fixture set a content-blind
+  classifier could pass is not testing this ticket. No new store columns: `cls`/`noise`/`taxonomy_version`
+  map onto ADR-004 §4.2's three, and the confidence and the reason live in the analyzer row instead.
+
 ### Toolchain
 
 - Declared MSRV **1.97.0**, edition 2024, `resolver = "3"` (ADR-002 §2), pinned for local builds in
