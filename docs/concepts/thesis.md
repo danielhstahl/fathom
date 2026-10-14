@@ -790,3 +790,45 @@ deliver agentic software with confidence.* That sentence only holds if the two h
 neither absorbs the other, which is what non-goals 1–6 encode. Because that boundary constrains the harness
 as much as it constrains Fathom — non-goals 3 and 4 say what the harness must keep owning — the owner's
 explicit acknowledgement is recorded here rather than assumed; `e0.5` and `e0.3` both depend on it.
+
+---
+
+## 11. Product amendments
+
+An amendment changes a position recorded here without reversing a decision an ADR already made. It is
+appended, never edited in.
+
+### Amendment 1 — 2026-02-10 — the harness is a product dependency, and the gap inventory is the deliverable
+
+**Amends**: §5.1 (evidence for *tied_to_code* / *landed*), §7 principle 5, §8 non-goals 3 and 4, §9 open
+question 2.
+**Owned by**: `reco-3pu` (`e0.5`), with the contract in [ADR-006](../adr/0005-harness-contract.md).
+
+1. **Non-goals 3 and 4 do not mean Fathom may ignore the harness.** They say Fathom must not *become* a
+   harness. Reaching the product's state still *requires* a harness ingest layer, and §5's metrics are
+   undefined without it: §5.1 counts episodes tied to a change as *tied_to_code* / *landed* evidence
+   and nothing produces that mapping today; there is no ingest, no event schema, no MCP surface
+   (`reco-p3i`), no privacy/write-side exposure policy (`reco-h7p`, `e6.8`), no shared review memory or ledger (`reco-552`, `e6.5`; `reco-rlf`, `e4.6`), no deterministic explanation contract (`reco-2rx`, `e4.7`), no risk model beyond heuristics (`reco-884`, `e4.4`), and no
+   `evidence_grade` or `unknowns` field anywhere in the schema. **This amendment records that gap
+   rather than closing `e6.1`–`e6.4`** — §5's metrics stay honest-by-narrowness until `e0.5` lands — because a
+   glossary that defines the evidence grades is not evidence.
+2. **§5.1 *tied_to_code* / *landed* are explicitly unavailable in v1.** Recorded rather than quietly
+   computed from a proxy. `evidence_grade ∈ {observed, inferred, asserted, absent}` and
+   `unknowns: [str]` are *specified* by this amendment as required fields on every explanation and
+   every metric response; **the gap does not block `e0.5`**, which is the ticket whose whole job is
+   closing `e6.1`–`e6.4`. When it does, the *landed* population grows and T2C moves: that movement is exactly the
+   effect size this metric is meant to reveal, not noise to be smoothed away.
+3. **The trust model extends to the harness (§5 principle 5).** Principle 5 was written about the change
+   fingerprint, and the same failure mode is available one layer out: *Fathom's model of the codebase is
+   built from what the harness emits, so a harness that emits a flattering story makes Fathom's model
+   flattering.* Therefore **harness output is untrusted input**: every event carries a provenance stamp
+   (`harness`, `schema_version`, `ts`); `file_edit` evidence is verified against git when git is
+   available and downgrades to *asserted* when it is not; and any `file_edit` whose stated path is
+   outside the session's working directory is quarantined and counted (§5 principle 5 applies to the
+   ingest path exactly as it applies to the fingerprint).
+4. **§9 open question 2 is answered: no.** Hooks v1 as specified does **not** carry enough session
+   semantics for `in_session` to use the preferred rule everywhere. The fallback stays, and §5.2's
+   `in_session` definition is amended: `session_id` is **required** on `file_edit` and `approval`
+   events, and where it is missing the fallback is used **and counted** (§5.2's denominator reports the
+   fallback share alongside the rate). A metric whose fallback path is invisible is a metric that will
+   quietly change meaning when the fallback stops firing.

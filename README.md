@@ -20,7 +20,8 @@ decision records are being written first, on purpose.
 | Area | Where | State |
 |---|---|---|
 | Product thesis, glossary, metrics, non-goals | [docs/concepts/thesis.md](docs/concepts/thesis.md) | accepted (ADR-001) |
-| Architecture decision records | [docs/adr/](docs/adr/) | ADR-001 accepted, ADR-002…006 open |
+| Architecture decision records | [docs/adr/](docs/adr/) | ADR-001 and [ADR-005](docs/adr/0005-harness-contract.md) accepted; ADR-002, 003, 004, 006 open |
+| Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace, CLI, TUI | planned (ADR-002, `e0.7`) | not started |
 

@@ -182,6 +182,18 @@
    "labels": [
     "adr",
     "integration"
+   ],
+   "contract": "docs/adr/0005-harness-contract.md",
+   "verification": {
+    "runtime_probe": "python3 -m recommender.harness.elf_probe --machine",
+    "startup_gate": "python3 -m recommender.harness.harness run verify",
+    "tests": "python3 -m pytest -q",
+    "docs": "python3 tools/check_docs.py"
+   },
+   "implementation": [
+    "src/recommender/harness/",
+    "src/recommender/hooks/",
+    "tests/test_harness_contract.py"
    ]
   },
   {
