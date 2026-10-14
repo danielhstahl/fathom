@@ -1,0 +1,2099 @@
+{
+ "nodes": [
+  {
+   "key": "e0",
+   "title": "Epic 0 - Foundations: thesis, architecture decisions, workspace, fixtures",
+   "type": "epic",
+   "priority": 1,
+   "description": "Everything that must exist before product code is written: the product thesis and glossary, six architecture decision records, the cargo workspace, the config/path-taxonomy system and the deterministic fixture corpus that every later ticket tests against.",
+   "acceptance_criteria": "- Exit criteria met: a clean clone builds and runs `fathom --help`; CI is green on linux/macos/windows; all six ADRs are accepted; a synthetic agent-driven repo can be indexed end-to-end and the perf budget gate is wired into CI",
+   "labels": [
+    "epic0",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1",
+   "title": "Epic 1 - Git spine: ingestion, episodes, timeline and diff viewing",
+   "type": "epic",
+   "priority": 1,
+   "description": "The MVP backbone. Fathom observes a repository, turns git history into 'episodes' (one agent turn = one reviewable unit) and lets a human fly through the timeline and read diffs without leaving the TUI.",
+   "acceptance_criteria": "- Exit criteria met: a human reviews a 500-commit agent-driven fixture repo entirely inside the TUI; warm re-index after a new commit is under 150ms; episode identity and review state survive rebase/amend/force-push",
+   "labels": [
+    "epic1",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2",
+   "title": "Epic 2 - Change intelligence: taxonomy, structure, dependencies and noise suppression",
+   "type": "epic",
+   "priority": 1,
+   "description": "Turn raw diffs into named, evidence-backed observations: which parts of the tree are in motion, what moved or was renamed, which dependencies appeared or changed, which non-code surfaces (config, migrations, CI) were touched, and what is pure noise (generated files, reformat, lockfile churn).",
+   "acceptance_criteria": "- Exit criteria met: every episode answers WHERE the change landed and WHAT it now depends on, with every number clickable to its evidence. Noise is suppressed by default and never silently hidden",
+   "labels": [
+    "epic2",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e3",
+   "title": "Epic 3 - Architecture awareness: module graph, cycles, layering and API surface",
+   "type": "epic",
+   "priority": 2,
+   "description": "The differentiator. Build a per-revision model of modules, symbols and imports, then show the DELTA of that model per agent turn: new edges, new cycles, layering violations, public API changes, god modules and hotspots.",
+   "acceptance_criteria": "- Exit criteria met: a reviewer answers 'did the agent just make the architecture worse?' in under five seconds, and CI can fail on new violations only via a ratchet baseline",
+   "labels": [
+    "epic3"
+   ]
+  },
+  {
+   "key": "e4",
+   "title": "Epic 4 - Agent awareness: attribution, intent, pathology detection and the attention queue",
+   "type": "epic",
+   "priority": 2,
+   "description": "Make the tool agent-native instead of a generic git viewer: attribution, captured intent, detectors for agent pathologies (churn loops, scope creep, untested additions, shotgun edits, rework loops), an explainable per-episode risk score and a durable review ledger.",
+   "acceptance_criteria": "- Exit criteria met: the attention queue ranks the episodes worth a human's time, each with human-readable reasons, and sign-offs survive history rewrites",
+   "labels": [
+    "epic4"
+   ]
+  },
+  {
+   "key": "e5",
+   "title": "Epic 5 - Ergonomics: ambient mode, search, comparison, export and day-long usability",
+   "type": "epic",
+   "priority": 2,
+   "description": "Fathom lives in a second terminal next to the coding harness, all day. It must be glanceable, keyboard-first, usable at 80x24, and able to export a review artefact that a human can post on a PR as the record of what was reviewed and accepted.",
+   "acceptance_criteria": "- Exit criteria met: an entire review session, from notification to signed-off artefact, happens without leaving the keyboard",
+   "labels": [
+    "epic5"
+   ]
+  },
+  {
+   "key": "e6",
+   "title": "Epic 6 - Harness integration: hooks, daemon, MCP server and CI gate",
+   "type": "epic",
+   "priority": 2,
+   "description": "Fathom is the review half of an agentic delivery system. It ingests harness events, runs as a budgeted daemon, exposes the same model back to the coding agent over MCP, and gates CI on new architecture/dependency/risk violations.",
+   "acceptance_criteria": "- Exit criteria met: a working adapter for at least two real harnesses, an MCP session where the agent queries 'what did I just change and is it risky', and a CI job that fails only on new violations",
+   "labels": [
+    "epic6"
+   ]
+  },
+  {
+   "key": "e7",
+   "title": "Epic 7 - Hardening, performance, packaging, docs and beta",
+   "type": "epic",
+   "priority": 3,
+   "description": "Real repositories are messy and enormous. This epic covers failure tolerance, perf budgets on real OSS repos, memory ceilings, cross-platform packaging, documentation, a demo, security/privacy review and a beta feedback loop.",
+   "acceptance_criteria": "- Exit criteria met: published binaries for three OSes, docs a stranger can follow in five minutes, perf budgets met or consciously relaxed with a written rationale, and a closed beta feedback loop",
+   "labels": [
+    "epic7"
+   ]
+  },
+  {
+   "key": "e0.1",
+   "title": "ADR-001: product thesis, glossary, north-star metric and non-goals",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Write the document every later ticket cites. Define the five core nouns (episode, delta, attention queue, review ledger, ambient mode), who the user is (the human accountable for software an agent wrote), and the product thesis: the bottleneck in agentic software delivery is no longer writing code, it is the human rebuilding a correct mental model of what the agent did.\n\nNorth-star metric: time-to-confidence (median wall-clock from episode creation to human sign-off with no subsequent rework). Guardrails: share of episodes reviewed in-session, rework rate (episodes edited or reverted within N later episodes), risk-flag false-positive rate.\n\nExplicit non-goals for v1: not a git client, not an IDE, not an agent runner, not a PR host, no cloud service, no mandatory LLM dependency.",
+   "acceptance_criteria": "- Doc merged as docs/concepts/thesis.md and linked from README\n- Every term used across the plan resolves to exactly one glossary entry\n- North-star and guardrail metrics have concrete formulas and a data source in the delta model\n- Non-goals reviewed and agreed with the coding-harness owner",
+   "labels": [
+    "adr",
+    "docs"
+   ]
+  },
+  {
+   "key": "e0.2",
+   "title": "ADR-002: Rust workspace layout and crate boundaries",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Fix the workspace shape so eleven teams of one can work in parallel: fathom-core (domain model, no IO), fathom-store (SQLite index + cache), fathom-ingest (git + harness events), fathom-analyze (classifiers, parsers, detectors), fathom-tui (ratatui app), fathom-cli (binary + verbs), fathom-mcp (MCP server), fathom-fixtures (test repo builders).\n\nRule: allowed dependency direction is cli -> {tui,mcp} -> analyze -> ingest -> store -> core. core has zero IO and zero unsafe. Errors with thiserror in libraries, eyre at the binary edge. Record MSRV, edition, feature-gate policy for heavy/optional deps (tree-sitter grammars, network clients) and the no-network-by-default rule.",
+   "acceptance_criteria": "- docs/adr/0002-workspace.md accepted with the crate dependency diagram\n- cargo-deny + module-boundary lint in CI that fails a crate importing 'uphill'\n- Feature-gate list published: default build pulls in zero network clients\n- MSRV and upgrade policy stated",
+   "deps": [
+    {
+     "target": "e0.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "adr"
+   ]
+  },
+  {
+   "key": "e0.3",
+   "title": "ADR-003: the Episode - identity, segmentation and stability across rewrites",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "The episode is the atomic reviewable unit and everything else hangs off it, so its identity must be nailed down before anything stores a foreign key.\n\nDecide: identity scheme (content-addressed: ordered member commit SHAs plus parent boundary, plus a fuzzy content fingerprint for re-linking), boundary rules (harness turn events preferred; fallback heuristics are author identity, agent trailers, time gaps, branch/PR boundaries), behaviour under amend / rebase -i / squash / merge trains / cherry-picks, whether a partial tree (uncommitted work) is a provisional episode, and how a human commit interleaved with agent commits is treated.",
+   "acceptance_criteria": "- docs/adr/0003-episodes.md with worked examples for amend, rebase, squash, merge and cherry-pick\n- Stated invariant: episode identity is stable across `git rebase -i` of the same content\n- Tie-breaker rules for overlapping/ambiguous boundaries written down and testable\n- Decision signed off by whoever owns the harness hook contract (e0.5)",
+   "deps": [
+    {
+     "target": "e0.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "adr",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e0.4",
+   "title": "ADR-004: storage, indexing and cache strategy",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Choose and justify the local persistence model: SQLite (WAL) under .fathom/, table layout for commits, episodes, deltas, findings, sign-offs and graph snapshots; cache keys as (tree hash + analyzer version) so a code change in an analyzer invalidates exactly the right rows; incremental invalidation matrix; concurrency model (single writer, many readers, TUI attaches to a daemon); retention/pruning; corruption recovery; what must be in .gitignore; what is portable and what is disposable.\n\nAttach the perf budgets this design must meet (cold index, warm re-index, query p95, RSS ceiling) as a table, since e0.11 gates CI on it.",
+   "acceptance_criteria": "- docs/adr/0004-storage.md with schema draft and invalidation matrix\n- Named perf budgets per repo size class (small/medium/large/xlarge) that e0.11 can assert on\n- Explicit statement of what is disposable (rebuildable) vs must-survive (reviews, decisions)\n- Recovery story tested: deleting .fathom/ rebuilds identical state (modulo reviews)",
+   "deps": [
+    {
+     "target": "e0.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "adr",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e0.5",
+   "title": "ADR-005: harness integration contract (hooks v1 and MCP surface)",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Define the boundary between the coding harness and Fathom so neither has to change to fit the other.\n\nPart 1, events: append-only JSONL at .fathom/events.jsonl (path configurable), event types session_start, turn_start, turn_end, tool_call, file_edit, test_run, approval, error; required and optional fields; monotonic sequence numbers; concurrent-append and partial-line tolerance; trust model (harness output is untrusted input).\n\nPart 2, MCP: the read-only tool surface the agent may call (explain_episode, changes_between, architecture_delta, dependency_delta, risk_report, search_history) and the gated write tools (mark_reviewed, add_review_note), including who may call them and what is never returned (secrets, file contents outside the model).\n\nPart 3, versioning: how capability negotiation and additive evolution work.",
+   "acceptance_criteria": "- docs/adr/0005-harness-contract.md plus JSON Schema files under schemas/\n- Two independent adapter sketches (pi-style hooks, generic git hook) judged implementable\n- Explicit list of read vs gated-write MCP tools and their gating\n- Contract states what happens on missing, stale or malformed events (degrade, never block the agent)",
+   "deps": [
+    {
+     "target": "e0.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "adr",
+    "integration"
+   ]
+  },
+  {
+   "key": "e0.6",
+   "title": "ADR-006: TUI information architecture, view inventory and keymap",
+   "type": "decision",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Decide the shape of the product before building screens. View inventory with pane layout, focus order and drill-in/out: Timeline (episode rail + episode card), Diff (file tree + hunk view), Structure (directory treemap with churn heat), Graph (module graph + delta overlay), Deps (manifest table + transitive tree), Queue (ranked attention worklist), Ambient (glanceable single pane), Search (fuzzy overlay), Artefact (export preview).\n\nFix the global keymap conventions (j/k list motion, enter drill, Esc up, d diff, s structure, g graph, p deps, q queue, / search, , command palette, a ambient, x mark reviewed, ctrl-r reindex, ? help) and the rules: everything reachable from the keyboard, every view usable at 80x24, mouse is additive only.",
+   "acceptance_criteria": "- docs/adr/0006-tui.md with one ASCII layout per view plus focus order\n- Keymap table, with the chords reserved for user override\n- Documented degradation order when the terminal shrinks below each view's minimum size\n- Two reviewers can name the exact key sequence for the three most common tasks",
+   "deps": [
+    {
+     "target": "e0.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "adr",
+    "ux"
+   ]
+  },
+  {
+   "key": "e0.7",
+   "title": "Scaffold cargo workspace, CI matrix and release skeleton",
+   "type": "chore",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 480,
+   "description": "Create the workspace exactly as ADR-002 defines it, with compiling stub crates, shared lint config (rustfmt, clippy -D warnings, cargo-deny for licences/advisories), and CI that builds and tests on ubuntu/macos/windows for every PR. Add a cargo-dist skeleton so each PR produces a downloadable binary, and a top-level README with a five-line quickstart.",
+   "acceptance_criteria": "- clean clone: cargo build --workspace && cargo test --workspace succeeds\n- CI green on linux, macos and windows; fmt and clippy are hard failures\n- cargo dist artifact uploaded per PR and downloadable without auth\n- fathom --version and fathom --help work from the built binary",
+   "deps": [
+    {
+     "target": "e0.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "infra",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e0.8",
+   "title": "Config system: fathom.toml discovery, schema and explanation",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 300,
+   "description": "Layered configuration with precedence flags > env > repo fathom.toml > user config > system defaults, deserialized into one typed root config with a JSON Schema checked in for editor tooling. Sections: paths and noise globs, ecosystem enable/disable, layer definitions, risk weights, keymap overrides, cache and memory caps, network consent.\n\nShip `fathom config explain [--path P]` that prints which layer won for each effective value, because every later feature's behaviour must be traceable to a file.",
+   "acceptance_criteria": "- Precedence unit tests for all five layers\n- Unknown keys warn with a nearest-name suggestion instead of failing silently\n- fathom config explain --path src/foo.rs prints the resolved decision chain\n- schemas/fathom.schema.json generated and validated in CI",
+   "deps": [
+    {
+     "target": "e0.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "config",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e0.9",
+   "title": "Path taxonomy and noise policy engine",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 300,
+   "description": "A single place that decides what a path IS (source, test, docs, config, schema, migration, generated, vendored, lockfile, asset, binary) and how noisy it is, so classifiers and detectors never encode their own glob lists. Built-in knowledge for common generated-file conventions (*.pb.go, *_generated.rs, dist/, *.snap, storybook, openapi codegen, vendor/, node_modules) plus user globs and negations from fathom.toml.\n\nEvery decision is explainable: `fathom explain <path>` prints which rule matched and which rule it beat.",
+   "acceptance_criteria": "- Decision table test covering at least 150 real-world paths across 20 well-known repo shapes\n- fathom explain <path> names the matching rule, its source layer and the runners-up\n- User globs can both promote and demote a path relative to built-ins\n- Lookup is O(log n)-ish and cheap enough to call per changed file (no regex-per-file blowup)",
+   "deps": [
+    {
+     "target": "e0.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "mvp",
+    "analysis"
+   ]
+  },
+  {
+   "key": "e0.10",
+   "title": "Deterministic fixture generator and golden scenario corpus",
+   "type": "task",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 400,
+   "description": "Test infrastructure that unblocks almost every later ticket: fathom-fixtures builds synthetic git repositories with fixed timestamps, fixed committers (including agent trailers and harness event logs) and byte-identical commit SHAs, driven by named scenarios: rename_storm, dependency_bump_storm, cycle_introduced, test_deletion, reformat_only, scope_creep, rebase_rewrite, churn_loop, huge_file, unicode_paths, many_merges, ten_k_commits, submodule, shallow_clone.\n\nEach scenario ships a ground-truth file (expected episodes, expected findings) so analysis tickets assert on reality instead of on ad-hoc strings.",
+   "acceptance_criteria": "- cargo run -p fathom-fixtures -- --scenario cycle_introduced /tmp/repo reproduces identical SHAs on all three OSes\n- Every scenario has a ground-truth JSON with expected episode boundaries and expected findings\n- Corpus runs in CI in under 2 minutes and is used by at least e1.3, e2.2 and e4.3\n- Adding a scenario is one function plus one ground-truth file (documented)",
+   "deps": [
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "test-infra",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e0.11",
+   "title": "Performance budget harness and CI regression gate",
+   "type": "task",
+   "priority": 2,
+   "parent": "e0",
+   "estimate": 240,
+   "description": "Encode the budgets from ADR-004 as criterion benches plus a scripted end-to-end index benchmark over the fixture corpus, asserted in CI. Track cold index time, warm single-commit re-index, diff-viewer open time, query p95 and peak RSS. Fail the build on more than a 15 percent regression and publish the trend as a job artifact so growth is visible before it is accidental.",
+   "acceptance_criteria": "- benchmarks/BUDGETS.md lists every budget with its numeric threshold\n- A deliberate regression (sleep injected) turns CI red\n- make bench reproduces the numbers locally in under 5 minutes\n- RSS measured, not just wall time",
+   "deps": [
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.10",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "perf",
+    "infra"
+   ]
+  },
+  {
+   "key": "e0.12",
+   "title": "Sequencing checkpoint: reconcile the plan against spike findings",
+   "type": "chore",
+   "priority": 1,
+   "parent": "e0",
+   "estimate": 180,
+   "description": "The plan is a bet on four empirical unknowns: parser accuracy, segmentation accuracy, the cost of graph-per-revision and rename detection across merges. After the spikes land, re-read the whole graph and edit it: close tickets the spikes invalidated, split anything now obviously larger than two days, re-prioritise Epic 3 if graph-per-revision is too expensive, and confirm the MVP cut line (label mvp).",
+   "acceptance_criteria": "- Each spike's recommendation is reflected by an actual change to a ticket (or a comment saying why not)\n- No ticket left with an estimate above two days; nothing depends on an invalidated ticket\n- bd dep cycles reports no cycles and bd ready returns a non-empty, honest first sprint\n- MVP label set re-confirmed as the smallest shippable spine",
+   "deps": [
+    {
+     "target": "s1",
+     "type": "blocks"
+    },
+    {
+     "target": "s2",
+     "type": "blocks"
+    },
+    {
+     "target": "s3",
+     "type": "blocks"
+    },
+    {
+     "target": "s4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "planning"
+   ]
+  },
+  {
+   "key": "e1.1",
+   "title": "Repository discovery and git object access via gix",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 480,
+   "description": "Find and read repositories without shelling out to git: discovery from cwd upward, worktrees, bare repos, submodules, detached HEAD, shallow and partial clones (treat promisor-missing objects as a first-class degraded state, not a panic). Commit graph walking with first-parent and include/exclude options, ref/HEAD tracking, commit-grafts-safe iteration, and a thin abstraction over gix so the CLI can fall back to the git binary for the rare exotic case.\n\nAlso read the working tree state (staged/unstaged) so later tickets can show uncommitted work.",
+   "acceptance_criteria": "- Fixture coverage: worktree, bare, submodule, shallow clone, detached HEAD, unicode paths\n- Non-repo and shallow-clone cases return typed, user-facing errors with a suggested remedy\n- Log walk over a 100k-commit repo under 2s cold and no allocation blowup (bench recorded)\n- No `git` subprocess in the default code path (asserted by a test spying on process spawns)",
+   "deps": [
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "git",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.2",
+   "title": "Commit ingestion and normalization pipeline",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 480,
+   "description": "Turn git commits into a stable normalized record: SHA, parents, author/committer and offsets, message, trailers, per-file change records (old/new path, change type, mode, binary flag, hunk headers, added/removed line counts, raw rename candidate) plus size caps so a 500MB file does not enter memory. Parallelize per-commit work with rayon, keep ingestion idempotent and resumable, and define the canonical JSON export used by snapshot tests.",
+   "acceptance_criteria": "- A 500-commit fixture ingests into the store and round-trips to the golden JSON export byte-for-byte\n- Commits with huge/binary/renamed files ingest without exceeding a documented memory cap\n- Re-running ingestion is a no-op (idempotent) and interruption resumes from the last durable commit\n- Ingestion throughput recorded in the bench suite",
+   "deps": [
+    {
+     "target": "e1.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "git",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.3",
+   "title": "Episode segmentation: commits into reviewable episodes",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 600,
+   "description": "Implement the segmentation rules from ADR-003: boundary sources in priority order are harness turn events, explicit trailers, then heuristics (author/identity change, time gap, branch boundary, message shape). Group contiguous commits of one agent session into one episode, keep interleaved human commits as their own episodes, and expose the computed boundary reason per episode so a wrong guess is debuggable and overridable from fathom.toml.\n\nEpisode identity must follow ADR-003 so rewrites do not orphan later review state.",
+   "acceptance_criteria": "- Segmentation report on the fixture corpus hits at least 90 percent boundary precision and recall against ground truth\n- Every episode records which rule produced its boundary and the confidence of that call\n- Boundaries are stable across rebase/amend of the same logical change\n- fathom.toml can force a split or a merge, and the override is visible in the episode card",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.3",
+     "type": "blocks"
+    },
+    {
+     "target": "s2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "episodes",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.4",
+   "title": "Incremental indexing with a tree-hash analysis cache",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 480,
+   "description": "Make re-indexing feel free: compute the changed path set between commits, invalidate only analyses whose inputs changed (cache key = tree/blob hash + analyzer version per ADR-004), write through the single-writer store, and support the dirty working tree as a provisional episode so the user sees their own uncommitted edits. Cancellation must be instant (user pressed ctrl-r again).",
+   "acceptance_criteria": "- Warm re-index after one new commit is under 150ms on the 500-commit fixture (bench, all OSes)\n- Editing one file invalidates only analyses that consume that file (asserted by counters)\n- kill -9 during indexing leaves a usable store; next run recovers via WAL and completes (test)\n- fathom index --stats prints hit/miss counts per analyzer for cache debugging",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "perf",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.5",
+   "title": "TUI application shell: event loop, focus model, keymap, help",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 600,
+   "description": "The ratatui + crossterm shell every view plugs into: tickless event loop with input and worker messages on one queue, frame coalescing to stay under the 16ms budget, a modal/pane stack with an explicit focus model, a keymap engine supporting chords and user overrides from fathom.toml, a global help overlay generated from the keymap, toast/status line, resize handling, a panic hook that always restores the terminal, plus --no-alt-screen for inline use and --plain for pipes.",
+   "acceptance_criteria": "- Interactive smoke test passes at 80x24, 100x30 and 200x60 with no layout panic\n- Ctrl-C or a panic in a worker never leaves the terminal in alt-screen (tested)\n- Keymap override file changes behaviour without recompiling; help overlay reflects it\n- Frame p99 under 33ms while holding a key down with an empty model",
+   "deps": [
+    {
+     "target": "e0.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "tui",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.6",
+   "title": "Timeline view: episode rail with filters and navigation",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 480,
+   "description": "The home screen. A virtualized episode list (one row per episode: relative time, author, agent/human badge, one-line summary, change-size sparkline, unread marker), grouped by day or by agent session, with composable filters (author, agent vs human, date range, path/area, reviewed state), quick jumps (top, bottom, first-unread, today), and a details pane that previews the selected episode. Scrolling must never block on the store.",
+   "acceptance_criteria": "- 10k-episode fixture scrolls with p99 frame time under 16ms and constant memory\n- Filters compose (author AND path AND unread) and are persisted in session state\n- Selection survives re-index and re-attaches to the same episode after rebase\n- All navigation is possible without a mouse and matches the ADR-006 keymap",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "tui",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.7",
+   "title": "Diff viewer: file tree plus unified/split diff with highlighting",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 600,
+   "description": "The screen people actually live in. Left: file tree grouped by taxonomy and directory with per-file +/- counts and read/dirty markers; right: hunk-aware diff with syntax highlighting, word-diff toggle, whitespace-ignore toggle, and jump between hunks. Handle degenerate cases deliberately: binary files, mode-only changes, deleted files, files over a size cap, CRLF churn, and files where the diff is not available offline. Support copying a hunk, copying a path and opening the file at a line in $EDITOR.",
+   "acceptance_criteria": "- Rendering a 50k-line diff file stays under a documented memory cap via chunked reads\n- Golden UI tests for binary, mode-only, rename-with-edits, deleted and oversize files\n- Hunk navigation, word-diff and whitespace-toggle all behave on the fixture corpus\n- Copy path / copy hunk / open in editor work on all three OSes",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "tui",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.8",
+   "title": "Lazy diff materialization and list virtualization",
+   "type": "task",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 300,
+   "description": "Move diff decoding off the UI thread: a background worker materializes hunks on demand with priority to the visible window, caches decoded blobs in a bounded cache, cancels requests the user scrolled past, and pre-warms the next/previous episode. Apply the same pattern to long file trees and the timeline.",
+   "acceptance_criteria": "- Opening an episode that touched 5000 files paints in under 300ms\n- Bounded decode cache enforced by a unit test that would otherwise exceed the cap\n- Rapid scrolling does not queue unbounded work (in-flight cap asserted in a test)\n- Rapid next/next/next shows progressively correct content, never stale content",
+   "deps": [
+    {
+     "target": "e1.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "perf",
+    "tui",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.9",
+   "title": "Watch mode v1: live detection of new commits and refs",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 400,
+   "description": "Watch .git for changes with file notifications plus debounced polling fallback (NFS, containers, bind mounts), and drive a visible state machine: idle, detecting, indexing (with progress), error, stale. Guard against pathological cases - rebase in progress, ref spam from a background process, repo switched under the TUI (inode change), git gc storms. Budget the watcher's CPU so it is invisible next to a running agent.",
+   "acceptance_criteria": "- A commit made in another terminal appears in the timeline within 1s (fixture test with real fs events)\n- Idle CPU under 1 percent while watching a quiet repo for 10 minutes\n- Interactive rebase, gc and repo replacement are all handled without a crash or a stuck spinner\n- Polling fallback kicks in automatically and is reported in fathom doctor",
+   "deps": [
+    {
+     "target": "e1.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "mvp",
+    "watch"
+   ]
+  },
+  {
+   "key": "e1.10",
+   "title": "CLI verbs: index, show, stats, doctor and export skeleton",
+   "type": "task",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 300,
+   "description": "The headless surface, used by scripts, CI and bug reports: fathom index [--rebuild|--watch], fathom show <episode|rev> [--json], fathom stats (repo scale, index state, cache hit rate), fathom doctor (environment and repo diagnostics with remedies) and a stub export verb that e5.7 fills in. Every verb supports --json with a checked-in schema and documented exit codes.",
+   "acceptance_criteria": "- Each verb has a JSON schema under schemas/ and a round-trip test\n- Documented exit codes (0 ok, 1 user error, 2 environment, 3 degraded index) asserted in tests\n- fathom doctor output is attachable to a bug report and contains no secrets or absolute home paths\n- --help text matches ADR-006 naming and is checked by a snapshot test",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "cli",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e1.11",
+   "title": "Session state persistence and resume",
+   "type": "task",
+   "priority": 2,
+   "parent": "e1",
+   "estimate": 240,
+   "description": "Persist per-repo UI state - selected episode, per-view filters, layout and pane sizes, read/unread set, pinned episodes, last search - in the store (not the working tree), with concurrent-TUI safety and a --fresh escape hatch. Corrupt or mismatched state must self-heal rather than refuse to start.",
+   "acceptance_criteria": "- Reopening the TUI restores selection, filters and layout exactly\n- Two simultaneous TUI sessions do not clobber each other's state (test)\n- Truncated/corrupt state file is quarantined and the app starts clean with a warning\n- fathom --fresh starts from defaults and does not write on exit unless something changed",
+   "deps": [
+    {
+     "target": "e1.6",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "tui",
+    "state"
+   ]
+  },
+  {
+   "key": "e1.12",
+   "title": "MVP acceptance: review a 500-commit agent repo entirely in the TUI",
+   "type": "task",
+   "priority": 1,
+   "parent": "e1",
+   "estimate": 240,
+   "description": "A scripted end-to-end validation of the spine, not a code task: take the 500-commit agent-driven fixture, and have someone who did not write the code (a) orient in under a minute, (b) find and read the three riskiest episodes, (c) do it without touching the mouse or leaving the TUI, (d) do a rebase midway and confirm nothing is lost. File a defect ticket for every friction point found; the epic is not done while P1 defects are open.",
+   "acceptance_criteria": "- Recorded walkthrough (asciinema cast) committed under docs/demo/\n- Time-to-first-orientation under 60 seconds for a newcomer\n- All discovered defects filed as beads and triaged before Epic 1 closes\n- Perf numbers from the session recorded against ADR-004 budgets",
+   "deps": [
+    {
+     "target": "e1.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.8",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.10",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.11",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "acceptance",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.1",
+   "title": "Change classifier: per-episode file taxonomy",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 360,
+   "description": "Classify every changed path in an episode into one taxonomy (source, test, docs, config, schema, migration, generated, lockfile, vendored, asset, binary, other) by combining path rules from the e0.9 policy engine with content evidence (file header markers, extension, parsed content, whether the path appears in a build config). Emit a confidence score and the reason for every decision, because everything downstream trusts this label.",
+   "acceptance_criteria": "- Labelled fixture set classified with at least 95 percent accuracy (report in CI)\n- Each classification carries confidence plus a human-readable reason reachable from the UI\n- Ambiguous paths land in 'other' rather than being guessed into 'source'\n- Classification is cached per blob and stable across runs",
+   "deps": [
+    {
+     "target": "e0.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "analysis",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.2",
+   "title": "Noise suppression: reformat, generated and lockfile churn detection",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 480,
+   "description": "Give the reviewer their attention back. Detect whitespace/formatting-only changes with an AST-normalized or token-normalized comparison (per language) rather than a whitespace flag; detect generated-file churn and lockfile-only edits; collapse an episode that is 'nothing but noise' to a single line with evidence. Critical rule: suppression is a view, never a deletion - the raw content is always one keypress away and the policy that hid it is printed inline.",
+   "acceptance_criteria": "- A rustfmt/prettier-only commit renders as '0 semantic changes' with the evidence for that claim\n- A lockfile-only episode collapses with a one-line reason and an expand affordance\n- No content is hidden without a visible reason (asserted by a UI golden test)\n- Suppression policy is overridable per repo and per session with one keystroke",
+   "deps": [
+    {
+     "target": "e2.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "analysis",
+    "ux",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.3",
+   "title": "Folder structure delta and directory-level summary",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 480,
+   "description": "Answer 'where did this land' without reading file lists. Per directory: added/removed/moved lines, files created/deleted/moved, new and removed directories, subtree moves (a whole package relocated), and structural metrics (depth, fanout, files per directory, share of code in the top-3 directories) plus a structure-churn score that makes 'the agent reorganized the tree' obvious. Produce a one-sentence deterministic summary per episode backed by an evidence list.",
+   "acceptance_criteria": "- Fixtures for module split, directory flattening, package rename and subtree move each produce the correct one-sentence summary\n- Directory table sums to the episode totals exactly (property test)\n- Structure-churn score distinguishes a 20-file local change from a 20-file cross-tree reshuffle\n- Summary is deterministic: identical input yields identical bytes",
+   "deps": [
+    {
+     "target": "e2.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "analysis",
+    "structure",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.4",
+   "title": "Rename and copy detection with pairing confidence",
+   "type": "task",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 360,
+   "description": "Git's rename detection is a good floor and a bad ceiling: it misses renames-with-rewrites, splits, merges and anything across a merge commit. Layer a content-similarity matcher (shingle/minhash style) on top of gix rename info to produce rename, split, merge and copy candidates with explicit confidence, and treat low-confidence pairs as guesses in the UI, never as facts.",
+   "acceptance_criteria": "- At least 90 percent pair precision and recall on the rename_storm and rename-with-rewrite fixtures\n- Splits and merges of one file into several are represented (not forced into 1:1)\n- Low-confidence candidates are visibly marked as guesses and can be accepted or rejected\n- Cost is bounded: O(changed files) not O(repo files) for typical episodes (bench)",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "s4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "analysis",
+    "structure",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.5",
+   "title": "Dependency manifest and lockfile parsers across ecosystems",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 600,
+   "description": "Parse the dependency surface of a repository for a given revision and for a diff. Manifests: package.json, Cargo.toml, pyproject.toml, go.mod, Gemfile, mix.exs, build files (maven/gradle, best-effort read-only), *.csproj. Lockfiles: package-lock.json, yarn.lock, pnpm-lock.yaml, Cargo.lock, poetry.lock, uv.lock, requirements/locks, go.sum, Gemfile.lock, mix.lock. Parsers are tolerant: on malformed input they degrade to 'unparsed - here is the raw diff' instead of dropping the episode. Ecosystems are individually feature-gated so a build can slim down.",
+   "acceptance_criteria": "- Golden fixtures per ecosystem and per lockfile format (10+ formats) with exact expected structures\n- Malformed or truncated lockfiles produce a typed 'unparsed' result and never an error that hides the episode\n- Parsers handle workspace/monorepo layouts with many manifests in one repo\n- Throughput: full-repo dependency scan of a monorepo fixture under 500ms (bench)",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "deps",
+    "analysis",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.6",
+   "title": "Dependency delta model: direct vs transitive, added, removed, upgraded",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 480,
+   "description": "Compute dependency STATE before and after an episode and diff the resolved graph, not the lockfile text. Report: new direct dependencies, removed, version upgrades/downgrades, transitive-only changes, resolution-graph size delta, new registries or git/vendored sources, integrity/hash changes, peer-dependency conflicts, and the license set delta. Summarise in human terms, e.g. 'net +140 packages from 1 new direct dependency (foo 2.1.0)'.",
+   "acceptance_criteria": "- Correct direct/transitive attribution for fixtures in at least six ecosystems\n- 'dependency_bump_storm' fixture distinguishes a mass transitive refresh from one new direct dep\n- Version downgrades, source switches (registry to git) and integrity changes are each detected\n- Dependency table renders per episode with drill-down to the lockfile hunk that proves it",
+   "deps": [
+    {
+     "target": "e2.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "deps",
+    "analysis",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.7",
+   "title": "Dependency risk signals: provenance, advisories and licence drift",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e2",
+   "estimate": 400,
+   "description": "Answer the question a reviewer actually has: 'who asked for this, and should I be worried?' Link every new direct dependency to the episode and captured intent that introduced it (e4.2 when available). Add optional advisory lookup (OSV) with an explicit network consent flag, a local cache and a stale-cache-friendly offline mode, plus licence-policy checks from fathom.toml (deny copyleft in the library layer, etc).",
+   "acceptance_criteria": "- Default build and default config make zero network calls (test asserts no socket use)\n- New-dependency card answers 'introduced by episode X, intent: Y' when the data exists and says so when it does not\n- Advisory lookup works offline from cache, reports freshness and never blocks episode rendering\n- Licence policy violations appear as findings with the offending edge path",
+   "deps": [
+    {
+     "target": "e2.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "deps",
+    "risk"
+   ]
+  },
+  {
+   "key": "e2.8",
+   "title": "Non-code surface changes: config, env, flags, migrations and CI",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 360,
+   "description": "The changes that break production are rarely in source files. Detect and summarise: environment variables added/removed (cross-checked against code references so a renamed var with a stale reference is flagged), feature flags added/removed with default value, database migrations (forward-only vs reversible, missing down migration, migration inside the same episode as model changes), CI workflow and permission changes (new secrets, new runners, changed OIDC, push-to-main triggers), infrastructure-as-code deltas, and Dockerfile/base-image changes. Emit an operator-action checklist per episode.",
+   "acceptance_criteria": "- Fixture per surface (env, flag, migration, CI workflow, IaC, Dockerfile) produces the expected finding\n- Env var added in .env.example but never read in code is flagged, and vice versa (removed but referenced)\n- Migration-only episodes surface an explicit 'needs deploy coordination' warning\n- Findings roll up into a per-episode 'requires operator action' checklist",
+   "deps": [
+    {
+     "target": "e2.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "config",
+    "risk",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.9",
+   "title": "Test surface delta and coverage proxy",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 400,
+   "description": "Track the testing contract, not coverage percentages. Per episode: test lines added vs production lines added (ratio and absolute), test files created/renamed/deleted, individual test cases added or removed (parse test function names per language), skipped or marked-expected-failure tests, weakened assertions (assert removed, or equality replaced by existence check) and production code added with no corresponding test surface in the same episode.",
+   "acceptance_criteria": "- Per-episode card shows test-vs-prod line ratio, tests added/removed/skipped for rust, python, ts and go fixtures\n- Deleting or skipping an existing test is a first-class finding with the test name and location\n- 'New public logic, no new test' finding has a documented and tunable definition rather than a guess\n- Cases with no test framework present degrade to a line-count proxy with a stated confidence",
+   "deps": [
+    {
+     "target": "e2.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "testing",
+    "risk",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.10",
+   "title": "Episode summary card: what, where, why and blast radius",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 480,
+   "description": "Compose the evidence-backed one-screen answer that the rest of the product hangs on: what changed (semantic counts after noise suppression), where it landed (directories, structure summary), what it now depends on (dependency delta headline), what surface it touches (config/migration/CI flags), what is tested, and a blast-radius estimate (direct + one-hop impact using the module graph when available, path heuristics when not). Every number is a button into its evidence.",
+   "acceptance_criteria": "- Card renders in under 50ms with a warm index (bench) and is byte-deterministic for a given episode\n- Every figure on the card links to the underlying evidence view (test walks each link)\n- Card is complete and correct with all optional analyses unavailable (graceful degradation)\n- Golden tests over the fixture corpus catch regressions in wording and ordering",
+   "deps": [
+    {
+     "target": "e2.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.3",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.8",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.9",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "analysis",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e2.11",
+   "title": "Insight API: one versioned delta model consumed by TUI, CLI and export",
+   "type": "task",
+   "priority": 1,
+   "parent": "e2",
+   "estimate": 360,
+   "description": "Make the analysis model the single source of truth so the TUI, the CLI, the export artefact and the MCP server never compute their own version of reality. Define a typed, versioned EpisodeDelta structure, publish a JSON Schema, expose it via fathom analyze <episode> --json, and refactor the TUI card to render purely from it. Include a compatibility policy: additive changes allowed, breaking changes bump the version and are caught in CI.",
+   "acceptance_criteria": "- schemas/episode-delta.schema.json checked in and validated against every fixture\n- The TUI contains no analysis logic (verified by review plus a crate-boundary lint)\n- fathom analyze --json is the input to e5.7's exporter and to e6.4's MCP tools\n- A breaking schema change without a version bump fails CI",
+   "deps": [
+    {
+     "target": "e2.10",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "api",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e3.1",
+   "title": "Multi-language structural extractor via tree-sitter",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 900,
+   "description": "Extract a per-file structural model: definitions (functions, classes, types, interfaces, constants), their span and complexity proxies, exported/public visibility, imports and their resolved targets, implemented interfaces/traits and inheritance. Ship grammars for Rust, Python, TypeScript/TSX, Go, Ruby and Java, chosen from the s1 spike report, plus a regex/ctags-style fallback for everything else that is honest about being approximate. Per-file parse errors are collected and surfaced, never swallowed. Deterministic output ordering is required so snapshots are diffable.",
+   "acceptance_criteria": "- Extraction accuracy at or above the thresholds agreed in s1, per language, on the fixture corpus\n- Unknown or broken language yields 'structure unavailable' plus file-level analysis, never a lost episode\n- Throughput at least 1000 files per second per core on the corpus (bench)\n- Identical input produces byte-identical output (snapshot test)",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "s1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "parsers"
+   ]
+  },
+  {
+   "key": "e3.2",
+   "title": "Per-revision module and symbol graph builder with snapshot store",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 600,
+   "description": "Build the graph that makes architectural questions answerable: nodes are modules and exported symbols, edges are imports, uses, implementations and inheritance, with layer tags from config. Store a snapshot per tree hash using structural sharing between adjacent revisions (per s3) rather than a full rebuild per commit, and expose a query API: dependencies of X, dependents of X, path between A and B, subgraph of a layer, changed edges between two snapshots.",
+   "acceptance_criteria": "- 1000-commit fixture: cold full build under 60s, marginal cost per new commit under 50ms (bench)\n- Snapshot storage for the fixture under 50MB with structural sharing (measured and reported)\n- Subgraph and path queries answer p95 under 20ms at 5000 nodes\n- Graph for a revision is reproducible: rebuilding from an empty cache yields identical results",
+   "deps": [
+    {
+     "target": "e3.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.4",
+     "type": "blocks"
+    },
+    {
+     "target": "s3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "graph"
+   ]
+  },
+  {
+   "key": "e3.3",
+   "title": "Graph delta between adjacent revisions and between arbitrary episodes",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 500,
+   "description": "Compute the architectural diff: nodes and edges added/removed/changed, symbols that moved from one module to another (distinguished from delete+add), files whose public surface changed, and an edge-churn metric per module that flags 'this module keeps getting reworked'. Must work for adjacent episodes (the common case, optimised) and for arbitrary pairs (e5.3). Deterministic ordering and a JSON form usable by the exporter and MCP.",
+   "acceptance_criteria": "- Fixtures for moved symbol, split module, dependency inversion and dead-edge removal produce the expected delta\n- Symbol move is reported as a move, not as a deletion plus an addition\n- Delta between two non-adjacent episodes matches the composition of the intermediate deltas (property test)\n- Empty delta is detected in constant time so 'no architectural change' is cheap to state",
+   "deps": [
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "graph"
+   ]
+  },
+  {
+   "key": "e3.4",
+   "title": "TUI architecture map with per-episode delta overlay",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 700,
+   "description": "Two coordinated views sharing one graph model. Structure map: hierarchical treemap of the tree with heat mapped to churn or complexity, keyboard drill-in/out and aggregation levels so 3k nodes remain readable. Dependency map: module graph (layered or circular layout) with filtering by layer/module and highlighting of the selected module's neighbourhood. On top of both, a per-episode delta overlay: added edges solid green, removed edges ghosted red, changed nodes outlined, with hop-limit and 'show only what this episode touched' filtering, plus counts when a delta exceeds what can be drawn.",
+   "acceptance_criteria": "- Rendering 3000 nodes stays under 100ms by aggregating beyond a zoom threshold (bench)\n- Delta overlay is legible at 80x24 and degrades by aggregation, not by clipping\n- Fully keyboard operable and consistent with the ADR-006 keymap; mouse is additive\n- Selecting any edge reveals the file-and-line evidence that produced it",
+   "deps": [
+    {
+     "target": "e3.3",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.6",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "tui",
+    "ux"
+   ]
+  },
+  {
+   "key": "e3.5",
+   "title": "Cycle detection and cycle delta",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 400,
+   "description": "Incremental strongly-connected-component maintenance rather than a full recompute per episode. Detect cycles introduced or removed by an episode, display the shortest offender path (module level, with an opt-in symbol-level view), and keep a cycle-debt ledger: existing cycles baselined with owner and expiry so only new cycles alarm. Report the count of nodes inside cycles as a trendable health metric.",
+   "acceptance_criteria": "- New-cycle and resolved-cycle fixtures detected with the exact minimal cycle path\n- Cycle detection after an incremental update runs under 100ms on a 5000-node graph (bench)\n- Baselined cycles are shown as debt with their expiry and never appear as a new violation\n- Cycle count and nodes-in-cycles exported for the scorecard (e3.10)",
+   "deps": [
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "graph"
+   ]
+  },
+  {
+   "key": "e3.6",
+   "title": "Layering rules engine with per-episode violation delta",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 500,
+   "description": "Let a team declare its intended architecture declaratively in fathom.toml: named layers with glob patterns, allowed and forbidden dependencies, 'no cycles' and 'no upward references' rules, no-cycle-within-layer options, and boundary rules (only the api crate may import the db layer). Evaluate violations and, crucially, the DELTA of violations per episode so the reviewer sees only what this turn did. Each violation explains why it is wrong and suggests the usual fix.",
+   "acceptance_criteria": "- A configured example repo yields zero false positives and catches every seeded violation in the fixture\n- Per-episode delta separates new violations from pre-existing ones (baseline-aware)\n- Each violation names the rule, the offending edge with file:line and a fix hint\n- Rules are validated at config load with actionable errors, not silent no-ops",
+   "deps": [
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "policy"
+   ]
+  },
+  {
+   "key": "e3.7",
+   "title": "Public API surface extraction and breaking-change diff",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 700,
+   "description": "Track the contracts the rest of the world compiles against. Per-language surface extraction: Rust pub items (via cargo metadata/rustdoc JSON where available, tree-sitter fallback), Python __all__ and stubs, TypeScript .d.ts and export barrels, Go exported identifiers, Java public types. Diff the surface between revisions and classify each change as breaking, additive or deprecating (signature and visibility changes, removed exports, changed optionality, widened parameter types) and emit a semver recommendation for the affected packages.",
+   "acceptance_criteria": "- Breaking/additive fixtures for at least rust, python, typescript and go classify correctly\n- 'No public API change' is detected as a fast path so most episodes cost nothing\n- Each API change links to the file:line and the episode that made it\n- Semver recommendation explains which specific change drove it",
+   "deps": [
+    {
+     "target": "e3.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "api"
+   ]
+  },
+  {
+   "key": "e3.8",
+   "title": "Hotspots: god modules, coupling, churn x complexity, dead code candidates",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 500,
+   "description": "Rank where architectural attention pays off. Per module: fan-in, fan-out, instability, size, complexity proxy (from e3.1 spans), and churn velocity over a configurable window, combined into an explainable hotspot score (high churn x high complexity is the classic quadrant). Separately list dead-code candidates: newly added symbols with no inbound references after N episodes, code behind flags that are off, and duplicated blocks that grew in the same episode. Every metric shows its contribution to the score.",
+   "acceptance_criteria": "- Hotspot table on the corpus ranks a seeded god module first and explains why, per metric\n- Dead-code candidates state how long they had no references and admit uncertainty\n- Zero data (new repo, no history) produces an empty state rather than a crash or nonsense ranking\n- Metric weights are configurable in fathom.toml and changes are reflected deterministically",
+   "deps": [
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "analysis"
+   ]
+  },
+  {
+   "key": "e3.9",
+   "title": "Architecture scorecard and drift trend over time",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 360,
+   "description": "Roll the architecture signals into something a human can track across a week of agent output: a five-dimension scorecard (boundaries respected, coupling, acyclicity, API hygiene, hotspot pressure) with the documented formula, per-episode and per-window scores, a trend line across episodes, and 'since my last review' deltas so catching up after two days is one number. Expose fathom architecture --json for CI and dashboards.",
+   "acceptance_criteria": "- Scoring formula documented to the point of being reproducible by hand from exported JSON\n- Trend renders across at least 500 episodes without memory growth\n- 'Since last review' delta is correct when the reviewer has been away across a rebase\n- fathom architecture --json is consumed by fathom check (e6.6) and the exporter (e5.7)",
+   "deps": [
+    {
+     "target": "e3.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "metrics"
+   ]
+  },
+  {
+   "key": "e3.10",
+   "title": "Ratchet: baselines and expiring technical-debt allowances",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e3",
+   "estimate": 360,
+   "description": "Make it possible to enforce architecture rules on a messy existing codebase: a committed baseline (.fathom/ratchet.toml) that records existing violations with owner and expiry date so only NEW violations fail CI, auto-tightening when a violation disappears (the ratchet only turns one way), and explicit warnings as allowances approach expiry. Updating the baseline upward must be a deliberate act (a flag plus a required reason string that lands in the file and in the review artefact).",
+   "acceptance_criteria": "- CI passes with existing violations baselined and fails on one newly introduced violation\n- Fixing a baselined violation automatically removes it from the file on the next run\n- Raising the baseline requires --update-baseline plus a reason, and the diff shows who and why\n- Expiring allowances surface in the TUI and in the export artefact before they lapse",
+   "deps": [
+    {
+     "target": "e3.9",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "architecture",
+    "policy",
+    "ci"
+   ]
+  },
+  {
+   "key": "e4.1",
+   "title": "Attribution: agent versus human authorship with confidence",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e4",
+   "estimate": 360,
+   "description": "Everything agent-specific in Fathom depends on knowing who wrote a commit. Detect authorship from trailers (Co-authored-by, Generated-by, Agent, Signed-off-by conventions), committer identity, harness events and message-shape heuristics, with a configurable registry of known agents in fathom.toml. Emit author kind plus agent identity plus confidence plus the evidence list. Ambiguous commits are 'unknown' - never guessed - and the label is user-correctable with the correction learned for future commits by the same signature.",
+   "acceptance_criteria": "- Fixture set covering at least six real-world trailer conventions classified at 90 percent or better\n- Ambiguous commits are labelled unknown with the reason shown, not silently bucketed\n- A user correction persists and applies to subsequent matching commits (test)\n- Attribution per episode is exposed in the episode card and queryable via the CLI",
+   "deps": [
+    {
+     "target": "e1.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "agents",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e4.2",
+   "title": "Intent capture: link prompt, plan and session to episodes",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e4",
+   "estimate": 480,
+   "description": "Pull the 'why' in from the harness: the turn prompt, the plan items and the session id from hooks v1 events, with a commit-trailer fallback (Intent:/Task:) for teams without hooks. Store the intent text, the declared scope as path globs, and the plan item list, so later detectors can compare intent against execution. Missing intent is a normal state, not an error, and the UI says so explicitly.",
+   "acceptance_criteria": "- Episodes show prompt, session id and plan items when hook events exist (end-to-end fixture)\n- Without hooks the trailer fallback works and, absent that, the card states 'no recorded intent'\n- Declared scope is stored as globs and is the input to the scope-creep detector\n- Intent text is searchable via the global search in e5.2",
+   "deps": [
+    {
+     "target": "e4.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "agents",
+    "integration"
+   ]
+  },
+  {
+   "key": "e4.3",
+   "title": "Agent pathology detectors",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e4",
+   "estimate": 900,
+   "description": "Implement the catalogue of things coding agents characteristically do wrong. Each detector is a pure function over the delta model returning findings with evidence, confidence and a suppression key, registered in a table so they can be enabled per repo: churn loop (same region edited across N episodes without converging), scope creep (files touched outside declared intent), untested new logic, shotgun edit (one episode touching unrelated clusters), rework loop (revert or hunk-repeat detection), test weakening (assertions deleted or skipped), copy-paste growth, debug leftovers and TODO debt, hand-edited generated files, secret-shaped strings, and disabled type-check or lint directives.",
+   "acceptance_criteria": "- One fixture per detector; each detector fires on its fixture and stays silent on the clean corpus\n- Every finding has a human-readable reason, a jump target, a confidence and a one-key suppression\n- False-positive rate on three real OSS repos under the threshold agreed in e0.12\n- Detector catalogue is documented with a worked example and a template for writing a new one",
+   "deps": [
+    {
+     "target": "e4.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "agents",
+    "risk",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e4.4",
+   "title": "Explainable per-episode risk score with tunable weights",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e4",
+   "estimate": 480,
+   "description": "Turn findings into a ranking the human can trust: a documented feature vector per episode (findings and their severity, change size and blast radius, dependency and migration exposure, test ratio, attribution confidence, noise share) combined through transparent, clamped, per-repo-tunable weights into a 0-100 score with an ordered list of the reasons that produced it. No opaque model in v1 - if we cannot say why an episode is at 82, it should not be at 82. Include a calibration set so weight changes can be evaluated rather than felt.",
+   "acceptance_criteria": "- fathom why <episode> prints every feature, its weight and its contribution to the total\n- Score is stable and reproducible; identical input yields identical output\n- Weights configurable in fathom.toml with a deterministic, monotonic effect on ranking (property test)\n- Calibration fixture shows precision/recall of 'top 10 percent by score' before and after retuning",
+   "deps": [
+    {
+     "target": "e4.3",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "risk",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e4.5",
+   "title": "Attention queue: the ranked review worklist",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e4",
+   "estimate": 480,
+   "description": "The queue is the product's main workflow. Rank unread episodes by risk weighted by staleness and blast radius, and give triage actions that are single keystrokes: mark reviewed, flag with a note, dismiss with a reason (from a fixed, learnable vocabulary), snooze until a condition. Show queue counts by severity, a caught-up state, and a 'what you skipped and why' retrospective so systematic dismissing is visible rather than invisible.",
+   "acceptance_criteria": "- Clearing a 100-episode queue where most episodes are low risk takes under 5 minutes (timed test)\n- Every triage action records who, when, why and is written to the review ledger (e4.6)\n- Queue ordering is explainable and reproducible; ties are broken deterministically\n- Dismissed-with-reason categories roll up in the retrospective view",
+   "deps": [
+    {
+     "target": "e4.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.6",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "workflow",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e4.6",
+   "title": "Review ledger: durable sign-offs that survive history rewrites",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e4",
+   "estimate": 480,
+   "description": "The review ledger is the durable record that a human accepted a change. Sign-offs are keyed to episode identity plus a content fingerprint and stored as human-readable, committable markdown under .fathom/reviews/ with a mirrored DB index, so a review can travel through a PR. Re-linking must reconnect sign-offs after rebase, amend and squash using the fingerprint and member-commit sets, and must fail loudly when content actually changed after sign-off (a stale sign-off is a bug, not a detail). Per-reviewer identity from git config or a configured identity.",
+   "acceptance_criteria": "- After rebase -i, amend and squash fixtures at least 95 percent of sign-offs re-link automatically\n- Content changed after sign-off is flagged as stale and blocks a clean 'all reviewed' state\n- Ledger files are diff-friendly and land sensibly in a PR (golden file)\n- Tampering with a ledger entry is detectable (fingerprint mismatch reported)",
+   "deps": [
+    {
+     "target": "e4.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "workflow",
+    "audit",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e4.7",
+   "title": "Episode narrative: deterministic explanation of what, why and risk",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e4",
+   "estimate": 480,
+   "description": "Generate prose a human can skim: a deterministic, template-composed narrative per episode built from the delta model and findings, with every claim citing an evidence id (no unattached assertions). Optionally polish with an LLM behind an explicit opt-in flag, which must preserve citations, mark itself as generated text, be reproducible-enough for tests via fixtures/mocks, and degrade to the template narrative when unavailable or offline.",
+   "acceptance_criteria": "- Default path uses no network and is byte-deterministic for identical input (test)\n- Every claim in the narrative carries a resolvable evidence reference (validated in tests)\n- Opt-in LLM path is tested with a mocked provider and is clearly watermarked in UI and export\n- Narrative is the text used by the export artefact (e5.7) so both stay consistent",
+   "deps": [
+    {
+     "target": "e2.10",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "narrative"
+   ]
+  },
+  {
+   "key": "e4.8",
+   "title": "Plan-versus-execution drift: contradictions and unimplemented intent",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e4",
+   "estimate": 400,
+   "description": "Compare what the agent said it would do with what it did, across a session rather than a single turn: plan items never implemented (no corresponding change after N episodes), edits outside the declared scope, dependencies introduced outside the plan, tests promised and not written, refactors claimed but not performed (surface unchanged), and plan text that contradicts a previous episode's sign-off. Emit findings with both sides of the contradiction linked.",
+   "acceptance_criteria": "- Drift fixture produces the expected findings: unimplemented item, out-of-scope edit, unplanned dependency\n- Each finding links the plan text and the diff/graph evidence that contradicts it\n- Cross-session drift is bounded and does not re-report an already-dismissed contradiction\n- Works without hooks using the Intent: trailer fallback, with reduced confidence stated",
+   "deps": [
+    {
+     "target": "e4.2",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "agents",
+    "risk"
+   ]
+  },
+  {
+   "key": "e5.1",
+   "title": "Ambient mode: glanceable status for the second terminal",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 480,
+   "description": "The mode Fathom lives in while an agent works: a short (fits 80x12) pane showing the latest episode and its risk, how many episodes are waiting in the queue, indexing state, and the single most important reason to look now. One keypress drills into the full view; when caught up it goes quiet and dim rather than chatty. No animation loops, no colour strobing - it sits next to a terminal where someone is also reading agent output.",
+   "acceptance_criteria": "- fathom ambient renders correctly at 80x12 and in a narrow tmux pane\n- Idle CPU under 1 percent with the repo quiet; no redraws without events\n- New high-risk episode is visible within 1s and is one keypress from the full view\n- Caught-up state is visually distinct and unambiguous",
+   "deps": [
+    {
+     "target": "e1.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "workflow"
+   ]
+  },
+  {
+   "key": "e5.2",
+   "title": "Global fuzzy search across episodes, paths, symbols, dependencies and findings",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 400,
+   "description": "One search box for the whole repository history. Index episode summaries, commit messages, intent text, file and directory paths, symbol names, dependency names and finding types; rank with a stable fuzzy scorer; results show enough context to choose (episode, date, author, why it matched) and jump straight into the right view at the right selection. Support filters as tokens (author:, since:, risk>, dep:, path:), plus recent and saved searches.",
+   "acceptance_criteria": "- p95 result latency under 50ms while typing on a 10k-episode corpus (bench)\n- Scoring is deterministic and stable across runs (golden test)\n- Filter tokens compose with free text and are documented in the help overlay\n- Search state persists in session state (e1.11) and results deep-link correctly",
+   "deps": [
+    {
+     "target": "e3.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.6",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "search"
+   ]
+  },
+  {
+   "key": "e5.3",
+   "title": "Compare mode: any two episodes or revisions side by side",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 400,
+   "description": "Answer 'what changed between the point I last looked and now' - the question a reviewer actually has after being away. Compose the full delta view (structure, dependencies, architecture, findings, test surface) for an arbitrary pair of endpoints, across branches, with a shareable textual spec such as fathom cmp a1b2..c3d4 and a nameable saved comparison ('since the refactor'). Reuse the standard delta pipeline - no second implementation.",
+   "acceptance_criteria": "- Comparison of two non-adjacent episodes equals the composed per-episode deltas (property test)\n- Cross-branch comparison works and labels both endpoints unambiguously\n- Saved comparisons survive restarts and appear in the command palette\n- fathom cmp <a>..<b> --json works headlessly for scripting",
+   "deps": [
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "analysis"
+   ]
+  },
+  {
+   "key": "e5.4",
+   "title": "Command palette, configurable keymaps and vim motions",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 360,
+   "description": "Every action is an addressable command with a stable id, surfaced in a palette (,) with fuzzy matching and the current keybinding shown next to it. Keymaps are user-overridable per mode from fathom.toml with conflict detection at load time, and list navigation matches vim conventions (j/k, ctrl-d/u, H/M/L, gt/gT for tabs) so power users do not relearn per view. A discoverability hint line at the bottom shows the next likely actions and hides itself once learned.",
+   "acceptance_criteria": "- Every action in the app is reachable from the palette (test enumerates actions vs palette entries)\n- Conflicting keybindings are reported at startup with the file and line to fix\n- Motion behaviour is identical across timeline, file tree, queue and search results (shared implementation)\n- Hint line reflects user keymap overrides and can be disabled",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e5.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "tui"
+   ]
+  },
+  {
+   "key": "e5.5",
+   "title": "Responsive layouts, unicode-safe rendering and graceful non-TTY degradation",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 400,
+   "description": "Make it usable on real setups. A layout engine with per-view minimum sizes and a documented degradation order (hide legend, collapse detail pane, reduce columns, then switch to compact rows) from 80x24 up to ultrawide; correct cell-width handling for wide CJK, combining marks, emoji and bidi in commit messages, paths and diff content (truncation must not split grapheme clusters); mouse support (click to select, scroll) as an optional extra; and a --plain line mode for pipes, CI logs and screen readers.",
+   "acceptance_criteria": "- Layout matrix documented and covered by screenshot tests at 80x24, 100x30, 120x40, 160x50, ultrawide and 40x10\n- Unicode fixture set (CJK, emoji, combining, RTL) renders with correct alignment; proptest finds no panic on random text\n- fathom --plain produces useful ordered text output with no escape sequences\n- Works under tmux and ssh with TERM variations; degraded modes are reported, not silent",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "tui",
+    "a11y"
+   ]
+  },
+  {
+   "key": "e5.6",
+   "title": "Theming, colour-blind-safe palettes and NO_COLOR support",
+   "type": "chore",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 240,
+   "description": "Colour carries meaning in Fathom (risk, added/removed, layer violation) so it has to be robust: semantic colour tokens rather than raw colours at call sites, dark and light themes, palettes audited for deuteranopia and protanopia, a 16-colour ANSI fallback for minimal terminals, truecolour detection, and NO_COLOR plus a --theme flag. Risk and status must remain legible with colour fully disabled, which means every colour-coded signal also has a glyph or text label.",
+   "acceptance_criteria": "- Contrast ratio of 4.5:1 or better for all text on both default themes (automated check)\n- With NO_COLOR=1 all information remains distinguishable via glyphs and labels (screenshot test)\n- Simulation of deuteranopia and protanopia leaves added/removed/violation states distinguishable\n- Themes are user-loadable from a documented TOML file",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "a11y"
+   ]
+  },
+  {
+   "key": "e5.7",
+   "title": "Export review artefact: markdown, HTML and JSON for PRs and audits",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e5",
+   "estimate": 480,
+   "description": "The deliverable that closes the loop with the rest of the organization: fathom export --episodes A..B --format md|html|json produces a review record containing the summary card, the dependency and architecture deltas, findings with evidence, the operator-action checklist, the sign-off block with reviewer identity and time, and links to commits. Byte-stable output (no timestamps, absolute paths or randomness that cause spurious diffs), stable ordering, and an HTML rendering that is self-contained, printable and safe (escaped content, no script injection from commit messages).",
+   "acceptance_criteria": "- Markdown artefact renders correctly in GitHub PR preview including nested evidence links\n- Two consecutive exports of the same range are byte-identical (test)\n- HTML is a single self-contained file, printable, with hostile commit messages escaped (test)\n- Sign-off block includes reviewer, time, scope and any dismissals with reasons",
+   "deps": [
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "export",
+    "workflow",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e5.8",
+   "title": "Editor and shell integration: jump to file, external diff, terminal hyperlinks",
+   "type": "task",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 240,
+   "description": "Fathom is a reader, not an editor - make the exits good. Open file:line in $EDITOR (vim, neovim, helix, vscode, zed, helix), OSC-8 hyperlinks for paths and commits in supporting terminals, a difftool handoff (difftastic/meld/kdiff3) for people who want a heavyweight diff, and fathom open <episode> for use from the shell. Detect missing EDITOR gracefully and say what it decided to use.",
+   "acceptance_criteria": "- Works with vim, neovim, helix and code on all three OSes (matrix test where CI allows, documented otherwise)\n- OSC-8 links are emitted only when the terminal advertises support\n- difftool handoff respects config and falls back cleanly when the tool is absent\n- No editor or no difftool is a normal, well-explained path",
+   "deps": [
+    {
+     "target": "e1.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "integration"
+   ]
+  },
+  {
+   "key": "e5.9",
+   "title": "First-run onboarding, empty states and error copy",
+   "type": "task",
+   "priority": 2,
+   "parent": "e5",
+   "estimate": 240,
+   "description": "The first five minutes decide whether anyone keeps this running. Ship a guided first index with progress and a realistic time estimate, per-view empty states that name the actual next action ('no episodes yet - run fathom index' rather than a shrug), and error copy that always states a remedy and points at fathom doctor. Include a --demo flag that indexes a bundled miniature repo so someone can see the product before pointing it at a real codebase.",
+   "acceptance_criteria": "- From a clean machine, fathom --demo shows meaningful content in under a minute with no config\n- Every view has a specific empty state and every user-facing error names a next action (audited list)\n- Index progress shows percentage plus a time estimate that converges\n- Copy reviewed once as a batch so the voice is consistent",
+   "deps": [
+    {
+     "target": "e1.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ux",
+    "docs"
+   ]
+  },
+  {
+   "key": "e6.1",
+   "title": "Hooks v1 ingestion: JSONL event reader, validation and replay",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 480,
+   "description": "Implement the read side of the contract in ADR-005: a reader that tails an append-only JSONL file, tolerates partial lines and interleaved concurrent appends, tracks a durable offset so restarts do not reprocess, validates against the JSON Schema, quarantines malformed events with diagnostics instead of stalling the pipeline, and can replay a file from the beginning for rebuilds. Expose fathom hooks --check to show stream health and recent rejections.",
+   "acceptance_criteria": "- Truncated and mid-write lines are handled without loss on the next read (test)\n- Malformed events are quarantined and counted; the stream keeps flowing (test)\n- Replay from offset 0 reproduces identical episode linkage (deterministic)\n- fathom hooks --check reports lag, offset, event counts by type and rejection reasons",
+   "deps": [
+    {
+     "target": "e0.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e1.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "integration",
+    "agents"
+   ]
+  },
+  {
+   "key": "e6.2",
+   "title": "Reference adapters: pi-style hooks, generic harness, git hook fallback",
+   "type": "task",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 360,
+   "description": "Prove the contract against reality with shipped adapters: (1) a pi-style hook adapter translating session/turn/tool events into hooks v1, (2) an adapter for a second mainstream harness, and (3) a dependency-free post-commit git hook that captures what it can when there is no harness at all. Each adapter is a small documented program plus a copy-pasteable recipe, and each must be verified end-to-end in a live agent session rather than only in unit tests.",
+   "acceptance_criteria": "- Two harness adapters verified end-to-end: intent and episode boundaries appear in the TUI\n- Git hook fallback is a single file, works on POSIX shells and git bash, and never blocks a commit on failure\n- Recipes in docs/harness/ are followed by someone other than their author without help\n- Adapter contract test suite runs against a recorded event trace",
+   "deps": [
+    {
+     "target": "e6.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "integration",
+    "agents"
+   ]
+  },
+  {
+   "key": "e6.3",
+   "title": "fathom watch daemon: single instance, IPC and budgeted background indexing",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 480,
+   "description": "One process per repository does the watching, hook tailing and indexing; TUIs and CLI commands attach over a local socket instead of each starting their own work. Requirements: single-instance lock, socket path resolution under both XDG and Windows paths, priority background indexing that yields to foreground interaction, back-pressure and a configurable CPU budget, clean shutdown with no half-written index, and fathom status --json exposing daemon health. --foreground keeps it runnable under a supervisor or in a container.",
+   "acceptance_criteria": "- Starting three TUIs plus a CLI causes exactly one indexing pass (asserted via counters)\n- Under an actively committing agent the daemon stays under its configured CPU budget and the TUI stays responsive\n- Ctrl-C, SIGTERM and a crash all leave the store consistent; restart resumes\n- fathom status --json reports pid, uptime, offsets, queue depth and cache stats",
+   "deps": [
+    {
+     "target": "e1.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.1",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "infra",
+    "integration"
+   ]
+  },
+  {
+   "key": "e6.4",
+   "title": "MCP server: expose the review model back to the coding agent",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 600,
+   "description": "The reciprocal half of the relationship: the agent can ask the same questions the human can. Read tools - explain_episode, changes_between, architecture_delta, dependency_delta, risk_report, search_history - returning the versioned delta model with evidence ids, and gated write tools - mark_reviewed, add_review_note - behind an explicit config flag with an audit log line per call. Never return secrets or arbitrary file bodies; return references and summaries instead. Document token-size discipline: responses are bounded and paginated.",
+   "acceptance_criteria": "- Verified against a real MCP client session with the shipped config, not just unit tests\n- Write tools are off by default; when enabled each call is logged with tool, args digest and result\n- Responses are bounded and paginated; oversized results are truncated with an explicit cursor\n- No file contents outside the model and no secrets appear in any response (test)",
+   "deps": [
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.3",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "integration",
+    "mcp"
+   ]
+  },
+  {
+   "key": "e6.5",
+   "title": "Shared review memory: annotations, decisions and Q&A stored in the repo",
+   "type": "feature",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 480,
+   "description": "Reviews produce knowledge that should outlive the session. Let a human attach notes, decisions ('we deliberately allow a cycle here because...'), questions and follow-ups to episodes or lines, stored as committable markdown under .fathom/reviews/ with a mirrored index, so they are reviewable in a PR, survive rebase, are searchable from the TUI and are answerable by the agent over MCP ('why did we do X' returns the recorded decision with its evidence). Decisions interlock with the ratchet in e3.10: granting an allowance writes both.",
+   "acceptance_criteria": "- A note attached to an episode is still linked after a rebase fixture\n- fathom context <path-or-episode> prints the recorded decisions and open questions with dates and authors\n- The agent can retrieve a recorded decision through an MCP tool and cite its evidence\n- Notes appear in the export artefact (e5.7) and are diff-friendly",
+   "deps": [
+    {
+     "target": "e4.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "workflow",
+    "knowledge"
+   ]
+  },
+  {
+   "key": "e6.6",
+   "title": "fathom check: CI gate for architecture, dependencies and unreviewed risk",
+   "type": "feature",
+   "priority": 1,
+   "parent": "e6",
+   "estimate": 480,
+   "description": "The enforcement surface, and the reason this is infrastructure rather than a toy: fathom check evaluates policy (layering violations, new cycles, breaking API changes, dependency policy violations, untested new logic above a size threshold, high-risk episodes without sign-off) against a base..head range with severities, using ratchet baselines so existing debt does not block. Output formats: human, JSON, SARIF for code-scanning upload and GitHub step annotations plus a markdown job summary. Must run without network and without a full history fetch.",
+   "acceptance_criteria": "- Runs in under 60s on a medium repo with a shallow clone (measured in CI)\n- SARIF validates against the code-scanning schema and uploads cleanly\n- Policy config is per-repo, versioned and its failure modes are explicit (no silent passes)\n- Fails only on new violations by default; the 'why did CI fail' message is one sentence long and points at the evidence",
+   "deps": [
+    {
+     "target": "e2.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.10",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "ci",
+    "policy",
+    "mvp"
+   ]
+  },
+  {
+   "key": "e6.7",
+   "title": "Extensibility: detector API, example out-of-tree plugin and event bus",
+   "type": "feature",
+   "priority": 3,
+   "parent": "e6",
+   "estimate": 360,
+   "description": "Open the analysis without turning it into a support burden: a public trait for detectors (input: immutable delta model; output: versioned findings), a finding schema with namespacing and severity rules, an event bus emitting analysis lifecycle events for external tooling, and a --detectors/enable-disable config. Ship a worked third-party example in its own crate that compiles against the released library, plus a stability policy saying which APIs are covered.",
+   "acceptance_criteria": "- The example plugin builds and runs out-of-tree against the published crate in CI\n- Finding schema is versioned and unknown finding types are ignored rather than fatal\n- Disabling a built-in detector is supported and documented\n- Stability policy for the plugin API is written down in the docs",
+   "deps": [
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.3",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "extensibility",
+    "api"
+   ]
+  },
+  {
+   "key": "e6.8",
+   "title": "Privacy posture: no network by default and local-only opt-in metrics",
+   "type": "chore",
+   "priority": 2,
+   "parent": "e6",
+   "estimate": 180,
+   "description": "This tool reads your whole repository history, so privacy is a feature. Default build makes no outbound calls (advisory lookups and optional LLM narrative are separate opt-in feature/config gates). Any usage metrics are local-only counters in .fathom/ that the user can read and export, never transmitted. Document the posture in one page and verify it mechanically: a CI job that runs the binary with no network access and asserts identical behaviour, plus fathom doctor --privacy.",
+   "acceptance_criteria": "- CI job proves the default binary functions with no network egress available\n- fathom doctor --privacy prints what is on, what is off and which config key turns each on\n- Privacy page reviewed and linked from the README\n- Generated SBOM and licence report published per release",
+   "deps": [
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "privacy",
+    "docs"
+   ]
+  },
+  {
+   "key": "e7.1",
+   "title": "Messy-repository resilience sweep",
+   "type": "task",
+   "priority": 2,
+   "parent": "e7",
+   "estimate": 600,
+   "description": "Systematically break it, then make it degrade gracefully. Scenarios: shallow and partial clones, promisor-missing objects, orphan and hundreds of stale branches, merge storms (100 consecutive merges), force-push rewrites mid-session, submodules and nested worktrees, unicode and CRLF paths, 500MB single files, binary asset directories, corrupt or pruned objects, an enormous author count, a repository with no merge commits ever, and a repo whose .git is on a network mount. Every scenario either works or degrades with an explicit, actionable message.",
+   "acceptance_criteria": "- Each scenario is an automated fixture; none panic and none lose the review ledger\n- Degraded states are visible in the UI status line and in fathom doctor with a remedy\n- Corrupt-object handling reports the affected commit and continues rather than aborting the index\n- Findings logged as bugs with reproduction fixtures, not folklore",
+   "deps": [
+    {
+     "target": "e1.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.4",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "hardening"
+   ]
+  },
+  {
+   "key": "e7.2",
+   "title": "Performance pass against real open-source repositories",
+   "type": "task",
+   "priority": 2,
+   "parent": "e7",
+   "estimate": 480,
+   "description": "Measure the three budgets that matter - cold index, warm re-index, interactive latency - on three real repositories chosen to stress different axes: one with 50k+ commits, one monorepo with many languages, and one dominated by generated code. Fix the top three regressions found, and where a budget is genuinely unreachable, consciously rewrite the budget in ADR-004 with a written rationale instead of letting the number rot.",
+   "acceptance_criteria": "- Benchmark report for the three repos committed under benchmarks/reports/\n- Cold index, warm re-index and TUI latency meet ADR-004 or a revised budget is agreed in writing\n- Peak RSS measured and within budget on all three\n- Top three fixes are separate commits with before/after numbers in the message",
+   "deps": [
+    {
+     "target": "e0.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "perf",
+    "hardening"
+   ]
+  },
+  {
+   "key": "e7.3",
+   "title": "Memory ceilings, bounded caches and streaming for monorepos",
+   "type": "task",
+   "priority": 2,
+   "parent": "e7",
+   "estimate": 360,
+   "description": "Give memory a hard ceiling rather than a hope: configurable caps for the analysis cache, graph snapshots and decode buffers; LRU eviction with observability into what got evicted; disk spill for cold snapshots; and back-pressure so analyzers slow down instead of ballooning. The claim to prove is that peak RSS is a function of configuration, not of repository size.",
+   "acceptance_criteria": "- Indexing a 100k-commit fixture completes under a 512MB RSS limit (enforced in a test)\n- Cache caps are observable via fathom stats including eviction counts\n- Analyzers apply back-pressure instead of growing unbounded when the queue backs up\n- Knobs are documented with their memory/time trade-offs",
+   "deps": [
+    {
+     "target": "e3.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "perf",
+    "hardening"
+   ]
+  },
+  {
+   "key": "e7.4",
+   "title": "Cross-platform packaging and distribution",
+   "type": "chore",
+   "priority": 3,
+   "parent": "e7",
+   "estimate": 480,
+   "description": "Ship installable artifacts for all three OSes with cargo-dist: macOS arm64 and x86_64 (signed and notarized once credentials exist), Linux tarballs plus deb and rpm, an musl static build, Windows zip and msi, a curl installer script, a Homebrew tap, shell completions for bash/zsh/fish and a man page. Build completions and the man page from the CLI definition so they cannot drift, and record which signing steps require secrets that a fork will not have.",
+   "acceptance_criteria": "- curl installer works on clean ubuntu, macOS and windows VMs and installs the right artifact\n- Completions and man page are generated from clap definitions in CI (drift is impossible)\n- Release artifacts include checksums and an SBOM\n- Contributor docs state which release steps need maintainer-only secrets",
+   "deps": [
+    {
+     "target": "e0.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "release",
+    "infra"
+   ]
+  },
+  {
+   "key": "e7.5",
+   "title": "Documentation site: concepts, recipes, detector catalogue and cheatsheet",
+   "type": "task",
+   "priority": 2,
+   "parent": "e7",
+   "estimate": 480,
+   "description": "Docs that make the tool comprehensible without its author: a five-minute quickstart; concept pages for episode, delta, risk score, review ledger, ratchet and ambient mode; harness recipes; a detector catalogue where every entry has what it detects, why it matters for agent-written code, a worked example, and how to tune or silence it; the keyboard cheatsheet generated from the keymap so it never lies; a CLI reference generated from clap; and a troubleshooting page seeded from beta issues.",
+   "acceptance_criteria": "- Docs build in CI with link checking and generated CLI/keymap sections\n- Every shipped feature has a linked doc page; a CI check fails if a feature has no doc entry\n- Three outside users complete the quickstart unaided and can name what an episode is\n- Detector catalogue covers every built-in detector with an example",
+   "deps": [
+    {
+     "target": "e0.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "docs"
+   ]
+  },
+  {
+   "key": "e7.6",
+   "title": "Demo repository and scripted five-minute demo",
+   "type": "task",
+   "priority": 3,
+   "parent": "e7",
+   "estimate": 300,
+   "description": "A public demo repository containing a believable agent-built history with each pathology deliberately seeded (churn loop, unplanned dependency, new cycle, deleted test, reformat-only commit) plus a DEMO.md walkthrough and an asciinema/GIF recording under five minutes. The demo is the fastest way to explain the product, and it doubles as an end-to-end acceptance fixture.",
+   "acceptance_criteria": "- git clone of the demo plus one fathom command reproduces every documented finding\n- A newcomer follows the script and finds all seeded pathologies unaided\n- Recording is under five minutes and viewable without sound\n- Demo repo version tagged and re-recorded at each minor release",
+   "deps": [
+    {
+     "target": "e0.10",
+     "type": "blocks"
+    },
+    {
+     "target": "e5.1",
+     "type": "blocks"
+    },
+    {
+     "target": "e5.7",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "docs",
+    "demo"
+   ]
+  },
+  {
+   "key": "e7.7",
+   "title": "Beta loop: install path, changelog, feedback intake and self-dogfooding",
+   "type": "chore",
+   "priority": 3,
+   "parent": "e7",
+   "estimate": 300,
+   "description": "Run a real beta: a CHANGELOG generated from conventional commits, issue and bug-report templates that require fathom doctor --json so reports arrive diagnosable, a single documented feedback channel, and a short intake cadence (triage weekly, publish what was fixed and why). Also dogfood: run Fathom on its own repository, put Fathom's own issues through the attention queue, and record what the tool says about itself - the most credible marketing and the best regression test there is.",
+   "acceptance_criteria": "- At least five external users onboarded with their feedback captured as beads\n- At least twenty beta issues triaged with explicit dispositions\n- Fathom runs against its own repository in CI and the artefact is published per release\n- Release cadence and changelog process documented and followed for two consecutive releases",
+   "deps": [
+    {
+     "target": "e7.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e7.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "release",
+    "community"
+   ]
+  },
+  {
+   "key": "e7.8",
+   "title": "Security and privacy hardening review",
+   "type": "task",
+   "priority": 2,
+   "parent": "e7",
+   "estimate": 300,
+   "description": "A written pass rather than a hope: threat model covering path traversal and symlink escape in exports and notes, repository-provided config being untrusted input (a clone must not be able to run code), catastrophic regex backtracking, decompression and huge-input denial of service, SSRF via advisory endpoints, secrets leaking into logs or artefacts, and unsafe defaults in the gated write tools. Add fuzz targets for lockfile parsers, the hook event reader and path handling with a short CI smoke and longer nightly run.",
+   "acceptance_criteria": "- docs/security/threat-model.md reviewed with an owner and status per item\n- cargo-fuzz targets exist for lockfile parsing, hook events and path handling; 30-minute smoke runs in CI\n- Cloning a hostile repository cannot execute code or write outside .fathom/ (test)\n- Every finding is fixed or explicitly accepted with a written rationale",
+   "deps": [
+    {
+     "target": "e2.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e5.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.8",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "security",
+    "hardening"
+   ]
+  },
+  {
+   "key": "s1",
+   "title": "Spike: tree-sitter extraction accuracy across six languages",
+   "type": "spike",
+   "priority": 1,
+   "estimate": 240,
+   "description": "Before committing to Epic 3, measure the thing it depends on. For Rust, Python, TypeScript, Go, Ruby and Java, build throwaway extractors and measure precision and recall for definitions, exports and import resolution against hand-annotated fixtures; record throughput and grammar version pinning; note per-language dealbreakers (conditional compilation in Rust, decorators in Python, barrel re-exports in TypeScript).",
+   "acceptance_criteria": "- Report with per-language precision, recall and throughput against annotated fixtures\n- Explicit go/no-go recommendation per language with grammar versions pinned\n- Fallback strategy defined for languages that fail the threshold\n- Thresholds become the acceptance bar referenced by e3.1",
+   "labels": [
+    "spike"
+   ]
+  },
+  {
+   "key": "s2",
+   "title": "Spike: episode segmentation accuracy on real agent-driven histories",
+   "type": "spike",
+   "priority": 1,
+   "estimate": 240,
+   "description": "Segmentation is the load-bearing assumption of the whole product. Collect 200 agent turns from real sessions, hand-annotate the true episode boundaries, then compare boundary precision and recall for three strategies: time/author heuristics only, hook-event-driven boundaries, and trailers plus message-shape signals. Also measure how often segmentation mistakes would hide a real problem (i.e. a pathology spans a wrong boundary).",
+   "acceptance_criteria": "- Annotated ground truth for 200 turns committed to the fixture corpus\n- Precision and recall table for the three strategies\n- Recommended default rule set with the failure modes enumerated\n- Recommendation folded into ADR-003 before e1.3 is built",
+   "labels": [
+    "spike"
+   ]
+  },
+  {
+   "key": "s3",
+   "title": "Spike: cost of full graph-per-revision at 10k commits",
+   "type": "spike",
+   "priority": 1,
+   "estimate": 240,
+   "description": "Epic 3 assumes a graph snapshot per revision is affordable with structural sharing; measure it before e3.2 is designed. Prototype snapshot storage with and without sharing, measure time and bytes per commit on a real 10k-commit repository, measure incremental query latency, and test alternative invalidation policies (full snapshot every N commits plus a delta window, on-demand recomputation, content-defined chunking).",
+   "acceptance_criteria": "- Measured time and bytes per revision for each strategy\n- Recommended invalidation and storage policy with the numbers behind it\n- Latency figures for the queries the TUI actually issues\n- Decision recorded in ADR-004 and reflected in e3.2's approach",
+   "labels": [
+    "spike"
+   ]
+  },
+  {
+   "key": "s4",
+   "title": "Spike: rename and copy detection reliability across merges",
+   "type": "spike",
+   "priority": 2,
+   "estimate": 180,
+   "description": "Folder-structure stories fall over if rename detection is wrong. Compare git rename detection, a content-similarity matcher and a hybrid on fixtures including rename-with-rewrite, file split and merge, renames that cross a merge commit and renames introduced by a rebase. Report how often a wrong pairing would mislead a reviewer, which is more damaging than a missing pairing.",
+   "acceptance_criteria": "- Precision and recall per algorithm across the rename fixture set\n- Thresholds and confidence calibration documented\n- Recommendation for what to show as fact vs as a guess\n- Findings reflected in e2.4's approach",
+   "labels": [
+    "spike"
+   ]
+  },
+  {
+   "key": "s5",
+   "title": "Spike: does LLM narrative polish beat the deterministic template",
+   "type": "spike",
+   "priority": 2,
+   "estimate": 180,
+   "description": "Decide whether e4.7's optional LLM path earns its complexity. Generate episode narratives both ways for 20 real episodes, have three reviewers rate accuracy, usefulness and trustworthiness blind, and specifically count hallucinated claims not supported by the evidence set. Also record cost, latency and determinism.",
+   "acceptance_criteria": "- Blind comparison ratings from three reviewers with hallucination counts per approach\n- Cost and latency table per episode\n- Written recommendation: ship the opt-in path, ship nothing, or gate it behind further work\n- Outcome recorded as a decision issue linked from e4.7",
+   "deps": [
+    {
+     "target": "e2.10",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "spike"
+   ]
+  },
+  {
+   "key": "m0",
+   "title": "Milestone: Alpha - spine usable for daily review",
+   "type": "milestone",
+   "priority": 1,
+   "description": "Alpha gate: epics 0 and 1 are complete and the tool is genuinely useful for reviewing an agent-generated repository day to day, even with no analysis at all. Publish alpha binaries, announce to a small group and start collecting real usage.",
+   "acceptance_criteria": "- All Epic 0 and Epic 1 tickets closed with no open P1 defects\n- Spike recommendations reflected in the plan (e0.12 done)\n- Alpha artifacts installable on three OSes\n- At least three people outside the core team using it weekly",
+   "deps": [
+    {
+     "target": "e1.12",
+     "type": "blocks"
+    },
+    {
+     "target": "e0.12",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "milestone"
+   ]
+  },
+  {
+   "key": "m1",
+   "title": "Milestone: Beta - change intelligence, attention queue and export",
+   "type": "milestone",
+   "priority": 2,
+   "description": "Beta gate: a reviewer can work the attention queue, understand dependencies, structure and non-code surfaces, and export a sign-off artefact that lands on a PR, with harness intent flowing in. Open the beta loop and start dogfooding Fathom on Fathom.",
+   "acceptance_criteria": "- Epic 2 complete; the core tickets of epics 4, 5 and 6 listed as dependencies are closed\n- Risk-score false-positive rate under the threshold agreed in e0.12 on three real repos\n- Export artefact used in at least one real PR review outside this project\n- No open P1 defects against the beta scope",
+   "deps": [
+    {
+     "target": "e2.11",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.5",
+     "type": "blocks"
+    },
+    {
+     "target": "e4.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e5.7",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.2",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "milestone"
+   ]
+  },
+  {
+   "key": "m2",
+   "title": "Milestone: 1.0 - architecture awareness, CI gate and packaging",
+   "type": "milestone",
+   "priority": 2,
+   "description": "1.0 gate: architecture deltas, cycles, layering and API surface are visible and enforceable, the agent can query the same model over MCP, CI can block on new violations, packaging and docs are credible, and the hardening sweep has been run. This is the release where Fathom plus a coding harness is a defensible answer to 'how do I deliver agentic software with confidence'.",
+   "acceptance_criteria": "- All epic 3 and epic 6 tickets closed; epic 7 hardening items closed or consciously deferred with a written reason\n- fathom check running in at least two external CI pipelines\n- Docs, demo repository and five-minute demo published\n- Perf budgets met or consciously restated in ADR-004",
+   "deps": [
+    {
+     "target": "e3.9",
+     "type": "blocks"
+    },
+    {
+     "target": "e3.10",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e6.6",
+     "type": "blocks"
+    },
+    {
+     "target": "e7.4",
+     "type": "blocks"
+    },
+    {
+     "target": "e7.5",
+     "type": "blocks"
+    }
+   ],
+   "labels": [
+    "milestone"
+   ]
+  }
+ ]
+}
