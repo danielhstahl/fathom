@@ -485,6 +485,58 @@ ADR-004, `e0.11`, `e7.2`.
 byte-identical SHAs) with ground-truth expectations that analysis tickets assert against instead of
 ad-hoc strings. — `e0.10`.
 
+**Frame** — the whole terminal: chrome plus exactly one view. A frame has one scope and one focused
+pane, and "what is on screen" is fully described by (view, scope, focus) — which is what `e1.11`
+persists between sessions and what `e5.7` writes into an artefact's header. — ADR-006 (`e0.6`).
+
+**View** — one of the nine frames a reviewer can put on the screen (Queue, Timeline, Diff, Structure,
+Graph, Deps, Ambient, Artefact, Search), each answering exactly one question and each reachable by one
+global key. A view is not a page and not a route: it is a pane layout plus a focus ring plus the drill
+edges out of it. — ADR-006 (`e0.6`).
+
+**Pane** — a bordered region inside a view that owns one kind of content and declares the fields of the
+delta model it renders. Two panes and chrome per view at 80 columns; a third region is always a strip
+inside a pane, never a third column. — ADR-006.
+
+**Chrome** — the frame furniture around a view's panes: tab bar, pane footer strips, hint line, status
+line, box frame. Chrome is what the degradation ladder sells first, in a fixed order, and the status
+line is never for sale because it carries the notice that says the rest was sold. — ADR-006.
+
+**Focus ring** — the ordered loop of panes `<Tab>`/`<C-w>l` walk inside a view, pane 1 first. Focus is
+per pane, not per view: where it is decides which keymap mode is live. — ADR-006.
+
+**Drill** — the movement from a pane to the more specific thing it is pointing at (`<Enter>`), and back
+(`<Esc>`), with the selection preserved. A drill is an edge in the view graph, not a new view; the
+drill stack is the sequence of panes you came through, popped one `<Esc>` at a time. — ADR-006.
+
+**Overlay** — a view that borrows the frame instead of owning it, currently only Search (`/`): it covers
+the frame, takes `prompt` mode, and `<Esc>` restores exactly what was there. Distinguished from a view
+because an overlay may not steal global keys while it is open. — ADR-006.
+
+**Mode (keymap)** — the named layer of the keymap that is live for the focused pane (`prompt`, `pick`,
+`list`, `body`, per-view, `global`), with a fixed precedence and first-binder-wins resolution. Modes are
+why `j` can mean five things without a single binding being ambiguous. — ADR-006.
+
+**Tab (view tab)** — a pinned view in the tab bar, numbered `<C-w>1..9`, with `T` pinning and unpinning
+the current one. The tab bar is a label, not the navigation: the view keys work with the bar degraded
+away. — ADR-006.
+
+**Scope** — the thing a view is currently about: an episode, a range of two episodes, a file, a cycle.
+Every view reads its scope and every view key acts on it; `d s g p` change the question asked about the
+scope, never the scope itself. One scope per frame is what makes the same keystroke mean the same thing
+in eight views. — ADR-006.
+
+**Degradation ladder** — the one ordered list of things a view gives up as the terminal shrinks: hint
+line, tab bar, footer strips, frame, secondary-pane strips, hard widths, compact rows, trimmable body
+lines — then the single-pane fallback, then an honest refusal. Applied in that order for every view and
+announced in the status line whenever it fires, because a review tool that silently drops information
+has committed the one failure it is not allowed. — ADR-006, §7.2.
+
+**Canonical task** — one of the three key sequences ADR-006 publishes verbatim (triage an episode,
+compare against the previous one, find a thing) so that "what keys do I press" has a single answer in
+the docs, the help overlay and the cheatsheet. The sequences are resolved through the real keymap in a
+test, so a rename cannot leave the docs describing keystrokes that do not exist. — ADR-006.
+
 ### 4.7 Metric vocabulary
 
 **Time-to-confidence (TTC)** — the north-star metric: wall-clock from an episode's creation to a human

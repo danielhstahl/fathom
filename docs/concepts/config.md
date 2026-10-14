@@ -477,8 +477,10 @@ trusted in review. Exit codes are asserted, not assumed: wrong type → 5, bad f
   cover the legitimate use case with an audit trail.
 * **Unknown keys fatal by default.** Refused (§6). `--strict` exists for teams that disagree.
 * **A `[keymap]` section that owns bindings.** Refused: `keys.overrides.*` carries overrides only;
-  the canonical table is ADR-006's (`e0.6`, still open) and the cheatsheet is generated from the
-  merged table so neither can lie.
+  the canonical table is ADR-006 §7.3's, and the cheatsheet is generated from the merged table so
+  neither can lie. ADR-006 §8.2 is the promise this refusal buys: eleven chords Fathom never binds,
+  so a user's personal chord cannot be silently taken, and §8.3's merge order says what happens when
+  an override collides with a binding — `e5.4` reports it at load, it does not last-write-win.
 * **Open: `mcp.bind` beyond loopback with consent.** Accepted *with* consent for now; if `e6.4`
   finds people binding on shared hosts, the right answer may be to refuse non-loopback binds
   outright and require a reverse proxy, rather than to grow an ACL.

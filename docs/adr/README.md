@@ -11,7 +11,7 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 | 003 | The Episode: identity, segmentation, stability across rewrites | Open — blocked by 001, spike `s2` | `reco-ubw` (`e0.3`) | `0003-episodes.md` |
 | 004 | Storage, indexing and cache strategy | Accepted (graph-snapshot policy open pending `s3`) | `reco-79b` (`e0.4`) | [0004-storage.md](0004-storage.md) |
 | 005 | Harness integration contract: hook wire formats, canonical events, MCP surface, versioning | Accepted | `reco-3pu` (`e0.5`) | [0005-harness-contract.md](0005-harness-contract.md) |
-| 006 | TUI information architecture, view inventory and keymap | Open — blocked by 001 | `reco-e0e` (`e0.6`) | `0006-tui.md` |
+| 006 | TUI information architecture, view inventory and keymap | Accepted | `reco-e0e` (`e0.6`) | [0006-tui.md](0006-tui.md) |
 
 **ADR-001 is the root document.** It owns the vocabulary (including the five core nouns *episode*,
 *delta*, *attention queue*, *review ledger*, *ambient mode*), the north-star metric
@@ -19,9 +19,15 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 non-goals. A later ADR that needs a different meaning for one of those words must amend ADR-001 in the
 same change rather than redefine it locally.
 
-**002, 004 and 005 are filled** — by `reco-a54` (`e0.2`), `reco-79b` (`e0.4`) and `reco-3pu` (`e0.5`).
-003 and 006 are listed as open so the reserved numbers are visible and the files can be added by their
-owning tickets without a numbering argument.
+**002, 004, 005 and 006 are filled** — by `reco-a54` (`e0.2`), `reco-79b` (`e0.4`), `reco-3pu`
+(`e0.5`) and `reco-e0e` (`e0.6`). 003 is listed as open so the reserved number is visible and the file
+can be added by its owning ticket without a numbering argument.
+
+ADR-006 is the second ADR whose normative text is *generated*: its size table, layouts, degradation
+tables, keymap, action registry, palette dump and canonical task sequences are rendered from
+`src/recommender/tui/` by `python3 -m recommender.tui doc --check`, because that table is also the
+help overlay (`e1.5`), the palette (`e5.4`) and the docs cheatsheet (`e7.5`), and three hand-copied
+copies of a keymap is three chances for the help overlay to lie.
 
 ADR-004 is the one ADR whose normative text is partly *generated*: its layout, durability-class,
 invalidation-matrix, schema and budget tables come from `src/recommender/store/` and

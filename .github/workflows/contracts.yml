@@ -54,7 +54,28 @@ jobs:
           PYTHONPATH=src python3 -m recommender.taxonomy classes >/dev/null
           PYTHONPATH=src python3 -m recommender.taxonomy rules --class generated >/dev/null
           PYTHONPATH=src python3 -m recommender.taxonomy bench --repeat 2 | tail -1
-      - name: ADR-002 / ADR-004 / ADR-005 / e0.8 contract suites
+      - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
+        # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
+        # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap
+        # is three chances for the help overlay to lie, so CI diffs the document against the
+        # tables it is generated from — the same contract as e0.8's config reference above.
+        run: PYTHONPATH=src python3 -m recommender.tui doc --check
+      - name: "e0.6 ADR-006: measured key delivery on a real pty (the impossible-chord list)"
+        # §8.1's table is measured, not remembered. This is the step that keeps it measured:
+        # it prints the same KEYPROBE lines the ADR cites, on a real terminal, in CI.
+        run: |
+          PYTHONPATH=src python3 -m recommender.tui probe --machine | tee /tmp/keyprobe.txt
+          grep -q "pty_available=true" /tmp/keyprobe.txt || { echo "::error::no pty in this runner"; exit 1; }
+          grep -q "delivers\[ctrl_i_is_tab\]=true" /tmp/keyprobe.txt
+          grep -q "delivers\[ctrl_c_is_a_signal_not_a_byte\]=true" /tmp/keyprobe.txt
+      - name: "e0.6 ADR-006: overrides merge, palette has no holes, sequences resolve"
+        run: |
+          PYTHONPATH=src python3 -m recommender.tui conflicts --toml fathom.toml
+          PYTHONPATH=src python3 -m recommender.tui conflicts --set "global.q=app.quit"
+          PYTHONPATH=src python3 -m recommender.tui palette | tail -2
+          PYTHONPATH=src python3 -m recommender.tui press "q j <Enter> d x"
+          PYTHONPATH=src python3 -m recommender.tui keys --cheatsheet | head -3
+      - name: ADR-002 / ADR-004 / ADR-005 / e0.6 / e0.8 contract suites
         run: |
           python -m pip install --disable-pip-version-check pytest
           python3 -m pytest -q
