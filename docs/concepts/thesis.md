@@ -417,6 +417,33 @@ baseline) is an explicit ADR-004 requirement. — ADR-004 (`e0.4`), `e1.4`.
 **Tree hash / analyzer version (cache key)** — the pair that keys every cached analysis result; bumping
 an analyzer version invalidates its outputs and nothing else. — ADR-004, `e1.4`.
 
+**Durability class** — the three-way label ADR-004 puts on every stored artifact: **M must-survive**
+(a human act that cannot be recomputed: sign-offs, notes, decisions, dismissals, ratchet
+allowances), **R rebuildable** (derivable from git plus harness events; losing it costs time, never
+information), **E discardable** (presentation and coordination state; loss costs a keystroke). The
+load-bearing corollary: *nothing inside `.fathom/` is M by virtue of being there* — M is M because it
+is committed. — ADR-004 §10, `e4.6`.
+
+**Index epoch** — the generation stamp on every derived row. A row is live iff its cache key matches
+*and* its epoch is the current `index_epoch`; a rebuild fills a staging store at the new epoch and
+swaps the epoch atomically, so no reader ever sees a half-rebuilt index. Invalidation is therefore a
+lookup miss, never a delete. — ADR-004 §6.3, §9.3, `e1.4`.
+
+**Analyzer manifest** — the registration every analyzer carries: id, version, result schema version,
+cache scope kind, the `fathom.toml` keys it reads, its dependency DAG, and the source globs that
+implement it. Touching an analyzer's sources without bumping its version fails CI. — ADR-004 §5.1,
+§5.7, `e0.11`.
+
+**Invalidation matrix** — the map from cause (new commit, dirty file, analyzer bump, config change,
+schema migration, rewrite, epoch rebuild) to the cache-key field that moves and the rows that become
+unreachable. It is generated from the analyzer manifest, and its cascades are measured, not asserted.
+— ADR-004 §6, §13.2.
+
+**Store lease** — the single-writer contract: the daemon holds `flock` on `.fathom/daemon.lock` with
+a `writer_epoch` and a heartbeat; a CLI that cannot take the lease sends its mutation over the daemon
+socket instead of writing. Who writes is a fact about a lock, not about which binary ran. — ADR-004
+§7.1, `e6.3`.
+
 **Timeline / episode rail** — the chronologically ordered list of episodes (the home *view*; distinct
 from the *attention queue*, which is ordered by risk). Grouped by day or agent session, filterable, with
 the unread marker. — `e1.6`, layout ADR-006.

@@ -1,5 +1,12 @@
 __pycache__/
 *.pyc
 .venv/
-.fathom/
+# --- Fathom (ADR-004 §12): the store is disposable, the ledger is not -----------
+.fathom/*
+!.fathom/reviews/
+!.fathom/ratchet.toml
+!.fathom/LAYOUT.md
+.fathom/**/*.tmp
+.fathom/**/*.sqlite3-*
+# --- end Fathom -------------------------------------------------------------------
 tmp.txt
