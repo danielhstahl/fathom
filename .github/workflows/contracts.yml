@@ -1,9 +1,11 @@
 # Contract gates: the documents and the architecture decisions, as executable checks.
 #
 # ADR-002 §8 says the boundary lint must be *in CI*, and `tools/check_workspace.py check` fails (rule
-# C01) if the invocations below disappear from this file — that is what makes "the lint is wired up" a
-# checked fact. `e0.7` (reco-e77) may fold these steps into its three-OS matrix (`ci.yml`), but may not
-# drop a step.
+# C01) if the required invocations disappear from `.github/workflows/*.yml` — that is what makes "the
+# lint is wired up" a checked fact. `e0.7` (reco-e77) took the option this file offered: the placeholder
+# `rust` job that used to live here is now `ci.yml`'s three-OS matrix, and no step was dropped — the
+# remaining half of §8.1's list (`cargo fmt`, the two `clippy` invocations, `cargo deny check`,
+# `cargo +$MSRV`) is in `ci.yml`, this half is here.
 #
 # The `contracts` job deliberately needs no Rust toolchain: a gate that only runs after a 4-minute
 # dependency build is a gate that people skip.
@@ -79,75 +81,3 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check pytest
           python3 -m pytest -q
-
-  rust:
-    # ADR-002 §8.3. Everything here is skipped until `e0.7` scaffolds crates/ and Cargo.toml; the steps
-    # are written now so the gate is not "added later".
-    name: rust (${{ matrix.os }} · ${{ matrix.channel }})
-    needs: contracts
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        channel: [stable, msrv]
-    runs-on: ${{ matrix.os }}
-    env:
-      MSRV: "1.97.0"          # ADR-002 §2; tools/check_workspace.py lint fails if the two disagree
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - name: is the workspace scaffolded yet?
-        id: ws
-        run: |
-          if [ -f Cargo.toml ]; then echo "built=1" >> "$GITHUB_OUTPUT"; else
-            echo "::notice::no Rust workspace yet (e0.7 owns scaffolding)"; echo "built=0" >> "$GITHUB_OUTPUT"
-          fi
-      - name: install toolchain
-        if: steps.ws.outputs.built == '1'
-        run: |
-          rustup toolchain install "${MSRV}" --profile minimal --component clippy,rustfmt
-          rustup toolchain install stable --profile minimal --component clippy,rustfmt
-          if [ "${{ matrix.channel }}" = "msrv" ]; then rustup default "${MSRV}"; else rustup default stable; fi
-      - name: fmt
-        if: steps.ws.outputs.built == '1'
-        run: cargo fmt --all --check
-      - name: clippy (strict: libs and bins may not unwrap)
-        if: steps.ws.outputs.built == '1'
-        run: >
-          cargo clippy --workspace --all-features -- -D warnings
-          -D clippy::unwrap_used -D clippy::expect_used
-      - name: clippy (all targets: tests may)
-        if: steps.ws.outputs.built == '1'
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: build (stable, everything)
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'stable'
-        run: cargo build --workspace --all-features
-      - name: build the headless CI-gate binary
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'stable'
-        run: cargo build -p fathom-cli --no-default-features --features minimal
-      - name: build on the MSRV
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'msrv'
-        run: cargo +$MSRV build --workspace --no-default-features --features minimal
-      - name: test
-        if: steps.ws.outputs.built == '1'
-        run: cargo test --workspace --all-features
-      - uses: actions-rs/install@v0.1
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'stable'
-        with:
-          crate: cargo-deny
-          use-tool-cache: true
-      - name: cargo deny check
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'stable'
-        run: cargo deny check licenses advisories bans sources
-      - name: default binary links zero network-capable crates (ADR-002 §6)
-        if: steps.ws.outputs.built == '1' && matrix.channel == 'stable'
-        run: |
-          cargo tree -p fathom-cli --no-default-features --features minimal -e normal --prefix none \
-            | awk '{print $1}' | sort -u > /tmp/deps.txt
-          for banned in reqwest ureq hyper rustls native-tls openssl-sys git2 libgit2-sys axum; do
-            if grep -qx "$banned" /tmp/deps.txt; then
-              echo "::error::default build links $banned — ADR-002 R6"; exit 1
-            fi
-          done

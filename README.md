@@ -12,10 +12,28 @@ the agent works. Alongside a coding harness, it is the human's confidence system
 ticket cites, the north-star metric (time-to-confidence) and its guardrails, and the v1 non-goals.
 Everything in this repository is subordinate to that document.
 
+## Quickstart
+
+Five lines, from a clean clone, on Linux, macOS or Windows:
+
+```bash
+git clone <this repo> && cd fathom            # 1. the workspace is the repo
+cargo build -p fathom-cli                     # 2. default features are the shipped product (§6.1)
+./target/debug/fathom --version               # 3. prints the version *and* the resolved feature set
+./target/debug/fathom doctor --privacy        # 4. what is compiled in, and what would need consent
+cargo test --workspace                        # 5. the contract tests, boundary lint included
+```
+
+`cargo build --workspace` and `cargo test --workspace` are expected to succeed on a clean clone with
+nothing installed but a Rust toolchain (the pinned one is in `rust-toolchain.toml`); that promise is
+`e0.7`'s acceptance criterion and CI runs it on three operating systems. The binary answers today;
+almost none of its verbs are implemented yet, and each one tells you which ticket owns it.
+
 ## Status
 
-Pre-implementation. There is no `fathom` binary to install yet — the delivery plan and the architecture
-decision records are being written first, on purpose.
+The product is pre-implementation — no released `fathom` binary yet — but the thing it will be built in
+exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fathom --version`,
+`fathom --help` and `fathom doctor` are real. The plan and the ADRs were written first, on purpose.
 
 | Area | Where | State |
 |---|---|---|
@@ -26,7 +44,9 @@ decision records are being written first, on purpose.
 | Configuration: `fathom.toml`, five layers, schema, `config explain` | [docs/concepts/config.md](docs/concepts/config.md), `src/recommender/config/`, [schemas/fathom.schema.json](schemas/fathom.schema.json), `fathom.toml` | `e0.8` (`reco-dq3`) built: the schema and the key reference are generated and CI diffs them; this repo's own `fathom.toml` is validated in CI |
 | Path taxonomy and noise policy: what a path *is*, how noisy it is, which rule said so | [docs/concepts/paths.md](docs/concepts/paths.md), `src/recommender/taxonomy/`, `fathom.toml` | `e0.9` (`reco-5vz`) built: a 235-path decision table over 24 repo shapes, `fathom taxonomy explain <path>` prints the rule, its layer and the runners-up, and the storage fixture no longer keeps its own glob list |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
-| Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted; the cargo workspace itself is `e0.7` (`reco-e77`) |
+| Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted |
+| The cargo workspace itself: eight compiling stub crates, shared lint config, three-OS CI, `cargo-dist` release skeleton | `Cargo.toml`, `crates/`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`dist-workspace.toml`](dist-workspace.toml), [`.github/workflows/release.yml`](.github/workflows/release.yml) | `e0.7` (`reco-e77`) built: `cargo build/test --workspace` green on linux/macOS/windows, `fmt` + `clippy -D warnings` + `cargo deny` are hard gates, every PR builds a `fathom` binary per platform |
+| Release artefacts (install scripts, per-platform archives) | `dist-workspace.toml`, [`.github/workflows/release.yml`](.github/workflows/release.yml) | skeleton only. `cargo dist generate --check` runs in CI; artefacts per PR are workflow artefacts (login needed to download), the auth-free artefact is the GitHub release a tag creates; `aarch64-linux`/`aarch64-windows`/musl targets are `e7.4`'s |
 
 ## What it does, in five lines
 

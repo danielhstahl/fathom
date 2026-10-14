@@ -28,9 +28,18 @@ allow = [
   "Unicode-3.0",
   "Zlib",
   "MPL-2.0",
-  "MIT OR Apache-2.0",
+  # why: `notify` (watch mode, behind `fathom-ingest/watch`) is CC0-1.0 — a public-domain dedication,
+  # not a copyleft licence. Accepted at the same tier as Zlib/ISC. If the product owner would rather
+  # not carry a CC0 dependency at all, the alternative is pinning notify to a release under another
+  # licence or dropping `watch`; that is a product call, so it is written down rather than assumed.
+  "CC0-1.0",
 ]
-deny = ["AGPL-3.0", "GPL-3.0", "SSPL-1.0"]
+# Copyleft is refused by omission, and that omission is stated on purpose: cargo-deny 0.20 removed
+# `[licenses] deny` (EmbarkStudios/cargo-deny#611), and an allow-list already means "anything not
+# listed fails". The names are written out anyway so the refusal is somewhere a reviewer reads —
+# AGPL-3.0, GPL-3.0 and SSPL-1.0 must not appear in `allow` above, which is what rule D03 checks. A
+# dependency whose *only* licence is one of those cannot enter this workspace without a decision, and
+# `cargo deny check licenses` is what says so on every PR rather than in a wiki.
 
 [licenses.private]
 ignore = true    # why: our own crates are `publish = false` and carry the workspace licence

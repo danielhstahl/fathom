@@ -1,0 +1,30 @@
+[package]
+name = "fathom-fixtures"
+description = "Deterministic fixture construction: synthetic agent-driven repositories, hook-event streams and the golden scenario corpus. Dev-dependencies only."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+gix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+fathom-core.workspace = true
+fathom-store.workspace = true
+fathom-ingest.workspace = true
+
+# ADR-002 §4.4: this crate may not depend on `fathom-analyze`, because a fixture that computes its own
+# expectations with the code under test verifies nothing — a wrong analysis could certify itself,
+# forever. The golden expectations in `e0.10`'s corpus are hand-authored data reviewed by a human,
+# which is the only way a golden file can ever disagree with reality.
+#
+# It is a `[dev-dependencies]` crate and nothing else (R7, lint `E05`), so it is absent from every
+# release build: CI's shipped-closure check and `deny.toml`'s `[bans] deny` do not see it at all.
+[features]
+default = []
+corpus = []

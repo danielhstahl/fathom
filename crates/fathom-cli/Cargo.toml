@@ -1,0 +1,64 @@
+[package]
+name = "fathom-cli"
+description = "The fathom binary: one process, one version, one set of feature decisions, and the exit codes CI branches on."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# cargo-dist needs a home for the artefacts before there is a public remote to point at — the same
+# pattern ADR-002 §10.1 used for `license`: a documented default so `e0.7` is not blocked by an open
+# question, plus a note that it must be confirmed. Replace this with the real URL in the same PR that
+# pushes the repository: the installer scripts, the release body and `dist-manifest.json` all take their
+# base from it, so a wrong value is a broken install rather than a cosmetic one.
+repository = "https://github.com/danielstahl/fathom"
+
+[[bin]]
+name = "fathom"
+path = "src/main.rs"
+
+# `publish = false` (ADR-002 §10.1: no crates.io promises in v1) would otherwise hide this binary from
+# cargo-dist, whose entire job is publishing it. The one line that says "not published, but released".
+[package.metadata.dist]
+dist = true
+
+[lints]
+workspace = true
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+eyre.workspace = true
+color-eyre.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml_edit.workspace = true
+fathom-core.workspace = true
+fathom-store.workspace = true
+fathom-ingest.workspace = true
+fathom-analyze.workspace = true
+fathom-tui = { workspace = true, optional = true }
+fathom-mcp = { workspace = true, optional = true }
+
+# This is the only crate with default features, and the default set *is* the shipped product
+# (ADR-002 §6.1, R5): it is published in §6.2, printed by `fathom --version`, diffed in CI (`F03`) and
+# asserted by `tools/check_workspace.py shipped`. `minimal` is the headless CI-gate binary `e6.6` puts
+# inside pipelines: `--no-default-features --features minimal`.
+[features]
+default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all"]
+tui = ["dep:fathom-tui"]
+mcp = ["dep:fathom-mcp"]
+watch = ["fathom-ingest/watch"]
+sqlite-bundled = ["fathom-store/sqlite-bundled"]
+langs-all = ["fathom-analyze/langs-all"]
+minimal = []
+net-advisories = ["fathom-analyze/net-advisories"]
+net-llm = ["fathom-analyze/net-llm"]
+net-http-transport = ["fathom-mcp/net-http-transport"]
+schema-gen = ["fathom-core/json-schema"]
+
+# No `[dev-dependencies] fathom-fixtures` yet: the binary-level tests in `tests/cli.rs` drive the real
+# process and need no fixtures. `e1.12` (the MVP acceptance scenario) is the ticket that wants them here.

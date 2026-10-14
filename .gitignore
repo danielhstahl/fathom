@@ -10,3 +10,8 @@ __pycache__/
 .fathom/**/*.sqlite3-*
 # --- end Fathom -------------------------------------------------------------------
 tmp.txt
+# --- Rust (ADR-002 §2: the toolchain is pinned, the build output is not) -------------------------
+/target/
+# cargo-dist writes local artefacts here; the committed release artefacts live in GitHub releases.
+dist/
+# --- end Rust ------------------------------------------------------------------------------------

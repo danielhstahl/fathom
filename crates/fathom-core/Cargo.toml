@@ -1,0 +1,28 @@
+[package]
+name = "fathom-core"
+description = "Fathom's domain model and every cross-crate contract: ids, versioned JSON shapes, error vocabulary and exit codes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+schemars = { workspace = true, optional = true }
+
+# ADR-002 §6.2: a library crate declares `default = []`; only the binary has default features (R5).
+# The published feature names are checked by lint `F01` against `tools/workspace_model.py`.
+[features]
+default = []
+json-schema = ["dep:schemars"]
+
+# No `[dev-dependencies] fathom-fixtures` here: `fathom-fixtures` depends on this crate, and cargo
+# refuses a cycle even through dev-dependencies. ADR-002 R7 says fixtures are dev-only, not that they
+# are dev-everywhere; `fathom-analyze`, `fathom-tui`, `fathom-mcp` and `fathom-cli` carry the
+# `tests/boundary.rs` that demonstrates the rule.

@@ -1,0 +1,139 @@
+# The workspace ADR-002 §1 declares: eight crates, one dependency direction, one toolchain, one lint
+# set. Shape is not hand-written here — `python3 tools/check_workspace.py check` fails CI if this tree
+# drifts from `tools/workspace_model.py`, and `... lint` fails a crate that imports uphill (ADR-002 R1).
+#
+# What `e0.7` (reco-e77) owns and therefore what is pinned below (ADR-002 §10.1): dependency versions,
+# `Cargo.lock`, the runner matrix and the `cargo-dist` artefact set. The ADR fixed the shape; this file
+# makes it compile.
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.97.0"          # ADR-002 §2: latest stable minor minus two, measured. One number,
+                                 # inherited by every crate (`rust-version.workspace = true`); a crate
+                                 # that restates it fails lint T01.
+version = "0.1.0"
+license = "MIT OR Apache-2.0"    # ADR-002 §10.1: a governance call, shipped at the documented default
+                                 # so `e0.7` was not blocked by an open question. `cargo deny check
+                                 # licenses` is what makes replacing it expensive in the good way.
+publish = false                  # ADR-002 §10.1: no published crates in v1 — a published crate is an
+                                 # API promise on a domain model that is still moving.
+
+# ---------------------------------------------------------------------------
+# Dependencies, pinned once (ADR-002 §7: one place for the shared policy).
+#
+# Every entry below is written as an inline table (`{ version = "1" }`) rather than the `dep = "1"`
+# shorthand, for one reason: this table is *read by a program* — `tools/check_workspace.py` resolves
+# each crate's `foo.workspace = true` against it (ADR-002 §8.2) — and one form keeps the reader, the
+# greps and the comments aligned.
+#
+# `default-features = false` is the default posture here and is load-bearing, not style: cargo unifies
+# features per *build*, so one dependency's default is a workspace-wide decision made invisibly (§6.1).
+# Where a dependency ships with default features on, the reason is on the same line.
+#
+# The MSRV-aware resolver (`resolver = "3"`) keeps the lockfile MSRV-honest: a crate whose `rust-version`
+# exceeds 1.97.0 is not selected. If one ever has to be forced in, it needs an entry in
+# `[workspace.metadata.fathom.msrv-exceptions]` below with a `why`, per ADR-002 §2.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+# --- workspace members: path-only, so there is exactly one version in the tree -------------------
+fathom-core = { path = "crates/fathom-core", version = "0.1.0" }
+fathom-store = { path = "crates/fathom-store", version = "0.1.0" }
+fathom-ingest = { path = "crates/fathom-ingest", version = "0.1.0" }
+fathom-analyze = { path = "crates/fathom-analyze", version = "0.1.0" }
+fathom-tui = { path = "crates/fathom-tui", version = "0.1.0" }
+fathom-mcp = { path = "crates/fathom-mcp", version = "0.1.0" }
+fathom-fixtures = { path = "crates/fathom-fixtures", version = "0.1.0" }
+
+# --- L0/L1: vocabulary and durable state ---------------------------------------------------------
+serde = { version = "1", features = ["derive"] }   # `derive` everywhere: every cross-crate shape is
+                                                   # versioned JSON (ADR-004 §5)
+serde_json = { version = "1" }
+thiserror = { version = "2" }
+schemars = { version = "1" }                                     # made optional per-crate, behind
+                                                   # `fathom-core/json-schema` only (cargo does not
+                                                   # allow `optional` in `[workspace.dependencies]`)
+rusqlite = { version = "0.40", default-features = false }
+# `bundled` is what ADR-004 D2 needs (STRICT, `->>`, FTS5) and it is what makes the shipped binary
+# self-contained on all three OSes; `sqlite-system` exists for distro packagers and is the unbundled
+# link, which is why rusqlite itself is gated — see crates/fathom-store/Cargo.toml.
+libsqlite3-sys = { version = "0.38", features = ["bundled"] }
+rustix = { version = "1", default-features = false, features = ["fs", "process", "termios"] }
+fallible-iterator = { version = "0.3" }
+
+# --- L2: the outside door ------------------------------------------------------------------------
+# gix with a local-only feature list (lint N05): fathom reads the local object database and never
+# contacts a remote, and that claim is made in the manifest rather than in a wiki (ADR-002 §4.2).
+gix = { version = "0.89", default-features = false, features = ["max-performance-safe", "sha1"] }
+filetime = { version = "0.2" }
+notify = { version = "8" }                                       # default features: the per-OS backend; behind
+                                                   # `fathom-ingest/watch` (ADR-002 §6.5)
+
+# --- L3: analysis --------------------------------------------------------------------------------
+regex = { version = "1" }
+similar = { version = "3" }
+toml_edit = { version = "0.25" }
+globset = { version = "0.4" }
+rayon = { version = "1" }
+smallvec = { version = "1" }
+tree-sitter = { version = "0.27", default-features = false }
+tree-sitter-rust = { version = "0.24", default-features = false }
+tree-sitter-python = { version = "0.25", default-features = false }
+tree-sitter-go = { version = "0.25", default-features = false }
+tree-sitter-typescript = { version = "0.23", default-features = false }
+tree-sitter-ruby = { version = "0.23", default-features = false }
+tree-sitter-java = { version = "0.23", default-features = false }
+# The only outbound HTTP client in the tree, and it is `optional` behind a `net-*` feature (lint
+# N01/N02): a default build of fathom contains no HTTP client and no TLS stack (R6). TLS comes in
+# through ureq's own default features, so there is exactly one place to audit.
+ureq = { version = "3", default-features = false }
+
+# --- L4: surfaces --------------------------------------------------------------------------------
+ratatui = { version = "0.30" }
+crossterm = { version = "0.29" }
+unicode-width = { version = "0.2" }
+unicode-segmentation = { version = "1" }
+petgraph = { version = "0.8", default-features = false }
+rmcp = { version = "3", default-features = false, features = ["transport-io"] }
+# tokio is allowed without a `net-*` feature (the MCP SDK needs an executor) but only with a feature
+# list that cannot open a socket — `net` in particular is what lint N04 exists to keep out (ADR-002
+# §6.3). `io-std` is pulled transitively by `rmcp/transport-io` and is on the allow-list.
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "sync", "time", "io-util", "io-std"] }
+
+# --- L5: the composition root --------------------------------------------------------------------
+clap = { version = "4", features = ["derive"] }    # default features on: this is the human edge, and
+                                                   # clap's own colour/help/error text is the product's
+                                                   # first words (ADR-005 §6)
+clap_complete = { version = "4" }
+eyre = { version = "0.6" }                                       # only `fathom-cli` may name this crate (lint W5)
+color-eyre = { version = "0.6" }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3" }
+
+# A dependency whose `rust-version` exceeds the MSRV may not arrive silently (ADR-002 §2). The table is
+# empty today: `cargo +1.97.0 build --workspace --all-features` resolves with no carve-outs, which is
+# the sentence this table exists to keep true.
+[workspace.metadata.fathom.msrv-exceptions]
+
+# The shared lint floor (ADR-002 §7.5). Every crate carries `[lints] workspace = true`; lint A02 fails
+# one that does not, because omitting it is how a crate opts out of the policy by accident. A crate may
+# tighten this set in its own manifest and may not loosen it.
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+undocumented_unsafe_blocks = "deny"
+dbg_macro = "deny"
+print_stdout = "warn"            # the binary writes through `crate::output`, so a stray `println!`
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+                                 # from a library module is visible in the diff and in CI

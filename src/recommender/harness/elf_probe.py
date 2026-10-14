@@ -408,11 +408,34 @@ def _float_abi(libc_machine: str, host_machine: str) -> str:
     return "hard"
 
 
+# Directories whose contents are build output rather than source.
+#
+# ADR-005 §10 asks whether *the contract has a compile step* — a question about what is committed and
+# imported. It is not a question about whatever a toolchain dropped next to the sources, which is why the
+# scan below skips these names. `target` is here because `e0.7` (`reco-e77`) put the cargo workspace in
+# the same tree as this prototype: `cargo build` writes proc-macro `.so` files into `target/debug/deps/`,
+# and a probe that counted them declared "compiled extensions present in tree" about a tree with no
+# compile step whatsoever. Ignored build output is not a source-tree fact; the names are the ones the
+# toolchains this repository actually uses.
+_BUILD_OUTPUT_DIRS = frozenset({".git", "target", "node_modules", ".venv", "venv", "build", "dist"})
+
+
+def _is_build_output(path: Path, root: Path) -> bool:
+    text = str(path)
+    if "site-packages" in text:
+        return True
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        return False
+    return any(part in _BUILD_OUTPUT_DIRS for part in parts)
+
+
 def _compiler_independence() -> Dict[str, Any]:
     """Assert the contract has no compile step (ADR-005 §10 ."""
     tools = [t for t in ("gcc", "cc", "clang", "make") if _which(t)]
-    compiled = [str(p) for p in Path(__file__).resolve().parent.parent.parent.parent.glob("**/*.so")
-                if "site-packages" not in str(p)]
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    compiled = [str(p) for p in root.glob("**/*.so") if not _is_build_output(p, root)]
     return {"tools_found": tools, "compiled_extensions_in_tree": compiled,
             "required": False, "ok": not compiled}
 

@@ -1,0 +1,5 @@
+# Local builds use the MSRV, so a dependency that needs newer Rust is a local discovery and not a
+# user's bug report. CI additionally builds on `stable` and `beta` (ADR-002 §2, §8).
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]

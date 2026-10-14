@@ -1,0 +1,54 @@
+[package]
+name = "fathom-analyze"
+description = "Every Fathom analysis: taxonomy, structure, dependencies, graph, risk, the attention queue, and the `insight` facade every surface reads through."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+regex.workspace = true
+similar.workspace = true
+toml_edit.workspace = true
+globset.workspace = true
+rayon.workspace = true
+smallvec.workspace = true
+fathom-core.workspace = true
+fathom-store.workspace = true
+fathom-ingest.workspace = true
+tree-sitter = { workspace = true, optional = true }
+tree-sitter-rust = { workspace = true, optional = true }
+tree-sitter-python = { workspace = true, optional = true }
+tree-sitter-go = { workspace = true, optional = true }
+tree-sitter-typescript = { workspace = true, optional = true }
+tree-sitter-ruby = { workspace = true, optional = true }
+tree-sitter-java = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+
+# The published list is ADR-002 §6.2 and lint `F01` fails an addition or an omission (R11).
+#
+# Each `lang-*` is its own feature because each is a C build, and the six together are the difference
+# between a thirty-second and a four-minute laptop build (§6.5). `net-*` is the only prefix that may
+# enable an outbound client (lint `N02`), and a default build links none (lint `N03`, checked by CI's
+# `cargo tree` job and by `tools/check_workspace.py shipped`).
+[features]
+default = []
+lang-rust = ["dep:tree-sitter", "dep:tree-sitter-rust"]
+lang-python = ["dep:tree-sitter", "dep:tree-sitter-python"]
+lang-go = ["dep:tree-sitter", "dep:tree-sitter-go"]
+lang-typescript = ["dep:tree-sitter", "dep:tree-sitter-typescript"]
+lang-ruby = ["dep:tree-sitter", "dep:tree-sitter-ruby"]
+lang-java = ["dep:tree-sitter", "dep:tree-sitter-java"]
+langs-all = ["lang-rust", "lang-python", "lang-go", "lang-typescript", "lang-ruby", "lang-java"]
+net-advisories = ["dep:ureq"]
+net-llm = ["dep:ureq"]
+
+[dev-dependencies]
+fathom-fixtures.workspace = true

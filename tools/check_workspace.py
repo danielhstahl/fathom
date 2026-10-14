@@ -812,9 +812,20 @@ def lint_deny_toml(root: pathlib.Path) -> list[Problem]:
                      - allow)
     if missing:
         problems.append(Problem("D02", "deny.toml", "[licenses] allow is missing %s" % ", ".join(missing)))
+    # cargo-deny 0.20 removed `[licenses] deny` (EmbarkStudios/cargo-deny#611), so an allow-list that
+    # omits a copyleft licence *is* the refusal. The rule moved with the tool instead of continuing to
+    # ask for a key the tool rejects: the licence must be absent from `allow` **and** named somewhere in
+    # the file, so the decision is written down rather than implied. Recorded in ADR-002 §10.3 by
+    # `e0.7`, which is the ticket that pinned a real cargo-deny and ran it.
+    deny_text = path.read_text()
     for copyleft in ("AGPL-3.0", "GPL-3.0"):
-        if copyleft not in set(licences.get("deny", [])):
-            problems.append(Problem("D03", "deny.toml", "[licenses] deny must include %s" % copyleft))
+        if copyleft in allow:
+            problems.append(Problem("D03", "deny.toml", "`%s` is in [licenses] allow: copyleft is "
+                                    "refused by this project (ADR-002 §8.4)" % copyleft))
+        elif copyleft not in set(licences.get("deny", [])) and copyleft not in deny_text:
+            problems.append(Problem("D03", "deny.toml", "`%s` is nowhere in this file: an allow-list "
+                                    "refuses a licence by omission, and an omission a reviewer cannot "
+                                    "find is the same as one nobody made" % copyleft))
     if "confidence-threshold" not in licences:
         problems.append(Problem("D04", "deny.toml", "[licenses] confidence-threshold missing"))
     if data.get("advisories", {}).get("yanked") in (False, "warn"):

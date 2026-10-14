@@ -1,0 +1,63 @@
+# The release skeleton: `cargo-dist`'s workspace config. ADR-002 §10.1 hands the artefact set to `e0.7`;
+# `e7.4`/`reco-3q4` extends it once there is a product to ship.
+#
+# Kept honest by the tool that reads it: `cargo dist generate` writes `.github/workflows/release.yml`
+# from this file, and CI runs `cargo dist generate --check`, so a hand-edited workflow — the usual way a
+# release pipeline and its config stop agreeing — fails a build instead of surprising whoever tags.
+#
+# "One binary" (ADR-002 §4.3) means exactly one executable here: `fathom`, built from `fathom-cli` with
+# the published default feature set (`tui`, `mcp`, `watch`, `sqlite-bundled`, `langs-all`). The artefact
+# *is* the shipped product, which is why §6.1 makes the binary the only crate with default features —
+# this file is the second place that decision has to be right, and `crates/fathom-cli/Cargo.toml` has to
+# say `[package.metadata.dist] dist = true` because `publish = false` would otherwise hide the binary
+# from a tool whose whole job is publishing.
+#
+# Per PR: `pr-run-mode = "upload"` builds every target and uploads them as workflow artefacts. One
+# honesty note, because the ticket's criterion said "downloadable without auth": GitHub *artefacts* need a
+# signed-in human, and no cargo-dist setting changes that. The auth-free artefact is the GitHub **release**
+# a tag produces — public assets, no login, plus the `install.sh` / `install.ps1` the installers below
+# generate. Per-PR links that need no login need an object store this project does not have yet, so that
+# half of the criterion is recorded as infrastructure `e7.4` owns rather than quietly narrowed.
+#
+# The targets are the four a stock GitHub runner compiles natively. `aarch64-unknown-linux-gnu`,
+# `aarch64-pc-windows-msvc` and a static `x86_64-unknown-linux-musl` are deliberately absent: the six
+# tree-sitter grammars and the bundled SQLite have to be C-compiled per target, so those three need a
+# cross-toolchain (zigbuild, or a native arm64 runner) — `e7.4`'s work, not a line in a config file.
+# `deny.toml`'s `[graph] targets` does list all six triples the ADR cares about, so dependency and
+# licence resolution is checked across the whole platform set either way.
+#
+# Runner labels are not written here: `dist` computes them at plan time. Measured at landing with
+# `cargo dist plan --output-format=json` (`ci.github.artifacts_matrix`), the four targets map to
+# `ubuntu-22.04`, `windows-2022`, `macos-14` and `macos-15-intel` — each building its own triple
+# natively, which is the property that makes the per-PR job pass rather than cross-compile-and-hope. If
+# GitHub retires an Intel macOS runner, dropping `x86_64-apple-darwin` from the list below is the whole
+# fix; `cargo dist generate --check` (a CI job) then forces `release.yml` to be regenerated in the same
+# PR that changes it.
+
+[workspace]
+members = ["cargo:."]
+
+# Config for 'dist'
+[dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.33.0"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app: `curl -fsSL <install.sh> | sh`, and the PowerShell equivalent
+# for the Windows users who should not have to reach for a shell.
+installers = ["shell", "powershell"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+]
+# Every PR gets a build of every target, uploaded as workflow artefacts, before it merges. This is the
+# half of the release criterion that is expressible without infrastructure.
+pr-run-mode = "upload"
+# A release that makes itself "latest" before a human has looked at it is how a scaffold becomes
+# somebody's default install. Tagging announces; the first real release stays a decision.
+dispatch-releases = true
+# The source tarball is the artefact distros want, and it costs nothing to produce.
+source-tarball = true

@@ -1,0 +1,37 @@
+[package]
+name = "fathom-mcp"
+description = "Fathom's MCP server: the tool surface, capability gating, approval tokens and the shared review memory an agent writes back through."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+rmcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+fathom-core.workspace = true
+# ADR-002 §5.2/§5.3 again: no store, no ingest, and `fathom-analyze` only through `insight`/`export`.
+# The agent and the human must be looking at one structure (ADR-001 §7.10), which is the entire reason
+# this crate is a library in the same binary as the TUI rather than a second artefact (§4.3).
+fathom-analyze.workspace = true
+
+# `net-http-transport` is a *marker* feature at the scaffold, and the reason is worth three lines:
+# every HTTP/SSE server crate in this ecosystem links `hyper`, and `deny.toml` bans `hyper`
+# unconditionally because cargo-deny's bans are not feature-aware (ADR-002 §8.4). Choosing a server
+# crate now would either break that ban on day one or pre-empt the ban that exists to keep a listener
+# out of a default build. `e6.4` (reco-p3i) owns the choice and, if it picks an axum-shaped stack, owns
+# adding the scoped `skip` entry with a `# why:` that §8.4 demands. Recorded in
+# docs/adr/0002-workspace.md §10.3 rather than decided silently here.
+[features]
+default = []
+net-http-transport = []
+
+[dev-dependencies]
+fathom-fixtures.workspace = true

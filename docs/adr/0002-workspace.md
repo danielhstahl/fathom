@@ -771,6 +771,29 @@ off can never answer a lookup made with it on. **Filed** as a child of Epic 1 (`
 feature set* — and `reco-pef` (`e0.11`) owns the gate that checks version bumps. The requirement is
 normative here the moment this ADR is accepted; the ticket only implements it.
 
+### 10.3 What `e0.7` decided when the shape was compiled
+
+§10.1 handed `e0.7` the versions, the lockfile, the runner matrix and the `cargo-dist` artefacts, and an
+ADR that had never been compiled found four things it had not anticipated. Each is recorded here rather
+than slipped into a manifest, because the point of this document is that the next person reads the
+consequences in one place.
+
+| Decision | Why it could not be made as written | What it costs |
+|---|---|---|
+| **`rusqlite` is optional in `fathom-store`**, gated by the two published SQLite-provenance features, instead of non-optional as §3's table lists it. | A build with *neither* `sqlite-bundled` nor `sqlite-system` would have to link a system `libsqlite3`. This ticket's own acceptance criterion (`cargo build --workspace` on a clean clone) and §8.3's `--no-default-features --features minimal` job on `*-pc-windows-msvc` are exactly that build, and no such library is there. | The shipped binary is unaffected — it turns `sqlite-bundled` on, which is what §6.2 publishes. What changes is the feature-less developer build, which now satisfies §6.1's "a library built with no features is a valid, testable configuration" literally: it compiles with no C toolchain at all. `e1.4` opens a database only behind one of the two features anyway. |
+| **`net-http-transport` is a marker feature** with no server crate behind it. | Every streamable-HTTP/SSE server crate in this ecosystem links `hyper`, and `deny.toml`'s `[bans] deny` bans `hyper` unconditionally — cargo-deny bans are not feature-aware (§8.4), so the ban and the feature cannot both exist yet. Choosing a server now would either break the ban on day one or pre-empt it. | §6.2's *name* is published and gated as specified; the listener arrives with `e6.4`, which also owns
+either a scoped, `# why:`-signed `skip` in `deny.toml` or a hyper-free server. The feature compiles; it
+just compiles nothing yet, and says so in the manifest. |
+| **`[licenses] deny` is gone from `deny.toml`**, and rule `D03` moved with it. | cargo-deny 0.20 removed the key (EmbarkStudios/cargo-deny#611). The ADR's §8.4 text asks for a signature on every suppression, which survives; the specific key it named does not. | An allow-list already refuses anything unlisted. `D03` now requires that `AGPL-3.0`/`GPL-3.0` are absent from `allow` **and** named in the file, so the refusal is still written where a reviewer reads it instead of being an omission nobody can find. |
+| **`package.repository` is a placeholder** (`github.com/danielstahl/fathom`). | `cargo dist generate` refuses to produce a workflow without a repository URL, and the repository had no remote when this landed. Same pattern §10.1 used for `license`: a documented default so the ticket is not blocked by a governance question. | Whoever pushes the public remote replaces it in the same PR. The installers and `dist-manifest.json` derive their download URLs from it, so a stale value is a broken install, not a cosmetic bug — which is why it is named here and in `CHANGELOG.md`, not only in a comment. |
+
+| **The ADR-005 FFI probe ignores build-output directories.** | The probe asserts the Python contract has no compile step by globbing the repository for `.so` files. The first `cargo build` in the same tree wrote proc-macro `.so` files into `target/debug/deps/`, and `python3 -m pytest -q` — the suite that gates ADR-005 §10 — started failing a tree that had merely been built. | A one-line scope reduction in `src/recommender/harness/elf_probe.py`: ignored build output is not a source-tree fact. A committed extension anywhere else is still a hard failure, and `tests/test_harness_contract.py` is now green in a built tree, which it could not be before `crates/` existed. |
+
+Two smaller things learned by measuring rather than remembering, in the style of §13.1: `gix` 0.89 needs a
+hash feature (`sha1`) in its local-only list or `gix-hash` does not compile at all, and `notify` is
+`CC0-1.0`, which had to be added to the licence allow-list (with a `# why:` next to it) rather than
+silently accepted. Both are in `Cargo.toml` and `deny.toml` with the reason attached.
+
 ---
 
 ## 11. Every ticket gets a crate

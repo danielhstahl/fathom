@@ -1,0 +1,38 @@
+[package]
+name = "fathom-store"
+description = "Fathom's SQLite index, cache and blob store: schema and migrations, analyzer manifest and cache keys, retention and the writer lease."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+rustix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+fallible-iterator.workspace = true
+fathom-core.workspace = true
+rusqlite = { workspace = true, optional = true }
+libsqlite3-sys = { workspace = true, optional = true }
+
+# ADR-002 §6.2 publishes these three feature names; lint `F01` fails a manifest that adds or drops one,
+# and `F05` keeps `sqlite-bundled` and `sqlite-system` from being enabled *by the same feature*.
+#
+# One deviation from §3's dependency table, made deliberately by `e0.7` and recorded in
+# docs/adr/0002-workspace.md §10.3: `rusqlite` is gated rather than non-optional. A build with neither
+# SQLite feature would otherwise have to link a *system* libsqlite3, which is absent on
+# `aarch64/x86_64-pc-windows-msvc` runners and on most distro toolchains — and §8.3's own
+# `--no-default-features --features minimal` job and this ticket's "clean clone builds" criterion both
+# ask for exactly that build. Gating it makes §6.1 true instead of aspirational: a library built with
+# no features is a valid, testable configuration, and here it is also one that needs no C toolchain.
+# The shipped binary turns `sqlite-bundled` on, exactly as published, so nothing a user installs changes.
+[features]
+default = []
+sqlite-bundled = ["dep:rusqlite", "dep:libsqlite3-sys"]
+sqlite-system = ["dep:rusqlite"]
+mmap = []

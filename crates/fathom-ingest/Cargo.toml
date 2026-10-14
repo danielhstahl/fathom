@@ -1,0 +1,30 @@
+[package]
+name = "fathom-ingest"
+description = "Getting facts into Fathom: git objects through gix, commit normalisation, episode segmentation, hook events and watch mode."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+gix.workspace = true
+filetime.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+fathom-core.workspace = true
+fathom-store.workspace = true
+notify = { workspace = true, optional = true }
+
+# ADR-002 §6.2. `watch` and `watch-poll` are separate because inotify lies on NFS (ADR-004 §7.8) and
+# the polling backend is a different dependency cost, not a different boolean. `mmap-index` forwards to
+# the one gated `unsafe` site in the workspace.
+[features]
+default = []
+watch = ["dep:notify"]
+watch-poll = ["dep:notify"]
+mmap-index = ["fathom-store/mmap"]

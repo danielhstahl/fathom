@@ -1,0 +1,34 @@
+[package]
+name = "fathom-tui"
+description = "Fathom's terminal application: event loop, focus model, keymap, responsive layout and the view inventory."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+ratatui.workspace = true
+crossterm.workspace = true
+unicode-width.workspace = true
+unicode-segmentation.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+fathom-core.workspace = true
+# ADR-002 §5.2: the TUI has no `fathom-store` and no `fathom-ingest` edge, even though the layering
+# would allow both. Everything it draws comes from the `insight` facade (lint `M02`, R2).
+fathom-analyze.workspace = true
+petgraph = { workspace = true, optional = true }
+
+# ADR-002 §6.2: `default = []` for every library (R5); `graph-layout` is the force-directed map, which
+# is a `petgraph` build and therefore optional (§6.5).
+[features]
+default = []
+graph-layout = ["dep:petgraph"]
+
+[dev-dependencies]
+fathom-fixtures.workspace = true

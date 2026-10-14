@@ -1,0 +1,195 @@
+# The ADR-002 §8.3 CI: build and test on linux, macOS and windows for every PR, with `fmt` and `clippy`
+# as hard failures, cargo-deny over the lockfile, and the MSRV floor built on the floor itself.
+#
+# Which ADR-002 rules this file is the enforcement of:
+#
+#   * §8.1's required-step list is a *checked* list: `tools/check_workspace.py check` (rule `C01`) fails
+#     if any of these invocations disappears from `.github/workflows/*.yml`, and rule `T07` fails if the
+#     `MSRV` pin below disagrees with the number in `tools/workspace_model.py`. One number, in the model.
+#   * §2's supported window: `stable` and the MSRV both build; `beta` runs and is allowed to fail, so a
+#     regression is known before it ships rather than in the week after.
+#   * §6.1: a feature-less library build and the headless `minimal` binary are valid configurations, so
+#     they are built and tested, on three operating systems, rather than assumed.
+#
+# `e0.7` (reco-e77) folded `contracts.yml`'s placeholder `rust` job into this matrix, as that file's own
+# comment allowed; no step was dropped — `contracts.yml` still runs the docs/workspace gates, this file
+# runs the Rust ones.
+#
+# One trap worth naming, because it silently neuters a matrix: `rust-toolchain.toml` pins the MSRV for
+# local builds (ADR-002 §2), and a toolchain file outranks `rustup default`. Every leg below therefore
+# states its toolchain through `RUSTUP_TOOLCHAIN`, which outranks the file. Without that, all three
+# operating systems would quietly test one compiler.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# ADR-002 §8: everything here is a gate, so nothing here needs write access. `cargo-dist` asks for its
+# own, narrower permissions in `release.yml`.
+permissions:
+  contents: read
+
+env:
+  # ADR-002 §2. `tools/check_workspace.py check` fails (`T07`) if this and the model ever disagree.
+  MSRV: "1.97.0"
+  CARGO_TERM_COLOR: always
+  # Shared between the vendored C builds (bundled SQLite, six tree-sitter grammars) and the cache;
+  # incremental state is not worth its disk cost on a runner that builds once.
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The two hard style gates, on one runner: they cost a minute and save a re-run of the whole matrix.
+  # ---------------------------------------------------------------------------
+  fmt:
+    name: fmt (rustfmt)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo fmt --all --check
+        # A hard failure, per §8.3 and the §2 table. Formatting stops being a matter of opinion the day
+        # it is not a matter of conversation.
+        run: cargo fmt --all --check
+
+  clippy:
+    name: clippy (strict)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      # The shipped code may not unwrap; tests may. Two invocations, in this order, because the strict
+      # one is what would otherwise get lost under `--all-targets` (§8.3).
+      - name: clippy (libs and bins: unwrap_used and expect_used are errors)
+        run: >
+          cargo clippy --workspace --all-features -- -D warnings
+          -D clippy::unwrap_used -D clippy::expect_used
+      - name: clippy (all targets: tests may unwrap)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  deny:
+    name: cargo-deny (licences, advisories, bans, sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses advisories bans sources
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The same discipline in Python (§8.4): a `deny.toml` whose suppressions are unsigned fails even on
+      # a day the advisory database fetch is having trouble.
+      - name: deny.toml's own rules (D01-D08)
+        run: python3 tools/check_workspace.py lint
+
+  # The release skeleton is generated from `dist-workspace.toml`; this job is what stops the generated
+  # workflow and the config it came from from drifting apart, which is the same argument §8.4 makes about
+  # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables.
+  release-skeleton:
+    name: release skeleton matches dist-workspace.toml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: axodotdev/cargo-dist/action@v1
+        with:
+          command: generate
+          arguments: --check
+
+  # ---------------------------------------------------------------------------
+  # The matrix: three operating systems × {stable, MSRV}, per §8.3.
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: build+test (${{ matrix.os }} · ${{ matrix.channel }})
+    needs: [fmt, clippy]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        channel: [stable, msrv]
+        include:
+          - channel: stable
+            toolchain: stable
+          - channel: msrv
+            toolchain: "1.97.0"
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: install the pinned toolchain
+        run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component clippy,rustfmt
+      - name: toolchain
+        run: rustc -vV && cargo --version
+
+      # Everything, with every published feature, on stable: this is the build the artefacts come from.
+      - name: build (everything, all features)
+        if: matrix.channel == 'stable'
+        run: cargo build --workspace --all-features
+
+      - name: test (everything, all features)
+        if: matrix.channel == 'stable'
+        run: cargo test --workspace --all-features
+
+      # The headless CI-gate binary `e6.6` puts inside pipelines (§6.1), built on both channels: a
+      # TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal.
+      - name: build the headless `minimal` binary
+        run: cargo build -p fathom-cli --no-default-features --features minimal
+
+      - name: test the headless configuration
+        run: cargo test -p fathom-cli --no-default-features --features minimal
+
+      # The MSRV floor, on the floor (§2): "a dependency that needs newer Rust is discovered locally, not
+      # by a user" — and locally means here, for the ones who do not read this file.
+      - name: build on the declared MSRV
+        if: matrix.channel == 'msrv'
+        run: cargo +$MSRV build --workspace --no-default-features --features minimal
+
+      - name: the binary answers, on every platform
+        run: |
+          cargo build -p fathom-cli --no-default-features --features minimal
+          ./target/debug/fathom --version
+          ./target/debug/fathom --help
+          ./target/debug/fathom doctor --privacy
+
+      # §6: the default build links no network-capable crate. A list, not a shrug — if one appears the job
+      # says which, and `tools/check_workspace.py shipped` prints the same closure from the model.
+      - name: default binary links zero network-capable crates
+        if: matrix.channel == 'stable'
+        run: |
+          cargo tree -p fathom-cli --no-default-features --features minimal -e normal --prefix none \
+            | awk '{print $1}' | sort -u > /tmp/deps.txt
+          for banned in reqwest ureq hyper rustls native-tls openssl-sys git2 libgit2-sys axum; do
+            if grep -qx "$banned" /tmp/deps.txt; then
+              echo "::error::default build links $banned — ADR-002 R6"; exit 1
+            fi
+          done
+
+  # §2's third channel: known before it ships, rather than in the week after.
+  beta:
+    name: beta (allowed to fail)
+    needs: [fmt, clippy]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: beta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: install beta
+        run: rustup toolchain install beta --profile minimal
+      - name: build (everything, on beta)
+        run: cargo build --workspace --all-features
+      - name: test (everything, on beta)
+        run: cargo test --workspace --all-features

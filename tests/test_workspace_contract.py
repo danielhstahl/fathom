@@ -6,11 +6,13 @@ clause of that document with no test here is a clause that will drift. Run from 
 
     python3 -m pytest -q
 
-The suite has three halves. The model checks prove the ADR's tables and rules are internally consistent
+The suite has four halves. The model checks prove the ADR's tables and rules are internally consistent
 and actually wired into CI. The scaffold checks prove the workspace ADR-002 declares is a valid shape.
 The mutation checks are the point: each one breaks exactly one rule in a generated copy of the
 workspace and asserts the boundary lint fails with the rule id the ADR names — because a lint nobody has
-seen fail is a lint that is not checking anything.
+seen fail is a lint that is not checking anything. The fourth half runs against the workspace that
+`e0.7` actually landed in `crates/`: the Rust source against the model, in the direction the first three
+halves cannot check (they read the ADR and the model, and were written before any `.rs` file existed).
 
 Everything is stdlib-only, on purpose: a contract check that needs `cargo`, a registry fetch or a build
 step is a check that gets skipped, and skipped is how a boundary rots.
@@ -483,3 +485,131 @@ def test_scaffold_refuses_a_non_empty_directory(tmp_path):
     (tmp_path / "something").write_text("x")
     with pytest.raises(SystemExit):
         CW.scaffold(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# 6. the workspace `e0.7` landed: the Rust source against the model
+# ---------------------------------------------------------------------------
+#
+# Everything above this line reads the ADR and the model, because it was written before `crates/`
+# existed. These checks read the compiled workspace, and they are the reason the model is published into
+# Rust *constants* (`fathom_core::exit`, `fathom_core::privacy`) instead of being paraphrased by hand:
+# a table with two copyists drifts, and the drift shows up as a binary that exits 1 where a script was
+# promised 4.
+#
+# Stdlib-only, again on purpose: no `cargo`, no build, no registry fetch. A regex over a source file is
+# weaker than a macro that generates the enum from the model, and it is the strongest check that runs in
+# the ten seconds a reviewer has.
+
+
+EXIT_RS = ROOT / "crates" / "fathom-core" / "src" / "exit.rs"
+PRIVACY_RS = ROOT / "crates" / "fathom-core" / "src" / "privacy.rs"
+CARGO_LOCK = ROOT / "Cargo.lock"
+
+
+def test_the_landed_workspace_is_here():
+    """`e0.7`'s deliverable exists, in the layout §2.1 promises: root manifest, one dir per crate."""
+    assert (ROOT / "Cargo.toml").is_file()
+    assert (ROOT / "Cargo.lock").is_file()
+    assert (ROOT / "rust-toolchain.toml").is_file()
+    assert (ROOT / "rustfmt.toml").is_file()
+    for crate in M.CRATES:
+        assert (ROOT / "crates" / crate.name / "Cargo.toml").is_file(), f"{crate.name} has no manifest"
+        assert (ROOT / "crates" / crate.name / "src" / "lib.rs").is_file() or (
+            ROOT / "crates" / crate.name / "src" / "main.rs"
+        ).is_file(), f"{crate.name} has no crate root"
+
+
+def test_the_landed_root_manifest_matches_the_model():
+    """§2's window and §10.1's version decisions, as written into the real root manifest."""
+    text = (ROOT / "Cargo.toml").read_text()
+    assert f'resolver = "{M.RESOLVER}"' in text
+    assert f'edition = "{M.EDITION}"' in text
+    assert f'rust-version = "{M.MSRV}"' in text
+    assert 'members = ["crates/*"]' in text
+    # Every external crate the shipped default closure needs is pinned here (§10.1: versions are e0.7's
+    # decision, and a decision recorded only in a lockfile is a decision nobody can review).
+    shipped = M.closure_external_crates(M.cli_shipped_default_closure())
+    for dep in sorted(n for n in shipped if not n.startswith("fathom-")):
+        assert re.search(rf'^{re.escape(dep)} = ', text, re.M), f"{dep} is not pinned in the root manifest"
+    # And the toolchain file repeats the floor, because a declared MSRV nobody installs is a wish.
+    assert M.MSRV in (ROOT / "rust-toolchain.toml").read_text()
+
+
+def test_the_rust_exit_codes_are_the_models_exit_codes():
+    """§7.3's table, in Rust, without a copyist.
+
+    Three directions, because a one-way check catches half the drifts: every variant exists with the
+    model's number, the model's name string is the Rust `name()` string, and — the direction a hand-edit
+    most often breaks — Rust has no variant the model never declared.
+    """
+    assert EXIT_RS.is_file(), f"{EXIT_RS} is missing: e0.7 did not land the exit-code table"
+    text = EXIT_RS.read_text()
+    for code, name, meaning in M.EXIT_CODES:
+        # Rust spells a variant `NotARepository`; the contract spells it `NOT_A_REPOSITORY`. Both forms
+        # have to line up, because `name()` is the string a `--json` consumer switches on.
+        variant = "".join(part.title() for part in name.split("_"))
+        assert re.search(rf"\b{variant} = {code},", text), f"{variant} = {code} is not in exit.rs"
+        assert f'"{name}"' in text, f'exit.rs name() has no "{name}"'
+        assert meaning in text, f"exit.rs lost the meaning {meaning!r}"
+    in_rust = {
+        re.sub(r"(?<!^)(?=[A-Z])", "_", found).upper()
+        for found in re.findall(r"^\s{4}([A-Z][A-Za-z0-9]+) = \d+,", text, re.M)
+    }
+    assert in_rust == {row[1] for row in M.EXIT_CODES}, "exit.rs has a variant the model never declared"
+
+
+def test_the_rust_privacy_table_is_the_models_consent_table():
+    """§6.2's consent keys, in Rust, without a copyist.
+
+    The ADR's argument for publishing the table as a Rust constant instead of prose is that the runtime
+    gate, `fathom --version` and `fathom doctor --privacy` cannot then disagree with it. This is the
+    third pin on the same three rows, and the only one that reads the Rust.
+    """
+    assert PRIVACY_RS.is_file(), f"{PRIVACY_RS} is missing: e0.7 did not land the consent table"
+    text = PRIVACY_RS.read_text()
+    owners = {(crate.name, feat.name) for crate, feat in M.net_features()}
+    gated = sorted(
+        (name, crate) for (crate, name) in owners
+        if crate != M.BIN_CRATE and crate != M.FIXTURES_CRATE
+    )
+    assert gated, "the model declares no network features, which contradicts §6.2"
+    for feature, owner in gated:
+        key = M.NETWORK_CONSENT_KEYS[feature]
+        for needle in (f'feature: "{feature}"', f'owner: "{owner}"', f'"{key}"'):
+            assert needle in text, f"{needle} is missing from privacy.rs"
+    # Every key is in the published `privacy.*` namespace, and the table holds nothing else.
+    assert len(M.NETWORK_CONSENT_KEYS) == 3
+    assert sorted(re.findall(r'consent_key: "([^"]+)"', text)) == sorted(M.NETWORK_CONSENT_KEYS.values())
+
+
+def test_the_lockfile_names_every_crate_and_none_of_the_banned_crates():
+    """§8.4's bans, checked where they actually matter: the resolved graph, not the declared one.
+
+    A `[bans] deny` entry states intent; the lockfile states what will be compiled. cargo-deny is the
+    real gate (it runs in CI, and `deny.toml`'s own rules are `D01`–`D08`); this is the half-second
+    stdlib version that catches the cheap version of the mistake.
+    """
+    assert CARGO_LOCK.is_file(), "Cargo.lock must be committed for a binary workspace (§10.1)"
+    lock = CARGO_LOCK.read_text()
+    for crate in M.CRATES:
+        assert f'name = "{crate.name}"' in lock, f"{crate.name} is not in the lockfile"
+    deny = CW.read_toml(ROOT / "deny.toml")
+    banned = {
+        entry.get("name") or entry.get("crate")
+        for entry in deny.get("bans", {}).get("deny", [])
+    }
+    assert banned, "deny.toml bans nothing, which is not what §8.4 says"
+    for crate in sorted(banned):
+        assert f'name = "{crate}"' not in lock, f"{crate} is in the lockfile and banned by §8.4"
+
+
+def test_ci_builds_on_all_three_operating_systems_and_both_channels():
+    """§8.3's matrix, as a matrix — `C01` proves the steps exist, this proves they run in triplicate."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    for runner in ("ubuntu-latest", "macos-latest", "windows-latest"):
+        assert runner in ci, f"§8.3: CI must build on {runner}"
+    for channel in ("stable", "msrv", "beta"):
+        assert channel in ci, f"§2: CI must cover the {channel} channel"
+    # A matrix that silently runs one compiler on three OSes would pass every other check in this file.
+    assert "RUSTUP_TOOLCHAIN" in ci, "the toolchain file outranks rustup default; the matrix must override it"
