@@ -685,6 +685,18 @@ def test_every_analyzer_declared_key_resolves_in_the_config():
     for analyzer in ANALYZERS:
         for declared in analyzer.config_keys:
             resolved = _get_path(resolve().values, declared)
+            if resolved == {"absent": declared} and declared.endswith("."):
+                # A prefix key over an *open map nobody populated* is legitimately absent:
+                # `taxonomy.classes.` (e0.9) has no defaults, and `flatten` drops empty
+                # tables. The digest is still correct, because §5.5's absent sentinel moves
+                # the moment the first entry appears. What must not happen is a *typo*, so
+                # the prefix is checked against the key spec instead of against the values.
+                prefix = declared.rstrip(".")
+                assert any(path == prefix or path.startswith(prefix + ".")
+                           for path in S.KEYS), \
+                    "%s declares %s, which is neither provided nor a declared open map" % (
+                        analyzer.id, declared)
+                continue
             assert resolved != {"absent": declared}, \
                 "%s declares %s, which this config does not provide" % (analyzer.id, declared)
 
@@ -719,7 +731,10 @@ def test_digests_are_identical_to_the_stores_for_every_analyzer():
             continue
         assert config.digest_for(analyzer.id) == derive_config_digest(
             STORE_DEFAULTS, list(analyzer.config_keys)), analyzer.id
-    assert skipped == {"graph.cycles"}
+    # graph.cycles' `ratchet.` and taxonomy.path's `taxonomy.classes.` are both declared
+    # open-map subtrees the store's minimal fixture does not model; neither is a mismatch,
+    # and the line is a set rather than a loop so a third analyzer cannot hide in it.
+    assert skipped == {"graph.cycles", "taxonomy.path"}
 
 
 def test_reordered_tables_are_not_an_invalidation(repo):

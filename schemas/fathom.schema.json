@@ -897,6 +897,38 @@
       "x-fathom-owner": "ADR-004 \u00a77, \u00a711",
       "x-fathom-section-title": "Store caps"
     },
+    "taxonomy": {
+      "additionalProperties": false,
+      "description": "Assert what a set of paths IS, relative to the built-in table: one open map keyed by class. The engine and the built-ins are `reco-5vz`'s; only the overrides live here.",
+      "properties": {
+        "classes": {
+          "additionalProperties": false,
+          "description": "One entry per taxonomy class: globs that assert paths ARE that class, outranking the built-in table because a user layer beats the defaults layer. `generated = [\"src/gen/**\"]` demotes hand-written-looking code; `source = [\"vendor/our-fork/**\"]` promotes vendored-looking code. `recommender/taxonomy/builtins.py` owns the built-ins; this key only overrides them, which is what `fathom explain <path>` prints as the winning layer.",
+          "patternProperties": {
+            "^(?:source|test|docs|config|schema|migration|generated|vendored|lockfile|asset|binary|other)$": {
+              "description": "One entry per taxonomy class: globs that assert paths ARE that class, outranking the built-in table because a user layer beats the defaults layer. `generated = [\"src/gen/**\"]` demotes hand-written-looking code; `source = [\"vendor/our-fork/**\"]` promotes vendored-looking code. `recommender/taxonomy/builtins.py` owns the built-ins; this key only overrides them, which is what `fathom explain <path>` prints as the winning layer.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "taxonomy.path",
+              "x-fathom-merge": "extend",
+              "x-fathom-open": [
+                "a path-taxonomy class (`reco-5vz`); `other` is refused because asserting it is indistinguishable from matching nothing"
+              ],
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e0.9"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e0.9 (`reco-5vz`)",
+      "x-fathom-section-title": "Path taxonomy overrides"
+    },
     "test": {
       "additionalProperties": false,
       "description": "What counts as a test, for the test-surface analyzer.",
@@ -1098,6 +1130,10 @@
       "store": {
         "owner": "ADR-004 \u00a77, \u00a711",
         "title": "Store caps"
+      },
+      "taxonomy": {
+        "owner": "e0.9 (`reco-5vz`)",
+        "title": "Path taxonomy overrides"
       },
       "test": {
         "owner": "e1.7 / e2.6",

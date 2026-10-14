@@ -24,6 +24,7 @@ decision records are being written first, on purpose.
 | Storage, indexing and cache contract (schema, invalidation matrix, perf budgets) | [docs/adr/0004-storage.md](docs/adr/0004-storage.md), `src/recommender/store/`, [benchmarks/budgets.json](benchmarks/budgets.json) | accepted; `e0.11` gates CI on `benchmarks/budgets.json` |
 | Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
 | Configuration: `fathom.toml`, five layers, schema, `config explain` | [docs/concepts/config.md](docs/concepts/config.md), `src/recommender/config/`, [schemas/fathom.schema.json](schemas/fathom.schema.json), `fathom.toml` | `e0.8` (`reco-dq3`) built: the schema and the key reference are generated and CI diffs them; this repo's own `fathom.toml` is validated in CI |
+| Path taxonomy and noise policy: what a path *is*, how noisy it is, which rule said so | [docs/concepts/paths.md](docs/concepts/paths.md), `src/recommender/taxonomy/`, `fathom.toml` | `e0.9` (`reco-5vz`) built: a 235-path decision table over 24 repo shapes, `fathom taxonomy explain <path>` prints the rule, its layer and the runners-up, and the storage fixture no longer keeps its own glob list |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted; the cargo workspace itself is `e0.7` (`reco-e77`) |
 
@@ -36,13 +37,16 @@ fathom why <episode>      # why this episode scored the risk it scored, per feat
 fathom analyze <episode> --json    # the versioned delta model, one source of truth
 fathom export --episodes A..B      # the review artefact you post on the PR
 fathom config explain [--path P]   # which layer won every value, and what it beat
+fathom taxonomy explain <path>     # what a path is, how noisy it is, and which rule said so
 ```
 
 Those verbs do not exist yet; they are the agreed surface, and the plan is written against them.
-One exception exists on purpose: `fathom config …` has an executable form today
-(`python3 -m recommender.config explain --path src/foo.rs`), because every later feature's behaviour
+Two exceptions exist on purpose: `fathom config …` and `fathom taxonomy …` have executable forms
+today (`python3 -m recommender.config explain --path src/foo.rs`,
+`python3 -m recommender.taxonomy explain src/foo.rs`), because every later feature's behaviour
 has to be traceable to a file and a config system whose explanation is prose gets described three
-different ways by three teams — see [docs/concepts/config.md](docs/concepts/config.md).
+different ways by three teams — see [docs/concepts/config.md](docs/concepts/config.md) and
+[docs/concepts/paths.md](docs/concepts/paths.md).
 
 ## Vocabulary, in brief
 
@@ -74,6 +78,11 @@ that is a bug.
   has drifted from it. Add a key there, never to the generated files; `--set` a key in a test if you
   need one that does not exist yet, and `e0.8`'s digest test will tell you if an analyzer declared a
   key the schema is missing.
+- Never encode your own glob list. What a path *is* and how noisy it is come from the one table in
+  `src/recommender/taxonomy/`; a detector, renderer or store writer with its own `startswith` list
+  is the duplication [docs/concepts/paths.md](docs/concepts/paths.md) exists to prevent. If the
+  table has no rule for a path, the answer is `other` and the fix is a rule plus a row in
+  `corpus.py`, not a local heuristic.
 - v1 is explicitly **not** a git client, **not** an IDE, **not** an agent runner, **not** a PR host, has
   **no** cloud service and **no** mandatory LLM dependency — see
   [the non-goals](docs/concepts/thesis.md#8-non-goals-for-v1). Proposals that cross that boundary need an

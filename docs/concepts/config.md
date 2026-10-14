@@ -271,9 +271,11 @@ Three limits are stated on purpose:
 * **It prints where every entry of a merged glob list came from**, because "which file added the
   glob that made this episode look quiet" is the question, and a merged list with one source is a
   merged list that cannot be debugged.
-* **It does not decide the taxonomy.** Which rule *wins* is `e0.9` (`reco-5vz`); `--path` prints the
-  config that feeds that decision. A second, slightly different path classifier here is the
-  duplication `e0.9` exists to prevent.
+* **It delegates the taxonomy instead of guessing at it.** `--path` prints the config that feeds the
+  decision *and* the verdict of `e0.9`'s one table: the rule that won, the layer it came from, the
+  rules it beat and why. A second, slightly different path classifier here is the duplication
+  `e0.9` (`reco-5vz`) exists to prevent, so this module calls the engine instead of restating it —
+  see [docs/concepts/paths.md](paths.md).
 * **Secrets are fingerprinted, never printed.** `mcp.auth_token` renders as
   `<redacted sha256:9f3a1c02>`: the fingerprint keeps the one question a redactor always breaks
   ("did it actually change?") answerable, which is the same reason ADR-005 §6.4 stores a real digest
@@ -345,6 +347,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `meta` | e0.8 | What the file says about itself, so a newer file is refused rather than half-understood. |
 | `paths` | e0.8 / ADR-004 §12 | The four paths Fathom writes to. Every relative path is resolved against the repository root and must stay inside it. |
 | `noise` | e0.9 (`reco-5vz`) | Globs for change that carries no reviewable information. `e0.9` owns the built-in table; this is the user half of it. |
+| `taxonomy` | e0.9 (`reco-5vz`) | Assert what a set of paths IS, relative to the built-in table: one open map keyed by class. The engine and the built-ins are `reco-5vz`'s; only the overrides live here. |
 | `test` | e1.7 / e2.6 | What counts as a test, for the test-surface analyzer. |
 | `non_code` | e2.8 (`reco-bjd`) | Config, env, flags, migrations and CI — the surfaces a reviewer must be told about even though they are not code. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
@@ -382,6 +385,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `paths.events` | `path` | `.fathom/events.jsonl` | `replace` | `any` | — | — | `e6.1` |
 | `paths.export` | `path` | `.fathom/export` | `replace` | `any` | — | — | `e5.7` |
 | `noise.globs` | `glob_list` | `**/dist/**, **/*.snap` | `extend` | `any` | — | taxonomy.path | `e0.9` |
+| `taxonomy.classes.<class-name>` | `glob_list` | `—` | `extend` | `any` | — | taxonomy.path | `e0.9` |
 | `noise.builtins_version` | `integer` | `1` | `replace` | `any` | version | taxonomy.path | `e0.9` |
 | `test.globs` | `glob_list` | `tests/**, **/test_*.py` | `extend` | `any` | — | test.surface | `e2.6` |
 | `non_code.patterns` | `glob_list` | `**/migrations/**, .github/workflows/**` | `extend` | `any` | — | non_code.surface | `e2.8` |

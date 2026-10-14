@@ -132,6 +132,10 @@ PLACEHOLDERS: dict[str, dict] = {
                "doc": "a keymap mode (the canonical table is ADR-006's, `e0.6`)"},
     "<binding>": {"pattern": r"^[A-Za-z0-9<>^+_,.\- ]{1,12}$",
                   "doc": "a key or key-sequence, e.g. `j`, `gg`, `<C-PageDown>`"},
+    "<class-name>": {"pattern": r"^(?:source|test|docs|config|schema|migration|generated|"
+                                 "vendored|lockfile|asset|binary|other)$",
+                     "doc": "a path-taxonomy class (`reco-5vz`); `other` is refused because "
+                            "asserting it is indistinguishable from matching nothing"},
 }
 
 
@@ -213,6 +217,10 @@ SECTIONS: dict[str, dict] = {
     "noise": {"title": "Noise policy", "owner": "e0.9 (`reco-5vz`)",
               "doc": "Globs for change that carries no reviewable information. "
                      "`e0.9` owns the built-in table; this is the user half of it."},
+    "taxonomy": {"title": "Path taxonomy overrides", "owner": "e0.9 (`reco-5vz`)",
+                 "doc": "Assert what a set of paths IS, relative to the built-in table: "
+                        "one open map keyed by class. The engine and the built-ins are "
+                        "`reco-5vz`'s; only the overrides live here."},
     "test": {"title": "Test surface", "owner": "e1.7 / e2.6",
              "doc": "What counts as a test, for the test-surface analyzer."},
     "non_code": {"title": "Non-code surface", "owner": "e2.8 (`reco-bjd`)",
@@ -316,6 +324,15 @@ KEY_LIST: list[Key] = [
        default=["**/dist/**", "**/*.snap"], item_pattern=GLOB_ITEM,
        doc="Path globs treated as noise. `extend`: a repo adds to your list instead of "
            "replacing it. A leading `!` re-promotes a path a broader glob demoted.",
+       analyzer="taxonomy.path", ticket="e0.9"),
+    _k(path="taxonomy.classes.<class-name>", kind="glob_list", merge="extend", default={},
+       item_pattern=GLOB_ITEM,
+       doc="One entry per taxonomy class: globs that assert paths ARE that class, "
+           "outranking the built-in table because a user layer beats the defaults layer. "
+           "`generated = [\"src/gen/**\"]` demotes hand-written-looking code; "
+           "`source = [\"vendor/our-fork/**\"]` promotes vendored-looking code. "
+           "`recommender/taxonomy/builtins.py` owns the built-ins; this key only overrides "
+           "them, which is what `fathom explain <path>` prints as the winning layer.",
        analyzer="taxonomy.path", ticket="e0.9"),
     _k(path="noise.builtins_version", kind="integer", default=1, minimum=1,
        units="version",
@@ -524,8 +541,8 @@ BUDGET_ALIASES: dict[str, str] = {
 #: something about this file", and `e0.9`'s taxonomy consumes exactly these inputs.
 PATH_KEYS: tuple[str, ...] = (
     "noise.globs", "test.globs", "non_code.patterns", "graph.ignored_dirs",
-    "layers.<layer-name>", "paths.store", "paths.objects", "paths.events",
-    "paths.export",
+    "layers.<layer-name>", "taxonomy.classes.<class-name>",
+    "paths.store", "paths.objects", "paths.events", "paths.export",
 )
 
 #: Keys whose value must never leave the machine redacted-free.

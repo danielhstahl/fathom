@@ -43,6 +43,17 @@ jobs:
         run: |
           PYTHONPATH=src python3 -m recommender.config schema --validate fathom.toml
           PYTHONPATH=src python3 -m recommender.config --repo . explain --path src/foo.rs >/dev/null
+      - name: "e0.9 taxonomy: the table answers for this repo, and explain names its rule"
+        # The pytest suite is where the decision table and the cost bounds are asserted; this step
+        # is the cheaper claim that the *verb surface* is wired to the same engine the tests use,
+        # on this repository's own config, with the paths a reviewer would actually ask about.
+        run: |
+          PYTHONPATH=src python3 -m recommender.taxonomy --repo . explain -q \
+            dist/app.min.js vendor/x/y.go Cargo.lock tests/test_taxonomy_contract.py src/foo.rs
+          PYTHONPATH=src python3 -m recommender.taxonomy --repo . explain --json src/foo.rs | head -1
+          PYTHONPATH=src python3 -m recommender.taxonomy classes >/dev/null
+          PYTHONPATH=src python3 -m recommender.taxonomy rules --class generated >/dev/null
+          PYTHONPATH=src python3 -m recommender.taxonomy bench --repeat 2 | tail -1
       - name: ADR-002 / ADR-004 / ADR-005 / e0.8 contract suites
         run: |
           python -m pip install --disable-pip-version-check pytest

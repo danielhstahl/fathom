@@ -56,6 +56,17 @@ def _common() -> argparse.ArgumentParser:
     return common
 
 
+def common_flags() -> argparse.ArgumentParser:
+    """Public alias for :func:`_common`, so another verb can reuse the discovery flags.
+
+    `e0.9`'s `fathom explain <path>` (`recommender.taxonomy.cli`) parents them onto its own
+    parser rather than inventing a second set of flags for finding `fathom.toml`: two verbs
+    with two opinions about discovery is how a person ends up explaining one path against
+    the wrong file.
+    """
+    return _common()
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = _common()
     ap = argparse.ArgumentParser(
@@ -295,6 +306,9 @@ def _cmd_init(args) -> int:
 OPEN_EXAMPLES = {
     "layers.<layer-name>": ("[layers]\n# api = [\"src/api\", \"src/edge\"]",
                              "one entry per layer name"),
+    "taxonomy.classes.<class-name>": ('[taxonomy.classes]\n# generated = ["src/gen/**"]\n'
+                                      '# source = ["vendor/our-fork/**"]',
+                                      "one entry per taxonomy class (see `fathom taxonomy classes`)"),
     "risk.weights.<weight>": ("[risk.weights]\n# new_signal = 0.1",
                                "one entry per signal, 0..1"),
     "keys.overrides.<mode>.<binding>": ('[keys.overrides.queue]\n# j = "move_down"',

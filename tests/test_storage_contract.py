@@ -235,7 +235,10 @@ def test_config_change_hits_only_its_consumers(store):
     assert "deps.resolve" not in per2
 
     cfg3 = {**DEFAULT_CONFIG, "test": {"globs": ["spec/**"]}}
-    assert set(_invalidated(store, config=cfg3)) == {"test.surface"}
+    # `test.globs` feeds two analyzers since e0.9: `test.surface` counts it, and
+    # `taxonomy.path` reads it as the user's assertion of what class `test` is
+    # (recommender/taxonomy/rules.py). A change to it must move both digests.
+    assert set(_invalidated(store, config=cfg3)) == {"test.surface", "taxonomy.path"}
 
 
 def test_config_reordering_is_not_an_invalidation(store):

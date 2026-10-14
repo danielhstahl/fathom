@@ -125,7 +125,12 @@ class Analyzer:
 ANALYZERS: tuple[Analyzer, ...] = (
     Analyzer("ingest.normalize", 1, "commit", config_keys=("ingest.size_cap_mib",),
              source_paths=("src/ingest/**",)),
-    Analyzer("taxonomy.path", 1, "blob", config_keys=("noise.globs", "noise.builtins_version"),
+    # e0.9's engine reads four config surfaces, so the digest covers all four (§5.5: the key
+    # names everything the payload reads). Version 1 declared only the noise half, which was
+    # honest while the analyzer was a stub; a change to the test-surface globs or to a class
+    # assertion must now move these rows, which is why the version is 2.
+    Analyzer("taxonomy.path", 2, "blob", config_keys=("noise.globs", "noise.builtins_version",
+                                                      "test.globs", "taxonomy.classes."),
              source_paths=("src/analyze/taxonomy/**",)),
     Analyzer("diff.per_file", 1, "path_pair", config_keys=("diff.context_lines",),
              depends_on=("taxonomy.path",), source_paths=("src/analyze/diff/**",)),

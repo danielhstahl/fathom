@@ -526,7 +526,7 @@ def _check_consent(config: Config) -> None:
 
 def _check_globs(config: Config) -> None:
     """Bad globs are a warning naming the pattern, not a crash per bad character."""
-    for path in ("noise.globs", "test.globs", "non_code.patterns"):
+    for path in _glob_keys(config):
         for pattern in config.get(path, []) or []:
             try:
                 globs.compile_glob(pattern)
@@ -534,6 +534,19 @@ def _check_globs(config: Config) -> None:
                 config.warnings.append(Warning(
                     "bad_glob", "%s contains an unusable glob: %s" % (path, exc),
                     source=(config.decision(path) or Decision(path)).source, key=path))
+
+
+def _glob_keys(config: Config) -> list[str]:
+    """Every list-valued glob key that exists in this resolution, open maps included.
+
+    `taxonomy.classes.<class-name>` is an open map, so its concrete entries exist per
+    class rather than as one key; a typo inside one of those lists is as unusable as a typo
+    in `noise.globs`, and `e0.9`'s engine would otherwise swallow it silently (see
+    `recommender.taxonomy.rules._compile`).
+    """
+    keys = ["noise.globs", "test.globs", "non_code.patterns"]
+    keys += [path for path in config.keys() if path.startswith("taxonomy.classes.")]
+    return keys
 
 
 def _check_weights(config: Config) -> None:

@@ -161,12 +161,13 @@ def _warnings_block(config: L.Config) -> list[str]:
 def explain_path_text(config: L.Config, path: str) -> str:
     """The resolved decision chain for one repository path (the ticket's AC).
 
-    This answers "which configuration decided something about *this file*" and stops
-    there: which taxonomy rule *wins* is `e0.9`'s job (`reco-5vz`), and pretending
-    otherwise would put a second, subtly different path classifier in the tree — the exact
-    duplication `e0.9` exists to prevent. What this can say, honestly and usefully: which
-    patterns matched, from which layer each came, which layer rule the path falls into,
-    and which analyzers' cache digests those values feed.
+    Two questions get answered here, from one place each. "Which configuration decided
+    something about *this file*" — which patterns matched, from which layer each came,
+    which layer rule the path falls into, which class assertions name it, and which
+    analyzers' cache digests those values feed. And "what does the taxonomy say" — which
+    is delegated to `recommender.taxonomy` in :func:`_taxonomy_lines` rather than answered
+    here, because a second, subtly different path classifier in the tree is the exact
+    duplication `e0.9` exists to prevent.
     """
     path = globs.normalise(path)
     out = header_lines(config) + ["", "path: %s" % path, ""]
@@ -213,9 +214,34 @@ def explain_path_text(config: L.Config, path: str) -> str:
     if untouched:
         out.append("  not touched by this path: %s" % ", ".join(untouched))
     out.append("")
-    out.append("note: which taxonomy rule *wins* for %s is e0.9's decision (reco-5vz); "
-               "this is the config that feeds it." % path)
+    out.append("TAXONOMY VERDICT — the table's own answer for this path")
+    out.append("")
+    out.extend(_taxonomy_lines(config, path))
+    out.append("")
+    out.append("note: the chains above are the config that *feeds* the taxonomy; the verdict "
+               "is e0.9's answer (reco-5vz). Full receipts, including every rule that lost "
+               "and why, are `fathom taxonomy explain %s`." % path)
     return "\n".join(out).rstrip() + "\n"
+
+
+def _taxonomy_lines(config: L.Config, path: str) -> list[str]:
+    """Ask the path-taxonomy engine — this module must never grow its own idea of a path.
+
+    e0.8 shipped this verb with a placeholder that said "the classifier is e0.9's job";
+    e0.9 has landed, so the placeholder is replaced by a call into the one table instead of
+    a second copy of the answer. The import is local on purpose: `recommender.taxonomy`
+    builds its rules *from* the resolved config, so importing it at module scope would put
+    this renderer at the bottom of an import cycle for a verb a human runs, not a hot path.
+    """
+    from recommender.taxonomy import Taxonomy
+    from recommender.taxonomy import explain as TX
+
+    try:
+        taxonomy = Taxonomy.from_config(config)
+        block = TX.verdict_block(taxonomy, taxonomy.classify(path))
+    except Exception as exc:                          # noqa: BLE001 - render must not fail
+        return ["  (taxonomy unavailable: %s)" % exc]
+    return ["  " + line for line in block]
 
 
 @dataclass
@@ -264,6 +290,35 @@ def path_relevance(config: L.Config, path: str) -> list[PathItem]:
         items.append(PathItem("layers.%s" % name, "the path falls in this layer", True,
                               decision, [(prefix, True, source)
                                          for prefix in (decision.value or [])]))
+    items += _class_assertions(config, path)
+    return items
+
+
+def _class_assertions(config: L.Config, path: str) -> list[PathItem]:
+    """`taxonomy.classes.<class-name>` entries that speak to this path.
+
+    An open map, so there is no single decision to print: each class is its own key with its
+    own winning layer, and the interesting answer is which of them the path actually lands
+    in. Which one *wins* is the taxonomy engine's decision — `config explain --path` can
+    only say which assertions were made, and says exactly that.
+    """
+    items: list[PathItem] = []
+    for key in config.keys():
+        if S.abstract(key) != "taxonomy.classes.<class-name>":
+            continue
+        decision = config.decision(key)
+        if decision is None:
+            continue
+        name = key.rsplit(".", 1)[-1]
+        provenance = _pattern_provenance(config, S.abstract(key))
+        hits = [(p, globs.matches(p, path), provenance.get(p, decision.source))
+                for p in (decision.value or [])]
+        matched = [h for h in hits if h[1]]
+        if not matched:
+            continue
+        items.append(PathItem(key, "asserts class %r for this path (%d of %d patterns "
+                              "match)" % (name, len(matched), len(hits)), True, decision,
+                              hits))
     return items
 
 
@@ -289,7 +344,8 @@ def _pattern_provenance(config: L.Config, abstract_key: str) -> dict[str, str]:
 def is_path_relevant(concrete_path: str) -> bool:
     abstract = S.abstract(concrete_path)
     return abstract in S.PATH_KEYS or abstract.startswith(("layers.", "noise.", "test.",
-                                                           "non_code.", "graph."))
+                                                           "non_code.", "graph.",
+                                                           "taxonomy."))
 
 
 def _best_decision(config: L.Config, key_path: str) -> L.Decision | None:
