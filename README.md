@@ -20,11 +20,11 @@ decision records are being written first, on purpose.
 | Area | Where | State |
 |---|---|---|
 | Product thesis, glossary, metrics, non-goals | [docs/concepts/thesis.md](docs/concepts/thesis.md) | accepted (ADR-001) |
-| Architecture decision records | [docs/adr/](docs/adr/) | ADR-001, [ADR-004](docs/adr/0004-storage.md) and [ADR-005](docs/adr/0005-harness-contract.md) accepted; ADR-002, 003, 006 open |
+| Architecture decision records | [docs/adr/](docs/adr/) | ADR-001, [ADR-002](docs/adr/0002-workspace.md), [ADR-004](docs/adr/0004-storage.md) and [ADR-005](docs/adr/0005-harness-contract.md) accepted; ADR-003, 006 open |
 | Storage, indexing and cache contract (schema, invalidation matrix, perf budgets) | [docs/adr/0004-storage.md](docs/adr/0004-storage.md), `src/recommender/store/`, [benchmarks/budgets.json](benchmarks/budgets.json) | accepted; `e0.11` gates CI on `benchmarks/budgets.json` |
 | Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
-| Rust workspace, CLI, TUI | planned (ADR-002, `e0.7`) | not started |
+| Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted; the cargo workspace itself is `e0.7` (`reco-e77`) |
 
 ## What it does, in five lines
 
@@ -58,6 +58,10 @@ that is a bug.
   `bd create --graph .plan/plan.json`. See [.plan/README.md](.plan/README.md).
 - An ADR is written *before* the code it constrains. New architecture decisions go in `docs/adr/`; new
   *nouns* go in the thesis glossary first.
+- Crate boundaries are checks, not conventions: `python3 tools/check_workspace.py check && python3
+  tools/check_workspace.py lint` fails an uphill import, a network client in a default build, `unsafe`
+  outside `fathom-store/src/raw/`, and a table that has drifted from `tools/workspace_model.py`. If you
+  add a crate, an edge or a feature, you amend ADR-002 in the same PR.
 - v1 is explicitly **not** a git client, **not** an IDE, **not** an agent runner, **not** a PR host, has
   **no** cloud service and **no** mandatory LLM dependency — see
   [the non-goals](docs/concepts/thesis.md#8-non-goals-for-v1). Proposals that cross that boundary need an

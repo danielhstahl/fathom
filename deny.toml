@@ -1,0 +1,55 @@
+# cargo-deny configuration — the licence, advisory, source and ban gate ADR-002 §8 requires.
+# Written by hand and checked by `python3 tools/check_workspace.py lint` (rules D01-D08); CI runs
+# `cargo deny check` over the resolved lockfile. Every ignore/exception below must carry a `# why:`.
+
+[graph]
+targets = [
+  "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+  "x86_64-apple-darwin", "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+confidence-threshold = 0.8
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "MPL-2.0",
+  "MIT OR Apache-2.0",
+]
+deny = ["AGPL-3.0", "GPL-3.0", "SSPL-1.0"]
+
+[licenses.private]
+ignore = true    # why: our own crates are `publish = false` and carry the workspace licence
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+deny = [
+  { name = "git2",         reason = "ADR-002 §4.2: gix is the only path to git objects" },
+  { name = "libgit2-sys",  reason = "ADR-002 §4.2: libgit2 links a transport stack we would have to audit" },
+  { name = "openssl-sys",  reason = "ADR-002 §6: no TLS stack outside a `net-*` feature" },
+  { name = "native-tls",   reason = "ADR-002 §6: platform TLS only inside a `net-*` feature" },
+  { name = "hyper",        reason = "ADR-002 §6: an HTTP stack may only arrive via `net-http-transport`" },
+]
+skip = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

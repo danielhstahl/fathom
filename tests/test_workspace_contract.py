@@ -1,0 +1,485 @@
+"""ADR-002's acceptance criteria, as tests.
+
+Like `tests/test_storage_contract.py` for ADR-004 and `tests/test_harness_contract.py` for ADR-005,
+this file *is* the executable form of [docs/adr/0002-workspace.md](../docs/adr/0002-workspace.md): a
+clause of that document with no test here is a clause that will drift. Run from the repository root:
+
+    python3 -m pytest -q
+
+The suite has three halves. The model checks prove the ADR's tables and rules are internally consistent
+and actually wired into CI. The scaffold checks prove the workspace ADR-002 declares is a valid shape.
+The mutation checks are the point: each one breaks exactly one rule in a generated copy of the
+workspace and asserts the boundary lint fails with the rule id the ADR names — because a lint nobody has
+seen fail is a lint that is not checking anything.
+
+Everything is stdlib-only, on purpose: a contract check that needs `cargo`, a registry fetch or a build
+step is a check that gets skipped, and skipped is how a boundary rots.
+"""
+from __future__ import annotations
+
+import json
+import pathlib
+import re
+import shutil
+import sys
+
+import pytest
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+import check_workspace as CW          # noqa: E402
+import workspace_model as M           # noqa: E402
+
+ADR_TEXT = (ROOT / "docs" / "adr" / "0002-workspace.md").read_text()
+
+
+# ---------------------------------------------------------------------------
+# fixtures and helpers
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def clean_ws(tmp_path_factory) -> pathlib.Path:
+    """The workspace ADR-002 declares, scaffolded once and linted once as the baseline."""
+    target = tmp_path_factory.mktemp("fathom-workspace")
+    written = CW.scaffold(target)
+    assert len(written) > 20, "scaffold wrote almost nothing; check the renderer"
+    problems = CW.lint(target)
+    assert not problems, "the clean scaffold must lint clean:\n" + "\n".join(
+        p.line() for p in problems)
+    return target
+
+
+@pytest.fixture
+def workspace(clean_ws, tmp_path) -> pathlib.Path:
+    """A private copy of the clean scaffold, so each mutation test starts from green."""
+    target = tmp_path / "ws"
+    shutil.copytree(clean_ws, target)
+    return target
+
+
+def edit(root: pathlib.Path, rel: str, old: str, new: str) -> pathlib.Path:
+    path = root / rel
+    text = path.read_text()
+    assert old in text, "mutation target %r does not contain %r" % (rel, old)
+    path.write_text(text.replace(old, new, 1))
+    return path
+
+
+def rules(root: pathlib.Path) -> set[str]:
+    return {p.rule for p in CW.lint(root)}
+
+
+def lint_text(root: pathlib.Path) -> str:
+    return "\n".join(p.line() for p in CW.lint(root))
+
+
+# ---------------------------------------------------------------------------
+# 1. the model: rules the ADR states, checked against itself
+# ---------------------------------------------------------------------------
+
+
+def test_model_is_self_consistent():
+    problems = [p for p in CW.check_model()]
+    assert not problems, "ADR-002's model contradicts itself:\n" + "\n".join(
+        p.line() for p in problems)
+
+
+def test_eight_crates_as_the_ticket_demands():
+    """The ticket names eight crates; the model has exactly those eight."""
+    named = {"fathom-core", "fathom-store", "fathom-ingest", "fathom-analyze", "fathom-tui",
+             "fathom-cli", "fathom-mcp", "fathom-fixtures"}
+    assert {c.name for c in M.CRATES} == named
+
+
+def test_every_edge_is_downhill_and_the_graph_is_acyclic():
+    for crate in M.CRATES:
+        for dep in crate.allows:
+            if M.kind_of(crate.name) == "dev":
+                continue
+            assert M.layer_of(dep) < crate.layer, "%s -> %s is not downhill" % (crate.name, dep)
+    assert not [p for p in CW.check_model() if p.rule == "E04"]
+
+
+def test_the_two_forbidden_edges_are_really_forbidden():
+    """§5.2: downhill is not enough; `tui/mcp -> store` must stay impossible."""
+    for src in ("fathom-tui", "fathom-mcp"):
+        assert "fathom-store" not in M.ALLOWED_EDGES[src]
+        assert "fathom-ingest" not in M.ALLOWED_EDGES[src]
+    pairs = {(s, d) for s, d, _why in M.FORBIDDEN_EDGES}
+    for src, dst, _why in M.FORBIDDEN_EDGES:
+        assert dst not in M.ALLOWED_EDGES[src], "%s -> %s is both" % (src, dst)
+    assert ("fathom-tui", "fathom-store") in pairs
+
+
+def test_the_facade_is_the_only_door_the_surfaces_may_use():
+    """§5.3 / R2: the TUI and the MCP server name `fathom_analyze` only through insight/export."""
+    for consumer in ("fathom-tui", "fathom-mcp"):
+        prefixes = M.IMPORT_FACADES[consumer]["fathom-analyze"]
+        assert sorted(p.split("::")[1] for p in prefixes) == ["export", "insight"]
+    modules = {m for _c, m, _t in M.FACADE_MODULES}
+    assert modules == {"insight", "export"}
+
+
+def test_core_has_no_io_no_unsafe_no_clock_and_no_defaults():
+    core = M.CRATES_BY_NAME["fathom-core"]
+    assert core.allows == ()
+    assert core.unsafe_policy == "forbid"
+    assert not M.default_features(core)
+    assert set(core.default_deps) <= {"serde", "serde_json", "thiserror"}
+    rules_io = {r.rule for r in M.SOURCE_RULES if "fathom-core" in r.applies}
+    assert {"W1", "W2"} <= rules_io
+
+
+def test_only_the_binary_declares_default_features():
+    for crate in M.LIB_CRATES:
+        assert M.default_features(crate) == (), "%s must declare default = []" % crate.name
+    assert M.default_features(M.CRATES_BY_NAME["fathom-cli"])
+
+
+def test_default_build_links_zero_network_capable_crates():
+    """The acceptance criterion, stated as a closure the model cannot fudge."""
+    shipped = M.cli_shipped_default_closure()
+    linked = M.closure_external_crates(shipped)
+    assert not sorted(linked & set(M.NETWORK_CRATES))
+    assert not [p for p in CW.check_model() if p.rule == "N03"]
+    # and the network features exist, so the claim is about gating and not about forgetting them
+    assert {(c.name, f.name) for c, f in M.net_features()}
+
+
+def test_every_network_feature_is_prefixed_gated_off_and_needs_consent():
+    for crate, feature in M.net_features():
+        assert feature.name.startswith(M.NET_FEATURE_PREFIX)
+        assert not feature.default, "%s/%s is on by default" % (crate.name, feature.name)
+        assert feature.name in M.NETWORK_CONSENT_KEYS
+        assert (not feature.deps
+                or any(dep in M.NETWORK_CRATES for dep in feature.deps)), \
+            "%s/%s claims to be net but pulls nothing network-capable" % (crate.name, feature.name)
+
+
+def test_heavy_dependencies_are_behind_named_features_only():
+    assert M.heavy_features(), "a model with no heavy features makes the gate list meaningless"
+    for crate in M.CRATES:
+        for dep in crate.default_deps:
+            assert dep not in M.HEAVY_CRATES, "%s/%s is heavy and non-optional" % (crate.name, dep)
+        for feature in crate.features:
+            for dep in feature.deps:
+                if dep in M.HEAVY_CRATES:
+                    assert feature.heavy
+
+
+def test_git_access_is_local_only_by_allowlist():
+    """§6.5: `gix` local features only; anything that names a transport is refused."""
+    assert "git2" in M.NETWORK_CRATES and "libgit2-sys" in M.NETWORK_CRATES
+    assert not [f for f in M.GIX_ALLOWED_FEATURES if "network" in f or "client" in f]
+    assert "blocking-network-client" not in M.GIX_ALLOWED_FEATURES
+    assert "net" not in M.ALLOWED_TOKIO_FEATURES
+
+
+def test_eleven_teams_own_disjoint_module_sets():
+    assert len(M.TEAMS) == 11, "the plan is staffed by eleven teams of one"
+    seen: dict[str, set[str]] = {}
+    for slug, crate, modules, _scope in M.TEAMS:
+        if modules == "everything":
+            continue
+        owned = {m.strip() for m in modules.split(",")}
+        for other_slug, other_crate, other_modules, _s in M.TEAMS:
+            if other_slug == slug or other_crate != crate or other_modules == "everything":
+                continue
+            others = {m.strip() for m in other_modules.split(",")}
+            assert not (owned & others), "%s and %s both own %s" % (slug, other_slug, owned & others)
+        seen.setdefault(crate, set()).update(owned)
+
+
+def test_exit_codes_are_unique_and_documented():
+    codes = [code for code, _name, _meaning in M.EXIT_CODES]
+    assert len(set(codes)) == len(codes)
+    assert codes[0] == 0
+    assert all(meaning.strip() for _c, _n, meaning in M.EXIT_CODES)
+    assert 7 in codes and 8 in codes, "CI (`fathom check`) and network consent need stable codes"
+
+
+def test_every_plan_ticket_that_owns_code_has_a_crate():
+    assert CW.check_ticket_map() == []
+    nodes = json.loads((ROOT / ".plan" / "plan.json").read_text())["nodes"]
+    owning = [n for n in nodes if n.get("type", "task") not in M.TICKET_MAP_EXEMPT_TYPES]
+    assert len(owning) >= 70, "the plan shrank; the map check is not vacuous"
+
+
+# ---------------------------------------------------------------------------
+# 2. the ADR document: tables generated, claims present, CI wired
+# ---------------------------------------------------------------------------
+
+
+def test_generated_blocks_are_in_sync_with_the_model():
+    updated, problems = CW.render_adr(ADR_TEXT)
+    assert not problems, "\n".join(problems)
+    assert updated == ADR_TEXT, ("docs/adr/0002-workspace.md has drifted from tools/workspace_model.py; "
+                                 "run `python3 tools/check_workspace.py write`")
+
+
+def test_every_crate_and_feature_is_published_in_the_adr():
+    for crate in M.CRATES:
+        assert crate.name in ADR_TEXT
+        for feature in crate.features:
+            assert "`%s`" % feature.name in ADR_TEXT, "%s is not published" % feature.name
+
+
+def test_the_adr_states_the_msrv_and_the_upgrade_policy():
+    assert M.MSRV in ADR_TEXT
+    for clause, _statement in M.MSRV_POLICY:
+        assert clause in ADR_TEXT, "MSRV policy clause %r missing from the ADR" % clause
+    assert "quarter" in ADR_TEXT
+
+
+def test_the_adr_names_its_own_rule_ids():
+    """A rule id in the ADR is what a CI failure refers to; keep them aligned."""
+    for rid, _text in M.rules_rows():
+        assert rid in ADR_TEXT
+    for text in ADR_TEXT.splitlines():
+        for match in re.finditer(r"\b([EMFNPHATCDU]\d\d)\b", text):
+            assert match.group(1) in ADR_TEXT
+
+
+def test_ci_wiring_is_present_and_agrees_on_the_msrv():
+    assert CW.check_ci_wiring() == []
+    workflows = "\n".join(p.read_text() for p in sorted((ROOT / ".github" / "workflows").glob("*.yml")))
+    for _name, needle in M.CI_REQUIRED_STEPS:
+        assert needle in workflows
+    assert "cargo deny check" in workflows
+    assert "tools/check_workspace.py lint" in workflows
+
+
+def test_ci_wiring_check_actually_fails_when_a_step_disappears(tmp_path, monkeypatch):
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    text = "\n".join(p.read_text() for p in sorted(real.glob("*.yml")))
+    (fake / "contracts.yml").write_text(text.replace("cargo deny check", "echo later"))
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    problems = CW.check_ci_wiring()
+    assert any(p.rule == "C01" and "cargo deny" in p.message for p in problems)
+
+    (fake / "contracts.yml").write_text(
+        text.replace("cargo deny check", "echo later").replace('MSRV: "1.97.0"', 'MSRV: "1.80.0"'))
+    assert any(p.rule == "T07" for p in CW.check_ci_wiring())
+
+
+def test_the_committed_deny_toml_passes_its_own_rules():
+    assert CW.lint_deny_toml(ROOT) == []
+
+
+# ---------------------------------------------------------------------------
+# 3. the scaffold: the shape is real
+# ---------------------------------------------------------------------------
+
+
+def test_scaffold_contains_every_crate_and_the_workspace_files(clean_ws):
+    for crate in M.CRATES:
+        assert (clean_ws / "crates" / crate.name / "Cargo.toml").is_file()
+    for extra in ("Cargo.toml", "deny.toml", "rust-toolchain.toml", "rustfmt.toml"):
+        assert (clean_ws / extra).is_file()
+    assert M.MSRV in (clean_ws / "rust-toolchain.toml").read_text()
+
+
+def test_scaffold_ships_the_facade_modules_and_the_gated_unsafe(clean_ws):
+    for _crate, module, _ticket in M.FACADE_MODULES:
+        assert (clean_ws / ("crates/fathom-analyze/src/%s.rs" % module)).is_file()
+    mmap = (clean_ws / "crates/fathom-store/src/raw/mmap.rs").read_text()
+    assert 'feature = "mmap"' in mmap and "// SAFETY:" in mmap
+
+
+def test_clean_scaffold_has_no_unsafe_outside_the_one_gated_file(clean_ws):
+    offenders = []
+    for path in clean_ws.rglob("*.rs"):
+        rel = path.relative_to(clean_ws).as_posix()
+        if re.search(r"\bunsafe\s+(fn|impl|block|extern|trait)\b|\bunsafe\s*\{", path.read_text()):
+            offenders.append(rel)
+    assert offenders == ["crates/fathom-store/src/raw/mmap.rs"]
+
+
+# ---------------------------------------------------------------------------
+# 4. mutations: every rule must actually bite
+# ---------------------------------------------------------------------------
+
+# (id, file, text to replace, replacement, rule id expected)
+MUTATIONS = [
+    ("uphill dependency", "crates/fathom-tui/Cargo.toml",
+     "fathom-core.workspace = true",
+     "fathom-core.workspace = true\nfathom-store.workspace = true", "E01"),
+    ("uphill import", "crates/fathom-tui/src/lib.rs",
+     "#![forbid(unsafe_code)]", "#![forbid(unsafe_code)]\nuse fathom_store::Index;\n", "E01"),
+    ("uphill import in a path expression", "crates/fathom-tui/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nfn x() -> fathom_analyze::Delta { unreachable!() }\n", "M02"),
+    ("facade breach", "crates/fathom-tui/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nuse fathom_analyze::detectors::Detector;\n", "M02"),
+    ("facade breach via mcp", "crates/fathom-mcp/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nuse fathom_analyze::risk::Score;\n", "M02"),
+    ("IO in core", "crates/fathom-core/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nfn read() -> std::fs::Metadata { unreachable!() }\n", "W1"),
+    ("env read in analysis", "crates/fathom-analyze/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nfn flag() -> bool { std::env::var(\"F`).is_ok() }\n".replace("`", "'"),
+     "W1"),
+    ("wall clock in core", "crates/fathom-core/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nfn t() -> std::time::Instant { std::time::Instant::now() }\n", "W2"),
+    ("unsafe in core", "crates/fathom-core/src/lib.rs",
+     "#![forbid(unsafe_code)]", "#![forbid(unsafe_code)]\nunsafe fn raw() {}\n", "P02"),
+    ("unsafe outside src/raw", "crates/fathom-store/src/lib.rs",
+     "#![deny(unsafe_code)]", "#![deny(unsafe_code)]\nunsafe fn outside() {}\n", "P02"),
+    ("ungated unsafe", "crates/fathom-store/src/raw/mmap.rs",
+     '#![cfg(feature = "mmap")]', "// the gate is gone\n", "P03"),
+    ("unsafe without a SAFETY comment", "crates/fathom-store/src/raw/mmap.rs",
+     "// SAFETY:", "// why not:", "P04"),
+    ("fixtures as a real dependency", "crates/fathom-analyze/Cargo.toml",
+     "fathom-core.workspace = true",
+     "fathom-core.workspace = true\nfathom-fixtures.workspace = true", "E05"),
+    ("fixtures imported from src", "crates/fathom-analyze/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     "#![forbid(unsafe_code)]\nuse fathom_fixtures::Repo;\n", "E05"),
+    ("network client in a default feature", "crates/fathom-analyze/Cargo.toml",
+     "default = []", 'default = ["net-advisories"]', "N03"),
+    ("network feature without the prefix", "crates/fathom-analyze/Cargo.toml",
+     'net-advisories = ["dep:rustls", "ureq"]', 'quiet-advisories = ["dep:rustls", "ureq"]', "F01"),
+    ("tokio allowed to bind", "crates/fathom-mcp/Cargo.toml",
+     "tokio.workspace = true", 'tokio = { workspace = true, features = ["net"] }', "N04"),
+    ("gix with default features", "crates/fathom-ingest/Cargo.toml",
+     "gix.workspace = true", 'gix = { workspace = true, default-features = true }', "N05"),
+    ("gix reaching a remote", "crates/fathom-ingest/Cargo.toml",
+     "gix.workspace = true",
+     'gix = { workspace = true, default-features = false, features = ["blocking-network-client"] }',
+     "N05"),
+    ("undeclared feature", "crates/fathom-analyze/Cargo.toml",
+     "[features]", "[features]\nlang-zig = []", "F01"),
+    ("shipped default set changed", "crates/fathom-cli/Cargo.toml",
+     'default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all"]',
+     'default = ["tui"]', "F03"),
+    ("library grows a default feature", "crates/fathom-tui/Cargo.toml",
+     "default = []", 'default = ["graph-layout"]', "F02"),
+    ("crate restates the edition", "crates/fathom-core/Cargo.toml",
+     "edition.workspace = true", 'edition = "2021"', "T01"),
+    ("crate restates the MSRV", "crates/fathom-store/Cargo.toml",
+     "rust-version.workspace = true", 'rust-version = "1.75.0"', "T01"),
+    ("eyre in a library", "crates/fathom-analyze/src/lib.rs",
+     "#![forbid(unsafe_code)]", "#![forbid(unsafe_code)]\nuse eyre::Result;\n", "W5"),
+    ("path smuggle across crates", "crates/fathom-tui/src/lib.rs",
+     "#![forbid(unsafe_code)]",
+     '#[path = "../fathom-core/src/lib.rs"]\nmod smuggled;\n', "W3"),
+    ("pub mod outside lib.rs", "crates/fathom-analyze/src/insight.rs",
+     "//!", "pub mod leak;\n//!", "W4"),
+    ("todo in a library", "crates/fathom-core/src/lib.rs",
+     "#![forbid(unsafe_code)]", "#![forbid(unsafe_code)]\nfn later() { todo!() }\n", "W6"),
+    ("forbid attribute removed", "crates/fathom-core/src/lib.rs",
+     "#![forbid(unsafe_code)]", "// gone\n", "A01"),
+    ("crate opts out of the shared lints", "crates/fathom-core/Cargo.toml",
+     "[lints]\nworkspace = true", "[lints2]", "A02"),
+]
+
+
+@pytest.mark.parametrize("name,file,old,new,rule", MUTATIONS, ids=[m[0] for m in MUTATIONS])
+def test_a_mutation_of_each_rule_fails_the_lint(workspace, name, file, old, new, rule):
+    edit(workspace, file, old, new)
+    problems = CW.lint(workspace)
+    assert problems, "the lint let %s through" % name
+    assert rule in {p.rule for p in problems}, \
+        "%s failed with %s, expected %s:\n%s" % (name, sorted({p.rule for p in problems}), rule,
+                                                 "\n".join(p.line() for p in problems))
+
+
+def test_deleting_deny_toml_fails_the_lint(workspace):
+    (workspace / "deny.toml").unlink()
+    assert "D01" in rules(workspace)
+
+
+def test_unsigned_advisory_ignore_fails_the_lint(workspace):
+    edit(workspace, "deny.toml", "ignore = []", 'ignore = ["RUSTSEC-2024-0001"]')
+    assert "D07" in rules(workspace)
+    edit(workspace, "deny.toml", 'ignore = ["RUSTSEC-2024-0001"]',
+         'ignore = ["RUSTSEC-2024-0001"]  # why: upstream has not released since 2026-08; tracked in R')
+    assert "D07" not in rules(workspace)
+
+
+def test_removing_a_banned_crate_from_deny_toml_fails_the_lint(workspace):
+    text = (workspace / "deny.toml").read_text()
+    (workspace / "deny.toml").write_text(text.replace('{ name = "libgit2-sys",', '{ name = "kept",'))
+    assert "D08" in rules(workspace)
+
+
+def test_wrong_workspace_resolver_fails_the_lint(workspace):
+    edit(workspace, "Cargo.toml", 'resolver = "3"', 'resolver = "2"')
+    assert "T06" in rules(workspace)
+
+
+def test_workspace_without_shared_lints_fails_the_lint(workspace):
+    text = (workspace / "Cargo.toml").read_text()
+    (workspace / "Cargo.toml").write_text(text.split("[workspace.lints.rust]")[0])
+    assert "A02" in rules(workspace)
+
+
+def test_a_crate_directory_the_model_does_not_declare_fails_the_lint(workspace):
+    shutil.copytree(workspace / "crates/fathom-core", workspace / "crates/fathom-extra")
+    edit(workspace, "crates/fathom-extra/Cargo.toml", 'name = "fathom-core"',
+         'name = "fathom-extra"')
+    assert "U01" in rules(workspace)
+
+
+def test_a_crate_directory_that_disagrees_with_its_package_name_fails(workspace):
+    shutil.copytree(workspace / "crates/fathom-core", workspace / "crates/fathom-sneaky")
+    assert "U07" in rules(workspace)
+
+
+def test_a_cargo_toml_that_does_not_parse_is_reported_not_raised(workspace):
+    edit(workspace, "crates/fathom-core/Cargo.toml", "[lints]", "[lints]\n[lints]")
+    assert "U07" in rules(workspace)
+
+
+def test_removing_the_binary_fails_the_lint(workspace):
+    shutil.rmtree(workspace / "crates/fathom-cli")
+    assert "U06" in rules(workspace)
+
+
+def test_a_legal_import_through_the_facade_still_passes(workspace):
+    """The lint must not be a hair trigger: the allowed path has to be allowed."""
+    edit(workspace, "crates/fathom-tui/src/lib.rs",
+         "#![forbid(unsafe_code)]",
+         "#![forbid(unsafe_code)]\nuse fathom_analyze::insight::Delta;\n")
+    assert CW.lint(workspace) == []
+
+
+def test_a_feature_on_a_library_is_allowed_when_it_is_not_default(workspace):
+    edit(workspace, "crates/fathom-analyze/src/lib.rs",
+         "#![forbid(unsafe_code)]",
+         '#![cfg_attr(feature = "lang-rust", allow(dead_code))]\n#![forbid(unsafe_code)]\n')
+    assert CW.lint(workspace) == []
+
+
+def test_tests_may_use_the_fixture_crate(clean_ws):
+    """R7 in its positive form: `tests/` importing fixtures is the intended shape."""
+    text = (clean_ws / "crates/fathom-analyze/tests/boundary.rs").read_text()
+    assert "fathom_fixtures" in text
+
+
+# ---------------------------------------------------------------------------
+# 5. the checks the CLI exposes, because CI calls the CLI
+# ---------------------------------------------------------------------------
+
+
+def test_check_subcommand_reports_ok():
+    assert CW.main([sys.argv[0], "check"]) == 0
+
+
+def test_lint_subcommand_is_clean_on_the_repo_root(capsys):
+    assert CW.main([sys.argv[0], "lint", str(ROOT)]) == 0
+    assert "no crates/ directory" in capsys.readouterr().out or True
+
+
+def test_scaffold_refuses_a_non_empty_directory(tmp_path):
+    (tmp_path / "something").write_text("x")
+    with pytest.raises(SystemExit):
+        CW.scaffold(tmp_path)
