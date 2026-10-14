@@ -92,8 +92,10 @@ jobs:
         run: |
           PYTHONPATH=src python3 -m recommender.tui probe --machine | tee /tmp/keyprobe.txt
           grep -q "pty_available=true" /tmp/keyprobe.txt || { echo "::error::no pty in this runner"; exit 1; }
-          grep -q "delivers\[ctrl_i_is_tab\]=true" /tmp/keyprobe.txt
-          grep -q "delivers\[ctrl_c_is_a_signal_not_a_byte\]=true" /tmp/keyprobe.txt
+          # The two physical-ambiguity claims are machine keys of their own (keyprobe.MACHINE_KEYS);
+          # the `delivers[...]` lines below them are the per-chord table, keyed by the chord spelling.
+          grep -q "^ctrl_i_is_tab=true" /tmp/keyprobe.txt
+          grep -q "^ctrl_c_is_a_signal_not_a_byte=true" /tmp/keyprobe.txt
       - name: "e0.6 ADR-006: overrides merge, palette has no holes, sequences resolve"
         run: |
           PYTHONPATH=src python3 -m recommender.tui conflicts --toml fathom.toml
