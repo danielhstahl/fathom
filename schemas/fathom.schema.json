@@ -1,0 +1,1112 @@
+{
+  "$id": "https://fathom.dev/schemas/fathom.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Configuration for Fathom, the terminal UI that keeps a human's mental model of a codebase a coding agent is writing. Values are layered: command-line flags > environment variables (FATHOM_*, segments joined by __) > repo fathom.toml > user config > built-in defaults, and every effective value is explainable with `fathom config explain`. GENERATED from src/recommender/config/schema.py by `python3 -m recommender.config schema --write`; do not edit by hand.",
+  "properties": {
+    "blast": {
+      "additionalProperties": false,
+      "description": "How far the blast-radius walk goes before it declares a partial.",
+      "properties": {
+        "hops": {
+          "default": 1,
+          "description": "Blast-radius walk depth; exceeding it is a stated partial, not a hang.",
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "blast_radius",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "hops"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.10",
+      "x-fathom-section-title": "Blast radius"
+    },
+    "cache": {
+      "additionalProperties": false,
+      "description": "The class-R budget. Defaults come from the size class, not from a magic number.",
+      "properties": {
+        "budget": {
+          "additionalProperties": false,
+          "description": "LRU ceiling on class-R cache rows and their blobs (ADR-004 \u00a711).",
+          "properties": {
+            "mib": {
+              "default": 512,
+              "description": "LRU ceiling on class-R cache rows and their blobs (ADR-004 \u00a711).",
+              "minimum": 16,
+              "type": "integer",
+              "x-fathom-budget": "cache.budget.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e1.4",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a711",
+      "x-fathom-section-title": "Cache caps"
+    },
+    "deps": {
+      "additionalProperties": false,
+      "description": "Which ecosystems' manifests and lockfiles are parsed. Also the switchboard for the advisory lookup's *subject*, not its consent.",
+      "properties": {
+        "ecosystems": {
+          "default": [
+            "python",
+            "node",
+            "rust"
+          ],
+          "description": "Ecosystems whose manifests and lockfiles are parsed (the parser set is `e2.5`). Enabling one here never enables a network call.",
+          "items": {
+            "enum": [
+              "python",
+              "node",
+              "rust",
+              "go",
+              "java",
+              "ruby",
+              "dotnet",
+              "php"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "deps.resolve",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.5"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.5 (`reco-j83`)",
+      "x-fathom-section-title": "Dependencies"
+    },
+    "detectors": {
+      "additionalProperties": false,
+      "description": "Which finding detectors run.",
+      "properties": {
+        "enabled": {
+          "default": [
+            "test_deletion",
+            "untested_new_logic",
+            "debug_leftover"
+          ],
+          "description": "Detectors that run. Unknown detector ids are a warning naming a valid id.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "findings.detect",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.7"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.7",
+      "x-fathom-section-title": "Detectors"
+    },
+    "diff": {
+      "additionalProperties": false,
+      "description": "Per-file diff knobs.",
+      "properties": {
+        "context_lines": {
+          "default": 3,
+          "description": "Context lines per diff hunk.",
+          "maximum": 20,
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-analyzer": "diff.per_file",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.6",
+          "x-fathom-units": "lines"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e1.6",
+      "x-fathom-section-title": "Diff rendering"
+    },
+    "episode": {
+      "additionalProperties": false,
+      "description": "Boundary sources in priority order, and the idle gap that ends an episode when nothing better is available.",
+      "properties": {
+        "boundaries": {
+          "default": [
+            "hook",
+            "trailer",
+            "author"
+          ],
+          "description": "Boundary sources in priority order (ADR-003). `replace`, not `extend`: the *order* is the meaning, and a merged list has no coherent order.",
+          "items": {
+            "enum": [
+              "hook",
+              "trailer",
+              "author",
+              "time",
+              "merge"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "episode.segment",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.3"
+        },
+        "time_gap_minutes": {
+          "default": 30,
+          "description": "Idle gap that closes an episode when no stronger boundary source fires.",
+          "maximum": 1440,
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "episode.segment",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.3",
+          "x-fathom-units": "minutes"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-003 / e1.3",
+      "x-fathom-section-title": "Episode segmentation"
+    },
+    "graph": {
+      "additionalProperties": false,
+      "description": "Directories excluded from the dependency and structure graph.",
+      "properties": {
+        "ignored_dirs": {
+          "default": [
+            "node_modules"
+          ],
+          "description": "Directory names excluded from the structure/dependency graph entirely.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "graph.build",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.2"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e3.2 (`reco-8s4`)",
+      "x-fathom-section-title": "Graph inputs"
+    },
+    "harness": {
+      "additionalProperties": false,
+      "description": "The per-session ingest budget that quarantines a runaway hook stream.",
+      "properties": {
+        "max_bytes_per_session_mib": {
+          "default": 64,
+          "description": "Per-session ingest budget; over quota the session is quarantined rather than trusted (ADR-005 \u00a76.3).",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "MiB"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-005 \u00a76.3",
+      "x-fathom-section-title": "Harness ingest"
+    },
+    "ingest": {
+      "additionalProperties": false,
+      "description": "The size cap: a bigger blob is recorded as oversized, never slurped.",
+      "properties": {
+        "size_cap_mib": {
+          "default": 8,
+          "description": "Largest single blob that enters memory; bigger is recorded as `oversized` with counts, never slurped. The budget face of this knob is `ingest.file_size_cap.mib` \u2014 one value, two names, one alias table.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "ingest.normalize",
+          "x-fathom-budget": "ingest.file_size_cap.mib",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.2",
+          "x-fathom-units": "MiB"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e1.2",
+      "x-fathom-section-title": "Ingest limits"
+    },
+    "keys": {
+      "additionalProperties": false,
+      "description": "Per-mode user overrides **only**. The canonical binding table is ADR-006's; conflict detection and the cheatsheet are `e5.4`'s.",
+      "properties": {
+        "overrides": {
+          "additionalProperties": false,
+          "description": "User key overrides per mode. Overrides only \u2014 `e5.4` detects conflicts and the cheatsheet is generated from the merged table, so neither can lie.",
+          "patternProperties": {
+            "^(?:global|queue|timeline|diff|structure|deps|ambient|review)$": {
+              "additionalProperties": false,
+              "description": "User key overrides per mode. Overrides only \u2014 `e5.4` detects conflicts and the cheatsheet is generated from the merged table, so neither can lie.",
+              "patternProperties": {
+                "^[A-Za-z0-9<>^+_,.\\- ]{1,12}$": {
+                  "description": "User key overrides per mode. Overrides only \u2014 `e5.4` detects conflicts and the cheatsheet is generated from the merged table, so neither can lie.",
+                  "type": "string",
+                  "x-fathom-merge": "deep",
+                  "x-fathom-open": [
+                    "a keymap mode (the canonical table is ADR-006's, `e0.6`)",
+                    "a key or key-sequence, e.g. `j`, `gg`, `<C-PageDown>`"
+                  ],
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e5.4"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-006 / e5.4",
+      "x-fathom-section-title": "Keymap overrides"
+    },
+    "layers": {
+      "additionalProperties": false,
+      "description": "The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name.",
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": {
+          "description": "One named layer: the path prefixes that belong to it. `deep`, so a repo file adds a layer without erasing the layers you declared at home.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "structure.delta",
+          "x-fathom-merge": "deep",
+          "x-fathom-open": [
+            "a layer name: lowercase, starts with a letter"
+          ],
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.1"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a75.1 / e3.1",
+      "x-fathom-section-title": "Layering rules"
+    },
+    "mcp": {
+      "additionalProperties": false,
+      "description": "Transport and bind address. The token lives here and is user-scoped and redacted: a listener credential from a cloned repo is a gift.",
+      "properties": {
+        "auth_token": {
+          "default": "",
+          "description": "Bearer token for the HTTP transport. User-scoped and redacted everywhere: a token a clone could write is a token that is already leaked.",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "user",
+          "x-fathom-secret": true,
+          "x-fathom-ticket": "e6.4"
+        },
+        "bind": {
+          "default": "127.0.0.1",
+          "description": "Listener address, loopback by default. A non-loopback bind is refused without consent: a listener on a shared host is a disclosure, not a convenience.",
+          "pattern": "^(?:[0-9]{1,3}(?:\\.[0-9]{1,3}){3}|localhost|::1)$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.4"
+        },
+        "transport": {
+          "default": "stdio",
+          "description": "`stdio` opens no socket and is not a network feature (ADR-002 \u00a76.3). `http` is a listener, so it needs `privacy.mcp_http_transport` as well as the compiled-in feature.",
+          "enum": [
+            "stdio",
+            "http"
+          ],
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.4"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-005 \u00a74, ADR-002 \u00a76.3",
+      "x-fathom-section-title": "MCP server"
+    },
+    "meta": {
+      "additionalProperties": false,
+      "description": "What the file says about itself, so a newer file is refused rather than half-understood.",
+      "properties": {
+        "config_version": {
+          "default": 1,
+          "description": "Config format this file was written for. A value greater than the running binary's is an error, never a silent partial read.",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e0.8",
+          "x-fathom-units": "version"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e0.8",
+      "x-fathom-section-title": "File metadata"
+    },
+    "noise": {
+      "additionalProperties": false,
+      "description": "Globs for change that carries no reviewable information. `e0.9` owns the built-in table; this is the user half of it.",
+      "properties": {
+        "builtins_version": {
+          "default": 1,
+          "description": "Version of the *built-in* noise table e0.9 ships. Declared so a taxonomy table bump invalidates the analyzers that read noise (ADR-004 \u00a76).",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "taxonomy.path",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e0.9",
+          "x-fathom-units": "version"
+        },
+        "globs": {
+          "default": [
+            "**/dist/**",
+            "**/*.snap"
+          ],
+          "description": "Path globs treated as noise. `extend`: a repo adds to your list instead of replacing it. A leading `!` re-promotes a path a broader glob demoted.",
+          "items": {
+            "pattern": "^!?[^\\x00]+$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "taxonomy.path",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e0.9"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e0.9 (`reco-5vz`)",
+      "x-fathom-section-title": "Noise policy"
+    },
+    "non_code": {
+      "additionalProperties": false,
+      "description": "Config, env, flags, migrations and CI \u2014 the surfaces a reviewer must be told about even though they are not code.",
+      "properties": {
+        "patterns": {
+          "default": [
+            "**/migrations/**",
+            ".github/workflows/**"
+          ],
+          "description": "Non-code surfaces a reviewer must be told about: config, env, flags, migrations and CI.",
+          "items": {
+            "pattern": "^!?[^\\x00]+$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "non_code.surface",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.8"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.8 (`reco-bjd`)",
+      "x-fathom-section-title": "Non-code surface"
+    },
+    "paths": {
+      "additionalProperties": false,
+      "description": "The four paths Fathom writes to. Every relative path is resolved against the repository root and must stay inside it.",
+      "properties": {
+        "events": {
+          "default": ".fathom/events.jsonl",
+          "description": "Append-only harness event stream the hook adapters write (ADR-005 \u00a72).",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1"
+        },
+        "export": {
+          "default": ".fathom/export",
+          "description": "Where `fathom export` writes review artefacts.",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e5.7"
+        },
+        "objects": {
+          "default": ".fathom/objects",
+          "description": "Content-addressed object directory for payloads too large to inline.",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.2"
+        },
+        "store": {
+          "default": ".fathom/store.sqlite3",
+          "description": "SQLite index + analysis cache. A relative path is resolved against the repository root; a value that escapes the root from a *repo* file is refused.",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.1"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e0.8 / ADR-004 \u00a712",
+      "x-fathom-section-title": "Where things live"
+    },
+    "privacy": {
+      "additionalProperties": false,
+      "description": "The runtime half of the no-network-by-default claim. Every key here is user-scoped: a clone may not consent on your behalf.",
+      "properties": {
+        "advisories": {
+          "default": false,
+          "description": "Consent to fetch security advisories (OSV). Off by default; needs the `net-advisories` feature to be compiled in as well.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "user",
+          "x-fathom-ticket": "e2.7"
+        },
+        "llm": {
+          "default": false,
+          "description": "Consent for optional narrative polish. Off by default; the template is the degraded answer and is shipped as the good one.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "user",
+          "x-fathom-ticket": "e4.7"
+        },
+        "mcp_http_transport": {
+          "default": false,
+          "description": "Consent to bind a network listener for MCP. A listener is as much a privacy decision as an outbound call, so it wears the same gate.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "user",
+          "x-fathom-ticket": "e6.4"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-001 \u00a77.5, ADR-002 \u00a76.3",
+      "x-fathom-section-title": "Network consent"
+    },
+    "prune": {
+      "additionalProperties": false,
+      "description": "Prune batch size.",
+      "properties": {
+        "batch_rows": {
+          "default": 5000,
+          "description": "Rows deleted per pruning transaction.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-budget": "prune.batch_rows",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "rows"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a78.1",
+      "x-fathom-section-title": "Pruning"
+    },
+    "query": {
+      "additionalProperties": false,
+      "description": "The interrupt budget for one store call on the keystroke path. Exceeding it is a stated partial, not a hang.",
+      "properties": {
+        "frame_store_budget_ms": {
+          "default": 8,
+          "description": "One store call on the keystroke path may take this long before it is interrupted and rendered as a stated partial (ADR-004 \u00a77.6).",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-budget": "query.frame_store_budget.ms",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e5.1",
+          "x-fathom-units": "ms"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a77.6, \u00a711",
+      "x-fathom-section-title": "Query interrupts"
+    },
+    "ratchet": {
+      "additionalProperties": false,
+      "description": "The baselined pre-existing violations graph.cycles reads. ADR-004 \u00a75.1 declares `ratchet.` as an analyzer input, so the subtree exists here; `e3.10` may extend it, and the digest test refuses a silent absence.",
+      "properties": {
+        "baseline": {
+          "default": ".fathom/ratchet.toml",
+          "description": "The committed baseline of pre-existing violations (class M, ADR-004 \u00a712). Committed on purpose: a baseline nobody can diff is a baseline nobody trusts.",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-analyzer": "graph.cycles",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.10"
+        },
+        "mode": {
+          "default": "warn",
+          "description": "What a *new* violation above the baseline does: nothing, a finding, or a failing `fathom check` (exit 7). `warn` is the default because a ratchet that blocks a day-one review teaches nothing about the review.",
+          "enum": [
+            "off",
+            "warn",
+            "deny"
+          ],
+          "type": "string",
+          "x-fathom-analyzer": "graph.cycles",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.10"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a75.1 / e3.10 (`reco-5ht`)",
+      "x-fathom-section-title": "Violation ratchet"
+    },
+    "rebuild": {
+      "additionalProperties": false,
+      "description": "Free-disk-ratio required before a rebuild starts.",
+      "properties": {
+        "disk_ratio": {
+          "default": 2.0,
+          "description": "Free-disk-to-store-size ratio required before a rebuild may start, so a rebuild cannot be the thing that fills the disk.",
+          "minimum": 1.0,
+          "type": "number",
+          "x-fathom-budget": "rebuild.disk_ratio",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.10",
+          "x-fathom-units": "ratio"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a78.6",
+      "x-fathom-section-title": "Rebuild safety"
+    },
+    "rename": {
+      "additionalProperties": false,
+      "description": "Similarity threshold for calling two paths the same file.",
+      "properties": {
+        "threshold": {
+          "default": 60,
+          "description": "Similarity needed to call two paths the same file.",
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-analyzer": "diff.rename_detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.6",
+          "x-fathom-units": "percent"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e1.6",
+      "x-fathom-section-title": "Rename detection"
+    },
+    "repo": {
+      "additionalProperties": false,
+      "description": "The size class the budget defaults are chosen from.",
+      "properties": {
+        "size_class": {
+          "default": "auto",
+          "description": "Size class the budget defaults are read from. `auto` probes commit and file counts and takes the *stricter* of the two (ADR-004 \u00a711.1); naming a class here is how you pay the xlarge budget on a machine that needs it.",
+          "enum": [
+            "auto",
+            "small",
+            "medium",
+            "large",
+            "xlarge"
+          ],
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e0.11"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a711.1",
+      "x-fathom-section-title": "Repository facts"
+    },
+    "retention": {
+      "additionalProperties": false,
+      "description": "Windows on the live epoch. ADR-004 \u00a78.2 states these numbers as `fathom.toml`'s `[retention]` defaults; they are restated here from that table and a test refuses drift.",
+      "properties": {
+        "blob_epochs": {
+          "default": 3,
+          "description": "Blobs are small and deduplicated; the extra epoch is cheaper than the re-analysis it saves.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "epochs"
+        },
+        "cache_epochs": {
+          "default": 2,
+          "description": "Live epoch plus the one before, so an interrupted rebuild can be abandoned without losing the index it replaced.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "epochs"
+        },
+        "events_days": {
+          "default": 90,
+          "description": "Harness event retention (ADR-005 \u00a76.3's `retention_days`).",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "days"
+        },
+        "index_run_keep_last": {
+          "default": 20,
+          "description": "Index-run history is the \u00a711 evidence trail.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "runs"
+        },
+        "store_event_days": {
+          "default": 30,
+          "description": "Non-error store events age out; `error` rows are kept until read, because \u201cwhen did it start happening\u201d is the first question asked.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "days"
+        },
+        "usage_snapshot_days": {
+          "default": 90,
+          "description": "Store-growth history window.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.1",
+          "x-fathom-units": "days"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a78.2, ADR-005 \u00a76.3",
+      "x-fathom-section-title": "Retention windows"
+    },
+    "risk": {
+      "additionalProperties": false,
+      "description": "The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 \u00a76).",
+      "properties": {
+        "tau": {
+          "default": 70,
+          "description": "Risk threshold above which an episode is surfaced as needing attention.",
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-analyzer": "risk.score",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "score"
+        },
+        "weights": {
+          "additionalProperties": false,
+          "description": "Per-signal weights in the risk score. `deep`: adding a signal's weight in a repo file does not drop the signals you weighted at home.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_]*$": {
+              "description": "Per-signal weights in the risk score. `deep`: adding a signal's weight in a repo file does not drop the signals you weighted at home.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "deep",
+              "x-fathom-open": [
+                "a risk-weight name (`size`, `test_ratio`, `blast`, \u2026)"
+              ],
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.9 / e2.10",
+      "x-fathom-section-title": "Risk weights and threshold"
+    },
+    "rss": {
+      "additionalProperties": false,
+      "description": "The RSS budgets. Per ADR-004 \u00a711.8 these are *never* scaled by a machine factor, so the only knob is the size class.",
+      "properties": {
+        "analyzer_working_set": {
+          "additionalProperties": false,
+          "description": "Per-analyzer working set; an analyzer needing more must stream or say it is running in the background lane.",
+          "properties": {
+            "mib": {
+              "default": 128,
+              "description": "Per-analyzer working set; an analyzer needing more must stream or say it is running in the background lane.",
+              "minimum": 8,
+              "type": "integer",
+              "x-fathom-budget": "rss.analyzer_working_set.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e0.11",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        },
+        "cold_index_peak_mib": {
+          "default": 500,
+          "description": "Cold-index peak RSS budget, graph lane included.",
+          "minimum": 64,
+          "type": "integer",
+          "x-fathom-budget": "rss.cold_index.peak_mib",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e0.11",
+          "x-fathom-units": "MiB"
+        },
+        "daemon": {
+          "additionalProperties": false,
+          "description": "Daemon at idle plus one in-flight warm index.",
+          "properties": {
+            "mib": {
+              "default": 220,
+              "description": "Daemon at idle plus one in-flight warm index.",
+              "minimum": 32,
+              "type": "integer",
+              "x-fathom-budget": "rss.daemon.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e6.3",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        },
+        "sqlite_page_cache": {
+          "additionalProperties": false,
+          "description": "`PRAGMA cache_size` per connection: fixed per connection, not per table.",
+          "properties": {
+            "mib": {
+              "default": 8,
+              "description": "`PRAGMA cache_size` per connection: fixed per connection, not per table.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-budget": "rss.sqlite_page_cache.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e1.1",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        },
+        "tui": {
+          "additionalProperties": false,
+          "description": "Steady-state TUI with a warm store. Never scaled by a machine factor (ADR-004 \u00a711.8): memory budgets are not time budgets.",
+          "properties": {
+            "mib": {
+              "default": 180,
+              "description": "Steady-state TUI with a warm store. Never scaled by a machine factor (ADR-004 \u00a711.8): memory budgets are not time budgets.",
+              "minimum": 32,
+              "type": "integer",
+              "x-fathom-budget": "rss.tui.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e5.1",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a711.5",
+      "x-fathom-section-title": "Memory caps"
+    },
+    "store": {
+      "additionalProperties": false,
+      "description": "WAL ceiling and the soft store-size ceiling `doctor` warns at.",
+      "properties": {
+        "size": {
+          "additionalProperties": false,
+          "description": "Soft store-size ceiling: `fathom doctor` warns at this size. A warning, never a refusal \u2014 refusing to write would lose the review ledger's context.",
+          "properties": {
+            "mib": {
+              "default": 2048,
+              "description": "Soft store-size ceiling: `fathom doctor` warns at this size. A warning, never a refusal \u2014 refusing to write would lose the review ledger's context.",
+              "minimum": 64,
+              "type": "integer",
+              "x-fathom-budget": "store.size.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e1.10",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        },
+        "wal_cap": {
+          "additionalProperties": false,
+          "description": "WAL size at which the writer warns and forces a passive checkpoint.",
+          "properties": {
+            "mib": {
+              "default": 64,
+              "description": "WAL size at which the writer warns and forces a passive checkpoint.",
+              "minimum": 8,
+              "type": "integer",
+              "x-fathom-budget": "store.wal_cap.mib",
+              "x-fathom-budget-default-for-size-class": true,
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e1.1",
+              "x-fathom-units": "MiB"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a77, \u00a711",
+      "x-fathom-section-title": "Store caps"
+    },
+    "test": {
+      "additionalProperties": false,
+      "description": "What counts as a test, for the test-surface analyzer.",
+      "properties": {
+        "globs": {
+          "default": [
+            "tests/**",
+            "**/test_*.py"
+          ],
+          "description": "Paths counted as test surface.",
+          "items": {
+            "pattern": "^!?[^\\x00]+$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "test.surface",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.6"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e1.7 / e2.6",
+      "x-fathom-section-title": "Test surface"
+    },
+    "write": {
+      "additionalProperties": false,
+      "description": "Batching knobs for the single writer.",
+      "properties": {
+        "batch_ms": {
+          "default": 50,
+          "description": "Also commit at this many ms, whichever comes first, so a big ingest still shows progress.",
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-budget": "write.batch.ms",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.1",
+          "x-fathom-units": "ms"
+        },
+        "batch_rows": {
+          "default": 5000,
+          "description": "Rows per writer transaction (ADR-004 \u00a77.3). Measured 12x versus one row per transaction, so this is not cosmetic.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-budget": "write.batch_rows",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.1",
+          "x-fathom-units": "rows"
+        },
+        "mandatory_checkpoint_per_commit": {
+          "default": 0,
+          "description": "Mandatory `wal_checkpoint(TRUNCATE)` calls per commit. Zero: measured at 0.8 % of a warm budget *per commit*.",
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-budget": "write.mandatory_checkpoint_per_commit",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.1",
+          "x-fathom-units": "checkpoints"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a77.3",
+      "x-fathom-section-title": "Write batching"
+    }
+  },
+  "title": "Fathom configuration (`fathom.toml`)",
+  "type": "object",
+  "x-fathom": {
+    "budget_aliases": {
+      "ingest.size_cap_mib": "ingest.file_size_cap.mib",
+      "query.frame_store_budget_ms": "query.frame_store_budget.ms",
+      "rss.cold_index_peak_mib": "rss.cold_index.peak_mib",
+      "write.batch_ms": "write.batch.ms"
+    },
+    "config_version": 1,
+    "env_prefix": "FATHOM_",
+    "env_separator": "__",
+    "generator": "python3 -m recommender.config schema --write",
+    "layers": [
+      "flag",
+      "env",
+      "repo",
+      "user",
+      "defaults"
+    ],
+    "precedence": "flag > env > repo > user > defaults",
+    "sections": {
+      "blast": {
+        "owner": "e2.10",
+        "title": "Blast radius"
+      },
+      "cache": {
+        "owner": "ADR-004 \u00a711",
+        "title": "Cache caps"
+      },
+      "deps": {
+        "owner": "e2.5 (`reco-j83`)",
+        "title": "Dependencies"
+      },
+      "detectors": {
+        "owner": "e2.7",
+        "title": "Detectors"
+      },
+      "diff": {
+        "owner": "e1.6",
+        "title": "Diff rendering"
+      },
+      "episode": {
+        "owner": "ADR-003 / e1.3",
+        "title": "Episode segmentation"
+      },
+      "graph": {
+        "owner": "e3.2 (`reco-8s4`)",
+        "title": "Graph inputs"
+      },
+      "harness": {
+        "owner": "ADR-005 \u00a76.3",
+        "title": "Harness ingest"
+      },
+      "ingest": {
+        "owner": "e1.2",
+        "title": "Ingest limits"
+      },
+      "keys": {
+        "owner": "ADR-006 / e5.4",
+        "title": "Keymap overrides"
+      },
+      "layers": {
+        "owner": "ADR-004 \u00a75.1 / e3.1",
+        "title": "Layering rules"
+      },
+      "mcp": {
+        "owner": "ADR-005 \u00a74, ADR-002 \u00a76.3",
+        "title": "MCP server"
+      },
+      "meta": {
+        "owner": "e0.8",
+        "title": "File metadata"
+      },
+      "noise": {
+        "owner": "e0.9 (`reco-5vz`)",
+        "title": "Noise policy"
+      },
+      "non_code": {
+        "owner": "e2.8 (`reco-bjd`)",
+        "title": "Non-code surface"
+      },
+      "paths": {
+        "owner": "e0.8 / ADR-004 \u00a712",
+        "title": "Where things live"
+      },
+      "privacy": {
+        "owner": "ADR-001 \u00a77.5, ADR-002 \u00a76.3",
+        "title": "Network consent"
+      },
+      "prune": {
+        "owner": "ADR-004 \u00a78.1",
+        "title": "Pruning"
+      },
+      "query": {
+        "owner": "ADR-004 \u00a77.6, \u00a711",
+        "title": "Query interrupts"
+      },
+      "ratchet": {
+        "owner": "ADR-004 \u00a75.1 / e3.10 (`reco-5ht`)",
+        "title": "Violation ratchet"
+      },
+      "rebuild": {
+        "owner": "ADR-004 \u00a78.6",
+        "title": "Rebuild safety"
+      },
+      "rename": {
+        "owner": "e1.6",
+        "title": "Rename detection"
+      },
+      "repo": {
+        "owner": "ADR-004 \u00a711.1",
+        "title": "Repository facts"
+      },
+      "retention": {
+        "owner": "ADR-004 \u00a78.2, ADR-005 \u00a76.3",
+        "title": "Retention windows"
+      },
+      "risk": {
+        "owner": "e2.9 / e2.10",
+        "title": "Risk weights and threshold"
+      },
+      "rss": {
+        "owner": "ADR-004 \u00a711.5",
+        "title": "Memory caps"
+      },
+      "store": {
+        "owner": "ADR-004 \u00a77, \u00a711",
+        "title": "Store caps"
+      },
+      "test": {
+        "owner": "e1.7 / e2.6",
+        "title": "Test surface"
+      },
+      "write": {
+        "owner": "ADR-004 \u00a77.3",
+        "title": "Write batching"
+      }
+    }
+  }
+}

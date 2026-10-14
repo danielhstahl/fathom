@@ -23,6 +23,7 @@ decision records are being written first, on purpose.
 | Architecture decision records | [docs/adr/](docs/adr/) | ADR-001, [ADR-002](docs/adr/0002-workspace.md), [ADR-004](docs/adr/0004-storage.md) and [ADR-005](docs/adr/0005-harness-contract.md) accepted; ADR-003, 006 open |
 | Storage, indexing and cache contract (schema, invalidation matrix, perf budgets) | [docs/adr/0004-storage.md](docs/adr/0004-storage.md), `src/recommender/store/`, [benchmarks/budgets.json](benchmarks/budgets.json) | accepted; `e0.11` gates CI on `benchmarks/budgets.json` |
 | Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
+| Configuration: `fathom.toml`, five layers, schema, `config explain` | [docs/concepts/config.md](docs/concepts/config.md), `src/recommender/config/`, [schemas/fathom.schema.json](schemas/fathom.schema.json), `fathom.toml` | `e0.8` (`reco-dq3`) built: the schema and the key reference are generated and CI diffs them; this repo's own `fathom.toml` is validated in CI |
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted; the cargo workspace itself is `e0.7` (`reco-e77`) |
 
@@ -34,9 +35,14 @@ fathom                    # the TUI: queue, timeline, diff, structure, deps, amb
 fathom why <episode>      # why this episode scored the risk it scored, per feature
 fathom analyze <episode> --json    # the versioned delta model, one source of truth
 fathom export --episodes A..B      # the review artefact you post on the PR
+fathom config explain [--path P]   # which layer won every value, and what it beat
 ```
 
 Those verbs do not exist yet; they are the agreed surface, and the plan is written against them.
+One exception exists on purpose: `fathom config …` has an executable form today
+(`python3 -m recommender.config explain --path src/foo.rs`), because every later feature's behaviour
+has to be traceable to a file and a config system whose explanation is prose gets described three
+different ways by three teams — see [docs/concepts/config.md](docs/concepts/config.md).
 
 ## Vocabulary, in brief
 
@@ -62,6 +68,12 @@ that is a bug.
   tools/check_workspace.py lint` fails an uphill import, a network client in a default build, `unsafe`
   outside `fathom-store/src/raw/`, and a table that has drifted from `tools/workspace_model.py`. If you
   add a crate, an edge or a feature, you amend ADR-002 in the same PR.
+- Config keys are a spec, not a dict: `src/recommender/config/schema.py` declares every key, and
+  `python3 -m recommender.config schema --check && python3 -m recommender.config doc --check` fails
+  if `schemas/fathom.schema.json` or the key reference in [docs/concepts/config.md](docs/concepts/config.md)
+  has drifted from it. Add a key there, never to the generated files; `--set` a key in a test if you
+  need one that does not exist yet, and `e0.8`'s digest test will tell you if an analyzer declared a
+  key the schema is missing.
 - v1 is explicitly **not** a git client, **not** an IDE, **not** an agent runner, **not** a PR host, has
   **no** cloud service and **no** mandatory LLM dependency — see
   [the non-goals](docs/concepts/thesis.md#8-non-goals-for-v1). Proposals that cross that boundary need an

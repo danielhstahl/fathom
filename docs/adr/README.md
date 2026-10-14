@@ -40,3 +40,11 @@ the normative crate graph, feature list, toolchain floor and ticket→crate map,
 `crates/` tree against it (an uphill import, a façade breach, a network client in a default build,
 `unsafe` outside `fathom-store/src/raw/`), and fails if the workflow files stop invoking it. The
 boundaries in that ADR are checks, not conventions.
+
+ADR-002 §4.5 — "there is no `fathom-config` crate" — is now executed too, by `e0.8` (`reco-dq3`):
+`src/recommender/config/` splits the typed key spec (the `fathom-core` half, which the tests prove
+does no IO) from discovery and layering (the `fathom-cli` half, the only module that reads files,
+`FATHOM_*` or git), and [../concepts/config.md](../concepts/config.md) is the normative description
+with generated key tables. `schemas/fathom.schema.json` is generated from the same spec and CI diffs
+it, because an editor schema that drifts from the loader makes the editor the confident party and it
+is wrong.
