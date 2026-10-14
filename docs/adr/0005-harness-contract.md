@@ -430,14 +430,14 @@ on `harness run`, `harness verify` and `harness build`. Six things it establishe
                "wire_protocol": "claude-code/1"}],
  "mcp": {"read_only": true, "contract_range": [1, 1], "tools_total": 9,
          "tools_by_capability": {"read": 7, "write": 2}},
- "abi": {"abi_version": "harness-ffi-1", "abi_verdict": "mismatch",
-         "abi_verdict_detail": "... --verify: rc=1", "libc_machine": "x86_64",
-         "host_machine": "aarch64"},
+ "abi": {"abi_version": "harness-ffi-1", "abi_verdict": "compatible",
+         "abi_verdict_detail": "/lib/ld-linux-aarch64.so.1 --verify .../libc.so.6: rc=0",
+         "libc_machine": "aarch64", "host_machine": "aarch64"},
  "unknowns": ["codex_cli and opencode are not installed: their mappings are [external] (§9)",
               "no mmap-backed index exists yet: reco-f28 consumes the probe's contract only",
               "reason() SLA and backpressure deferred (§8.1, §8.4)"],
- "blocking": ["reco-2rx (reason SLA)", "reco-552 (change ledger)"],
- "ok": false}
+ "blocking": ["reco-2rx (reason SLA)", "reco-552 (shared review memory)"],
+ "ok": true}
 ```
 
 Two deliberate properties. `harness status` **exits 0 with `ok:false`** rather than raising: it is a
