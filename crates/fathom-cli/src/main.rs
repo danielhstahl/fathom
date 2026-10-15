@@ -11,13 +11,17 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-// The clock is read once, here, and only by the verbs that stamp rows: a binary built without a store
-// has nothing to stamp, so it does not compile the clock in at all (ADR-002 §4.4, §6.1's `minimal`).
-#[cfg(feature = "sqlite-bundled")]
+// The clock is read once, here, and only by the verbs that need an instant (ADR-002 §4.4). Every verb
+// that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,
+// so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
 mod clock;
+mod diagnose;
 mod features;
 mod hooks;
 mod output;
+mod query;
+mod sanitize;
+mod state;
 mod verbs;
 #[cfg(feature = "watch")]
 mod watch;

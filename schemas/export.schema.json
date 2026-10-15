@@ -1,0 +1,77 @@
+{
+  "$id": "https://fathom.dev/schemas/export.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The export skeleton: format, destination and scope are validated and resolved; the rendering is `e5.7`. The payload states plainly that nothing was written.",
+  "properties": {
+    "artifact": {
+      "type": "string"
+    },
+    "contract": {
+      "const": "fathom.cli.export/1"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "exit_name": {
+      "type": "string"
+    },
+    "format": {
+      "enum": [
+        "md",
+        "html",
+        "json"
+      ],
+      "type": "string"
+    },
+    "out": {
+      "type": "string"
+    },
+    "owner_ticket": {
+      "type": "string"
+    },
+    "scope": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "status": {
+      "const": "not_implemented"
+    },
+    "writes_file": {
+      "const": false
+    }
+  },
+  "required": [
+    "contract",
+    "status",
+    "owner_ticket",
+    "format",
+    "artifact",
+    "out",
+    "scope",
+    "writes_file",
+    "exit_code",
+    "exit_name"
+  ],
+  "title": "fathom export --json (skeleton)",
+  "type": "object",
+  "x-fathom-contract": "fathom.cli.export/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 1,
+      "name": "ERROR",
+      "when": "a rev that names nothing, an unimplemented verb, a rejected argument value"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line (bad flag, unknown verb, missing value)"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "--root is not a git repository, or `.git` is unreadable"
+    }
+  ],
+  "x-fathom-verb": "export"
+}

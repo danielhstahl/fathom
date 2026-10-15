@@ -40,12 +40,14 @@ pub enum ExitCode {
     UnsupportedPlatform = 10,
     /// a perf/RSS budget in `benchmarks/budgets.json` was blown
     BudgetExceeded = 11,
+    /// the index is missing, incomplete or stale; the verb names the remedy
+    IndexDegraded = 12,
 }
 
 impl ExitCode {
     /// Every code, in numeric order. `fathom doctor` prints the table so a bug report can name the
     /// contract it hit.
-    pub const ALL: [ExitCode; 12] = [
+    pub const ALL: [ExitCode; 13] = [
         ExitCode::Ok,
         ExitCode::Error,
         ExitCode::Usage,
@@ -58,6 +60,7 @@ impl ExitCode {
         ExitCode::FeatureAbsent,
         ExitCode::UnsupportedPlatform,
         ExitCode::BudgetExceeded,
+        ExitCode::IndexDegraded,
     ];
 
     /// The number a shell sees. `main` calls `std::process::exit` with this; no crate below the
@@ -83,6 +86,7 @@ impl ExitCode {
             ExitCode::FeatureAbsent => "FEATURE_ABSENT",
             ExitCode::UnsupportedPlatform => "UNSUPPORTED_PLATFORM",
             ExitCode::BudgetExceeded => "BUDGET_EXCEEDED",
+            ExitCode::IndexDegraded => "INDEX_DEGRADED",
         }
     }
 
@@ -115,6 +119,7 @@ impl TryFrom<i32> for ExitCode {
             9 => ExitCode::FeatureAbsent,
             10 => ExitCode::UnsupportedPlatform,
             11 => ExitCode::BudgetExceeded,
+            12 => ExitCode::IndexDegraded,
             other => return Err(other),
         })
     }

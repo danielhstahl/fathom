@@ -1,0 +1,153 @@
+{
+  "$id": "https://fathom.dev/schemas/doctor.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The report that is safe to attach to a bug report: build, environment, repository, index, cache, config layers, watcher and consent table, every finding with a remedy. No config values, no absolute home paths, no URL credentials.",
+  "properties": {
+    "build": {
+      "additionalProperties": true,
+      "description": "os, arch, libc, terminal and the instant the report describes.",
+      "type": "object"
+    },
+    "cache": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/cache"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "config": {
+      "additionalProperties": true,
+      "description": "Path, size and mtime per config layer - never the values.",
+      "type": "object"
+    },
+    "contract": {
+      "const": "fathom.cli.doctor/1"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "exit_name": {
+      "type": "string"
+    },
+    "fathom_dir": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "features": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "common.schema.json#/$defs/finding"
+      },
+      "type": "array"
+    },
+    "index": {
+      "$ref": "common.schema.json#/$defs/index"
+    },
+    "network_features": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "privacy": {
+      "type": "boolean"
+    },
+    "repository": {
+      "$ref": "common.schema.json#/$defs/repository"
+    },
+    "schema_version": {
+      "type": "integer"
+    },
+    "sqlite": {
+      "additionalProperties": true,
+      "description": "Version, compile options and ADR-004 \u00a74.0's capability probe.",
+      "type": "object"
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "string"
+    },
+    "views_ready": {
+      "type": "boolean"
+    },
+    "watch": {
+      "additionalProperties": true,
+      "description": "`e1.9`'s watcher report: the backend chosen and any running heartbeat.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "contract",
+    "version",
+    "features",
+    "schema_version",
+    "views_ready",
+    "build",
+    "sqlite",
+    "repository",
+    "index",
+    "cache",
+    "config",
+    "fathom_dir",
+    "watch",
+    "network_features",
+    "privacy",
+    "strict",
+    "exit_code",
+    "exit_name",
+    "findings"
+  ],
+  "title": "fathom doctor --json",
+  "type": "object",
+  "x-fathom-contract": "fathom.cli.doctor/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the verb answered, and the index describes HEAD"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line (bad flag, unknown verb, missing value)"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "--root is not a git repository, or `.git` is unreadable"
+    },
+    {
+      "code": 4,
+      "name": "STORE_CORRUPT",
+      "when": "the store failed its integrity checks"
+    },
+    {
+      "code": 5,
+      "name": "CONFIG_INVALID",
+      "when": "`fathom.toml` failed the schema, or a value is the wrong type"
+    },
+    {
+      "code": 9,
+      "name": "FEATURE_ABSENT",
+      "when": "the verb needs a feature this binary was not built with"
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "the index is missing, stale, incomplete, or a run never closed"
+    }
+  ],
+  "x-fathom-verb": "doctor"
+}

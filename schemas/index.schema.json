@@ -1,0 +1,139 @@
+{
+  "$id": "https://fathom.dev/schemas/index.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What one index run did, in the same numbers `fathom index --stats` prints as a table. Owner: `e1.4`, surfaced by `e1.10`.",
+  "properties": {
+    "analyzers": {
+      "items": {
+        "$ref": "common.schema.json#/$defs/analyzer"
+      },
+      "type": "array"
+    },
+    "commits": {
+      "additionalProperties": false,
+      "properties": {
+        "looked_up": {
+          "type": "integer"
+        },
+        "new": {
+          "type": "integer"
+        },
+        "walked": {
+          "type": "integer"
+        },
+        "written": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "walked",
+        "new",
+        "looked_up",
+        "written"
+      ],
+      "type": "object"
+    },
+    "contract": {
+      "const": "fathom.cli.index/1"
+    },
+    "elapsed_ms": {
+      "type": "integer"
+    },
+    "epoch": {
+      "type": "integer"
+    },
+    "failures": {
+      "type": "array"
+    },
+    "interrupted": {
+      "type": "boolean"
+    },
+    "kind": {
+      "enum": [
+        "cold",
+        "warm",
+        "rebuild",
+        "relink",
+        "prune",
+        "maintenance"
+      ],
+      "type": "string"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rebuild": {
+      "type": "boolean"
+    },
+    "store": {
+      "description": "Repository-relative path to the store this run wrote.",
+      "type": "string"
+    },
+    "worktree": {
+      "type": "array"
+    },
+    "worktree_skipped": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract",
+    "store",
+    "rebuild",
+    "epoch",
+    "kind",
+    "elapsed_ms",
+    "commits",
+    "interrupted",
+    "reason",
+    "analyzers",
+    "worktree",
+    "worktree_skipped",
+    "failures"
+  ],
+  "title": "fathom index --json",
+  "type": "object",
+  "x-fathom-contract": "fathom.cli.index/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the verb answered, and the index describes HEAD"
+    },
+    {
+      "code": 1,
+      "name": "ERROR",
+      "when": "a rev that names nothing, an unimplemented verb, a rejected argument value"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line (bad flag, unknown verb, missing value)"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "--root is not a git repository, or `.git` is unreadable"
+    },
+    {
+      "code": 5,
+      "name": "CONFIG_INVALID",
+      "when": "`fathom.toml` failed the schema, or a value is the wrong type"
+    },
+    {
+      "code": 6,
+      "name": "CANCELLED",
+      "when": "a cancel handle was pulled mid-run"
+    },
+    {
+      "code": 9,
+      "name": "FEATURE_ABSENT",
+      "when": "the verb needs a feature this binary was not built with"
+    }
+  ],
+  "x-fathom-verb": "index"
+}

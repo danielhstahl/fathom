@@ -35,3 +35,8 @@ pub mod spine;
 /// SQLite backend there is nothing to address.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod cache;
+
+/// The read-only aggregates behind `fathom stats` and `fathom doctor`: repo scale, index state, cache
+/// inventory and the SQLite capability probe (ADR-004 §9.6). Gated with [`spine`] for the same reason.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod inventory;

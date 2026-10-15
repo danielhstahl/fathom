@@ -4,7 +4,58 @@ All notable changes to fathom are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), the versions are
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and — because a toolchain floor is a promise
 to whoever packages this — a dropped MSRV is a **Minor** change recorded under its own
-[`## Toolchain`](docs/adr/0002-workspace.md) heading, per ADR-002 §2.
+[`## `e1.10` — the headless verbs: `index`, `show`, `stats`, `doctor`, `export` (reco-ld8)
+
+- **`fathom index` grew the two flags ADR-004 §9.3 promises**: `--rebuild` (advance the epoch and re-walk;
+  the epoch is settled on success and stays `building` if the run dies, which `fathom stats` then reports)
+  and `--watch` (index once, then hand to `e1.9`'s watcher — `FEATURE_ABSENT` in a binary built without it).
+  `--json` now carries `contract`, `rebuild`, `epoch` and per-analyzer `computes`, and names the store by a
+  repository-relative path instead of an absolute one.
+- **`fathom show <episode|rev>`** reads one episode out of the index — identity, authorship, message head
+  and hash, trailers, the file rows with their `path_class`/`noise_class` decisions — and separates the two
+  failure modes a user can tell apart: a rev that names nothing is `ERROR (1)`, a commit the index has
+  never seen is `INDEX_DEGRADED (12)` with `fathom index` as the remedy. The handle is anything
+  `revspec` resolves; episode identity of its own is `e1.6`'s.
+- **`fathom stats`** is repo scale (`git_commit` aggregates: commits, files, authors, churn, date range,
+  noise and change-kind histograms, top authors), index state (path, size, WAL, schema stamps, epoch and
+  epoch status, `quick_check`/`integrity_check`, ref tips, the last run and how many never closed) and cache
+  hit rate over the store's whole life — the same counters `fathom index --stats` prints, read through the
+  same function, so the three cannot tell different stories (ADR-004 §11).
+- **`fathom doctor` became the report ADR-002 §6.4 and `e1.10` ask for**: build and platform, terminal, the
+  SQLite version with ADR-004 §4.0's capability probe (probed by *using* `STRICT`/JSON1/FTS5), the
+  repository health report with its remotes, the index and cache sections shared with `fathom stats`, the
+  config layers as path/size/mtime (never values), the `.fathom/` inventory, and the watcher's heartbeat.
+  **Every finding carries a remedy, and `doctor` exits 0 unless `--strict` is passed**: a diagnostic that
+  exits non-zero makes the diagnostic the failure. `--deep` adds the whole-database `integrity_check`.
+- **No secrets, no absolute home paths** (`sanitize.rs`): paths are repository-relative or `~`-relative,
+  URL userinfo is replaced with `***`, and config files are reported as digests-of-shape rather than
+  contents. The test plants a token in a config under a fake `$HOME` and a password in a remote URL, and
+  asserts neither appears in any of the four `doctor` renderings.
+- **A new published exit code, `12 INDEX_DEGRADED`** — the index is missing, stale, incomplete, has a run
+  that never closed, is still mid-rebuild, or holds nothing while HEAD does not. Added through the sanctioned
+  door (ADR-002 §7.3, `tools/workspace_model.py`, regenerated in the ADR) rather than invented in a verb.
+  The ticket's four classes (ok / user error / environment / degraded index) are mapped onto the published
+  table in [`docs/concepts/cli.md`](docs/concepts/cli.md); `2` stays `USAGE` and `3` stays
+  `NOT_A_REPOSITORY`, because renumbering a published contract is a worse bug than the ambiguity it fixes.
+- **`fathom export` is a real skeleton now**: the format list is the façade's, `--out` and the new
+  `--episodes RANGE` are parsed and *resolved* against the repository, and `--json` states the format,
+  destination, scope and `writes_file: false` before `e5.7` renders anything.
+- **Schemas and their round trip**: `schemas/{common,index,show,stats,doctor,export}.schema.json`
+  (draft 2020-12, `$id`s under `https://fathom.dev/schemas`, shared `$defs` so `stats` and `doctor` print
+  one definition of "the index"), each documenting its `x-fathom-exit-codes`.
+  `crates/fathom-cli/tests/schemas.rs` runs each verb, validates the payload, re-serialises and validates
+  again, with a keyword-subset validator in-tree — a dependency this would need is a heavier dependency than
+  the subset is worth. `tests/test_cli_contract.py` checks the schemas' codes are the published ones and
+  that every finding the code can produce is documented.
+- **`--help` is snapshotted** (`crates/fathom-cli/tests/snapshots/help.txt`, `SNAPSHOT=1` to regenerate),
+  and a test asserts the flags the ADRs tell people to type (`--rebuild`, `--watch`, `--json`, `--episodes`)
+  are the flags `--help` documents.
+- **`fathom-store` gained `inventory.rs`**: `integrity_check(deep)`, `scale()`, `run_summary()`,
+  `cache_inventory()`, `pending_derivation()`, `ref_tips()`, `indexed_oids()` and `sqlite_provenance()`, so
+  the aggregates behind two verbs are one read each and no SQL leaks into the composition root (ADR-002
+  §4.3). `clock.rs` is now unconditional: reporting the world needs the instant the report describes.
+
+## Toolchain`](docs/adr/0002-workspace.md) heading, per ADR-002 §2.
 
 This file is also the release-notes source `cargo-dist` reads when it builds a GitHub release body, so
 an unreleased section that describes nothing is a release body that says nothing. Keep it true, keep it

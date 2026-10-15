@@ -1,0 +1,172 @@
+===== fathom --help =====
+Review an agent-driven repository before it merges.
+
+Usage: fathom [COMMAND]
+
+Commands:
+  index   Index the repository so every other verb has something to read
+  show    Show one episode in full
+  stats   Report repo scale, index state and cache hit rate
+  check   Run the checks CI cares about; findings above the threshold exit 7
+  doctor  Describe this build, its environment and its index, with a remedy per finding
+  export  Write a review artefact for a pull request or an audit
+  mcp     Speak MCP to a coding agent
+  watch   Watch the repository and index as it changes
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+===== fathom index --help =====
+Index the repository so every other verb has something to read
+
+Usage: fathom index [OPTIONS] [ROOT]
+
+Arguments:
+  [ROOT]
+          The repository to index
+          
+          [default: .]
+
+Options:
+      --stats
+          Print the per-analyzer cache table (ADR-004 §4.8)
+
+      --json
+          Print the run report as JSON on stdout, and nothing else there
+
+      --refresh
+          Look up every stored unit, and recompute the ones that hit too.
+          
+          This is the pass that *measures* ADR-004 §6's invalidation matrix instead of trusting it: after a version or config bump it prints exactly the rows that moved, and after an unremarkable commit it prints 100% hits.
+
+      --rebuild
+          Throw the epoch away and rebuild every analysis from scratch.
+          
+          The old epoch's rows stay on disk and are marked dead (ADR-004 §6.3), so a rebuild that is interrupted is recoverable by definition; the staging file and atomic swap of §9.3 arrive with the daemon that has a concurrent reader to protect.
+
+      --watch
+          Index once, then keep watching and index as the repository changes.
+          
+          The one-shot form a script wants, and the same thing as `fathom watch` with an initial index.
+
+      --committed-only
+          Do not analyse uncommitted paths (ADR-004 §6.4)
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+===== fathom show --help =====
+Show one episode in full
+
+Usage: fathom show [OPTIONS] <EPISODE>
+
+Arguments:
+  <EPISODE>  The episode to show: a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix
+
+Options:
+      --root <ROOT>  The repository to read [default: .]
+      --json         Print the episode as JSON on stdout, and nothing else there
+  -h, --help         Print help
+  -V, --version      Print version
+
+===== fathom stats --help =====
+Report repo scale, index state and cache hit rate
+
+Usage: fathom stats [OPTIONS] [ROOT]
+
+Arguments:
+  [ROOT]  The repository to report on [default: .]
+
+Options:
+      --json     Print the same report as JSON, for a machine
+  -h, --help     Print help
+  -V, --version  Print version
+
+===== fathom check --help =====
+Run the checks CI cares about; findings above the threshold exit 7
+
+Usage: fathom check
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+===== fathom doctor --help =====
+Describe this build, its environment and its index, with a remedy per finding
+
+Usage: fathom doctor [OPTIONS]
+
+Options:
+      --privacy      Print the network-feature and consent table
+      --json         Print the same report as JSON, for a machine
+      --deep         Run the whole-database `integrity_check` rather than `quick_check` (ADR-004 §9.6)
+      --strict       Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want
+      --root <ROOT>  The repository to report on [default: .]
+  -h, --help         Print help
+  -V, --version      Print version
+
+===== fathom export --help =====
+Write a review artefact for a pull request or an audit
+
+Usage: fathom export [OPTIONS]
+
+Options:
+      --format <FORMAT>      The artefact format: markdown, html or json [default: markdown]
+      --out <OUT>            The file stem to write [default: fathom-review]
+      --episodes <EPISODES>  The episode range to export, e.g. `HEAD~9..HEAD` [default: HEAD]
+      --root <ROOT>          The repository to read [default: .]
+      --json                 Describe what the artefact *would* contain, as JSON, and write nothing
+  -h, --help                 Print help
+  -V, --version              Print version
+
+===== fathom watch --help =====
+Watch the repository and index as it changes
+
+Usage: fathom watch [OPTIONS] [ROOT]
+
+Arguments:
+  [ROOT]  The repository to watch [default: .]
+
+Options:
+      --json                         Print one JSON object per state change on stdout, and nothing else there
+      --once                         Index once, then exit: what a script or a CI check wants from `watch`
+      --max-cycles <MAX_CYCLES>      Stop after this many looks at the filesystem
+      --deadline <DEADLINE>          Stop after this many seconds
+      --backend <BACKEND>            Which change source to use: `auto`, `notify` or `poll` [default: auto]
+      --interval-ms <INTERVAL_MS>    The debounced polling interval in milliseconds
+      --debounce-ms <DEBOUNCE_MS>    The quiescence window in milliseconds: how long the filesystem must be quiet before a change is read
+      --heartbeat-ms <HEARTBEAT_MS>  The liveness beat in milliseconds: how often the state is rewritten while nothing changes
+      --chunk-units <CHUNK_UNITS>    Analysis units per index chunk — the watcher's slice of the CPU [default: 2000]
+      --worktree                     Also re-index uncommitted paths when only the index moved
+      --no-status-file               Do not write `.fathom/watch/status.json`
+      --quiet                        Print nothing to stdout but errors; the state machine still goes to the status file
+  -h, --help                         Print help
+  -V, --version                      Print version
+
+===== fathom mcp --help =====
+Speak MCP to a coding agent
+
+Usage: fathom mcp <COMMAND>
+
+Commands:
+  serve  Serve the tool surface over stdio, which opens no socket
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+===== fathom mcp serve --help =====
+Serve the tool surface over stdio, which opens no socket
+
+Usage: fathom mcp serve
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+

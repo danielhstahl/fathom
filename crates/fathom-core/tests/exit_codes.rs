@@ -25,7 +25,9 @@ fn codes_are_dense_and_start_at_zero() {
         assert_eq!(number, previous + 1, "{code} leaves a hole in the table");
         previous = number;
     }
-    assert_eq!(previous, 11, "the published table has twelve rows");
+    // `e1.10` added `INDEX_DEGRADED` (12) through the door ADR-002 §13 documents, which is the only reason
+    // this number moved rather than a verb inventing one. Anything past it is still unknown.
+    assert_eq!(previous, 12, "the published table has thirteen rows");
 }
 
 #[test]
@@ -34,8 +36,8 @@ fn the_number_and_the_name_round_trip() {
         assert_eq!(ExitCode::try_from(code.as_i32()), Ok(code));
     }
     assert_eq!(
-        ExitCode::try_from(12),
-        Err(12),
+        ExitCode::try_from(13),
+        Err(13),
         "an unknown number is not silently OK"
     );
     assert_eq!(ExitCode::try_from(-1), Err(-1));

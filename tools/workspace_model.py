@@ -633,6 +633,7 @@ EXIT_CODES: tuple[tuple[int, str, str], ...] = (
     (9, "FEATURE_ABSENT", "the verb needs a feature that is not compiled in; the message names it"),
     (10, "UNSUPPORTED_PLATFORM", "platform capability missing (ADR-005 §10's ABI probe refused)"),
     (11, "BUDGET_EXCEEDED", "a perf/RSS budget in `benchmarks/budgets.json` was blown"),
+    (12, "INDEX_DEGRADED", "the index is missing, incomplete or stale; the verb names the remedy"),
 )
 
 # ---------------------------------------------------------------------------

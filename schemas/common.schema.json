@@ -1,0 +1,349 @@
+{
+  "$defs": {
+    "analyzer": {
+      "additionalProperties": false,
+      "description": "One analyzer's lifetime counters, from the store's `counter` table - the rows `fathom index --stats` prints (ADR-004 \u00a74.8).",
+      "properties": {
+        "bumped": {
+          "type": "integer"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "cold": {
+          "type": "integer"
+        },
+        "computes": {
+          "description": "Misses: lookups minus hits. `puts` counts writes; this counts work.",
+          "type": "integer"
+        },
+        "cost_ms": {
+          "type": "integer"
+        },
+        "epoch_stale": {
+          "type": "integer"
+        },
+        "hit_rate": {
+          "description": "`null` when nothing was asked: 'there was nothing to ask' is not 0%.",
+          "maximum": 100,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hits": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lookups": {
+          "type": "integer"
+        },
+        "negative_hits": {
+          "type": "integer"
+        },
+        "puts": {
+          "description": "Rows written, including a recompute after a hit.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "lookups",
+        "hits",
+        "negative_hits",
+        "cold",
+        "bumped",
+        "epoch_stale",
+        "puts",
+        "computes",
+        "bytes",
+        "cost_ms",
+        "hit_rate"
+      ],
+      "type": "object"
+    },
+    "cache": {
+      "additionalProperties": true,
+      "description": "Cache state and the hit rate, over the store's whole life rather than one run.",
+      "properties": {
+        "analyzers": {
+          "items": {
+            "$ref": "#/$defs/analyzer"
+          },
+          "type": "array"
+        },
+        "blob_bytes": {
+          "type": "integer"
+        },
+        "blobs": {
+          "type": "integer"
+        },
+        "blobs_inline": {
+          "type": "integer"
+        },
+        "blobs_on_disk": {
+          "type": "integer"
+        },
+        "computed": {
+          "type": "integer"
+        },
+        "hit_rate": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hits": {
+          "type": "integer"
+        },
+        "lookups": {
+          "type": "integer"
+        },
+        "registered_analyzers": {
+          "type": "integer"
+        },
+        "rows": {
+          "type": "integer"
+        },
+        "served_bytes": {
+          "type": "integer"
+        },
+        "stale_rows": {
+          "type": "integer"
+        },
+        "stored_failures": {
+          "type": "integer"
+        },
+        "unknown_analyzer_rows": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "hit_rate",
+        "lookups",
+        "hits",
+        "computed",
+        "analyzers"
+      ],
+      "type": "object"
+    },
+    "finding": {
+      "additionalProperties": false,
+      "description": "One diagnostic, always with its remedy: ADR-006 \u00a710.3's 'a shrug is not a remedy'.",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "exit_name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "remedy": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "section",
+        "message",
+        "remedy",
+        "exit_code",
+        "exit_name"
+      ],
+      "type": "object"
+    },
+    "index": {
+      "additionalProperties": true,
+      "description": "Index state: where the store is, what it holds, whether it can be trusted, what it still owes.",
+      "properties": {
+        "commits": {
+          "type": "integer"
+        },
+        "epoch": {
+          "type": "integer"
+        },
+        "epoch_status": {
+          "enum": [
+            "ready",
+            "building",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "head_indexed": {
+          "type": "boolean"
+        },
+        "integrity": {
+          "enum": [
+            "ok",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "integrity_problems": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "last_run": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "path": {
+          "description": "Relative to the repository: `.fathom/index.sqlite3`.",
+          "type": "string"
+        },
+        "pending_derivation": {
+          "type": "integer"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "record_schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ref_tips": {
+          "type": "array"
+        },
+        "runs": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "scale": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "schema_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "store_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wal_bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "present"
+      ],
+      "type": "object"
+    },
+    "repository": {
+      "additionalProperties": true,
+      "description": "The repository at --root, from `fathom-ingest`'s health report. When `present` is false only `error` is filled.",
+      "properties": {
+        "bare": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "git_dir": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "head": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "notices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "object_hash": {
+          "type": "string"
+        },
+        "partial_clone": {
+          "type": "boolean"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "refs": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "remotes": {
+          "description": "URLs with any credential replaced by `***`.",
+          "type": "array"
+        },
+        "root": {
+          "description": "Repository-relative or `~`-relative; never an absolute home path.",
+          "type": "string"
+        },
+        "shallow": {
+          "type": "boolean"
+        },
+        "submodules": {
+          "type": "integer"
+        },
+        "work_dir": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "present"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://fathom.dev/schemas/common.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The sections `fathom stats`, `fathom doctor` and `fathom show` all print, defined once so three verbs cannot disagree about what 'the index' means. Owner: `e1.10`.",
+  "title": "Fathom CLI - shared sections"
+}

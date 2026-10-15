@@ -6,8 +6,9 @@
 //! rule 2), and the failure names the ticket that owns the work, so "not yet" is a pointer and not a
 //! wall.
 
-use crate::features;
+use crate::diagnose;
 use crate::output;
+use crate::query;
 use clap::{Args, Parser, Subcommand};
 use fathom_core::error::Diagnosable;
 use fathom_core::exit::ExitCode;
@@ -26,19 +27,19 @@ pub struct Cli {
     pub verb: Option<Verb>,
 }
 
-/// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships it; the ones here are
-/// the ones the exit-code contract and the feature gates need in order to be demonstrable at all.
+/// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;
+/// the ones here are the ones the exit-code contract, the JSON schemas and the feature gates have to cover.
 #[derive(Subcommand, Debug)]
 pub enum Verb {
     /// Index the repository so every other verb has something to read
     Index(IndexArgs),
     /// Show one episode in full
     Show(ShowArgs),
-    /// Report what the index holds
-    Stats,
+    /// Report repo scale, index state and cache hit rate
+    Stats(StatsArgs),
     /// Run the checks CI cares about; findings above the threshold exit 7
     Check,
-    /// Describe this build, its features and its privacy posture
+    /// Describe this build, its environment and its index, with a remedy per finding
     Doctor(DoctorArgs),
     /// Write a review artefact for a pull request or an audit
     Export(ExportArgs),
@@ -67,6 +68,18 @@ pub struct IndexArgs {
     /// prints 100% hits.
     #[arg(long)]
     pub refresh: bool,
+    /// Throw the epoch away and rebuild every analysis from scratch.
+    ///
+    /// The old epoch's rows stay on disk and are marked dead (ADR-004 §6.3), so a rebuild that is interrupted
+    /// is recoverable by definition; the staging file and atomic swap of §9.3 arrive with the daemon that
+    /// has a concurrent reader to protect.
+    #[arg(long)]
+    pub rebuild: bool,
+    /// Index once, then keep watching and index as the repository changes.
+    ///
+    /// The one-shot form a script wants, and the same thing as `fathom watch` with an initial index.
+    #[arg(long)]
+    pub watch: bool,
     /// Do not analyse uncommitted paths (ADR-004 §6.4).
     #[arg(long = "committed-only")]
     pub committed_only: bool,
@@ -75,8 +88,25 @@ pub struct IndexArgs {
 /// `fathom show`
 #[derive(Args, Debug)]
 pub struct ShowArgs {
-    /// The episode to show.
+    /// The episode to show: a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix.
     pub episode: String,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the episode as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `fathom stats`
+#[derive(Args, Debug)]
+pub struct StatsArgs {
+    /// The repository to report on.
+    #[arg(default_value = ".")]
+    pub root: String,
+    /// Print the same report as JSON, for a machine.
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// `fathom doctor`
@@ -88,7 +118,13 @@ pub struct DoctorArgs {
     /// Print the same report as JSON, for a machine.
     #[arg(long)]
     pub json: bool,
-    /// The repository to report the watcher for.
+    /// Run the whole-database `integrity_check` rather than `quick_check` (ADR-004 §9.6).
+    #[arg(long)]
+    pub deep: bool,
+    /// Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want.
+    #[arg(long)]
+    pub strict: bool,
+    /// The repository to report on.
     #[arg(long, default_value = ".")]
     pub root: String,
 }
@@ -151,6 +187,15 @@ pub struct ExportArgs {
     /// The file stem to write.
     #[arg(long, default_value = "fathom-review")]
     pub out: String,
+    /// The episode range to export, e.g. `HEAD~9..HEAD`.
+    #[arg(long, default_value = "HEAD")]
+    pub episodes: String,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Describe what the artefact *would* contain, as JSON, and write nothing.
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// `fathom mcp`
@@ -178,13 +223,12 @@ pub fn dispatch(verb: Option<&Verb>) -> eyre::Result<ExitCode> {
     match verb {
         None => open_terminal(),
         Some(Verb::Index(args)) => index(args),
-        Some(Verb::Show(args)) => Err(not_implemented(
-            &format!("fathom show {}", args.episode),
-            "e1.6",
-        )),
-        Some(Verb::Stats) => Err(not_implemented("fathom stats", "e1.10")),
+        Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
+        Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
         Some(Verb::Check) => Err(not_implemented("fathom check", "e6.6")),
-        Some(Verb::Doctor(args)) => doctor(args),
+        Some(Verb::Doctor(args)) => {
+            diagnose::doctor(&args.root, args.privacy, args.json, args.deep, args.strict)
+        }
         Some(Verb::Export(args)) => export(args),
         Some(Verb::Mcp(args)) => mcp(args),
         Some(Verb::Watch(args)) => watch(args),
@@ -236,16 +280,25 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
     }
     let mut store = Store::open(&store_path).map_err(failed)?;
 
+    // `--rebuild` is `advance_epoch` plus a walk, which is what `fathom-store`'s own documentation says it
+    // is (ADR-004 §6.3, §9.3). The staging file and the atomic rename are deliberately not attempted here:
+    // their whole purpose is that a *concurrent reader* never sees a half-rebuilt epoch, and until the
+    // daemon and the TUI open this store while a run writes it there is no concurrent reader to protect.
+    // An interrupted rebuild is recoverable by construction — the old epoch's rows are still on disk and
+    // marked dead — and `fathom stats` reports a parked epoch as `building`, with the remedy.
+    if args.rebuild {
+        store.advance_epoch().map_err(failed)?;
+    }
     let options = index::Options {
         // The instant is an argument, not a read, all the way down (ADR-002 §4.4); this is the one place
         // it is read, and every row and counter this run writes carries this one value.
         now: Some(crate::clock::now_millis()),
-        scope: if args.refresh {
+        scope: if args.refresh || args.rebuild {
             Scope::Everything
         } else {
             Scope::NewCommits
         },
-        refresh: args.refresh,
+        refresh: args.refresh || args.rebuild,
         worktree: if args.committed_only {
             Worktree::Ignore
         } else {
@@ -254,16 +307,25 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         ..index::Options::head()
     };
     let report = index::run(&repository, &mut store, &Unclassified, &options).map_err(failed)?;
+    if args.rebuild {
+        // The other half of §9.3's state machine: the epoch this run filled is the one readers may now see.
+        store.settle_epoch().map_err(failed)?;
+    }
+    let epoch = store.epoch().map_err(failed)?;
 
     if args.json {
-        output::line(format_args!("{}", json_report(&store_path, &report)));
+        output::line(format_args!(
+            "{}",
+            json_report(root, &store_path, &report, args.rebuild, epoch)
+        ));
     } else if args.stats {
         print_stats(&store_path, &report);
     } else {
         let added = report.spine.commits_written;
         output::line(format_args!(
-            "{}: {} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
+            "{}: {}{} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
             store_path.display(),
+            if args.rebuild { "rebuild: " } else { "" },
             report.commits_walked,
             added,
             report.computed(),
@@ -280,6 +342,13 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         ));
     }
 
+    // `--watch` is "and then keep doing this": the same state machine `fathom watch` runs, rooted where the
+    // index was rooted, with the same output contract. A binary built without the watcher says so with the
+    // feature code rather than exiting 0 after indexing and pretending a watch had started.
+    if args.watch {
+        return watch_after_index(args);
+    }
+
     Ok(match report.reason {
         // Only a cancel is the user's act and therefore the user's exit code (§7.3). A run that stopped
         // because its unit budget ran out did what it was told: that is a stated partial, exit 0, and the
@@ -294,13 +363,22 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
 /// not silently rename `fathom index --json`'s contract.
 #[cfg(feature = "sqlite-bundled")]
 fn json_report(
+    root: &std::path::Path,
     store: &std::path::Path,
     report: &fathom_analyze::index::Report,
+    rebuild: bool,
+    epoch: i64,
 ) -> serde_json::Value {
     use serde_json::json;
 
+    let redactor = crate::sanitize::Redactor::for_root(root);
     json!({
-        "store": store.display().to_string(),
+        "contract": query::INDEX_CONTRACT,
+        // The store is named *relative to the repository it belongs to*: an absolute path in a machine-
+        // readable report is a path the reader cannot use and a fact about the machine that produced it.
+        "store": redactor.path(store),
+        "rebuild": rebuild,
+        "epoch": epoch,
         "kind": report.kind.as_str(),
         "elapsed_ms": report.elapsed.as_millis(),
         "commits": {
@@ -324,6 +402,7 @@ fn json_report(
                     "bumped": stats.bumped,
                     "epoch_stale": stats.epoch_stale,
                     "puts": stats.puts,
+                    "computes": misses(stats),
                     "bytes": stats.bytes,
                     "cost_ms": stats.cost_ms,
                     "hit_rate": stats.hit_rate(),
@@ -348,6 +427,16 @@ fn json_report(
             .collect::<Vec<_>>(),
         "failures": report.failures,
     })
+}
+
+/// Lookups that found nothing usable: the misses, which is the work the repository made the analyzers do.
+///
+/// `puts` counts rows *written*, and a `--refresh` recompute writes a row after a hit, so `puts` is not
+/// "misses" — it is "writes". The distinction is the difference between a warm cache that looks broken and
+/// a warm cache that was asked to re-prove itself (ADR-004 §5.6, §6.1).
+#[cfg(feature = "sqlite-bundled")]
+fn misses(stats: &fathom_analyze::index::AnalyzerStats) -> i64 {
+    (stats.lookups - stats.hits - stats.negative_hits).max(0)
 }
 
 /// The table acceptance criterion four asks for: one row per analyzer, read out of the store's own counters
@@ -413,6 +502,35 @@ fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) 
     }
 }
 
+/// `fathom watch`, run by `fathom index --watch` with the index verb's own root and output choice.
+///
+/// The flags are the watcher's defaults rather than a second copy of them: `--watch` exists so a script has
+/// one command to run, not so it can set twenty tuning knobs through `index`.
+#[cfg(feature = "watch")]
+fn watch_after_index(args: &IndexArgs) -> eyre::Result<ExitCode> {
+    watch(&WatchArgs {
+        root: args.root.clone(),
+        json: args.json,
+        once: false,
+        max_cycles: None,
+        deadline: None,
+        backend: "auto".to_owned(),
+        interval_ms: None,
+        debounce_ms: None,
+        heartbeat_ms: None,
+        chunk_units: 2_000,
+        worktree: false,
+        no_status_file: false,
+        quiet: false,
+    })
+}
+
+#[cfg(not(feature = "watch"))]
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+fn watch_after_index(_args: &IndexArgs) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom index --watch", "watch"))
+}
+
 /// The same verb in a binary that was built without SQLite: the feature gate is the point, and the answer
 /// is the exit code that says which flag to rebuild with (ADR-002 §6.1's `minimal` binary).
 #[cfg(not(feature = "sqlite-bundled"))]
@@ -452,100 +570,94 @@ fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
     }
 }
 
+/// `fathom export`: the skeleton `e5.7` fills in.
+///
+/// What is real here is the *decision surface*: the format list is the facade's, the out stem and the
+/// episode range are parsed and validated, and `--json` answers what the artefact would be built from. What
+/// is not here is the rendering, which is `e5.7`'s, and the verb says so and leaves with `ERROR` rather
+/// than writing a file nobody asked for (ADR-002 §7.2: a stub is a typed failure, never a panic and never a
+/// silently-empty artefact).
 fn export(args: &ExportArgs) -> eyre::Result<ExitCode> {
     // The format list is the facade's, so `--format` in the CLI, the TUI's export key and the MCP tool
     // cannot drift apart (§5.3), and its error reaches the right exit code through `Diagnosable`.
     let format = fathom_analyze::export::Format::parse(&args.format).map_err(failed)?;
+    let artefact = format.file_name(&args.out);
+    let scope = export_scope(&args.root, &args.episodes);
+
+    if args.json {
+        output::line(format_args!(
+            "{}",
+            serde_json::json!({
+                "contract": query::EXPORT_CONTRACT,
+                "status": "not_implemented",
+                "owner_ticket": "e5.7",
+                "format": format.file_name("x").rsplit('.').next().unwrap_or("md"),
+                "artifact": artefact,
+                "out": args.out,
+                "scope": scope,
+                "writes_file": false,
+                "exit_code": ExitCode::Error.as_i32(),
+                "exit_name": ExitCode::Error.name(),
+            })
+        ));
+        return Ok(ExitCode::Error);
+    }
+
     let rendered = fathom_analyze::export::render(format, &args.out);
     Err(match rendered {
         Ok(text) => pending(
-            ExitCode::Ok,
-            format!("wrote {} to {}", args.out, format.file_name(&args.out)),
-            Some(format!("{} bytes", text.len())),
+            ExitCode::Error,
+            "`fathom export` is the skeleton: the format, the destination and the scope are \
+             validated; the rendering is owned by e5.7"
+                .to_owned(),
+            Some(format!(
+                "scope {} ({} commit(s)); artefact would be {artefact} ({} bytes once e5.7 renders it)",
+                scope["asked"].as_str().unwrap_or("HEAD"),
+                scope["commits"].as_u64().unwrap_or(0),
+                text.len()
+            )),
         ),
         Err(err) => failed(err),
     })
 }
 
-/// The one verb with a real answer at the scaffold: it reports *this build*, which is the thing a scaffold
-/// is able to know (ADR-002 §6.4: a bug report should say what was compiled).
-fn doctor(args: &DoctorArgs) -> eyre::Result<ExitCode> {
-    let status = fathom_analyze::insight::status();
-    let rows = features::privacy_table();
-    let net_compiled: Vec<&str> = rows
-        .iter()
-        .filter(|row| row.compiled_in)
-        .map(|row| row.feature)
-        .collect();
+/// The episode range an export would cover, resolved against the repository if there is one.
+///
+/// Resolving the range is worth doing in the skeleton because it is the half that can be wrong: an export
+/// that reported a scope it had not resolved would be a preview of nothing.
+fn export_scope(root: &str, episodes: &str) -> serde_json::Value {
+    use serde_json::json;
 
-    if args.json {
-        let report = serde_json::json!({
-            "version": features::VERSION,
-            "features": features::compiled(),
-            "schema_version": status.schema_version,
-            "views_ready": status.views_ready,
-            "sqlite": sqlite_provenance(),
-            "watch": watch_json(std::path::Path::new(&args.root)),
-            "network_features": rows
-                .iter()
-                .map(|row| {
-                    serde_json::json!({
-                        "feature": row.feature,
-                        "owner": row.owner,
-                        "compiled_in": row.compiled_in,
-                        "consent_key": row.consent_key,
-                        "ticket": row.ticket,
-                    })
-                })
-                .collect::<Vec<_>>(),
-        });
-        output::line(format_args!("{report}"));
-        return Ok(ExitCode::Ok);
-    }
-
-    output::line(format_args!("fathom {}", features::version_line()));
-    output::line(format_args!(
-        "review model: schema {}, views ready: {}",
-        status.schema_version, status.views_ready
-    ));
-    output::line(format_args!("sqlite: {}", sqlite_provenance()));
-    for line in watch_report(std::path::Path::new(&args.root)) {
-        output::line(format_args!("{line}"));
-    }
-    tracing::debug!(features = ?features::compiled(), "build report");
-
-    if args.privacy {
-        output::line(format_args!(
-            "{:<20} {:<16} {:<10} {:<28} {}",
-            "FEATURE", "OWNER", "COMPILED", "CONSENT KEY", "OWNER TICKET"
-        ));
-        for row in &rows {
-            output::line(format_args!(
-                "{:<20} {:<16} {:<10} {:<28} {}",
-                row.feature,
-                row.owner,
-                if row.compiled_in { "yes" } else { "no" },
-                row.consent_key,
-                row.ticket
-            ));
+    let (start, end) = match episodes.split_once("..=").or(episodes.split_once("..")) {
+        Some((from, to)) => (from, to),
+        None => (episodes, episodes),
+    };
+    let resolved = std::path::Path::new(root);
+    match fathom_ingest::repo::Repository::discover(resolved) {
+        Ok(repo) => {
+            let one = |spec: &str| {
+                fathom_ingest::revspec::resolve(&repo, spec)
+                    .ok()
+                    .map(|oid| oid.hex())
+            };
+            let from = one(start);
+            let to = one(end);
+            let same = from.is_some() && from == to;
+            json!({
+                "asked": episodes,
+                "from": from.map(|oid| oid.chars().take(7).collect::<String>()),
+                "to": to.map(|oid| oid.chars().take(7).collect::<String>()),
+                "commits": if same { 1 } else { 0 },
+                "resolved": same,
+            })
         }
-        output::line(format_args!(
-            "outbound features compiled in: {}",
-            if net_compiled.is_empty() {
-                "none — no HTTP client and no listener in this binary (ADR-002 R6)".to_owned()
-            } else {
-                net_compiled.join(", ")
-            }
-        ));
-    } else {
-        output::line(format_args!(
-            "pass --privacy for the network-feature table, or --json for the same report as data"
-        ));
+        Err(_) => json!({"asked": episodes, "resolved": false}),
     }
-    Ok(ExitCode::Ok)
 }
 
-fn sqlite_provenance() -> &'static str {
+/// What this build's SQLite story is, in the one sentence `fathom doctor` prints.
+#[must_use]
+pub(crate) fn sqlite_provenance_string() -> &'static str {
     if cfg!(feature = "sqlite-bundled") {
         "bundled, compiled in (ADR-004 D2: STRICT, `->>`, FTS5)"
     } else {
@@ -560,28 +672,34 @@ fn sqlite_provenance() -> &'static str {
 /// automatically and is reported in `fathom doctor`". A prediction read off the mount table is only half of
 /// that, so the running watcher's own backend is printed too: it may have *reactively* fallen back after
 /// the OS refused to notify, and it carries the reason the OS gave.
-#[cfg(feature = "watch")]
-fn watch_report(root: &std::path::Path) -> Vec<String> {
-    crate::watch::doctor_lines(root, fathom_ingest::watch::Options::default().poll_interval)
-}
-
-#[cfg(not(feature = "watch"))]
-fn watch_report(_root: &std::path::Path) -> Vec<String> {
-    vec![
-        "watch: not compiled into this build; rebuild with `--features watch` to get `fathom watch`"
-            .to_owned(),
-    ]
+#[must_use]
+pub(crate) fn watch_lines(root: &std::path::Path) -> Vec<String> {
+    #[cfg(feature = "watch")]
+    {
+        crate::watch::doctor_lines(root, fathom_ingest::watch::Options::default().poll_interval)
+    }
+    #[cfg(not(feature = "watch"))]
+    {
+        let _ = root;
+        vec![
+            "watch: not compiled into this build; rebuild with `--features watch` to get `fathom watch`"
+                .to_owned(),
+        ]
+    }
 }
 
 /// The same, as data.
-#[cfg(feature = "watch")]
-fn watch_json(root: &std::path::Path) -> serde_json::Value {
-    crate::watch::doctor_json(root, fathom_ingest::watch::Options::default().poll_interval)
-}
-
-#[cfg(not(feature = "watch"))]
-fn watch_json(_root: &std::path::Path) -> serde_json::Value {
-    serde_json::json!({ "compiled_in": false })
+#[must_use]
+pub(crate) fn watch_report_json(root: &std::path::Path) -> serde_json::Value {
+    #[cfg(feature = "watch")]
+    {
+        crate::watch::doctor_json(root, fathom_ingest::watch::Options::default().poll_interval)
+    }
+    #[cfg(not(feature = "watch"))]
+    {
+        let _ = root;
+        serde_json::json!({ "compiled_in": false })
+    }
 }
 
 /// A failure that knows the exit code the process should leave with.
@@ -606,6 +724,7 @@ impl Pending {
 
     /// A rejected argument that is not clap's to catch: a flag whose *value* is wrong. `USAGE` is the code
     /// clap itself uses (§7.3), so `fathom watch --backend sideways` and `fathom --nope` fail alike.
+    #[cfg_attr(not(feature = "watch"), allow(dead_code))]
     pub(crate) fn usage(message: impl Into<String>, detail: impl Into<String>) -> Self {
         Pending::new(ExitCode::Usage, message, Some(detail.into()))
     }
@@ -662,7 +781,7 @@ fn not_implemented(verb: &str, ticket: &str) -> eyre::Report {
     .into()
 }
 
-fn feature_absent(verb: &str, feature: &str) -> eyre::Report {
+pub(crate) fn feature_absent(verb: &str, feature: &str) -> eyre::Report {
     Pending::new(
         ExitCode::FeatureAbsent,
         format!("`{verb}` needs the `{feature}` feature, which this binary was not built with"),

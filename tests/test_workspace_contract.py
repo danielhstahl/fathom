@@ -360,7 +360,9 @@ MUTATIONS = [
     ("undeclared feature", "crates/fathom-analyze/Cargo.toml",
      "[features]", "[features]\nlang-zig = []", "F01"),
     ("shipped default set changed", "crates/fathom-cli/Cargo.toml",
-     'default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all"]',
+     # The mutation target has to be the set the manifest actually ships, or this case tests nothing: the
+     # shipped set gained `deps-all` in `e2.5` and this string did not follow it.
+     'default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all", "deps-all"]',
      'default = ["tui"]', "F03"),
     ("library grows a default feature", "crates/fathom-tui/Cargo.toml",
      "default = []", 'default = ["graph-layout"]', "F02"),

@@ -1,0 +1,235 @@
+{
+  "$id": "https://fathom.dev/schemas/show.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One episode in full, read out of the index: identity, authorship, message, trailers and the file rows with their taxonomy decisions. Owner: `e1.10`, on the rows `e1.2` stores.",
+  "properties": {
+    "asked": {
+      "description": "The handle the user typed, echoed beside what it resolved to.",
+      "type": "string"
+    },
+    "contract": {
+      "const": "fathom.cli.show/1"
+    },
+    "degraded": {
+      "type": "boolean"
+    },
+    "diagnostics": {
+      "items": {
+        "$ref": "common.schema.json#/$defs/finding"
+      },
+      "type": "array"
+    },
+    "episode": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "utc": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "email",
+            "utc"
+          ],
+          "type": "object"
+        },
+        "committer_utc": {
+          "type": "integer"
+        },
+        "files": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "add": {
+                "type": "integer"
+              },
+              "binary": {
+                "type": "boolean"
+              },
+              "del": {
+                "type": "integer"
+              },
+              "hunk_headers": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "noise_class": {
+                "type": "string"
+              },
+              "old_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "path_class": {
+                "type": "string"
+              },
+              "taxonomy_version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "old_path",
+              "kind",
+              "add",
+              "del",
+              "binary",
+              "path_class",
+              "taxonomy_version",
+              "noise_class",
+              "hunk_headers"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "message_hash": {
+          "type": "string"
+        },
+        "message_head": {
+          "type": "string"
+        },
+        "noise": {
+          "type": "object"
+        },
+        "oid": {
+          "type": "string"
+        },
+        "parents": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "scale": {
+          "additionalProperties": false,
+          "properties": {
+            "add": {
+              "type": "integer"
+            },
+            "binary": {
+              "type": "integer"
+            },
+            "del": {
+              "type": "integer"
+            },
+            "files": {
+              "type": "integer"
+            },
+            "oversized": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "files",
+            "add",
+            "del",
+            "binary",
+            "oversized"
+          ],
+          "type": "object"
+        },
+        "short_oid": {
+          "type": "string"
+        },
+        "trailers": {
+          "type": "object"
+        },
+        "tree_oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oid",
+        "short_oid",
+        "tree_oid",
+        "parents",
+        "author",
+        "committer_utc",
+        "message_head",
+        "message_hash",
+        "trailers",
+        "scale",
+        "files",
+        "noise"
+      ],
+      "type": "object"
+    },
+    "repository": {
+      "$ref": "common.schema.json#/$defs/repository"
+    },
+    "store": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract",
+    "asked",
+    "repository",
+    "store",
+    "episode",
+    "degraded",
+    "diagnostics"
+  ],
+  "title": "fathom show --json",
+  "type": "object",
+  "x-fathom-contract": "fathom.cli.show/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the verb answered, and the index describes HEAD"
+    },
+    {
+      "code": 1,
+      "name": "ERROR",
+      "when": "a rev that names nothing, an unimplemented verb, a rejected argument value"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line (bad flag, unknown verb, missing value)"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "--root is not a git repository, or `.git` is unreadable"
+    },
+    {
+      "code": 4,
+      "name": "STORE_CORRUPT",
+      "when": "the store failed its integrity checks"
+    },
+    {
+      "code": 9,
+      "name": "FEATURE_ABSENT",
+      "when": "the verb needs a feature this binary was not built with"
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "the index is missing, stale, incomplete, or a run never closed"
+    }
+  ],
+  "x-fathom-verb": "show"
+}

@@ -54,7 +54,10 @@ exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fa
 ## What it does, in five lines
 
 ```
-fathom index              # turn git history (+ harness hook events) into episodes
+fathom index              # turn git history (+ harness hook events) into episodes  [works: e1.2/e1.4/e1.10]
+fathom stats              # repo scale, index state, cache hit rate                  [works: e1.10]
+fathom show HEAD~3        # one episode: message, trailers, files, taxonomy decisions[works: e1.10]
+fathom doctor --json      # the report that is safe to attach to a bug report          [works: e1.10]
 fathom                    # the TUI: queue, timeline, diff, structure, deps, ambient
 fathom why <episode>      # why this episode scored the risk it scored, per feature
 fathom analyze <episode> --json    # the versioned delta model, one source of truth
@@ -65,8 +68,10 @@ fathom change explain <path>       # what that path IS in this episode, with a c
 fathom change score                # the labelled-corpus accuracy report the CI gate runs
 ```
 
-Those verbs do not exist yet; they are the agreed surface, and the plan is written against them.
-Two exceptions exist on purpose: `fathom config …`, `fathom taxonomy …` and `fathom change …`
+The four headless verbs above are real: they index a repository, report it, and leave with the published
+exit codes ([`docs/concepts/cli.md`](docs/concepts/cli.md) is their contract, `schemas/*.schema.json` the
+machine-readable form). The rest of the verbs are the agreed surface, and the plan is written against them.
+Three exceptions exist on purpose: `fathom config …`, `fathom taxonomy …` and `fathom change …`
 have executable forms today (`python3 -m recommender.config explain --path src/foo.rs`,
 `python3 -m recommender.taxonomy explain src/foo.rs`,
 `python3 -m recommender.change explain src/foo.rs`), because every later feature's behaviour
