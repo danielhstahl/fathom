@@ -16,6 +16,7 @@
 //! carries a root commit that is never rewritten, so `HEAD~n` always names something that exists; and turns
 //! a test counts as separate are an hour apart, because adjacent commits by one author are the *same*
 //! episode — that is the whole idea, and a fixture that forgot it would be asserting a fiction.
+#![cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::BTreeMap;

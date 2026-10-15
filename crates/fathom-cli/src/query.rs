@@ -87,6 +87,16 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
             .into());
         }
         let store = Store::open(&store_path).map_err(failed)?;
+        // Which episode this commit belongs to, if any. `e1.3` put the grouping, the boundary rule and the
+        // confidence in the store, and this is the surface that shows them: a reviewer who disagrees with a
+        // boundary has to be able to see which rule drew it before they can go and override it.
+        let episode = store.episode_for_commit(&hex).map_err(|err| {
+            Pending::new(
+                ExitCode::StoreCorrupt,
+                format!("reading the episode for {target}: {err}"),
+                Some("fathom index --rebuild".to_owned()),
+            )
+        })?;
         let row = store.read_commit(&hex).map_err(|_| {
             Pending::new(
                 ExitCode::IndexDegraded,
@@ -102,11 +112,11 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
         if as_json {
             output::line(format_args!(
                 "{}",
-                show_json(&snapshot, &redactor, &store_path, &row, target)
+                show_json(&snapshot, &redactor, &store_path, &row, &episode, target)
             ));
             return Ok(snapshot.worst_code());
         }
-        for line in show_text(&snapshot, &redactor, &store_path, &row, target) {
+        for line in show_text(&snapshot, &redactor, &store_path, &row, &episode, target) {
             output::line(format_args!("{line}"));
         }
         Ok(snapshot.worst_code())
@@ -125,6 +135,7 @@ fn show_json(
     redactor: &crate::sanitize::Redactor,
     store_path: &std::path::Path,
     row: &fathom_store::spine::CommitRow,
+    episode: &Option<fathom_store::episode::EpisodeRow>,
     asked: &str,
 ) -> serde_json::Value {
     let files = row
@@ -173,9 +184,66 @@ fn show_json(
             },
             "files": files,
             "noise": noise_split(row),
+            "identity": identity_json(episode),
         },
         "degraded": snapshot.worst_code() != ExitCode::Ok,
         "diagnostics": snapshot.findings_json(),
+    })
+}
+
+/// The episode's own identity: which grouping this commit landed in, which rule drew its boundary, and
+/// how much the tool trusts that call. `null` when the store has no episode for the commit — an index
+/// written before `e1.3`, or a commit the walk can no longer reach — because "we do not have that" and
+/// "the boundary is weak" are different statements (ADR-006 §10.3).
+#[cfg(feature = "sqlite-bundled")]
+fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_json::Value {
+    use fathom_store::episode::EpisodeRow;
+    let Some(EpisodeRow {
+        id,
+        fingerprint,
+        boundary_rule,
+        boundary_confidence,
+        author_kind,
+        author_confidence,
+        session_id,
+        turn_id,
+        overridden,
+        live,
+        lineage_ref,
+        first_oid,
+        last_oid,
+        members,
+        n_files,
+        n_add,
+        n_del,
+        first_utc,
+        last_utc,
+        ..
+    }) = episode
+    else {
+        return serde_json::Value::Null;
+    };
+    json!({
+        "id": id,
+        "fingerprint": fingerprint,
+        "boundary_rule": boundary_rule,
+        "boundary_confidence": boundary_confidence,
+        "author_kind": author_kind,
+        "author_confidence": author_confidence,
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "overridden": overridden,
+        "live": live,
+        "lineage_ref": lineage_ref,
+        "first_oid": first_oid,
+        "last_oid": last_oid,
+        "commits": members.len(),
+        "members": members,
+        "files": n_files,
+        "add": n_add,
+        "del": n_del,
+        "first_utc": first_utc,
+        "last_utc": last_utc,
     })
 }
 
@@ -200,6 +268,7 @@ fn show_text(
     redactor: &crate::sanitize::Redactor,
     store_path: &std::path::Path,
     row: &fathom_store::spine::CommitRow,
+    episode: &Option<fathom_store::episode::EpisodeRow>,
     asked: &str,
 ) -> Vec<String> {
     let mut out = vec![format!("episode {} — {asked}", short(&row.oid),)];
@@ -236,6 +305,7 @@ fn show_text(
         "  scale     {} file(s), +{} -{}, {} binary",
         row.n_files, row.n_add, row.n_del, row.n_binary
     ));
+    out.extend(identity_lines(episode));
     out.push(format!("  store     {}", redactor.path(store_path)));
     out.push(format!("  files     {}", row.files.len()));
     for file in &row.files {
@@ -254,6 +324,53 @@ fn show_text(
     }
     for line in snapshot.finding_lines() {
         out.push(line);
+    }
+    out
+}
+
+/// The identity lines of the card, in the order a reviewer reads them: what is this unit, what says so,
+/// how much do we trust it. Empty when the store has no episode for the commit, with one line saying so —
+/// an absent block is a blank, and a blank is what this surface is not allowed to print.
+#[cfg(feature = "sqlite-bundled")]
+fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<String> {
+    use fathom_store::episode::EpisodeRow;
+    let Some(row) = episode else {
+        return vec![
+            "  grouping  no episode in the index for this commit; run `fathom index`".to_owned(),
+        ];
+    };
+    let EpisodeRow {
+        id,
+        boundary_rule,
+        boundary_confidence,
+        author_kind,
+        author_confidence,
+        overridden,
+        session_id,
+        turn_id,
+        members,
+        ..
+    } = row;
+    let mut out = vec![format!(
+        "  grouping  {id} · {} commit(s) · boundary {boundary_rule} {:.2} · author {author_kind} {:.2}",
+        members.len(),
+        boundary_confidence,
+        author_confidence
+    )];
+    if *overridden {
+        out.push(
+            "  provenance  this boundary was forced from fathom.toml, not derived from the history"
+                .to_owned(),
+        );
+    }
+    if let Some(session) = session_id {
+        out.push(format!(
+            "  session   {session}{}",
+            turn_id
+                .as_deref()
+                .map(|turn| format!(" · turn {turn}"))
+                .unwrap_or_default()
+        ));
     }
     out
 }

@@ -162,6 +162,34 @@
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e1.3"
         },
+        "force_merge": {
+          "default": [],
+          "description": "Commits that never open an episode, in the same two spellings. Ordered before every other rule, including a turn event: when the human has said two commits are one change, the harness does not overrule them.",
+          "items": {
+            "pattern": "^(oid:[0-9a-f]{2,40}|subject:.+)$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "episode.segment",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.3"
+        },
+        "force_split": {
+          "default": [],
+          "description": "Commits that always open a new episode, each named `oid:<prefix>` or `subject:<substring>`. A boundary a human moved is recorded as such on the episode, so the card can say the split was an instruction and not a guess.",
+          "items": {
+            "pattern": "^(oid:[0-9a-f]{2,40}|subject:.+)$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "episode.segment",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.3"
+        },
         "time_gap_minutes": {
           "default": 30,
           "description": "Idle gap that closes an episode when no stronger boundary source fires.",

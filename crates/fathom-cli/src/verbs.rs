@@ -279,6 +279,9 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         })?;
     }
     let mut store = Store::open(&store_path).map_err(failed)?;
+    // The boundary knobs come from the repository's own `fathom.toml`. This is the crate ADR-002 §4.5 lets
+    // read configuration, and the resolution happens here so that segmentation receives a value.
+    let segment = crate::segment::from_repository(root);
 
     // `--rebuild` is `advance_epoch` plus a walk, which is what `fathom-store`'s own documentation says it
     // is (ADR-004 §6.3, §9.3). The staging file and the atomic rename are deliberately not attempted here:
@@ -298,6 +301,7 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         } else {
             Scope::NewCommits
         },
+        segment: segment.rules.clone(),
         refresh: args.refresh || args.rebuild,
         worktree: if args.committed_only {
             Worktree::Ignore
@@ -307,6 +311,12 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         ..index::Options::head()
     };
     let report = index::run(&repository, &mut store, &Unclassified, &options).map_err(failed)?;
+    // A key that was read and could not be honoured is said out loud, on the JSON path too: "the file
+    // changed nothing" and "the file was not applied" are different statements and only one of them is
+    // true of a silently dropped `fathom.toml` entry (ADR-002 §7.1).
+    for notice in &segment.notices {
+        output::problem(format_args!("config: {notice}"));
+    }
     if args.rebuild {
         // The other half of §9.3's state machine: the epoch this run filled is the one readers may now see.
         store.settle_epoch().map_err(failed)?;

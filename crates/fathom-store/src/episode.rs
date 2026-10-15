@@ -519,6 +519,9 @@ impl Store {
 
     /// One episode by id, if it exists.
     ///
+    /// Members are loaded: every caller of this wants the whole card, and a card that prints "0 commits"
+    /// for a four-commit episode is worse than no card at all.
+    ///
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] if the read fails.
@@ -533,10 +536,12 @@ impl Store {
             .next()
             .transpose()
             .map_err(|err| corrupt("reading an episode", &err))?;
-        Ok(found)
+        Self::with_members(self, found)
     }
 
     /// Which episode contains a commit, if any.
+    ///
+    /// This is what `fathom show <rev>` asks, so it carries the members like [`Store::episode`] does.
     ///
     /// # Errors
     ///
@@ -555,7 +560,20 @@ impl Store {
             .next()
             .transpose()
             .map_err(|err| corrupt("reading an episode by commit", &err))?;
-        Ok(found)
+        Self::with_members(self, found)
+    }
+
+    /// Fill in one row's member list, leaving `None` alone. The single-row reads all want this: the rows
+    /// themselves come from one `SELECT`, and the members are one cheap indexed lookup apiece.
+    fn with_members(&self, found: Option<EpisodeRow>) -> Result<Option<EpisodeRow>, Error> {
+        match found {
+            Some(mut row) => {
+                let id = row.id.clone();
+                row.members = self.episode_members(&id)?;
+                Ok(Some(row))
+            }
+            None => Ok(None),
+        }
     }
 
     /// The distinct authors in the episode set, with counts — the filter chooser's list.
@@ -896,7 +914,7 @@ impl Store {
         Ok(inputs)
     }
 
-    /// The oids the refs currently name — the roots [`retain_reachable`] walks back from.
+    /// The oids the refs currently name — the roots the reachability walk starts from.
     ///
     /// Tags are not included: a tag pinned to a rebased-away commit is a fact about the release that commit
     /// was, not a request to keep showing it in the review queue.

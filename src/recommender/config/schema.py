@@ -401,6 +401,18 @@ KEY_LIST: list[Key] = [
        maximum=1440, units="minutes",
        doc="Idle gap that closes an episode when no stronger boundary source fires.",
        analyzer="episode.segment", ticket="e1.3"),
+    _k(path="episode.force_split", kind="string_list", merge="extend", default=[],
+       item_pattern=r"^(oid:[0-9a-f]{2,40}|subject:.+)$",
+       doc="Commits that always open a new episode, each named `oid:<prefix>` or "
+           "`subject:<substring>`. A boundary a human moved is recorded as such on the "
+           "episode, so the card can say the split was an instruction and not a guess.",
+       analyzer="episode.segment", ticket="e1.3"),
+    _k(path="episode.force_merge", kind="string_list", merge="extend", default=[],
+       item_pattern=r"^(oid:[0-9a-f]{2,40}|subject:.+)$",
+       doc="Commits that never open an episode, in the same two spellings. Ordered "
+           "before every other rule, including a turn event: when the human has said "
+           "two commits are one change, the harness does not overrule them.",
+       analyzer="episode.segment", ticket="e1.3"),
     # --- ingest / store / memory caps (defaults come from the budget table) --
     _k(path="ingest.size_cap_mib", kind="integer", default=8, fallback=8,
        budget="ingest.file_size_cap.mib", units="MiB", minimum=1,

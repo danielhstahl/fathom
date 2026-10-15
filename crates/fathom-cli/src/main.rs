@@ -21,6 +21,10 @@ mod hooks;
 mod output;
 mod query;
 mod sanitize;
+// The episode boundary knobs are configuration, and configuration is read here and nowhere else below the
+// CLI (ADR-002 §4.5). The module is unconditional because `fathom index` needs it in every build that can
+// index at all.
+mod segment;
 mod state;
 mod verbs;
 #[cfg(feature = "watch")]

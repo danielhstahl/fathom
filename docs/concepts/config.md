@@ -402,6 +402,8 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `diff.context_lines` | `integer` | `3` | `replace` | `any` | lines | diff.per_file | `e1.6` |
 | `episode.boundaries` | `string_list` | `hook, trailer, author` | `replace` | `any` | — | episode.segment | `e1.3` |
 | `episode.time_gap_minutes` | `integer` | `30` | `replace` | `any` | minutes | episode.segment | `e1.3` |
+| `episode.force_split` | `string_list` | `—` | `extend` | `any` | — | episode.segment | `e1.3` |
+| `episode.force_merge` | `string_list` | `—` | `extend` | `any` | — | episode.segment | `e1.3` |
 | `ingest.size_cap_mib` | `integer` | `8` | `replace` | `any` | MiB | ingest.normalize | `e1.2` |
 | `cache.budget.mib` | `integer` | `512` | `replace` | `any` | MiB | — | `e1.4` |
 | `store.wal_cap.mib` | `integer` | `64` | `replace` | `any` | MiB | — | `e1.1` |

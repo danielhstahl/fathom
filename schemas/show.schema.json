@@ -103,6 +103,127 @@
           },
           "type": "array"
         },
+        "identity": {
+          "additionalProperties": false,
+          "description": "Which episode this commit belongs to, as the `episode` table knows it: the identity that survives a rewrite, the rule that drew its boundary and how much the tool trusts that rule. Null when the index has no episode for the commit - a store written before episode segmentation, or a commit the walk can no longer reach - because 'not known' and 'weakly known' are different statements (ADR-006 \u00a710.3).",
+          "properties": {
+            "add": {
+              "description": "Added lines across every commit in the episode, not just this one.",
+              "type": "integer"
+            },
+            "author_confidence": {
+              "description": "`author_kind`'s confidence: a signature is certain, a heuristic is a prior.",
+              "type": "number"
+            },
+            "author_kind": {
+              "description": "`agent`, `human`, `merge`, `unknown` - the taxonomy's own kind.",
+              "type": "string"
+            },
+            "boundary_confidence": {
+              "description": "How much the boundary rule that won is trusted; `override` is 1.0 because a human said so.",
+              "type": "number"
+            },
+            "boundary_rule": {
+              "description": "Which rule opened this episode: `root`, `session`, `turn`, `signature`, `time`, `fileset`, `squash`, `override`, `initial`.",
+              "type": "string"
+            },
+            "commits": {
+              "description": "How many commits the episode holds; `members` is the same list.",
+              "type": "integer"
+            },
+            "del": {
+              "type": "integer"
+            },
+            "files": {
+              "description": "Distinct paths the whole episode touched.",
+              "type": "integer"
+            },
+            "fingerprint": {
+              "description": "The episode's own identity digest - author plus sorted touched paths - which is what carries review state across an amend or rebase.",
+              "type": "string"
+            },
+            "first_oid": {
+              "description": "Oldest commit in the episode.",
+              "type": "string"
+            },
+            "first_utc": {
+              "type": "integer"
+            },
+            "id": {
+              "description": "The episode id, stable across rewrites of its commits.",
+              "type": "string"
+            },
+            "last_oid": {
+              "description": "Tip commit of the episode.",
+              "type": "string"
+            },
+            "last_utc": {
+              "type": "integer"
+            },
+            "lineage_ref": {
+              "description": "`rebase:<branch>` when the episode was relinked across a rewrite.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "live": {
+              "description": "False once the episode was rewritten away and only review state keeps it.",
+              "type": "boolean"
+            },
+            "members": {
+              "description": "Every commit id in the episode, oldest first.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "overridden": {
+              "description": "True when `fathom.toml` forced this boundary; the card says so in words.",
+              "type": "boolean"
+            },
+            "session_id": {
+              "description": "Harness session when a transcript event named one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "turn_id": {
+              "description": "Harness turn the episode answers, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "fingerprint",
+            "boundary_rule",
+            "boundary_confidence",
+            "author_kind",
+            "author_confidence",
+            "session_id",
+            "turn_id",
+            "overridden",
+            "live",
+            "lineage_ref",
+            "first_oid",
+            "last_oid",
+            "commits",
+            "members",
+            "files",
+            "add",
+            "del",
+            "first_utc",
+            "last_utc"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
         "message_hash": {
           "type": "string"
         },
@@ -160,18 +281,19 @@
         }
       },
       "required": [
-        "oid",
-        "short_oid",
-        "tree_oid",
-        "parents",
         "author",
         "committer_utc",
-        "message_head",
-        "message_hash",
-        "trailers",
-        "scale",
         "files",
-        "noise"
+        "identity",
+        "message_hash",
+        "message_head",
+        "noise",
+        "oid",
+        "parents",
+        "scale",
+        "short_oid",
+        "trailers",
+        "tree_oid"
       ],
       "type": "object"
     },

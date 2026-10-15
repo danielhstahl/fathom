@@ -84,6 +84,12 @@ new_dependency = 0.2
 # `replace`, not `extend`: the order is the meaning.
 boundaries = ["hook", "trailer", "author"]
 time_gap_minutes = 30
+# A boundary a human drew is a rule too, and the only one that outranks the heuristics instead of
+# competing with them. Two spellings, `oid:<prefix>` and `subject:<substring>`; an entry that is
+# neither is named on the next run rather than quietly dropped, and an episode whose boundary was
+# forced says so in `fathom show`.
+# force_split = ["subject:address review", "oid:1a2b3c"]
+# force_merge = ["subject:typo"]
 
 [retention]
 # ADR-004 §8.2's windows, restated here only to widen the store-growth history: the CI budget
