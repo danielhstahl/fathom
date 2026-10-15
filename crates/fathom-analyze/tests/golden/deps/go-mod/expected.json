@@ -1,0 +1,60 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "github.com/acme/api",
+        "properties": {
+          "excluded": "github.com/stretchr/testify v1.8.0",
+          "go": "1.22",
+          "replace.github.com/lib/pq": "path:./forks/pq",
+          "replace.golang.org/x/net": "github.com/acme/net v0.24.0",
+          "toolchain": "go1.22.3"
+        },
+        "requirements": [
+          "github.com/go-chi/chi/v5 v5.0.12 via registry:proxy.golang.org",
+          "github.com/golangci/golangci-lint/cmd/golangci-lint [other:tool] via registry:proxy.golang.org",
+          "github.com/lib/pq v1.10.9 [other:indirect] via registry:proxy.golang.org",
+          "github.com/stretchr/testify v1.9.0 via registry:proxy.golang.org",
+          "golang.org/x/net v0.24.0 via registry:proxy.golang.org"
+        ]
+      },
+      "ecosystem": "go",
+      "format": "go.mod",
+      "path": "go.mod",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 5,
+      "ecosystem": "go",
+      "locks": [],
+      "manifest": "go.mod",
+      "name": "github.com/acme/api",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "go": 1
+    },
+    "configs": 0,
+    "direct": 5,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 3,
+    "unparsed": 0
+  }
+}

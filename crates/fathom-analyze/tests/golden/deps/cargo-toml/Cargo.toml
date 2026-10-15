@@ -1,0 +1,30 @@
+[package]
+name = "widget"
+version = "0.3.1"
+edition = "2024"
+rust-version = "1.97.0"
+
+[workspace]
+members = ["crates/*"]
+exclude = ["crates/scratch"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+clap = { version = "4.5", optional = true }
+legacy = { package = "legacy-crate", version = "0.1" }
+local = { path = "../local" }
+forked = { git = "https://github.com/acme/fork", branch = "fix/upstream" }
+inner = { registry = "internal", version = "2.0" }
+shared = { workspace = true }
+
+[dev-dependencies]
+proptest = "1.5"
+
+[build-dependencies]
+cc = "1.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[features]
+cli = ["dep:clap"]

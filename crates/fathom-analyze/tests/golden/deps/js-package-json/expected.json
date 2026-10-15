@@ -1,0 +1,67 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "@acme/storefront",
+        "properties": {
+          "engines.node": ">=18.17",
+          "packageManager": "pnpm@9.1.0"
+        },
+        "requirements": [
+          "@acme/ui workspace:* via path:*",
+          "braces ^3.0.3 [other:override]",
+          "express 4.18.2",
+          "fsevents ^2.3.3 [optional]",
+          "left-pad git+https://github.com/azer/left-pad.git#v1.3.0 via git:git+https://github.com/azer/left-pad.git@v1.3.0",
+          "loaded [other:bundled]",
+          "lodash ^4.17.21 as lodash-es",
+          "react ^18.2.0",
+          "react-dom >=18 [peer]",
+          "vitest ^1.6.0 [dev]"
+        ],
+        "version": "2.1.0",
+        "workspaces": [
+          "packages/*",
+          "tools/*"
+        ]
+      },
+      "ecosystem": "js",
+      "format": "package.json",
+      "path": "package.json",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 10,
+      "ecosystem": "js",
+      "locks": [],
+      "manifest": "package.json",
+      "name": "@acme/storefront",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 10,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 5,
+    "unparsed": 0
+  }
+}

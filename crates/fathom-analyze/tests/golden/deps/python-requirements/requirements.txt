@@ -1,0 +1,10 @@
+# A pinned runtime surface.
+-r base.txt
+--index-url https://pypi.internal/simple
+-e ./packages/helper
+requests==2.31.0 \
+    --hash=sha256:aaa
+django==4.2.11 ; python_version >= "3.9"
+uvicorn[standard]~=0.29.0
+git+https://github.com/acme/private.git@v1.2.3#egg=private
+-nf

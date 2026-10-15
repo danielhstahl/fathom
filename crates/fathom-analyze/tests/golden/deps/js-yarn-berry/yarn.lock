@@ -1,0 +1,20 @@
+__metadata:
+  version: 8
+  cacheKey: 10
+
+"react@npm:^18.2.0":
+  version: "18.2.0"
+  resolution: "react@npm:18.2.0"
+  dependencies:
+    loose-envify: ^1.1.0
+  checksum: 10c0/91eb
+  languageName: node
+  linkType: hard
+
+"@acme/ui@workspace:packages/ui":
+  version: 0.0.0-use.local
+  resolution: "@acme/ui@workspace:packages/ui"
+  peerDependencies:
+    react: ">=18"
+  languageName: unknown
+  linkType: soft

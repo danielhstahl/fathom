@@ -1,0 +1,5 @@
+# This is a Gradle generated file for dependency locking.
+com.fasterxml.jackson.core:jackson-databind:2.16.1=implementation
+org.junit.jupiter:junit-jupiter:5.10.2=testImplementation
+org.slf4j:slf4j-api:2.0.12=compileClasspath
+empty annotationProcessor

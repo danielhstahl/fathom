@@ -1,0 +1,59 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "internal-auth 0.9.0 src=git:https://git.example.com/acme/internal-auth@stable",
+          "pytest 8.1.1 dev",
+          "requests 2.31.0 int=sha256:1e9 -> [idna >=2.5,<4, urllib3 >=1.21.1,<3]",
+          "sqlite-vec 1.2.3 src=path:vendor/sqlite_vec-1.2.3-py3-none-manylinux_2_17_x86_64.whl",
+          "urllib3 2.2.1"
+        ],
+        "records_edges": true,
+        "version": "2.0"
+      },
+      "ecosystem": "python",
+      "format": "poetry.lock",
+      "path": "poetry.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "python",
+      "locks": [
+        "poetry.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 5,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`poetry.lock` is a python lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 5,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

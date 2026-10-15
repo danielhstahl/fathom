@@ -1,0 +1,69 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "widget",
+        "properties": {
+          "edition": "2024",
+          "feature.cli": "clap",
+          "features.serde": "derive",
+          "rust-version": "1.97.0",
+          "workspace.exclude": "crates/scratch"
+        },
+        "requirements": [
+          "cc 1.0 [build]",
+          "clap 4.5 [optional]",
+          "forked via git:https://github.com/acme/fork@fix/upstream",
+          "inner 2.0 via registry:internal",
+          "legacy 0.1 as legacy-crate",
+          "libc 0.2 [target:cfg(unix)]",
+          "local via path:../local",
+          "proptest 1.5 [dev]",
+          "serde 1",
+          "shared workspace via path:."
+        ],
+        "version": "0.3.1",
+        "workspaces": [
+          "crates/*"
+        ]
+      },
+      "ecosystem": "cargo",
+      "format": "Cargo.toml",
+      "path": "Cargo.toml",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 10,
+      "ecosystem": "cargo",
+      "locks": [],
+      "manifest": "Cargo.toml",
+      "name": "widget",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "cargo": 1
+    },
+    "configs": 0,
+    "direct": 10,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 6,
+    "unparsed": 0
+  }
+}

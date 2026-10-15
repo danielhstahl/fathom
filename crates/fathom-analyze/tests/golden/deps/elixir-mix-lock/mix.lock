@@ -1,0 +1,6 @@
+%{
+  "ecto": {:hex, :ecto, "3.11.2", "3f9a", [:mix], [{:decimal, "~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}], "hexpm", "b2c"},
+  "jason": {:hex, :jason, "1.4.1", "f3b", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "86b"},
+  "phoenix": {:hex, :phoenix, "1.7.10", "9b1", [:mix], [{:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}], "hexpm", "0a5"},
+  "internal": {:git, "https://github.com/acme/internal", "4f2b90c", [branch: "stable"]},
+}

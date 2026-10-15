@@ -1,0 +1,60 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "collector 1.4.0 src=path:. -> [requests]",
+          "requests 2.31.0 int=sha256:1e9 -> [urllib3 2.2.1]",
+          "urllib3 2.2.1"
+        ],
+        "properties": {
+          "requires-python": ">=3.11"
+        },
+        "records_edges": true,
+        "version": "1"
+      },
+      "ecosystem": "python",
+      "format": "uv.lock",
+      "path": "uv.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "python",
+      "locks": [
+        "uv.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`uv.lock` is a python lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

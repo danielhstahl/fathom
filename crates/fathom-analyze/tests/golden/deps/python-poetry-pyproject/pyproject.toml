@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "legacy-service"
+version = "0.9.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.31"
+django = { version = "~4.2", extras = ["bcrypt"] }
+internal-sdk = { git = "https://git.internal/sdk.git", branch = "stable" }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[tool.poetry.source]
+name = "internal"
+url = "https://git.internal/pypi/simple"

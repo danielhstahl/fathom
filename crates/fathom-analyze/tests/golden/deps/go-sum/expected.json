@@ -1,0 +1,62 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": false,
+        "kind": "lock",
+        "packages": [
+          "github.com/go-chi/chi/v5 v5.0.12 src=registry:proxy.golang.org int=h1:q48Mr",
+          "github.com/go-chi/chi/v5 v5.0.12/go.mod src=registry:proxy.golang.org int=h1:DBZU8",
+          "github.com/lib/pq v1.10.9 src=registry:proxy.golang.org int=h1:ky1",
+          "github.com/lib/pq v1.10.9/go.mod src=registry:proxy.golang.org int=h1:Un/wp",
+          "golang.org/x/net v0.24.0 src=registry:proxy.golang.org int=h1:Z6Ds",
+          "golang.org/x/text v0.14.0/go.mod src=registry:proxy.golang.org int=h1:18EU"
+        ],
+        "properties": {
+          "modules": "6"
+        },
+        "records_edges": false
+      },
+      "ecosystem": "go",
+      "format": "go.sum",
+      "path": "go.sum",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "go",
+      "locks": [
+        "go.sum"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 6,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`go.sum` is a go lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "go": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 6,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

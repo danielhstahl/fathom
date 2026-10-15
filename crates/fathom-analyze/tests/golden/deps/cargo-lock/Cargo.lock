@@ -1,0 +1,45 @@
+version = 4
+
+[[package]]
+name = "serde"
+version = "1.0.200"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1b2c"
+
+[[package]]
+name = "widget"
+version = "0.3.1"
+
+[[package]]
+name = "clap"
+version = "4.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c8d4e"
+dependencies = [
+ "clap_builder 4.5.4",
+ "serde 1.0.200 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "jpeg-encoder"
+version = "0.6.0"
+source = "git+https://github.com/acme/jpeg-encoder?tag=v0.6#4f2a91"
+checksum = "4f2a"
+
+[[package]]
+name = "clap_builder"
+version = "4.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77aa"
+dependencies = ["anstyle 1.0.7"]
+
+[[package]]
+name = "anstyle"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e1dc"
+
+[[package]]
+name = "forked"
+version = "0.2.0"
+source = "git+https://github.com/acme/fork?branch=fix/upstream#4f2b90"

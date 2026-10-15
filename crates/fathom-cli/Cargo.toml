@@ -48,12 +48,16 @@ fathom-mcp = { workspace = true, optional = true }
 # asserted by `tools/check_workspace.py shipped`. `minimal` is the headless CI-gate binary `e6.6` puts
 # inside pipelines: `--no-default-features --features minimal`.
 [features]
-default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all"]
+default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all", "deps-all"]
 tui = ["dep:fathom-tui"]
 mcp = ["dep:fathom-mcp"]
 watch = ["fathom-ingest/watch"]
 sqlite-bundled = ["fathom-store/sqlite-bundled", "fathom-analyze/sqlite-bundled"]
 langs-all = ["fathom-analyze/langs-all"]
+# Every dependency ecosystem (`e2.5`). On by default for the same reason `langs-all` is: a review tool that
+# silently skipped the dependencies of the one ecosystem the repository under review uses is worse than one
+# that says which feature it was built without.
+deps-all = ["fathom-analyze/deps-all"]
 minimal = []
 net-advisories = ["fathom-analyze/net-advisories"]
 net-llm = ["fathom-analyze/net-llm"]

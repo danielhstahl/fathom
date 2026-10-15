@@ -1,0 +1,62 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "Newtonsoft.Json 13.0.3 src=registry:nuget.org int=sha256:RYc direct",
+          "Serilog 3.1.1 src=registry:nuget.org int=sha256:NL4 direct -> [Serilog.Sinks.Console 5.0.1]",
+          "Serilog.Sinks.Console 5.0.1 src=registry:nuget.org int=sha256:VdK transitive"
+        ],
+        "properties": {
+          "frameworks": "net8.0",
+          "requested.Newtonsoft.Json@net8.0": "[13.0.3, )",
+          "requested.Serilog@net8.0": "[3.1.1, )"
+        },
+        "records_edges": true,
+        "version": "2"
+      },
+      "ecosystem": "dotnet",
+      "format": "packages.lock.json",
+      "path": "packages.lock.json",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "dotnet",
+      "locks": [
+        "packages.lock.json"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`packages.lock.json` is a dotnet lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "dotnet": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

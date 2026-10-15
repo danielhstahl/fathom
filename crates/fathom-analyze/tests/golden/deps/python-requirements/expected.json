@@ -1,0 +1,60 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "hashes": "present",
+          "includes": "base.txt",
+          "index-url": "https://pypi.internal/simple"
+        },
+        "requirements": [
+          "django ==4.2.11 [target:python_version >= \"3.9\"]",
+          "helper via path:./packages/helper",
+          "private v1.2.3 via git:git+https://github.com/acme/private.git@v1.2.3",
+          "requests ==2.31.0",
+          "uvicorn ~=0.29.0 as uvicorn[standard]"
+        ]
+      },
+      "ecosystem": "python",
+      "format": "requirements.txt",
+      "notes": [
+        "line 10: pip option `-nf` ignored"
+      ],
+      "path": "requirements.txt",
+      "role": "manifest",
+      "status": "partial"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 5,
+      "ecosystem": "python",
+      "locks": [],
+      "manifest": "requirements.txt",
+      "name": "",
+      "resolved": 0,
+      "status": "partial"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 5,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 0,
+    "partial": 1,
+    "resolved": 0,
+    "runtime_direct": 4,
+    "unparsed": 0
+  }
+}

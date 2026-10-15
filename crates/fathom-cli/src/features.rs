@@ -12,12 +12,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Every feature this crate declares, with whether *this build* has it. Order is the order §6.2
 /// publishes, so `--version` output is diffable against the ADR table.
-const DECLARED: [(&str, bool); 10] = [
+const DECLARED: [(&str, bool); 11] = [
     ("tui", cfg!(feature = "tui")),
     ("mcp", cfg!(feature = "mcp")),
     ("watch", cfg!(feature = "watch")),
     ("sqlite-bundled", cfg!(feature = "sqlite-bundled")),
     ("langs-all", cfg!(feature = "langs-all")),
+    ("deps-all", cfg!(feature = "deps-all")),
     ("minimal", cfg!(feature = "minimal")),
     ("net-advisories", cfg!(feature = "net-advisories")),
     ("net-llm", cfg!(feature = "net-llm")),

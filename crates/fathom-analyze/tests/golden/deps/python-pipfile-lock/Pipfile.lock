@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "pipfile-spec": 6,
+    "sources": [{ "name": "pypi", "url": "https://pypi.org/simple" }]
+  },
+  "default": {
+    "requests": { "version": "==2.31.0", "hashes": ["sha256:1e9"] },
+    "fork": { "git": "https://github.com/acme/fork.git", "ref": "main", "version": "git+https://github.com/acme/fork.git@main" }
+  },
+  "develop": {
+    "pytest": { "version": "==8.1.1", "markers": "python_version >= '3.8'" }
+  }
+}

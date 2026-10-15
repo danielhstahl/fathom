@@ -1,0 +1,54 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "legacy-service",
+        "requirements": [
+          "django ~4.2 as django[bcrypt]",
+          "internal-sdk via git:https://git.internal/sdk.git@stable",
+          "pytest ^8.0 [dev]",
+          "python ^3.10",
+          "requests ^2.31"
+        ],
+        "version": "0.9.0"
+      },
+      "ecosystem": "python",
+      "format": "pyproject.toml",
+      "path": "pyproject.toml",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 5,
+      "ecosystem": "python",
+      "locks": [],
+      "manifest": "pyproject.toml",
+      "name": "legacy-service",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 5,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 4,
+    "unparsed": 0
+  }
+}

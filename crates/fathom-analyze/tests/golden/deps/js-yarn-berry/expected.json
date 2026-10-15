@@ -1,0 +1,56 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "@acme/ui 0.0.0-use.local src=path:packages/ui -> [react >=18]",
+          "react 18.2.0 int=10c0/91eb -> [loose-envify ^1.1.0]"
+        ],
+        "records_edges": true,
+        "version": "8"
+      },
+      "ecosystem": "js",
+      "format": "yarn.lock",
+      "path": "yarn.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "js",
+      "locks": [
+        "yarn.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 2,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`yarn.lock` is a js lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 2,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

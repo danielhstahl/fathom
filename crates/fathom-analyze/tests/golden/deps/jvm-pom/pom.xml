@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <parent>
+    <groupId>com.acme</groupId>
+    <artifactId>parent</artifactId>
+    <version>3.0.0</version>
+  </parent>
+  <groupId>com.acme</groupId>
+  <artifactId>service</artifactId>
+  <version>1.1.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <spring.version>6.1.4</spring.version>
+  </properties>
+
+  <modules>
+    <module>../common</module>
+  </modules>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.acme.internal</groupId>
+      <artifactId>sdk</artifactId>
+      <version>2.0.0</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.16.1</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <profiles>
+    <profile>
+      <id>native</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.graalvm</groupId>
+          <artifactId>native-image</artifactId>
+          <version>23.1</version>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
+</project>

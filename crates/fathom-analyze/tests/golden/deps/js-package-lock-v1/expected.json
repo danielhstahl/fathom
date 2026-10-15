@@ -1,0 +1,57 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "accepts 1.3.6 src=registry:registry.npmjs.org int=sha512-a -> [mime-types ~2.1.24]",
+          "express 4.16.4 src=registry:registry.npmjs.org int=sha512-v -> [accepts ~1.3.5]",
+          "mime-types 2.1.35 src=registry:registry.npmjs.org int=sha512-m"
+        ],
+        "records_edges": true,
+        "version": "1"
+      },
+      "ecosystem": "js",
+      "format": "package-lock.json",
+      "path": "package-lock.json",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "js",
+      "locks": [
+        "package-lock.json"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`package-lock.json` is a js lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

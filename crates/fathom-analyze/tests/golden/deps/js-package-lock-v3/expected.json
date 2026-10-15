@@ -1,0 +1,66 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "importers": [
+          {
+            "dir": ".",
+            "requirements": [
+              "react ^18.2.0",
+              "vitest ^1.6.0 [dev]"
+            ]
+          }
+        ],
+        "kind": "lock",
+        "packages": [
+          "@acme/ui 1.0.0 src=path:../ui",
+          "react 18.2.0 src=registry:registry.npmjs.org int=sha512-/XJu32wBZFb license=MIT",
+          "vitest 1.6.0 src=registry:registry.npmjs.org int=sha512-Bxa dev -> [chai ^4.3.10]"
+        ],
+        "records_edges": true,
+        "version": "3"
+      },
+      "ecosystem": "js",
+      "format": "package-lock.json",
+      "path": "package-lock.json",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "js",
+      "locks": [
+        "package-lock.json"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`package-lock.json` is a js lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

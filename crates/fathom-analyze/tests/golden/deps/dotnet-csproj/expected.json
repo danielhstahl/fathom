@@ -1,0 +1,57 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "target_framework": "net8.0"
+        },
+        "requirements": [
+          "..\\Lib\\Lib.csproj via path:../Lib/Lib.csproj",
+          "Newtonsoft.Json 13.0.3",
+          "Serilog 3.1.1 [other:private-assets]"
+        ],
+        "version": "3.2.1",
+        "workspaces": [
+          "../Lib/Lib.csproj"
+        ]
+      },
+      "ecosystem": "dotnet",
+      "format": "csproj",
+      "path": "Api.csproj",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 3,
+      "ecosystem": "dotnet",
+      "locks": [],
+      "manifest": "Api.csproj",
+      "name": "",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "dotnet": 1
+    },
+    "configs": 0,
+    "direct": 3,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 2,
+    "unparsed": 0
+  }
+}

@@ -47,6 +47,21 @@ lang-typescript = ["dep:tree-sitter", "dep:tree-sitter-typescript"]
 lang-ruby = ["dep:tree-sitter", "dep:tree-sitter-ruby"]
 lang-java = ["dep:tree-sitter", "dep:tree-sitter-java"]
 langs-all = ["lang-rust", "lang-python", "lang-go", "lang-typescript", "lang-ruby", "lang-java"]
+# One feature per dependency ecosystem (`e2.5`, ADR-002 §6.2). None of them pulls a third-party crate — the
+# parsers are hand-written and tolerant, which is the ticket's requirement, not an economy — so what the
+# gate buys is *surface area and compile time per ecosystem*, and the ability to ship a CI binary that only
+# speaks the languages the repository under review actually uses. A gated-out ecosystem is still
+# recognized: its files come back `unparsed` naming the feature to rebuild with, never missing.
+deps-node = []
+deps-cargo = []
+deps-python = []
+deps-go = []
+deps-ruby = []
+deps-elixir = []
+deps-jvm = []
+deps-dotnet = []
+deps-all = ["deps-node", "deps-cargo", "deps-python", "deps-go", "deps-ruby", "deps-elixir",
+            "deps-jvm", "deps-dotnet"]
 # The store-facing half of this crate — `index`, and the `sink` that writes what `fathom-ingest` produced —
 # needs a SQLite backend to exist, exactly as `fathom-store`'s own `spine` and `cache` modules do. The
 # feature names are the same three §6.2 publishes for `fathom-store`, forwarded rather than invented, so

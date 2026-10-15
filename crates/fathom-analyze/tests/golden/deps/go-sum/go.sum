@@ -1,0 +1,6 @@
+github.com/go-chi/chi/v5 v5.0.12 h1:q48Mr
+github.com/go-chi/chi/v5 v5.0.12/go.mod h1:DBZU8
+github.com/lib/pq v1.10.9 h1:ky1
+github.com/lib/pq v1.10.9/go.mod h1:Un/wp
+golang.org/x/net v0.24.0 h1:Z6Ds
+golang.org/x/text v0.14.0/go.mod h1:18EU

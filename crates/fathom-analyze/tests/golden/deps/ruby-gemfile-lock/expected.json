@@ -1,0 +1,77 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "importers": [
+          {
+            "dir": ".",
+            "requirements": [
+              "actionpack ~> 7.1",
+              "internal-gem",
+              "local-gem",
+              "rake ~> 13.0"
+            ]
+          }
+        ],
+        "kind": "lock",
+        "packages": [
+          "actionpack 7.1.3 src=registry:https://rubygems.org/ direct -> [activesupport = 7.1.3, rack ~> 2.2, >= 2.2.4]",
+          "activesupport 7.1.3 src=registry:https://rubygems.org/ transitive -> [concurrent-ruby ~> 1.0, >= 1.0.2]",
+          "concurrent-ruby 1.2.3 src=registry:https://rubygems.org/ transitive",
+          "internal-gem 1.2.0 src=git:https://git.internal/gem.git@4f2b90c direct -> [rake ~> 13.0]",
+          "local-gem 0.1.0 src=path:../local-gem direct",
+          "rack 2.2.8 src=registry:https://rubygems.org/ transitive"
+        ],
+        "properties": {
+          "bundler": "2.5.6",
+          "git.branch": "stable",
+          "platforms": "ruby,arm64-darwin-23",
+          "source": "https://rubygems.org/"
+        },
+        "records_edges": true,
+        "version": "bundler 2.5.6"
+      },
+      "ecosystem": "ruby",
+      "format": "Gemfile.lock",
+      "path": "Gemfile.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "ruby",
+      "locks": [
+        "Gemfile.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 6,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`Gemfile.lock` is a ruby lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "ruby": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 6,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

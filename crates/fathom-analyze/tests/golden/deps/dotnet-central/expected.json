@@ -1,0 +1,71 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "target_framework": "net8.0"
+        },
+        "requirements": [
+          "Newtonsoft.Json",
+          "Serilog"
+        ]
+      },
+      "ecosystem": "dotnet",
+      "format": "csproj",
+      "path": "Api.csproj",
+      "role": "manifest",
+      "status": "parsed"
+    },
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "central-package-management": "true"
+        },
+        "requirements": [
+          "Newtonsoft.Json 13.0.3",
+          "Serilog 3.1.1"
+        ]
+      },
+      "ecosystem": "dotnet",
+      "format": "Directory.Packages.props",
+      "path": "Directory.Packages.props",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 2,
+      "ecosystem": "dotnet",
+      "locks": [],
+      "manifest": "Directory.Packages.props",
+      "name": "",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`Api.csproj` and `Directory.Packages.props` are both dotnet manifests in ``"
+  ],
+  "scanned": 2,
+  "totals": {
+    "by_ecosystem": {
+      "dotnet": 2
+    },
+    "configs": 0,
+    "direct": 4,
+    "files": 2,
+    "locks": 0,
+    "manifests": 2,
+    "parsed": 2,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 4,
+    "unparsed": 0
+  }
+}

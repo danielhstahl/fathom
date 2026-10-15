@@ -442,6 +442,15 @@ meant to grow. One decision point makes that class of accident visible in one di
 | `fathom-analyze` | `sqlite-bundled` | no | — | yes | the store-facing half of the crate (`index`, `sink`) — which is ADR-004 §6's incremental index — compiled in, by forwarding to `fathom-store`'s own feature of the same name. Same reason that crate gates: a library built with no features must still build and test. | — | e1.4 |
 | `fathom-analyze` | `sqlite-system` | no | — | yes | the same half, against the distro's libsqlite3. | — | e7.4 |
 | `fathom-analyze` | `net-llm` | no | **yes** | yes | optional LLM narrative polish (`e4.7`, spike `s5`). Off by default, watermarked, citation-preserving, and silently absent when unavailable (ADR-001 §8 non-goal 6). | `privacy.llm` | e4.7 |
+| `fathom-analyze` | `deps-node` | no | — | — | the npm/yarn/pnpm surface: `package.json`, `package-lock.json` v1–v3, `yarn.lock` v1 and Berry, `pnpm-lock.yaml`, `pnpm-workspace.yaml`. | — | e2.5 |
+| `fathom-analyze` | `deps-cargo` | no | — | — | `Cargo.toml` (package, workspace, targets, features) and `Cargo.lock` v1–v4. | — | e2.5 |
+| `fathom-analyze` | `deps-python` | no | — | — | `pyproject.toml` (PEP 621, Poetry, PEP 735 groups, uv sources), `requirements*.txt`, `poetry.lock`, `uv.lock`, `Pipfile.lock`. | — | e2.5 |
+| `fathom-analyze` | `deps-go` | no | — | — | `go.mod` (require/replace/exclude/tool, `// indirect`), `go.sum`, `go.work`. | — | e2.5 |
+| `fathom-analyze` | `deps-ruby` | no | — | — | `Gemfile` (best-effort DSL) and `Gemfile.lock` (GEM/GIT/PATH sections with resolved edges). | — | e2.5 |
+| `fathom-analyze` | `deps-elixir` | no | — | — | `mix.exs` and `mix.lock`. | — | e2.5 |
+| `fathom-analyze` | `deps-jvm` | no | — | — | Maven `pom.xml` and Gradle build files, best-effort and read-only: no build logic is executed, so `${property}` stays verbatim. `gradle.lockfile` too. | — | e2.5 |
+| `fathom-analyze` | `deps-dotnet` | no | — | — | SDK-style `*.csproj`, `Directory.Packages.props` (central package management) and `packages.lock.json`. | — | e2.5 |
+| `fathom-analyze` | `deps-all` | no | — | — | every dependency ecosystem; the shipped binary enables this, because a review tool that silently skipped the dependencies of the one ecosystem the repository uses is worse than one that admits it. | — | e2.5 |
 | `fathom-tui` | `graph-layout` | no | — | yes | force-directed layout for the architecture map (`petgraph`). | — | e3.4 |
 | `fathom-mcp` | `net-http-transport` | no | **yes** | yes | streamable-HTTP/SSE transport in addition to stdio: this listens on a socket, so it is consent-gated like any egress and is off by default. | `privacy.mcp_http_transport` | e6.4 |
 | `fathom-cli` | `tui` | **yes** | — | — | compile the terminal UI in; `fathom` with no verb. Drop it for a headless CI binary that only runs `fathom check` and `fathom index`. | — | e1.5 |
@@ -449,6 +458,7 @@ meant to grow. One decision point makes that class of accident visible in one di
 | `fathom-cli` | `watch` | **yes** | — | — | compile watch mode and `fathom watch` in; forwards to `fathom-ingest/watch`. | — | e1.9 |
 | `fathom-cli` | `sqlite-bundled` | **yes** | — | — | the shipped SQLite story (ADR-004 D2). | — | e0.4 |
 | `fathom-cli` | `langs-all` | **yes** | — | — | every tree-sitter grammar; the product's differentiator ships. | — | e3.1 |
+| `fathom-cli` | `deps-all` | **yes** | — | — | every dependency ecosystem (`e2.5`): the deps view, the delta model and `fathom check`'s dependency policy all need it, so it ships. | — | e2.5 |
 | `fathom-cli` | `minimal` | no | — | — | the smallest useful headless binary: `--no-default-features --features minimal` is what `e6.6` runs inside CI and what the privacy job inspects. | — | e6.6 |
 | `fathom-cli` | `net-advisories` | no | **yes** | — | forwards `fathom-analyze/net-advisories`. | `privacy.advisories` | e2.7 |
 | `fathom-cli` | `net-llm` | no | **yes** | — | forwards `fathom-analyze/net-llm`. | `privacy.llm` | e4.7 |
@@ -459,6 +469,15 @@ meant to grow. One decision point makes that class of accident visible in one di
 Transitive default feature set of the shipped binary (`cargo build -p fathom-cli`, nothing passed):
 
 ```
+fathom-analyze/deps-all
+fathom-analyze/deps-cargo
+fathom-analyze/deps-dotnet
+fathom-analyze/deps-elixir
+fathom-analyze/deps-go
+fathom-analyze/deps-jvm
+fathom-analyze/deps-node
+fathom-analyze/deps-python
+fathom-analyze/deps-ruby
 fathom-analyze/lang-go
 fathom-analyze/lang-java
 fathom-analyze/lang-python
@@ -467,6 +486,7 @@ fathom-analyze/lang-rust
 fathom-analyze/lang-typescript
 fathom-analyze/langs-all
 fathom-analyze/sqlite-bundled
+fathom-cli/deps-all
 fathom-cli/langs-all
 fathom-cli/mcp
 fathom-cli/sqlite-bundled

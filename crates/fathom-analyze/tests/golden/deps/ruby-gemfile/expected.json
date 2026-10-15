@@ -1,0 +1,59 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "gemspec": "declared",
+          "ruby": "3.3.0",
+          "source": "https://rubygems.org"
+        },
+        "requirements": [
+          "internal-gem via git:https://git.internal/gem.git@stable",
+          "local-gem via path:../local-gem",
+          "private-gem via registry:https://git.internal/rubygems",
+          "puma [target:mri,mingw,x64_mingw]",
+          "rails ~> 7.1, >= 7.1.3",
+          "rspec-rails ~> 6.1 [dev]",
+          "sidekiq"
+        ]
+      },
+      "ecosystem": "ruby",
+      "format": "Gemfile",
+      "path": "Gemfile",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 7,
+      "ecosystem": "ruby",
+      "locks": [],
+      "manifest": "Gemfile",
+      "name": "",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "ruby": 1
+    },
+    "configs": 0,
+    "direct": 7,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 5,
+    "unparsed": 0
+  }
+}

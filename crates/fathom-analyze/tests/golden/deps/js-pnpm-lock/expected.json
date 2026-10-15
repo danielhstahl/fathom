@@ -1,0 +1,77 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "importers": [
+          {
+            "dir": ".",
+            "requirements": [
+              "react ^18.2.0",
+              "utils link:packages/utils",
+              "vitest ^1.6.0 [dev]"
+            ]
+          },
+          {
+            "dir": "packages/utils",
+            "requirements": [
+              "lodash ^4.17.21"
+            ]
+          }
+        ],
+        "kind": "lock",
+        "packages": [
+          "@babel/parser 7.23.0 dev -> [@babel/types 7.23.0]",
+          "lodash 4.17.21 license=MIT",
+          "react 18.2.0 -> [loose-envify 1.4.0]"
+        ],
+        "properties": {
+          "settings.autoInstallPeers": "true",
+          "settings.excludeLinksFromLockfile": "false"
+        },
+        "records_edges": true,
+        "version": "9.0"
+      },
+      "ecosystem": "js",
+      "format": "pnpm-lock.yaml",
+      "path": "pnpm-lock.yaml",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "js",
+      "locks": [
+        "pnpm-lock.yaml"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`pnpm-lock.yaml` is a js lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

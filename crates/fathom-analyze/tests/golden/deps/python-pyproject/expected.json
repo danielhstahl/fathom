@@ -1,0 +1,69 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "collector",
+        "properties": {
+          "build-backend": "hatchling.build",
+          "requires-python": ">=3.11"
+        },
+        "requirements": [
+          "coverage >=7 [dev]",
+          "hatchling >=1.20 [build]",
+          "helper via url:https://example.com/helper-1.0-py3-none-any.whl",
+          "mypy >=1.8 [extra:typing]",
+          "pydantic >=2.5 [target:python_version >= '3.9']",
+          "pytest >=8 [dev]",
+          "requests >=2.31,<3 via git:https://github.com/psf/requests@v2.31.0",
+          "ruff >=0.4 [dev]",
+          "sphinx >=7 [group:docs]",
+          "uvicorn ==0.29.0 as uvicorn[standard]"
+        ],
+        "version": "1.4.0",
+        "workspaces": [
+          "services/*"
+        ]
+      },
+      "ecosystem": "python",
+      "format": "pyproject.toml",
+      "notes": [
+        "`helper` is required from url:https://example.com/helper-1.0-py3-none-any.whl rather than an index"
+      ],
+      "path": "pyproject.toml",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 10,
+      "ecosystem": "python",
+      "locks": [],
+      "manifest": "pyproject.toml",
+      "name": "collector",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 10,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 3,
+    "unparsed": 0
+  }
+}

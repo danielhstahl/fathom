@@ -1,0 +1,38 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "workspace",
+        "members": [
+          "./api",
+          "./packages/config",
+          "./tools/lint"
+        ]
+      },
+      "ecosystem": "go",
+      "format": "go.work",
+      "path": "go.work",
+      "role": "config",
+      "status": "parsed"
+    }
+  ],
+  "members": [],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "go": 1
+    },
+    "configs": 1,
+    "direct": 0,
+    "files": 1,
+    "locks": 0,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

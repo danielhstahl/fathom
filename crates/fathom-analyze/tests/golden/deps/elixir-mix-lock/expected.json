@@ -1,0 +1,57 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "ecto 3.11.2 src=registry:hexpm int=sha256:3f9a -> [decimal ~> 2.0]",
+          "internal  src=git:https://github.com/acme/internal@4f2b90c",
+          "jason 1.4.1 src=registry:hexpm int=sha256:f3b -> [decimal ~> 1.0 or ~> 2.0]",
+          "phoenix 1.7.10 src=registry:hexpm int=sha256:9b1 -> [jason ~> 1.0]"
+        ],
+        "records_edges": true
+      },
+      "ecosystem": "elixir",
+      "format": "mix.lock",
+      "path": "mix.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "elixir",
+      "locks": [
+        "mix.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 4,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`mix.lock` is a elixir lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "elixir": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 4,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

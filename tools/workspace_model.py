@@ -235,6 +235,35 @@ CRATES: tuple[Crate, ...] = (
                     "watermarked, citation-preserving, and silently absent when unavailable "
                     "(ADR-001 §8 non-goal 6).", net=True, heavy=True, deps=("ureq", "rustls"),
                     ticket="e4.7"),
+            # The dependency ecosystems (`e2.5`). None of these costs a third-party crate: the parsers are
+            # hand-written and tolerant because "degrade to `unparsed`" is the ticket's requirement, not a
+            # dependency's limitation. What the gate buys is compile time and *surface area* per ecosystem,
+            # and a CI binary that speaks only the languages the repository under review uses. A gated-out
+            # ecosystem is still recognized by path — its files come back `unparsed` naming the feature to
+            # rebuild with, never silently missing.
+            Feature("deps-node", "the npm/yarn/pnpm surface: `package.json`, `package-lock.json` v1–v3, "
+                    "`yarn.lock` v1 and Berry, `pnpm-lock.yaml`, `pnpm-workspace.yaml`.", ticket="e2.5"),
+            Feature("deps-cargo", "`Cargo.toml` (package, workspace, targets, features) and `Cargo.lock` "
+                    "v1–v4.", ticket="e2.5"),
+            Feature("deps-python", "`pyproject.toml` (PEP 621, Poetry, PEP 735 groups, uv sources), "
+                    "`requirements*.txt`, `poetry.lock`, `uv.lock`, `Pipfile.lock`.", ticket="e2.5"),
+            Feature("deps-go", "`go.mod` (require/replace/exclude/tool, `// indirect`), `go.sum`, "
+                    "`go.work`.", ticket="e2.5"),
+            Feature("deps-ruby", "`Gemfile` (best-effort DSL) and `Gemfile.lock` (GEM/GIT/PATH sections "
+                    "with resolved edges).", ticket="e2.5"),
+            Feature("deps-elixir", "`mix.exs` and `mix.lock`.", ticket="e2.5"),
+            Feature("deps-jvm", "Maven `pom.xml` and Gradle build files, best-effort and read-only: no "
+                    "build logic is executed, so `${property}` stays verbatim. `gradle.lockfile` too.",
+                    ticket="e2.5"),
+            Feature("deps-dotnet", "SDK-style `*.csproj`, `Directory.Packages.props` (central package "
+                    "management) and `packages.lock.json`.", ticket="e2.5"),
+            Feature("deps-all", "every dependency ecosystem; the shipped binary enables this, because a "
+                    "review tool that silently skipped the dependencies of the one ecosystem the repository "
+                    "uses is worse than one that admits it.",
+                    enables=("fathom-analyze/deps-node", "fathom-analyze/deps-cargo",
+                             "fathom-analyze/deps-python", "fathom-analyze/deps-go",
+                             "fathom-analyze/deps-ruby", "fathom-analyze/deps-elixir",
+                             "fathom-analyze/deps-jvm", "fathom-analyze/deps-dotnet"), ticket="e2.5"),
         ),
         io=False,
         notes=(
@@ -321,6 +350,9 @@ CRATES: tuple[Crate, ...] = (
                     ticket="e0.4"),
             Feature("langs-all", "every tree-sitter grammar; the product's differentiator ships.",
                     default=True, enables=("fathom-analyze/langs-all",), ticket="e3.1"),
+            Feature("deps-all", "every dependency ecosystem (`e2.5`): the deps view, the delta model and "
+                    "`fathom check`'s dependency policy all need it, so it ships.",
+                    default=True, enables=("fathom-analyze/deps-all",), ticket="e2.5"),
             Feature("minimal", "the smallest useful headless binary: `--no-default-features --features "
                     "minimal` is what `e6.6` runs inside CI and what the privacy job inspects.",
                     ticket="e6.6"),

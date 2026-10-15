@@ -1,0 +1,57 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "properties": {
+          "declarations": "7"
+        },
+        "requirements": [
+          ":common project via path::common",
+          "com.acme:sdk 2.0.0",
+          "com.fasterxml.jackson.core:jackson-databind 2.16.1",
+          "org.junit.jupiter:junit-jupiter 5.10.2 [dev]",
+          "org.junit:junit-bom 5.10.2",
+          "org.projectlombok:lombok 1.18.30 [provided]",
+          "org.slf4j:slf4j-api 2.0.12"
+        ]
+      },
+      "ecosystem": "jvm",
+      "format": "build.gradle",
+      "path": "build.gradle.kts",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 7,
+      "ecosystem": "jvm",
+      "locks": [],
+      "manifest": "build.gradle.kts",
+      "name": "",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "jvm": 1
+    },
+    "configs": 0,
+    "direct": 7,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 5,
+    "unparsed": 0
+  }
+}

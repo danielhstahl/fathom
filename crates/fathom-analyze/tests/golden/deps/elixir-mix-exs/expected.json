@@ -1,0 +1,54 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "acme",
+        "requirements": [
+          "ecto ~> 3.11 [optional] via registry:hexpm",
+          "internal via git:github.com/acme/internal@stable",
+          "jason ~> 1.4 [dev] via registry:hexpm",
+          "local via path:../local",
+          "phoenix ~> 1.7.10 via registry:hexpm"
+        ],
+        "version": "1.2.3"
+      },
+      "ecosystem": "elixir",
+      "format": "mix.exs",
+      "path": "mix.exs",
+      "role": "manifest",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 5,
+      "ecosystem": "elixir",
+      "locks": [],
+      "manifest": "mix.exs",
+      "name": "acme",
+      "resolved": 0,
+      "status": "parsed"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "elixir": 1
+    },
+    "configs": 0,
+    "direct": 5,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 0,
+    "runtime_direct": 3,
+    "unparsed": 0
+  }
+}

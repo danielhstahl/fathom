@@ -1,0 +1,61 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "anstyle 1.0.7 src=registry:https://github.com/rust-lang/crates.io-index int=sha256:6e1dc",
+          "clap 4.5.4 src=registry:https://github.com/rust-lang/crates.io-index int=sha256:9c8d4e -> [clap_builder 4.5.4, serde 1.0.200]",
+          "clap_builder 4.5.4 src=registry:https://github.com/rust-lang/crates.io-index int=sha256:77aa -> [anstyle 1.0.7]",
+          "forked 0.2.0 src=git:https://github.com/acme/fork@branch=fix/upstream",
+          "jpeg-encoder 0.6.0 src=git:https://github.com/acme/jpeg-encoder@tag=v0.6 int=sha256:4f2a",
+          "serde 1.0.200 src=registry:https://github.com/rust-lang/crates.io-index int=sha256:a1b2c",
+          "widget 0.3.1 src=path:."
+        ],
+        "records_edges": true,
+        "version": "4"
+      },
+      "ecosystem": "cargo",
+      "format": "Cargo.lock",
+      "path": "Cargo.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "cargo",
+      "locks": [
+        "Cargo.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 7,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`Cargo.lock` is a cargo lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "cargo": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 7,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

@@ -1,0 +1,30 @@
+[project]
+name = "collector"
+version = "1.4.0"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31,<3",
+  "pydantic>=2.5 ; python_version >= '3.9'",
+  "uvicorn[standard]==0.29.0",
+  "helper @ https://example.com/helper-1.0-py3-none-any.whl",
+]
+
+[project.optional-dependencies]
+typing = ["mypy>=1.8"]
+
+[dependency-groups]
+docs = ["sphinx>=7"]
+dev = ["pytest>=8", { name = "ruff", version = ">=0.4" }]
+
+[build-system]
+requires = ["hatchling>=1.20"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = ["coverage>=7"]
+
+[tool.uv.sources]
+requests = { git = "https://github.com/psf/requests", rev = "v2.31.0" }
+
+[tool.uv.workspace]
+members = ["services/*"]

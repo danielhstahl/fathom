@@ -1,0 +1,9 @@
+go 1.22
+
+use (
+	./api
+	./packages/config
+	./tools/lint
+)
+
+replace github.com/acme/shared => ./packages/shared

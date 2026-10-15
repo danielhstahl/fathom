@@ -108,6 +108,40 @@ No product behaviour is claimed by any entry on this page yet.
   scored from paths alone (91.8%, 17 rows content-decided), because a fixture set a content-blind
   classifier could pass is not testing this ticket. No new store columns: `cls`/`noise`/`taxonomy_version`
   map onto ADR-004 §4.2's three, and the confidence and the reason live in the analyzer row instead.
+- **The dependency surface** (`e2.5`/`reco-j83`): `fathom_analyze::deps` parses the whole dependency
+  surface of a revision and of a diff across eight ecosystems and twenty-five formats — `package.json`
+  with `package-lock.json` v1–v3, `yarn.lock` v1 and Berry, `pnpm-lock.yaml`; `Cargo.toml` and
+  `Cargo.lock` v1–v4; `pyproject.toml` (PEP 621, Poetry, PEP 735 groups, uv sources) with
+  `requirements*.txt`, `poetry.lock`, `uv.lock`, `Pipfile.lock`; `go.mod`/`go.sum`/`go.work`;
+  `Gemfile`/`Gemfile.lock`; `mix.exs`/`mix.lock`; `pom.xml`, Gradle build files and `gradle.lockfile`;
+  `*.csproj`, `Directory.Packages.props` and `packages.lock.json` — plus the two workspace config files
+  that declare membership without declaring dependencies.
+  A scan answers per *member*, not per repository: `apps/web` and `apps/admin` declaring their own
+  `react` is two requirements, each lockfile is bound to the package it locks, and `claimed` says
+  whether any workspace glob covers a member — the half-migrated monorepo where nobody's
+  `workspaces` list mentions `experimental/sandbox` is a note, not an absence.
+  **A parse failure is a value.** A row whose status is `unparsed` carries one of eight typed reasons
+  (`malformed_syntax`, `truncated`, `too_large`, `not_text`, `feature_absent`, `empty`,
+  `unknown_shape`, `content_unavailable`), the parser's own words with a line number when it has one,
+  and a preview of the raw text — the "here is the raw diff" half of the degradation rule, which is
+  why a binary file still gets a `·`-sanitised caption rather than nothing. Nothing in the module can
+  drop an episode: one corrupt lockfile in a ten-file surface yields nine parsed rows, one unparsed
+  row and a total that still adds up. Notes come in two kinds — a *deficiency* makes the file
+  `partial`, an *observation* (a yarn entry answering two specs, a package locked under a marker) does
+  not, so a healthy `yarn.lock` is not `partial` for being normal.
+  Nothing resolves, no build DSL is executed and no network is touched: Gradle's `${spring.version}`
+  and a `Gemfile`'s Ruby stay verbatim, because running a repository's build code inside a review tool
+  is how the reviewer becomes the attack surface.
+  Each ecosystem is its own cargo feature (`deps-node` … `deps-dotnet`, aggregated by `deps-all`, which
+  the shipped binary enables); a build with any subset — including none — compiles warning-free and a
+  gated-out ecosystem answers `feature_absent` instead of failing the scan.
+  Correctness is pinned by 28 hand-written golden fixtures (one per format, compared through a
+  projection rather than a struct dump, with a test that fails if any claimed format lacks its fixture),
+  a tolerance matrix that runs every fixture through 12 degradations (348 scans: no panic, one row
+  each, typed reason, prefix-of-the-file previews), monorepo and real-`git` revision/diff tests, and a
+  bench that scans an 8 MiB synthetic monorepo — ~90 ms in release against the ticket's 500 ms budget,
+  with a second assertion that 8× the lockfile does not cost 8× the time squared.
+  See [docs/concepts/dependency-surface.md](docs/concepts/dependency-surface.md).
 - **Incremental indexing with a tree-hash analysis cache** (`e1.4`/`reco-f28`): `fathom index` indexes.
   `fathom_analyze::index::run` is three passes — the spine through `ingest::run`, the analyses, the
   working tree — and there is no invalidation code in it, which is ADR-004 §2 rule 3 rather than an

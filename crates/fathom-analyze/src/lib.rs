@@ -9,15 +9,16 @@
 //! answer in the whole product. Everything else in this crate is a promise the surfaces may not reach
 //! past — which is the difference between ADR-001 §7.10 ("one reality") as a value and as a rule.
 //!
-//! At the scaffold the analyses themselves are the tickets that own them: `e0.9` (taxonomy and noise),
-//! epic 2 (change), epic 3 (architecture), epic 4 (agents, risk, the queue), `e2.11` (the delta model)
-//! and `e5.7` (the artefact). What is here is the façade's contract: its schema version, its pagination
+//! The analyses are landing ticket by ticket: [`deps`] is `e2.5` (dependency manifests and lockfiles),
+//! and what is still missing is named by the ticket that owns it — epic 2's other deltas, epic 3
+//! (architecture), epic 4 (agents, risk, the queue) and `e5.7` (the artefact). What is here is the façade's contract: its schema version, its pagination
 //! rule and the typed failure it returns before it has an answer.
 
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod cancel;
+pub mod deps;
 pub mod error;
 pub mod export;
 pub mod insight;

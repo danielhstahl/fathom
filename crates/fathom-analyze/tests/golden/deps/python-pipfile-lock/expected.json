@@ -1,0 +1,63 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "fork git+https://github.com/acme/fork.git@main src=git:git+https://github.com/acme/fork.git@main@main",
+          "pytest 8.1.1 dev",
+          "requests 2.31.0 int=sha256:1e9"
+        ],
+        "properties": {
+          "source.pypi": "https://pypi.org/simple"
+        },
+        "records_edges": false,
+        "version": "6"
+      },
+      "ecosystem": "python",
+      "format": "Pipfile.lock",
+      "notes": [
+        "`pytest` is locked under the marker `python_version >= '3.8'`"
+      ],
+      "path": "Pipfile.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "python",
+      "locks": [
+        "Pipfile.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`Pipfile.lock` is a python lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "python": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

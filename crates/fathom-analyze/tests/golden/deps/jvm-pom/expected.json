@@ -1,0 +1,65 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "kind": "manifest",
+        "name": "com.acme:service",
+        "properties": {
+          "packaging": "jar",
+          "parent": "com.acme:parent:3.0.0",
+          "property.spring.version": "6.1.4"
+        },
+        "requirements": [
+          "com.acme.internal:sdk 2.0.0 [optional]",
+          "com.fasterxml.jackson.core:jackson-databind 2.16.1 [other:managed]",
+          "junit:junit 4.13.2 [dev]",
+          "org.graalvm:native-image 23.1 [other:profile:native]",
+          "org.springframework:spring-core ${spring.version}"
+        ],
+        "version": "1.1.0",
+        "workspaces": [
+          "../common"
+        ]
+      },
+      "ecosystem": "jvm",
+      "format": "pom.xml",
+      "notes": [
+        "`org.springframework:spring-core` is declared as `${spring.version}`; the property is not resolved"
+      ],
+      "path": "pom.xml",
+      "role": "manifest",
+      "status": "partial"
+    }
+  ],
+  "members": [
+    {
+      "claimed": true,
+      "dir": "",
+      "direct": 5,
+      "ecosystem": "jvm",
+      "locks": [],
+      "manifest": "pom.xml",
+      "name": "com.acme:service",
+      "resolved": 0,
+      "status": "partial"
+    }
+  ],
+  "notes": [],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "jvm": 1
+    },
+    "configs": 0,
+    "direct": 5,
+    "files": 1,
+    "locks": 0,
+    "manifests": 1,
+    "parsed": 0,
+    "partial": 1,
+    "resolved": 0,
+    "runtime_direct": 1,
+    "unparsed": 0
+  }
+}

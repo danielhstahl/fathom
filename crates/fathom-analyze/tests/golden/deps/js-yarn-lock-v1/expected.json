@@ -1,0 +1,60 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": true,
+        "kind": "lock",
+        "packages": [
+          "@babel/parser 7.23.0 src=registry:registry.yarnpkg.com int=sha512-HaCqO -> [@babel/types ^7.23.0]",
+          "acme-ui 3.1.0 src=git:https://codeload.github.com/acme/ui/tar.gz/v3.1.0",
+          "react 18.2.0 src=registry:registry.yarnpkg.com int=sha512-/XJ license=MIT"
+        ],
+        "records_edges": true,
+        "version": "1"
+      },
+      "ecosystem": "js",
+      "format": "yarn.lock",
+      "notes": [
+        "`@babel/parser` has 2 specs resolving to one entry: @babel/parser@^7.0.0, @babel/parser@^7.23.0"
+      ],
+      "path": "yarn.lock",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "js",
+      "locks": [
+        "yarn.lock"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`yarn.lock` is a js lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "js": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}

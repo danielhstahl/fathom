@@ -1,0 +1,59 @@
+{
+  "complete": true,
+  "files": [
+    {
+      "body": {
+        "complete": false,
+        "kind": "lock",
+        "packages": [
+          "com.fasterxml.jackson.core:jackson-databind 2.16.1",
+          "org.junit.jupiter:junit-jupiter 5.10.2 dev",
+          "org.slf4j:slf4j-api 2.0.12"
+        ],
+        "properties": {
+          "configurations": "annotationProcessor,compileClasspath,implementation,testImplementation"
+        },
+        "records_edges": false
+      },
+      "ecosystem": "jvm",
+      "format": "gradle.lockfile",
+      "path": "gradle.lockfile",
+      "role": "lock",
+      "status": "parsed"
+    }
+  ],
+  "members": [
+    {
+      "claimed": false,
+      "dir": "",
+      "direct": 0,
+      "ecosystem": "jvm",
+      "locks": [
+        "gradle.lockfile"
+      ],
+      "manifest": "",
+      "name": null,
+      "resolved": 3,
+      "status": "parsed"
+    }
+  ],
+  "notes": [
+    "`gradle.lockfile` is a jvm lockfile with no manifest beside it"
+  ],
+  "scanned": 1,
+  "totals": {
+    "by_ecosystem": {
+      "jvm": 1
+    },
+    "configs": 0,
+    "direct": 0,
+    "files": 1,
+    "locks": 1,
+    "manifests": 0,
+    "parsed": 1,
+    "partial": 0,
+    "resolved": 3,
+    "runtime_direct": 0,
+    "unparsed": 0
+  }
+}
