@@ -1,0 +1,1287 @@
+//! `episode.rs` — migration 3: the episodes `e1.3` derives and the review state a human leaves.
+//!
+//! The DDL is [`fathom_ingest`]'s and ADR-004's, not a new invention: the `episode`, `episode_member`
+//! and `episode_rewrite` tables are ADR-004 Appendix A §4.3 reproduced with the columns this epic's
+//! screens actually draw added, and `session_state` is §4.7's verbatim. Two copies of the *shape* would
+//! be the drift this repository's whole tooling exists to prevent, so the column names are the reference
+//! schema's and the additions are listed at the bottom of each table with the ticket that needed them.
+//!
+//! # Why identity is a digest and not a row
+//!
+//! A rebase, an amend or a force-push gives every commit in the rewritten range a fresh oid, and a review
+//! decision attached to an oid is a review decision that silently evaporates — ADR-001 §7.8's data-loss
+//! machine, run annually. So an episode's id is derived from the facts a rewrite preserves:
+//!
+//! ```text
+//! id = "ep-" + sha256("fathom-episode/1" \0 author \0 normalized-subject \0 sorted-path-set)[0..20]
+//! ```
+//!
+//! Rewriting does not change who authored the change, what its subject line says, or which paths it
+//! touches, so the id is stable across `--amend`, `rebase -i`, `commit --fixup` and a force-push, and the
+//! review row attached to it is found again without a relink step existing at all.
+//!
+//! Two rewrites do break that: a **reword** (subject changed) and a **squash or split** (the path set
+//! moves). For those there are two weaker digests — author+subject, which survives files moving, and
+//! author+paths, which survives the subject changing — and a relink pass that re-attaches review state from
+//! a dead episode to a live one when either digest matches or their commit sets overlap. Every relink is
+//! written to `episode_rewrite`, which is what makes "sign-off survived the rebase" a queryable fact rather
+//! than a hope — ADR-003's stability clause needs the rewrites recorded, and this is where they get
+//! recorded.
+//!
+//! # What is deliberately not here
+//!
+//! The durable, committable review ledger (`ledger_entry` with its signatures and anchors) is `e4.6`;
+//! `review_state` is the epic-1 materialisation of "which of these have I read and what did I think",
+//! keyed by the same fingerprint so that the ledger can be built on top of it rather than beside it.
+//! Risk scores, findings and the delta model are `e2.x`; nothing here computes one.
+
+use rusqlite::types::Value as SqlValue;
+use rusqlite::{Connection, OptionalExtension as _, params};
+
+use crate::error::Error;
+use crate::spine::Store;
+use std::fmt;
+
+use crate::spine::corrupt;
+
+/// The episode DDL, as migration 3.
+///
+/// The reference columns and their CHECK constraints come from ADR-004 Appendix A §4.3 unchanged; the
+/// columns after the `-- e1.3 additions` marker are what the timeline rail and the episode card draw and
+/// are derived, never authoritative (they are rewritten on every index run, unlike the ones above, which
+/// are the identity and the boundary decision).
+pub const MIGRATION_3: &str = "
+CREATE TABLE IF NOT EXISTS episode (
+  id            TEXT PRIMARY KEY,          -- ADR-003 identity
+  kind          TEXT NOT NULL CHECK (kind IN ('committed','provisional')),
+  fingerprint   TEXT NOT NULL,             -- content digest that survives a rewrite
+  lineage_ref   TEXT NOT NULL,             -- ref/branch the episode is ordered within
+  lineage_seq   INTEGER NOT NULL,          -- ordinal on that lineage
+  created_utc   INTEGER NOT NULL,
+  created_source TEXT NOT NULL CHECK (created_source IN ('hook','commit','index')),
+  created_confidence REAL NOT NULL,        -- 1.0 hook, 0.7 commit, 0.3 index (e1.3)
+  session_id    TEXT,
+  turn_id       TEXT,
+  boundary_rule TEXT NOT NULL,             -- hook|trailer|author|time-gap|branch (ADR-003)
+  boundary_confidence REAL NOT NULL,
+  author_kind   TEXT NOT NULL CHECK (author_kind IN ('agent','human','unknown')),
+  author_confidence REAL NOT NULL,
+  intent        TEXT,                      -- JSON: prompt sha, plan items, declared scope
+  noise_share   REAL NOT NULL DEFAULT 0,
+  epoch         INTEGER NOT NULL,
+  -- e1.3 additions: the derived columns the timeline rail, the episode card and the diff tree read.
+  fallback_fingerprint TEXT NOT NULL,      -- author+subject only: the relink key after files move
+  shape_fingerprint TEXT NOT NULL DEFAULT '', -- author+paths: the relink key after a reword
+  first_oid     TEXT NOT NULL,
+  last_oid      TEXT NOT NULL,
+  n_commits     INTEGER NOT NULL DEFAULT 1,
+  n_files       INTEGER NOT NULL DEFAULT 0,
+  n_add         INTEGER NOT NULL DEFAULT 0,
+  n_del         INTEGER NOT NULL DEFAULT 0,
+  n_binary      INTEGER NOT NULL DEFAULT 0,
+  first_utc     INTEGER NOT NULL DEFAULT 0,
+  last_utc      INTEGER NOT NULL DEFAULT 0,
+  author_name   TEXT NOT NULL DEFAULT '',
+  author_email  TEXT NOT NULL DEFAULT '',
+  summary       TEXT NOT NULL DEFAULT '',
+  overridden    INTEGER NOT NULL DEFAULT 0, -- a fathom.toml force-split/force-merge moved this edge
+  live          INTEGER NOT NULL DEFAULT 1, -- 0 once no current commit belongs to it
+  seen_utc      INTEGER NOT NULL DEFAULT 0  -- stamped by the run that last derived this row
+) STRICT;
+CREATE INDEX IF NOT EXISTS episode_fingerprint ON episode(fingerprint);
+CREATE INDEX IF NOT EXISTS episode_lineage ON episode(lineage_ref, lineage_seq);
+CREATE INDEX IF NOT EXISTS episode_created ON episode(created_utc);
+CREATE INDEX IF NOT EXISTS episode_epoch ON episode(epoch);
+CREATE INDEX IF NOT EXISTS episode_fallback ON episode(fallback_fingerprint);
+CREATE INDEX IF NOT EXISTS episode_shape ON episode(shape_fingerprint);
+CREATE INDEX IF NOT EXISTS episode_live ON episode(live);
+
+CREATE TABLE IF NOT EXISTS episode_member (
+  episode_id TEXT NOT NULL REFERENCES episode(id) ON DELETE CASCADE,
+  ordinal    INTEGER NOT NULL,
+  commit_oid TEXT NOT NULL REFERENCES git_commit(oid) ON DELETE CASCADE,
+  PRIMARY KEY (episode_id, ordinal)
+) WITHOUT ROWID, STRICT;
+CREATE INDEX IF NOT EXISTS episode_member_commit ON episode_member(commit_oid);
+
+CREATE TABLE IF NOT EXISTS episode_rewrite (
+  old_id   TEXT NOT NULL,
+  new_id   TEXT NOT NULL,
+  relation TEXT NOT NULL CHECK (relation IN ('amend','rebase','squash','split','cherry','merge','other')),
+  method   TEXT NOT NULL CHECK (method IN ('exact','fingerprint','shape','member-set','manual')),
+  score    REAL NOT NULL,
+  at_utc   INTEGER NOT NULL,
+  PRIMARY KEY (old_id, new_id)
+) WITHOUT ROWID, STRICT;
+CREATE INDEX IF NOT EXISTS episode_rewrite_new ON episode_rewrite(new_id);
+
+CREATE TABLE IF NOT EXISTS review_state (
+  episode_id  TEXT PRIMARY KEY REFERENCES episode(id) ON DELETE CASCADE,
+  state       TEXT NOT NULL CHECK (state IN ('unread','read','accepted','flagged','dismissed','snoozed')),
+  fingerprint TEXT NOT NULL,
+  actor       TEXT NOT NULL,
+  note        TEXT,
+  updated_utc INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS review_state_state ON review_state(state);
+
+CREATE TABLE IF NOT EXISTS session_state (
+  key TEXT PRIMARY KEY,                    -- 'tui.pane_sizes', 'queue.filter', 'unread:<id>'
+  value TEXT NOT NULL,
+  updated_utc INTEGER NOT NULL
+) STRICT;
+";
+
+/// What a human's review marker can be.
+///
+/// `Unread` is the default and is stored, not inferred from absence: "this row is missing" and "nobody has
+/// looked at this episode" are different claims, and only one of them is checkable after a relink.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum ReviewState {
+    /// Nobody has opened it.
+    #[default]
+    Unread,
+    /// Opened, no verdict given.
+    Read,
+    /// Signed off (`x` in the TUI).
+    Accepted,
+    /// Called out for someone else (`f`).
+    Flagged,
+    /// Refused with a reason (`-`).
+    Dismissed,
+    /// Deferred (`z`).
+    Snoozed,
+}
+
+impl ReviewState {
+    /// The store's spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ReviewState::Unread => "unread",
+            ReviewState::Read => "read",
+            ReviewState::Accepted => "accepted",
+            ReviewState::Flagged => "flagged",
+            ReviewState::Dismissed => "dismissed",
+            ReviewState::Snoozed => "snoozed",
+        }
+    }
+
+    /// Parse the store's spelling; unknown values come back as `Unread` rather than an error, because a
+    /// row written by a newer fathom must not make this one refuse to start (§9.5's forward-compat rule).
+    #[must_use]
+    pub fn parse(value: &str) -> Self {
+        match value {
+            "read" => ReviewState::Read,
+            "accepted" => ReviewState::Accepted,
+            "flagged" => ReviewState::Flagged,
+            "dismissed" => ReviewState::Dismissed,
+            "snoozed" => ReviewState::Snoozed,
+            _ => ReviewState::Unread,
+        }
+    }
+
+    /// Whether a row with this state is a decision someone made.
+    #[must_use]
+    pub const fn is_verdict(self) -> bool {
+        !matches!(self, ReviewState::Unread | ReviewState::Read)
+    }
+}
+
+impl fmt::Display for ReviewState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// One episode as `e1.3` computed it, in the store's own vocabulary (hex ids, plain strings).
+#[derive(Debug, Clone, Default)]
+pub struct EpisodeRow {
+    /// The derived identity.
+    pub id: String,
+    /// The strong digest (author, subject, path set).
+    pub fingerprint: String,
+    /// The relink digest (author, subject).
+    pub fallback_fingerprint: String,
+    /// The relink digest (author, path set): what a reword rides across on.
+    pub shape_fingerprint: String,
+    /// `committed` for a closed episode, `provisional` for the still-growing tail of a session.
+    pub kind: String,
+    /// The ref this episode is ordered within, and its ordinal on it.
+    pub lineage_ref: String,
+    /// See [`EpisodeRow::lineage_ref`].
+    pub lineage_seq: i64,
+    /// When the episode began, unix millis.
+    pub created_utc: i64,
+    /// `hook`, `commit` or `index`: which evidence opened it.
+    pub created_source: String,
+    /// See [`EpisodeRow::created_source`].
+    pub created_confidence: f64,
+    /// The harness session, when a trailer named one.
+    pub session_id: Option<String>,
+    /// The harness turn, when a trailer named one.
+    pub turn_id: Option<String>,
+    /// Which rule opened this episode, and how much to trust it.
+    pub boundary_rule: String,
+    /// See [`EpisodeRow::boundary_rule`].
+    pub boundary_confidence: f64,
+    /// `agent`, `human` or `unknown`.
+    pub author_kind: String,
+    /// See [`EpisodeRow::author_kind`].
+    pub author_confidence: f64,
+    /// The author as committed.
+    pub author_name: String,
+    /// The author's address as committed.
+    pub author_email: String,
+    /// The commit range, first-parent-first order.
+    pub first_oid: String,
+    /// See [`EpisodeRow::first_oid`].
+    pub last_oid: String,
+    /// Members in order; the durable half of the range.
+    pub members: Vec<String>,
+    /// The rollups the rail draws.
+    pub n_files: i64,
+    /// See [`EpisodeRow::n_files`].
+    pub n_add: i64,
+    /// See [`EpisodeRow::n_files`].
+    pub n_del: i64,
+    /// See [`EpisodeRow::n_files`].
+    pub n_binary: i64,
+    /// The first/last member's author date.
+    pub first_utc: i64,
+    /// See [`EpisodeRow::first_utc`].
+    pub last_utc: i64,
+    /// The one-line summary the rail prints.
+    pub summary: String,
+    /// Whether a `fathom.toml` override moved one of this episode's boundaries.
+    pub overridden: bool,
+    /// Whether any current commit still belongs to this episode.
+    pub live: bool,
+    /// What share of the episode's churn the noise policy explains (`e2.2`; 0 until then).
+    pub noise_share: f64,
+    /// Which epoch wrote this row.
+    pub epoch: i64,
+}
+
+impl EpisodeRow {
+    /// Number of members — the "4 commits" the card prints.
+    #[must_use]
+    pub fn n_commits(&self) -> i64 {
+        self.members.len().try_into().unwrap_or(i64::MAX)
+    }
+}
+
+/// The composable filter `e1.6`'s rail asks for (author AND path AND unread must compose).
+#[derive(Debug, Clone, Default)]
+pub struct EpisodeQuery {
+    /// Exact author names; empty means no constraint.
+    pub authors: Vec<String>,
+    /// `agent`/`human`/`unknown`; empty means no constraint.
+    pub kinds: Vec<String>,
+    /// `Some(ReviewState::Unread)` is "unread only"; `Some(ReviewState::Read)` is "anything opened".
+    pub state: Option<ReviewState>,
+    /// A path fragment; an episode matches when any member touched a path containing it.
+    pub path: Option<String>,
+    /// Inclusive lower bound on `last_utc`.
+    pub since_utc: Option<i64>,
+    /// Exclusive upper bound on `last_utc`.
+    pub until_utc: Option<i64>,
+    /// Skip this many rows after ordering.
+    pub offset: i64,
+    /// At most this many rows; `0` (the default) means "every row the filter selects".
+    pub limit: i64,
+}
+
+/// What a write of episodes did.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EpisodeWrite {
+    /// Episodes this run created.
+    pub inserted: usize,
+    /// Episodes whose derived columns were refreshed.
+    pub updated: usize,
+    /// Review-state rows carried across a detected rewrite.
+    pub relinked: usize,
+    /// `episode_member` rows written.
+    pub members: usize,
+    /// Dead episodes garbage-collected because nothing referenced them.
+    pub retired: usize,
+}
+
+impl Store {
+    /// Write the derived episodes, relink review state across rewrites, and garbage-collect dead rows.
+    ///
+    /// Three passes, one transaction:
+    ///
+    /// 1. **Write.** `INSERT … ON CONFLICT(id) DO UPDATE` on the derived columns only. The identity and
+    ///    the boundary decision are rewritten too because they are a pure function of the commits, but
+    ///    nothing a human wrote is touched here. Every row written stamps `seen_utc = now`, which is what
+    ///    makes "produced by the current segmentation" a queryable property rather than a memory.
+    /// 2. **Retire the stale.** Anything this run did not write is `live = 0`. This is the half that keeps a
+    ///    force-push from leaving a ghost episode beside its replacement: the store is append-only, so the
+    ///    rebased-away commits are still in `git_commit`, and an episode that only those commits belong to
+    ///    must stop being a reviewable thing rather than linger as a duplicate of its own rewrite.
+    /// 3. **Relink.** For each *live* episode with no review row, look for a *dead* episode that has one and
+    ///    either shares the fallback digest or shares a commit member. Copy the review row forward and
+    ///    record the rewrite. This is the half that survives a reword or a squash — the case a rebase
+    ///    changes the *id* of, and so the one a rewrite would otherwise orphan.
+    /// 4. **Prune.** Delete dead episodes nobody has a decision about. An episode somebody signed off on
+    ///    is kept, flagged `live = 0`, so the reviewer can still see "you accepted this; its commits are
+    ///    gone" instead of watching the row vanish.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if any statement fails; the whole write is one transaction, so a
+    /// failure leaves the previous episode set intact.
+    pub fn write_episodes(&mut self, now: i64, rows: &[EpisodeRow]) -> Result<EpisodeWrite, Error> {
+        let epoch = self.epoch()?;
+        let mut stats = EpisodeWrite::default();
+        {
+            let tx = self.immediate_transaction()?;
+            // Which of these episodes existed before this run. `changes()` cannot tell an insert from an
+            // upsert whose values happened to be identical — SQLite reports one row changed either way —
+            // so "new since the last index" is answered by asking which ids were already in the table.
+            // One query, not one per episode.
+            let mut statement = tx
+                .prepare("SELECT id FROM episode")
+                .map_err(|err| corrupt("reading the episode set", &err))?;
+            let before: std::collections::BTreeSet<String> = statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(|err| corrupt("reading the episode set", &err))?
+                .collect::<Result<_, _>>()
+                .map_err(|err| corrupt("reading the episode set", &err))?;
+            drop(statement);
+            for row in rows {
+                let existed = before.contains(&row.id);
+                tx
+                    .execute(
+                        "INSERT INTO episode(id, kind, fingerprint, lineage_ref, lineage_seq,
+                                created_utc, created_source, created_confidence, session_id, turn_id,
+                                boundary_rule, boundary_confidence, author_kind, author_confidence,
+                                noise_share, epoch, fallback_fingerprint, shape_fingerprint,
+                                first_oid, last_oid,
+                                n_commits, n_files, n_add, n_del, n_binary, first_utc, last_utc,
+                                author_name, author_email, summary, overridden, live, seen_utc)
+                         VALUES (?1,'committed',?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,0,?14,
+                                 ?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,1,?30)
+                         ON CONFLICT(id) DO UPDATE SET
+                            boundary_rule=excluded.boundary_rule,
+                            boundary_confidence=excluded.boundary_confidence,
+                            author_kind=excluded.author_kind,
+                            author_confidence=excluded.author_confidence,
+                            session_id=excluded.session_id,
+                            turn_id=excluded.turn_id,
+                            lineage_ref=excluded.lineage_ref,
+                            lineage_seq=excluded.lineage_seq,
+                            created_utc=excluded.created_utc,
+                            first_oid=excluded.first_oid,
+                            last_oid=excluded.last_oid,
+                            n_commits=excluded.n_commits,
+                            n_files=excluded.n_files,
+                            n_add=excluded.n_add,
+                            n_del=excluded.n_del,
+                            n_binary=excluded.n_binary,
+                            first_utc=excluded.first_utc,
+                            last_utc=excluded.last_utc,
+                            author_name=excluded.author_name,
+                            author_email=excluded.author_email,
+                            summary=excluded.summary,
+                            overridden=excluded.overridden,
+                            epoch=excluded.epoch,
+                            live=1,
+                            seen_utc=excluded.seen_utc",
+                        params![
+                            row.id,
+                            row.fingerprint,
+                            row.lineage_ref,
+                            row.lineage_seq,
+                            row.created_utc,
+                            row.created_source,
+                            row.created_confidence,
+                            row.session_id,
+                            row.turn_id,
+                            row.boundary_rule,
+                            row.boundary_confidence,
+                            row.author_kind,
+                            row.author_confidence,
+                            epoch,
+                            row.fallback_fingerprint,
+                            row.shape_fingerprint,
+                            row.first_oid,
+                            row.last_oid,
+                            row.n_commits(),
+                            row.n_files,
+                            row.n_add,
+                            row.n_del,
+                            row.n_binary,
+                            row.first_utc,
+                            row.last_utc,
+                            row.author_name,
+                            row.author_email,
+                            row.summary,
+                            i64::from(row.overridden),
+                            now
+                        ],
+                    )
+                    .map_err(|err| corrupt("writing episode rows", &err))?;
+                if existed {
+                    stats.updated += 1;
+                } else {
+                    stats.inserted += 1;
+                }
+                // Membership is derived from the current commit set, so it is replaced rather than merged:
+                // a commit that moved to another episode must not stay pointed at this one.
+                tx.execute(
+                    "DELETE FROM episode_member WHERE episode_id = ?1",
+                    params![row.id],
+                )
+                .map_err(|err| corrupt("replacing episode membership", &err))?;
+                for (ordinal, oid) in row.members.iter().enumerate() {
+                    tx.execute(
+                        "INSERT INTO episode_member(episode_id, ordinal, commit_oid) VALUES (?1,?2,?3)",
+                        params![row.id, i64::try_from(ordinal).unwrap_or(i64::MAX), oid],
+                    )
+                    .map_err(|err| corrupt("writing episode members", &err))?;
+                    stats.members += 1;
+                }
+            }
+            // 2. Everything this run did not stamp is a rewrite's ghost: mark it dead *before* the relink
+            // pass, which is written in terms of live and dead episodes and would otherwise find nothing to
+            // relink from.
+            tx.execute(
+                "UPDATE episode SET live = 0 WHERE live = 1 AND seen_utc != ?1",
+                params![now],
+            )
+            .map_err(|err| corrupt("retiring stale episodes", &err))?;
+            stats.relinked = relink_review_state(&tx, now)
+                .map_err(|err| corrupt("relinking review state across a rewrite", &err))?;
+            stats.retired =
+                retire_dead_episodes(&tx).map_err(|err| corrupt("retiring dead episodes", &err))?;
+            tx.commit()
+                .map_err(|err| corrupt("committing an episode write", &err))?;
+        }
+        Ok(stats)
+    }
+
+    /// The episodes a query selects, newest first.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episodes(&self, query: &EpisodeQuery) -> Result<Vec<EpisodeRow>, Error> {
+        let (sql, args) = episode_sql(query, false);
+        let mut statement = self
+            .connection()
+            .prepare(&sql)
+            .map_err(|err| corrupt("reading episodes", &err))?;
+        let rows = statement
+            .query_map(rusqlite::params_from_iter(args.iter()), row_to_episode)
+            .map_err(|err| corrupt("reading episodes", &err))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|err| corrupt("reading episodes", &err))?);
+        }
+        for episode in &mut out {
+            episode.members = self.episode_members(&episode.id)?;
+        }
+        Ok(out)
+    }
+
+    /// How many episodes the query would select without paging — the rail's "3 412 eps".
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn count_episodes(&self, query: &EpisodeQuery) -> Result<i64, Error> {
+        let (sql, args) = episode_sql(query, true);
+        self.connection()
+            .query_row(&sql, rusqlite::params_from_iter(args.iter()), |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|err| corrupt("counting episodes", &err))
+    }
+
+    /// The members of one episode, in order.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_members(&self, id: &str) -> Result<Vec<String>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare("SELECT commit_oid FROM episode_member WHERE episode_id = ?1 ORDER BY ordinal")
+            .map_err(|err| corrupt("reading episode members", &err))?;
+        let rows = statement
+            .query_map(params![id], |row| row.get::<_, String>(0))
+            .map_err(|err| corrupt("reading episode members", &err))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("reading episode members", &err))
+    }
+
+    /// One episode by id, if it exists.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode(&self, id: &str) -> Result<Option<EpisodeRow>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(&episode_sql_for_id())
+            .map_err(|err| corrupt("reading an episode", &err))?;
+        let found = statement
+            .query_map(params![id], row_to_episode)
+            .map_err(|err| corrupt("reading an episode", &err))?
+            .next()
+            .transpose()
+            .map_err(|err| corrupt("reading an episode", &err))?;
+        Ok(found)
+    }
+
+    /// Which episode contains a commit, if any.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_for_commit(&self, oid: &str) -> Result<Option<EpisodeRow>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(&format!(
+                "SELECT {EPISODE_COLUMNS} FROM episode \
+                 WHERE id IN (SELECT episode_id FROM episode_member WHERE commit_oid = ?1)"
+            ))
+            .map_err(|err| corrupt("reading an episode by commit", &err))?;
+        let found = statement
+            .query_map(params![oid], row_to_episode)
+            .map_err(|err| corrupt("reading an episode by commit", &err))?
+            .next()
+            .transpose()
+            .map_err(|err| corrupt("reading an episode by commit", &err))?;
+        Ok(found)
+    }
+
+    /// The distinct authors in the episode set, with counts — the filter chooser's list.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_authors(&self) -> Result<Vec<(String, i64)>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT author_name, COUNT(*) FROM episode WHERE live = 1
+                 GROUP BY author_name ORDER BY COUNT(*) DESC, author_name",
+            )
+            .map_err(|err| corrupt("reading episode authors", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|err| corrupt("reading episode authors", &err))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("reading episode authors", &err))
+    }
+
+    /// The review marker on one episode, defaulting to `Unread`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn review_of(&self, id: &str) -> Result<ReviewState, Error> {
+        let state: Option<String> = self
+            .connection()
+            .query_row(
+                "SELECT state FROM review_state WHERE episode_id = ?1",
+                params![id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|err| corrupt("reading review state", &err))?;
+        Ok(state
+            .map(|value| ReviewState::parse(&value))
+            .unwrap_or_default())
+    }
+
+    /// Every review marker, as `episode id → state` — the unread set the rail paints.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn review_states(&self) -> Result<std::collections::BTreeMap<String, ReviewState>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare("SELECT episode_id, state FROM review_state")
+            .map_err(|err| corrupt("reading review state", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|err| corrupt("reading review state", &err))?;
+        let mut out = std::collections::BTreeMap::new();
+        for row in rows {
+            let (id, state) = row.map_err(|err| corrupt("reading review state", &err))?;
+            out.insert(id, ReviewState::parse(&state));
+        }
+        Ok(out)
+    }
+
+    /// How many episodes are in each review state — the status line's `queue 7 open`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn review_counts(&self) -> Result<std::collections::BTreeMap<String, i64>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT COALESCE(r.state,'unread'), COUNT(*) FROM episode e
+                 LEFT JOIN review_state r ON r.episode_id = e.id
+                 WHERE e.live = 1 GROUP BY 1",
+            )
+            .map_err(|err| corrupt("counting review states", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|err| corrupt("counting review states", &err))?;
+        let mut out = std::collections::BTreeMap::new();
+        for row in rows {
+            let (state, n) = row.map_err(|err| corrupt("counting review states", &err))?;
+            out.insert(state, n);
+        }
+        Ok(out)
+    }
+
+    /// Stamp a human's review marker on an episode.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn set_review(
+        &mut self,
+        id: &str,
+        state: ReviewState,
+        actor: &str,
+        note: Option<&str>,
+        now: i64,
+    ) -> Result<(), Error> {
+        let fingerprint: String = self
+            .connection()
+            .query_row(
+                "SELECT fingerprint FROM episode WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )
+            .map_err(|err| corrupt("reading an episode fingerprint", &err))?;
+        self.conn_mut()
+            .execute(
+                "INSERT INTO review_state(episode_id, state, fingerprint, actor, note, updated_utc)
+                 VALUES (?1,?2,?3,?4,?5,?6)
+                 ON CONFLICT(episode_id) DO UPDATE SET state=excluded.state, note=excluded.note,
+                        actor=excluded.actor, updated_utc=excluded.updated_utc",
+                params![id, state.as_str(), fingerprint, actor, note, now],
+            )
+            .map_err(|err| corrupt("writing review state", &err))?;
+        Ok(())
+    }
+
+    /// Read one `session_state` value.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn ui_state(&self, key: &str) -> Result<Option<String>, Error> {
+        self.connection()
+            .query_row(
+                "SELECT value FROM session_state WHERE key = ?1",
+                params![key],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|err| corrupt("reading session state", &err))
+    }
+
+    /// Every `session_state` key starting with a prefix, as `key → value`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn ui_state_all(&self, prefix: &str) -> Result<Vec<(String, String)>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare("SELECT key, value FROM session_state WHERE key LIKE ?1 ORDER BY key")
+            .map_err(|err| corrupt("reading session state", &err))?;
+        let rows = statement
+            .query_map(params![format!("{prefix}%")], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|err| corrupt("reading session state", &err))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("reading session state", &err))
+    }
+
+    /// Write one `session_state` value, and delete it when the value is `None` (idempotent either way).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn set_ui_state(&mut self, key: &str, value: Option<&str>, now: i64) -> Result<(), Error> {
+        match value {
+            Some(value) => self.conn_mut().execute(
+                "INSERT INTO session_state(key, value, updated_utc) VALUES (?1,?2,?3)
+                 ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_utc=excluded.updated_utc",
+                params![key, value, now],
+            ),
+            None => self
+                .conn_mut()
+                .execute("DELETE FROM session_state WHERE key = ?1", params![key]),
+        }
+        .map(|_| ())
+        .map_err(|err| corrupt("writing session state", &err))
+    }
+
+    /// The rewrite ledger, newest first: `(old, new, relation, method)`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_rewrites(&self) -> Result<Vec<(String, String, String, String)>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT old_id, new_id, relation, method FROM episode_rewrite
+                 ORDER BY at_utc DESC, old_id LIMIT 200",
+            )
+            .map_err(|err| corrupt("reading episode rewrites", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
+            })
+            .map_err(|err| corrupt("reading episode rewrites", &err))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("reading episode rewrites", &err))
+    }
+}
+
+/// The per-commit facts episode segmentation needs, in the store's own vocabulary.
+#[derive(Debug, Clone)]
+pub struct EpisodeInput {
+    /// The commit id.
+    pub oid: String,
+    /// Parents, first parent first.
+    pub parents: Vec<String>,
+    /// The author name and address as committed.
+    pub author_name: String,
+    /// See [`EpisodeInput::author_name`].
+    pub author_email: String,
+    /// The author date, unix millis.
+    pub author_utc: i64,
+    /// The first line of the message.
+    pub subject: String,
+    /// The trailer block, lower-cased keys.
+    pub trailers: std::collections::BTreeMap<String, String>,
+    /// The paths this commit touched, in the store's quoted form.
+    pub paths: Vec<String>,
+    /// Files touched.
+    pub n_files: i64,
+    /// Lines added.
+    pub n_add: i64,
+    /// Lines removed.
+    pub n_del: i64,
+    /// Binary files touched.
+    pub n_binary: i64,
+}
+
+impl Store {
+    /// Every commit row, topologically ordered, with the paths each touched — the input segmentation reads.
+    ///
+    /// Only commits the current refs can reach are returned. The spine is append-only: a rebase, an amend or
+    /// a force-push leaves the commits it replaced sitting in `git_commit` (they are the audit trail of what
+    /// was indexed, and `fathom stats` counts them), and a segmentation that read every row would present a
+    /// reviewer with the same change twice — the one they are reviewing and the ghost its rewrite replaced.
+    /// Reachability is computed from the stored parent pointers rather than from git, so a commit that is
+    /// stored without its parents (a shallow store, or a corrupt one) is kept rather than dropped.
+    ///
+    /// The order is a real topological order over `parent_oids` (parents before children), with author date
+    /// and oid as the tie-break so that two runs over the same store produce byte-identical episodes. A
+    /// cycle in the stored parent pointers — which git forbids and a corrupt store can do — cannot be
+    /// ordered; the remainder is appended in date order rather than dropped, because a segmentation that
+    /// silently skips commits is worse than one that reviews them in a strange order.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_inputs(&self) -> Result<Vec<EpisodeInput>, Error> {
+        let mut statement = self.connection().prepare(
+            "SELECT oid, parent_oids, author_name, author_email, author_utc, message_head, trailers,
+                    n_files, n_add, n_del, n_binary FROM git_commit
+             ORDER BY author_utc, oid",
+        ).map_err(|err| corrupt("reading episode inputs", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, i64>(8)?,
+                    row.get::<_, i64>(9)?,
+                    row.get::<_, i64>(10)?,
+                ))
+            })
+            .map_err(|err| corrupt("reading episode inputs", &err))?;
+        let mut inputs: Vec<EpisodeInput> = Vec::new();
+        for row in rows {
+            let (
+                oid,
+                parents,
+                author_name,
+                author_email,
+                author_utc,
+                subject,
+                trailers,
+                n_files,
+                n_add,
+                n_del,
+                n_binary,
+            ) = row.map_err(|err| corrupt("reading episode inputs", &err))?;
+            inputs.push(EpisodeInput {
+                oid,
+                parents: serde_json::from_str(&parents).unwrap_or_default(),
+                author_name,
+                author_email,
+                author_utc,
+                subject,
+                trailers: serde_json::from_str(&trailers).unwrap_or_default(),
+                paths: Vec::new(),
+                n_files,
+                n_add,
+                n_del,
+                n_binary,
+            });
+        }
+        drop(statement);
+        // One pass for the paths, keyed by commit, rather than one query per commit.
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT commit_oid, new_path FROM git_commit_file ORDER BY commit_oid, new_path",
+            )
+            .map_err(|err| corrupt("reading episode paths", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|err| corrupt("reading episode paths", &err))?;
+        let mut by_oid: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for row in rows {
+            let (oid, path) = row.map_err(|err| corrupt("reading episode paths", &err))?;
+            by_oid.entry(oid).or_default().push(path);
+        }
+        for input in &mut inputs {
+            if let Some(paths) = by_oid.get(&input.oid) {
+                input.paths.clone_from(paths);
+            }
+        }
+        retain_reachable(&mut inputs, &self.ref_tip_oids()?);
+        topological_order(&mut inputs);
+        Ok(inputs)
+    }
+
+    /// The oids the refs currently name — the roots [`retain_reachable`] walks back from.
+    ///
+    /// Tags are not included: a tag pinned to a rebased-away commit is a fact about the release that commit
+    /// was, not a request to keep showing it in the review queue.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn ref_tip_oids(&self) -> Result<std::collections::BTreeSet<String>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare("SELECT oid FROM ref_tip WHERE kind IN ('head','branch')")
+            .map_err(|err| corrupt("reading ref tips", &err))?;
+        let rows = statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|err| corrupt("reading ref tips", &err))?;
+        rows.collect::<Result<_, _>>()
+            .map_err(|err| corrupt("reading ref tips", &err))
+    }
+
+    /// The ref the current walk ordered its episodes on, for `episode.lineage_ref`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn primary_lineage(&self) -> Result<String, Error> {
+        let head: Option<String> = self
+            .connection()
+            .query_row(
+                "SELECT name FROM ref_tip WHERE kind = 'head' ORDER BY name LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|err| corrupt("reading the head ref", &err))?;
+        if let Some(head) = head {
+            return Ok(head);
+        }
+        Ok(self
+            .connection()
+            .query_row(
+                "SELECT name FROM ref_tip WHERE kind = 'branch' ORDER BY name LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|err| corrupt("reading the branch refs", &err))?
+            .unwrap_or_else(|| "HEAD".to_owned()))
+    }
+}
+
+/// Keep only the commits the current refs can reach, walking the stored parent pointers backwards.
+///
+/// No refs at all means no opinion: a store with commit rows and no `ref_tip` rows (a test that seeded
+/// commits directly, an index whose walk found a ref it could not name) keeps every commit rather than
+/// silently segmenting nothing.
+fn retain_reachable(inputs: &mut Vec<EpisodeInput>, tips: &std::collections::BTreeSet<String>) {
+    use std::collections::{BTreeMap, BTreeSet};
+    if tips.is_empty() {
+        return;
+    }
+    let seen: BTreeSet<String> = {
+        let by_oid: BTreeMap<&str, &EpisodeInput> = inputs
+            .iter()
+            .map(|input| (input.oid.as_str(), input))
+            .collect();
+        let mut seen: BTreeSet<String> = BTreeSet::new();
+        let mut queue: Vec<String> = tips
+            .iter()
+            .filter(|tip| by_oid.contains_key(tip.as_str()))
+            .cloned()
+            .collect();
+        while let Some(oid) = queue.pop() {
+            if !seen.insert(oid.clone()) {
+                continue;
+            }
+            let Some(input) = by_oid.get(oid.as_str()) else {
+                continue;
+            };
+            queue.extend(
+                input
+                    .parents
+                    .iter()
+                    .filter(|parent| {
+                        by_oid.contains_key(parent.as_str()) && !seen.contains(*parent)
+                    })
+                    .cloned(),
+            );
+        }
+        seen
+    };
+    inputs.retain(|input| seen.contains(&input.oid));
+}
+
+/// Kahn's algorithm over the stored parent pointers, with (author date, oid) as the tie-break.
+fn topological_order(inputs: &mut Vec<EpisodeInput>) {
+    use std::collections::BTreeMap;
+    let index: BTreeMap<&str, usize> = inputs
+        .iter()
+        .enumerate()
+        .map(|(position, input)| (input.oid.as_str(), position))
+        .collect();
+    let mut indegree: Vec<usize> = vec![0; inputs.len()];
+    for (position, input) in inputs.iter().enumerate() {
+        for parent in &input.parents {
+            if index
+                .get(parent.as_str())
+                .copied()
+                .is_some_and(|parent| parent != position)
+            {
+                indegree[position] += 1;
+            }
+        }
+    }
+    let mut ready: Vec<usize> = (0..inputs.len())
+        .filter(|position| indegree[*position] == 0)
+        .collect();
+    let mut ordered: Vec<EpisodeInput> = Vec::with_capacity(inputs.len());
+    let mut emitted = vec![false; inputs.len()];
+    while !ready.is_empty() {
+        ready.sort_by(|a, b| {
+            let left = &inputs[*a];
+            let right = &inputs[*b];
+            (left.author_utc, &left.oid).cmp(&(right.author_utc, &right.oid))
+        });
+        let position = ready.remove(0);
+        emitted[position] = true;
+        ordered.push(inputs[position].clone());
+        for (child, input) in inputs.iter().enumerate() {
+            if !emitted[child]
+                && input
+                    .parents
+                    .iter()
+                    .any(|parent| index.get(parent.as_str()) == Some(&position))
+            {
+                indegree[child] = indegree[child].saturating_sub(1);
+                if indegree[child] == 0 {
+                    ready.push(child);
+                }
+            }
+        }
+    }
+    // The cycle remainder, if the parent pointers lie: date order, appended, never dropped.
+    for (position, input) in inputs.iter().enumerate() {
+        if !emitted[position] {
+            ordered.push(input.clone());
+        }
+    }
+    *inputs = ordered;
+}
+
+/// The columns [`EpisodeRow`] reads, in order, shared by every episode read so a projection change is one
+/// edit rather than four.
+const EPISODE_COLUMNS: &str = "id, fingerprint, lineage_ref, lineage_seq, created_utc, created_source, \
+     session_id, turn_id, boundary_rule, boundary_confidence, author_kind, author_confidence, \
+     fallback_fingerprint, shape_fingerprint, first_oid, last_oid, n_files, n_add, n_del, n_binary, first_utc, last_utc, \
+     author_name, author_email, summary, overridden, live, noise_share, kind,
+     created_confidence";
+
+fn episode_sql_for_id() -> String {
+    format!("SELECT {EPISODE_COLUMNS} FROM episode WHERE id = ?1")
+}
+
+/// Build the filter's SQL. Placeholders only — the filter values are user text and never spliced in.
+fn episode_sql(query: &EpisodeQuery, count: bool) -> (String, Vec<SqlValue>) {
+    let mut where_ = vec!["live = 1".to_owned()];
+    let mut args: Vec<SqlValue> = Vec::new();
+    if !query.authors.is_empty() {
+        let marks = vec!["?"; query.authors.len()].join(",");
+        where_.push(format!("author_name IN ({marks})"));
+        args.extend(query.authors.iter().map(|a| SqlValue::Text(a.clone())));
+    }
+    if !query.kinds.is_empty() {
+        let marks = vec!["?"; query.kinds.len()].join(",");
+        where_.push(format!("author_kind IN ({marks})"));
+        args.extend(query.kinds.iter().map(|k| SqlValue::Text(k.clone())));
+    }
+    if let Some(state) = query.state {
+        if state == ReviewState::Unread {
+            where_.push(
+                "id NOT IN (SELECT episode_id FROM review_state WHERE state != 'unread')"
+                    .to_owned(),
+            );
+        } else {
+            where_.push("id IN (SELECT episode_id FROM review_state WHERE state = ?)".to_owned());
+            args.push(SqlValue::Text(state.as_str().to_owned()));
+        }
+    }
+    if let Some(path) = &query.path {
+        where_.push(
+            "id IN (SELECT m.episode_id FROM episode_member m
+                    JOIN git_commit_file f ON f.commit_oid = m.commit_oid
+                    WHERE f.new_path LIKE ?)"
+                .to_owned(),
+        );
+        args.push(SqlValue::Text(format!("%{path}")));
+    }
+    if let Some(since) = query.since_utc {
+        where_.push("last_utc >= ?".to_owned());
+        args.push(SqlValue::Integer(since));
+    }
+    if let Some(until) = query.until_utc {
+        where_.push("last_utc < ?".to_owned());
+        args.push(SqlValue::Integer(until));
+    }
+    let predicate = where_.join(" AND ");
+    if count {
+        return (
+            format!("SELECT COUNT(*) FROM episode WHERE {predicate}"),
+            args,
+        );
+    }
+    let ordering = "ORDER BY last_utc DESC, id";
+    // A non-positive limit means "the rest", which is what a caller who did not think about paging means;
+    // paging is explicit (`offset` with a positive `limit`), never an accident of a default-constructed
+    // query silently returning one row.
+    if query.limit > 0 || query.offset > 0 {
+        args.push(SqlValue::Integer(query.limit.max(-1)));
+        args.push(SqlValue::Integer(query.offset));
+        return (
+            format!(
+                "SELECT {EPISODE_COLUMNS} FROM episode WHERE {predicate} {ordering} LIMIT ? OFFSET ?"
+            ),
+            args,
+        );
+    }
+    (
+        format!("SELECT {EPISODE_COLUMNS} FROM episode WHERE {predicate} {ordering}"),
+        args,
+    )
+}
+
+fn row_to_episode(row: &rusqlite::Row<'_>) -> rusqlite::Result<EpisodeRow> {
+    Ok(EpisodeRow {
+        id: row.get(0)?,
+        fingerprint: row.get(1)?,
+        lineage_ref: row.get(2)?,
+        lineage_seq: row.get(3)?,
+        created_utc: row.get(4)?,
+        created_source: row.get(5)?,
+        session_id: row.get(6)?,
+        turn_id: row.get(7)?,
+        boundary_rule: row.get(8)?,
+        boundary_confidence: row.get(9)?,
+        author_kind: row.get(10)?,
+        author_confidence: row.get(11)?,
+        fallback_fingerprint: row.get(12)?,
+        shape_fingerprint: row.get(13)?,
+        first_oid: row.get(14)?,
+        last_oid: row.get(15)?,
+        n_files: row.get(16)?,
+        n_add: row.get(17)?,
+        n_del: row.get(18)?,
+        n_binary: row.get(19)?,
+        first_utc: row.get(20)?,
+        last_utc: row.get(21)?,
+        author_name: row.get(22)?,
+        author_email: row.get(23)?,
+        summary: row.get(24)?,
+        overridden: row.get::<_, i64>(25)? != 0,
+        live: row.get::<_, i64>(26)? != 0,
+        // Read but not stored on the row: the noise share is `e2.2`'s, and until then it is 0.
+        noise_share: row.get(27)?,
+        kind: row.get(28)?,
+        created_confidence: row.get(29)?,
+        members: Vec::new(),
+        epoch: 0,
+    })
+}
+
+/// Carry review state from dead episodes to the live episodes that replaced them.
+///
+/// Three methods, tried in order of trust, each one only consulted for episodes the stronger ones did not
+/// already place:
+///
+/// 1. a shared `fallback_fingerprint` — same author, same subject, different paths: an amend that added a
+///    file, or a squash that kept the subject line.
+/// 2. a shared `shape_fingerprint` — same author, same paths, different subject: a reword, including one
+///    performed in the middle of an interactive rebase.
+/// 3. a shared member commit — the digest moved entirely, but a commit is still in both episodes: a split,
+///    or a rebase that rewrote the subject *and* moved files.
+///
+/// A live episode is claimed by the first tier that finds a candidate, and a dead episode's decision is
+/// copied at most once, so the weaker evidence can never overwrite the stronger. "Closest in time" is the
+/// tie-break within a tier because it is the only ordering a rewrite leaves us with.
+fn relink_review_state(conn: &Connection, now: i64) -> Result<usize, rusqlite::Error> {
+    let mut relinked = 0_usize;
+    let mut claimed: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    // (1) and (2): one query per digest, because a JOIN the optimizer can use is worth more than a clever
+    // single statement that it cannot.
+    for (digest, relation, method, score) in [
+        ("fallback_fingerprint", "rebase", "fingerprint", 0.9),
+        ("shape_fingerprint", "rebase", "shape", 0.7),
+    ] {
+        let rows: Vec<(String, String)> = conn
+            .prepare(&format!(
+                "SELECT n.id, o.id FROM episode n
+                   JOIN episode o
+                     ON o.{digest} = n.{digest}
+                    AND o.id != n.id AND o.live = 0 AND o.{digest} != ''
+                   JOIN review_state r ON r.episode_id = o.id
+                  WHERE n.live = 1
+                    AND NOT EXISTS (SELECT 1 FROM review_state q WHERE q.episode_id = n.id)
+                  ORDER BY n.id, o.last_utc DESC, o.created_utc DESC"
+            ))?
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<_, _>>()?;
+        for (new_id, old_id) in rows {
+            if !claimed.insert(new_id.clone()) {
+                continue;
+            }
+            carry(conn, &old_id, &new_id, relation, method, score, now)?;
+            relinked += 1;
+        }
+    }
+    // (3) squash/split: a live episode whose members were dead episodes' members.
+    let mut statement = conn.prepare(
+        "SELECT m.commit_oid, o.id, n.id FROM episode_member m
+           JOIN episode o ON o.id = m.episode_id AND o.live = 0
+           JOIN review_state r ON r.episode_id = o.id
+           JOIN episode_member m2 ON m2.commit_oid = m.commit_oid
+           JOIN episode n ON n.id = m2.episode_id AND n.live = 1
+          WHERE o.id != n.id",
+    )?;
+    let rows: Vec<(String, String, String)> = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<Result<_, _>>()?;
+    drop(statement);
+    let mut done = std::collections::BTreeSet::new();
+    for (_oid, old_id, new_id) in rows {
+        if !claimed.insert(new_id.clone()) || !done.insert((old_id.clone(), new_id.clone())) {
+            continue;
+        }
+        let fresh: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM review_state WHERE episode_id = ?1",
+            params![new_id],
+            |row| row.get(0),
+        )?;
+        if fresh == 0 {
+            carry(conn, &old_id, &new_id, "squash", "member-set", 0.6, now)?;
+            relinked += 1;
+        }
+    }
+    Ok(relinked)
+}
+
+/// Copy one review row forward and record the rewrite that justified it.
+fn carry(
+    conn: &Connection,
+    old_id: &str,
+    new_id: &str,
+    relation: &str,
+    method: &str,
+    score: f64,
+    now: i64,
+) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "INSERT INTO review_state(episode_id, state, fingerprint, actor, note, updated_utc)
+         SELECT ?1, state, (SELECT fingerprint FROM episode WHERE id = ?1), actor, note, ?3
+           FROM review_state WHERE episode_id = ?2
+         ON CONFLICT(episode_id) DO NOTHING",
+        params![new_id, old_id, now],
+    )?;
+    conn.execute(
+        "INSERT INTO episode_rewrite(old_id, new_id, relation, method, score, at_utc)
+         VALUES (?1,?2,?3,?4,?5,?6)
+         ON CONFLICT(old_id, new_id) DO NOTHING",
+        params![old_id, new_id, relation, method, score, now],
+    )?;
+    Ok(())
+}
+
+/// Drop dead episodes nobody has a decision about, and the rewrites that pointed at them.
+fn retire_dead_episodes(conn: &Connection) -> Result<usize, rusqlite::Error> {
+    conn.execute(
+        "DELETE FROM episode WHERE live = 0
+           AND id NOT IN (SELECT episode_id FROM review_state)
+           AND id NOT IN (SELECT new_id FROM episode_rewrite)",
+        [],
+    )
+}

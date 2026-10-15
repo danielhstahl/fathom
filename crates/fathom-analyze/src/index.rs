@@ -112,6 +112,14 @@ pub struct Options {
     /// not read the clock (ADR-002 §4.4); [`run`] refuses a `None` rather than quietly becoming a test that
     /// changes when the date does.
     pub now: Option<i64>,
+    /// The episode boundary rules (`e1.3`): the gap, the agent markers and the forced splits/merges.
+    ///
+    /// These arrive as values because ADR-002 §4.5 forbids a crate below `fathom-cli` from reading a
+    /// config file; the CLI turns `fathom.toml`'s `[[episodes.force-split]]` tables into this struct.
+    pub segment: fathom_ingest::segment::Rules,
+    /// Whether the run rebuilds the episode set (§4.3 of ADR-003's plan). On by default: every verb that
+    /// reads episodes wants them present, and the step is idempotent.
+    pub episodes: bool,
     /// Stop and park forever after this many analyses have been *computed*, without closing the run.
     ///
     /// A test seam, and only a test seam: it is how `tests/incremental_index.rs` gets a real `SIGKILL` into
@@ -133,6 +141,8 @@ impl Default for Options {
             unit_budget: None,
             cancel: None,
             now: None,
+            segment: fathom_ingest::segment::Rules::default(),
+            episodes: true,
             park_after_units: None,
         }
     }
@@ -165,6 +175,8 @@ pub struct Report {
     pub commits_considered: usize,
     /// The spine's own numbers, kept whole: rows written, per-commit failures, notices, truncation.
     pub spine: RunReport,
+    /// What the episode step did (`e1.3`); all zeroes when `Options::episodes` is off.
+    pub episodes: crate::episodes::Report,
     /// Per-analyzer counters for *this run*, keyed by analyzer id.
     pub analyzers: BTreeMap<String, AnalyzerStats>,
     /// The provisional records (§6.4).
@@ -321,6 +333,13 @@ pub fn run(
     let spine_run = sink.run_id;
     record_spine(store, &spine);
 
+    // 1b. The ref snapshot, which is what the episode step reads to tell "committed and reachable" from
+    // "committed and rewritten away". The spine is append-only, so without this the commits a rebase or a
+    // force-push deleted stay in the store forever and the rail shows them beside their replacements —
+    // ADR-004 Appendix A §4.1's "what the refs said at this instant", which until `e1.3` needed it, nothing
+    // had ever said.
+    snapshot_refs(repo, store, now)?;
+
     // 2. What the analyses owe work on, which is a query and not a walk (§6.1 R1): the commits written by
     //    this run, plus any commit whose run never closed cleanly. The second half is what makes an
     //    interrupted index *finish* rather than become silently incomplete forever — a killed run's commits
@@ -381,7 +400,16 @@ pub fn run(
         interrupted = Some(Interrupted::Cancelled);
     }
 
-    // 4b. Close the `index_run` row, and only now. Closing it when the commit rows landed would stamp `ok`
+    // 4b. The episodes. A query over the commit rows the spine already wrote, not a second git walk: the
+    //     boundaries are a property of the neighbourhood around each commit, so the whole lineage is
+    //     re-derived, and the identity rule means the reruns produce the same ids (§4.3 of the plan).
+    let episodes = if options.episodes && interrupted.is_none() {
+        crate::episodes::rebuild(store, &options.segment, now)?
+    } else {
+        crate::episodes::Report::default()
+    };
+
+    // 4c. Close the `index_run` row, and only now. Closing it when the commit rows landed would stamp `ok`
     //     on a run whose analyses were then interrupted, and §9.2's whole recovery argument is that this
     //     stamp is the truth: a run that lies `ok` is a run whose unfinished work nobody asks about again,
     //     which is how a killed index would become permanently, silently incomplete.
@@ -410,6 +438,7 @@ pub fn run(
         commits_new: spine.commits_new,
         commits_considered: targets.len(),
         spine,
+        episodes,
         analyzers,
         worktree,
         worktree_skipped,
@@ -450,6 +479,37 @@ fn delta(before: &BTreeMap<String, i64>, after: &BTreeMap<String, i64>) -> BTree
             )
         })
         .collect()
+}
+
+/// Write the ref snapshot `ref_tip` exists for (ADR-004 Appendix A §4.1: what the refs said at this
+/// instant, not a history).
+///
+/// Names that do not name a commit — notes, the stash, hand-made namespaces — are skipped rather than
+/// stored, because `ref_tip` is read to answer "is this commit still reachable from a name a human would
+/// cite?" and a notes ref is not one. `HEAD` gets its own row, detached or not, because a detached `HEAD`
+/// is exactly the state an episode lineage has to survive.
+fn snapshot_refs(repo: &Repository, store: &mut Store, now: i64) -> Result<(), Error> {
+    use fathom_ingest::repo::{RefFilter, RefKind, RefTarget};
+    let mut tips: Vec<(String, String, &str)> = Vec::new();
+    for reference in repo.refs(RefFilter::All)? {
+        let kind = match reference.kind {
+            RefKind::Branch => "branch",
+            RefKind::Tag => "tag",
+            RefKind::RemoteBranch => "remote",
+            _ => continue,
+        };
+        let target = match (&reference.target, &reference.peeled) {
+            (RefTarget::Direct { oid }, _) => oid.hex(),
+            (RefTarget::Symbolic { .. }, Some(peeled)) => peeled.hex(),
+            _ => continue,
+        };
+        tips.push((reference.name, target, kind));
+    }
+    if let Some(head) = repo.head_oid()? {
+        tips.push(("HEAD".to_owned(), head.hex(), "head"));
+    }
+    store.replace_ref_tips(&tips, now)?;
+    Ok(())
 }
 
 /// The spine's counters, from its [`RunReport`].

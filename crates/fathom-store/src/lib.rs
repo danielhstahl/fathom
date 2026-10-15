@@ -36,6 +36,11 @@ pub mod spine;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod cache;
 
+/// The episodes `e1.3` derives, the review markers `e1.6` writes and the UI state `e1.11` resumes —
+/// migration 3, whose DDL is ADR-004 Appendix A §4.3 and §4.7 with the epic-1 derived columns added.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod episode;
+
 /// The read-only aggregates behind `fathom stats` and `fathom doctor`: repo scale, index state, cache
 /// inventory and the SQLite capability probe (ADR-004 §9.6). Gated with [`spine`] for the same reason.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

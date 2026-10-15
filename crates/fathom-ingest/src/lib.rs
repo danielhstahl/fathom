@@ -60,6 +60,7 @@ pub mod paths;
 pub mod record;
 pub mod repo;
 pub mod revspec;
+pub mod segment;
 pub mod state;
 
 // The watcher needs *a* source of change signals, and either feature promises one: `watch` brings the OS
