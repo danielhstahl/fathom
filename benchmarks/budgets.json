@@ -793,6 +793,114 @@
    "unit": "ms"
   },
   {
+   "budget": 1000,
+   "family": "watch.detect.ms",
+   "id": "watch.detect.ms.small",
+   "rationale": "From a commit made in another terminal to the watcher naming it: the debounce window, plus one cheap stat pass, plus the ref snapshot. The size classes move only because the ref store does \u2014 the object store is not read on this path at all.",
+   "size_class": "small",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 1000,
+   "family": "watch.detect.ms",
+   "id": "watch.detect.ms.medium",
+   "rationale": "From a commit made in another terminal to the watcher naming it: the debounce window, plus one cheap stat pass, plus the ref snapshot. The size classes move only because the ref store does \u2014 the object store is not read on this path at all.",
+   "size_class": "medium",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 1500,
+   "family": "watch.detect.ms",
+   "id": "watch.detect.ms.large",
+   "rationale": "From a commit made in another terminal to the watcher naming it: the debounce window, plus one cheap stat pass, plus the ref snapshot. The size classes move only because the ref store does \u2014 the object store is not read on this path at all.",
+   "size_class": "large",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 2000,
+   "family": "watch.detect.ms",
+   "id": "watch.detect.ms.xlarge",
+   "rationale": "From a commit made in another terminal to the watcher naming it: the debounce window, plus one cheap stat pass, plus the ref snapshot. The size classes move only because the ref store does \u2014 the object store is not read on this path at all.",
+   "size_class": "xlarge",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 1.0,
+   "family": "watch.idle_cpu.pct",
+   "id": "watch.idle_cpu.pct.small",
+   "rationale": "Busy share of one core while watching a quiet repository (reco-949's acceptance criterion two). Measured as wall-clock busy time per window, which for a watcher that sleeps between ticks is an upper bound on CPU rather than an estimate of it.",
+   "size_class": "small",
+   "statistic": "p95",
+   "unit": "percent"
+  },
+  {
+   "budget": 1.0,
+   "family": "watch.idle_cpu.pct",
+   "id": "watch.idle_cpu.pct.medium",
+   "rationale": "Busy share of one core while watching a quiet repository (reco-949's acceptance criterion two). Measured as wall-clock busy time per window, which for a watcher that sleeps between ticks is an upper bound on CPU rather than an estimate of it.",
+   "size_class": "medium",
+   "statistic": "p95",
+   "unit": "percent"
+  },
+  {
+   "budget": 1.0,
+   "family": "watch.idle_cpu.pct",
+   "id": "watch.idle_cpu.pct.large",
+   "rationale": "Busy share of one core while watching a quiet repository (reco-949's acceptance criterion two). Measured as wall-clock busy time per window, which for a watcher that sleeps between ticks is an upper bound on CPU rather than an estimate of it.",
+   "size_class": "large",
+   "statistic": "p95",
+   "unit": "percent"
+  },
+  {
+   "budget": 1.0,
+   "family": "watch.idle_cpu.pct",
+   "id": "watch.idle_cpu.pct.xlarge",
+   "rationale": "Busy share of one core while watching a quiet repository (reco-949's acceptance criterion two). Measured as wall-clock busy time per window, which for a watcher that sleeps between ticks is an upper bound on CPU rather than an estimate of it.",
+   "size_class": "xlarge",
+   "statistic": "p95",
+   "unit": "percent"
+  },
+  {
+   "budget": 5.0,
+   "family": "watch.budget.cpu_pct",
+   "id": "watch.budget.cpu_pct.small",
+   "rationale": "The share of one core the watcher may spend while work is flowing. The poll stretches itself when the measured share exceeds it, and says so in a notice rather than overrunning silently: a budget nobody can see is a budget nobody fails.",
+   "size_class": "small",
+   "statistic": "hard limit",
+   "unit": "percent"
+  },
+  {
+   "budget": 5.0,
+   "family": "watch.budget.cpu_pct",
+   "id": "watch.budget.cpu_pct.medium",
+   "rationale": "The share of one core the watcher may spend while work is flowing. The poll stretches itself when the measured share exceeds it, and says so in a notice rather than overrunning silently: a budget nobody can see is a budget nobody fails.",
+   "size_class": "medium",
+   "statistic": "hard limit",
+   "unit": "percent"
+  },
+  {
+   "budget": 5.0,
+   "family": "watch.budget.cpu_pct",
+   "id": "watch.budget.cpu_pct.large",
+   "rationale": "The share of one core the watcher may spend while work is flowing. The poll stretches itself when the measured share exceeds it, and says so in a notice rather than overrunning silently: a budget nobody can see is a budget nobody fails.",
+   "size_class": "large",
+   "statistic": "hard limit",
+   "unit": "percent"
+  },
+  {
+   "budget": 5.0,
+   "family": "watch.budget.cpu_pct",
+   "id": "watch.budget.cpu_pct.xlarge",
+   "rationale": "The share of one core the watcher may spend while work is flowing. The poll stretches itself when the measured share exceeds it, and says so in a notice rather than overrunning silently: a budget nobody can see is a budget nobody fails.",
+   "size_class": "xlarge",
+   "statistic": "hard limit",
+   "unit": "percent"
+  },
+  {
    "budget": 120,
    "family": "rss.tui.mib",
    "id": "rss.tui.mib.small",

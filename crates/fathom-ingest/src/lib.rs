@@ -19,6 +19,7 @@
 //! | [`diff`] | the changed-path set between two trees, `blob_of(path, tree)`, and one file pair's measurement — the O(changed) read the warm path runs on (`e1.4`) |
 //! | [`state`] | the working tree: staged, unstaged, conflicted |
 //! | [`backend`] | the read interface, so a `git`-binary fallback can be added without touching call sites |
+//! | [`watch`] | watching a repository change: the cheap filesystem pass, the ref diff, the guards, and the state machine `fathom watch` runs (`e1.9`) |
 //! | [`error`] | the failure vocabulary, each variant with a remedy a human can act on |
 //!
 //! Two rules hold across all of them. **No `gix` type crosses the boundary**: the value types above are
@@ -60,3 +61,10 @@ pub mod record;
 pub mod repo;
 pub mod revspec;
 pub mod state;
+
+// The watcher needs *a* source of change signals, and either feature promises one: `watch` brings the OS
+// notifications plus the debounced poll, and `watch-poll` is the build that promises polling on a
+// filesystem where notifications cannot work (ADR-002 §6.5). With neither, `fathom watch` exits 9 naming
+// the feature it wanted, which is the published contract for a missing compile-time capability.
+#[cfg(any(feature = "watch", feature = "watch-poll"))]
+pub mod watch;

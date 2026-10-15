@@ -147,6 +147,47 @@ No product behaviour is claimed by any entry on this page yet.
   release build the budget was written against). New features `fathom-analyze/{sqlite-bundled,sqlite-system}`
   forward to `fathom-store`'s, because the index names both crates and ADR-002 §6 forbids forcing SQLite
   into the `minimal` binary; `fathom index` in a binary built without them exits 9 naming the feature.
+- **Watch mode v1** (`e1.9`/`reco-949`): `fathom watch` notices a commit made in another terminal, names
+  it, and says what it is doing about it. `fathom_ingest::watch` keeps the three jobs apart because they
+  fail differently — *be told* (`source`: `notify`'s per-OS backend, a debounced poll, and the fallback
+  that swaps one for the other when the OS refuses a watch or quietly never fires one), *work out what
+  moved* (`observe`: a `stat` fold over `HEAD`, `packed-refs`, the loose refs, the reflogs, the index and
+  the guard markers, which buys the expensive ref snapshot only when it moved), and *decide whether to act
+  now* (the guards: a rebase/merge/cherry-pick/bisect/`am` in progress, a `gc`/repack/fetch storm, ref spam
+  from a background process, a repository whose inode changed under the watcher). Indexing is not in the
+  crate — `fathom-ingest` sits below `fathom-analyze`, so a caller implements `Job` and the watcher calls
+  it, which is also what lets the whole machine be tested with a scripted job and no store at all.
+  The visible states are `idle → detecting → indexing (with progress) → error → stale`, and every arrow out
+  of a busy one is bounded by a deadline that names itself in a notice (`settle_max`, `throttle_max`,
+  `stale_after`): a rebase waiting on a human, a `git gc` and a corrupt store are three different
+  sentences, and none of them is a spinner. Failures back off and then go stale, and the run that succeeds
+  after them says so rather than quietly correcting the record.
+  The CPU budget is enforced rather than hoped for: the poll stretches itself toward `poll_interval_max`
+  when the measured busy share exceeds `watch.budget.cpu_pct`, and the expensive side runs in
+  `--chunk-units` slices with a progress line between them, so a long backlog is a series of
+  short runs and not one long block. Measured on a quiet repository: **0.12% of one core in release
+  (0.15% debug) against `watch.idle_cpu.pct`'s 1%**, read off the watcher's own meter rather than a
+  stopwatch, and the meter charges the render and the heartbeat write too — the part that runs every
+  single second. `fathom doctor` gained a `watch` section (`--root`, and `watch` in `--json`): the backend
+  this filesystem would get and the `/proc/mounts` type that decided, plus the heartbeat of a running
+  watcher — its phase, its *actual* backend and the OS's reason, which is how a fallback that already
+  happened gets reported rather than inferred. `.fathom/watch/status.json` is that heartbeat: written by
+  rename so no reader sees half a file, rewritten on a one-second beat as well as on a change so a reader
+  can tell "idle" from "this process died", and read back by `doctor`, which calls a heartbeat whose pid
+  is gone *stopped* — the `kill -9` case — rather than alive. `--once`, `--max-cycles` and `--deadline`
+  are the script seams; `--json` is one object per state change and one closing object naming why the run
+  stopped.
+  Acceptance, as tests: a real commit made by a second process reaches the state machine and the store, and
+  the `fathom index` run after it finds nothing new to do; the 1 s detect budget is asserted release-only
+  from `benchmarks/budgets.json`, the house rule for wall-clock assertions; rebase, `gc`, repo replacement,
+  ref spam, a silent notifier and a failing index are each produced the way git produces them
+  (`fathom-ingest/tests/watch.rs`, 21 tests — 20 in a normal run plus the release-only budget — and
+  `fathom-cli/tests/cli.rs` for the process boundary).
+  Deliberately not v1: indexing the uncommitted working tree is opt-in (`--worktree`), because staging churn
+  is constant while an agent works and this ticket's promise is about commits and refs; and ctrl-c keeps its
+  default disposition — `fathom-cli` forbids `unsafe`, so the signal handler belongs to the daemon process
+  that will own the terminal (`reco-kvk`), and until then a killed watcher's heartbeat is *reported* as
+  stopped instead of pretending.
 
 ### Toolchain
 
@@ -158,6 +199,12 @@ No product behaviour is claimed by any entry on this page yet.
 
 ### Fixed
 
+- **A repository root of `.` is a repository** (`fathom_ingest::repo`). The lexical path collapse that
+  makes `common_dir` printable was also eating the whole path when it *was* a `.`: `Repository::discover(".")`
+  reported a working tree at the empty path, and the working-tree reader answered `fathom index .` with
+  "the worktree is missing: nothing at " — a failure with no path in it and no remedy a user could act on,
+  on the exact command line they get by typing the verb with no arguments. A relative "here" now stays a
+  relative "here"; `fathom index .` indexes and `fathom watch` (whose root defaults to `.`) watches.
 - **The ADR-005 FFI probe no longer reads cargo's build output as a source-tree fact**
   (`src/recommender/harness/elf_probe.py`). The probe asserts the Python contract has no compile step by
   globbing the repository for `.so` files; `e0.7` put a cargo workspace in the same tree, so the first

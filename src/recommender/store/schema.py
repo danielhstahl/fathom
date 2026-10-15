@@ -140,6 +140,9 @@ STORE_LAYOUT: tuple[PathSpec, ...] = (
     PathSpec(".fathom/daemon.lock", "E", False, "fathom watch",
              "the writer lease: flock + pid + boot id + heartbeat (§7.1)"),
     PathSpec(".fathom/daemon.sock", "E", False, "fathom watch", "local IPC endpoint"),
+    PathSpec(".fathom/watch/status.json", "E", False, "fathom watch (e1.9)",
+             "the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` "
+             "and the ambient view read it, so a watcher needs no socket and no lock to be noticed"),
     PathSpec(".fathom/tmp/", "E", False, "the store", "scratch space, same filesystem as the store"),
 )
 

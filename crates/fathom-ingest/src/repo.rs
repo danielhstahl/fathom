@@ -145,6 +145,16 @@ impl Repository {
         &self.identity.common_dir
     }
 
+    /// Where this repository's index file lives, whether or not it exists yet.
+    ///
+    /// A linked worktree's index is under `common/worktrees/<name>/`, not beside `.git`, so a caller that
+    /// assumed `git_dir/index` would watch and lock a file git never touches. `e1.9`'s watcher stats it
+    /// (`watch::Stat`), which is the same fact `working_state` depends on.
+    #[must_use]
+    pub fn index_path(&self) -> PathBuf {
+        self.inner.index_path()
+    }
+
     /// The object hash this repository uses.
     #[must_use]
     pub fn object_hash(&self) -> ObjectHash {
@@ -890,6 +900,12 @@ fn normalize(path: &Path) -> PathBuf {
             }
             other => out.push(other),
         }
+    }
+    if out.is_empty() && !path.as_os_str().is_empty() {
+        // `.` and `./` collapse to nothing, and an empty path is not a collapsed form of them — it is the
+        // path no filesystem call accepts, which a caller downstream reads as "there is no work tree here"
+        // (`fathom index .` failed exactly that way). A relative "here" stays a relative "here".
+        return PathBuf::from(".");
     }
     out.into_iter().collect()
 }

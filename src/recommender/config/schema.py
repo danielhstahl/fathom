@@ -282,6 +282,11 @@ SECTIONS: dict[str, dict] = {
     "query": {"title": "Query interrupts", "owner": "ADR-004 §7.6, §11",
               "doc": "The interrupt budget for one store call on the keystroke path. "
                      "Exceeding it is a stated partial, not a hang."},
+    "watch": {"title": "Watch mode", "owner": "e1.9 (`reco-949`)",
+              "doc": "What share of one core `fathom watch` may spend while work is flowing. "
+                     "Past it the poll stretches toward its ceiling and says so, because a "
+                     "watcher that overruns the machine it is watching is the failure this "
+                     "ticket exists to avoid."},
     "ratchet": {"title": "Violation ratchet", "owner": "ADR-004 §5.1 / e3.10 (`reco-5ht`)",
                 "doc": "The baselined pre-existing violations graph.cycles reads. ADR-004 §5.1 "
                        "declares `ratchet.` as an analyzer input, so the subtree exists here; "
@@ -453,6 +458,12 @@ KEY_LIST: list[Key] = [
        budget="rebuild.disk_ratio", units="ratio", minimum=1.0,
        doc="Free-disk-to-store-size ratio required before a rebuild may start, so a "
            "rebuild cannot be the thing that fills the disk.", ticket="e1.10"),
+    _k(path="watch.cpu_share_pct", kind="number", default=5.0, fallback=5.0,
+       budget="watch.budget.cpu_pct", units="percent of one core", minimum=0.5, maximum=100.0,
+       doc="What share of one core `fathom watch` may spend while work is flowing. Past it the "
+           "poll stretches itself toward its ceiling and says so in a notice, because a budget "
+           "nobody can see is a budget nobody fails (ADR-004 §11). The idle watcher is nowhere "
+           "near this: `watch.idle_cpu.pct` is the quiet-repository number.", ticket="e1.9"),
     # --- retention (ADR-004 §8.2 + ADR-005 §6.3) ----------------------------
     _k(path="retention.cache_epochs", kind="integer", default=2, minimum=1, units="epochs",
        doc="Live epoch plus the one before, so an interrupted rebuild can be abandoned "

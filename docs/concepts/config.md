@@ -312,6 +312,7 @@ from the budget row for the resolved size class — never from a second copy of 
 | `write.mandatory_checkpoint_per_commit` | `write.mandatory_checkpoint_per_commit` | 0 |
 | `prune.batch_rows` | `prune.batch_rows` | 5000 |
 | `rebuild.disk_ratio` | `rebuild.disk_ratio` | 2.0 |
+| `watch.cpu_share_pct` | `watch.budget.cpu_pct` | 5.0 |
 | `query.frame_store_budget_ms` | `query.frame_store_budget.ms` | 8 |
 <!-- END GENERATED: budgets -->
 
@@ -372,6 +373,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `mcp` | ADR-005 §4, ADR-002 §6.3 | Transport and bind address. The token lives here and is user-scoped and redacted: a listener credential from a cloned repo is a gift. |
 | `privacy` | ADR-001 §7.5, ADR-002 §6.3 | The runtime half of the no-network-by-default claim. Every key here is user-scoped: a clone may not consent on your behalf. |
 | `query` | ADR-004 §7.6, §11 | The interrupt budget for one store call on the keystroke path. Exceeding it is a stated partial, not a hang. |
+| `watch` | e1.9 (`reco-949`) | What share of one core `fathom watch` may spend while work is flowing. Past it the poll stretches toward its ceiling and says so, because a watcher that overruns the machine it is watching is the failure this ticket exists to avoid. |
 | `ratchet` | ADR-004 §5.1 / e3.10 (`reco-5ht`) | The baselined pre-existing violations graph.cycles reads. ADR-004 §5.1 declares `ratchet.` as an analyzer input, so the subtree exists here; `e3.10` may extend it, and the digest test refuses a silent absence. |
 | `repo` | ADR-004 §11.1 | The size class the budget defaults are chosen from. |
 <!-- END GENERATED: sections -->
@@ -414,6 +416,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `write.mandatory_checkpoint_per_commit` | `integer` | `0` | `replace` | `any` | checkpoints | — | `e1.1` |
 | `prune.batch_rows` | `integer` | `5000` | `replace` | `any` | rows | — | `e6.1` |
 | `rebuild.disk_ratio` | `number` | `2.0` | `replace` | `any` | ratio | — | `e1.10` |
+| `watch.cpu_share_pct` | `number` | `5.0` | `replace` | `any` | percent of one core | — | `e1.9` |
 | `retention.cache_epochs` | `integer` | `2` | `replace` | `any` | epochs | — | `e6.1` |
 | `retention.blob_epochs` | `integer` | `3` | `replace` | `any` | epochs | — | `e6.1` |
 | `retention.index_run_keep_last` | `integer` | `20` | `replace` | `any` | runs | — | `e6.1` |
@@ -440,6 +443,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `ingest.size_cap_mib` | `ingest.file_size_cap.mib` | ADR-004 §5.1 declares the key, §11 publishes the budget; one value |
 | `query.frame_store_budget_ms` | `query.frame_store_budget.ms` | ADR-004 §5.1 declares the key, §11 publishes the budget; one value |
 | `rss.cold_index_peak_mib` | `rss.cold_index.peak_mib` | ADR-004 §5.1 declares the key, §11 publishes the budget; one value |
+| `watch.cpu_share_pct` | `watch.budget.cpu_pct` | ADR-004 §5.1 declares the key, §11 publishes the budget; one value |
 | `write.batch_ms` | `write.batch.ms` | ADR-004 §5.1 declares the key, §11 publishes the budget; one value |
 <!-- END GENERATED: aliases -->
 

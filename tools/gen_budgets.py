@@ -118,6 +118,22 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "ms", "hard limit",
      "Any single store call on the keystroke path. Exceeding it interrupts the statement "
      "(§7.6) and renders a stated partial: 'degrade, never block' as an enforced number."),
+    # --- watching (`e1.9`): invisible next to a running agent -----------------------
+    ("watch.detect.ms", {"small": 1_000, "medium": 1_000, "large": 1_500, "xlarge": 2_000},
+     "ms", "p95",
+     "From a commit made in another terminal to the watcher naming it: the debounce window, "
+     "plus one cheap stat pass, plus the ref snapshot. The size classes move only because "
+     "the ref store does — the object store is not read on this path at all."),
+    ("watch.idle_cpu.pct", {"small": 1.0, "medium": 1.0, "large": 1.0, "xlarge": 1.0},
+     "percent", "p95",
+     "Busy share of one core while watching a quiet repository (reco-949's acceptance "
+     "criterion two). Measured as wall-clock busy time per window, which for a watcher that "
+     "sleeps between ticks is an upper bound on CPU rather than an estimate of it."),
+    ("watch.budget.cpu_pct", {"small": 5.0, "medium": 5.0, "large": 5.0, "xlarge": 5.0},
+     "percent", "hard limit",
+     "The share of one core the watcher may spend while work is flowing. The poll stretches "
+     "itself when the measured share exceeds it, and says so in a notice rather than "
+     "overrunning silently: a budget nobody can see is a budget nobody fails."),
     # --- memory ------------------------------------------------------------------
     ("rss.tui.mib", {"small": 120, "medium": 180, "large": 260, "xlarge": 400}, "MiB", "peak",
      "Steady-state TUI with a warm store. Never scaled by machine factor (§11.8): memory "

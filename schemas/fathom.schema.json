@@ -955,6 +955,28 @@
       "x-fathom-owner": "e1.7 / e2.6",
       "x-fathom-section-title": "Test surface"
     },
+    "watch": {
+      "additionalProperties": false,
+      "description": "What share of one core `fathom watch` may spend while work is flowing. Past it the poll stretches toward its ceiling and says so, because a watcher that overruns the machine it is watching is the failure this ticket exists to avoid.",
+      "properties": {
+        "cpu_share_pct": {
+          "default": 5.0,
+          "description": "What share of one core `fathom watch` may spend while work is flowing. Past it the poll stretches itself toward its ceiling and says so in a notice, because a budget nobody can see is a budget nobody fails (ADR-004 \u00a711). The idle watcher is nowhere near this: `watch.idle_cpu.pct` is the quiet-repository number.",
+          "maximum": 100.0,
+          "minimum": 0.5,
+          "type": "number",
+          "x-fathom-budget": "watch.budget.cpu_pct",
+          "x-fathom-budget-default-for-size-class": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e1.9",
+          "x-fathom-units": "percent of one core"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e1.9 (`reco-949`)",
+      "x-fathom-section-title": "Watch mode"
+    },
     "write": {
       "additionalProperties": false,
       "description": "Batching knobs for the single writer.",
@@ -1008,6 +1030,7 @@
       "ingest.size_cap_mib": "ingest.file_size_cap.mib",
       "query.frame_store_budget_ms": "query.frame_store_budget.ms",
       "rss.cold_index_peak_mib": "rss.cold_index.peak_mib",
+      "watch.cpu_share_pct": "watch.budget.cpu_pct",
       "write.batch_ms": "write.batch.ms"
     },
     "config_version": 1,
@@ -1138,6 +1161,10 @@
       "test": {
         "owner": "e1.7 / e2.6",
         "title": "Test surface"
+      },
+      "watch": {
+        "owner": "e1.9 (`reco-949`)",
+        "title": "Watch mode"
       },
       "write": {
         "owner": "ADR-004 \u00a77.3",

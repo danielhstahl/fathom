@@ -140,6 +140,7 @@ distinguishable by `git status`.**
 | `.fathom/logs/` | **R** | ignored | store + daemon | rotated logs; `doctor` reads them |
 | `.fathom/daemon.lock` | **E** | ignored | fathom watch | the writer lease: flock + pid + boot id + heartbeat (§7.1) |
 | `.fathom/daemon.sock` | **E** | ignored | fathom watch | local IPC endpoint |
+| `.fathom/watch/status.json` | **E** | ignored | fathom watch (e1.9) | the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` and the ambient view read it, so a watcher needs no socket and no lock to be noticed |
 | `.fathom/tmp/` | **E** | ignored | the store | scratch space, same filesystem as the store |
 
 Required `.gitignore` stanza (§12):
@@ -974,6 +975,18 @@ is a budget row lookup, never an `if` in product code.
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
 | `warm.reindex.scaling_ratio` | ratio | p50 | 1.25 | 1.25 | 1.25 | 1.25 | Warm store-side p50 at 6x the commit count divided by warm store-side p50 at 1x, same edit. <= 1.25 is what 'incremental' is supposed to mean. **The contract fixture currently fails this (warm store-side p50 5.6 ms at 200 commits, 39.7 ms at 1 200, ADR-004 §13.5)** because its stand-in analyzers read whole trees; requirement R7 in §6.6 states the fix. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `watch.budget.cpu_pct` | percent | hard limit | 5 | 5 | 5 | 5 | The share of one core the watcher may spend while work is flowing. The poll stretches itself when the measured share exceeds it, and says so in a notice rather than overrunning silently: a budget nobody can see is a budget nobody fails. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `watch.detect.ms` | ms | p95 | 1,500 | 1,000 | 1,000 | 2,000 | From a commit made in another terminal to the watcher naming it: the debounce window, plus one cheap stat pass, plus the ref snapshot. The size classes move only because the ref store does — the object store is not read on this path at all. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `watch.idle_cpu.pct` | percent | p95 | 1 | 1 | 1 | 1 | Busy share of one core while watching a quiet repository (reco-949's acceptance criterion two). Measured as wall-clock busy time per window, which for a watcher that sleeps between ticks is an upper bound on CPU rather than an estimate of it. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|

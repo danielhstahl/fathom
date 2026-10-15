@@ -19,6 +19,8 @@ mod features;
 mod hooks;
 mod output;
 mod verbs;
+#[cfg(feature = "watch")]
+mod watch;
 
 use clap::{CommandFactory, FromArgMatches};
 use fathom_core::exit::ExitCode;

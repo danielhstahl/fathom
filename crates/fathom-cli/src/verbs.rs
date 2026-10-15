@@ -45,7 +45,7 @@ pub enum Verb {
     /// Speak MCP to a coding agent
     Mcp(McpArgs),
     /// Watch the repository and index as it changes
-    Watch,
+    Watch(WatchArgs),
 }
 
 /// `fathom index`
@@ -88,6 +88,58 @@ pub struct DoctorArgs {
     /// Print the same report as JSON, for a machine.
     #[arg(long)]
     pub json: bool,
+    /// The repository to report the watcher for.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+}
+
+/// `fathom watch`
+///
+/// The tuning flags are [`fathom_ingest::watch::Options`] fields with names a human can type, and their
+/// defaults are the crate's rather than a second copy here: a flag exists because a repository on a laptop
+/// and a repository in a container do not agree about what "quiet" means, not because a flag was cheap.
+/// The rest are the output contract — what to print, where the heartbeat goes, and when to stop.
+#[derive(Args, Debug)]
+pub struct WatchArgs {
+    /// The repository to watch.
+    #[arg(default_value = ".")]
+    pub root: String,
+    /// Print one JSON object per state change on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Index once, then exit: what a script or a CI check wants from `watch`.
+    #[arg(long)]
+    pub once: bool,
+    /// Stop after this many looks at the filesystem.
+    #[arg(long)]
+    pub max_cycles: Option<u64>,
+    /// Stop after this many seconds.
+    #[arg(long)]
+    pub deadline: Option<u64>,
+    /// Which change source to use: `auto`, `notify` or `poll`.
+    #[arg(long, default_value = "auto")]
+    pub backend: String,
+    /// The debounced polling interval in milliseconds.
+    #[arg(long)]
+    pub interval_ms: Option<u64>,
+    /// The quiescence window in milliseconds: how long the filesystem must be quiet before a change is read.
+    #[arg(long)]
+    pub debounce_ms: Option<u64>,
+    /// The liveness beat in milliseconds: how often the state is rewritten while nothing changes.
+    #[arg(long)]
+    pub heartbeat_ms: Option<u64>,
+    /// Analysis units per index chunk — the watcher's slice of the CPU.
+    #[arg(long, default_value_t = 2_000)]
+    pub chunk_units: usize,
+    /// Also re-index uncommitted paths when only the index moved.
+    #[arg(long)]
+    pub worktree: bool,
+    /// Do not write `.fathom/watch/status.json`.
+    #[arg(long)]
+    pub no_status_file: bool,
+    /// Print nothing to stdout but errors; the state machine still goes to the status file.
+    #[arg(long)]
+    pub quiet: bool,
 }
 
 /// `fathom export`
@@ -135,7 +187,7 @@ pub fn dispatch(verb: Option<&Verb>) -> eyre::Result<ExitCode> {
         Some(Verb::Doctor(args)) => doctor(args),
         Some(Verb::Export(args)) => export(args),
         Some(Verb::Mcp(args)) => mcp(args),
-        Some(Verb::Watch) => watch(),
+        Some(Verb::Watch(args)) => watch(args),
     }
 }
 
@@ -157,9 +209,12 @@ fn open_terminal() -> eyre::Result<ExitCode> {
 /// repository), and what to print. The walk, the cache keys and the counters are `fathom-analyze`'s and
 /// `fathom-store`'s, so `--stats` and `fathom stats` cannot tell different stories.
 ///
-/// Cancellation is not wired to ctrl-c yet: that is `fathom-watch`'s work (`e1.9`), and the driver's
-/// cancel handle is there and counted (`--stats` shows a cancelled run as a stated partial, exit 6) even
-/// though nothing in this binary pulls it yet.
+/// Ctrl-c is still the default disposition: the process dies where it stands, and the one thing `e1.9`
+/// makes sure of is that a watcher killed that way is *reported* as stopped by `fathom doctor` rather than
+/// as running (its heartbeat names a pid that is gone). A clean cancel — the writer lease released, the run
+/// stamped cancelled, exit 6 — needs a signal handler, and this crate forbids `unsafe`, so the handler
+/// belongs to the daemon process that owns the terminal (`reco-kvk`). The driver's cancel handle is there
+/// and counted either way (`--stats` shows a cancelled run as a stated partial, exit 6).
 #[cfg(feature = "sqlite-bundled")]
 fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
     use fathom_analyze::index::{self, Scope, Worktree};
@@ -366,11 +421,19 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
     Err(feature_absent("fathom index", "sqlite-bundled"))
 }
 
-fn watch() -> eyre::Result<ExitCode> {
-    if !cfg!(feature = "watch") {
-        return Err(feature_absent("fathom watch", "watch"));
-    }
-    Err(not_implemented("fathom watch", "e1.9"))
+/// `fathom watch`: the state machine, run by [`crate::watch`] when the feature is compiled in.
+///
+/// The gate is a compile-time one rather than a runtime check because the watcher is a *dependency*, not a
+/// boolean: a binary built without `watch` does not contain `notify` at all, so the honest answer is the
+/// exit code that means "rebuild differently" (ADR-002 §6.1, §7.3).
+#[cfg(feature = "watch")]
+fn watch(args: &WatchArgs) -> eyre::Result<ExitCode> {
+    crate::watch::run(args)
+}
+
+#[cfg(not(feature = "watch"))]
+fn watch(_args: &WatchArgs) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom watch", "watch"))
 }
 
 fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
@@ -422,6 +485,7 @@ fn doctor(args: &DoctorArgs) -> eyre::Result<ExitCode> {
             "schema_version": status.schema_version,
             "views_ready": status.views_ready,
             "sqlite": sqlite_provenance(),
+            "watch": watch_json(std::path::Path::new(&args.root)),
             "network_features": rows
                 .iter()
                 .map(|row| {
@@ -445,6 +509,9 @@ fn doctor(args: &DoctorArgs) -> eyre::Result<ExitCode> {
         status.schema_version, status.views_ready
     ));
     output::line(format_args!("sqlite: {}", sqlite_provenance()));
+    for line in watch_report(std::path::Path::new(&args.root)) {
+        output::line(format_args!("{line}"));
+    }
     tracing::debug!(features = ?features::compiled(), "build report");
 
     if args.privacy {
@@ -486,6 +553,37 @@ fn sqlite_provenance() -> &'static str {
     }
 }
 
+/// What `fathom doctor` says about watching this repository: the backend the probe would choose here, and
+/// the heartbeat of any watcher already running.
+///
+/// This is `e1.9`'s fourth acceptance criterion made inspectable — "the polling fallback kicks in
+/// automatically and is reported in `fathom doctor`". A prediction read off the mount table is only half of
+/// that, so the running watcher's own backend is printed too: it may have *reactively* fallen back after
+/// the OS refused to notify, and it carries the reason the OS gave.
+#[cfg(feature = "watch")]
+fn watch_report(root: &std::path::Path) -> Vec<String> {
+    crate::watch::doctor_lines(root, fathom_ingest::watch::Options::default().poll_interval)
+}
+
+#[cfg(not(feature = "watch"))]
+fn watch_report(_root: &std::path::Path) -> Vec<String> {
+    vec![
+        "watch: not compiled into this build; rebuild with `--features watch` to get `fathom watch`"
+            .to_owned(),
+    ]
+}
+
+/// The same, as data.
+#[cfg(feature = "watch")]
+fn watch_json(root: &std::path::Path) -> serde_json::Value {
+    crate::watch::doctor_json(root, fathom_ingest::watch::Options::default().poll_interval)
+}
+
+#[cfg(not(feature = "watch"))]
+fn watch_json(_root: &std::path::Path) -> serde_json::Value {
+    serde_json::json!({ "compiled_in": false })
+}
+
 /// A failure that knows the exit code the process should leave with.
 ///
 /// `main` downcasts to this at the edge (ADR-002 §7.1): the message the human reads, the hint under it
@@ -498,12 +596,18 @@ pub struct Pending {
 }
 
 impl Pending {
-    fn new(code: ExitCode, message: impl Into<String>, hint: Option<String>) -> Self {
+    pub(crate) fn new(code: ExitCode, message: impl Into<String>, hint: Option<String>) -> Self {
         Pending {
             message: message.into(),
             hint,
             code,
         }
+    }
+
+    /// A rejected argument that is not clap's to catch: a flag whose *value* is wrong. `USAGE` is the code
+    /// clap itself uses (§7.3), so `fathom watch --backend sideways` and `fathom --nope` fail alike.
+    pub(crate) fn usage(message: impl Into<String>, detail: impl Into<String>) -> Self {
+        Pending::new(ExitCode::Usage, message, Some(detail.into()))
     }
 
     /// The code to leave with.
@@ -534,7 +638,7 @@ impl std::fmt::Display for Pending {
 impl std::error::Error for Pending {}
 
 /// Turn any crate error into a failure carrying its published exit code (§7.1).
-fn failed(err: impl Diagnosable + std::fmt::Display) -> eyre::Report {
+pub(crate) fn failed(err: impl Diagnosable + std::fmt::Display) -> eyre::Report {
     Pending::new(
         err.code().exit(),
         err.to_string(),

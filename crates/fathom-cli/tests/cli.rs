@@ -3,7 +3,8 @@
 //! scripts in `e6.6` will depend on (ADR-002 §7.3).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use std::process::{Command, Output};
+use std::io::BufRead;
+use std::process::{Command, Output, Stdio};
 
 fn fathom(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_fathom"))
@@ -270,6 +271,23 @@ fn indexing_a_directory_that_is_not_a_repository_exits_three() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn a_root_of_dot_is_the_repository_here() {
+    // `fathom index .` is the sentence a user types, and `fathom watch` defaults its root to exactly that.
+    // Collapsing `.` lexically used to leave *nothing*, which the working-tree reader then read as "there is
+    // no work tree at " — an empty path, and a failure no user can act on.
+    let dir = repository();
+    let out = Command::new(env!("CARGO_BIN_EXE_fathom"))
+        .args(["index", "."])
+        .current_dir(&dir)
+        .output()
+        .expect("the built fathom binary is runnable");
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert!(stdout(&out).contains("3 new"), "{}", stdout(&out));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[cfg(not(feature = "sqlite-bundled"))]
 #[test]
 fn index_names_the_feature_a_minimal_binary_is_missing() {
@@ -278,4 +296,268 @@ fn index_names_the_feature_a_minimal_binary_is_missing() {
     let out = fathom(&["index", "."]);
     assert_eq!(code(&out), 9, "{}", stderr(&out));
     assert!(stderr(&out).contains("sqlite-bundled"), "{}", stderr(&out));
+}
+
+/// One `fathom watch` run whose stdout is a stream of JSON objects, one per state change.
+#[cfg(feature = "watch")]
+fn watch_json_lines(dir: &std::path::Path, args: &[&str]) -> std::process::Child {
+    Command::new(env!("CARGO_BIN_EXE_fathom"))
+        .args(args)
+        .current_dir(dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("fathom watch starts")
+}
+
+/// Parse one printed state line. `fathom watch --json` promises one object per line, so a line that does
+/// not parse is the contract failing and is asserted as such rather than skipped.
+#[cfg(feature = "watch")]
+fn state_of(line: &str) -> serde_json::Value {
+    serde_json::from_str(line.trim())
+        .unwrap_or_else(|err| panic!("not a JSON state line {line:?}: {err}"))
+}
+
+/// Read state lines until `seen` says we have what we came for. The child always has a `--deadline`, so the
+/// read cannot hang: the watcher exits, the pipe closes, and the iterator ends.
+#[cfg(feature = "watch")]
+fn read_until(
+    lines: &mut impl Iterator<Item = Result<String, std::io::Error>>,
+    seen: impl Fn(&serde_json::Value) -> bool,
+) -> Option<serde_json::Value> {
+    for line in lines.by_ref() {
+        let line = line.expect("stdout is utf-8 JSON");
+        let value = state_of(&line);
+        if seen(&value) {
+            return Some(value);
+        }
+    }
+    None
+}
+
+/// `fathom watch`, run the way a user runs it: no arguments, from inside the repository.
+#[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
+#[test]
+fn a_commit_made_in_another_terminal_is_named_and_indexed() {
+    // Acceptance criterion 1, end to end through the real binary: a second process commits, and the watcher
+    // names the ref move and puts the commit in the store without being restarted.
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    let mut child = watch_json_lines(&dir, &["watch", ".", "--json", "--deadline", "120"]);
+    let pipe = child.stdout.take().expect("piped stdout");
+    let mut lines = std::io::BufReader::new(pipe).lines();
+
+    // The startup refresh runs first: a watcher that showed yesterday's timeline until the next commit
+    // would be trusted for one commit too long.
+    let baseline = read_until(&mut lines, |value| value["phase"] == "idle")
+        .expect("the initial refresh reports idle before anything changes");
+    let already = baseline["counters"]["commits_indexed"]
+        .as_u64()
+        .unwrap_or(0);
+    assert_eq!(
+        already, 3,
+        "the three fixture commits were indexed at startup: {baseline}"
+    );
+
+    std::fs::write(dir.join("src.rs"), "fn f3() -> u32 { 3 }\n").expect("write the new file");
+    git(&dir, &["add", "-A"]);
+    let started = std::time::Instant::now();
+    git(&dir, &["commit", "-q", "-m", "made in the other terminal"]);
+
+    let named = read_until(&mut lines, |value| {
+        value["counters"]["commits_indexed"].as_u64().unwrap_or(0) > already
+    })
+    .expect("the watcher names the commit the other process made");
+    let elapsed = started.elapsed();
+    // The deadline is there to bound a *read*, not to be the test's runtime: stop the watcher now.
+    let _ = child.kill();
+    let _ = child.wait();
+
+    let change = &named["last_change"];
+    assert_eq!(change["name"].as_str(), Some("HEAD"), "{change}");
+    assert_eq!(change["kind"].as_str(), Some("moved"), "{change}");
+    assert_ne!(
+        change["from"].as_str(),
+        change["to"].as_str(),
+        "a ref that did not move is not a change: {change}"
+    );
+    assert_eq!(named["counters"]["errors"].as_u64(), Some(0), "{named}");
+    assert!(
+        elapsed < std::time::Duration::from_secs(10),
+        "detection took {elapsed:?}, which is not the 1s the criterion asks for — the budget itself is
+         asserted at the library level, release-only; this is the loose process-level bound"
+    );
+
+    // And it is really *in the store*, not merely announced: a plain index now finds nothing new.
+    let after = fathom(&["index", root, "--json"]);
+    assert_eq!(code(&after), 0, "{}", stderr(&after));
+    let parsed = state_of(&stdout(&after));
+    assert_eq!(
+        parsed["commits"]["new"].as_u64(),
+        Some(0),
+        "the watcher had already indexed the commit: {parsed}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
+#[test]
+fn watch_writes_a_heartbeat_and_doctor_reads_it() {
+    // The heartbeat is the cheap half of the daemon contract (`reco-kvk` formalises it) and the thing that
+    // makes criterion four checkable: `fathom doctor` reports the watcher and its backend from a file, with
+    // no socket and no lock.
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    let out = fathom(&["watch", root, "--once", "--quiet"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert_eq!(stdout(&out), "", "--quiet prints nothing on stdout");
+
+    let heartbeat = dir.join(".fathom").join("watch").join("status.json");
+    let written = std::fs::read_to_string(&heartbeat)
+        .unwrap_or_else(|err| panic!("{} should exist: {err}", heartbeat.display()));
+    let status = state_of(&written);
+    assert_eq!(status["phase"].as_str(), Some("idle"), "{status}");
+    assert_eq!(status["counters"]["commits_indexed"].as_u64(), Some(3));
+    assert!(
+        status["backend"]["name"]
+            .as_str()
+            .is_some_and(|name| !name.is_empty()),
+        "a watcher that cannot say where its signals come from is a watcher nobody trusts: {status}"
+    );
+
+    // The watcher has exited, so doctor must report a stopped one rather than a live one: a heartbeat whose
+    // process is gone is "stale", said out loud (a `kill -9` leaves the file behind).
+    let text = fathom(&["doctor", "--root", root]);
+    assert_eq!(code(&text), 0, "{}", stderr(&text));
+    let printed = stdout(&text);
+    assert!(printed.contains("watch: backend here"), "{printed}");
+    assert!(printed.contains("a watcher stopped"), "{printed}");
+
+    let json = fathom(&["doctor", "--root", root, "--json"]);
+    assert_eq!(code(&json), 0, "{}", stderr(&json));
+    let report = state_of(&stdout(&json));
+    assert_eq!(report["watch"]["repository"].as_bool(), Some(true));
+    assert_eq!(report["watch"]["running"]["alive"].as_bool(), Some(false));
+    assert!(
+        report["watch"]["backend"]["kind"].as_str().is_some(),
+        "doctor --json has to name the backend the probe chose: {report}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
+#[test]
+fn watching_a_quiet_repository_costs_a_fraction_of_a_core() {
+    // Acceptance criterion two, measured on the real binary rather than on a scripted job: `watch.idle_cpu.pct`
+    // is 1% of one core, and the number asserted here is the watcher's own meter — the same figure it prints
+    // and the same one `fathom doctor` can be asked about — read out of the heartbeat after four quiet seconds.
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    let out = fathom(&["watch", root, "--quiet", "--deadline", "4"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let written = std::fs::read_to_string(dir.join(".fathom").join("watch").join("status.json"))
+        .expect("the run wrote its heartbeat");
+    let status = state_of(&written);
+    let ticks = status["counters"]["poll_ticks"].as_u64().unwrap_or(0);
+    assert!(
+        ticks >= 3,
+        "a watcher that never polled is not idle, it is stopped: {status}"
+    );
+    let share = status["cpu_share"].as_f64().unwrap_or(1.0) * 100.0;
+    assert!(
+        share < 1.0,
+        "a quiet repository cost {share:.3}% of a core against the 1% budget watch.idle_cpu.pct: {status}"
+    );
+    assert_eq!(status["counters"]["errors"].as_u64(), Some(0));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
+#[test]
+fn watch_answers_poll_and_refuses_a_backend_that_does_not_exist() {
+    let dir = repository();
+    let root = dir.to_str().expect("a temporary path in utf-8");
+
+    // `--backend poll` is the escape hatch for the filesystems where notifications lie, and it has to be
+    // visible in the state it reports, not silently honoured.
+    let polled = fathom(&[
+        "watch",
+        root,
+        "--once",
+        "--json",
+        "--backend",
+        "poll",
+        "--interval-ms",
+        "50",
+    ]);
+    assert_eq!(code(&polled), 0, "{}", stderr(&polled));
+    let printed = stdout(&polled);
+    let last = printed
+        .lines()
+        .last()
+        .expect("the run printed its state at least once");
+    let final_state = state_of(last);
+    assert_eq!(final_state["backend"]["kind"].as_str(), Some("polling"));
+    assert_eq!(
+        final_state["backend"]["reason"].as_str(),
+        Some("asked for with `--backend poll`"),
+        "the reason a fallback happened is part of the answer: {final_state}"
+    );
+
+    let typo = fathom(&["watch", root, "--backend", "sideways"]);
+    assert_eq!(code(&typo), 2, "{}", stderr(&typo));
+    assert!(stderr(&typo).contains("USAGE"), "{}", stderr(&typo));
+
+    // The heartbeat is opt-out, and a script that wants stdout only takes it. A previous run in this same
+    // fixture wrote one, so clear the way first: the claim is "this run wrote no file", not "none exists".
+    let heartbeat = dir.join(".fathom").join("watch").join("status.json");
+    let _ = std::fs::remove_file(&heartbeat);
+    let bare = fathom(&["watch", root, "--once", "--quiet", "--no-status-file"]);
+    assert_eq!(code(&bare), 0, "{}", stderr(&bare));
+    assert!(
+        !heartbeat.exists(),
+        "--no-status-file means this run writes no heartbeat: {}",
+        heartbeat.display()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(feature = "watch")]
+#[test]
+fn watching_a_directory_that_is_not_a_repository_exits_three() {
+    let dir = std::env::temp_dir().join(format!("fathom-cli-watch-plain-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("create a plain directory");
+    let out = fathom(&["watch", dir.to_str().expect("utf-8 path")]);
+    assert_eq!(code(&out), 3, "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("NOT_A_REPOSITORY"),
+        "{}",
+        stderr(&out)
+    );
+
+    // `doctor` is the verb that explains this, and it has to explain it rather than crash.
+    let doctor = fathom(&["doctor", "--root", dir.to_str().expect("utf-8 path")]);
+    assert_eq!(code(&doctor), 0, "{}", stderr(&doctor));
+    assert!(
+        stdout(&doctor).contains("is not a git repository"),
+        "{}",
+        stdout(&doctor)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(not(feature = "watch"))]
+#[test]
+fn watch_names_the_feature_a_build_without_it_is_missing() {
+    let out = fathom(&["watch", "."]);
+    assert_eq!(code(&out), 9, "{}", stderr(&out));
+    assert!(stderr(&out).contains("watch"), "{}", stderr(&out));
+    // The same gate, reported: doctor must not promise a watcher this binary cannot run.
+    let doctor = fathom(&["doctor"]);
+    assert_eq!(code(&doctor), 0, "{}", stderr(&doctor));
+    assert!(
+        stdout(&doctor).contains("not compiled"),
+        "{}",
+        stdout(&doctor)
+    );
 }
