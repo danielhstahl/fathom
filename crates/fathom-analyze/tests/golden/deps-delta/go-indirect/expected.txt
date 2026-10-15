@@ -1,0 +1,40 @@
+dependency delta — 2 direct dependencies upgraded.
+pattern         direct_version_change
+graph           go 3 → 3 (+0)
+direct          +0 upgraded 2 downgraded 0 -0
+  direct        ^ github.com/go-chi/chi/v5 v5.0.13 go
+  direct        ^ golang.org/x/net v0.24.0 go
+transitive      +0 upgraded 0 downgraded 0 -0 (refresh of 0)
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  direct · upgraded github.com/go-chi/chi/v5 v5.0.13 · go · go.sum
+    attribution: direct — a manifest in this repository declares it
+    @@ -1,4 +1,4 @@
+    -github.com/go-chi/chi/v5 v5.0.12 h1:OLD
+    -github.com/go-chi/chi/v5 v5.0.12/go.mod h1:DBZU8
+    +github.com/go-chi/chi/v5 v5.0.13 h1:NEW
+    +github.com/go-chi/chi/v5 v5.0.13/go.mod h1:DBZU8
+     github.com/lib/pq v1.10.9 h1:ky1
+    -golang.org/x/net v0.23.0 h1:OLDNET
+    +golang.org/x/net v0.24.0 h1:NEWNET
+
+  direct · upgraded golang.org/x/net v0.24.0 · go · go.sum
+    attribution: direct — a manifest in this repository declares it
+    @@ -1,4 +1,4 @@
+    -github.com/go-chi/chi/v5 v5.0.12 h1:OLD
+    -github.com/go-chi/chi/v5 v5.0.12/go.mod h1:DBZU8
+    +github.com/go-chi/chi/v5 v5.0.13 h1:NEW
+    +github.com/go-chi/chi/v5 v5.0.13/go.mod h1:DBZU8
+     github.com/lib/pq v1.10.9 h1:ky1
+    -golang.org/x/net v0.23.0 h1:OLDNET
+    +golang.org/x/net v0.24.0 h1:NEWNET
+
+notes
+  · `github.com/lib/pq v1.10.9` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive
+  · `golang.org/x/net v0.23.0` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive
+  · `github.com/lib/pq v1.10.9` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive

@@ -1,0 +1,103 @@
+{
+  "changes": [
+    {
+      "after": "1.0.0",
+      "asked_by": [
+        "foo"
+      ],
+      "attribution": "transitive/edges",
+      "before": null,
+      "detail": "new in package-lock.json",
+      "ecosystem": "js",
+      "kind": "added",
+      "name": "bar",
+      "proof": "@@ -15,6 +16,29 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "3.0.0",
+      "asked_by": [
+        "foo",
+        "bar"
+      ],
+      "attribution": "transitive/edges",
+      "before": null,
+      "detail": "new in package-lock.json",
+      "ecosystem": "js",
+      "kind": "added",
+      "name": "baz",
+      "proof": "@@ -15,6 +16,29 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "2.1.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": null,
+      "detail": "new in package-lock.json",
+      "ecosystem": "js",
+      "kind": "added",
+      "name": "foo",
+      "proof": "@@ -15,6 +16,29 @@ [12 lines]",
+      "scope": "package-lock.json"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 1,
+    "direct_downgraded": 0,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 0,
+    "downgrades": 0,
+    "explained_transitive": 2,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 1,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 0,
+    "peer_conflicts": 0,
+    "source_switches": 0,
+    "transitive_added": 2,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 0,
+    "unattributed": 0,
+    "unexplained_transitive": 0
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 4,
+        "before": 1,
+        "ecosystem": "js",
+        "net": 3
+      }
+    ],
+    "total": [
+      1,
+      4,
+      3
+    ]
+  },
+  "headline": "Net +3 packages from 1 new direct dependency (foo 2.1.0); licence set +1.",
+  "licenses": {
+    "added": [
+      {
+        "ecosystem": "js",
+        "license": "ISC",
+        "package": "bar 1.0.0"
+      }
+    ],
+    "removed": []
+  },
+  "notes": [],
+  "pattern": "new_direct",
+  "peer_conflicts": [],
+  "sources": [],
+  "sources_gone": [],
+  "storm": false
+}

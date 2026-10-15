@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.4, )",
+        "resolved": "13.0.4",
+        "contentHash": "sha256:NEW"
+      },
+      "Serilog": {
+        "type": "Direct",
+        "requested": "[3.0.1, )",
+        "resolved": "3.0.1",
+        "contentHash": "sha256:SER",
+        "dependencies": {
+          "Serilog.Sinks.Console": "4.0.0"
+        }
+      },
+      "Serilog.Sinks.Console": {
+        "type": "Transitive",
+        "resolved": "4.0.0",
+        "contentHash": "sha256:CONSOLE"
+      },
+      "SayHello": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "sha256:HELLO",
+        "dependencies": {
+          "Greeting": "2.0.0"
+        }
+      },
+      "Greeting": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "sha256:GREET"
+      }
+    }
+  }
+}

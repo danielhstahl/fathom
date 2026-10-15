@@ -142,6 +142,36 @@ No product behaviour is claimed by any entry on this page yet.
   bench that scans an 8 MiB synthetic monorepo — ~90 ms in release against the ticket's 500 ms budget,
   with a second assertion that 8× the lockfile does not cost 8× the time squared.
   See [docs/concepts/dependency-surface.md](docs/concepts/dependency-surface.md).
+- **The dependency delta** (`e2.6`/`reco-kvs`): the delta half of `fathom_analyze::deps` diffs two *resolved graphs*,
+  not two lockfile texts, and every row carries the evidence for its own claim. A `State` is one revision
+  as a graph plus the declarations that requested it, built from either a cold surface or the changed files
+  of an episode; a `DependencyDelta` is the change between two of them — new and removed **direct**
+  dependencies, upgrades, **downgrades**, version changes that cannot be ordered, transitive-only moves,
+  resolution-graph size per ecosystem, new or vanished registries and git/vendored/path sources,
+  integrity changes for an unchanged version, licence-set delta, and newly-contradicted peer ranges.
+  Direct and transitive are properties of the *change*, each with the evidence it came from — lockfile
+  statement (`DEPENDENCIES`, NuGet's `"type"`, npm's importer block), manifest declaration, or a resolved
+  edge — and the three rules that make that honest are enforced: a lockfile that contradicts its manifest
+  wins and the contradiction is a note, a Go `// indirect` requirement is not direct, and where the
+  lockfile records no edges (a `go.sum`, a Gradle lockfile) nothing is called transitive, it is `unknown`
+  with a note naming the file and the reason.
+  **A bump storm is a pattern, not a line count.** Twelve refreshed transitive packages whose root the
+  episode also changed are *explained*; twelve with no direct cause are a mass refresh, and one new direct
+  dependency alongside an unexplained refresh reports as both (`mixed (bump storm)`) rather than collapsing
+  into "13 packages changed". Source *identity* ignores git refs, so moving a commit is not a new source
+  while naming a new URL, registry or path is, and a package that switched kind (`registry → git`) is a
+  supply-chain event with its own row.
+  Every printed row points at the lockfile hunk that proves it: a line-level unified diff per changed file
+  (`deps::locate_hunk`), located by name *and* version and excerpted round the proving line, because in a mass
+  refresh those are a hundred lines apart. `deps::render_table` prints the per-episode table with its
+  drill-down, or the same thing as JSON.
+  Pinned by 10 two-revision golden fixtures across eight ecosystems (each compared through a projection
+  *and*, for two of them, the rendered table), named tests for each acceptance claim — downgrades, source
+  switches, integrity changes, peer conflicts, "who asked for this", the bump-storm distinction — plus a
+  real-`git` episode test, a version-grammar suite covering the six range grammars the fixtures actually
+  use (including the `~1.2`/`~> 1.2` difference, which is a different rule and not a typo), and a check
+  that a proof which claims a hunk really mentions its package.
+  See [docs/concepts/dependency-delta.md](docs/concepts/dependency-delta.md).
 - **Incremental indexing with a tree-hash analysis cache** (`e1.4`/`reco-f28`): `fathom index` indexes.
   `fathom_analyze::index::run` is three passes — the spine through `ingest::run`, the analyses, the
   working tree — and there is no invalidation code in it, which is ADR-004 §2 rule 3 rather than an

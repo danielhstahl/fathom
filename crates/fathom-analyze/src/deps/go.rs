@@ -271,12 +271,13 @@ fn go_sum(text: &str, notes: &mut Notes) -> Result<Body, Failure> {
             continue;
         };
         let hash = fields.next().unwrap_or_default();
-        let (name, go_mod_only) = match name.strip_suffix("/go.mod") {
-            Some(stripped) => (stripped.to_owned(), true),
-            None => (name.to_owned(), false),
-        };
+        // `go.sum` writes one module across two lines: `mod v1.2.3 h1:…` and `mod v1.2.3/go.mod h1:…`.
+        // The `/go.mod` marker belongs to the *version* field; leaving it there invents a second package
+        // whose version is not a version, which is exactly what a delta has to order and compare.
+        let go_mod_only = version.ends_with("/go.mod");
+        let version = version.strip_suffix("/go.mod").unwrap_or(version);
         let version = version.strip_suffix("+incompatible").unwrap_or(version);
-        let key = (name.clone(), version.to_owned());
+        let key = (name.to_owned(), version.to_owned());
         if seen.contains(&key) {
             if !go_mod_only {
                 // The `/go.mod` line and the module line are the same version twice; the module line wins
@@ -294,7 +295,7 @@ fn go_sum(text: &str, notes: &mut Notes) -> Result<Body, Failure> {
         }
         seen.push(key.clone());
         lock.packages.push(LockPackage {
-            name,
+            name: key.0.clone(),
             version: version.to_owned(),
             source: go_source(&key.0),
             integrity: (!hash.is_empty()).then(|| hash.to_owned()),

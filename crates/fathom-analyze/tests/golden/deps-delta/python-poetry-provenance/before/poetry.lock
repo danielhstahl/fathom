@@ -1,0 +1,30 @@
+[[package]]
+name = "requests"
+version = "2.31.0"
+category = "main"
+license = "Apache-2.0"
+files = [
+    { file = "requests-2.31.0-py3-none-any.whl", hash = "sha256:OLD" },
+]
+
+[package.dependencies]
+urllib3 = ">=1.21.1,<3"
+
+[[package]]
+name = "urllib3"
+version = "2.2.1"
+category = "main"
+license = "MIT"
+files = []
+
+[[package]]
+name = "pydantic"
+version = "2.6.1"
+category = "main"
+license = "MIT"
+files = [
+    { file = "pydantic-2.6.1-py3-none-any.whl", hash = "sha256:PYD" },
+]
+
+[metadata]
+lock-version = "2.0"

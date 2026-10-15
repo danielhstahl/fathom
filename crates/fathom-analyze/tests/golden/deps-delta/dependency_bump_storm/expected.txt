@@ -1,0 +1,110 @@
+dependency delta — Net +2 packages from 1 new direct dependency (foo 2.1.0); plus a mass refresh of 12 transitive packages nobody asked for; licence set +1.
+pattern         mixed (bump storm)
+graph           js 13 → 15 (+2)
+direct          +1 upgraded 0 downgraded 0 -0
+  direct        + foo 2.1.0                js
+transitive      +1 upgraded 12 downgraded 0 -0 (refresh of 12)
+  explained     1 explained by a direct change, 12 without one
+  transitive    + bar 1.0.0                js
+  transitive    ^ a01 1.1.0                js
+  transitive    ^ a02 1.1.0                js
+  transitive    ^ a03 1.1.0                js
+  transitive    ^ a04 1.1.0                js
+  transitive    ^ a05 1.1.0                js
+  transitive    …and 7 more (see `--json`)
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        + ISC (bar 1.0.0)
+peer conflicts  none
+why mixed       1 direct change(s) plus 12 transitive moves no direct change explains
+
+drill-down
+
+  transitive · added bar 1.0.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: foo
+    @@ -31,76 +32,91 @@
+    …109 earlier lines
+    +      "resolved": "https://registry.npmjs.org/foo/-/foo-2.1.0.tgz",
+    +      "integrity": "sha512-FOO2.1.0",
+    +      "license": "ISC",
+    +      "dependencies": {
+    +        "bar": "^1.0.0"
+    +      }
+    +    },
+    +    "node_modules/bar": {
+    …10 more lines
+
+  direct · added foo 2.1.0 · js · package-lock.json
+    attribution: direct — a manifest in this repository declares it
+    @@ -31,76 +32,91 @@
+    …105 earlier lines
+    +      "license": "MIT"
+    +    },
+    +    "node_modules/foo": {
+    +      "version": "2.1.0",
+    +      "resolved": "https://registry.npmjs.org/foo/-/foo-2.1.0.tgz",
+    +      "integrity": "sha512-FOO2.1.0",
+    +      "license": "ISC",
+    +      "dependencies": {
+    …14 more lines
+
+  transitive · upgraded a01 1.1.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: react
+    @@ -31,76 +32,91 @@
+    …3 earlier lines
+    -      "version": "1.0.0",
+    -      "resolved": "https://registry.npmjs.org/a01/-/a01-1.0.0.tgz",
+    -      "integrity": "sha512-A011.0.0",
+    +      "version": "1.1.0",
+    +      "resolved": "https://registry.npmjs.org/a01/-/a01-1.1.0.tgz",
+    +      "integrity": "sha512-A011.1.0",
+           "license": "MIT"
+         },
+    …116 more lines
+
+  transitive · upgraded a02 1.1.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: react
+    @@ -31,76 +32,91 @@
+    …12 earlier lines
+    -      "version": "1.0.0",
+    -      "resolved": "https://registry.npmjs.org/a02/-/a02-1.0.0.tgz",
+    -      "integrity": "sha512-A021.0.0",
+    +      "version": "1.1.0",
+    +      "resolved": "https://registry.npmjs.org/a02/-/a02-1.1.0.tgz",
+    +      "integrity": "sha512-A021.1.0",
+           "license": "MIT"
+         },
+    …107 more lines
+
+  transitive · upgraded a03 1.1.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: react
+    @@ -31,76 +32,91 @@
+    …21 earlier lines
+    -      "version": "1.0.0",
+    -      "resolved": "https://registry.npmjs.org/a03/-/a03-1.0.0.tgz",
+    -      "integrity": "sha512-A031.0.0",
+    +      "version": "1.1.0",
+    +      "resolved": "https://registry.npmjs.org/a03/-/a03-1.1.0.tgz",
+    +      "integrity": "sha512-A031.1.0",
+           "license": "MIT"
+         },
+    …98 more lines
+
+  transitive · upgraded a04 1.1.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: react
+    @@ -31,76 +32,91 @@
+    …30 earlier lines
+    -      "version": "1.0.0",
+    -      "resolved": "https://registry.npmjs.org/a04/-/a04-1.0.0.tgz",
+    -      "integrity": "sha512-A041.0.0",
+    +      "version": "1.1.0",
+    +      "resolved": "https://registry.npmjs.org/a04/-/a04-1.1.0.tgz",
+    +      "integrity": "sha512-A041.1.0",
+           "license": "MIT"
+         },
+    …89 more lines

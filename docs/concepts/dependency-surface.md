@@ -112,7 +112,7 @@ that fact rather than around a common grammar:
   `serde = { version = "1", features = [...] }`, `[dependencies.serde]` — and all three must
   produce the same `Dependency`. Walking `toml_edit`'s item tree reads the inline form as "no
   version given", which is a silent wrong answer on the most common file in the ecosystem, so
-  [`toml`](../crates/fathom-analyze/src/deps/toml.rs) flattens the document into one map shape
+  [`toml`](../../crates/fathom-analyze/src/deps/toml.rs) flattens the document into one map shape
   first.
 - **python** is four generations wearing one filename. Precedence follows the tools: `[project]`
   names the package, Poetry names it only if `[project]` did not, and `[tool.uv.sources]` rewrites

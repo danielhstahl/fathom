@@ -1,0 +1,31 @@
+dependency delta — 1 direct dependency upgraded; 1 new peer-dependency conflict.
+pattern         direct_version_change
+graph           js 2 → 2 (+0)
+direct          +0 upgraded 1 downgraded 0 -0
+  direct        ^ react 18.2.0             js
+transitive      +0 upgraded 0 downgraded 0 -0 (refresh of 0)
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  storefront requires react-dom >=18; the graph resolves 17.0.1
+
+drill-down
+
+  direct · upgraded react 18.2.0 · js · package-lock.json
+    attribution: direct — a manifest in this repository declares it
+    @@ -7,13 +7,13 @@
+    …2 earlier lines
+           "dependencies": {
+    -        "react": "17.0.1"
+    +        "react": "18.2.0"
+           }
+         },
+         "node_modules/react": {
+    -      "version": "17.0.1",
+    -      "resolved": "https://registry.npmjs.org/react/-/react-17.0.1.tgz",
+    …7 more lines
+
+  peer conflict · js react-dom · required >=18 · resolved 17.0.1
+
+notes
+  · `react-dom 17.0.1` (package-lock.json) — no manifest declares it and no resolved edge asks for it

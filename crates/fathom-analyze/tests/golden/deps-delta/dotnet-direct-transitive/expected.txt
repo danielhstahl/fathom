@@ -1,0 +1,89 @@
+dependency delta — Net +2 packages from 1 new direct dependency (SayHello 1.0.0); 1 direct dependency upgraded; 2 dependencies downgraded (Serilog 3.0.1, Serilog.Sinks.Console 4.0.0).
+pattern         new_direct
+graph           dotnet 3 → 5 (+2)
+direct          +1 upgraded 1 downgraded 1 -0
+  direct        + SayHello 1.0.0           dotnet
+  direct        ^ Newtonsoft.Json 13.0.4   dotnet
+  direct        v Serilog 3.0.1            dotnet
+transitive      +1 upgraded 0 downgraded 1 -0 (refresh of 1)
+  explained     2 explained by a direct change, 0 without one
+  transitive    + Greeting 2.0.0           dotnet
+  transitive    v Serilog.Sinks.Console 4.0.0 dotnet
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  transitive · added Greeting 2.0.0 · dotnet · packages.lock.json
+    attribution: transitive — the lockfile states whether it is a direct dependency
+    asked for by: SayHello
+    @@ -4,23 +4,37 @@
+    …30 earlier lines
+    +        "requested": "[1.0.0, )",
+    +        "resolved": "1.0.0",
+    +        "contentHash": "sha256:HELLO",
+    +        "dependencies": {
+    +          "Greeting": "2.0.0"
+    +        }
+    +      },
+    +      "Greeting": {
+    …6 more lines
+
+  direct · added SayHello 1.0.0 · dotnet · packages.lock.json
+    attribution: direct — the lockfile states whether it is a direct dependency
+    @@ -4,23 +4,37 @@
+    …24 earlier lines
+    -        "resolved": "5.0.1",
+    +        "resolved": "4.0.0",
+             "contentHash": "sha256:CONSOLE"
+    +      },
+    +      "SayHello": {
+    +        "type": "Direct",
+    +        "requested": "[1.0.0, )",
+    +        "resolved": "1.0.0",
+    …12 more lines
+
+  direct · upgraded Newtonsoft.Json 13.0.4 · dotnet · packages.lock.json
+    attribution: direct — the lockfile states whether it is a direct dependency
+    @@ -4,23 +4,37 @@
+    …2 earlier lines
+             "type": "Direct",
+    -        "requested": "[13.0.3, )",
+    -        "resolved": "13.0.3",
+    -        "contentHash": "sha256:OLD"
+    +        "requested": "[13.0.4, )",
+    +        "resolved": "13.0.4",
+    +        "contentHash": "sha256:NEW"
+           },
+    …34 more lines
+
+  direct · downgraded Serilog 3.0.1 · dotnet · packages.lock.json
+    attribution: direct — the lockfile states whether it is a direct dependency
+    @@ -4,23 +4,37 @@
+    …14 earlier lines
+    +        "requested": "[3.0.1, )",
+    +        "resolved": "3.0.1",
+             "contentHash": "sha256:SER",
+             "dependencies": {
+    -          "Serilog.Sinks.Console": "5.0.1"
+    +          "Serilog.Sinks.Console": "4.0.0"
+             }
+           },
+    …22 more lines
+
+  transitive · downgraded Serilog.Sinks.Console 4.0.0 · dotnet · packages.lock.json
+    attribution: transitive — the lockfile states whether it is a direct dependency
+    asked for by: Serilog
+    @@ -4,23 +4,37 @@
+    …15 earlier lines
+    +        "resolved": "3.0.1",
+             "contentHash": "sha256:SER",
+             "dependencies": {
+    -          "Serilog.Sinks.Console": "5.0.1"
+    +          "Serilog.Sinks.Console": "4.0.0"
+             }
+           },
+           "Serilog.Sinks.Console": {
+    …21 more lines

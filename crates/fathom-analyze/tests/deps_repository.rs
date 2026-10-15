@@ -239,7 +239,9 @@ fn a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition() {
     assert_eq!(deleted.kind, ChangeKind::Deleted);
     assert!(deleted.after.is_none());
     assert!(deleted.before.is_some());
-    assert!(delta.totals.resolved_removed >= 2);
+    // `go.sum` is two lines and one module: the `/go.mod` line is the same module's manifest hash, so a
+    // resolved count of 1 is the honest number and 2 would mean the same module counted twice.
+    assert_eq!(delta.totals.resolved_removed, 1);
     let added = delta
         .paths
         .iter()
@@ -320,6 +322,94 @@ fn a_symlink_or_submodule_entry_is_reported_not_silently_dropped() {
     let capped = deps::scan_repository(&repo, tree, &options).unwrap();
     assert_eq!(capped.files.len(), 1);
     assert_eq!(capped.files[0].status, Status::Unparsed);
+}
+
+/// The same episode the store will hold, built from real commits rather than bytes (e2.6 / reco-kvs).
+///
+/// This is the warm path end to end: only the paths the commit touched are read, both revisions are
+/// rebuilt from the objects, and the rows come out attributed and proved against the lockfile hunk.
+#[test]
+fn the_dependency_delta_is_computed_from_the_object_store() {
+    let fixture = fixture();
+    let before = head_oid(&Repository::discover(fixture.path()).unwrap());
+    let lock_with_chalk = LOCK_V3
+        .replace(
+            r#""": { "dependencies": { "react": "^18.2.0", "lodash": "^4.17.21" } }"#,
+            r#""": { "dependencies": { "react": "^18.2.0", "lodash": "^4.17.21", "chalk": "^5.3.0" } }"#,
+        )
+        .replace(
+            r#""node_modules/lodash": { "version": "4.17.21", "integrity": "sha512-m" }"#,
+            r#""node_modules/lodash": { "version": "4.17.21", "integrity": "sha512-m" },
+    "node_modules/chalk": { "version": "5.3.0", "integrity": "sha512-c" }"#,
+        );
+    fixture.commit(
+        1,
+        "add chalk",
+        &[
+            (
+                "apps/web/package.json",
+                r#"{ "name": "web", "dependencies": { "react": "^18.2.0", "lodash": "^4.17.21", "chalk": "^5.3.0" } }"#,
+            ),
+            ("apps/web/package-lock.json", &lock_with_chalk),
+        ],
+    );
+    let after = head_oid(&Repository::discover(fixture.path()).unwrap());
+
+    let repo = Repository::discover(fixture.path()).unwrap();
+    let episode = deps::dependency_episode_repository(
+        &repo,
+        Some(tree_of(&repo, before)),
+        Some(tree_of(&repo, after)),
+        &deps::DependencyOptions::default(),
+    )
+    .expect("a dependency episode of a real repository");
+
+    assert!(episode.paths.complete);
+    assert_eq!(episode.paths.paths.len(), 2, "manifest and lockfile");
+    assert_eq!(
+        episode.model.counts.direct_added, 1,
+        "{}",
+        episode.model.headline
+    );
+    let chalk = episode
+        .model
+        .changes
+        .iter()
+        .find(|change| change.name == "chalk")
+        .expect("chalk is a row");
+    assert_eq!(chalk.attribution, deps::Attribution::Direct);
+    assert!(
+        chalk.proof.as_ref().is_some_and(|proof| proof.found_hunk()),
+        "the row has to point at the lockfile hunk that proves it"
+    );
+    assert!(
+        episode
+            .model
+            .headline
+            .contains("1 new direct dependency (chalk 5.3.0)"),
+        "{}",
+        episode.model.headline
+    );
+}
+
+/// A commit that touches no dependency file costs nothing: no blob reads requested, no rows, no headline.
+#[test]
+fn the_dependency_episode_of_a_source_only_commit_is_empty() {
+    let fixture = fixture();
+    let before = head_oid(&Repository::discover(fixture.path()).unwrap());
+    fixture.commit(1, "typo", &[("README.md", "# hello there\n")]);
+    let after = head_oid(&Repository::discover(fixture.path()).unwrap());
+    let repo = Repository::discover(fixture.path()).unwrap();
+    let episode = deps::dependency_episode_repository(
+        &repo,
+        Some(tree_of(&repo, before)),
+        Some(tree_of(&repo, after)),
+        &deps::DependencyOptions::default(),
+    )
+    .expect("a dependency episode of a real repository");
+    assert!(episode.paths.paths.is_empty());
+    assert!(episode.model.changes.is_empty());
+    assert_eq!(episode.model.graph.total.net, 0);
 }
 
 /// `git rm` a path and commit the removal, which the fixture does not model directly.

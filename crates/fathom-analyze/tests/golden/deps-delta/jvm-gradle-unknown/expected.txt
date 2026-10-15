@@ -1,0 +1,27 @@
+dependency delta — 1 direct dependency upgraded; 1 package could not be attributed to a direct or transitive cause.
+pattern         unattributed
+graph           jvm 3 → 3 (+0)
+direct          +0 upgraded 1 downgraded 0 -0
+  direct        ^ org.junit.jupiter:junit-jupiter 5.10.3 jvm (dev)
+transitive      +0 upgraded 0 downgraded 0 -0 (refresh of 0)
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  direct · upgraded org.junit.jupiter:junit-jupiter 5.10.3 · jvm · gradle.lockfile
+    attribution: direct — a manifest in this repository declares it
+    @@ -1,5 +1,5 @@
+     # This is a Gradle generated file for dependency locking.
+     com.fasterxml.jackson.core:jackson-databind:2.16.1=implementation
+    -com.fasterxml.jackson.core:jackson-core:2.16.1=implementation
+    -org.junit.jupiter:junit-jupiter:5.10.2=testImplementation
+    +com.fasterxml.jackson.core:jackson-core:2.17.0=implementation
+    +org.junit.jupiter:junit-jupiter:5.10.3=testImplementation
+     empty annotationProcessor
+
+notes
+  · `com.fasterxml.jackson.core:jackson-core 2.16.1` (gradle.lockfile) — its lockfile records no dependency edges, so nothing can be called transitive
+  · `com.fasterxml.jackson.core:jackson-core 2.17.0` (gradle.lockfile) — its lockfile records no dependency edges, so nothing can be called transitive

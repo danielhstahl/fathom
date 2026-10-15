@@ -1,0 +1,104 @@
+{
+  "changes": [
+    {
+      "after": "2.2.0",
+      "asked_by": [
+        "ecto"
+      ],
+      "attribution": "transitive/edges",
+      "before": "2.1.0",
+      "detail": "2.1.0 → 2.2.0",
+      "ecosystem": "elixir",
+      "kind": "upgraded",
+      "name": "decimal",
+      "proof": "@@ -1,7 +1,7 @@ [10 lines]",
+      "scope": "mix.lock"
+    },
+    {
+      "after": "1.4.4",
+      "asked_by": [
+        "phoenix"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.4.1",
+      "detail": "1.4.1 → 1.4.4",
+      "ecosystem": "elixir",
+      "kind": "upgraded",
+      "name": "jason",
+      "proof": "@@ -1,7 +1,7 @@ [10 lines]",
+      "scope": "mix.lock"
+    },
+    {
+      "after": "",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "",
+      "detail": "source git:https://github.com/acme/internal@4f2b90c → git:https://github.com/other/internal-fork@4f2b90c",
+      "ecosystem": "elixir",
+      "kind": "source_switch",
+      "name": "internal",
+      "proof": "@@ -1,7 +1,7 @@ [9 lines]",
+      "scope": "mix.lock"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 0,
+    "direct_downgraded": 0,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 0,
+    "downgrades": 0,
+    "explained_transitive": 0,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 0,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 1,
+    "peer_conflicts": 0,
+    "source_switches": 1,
+    "transitive_added": 0,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 2,
+    "unattributed": 0,
+    "unexplained_transitive": 2
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 5,
+        "before": 5,
+        "ecosystem": "elixir",
+        "net": 0
+      }
+    ],
+    "total": [
+      5,
+      5,
+      0
+    ]
+  },
+  "headline": "2 packages refreshed, transitive only; source switch: internal; 1 new package source: git:https://github.com/other/internal-fork.",
+  "licenses": {
+    "added": [],
+    "removed": []
+  },
+  "notes": [],
+  "pattern": "transitive_refresh",
+  "peer_conflicts": [],
+  "sources": [
+    {
+      "identity": "git:https://github.com/other/internal-fork",
+      "kind": "git",
+      "via": "internal"
+    }
+  ],
+  "sources_gone": [
+    "git:https://github.com/acme/internal"
+  ],
+  "storm": false
+}

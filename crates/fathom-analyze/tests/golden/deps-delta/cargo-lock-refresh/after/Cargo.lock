@@ -1,0 +1,97 @@
+version = 4
+
+[[package]]
+name = "widget"
+version = "0.1.0"
+
+[[package]]
+name = "serde"
+version = "1.0.200"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1b2c"
+dependencies = [
+ "lib01 1.0.1",
+ "lib02 1.0.1",
+ "lib03 1.0.1",
+ "lib04 1.0.1",
+ "lib05 1.0.1",
+ "lib06 1.0.1",
+ "lib07 1.0.1",
+ "lib08 1.0.1",
+ "lib09 1.0.1",
+ "lib10 1.0.1",
+ "lib11 1.0.1",
+ "lib12 1.0.1"
+]
+
+[[package]]
+name = "lib01"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib01chk"
+
+[[package]]
+name = "lib02"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib02chk"
+
+[[package]]
+name = "lib03"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib03chk"
+
+[[package]]
+name = "lib04"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib04chk"
+
+[[package]]
+name = "lib05"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib05chk"
+
+[[package]]
+name = "lib06"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib06chk"
+
+[[package]]
+name = "lib07"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib07chk"
+
+[[package]]
+name = "lib08"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib08chk"
+
+[[package]]
+name = "lib09"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib09chk"
+
+[[package]]
+name = "lib10"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib10chk"
+
+[[package]]
+name = "lib11"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib11chk"
+
+[[package]]
+name = "lib12"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "lib12chk"

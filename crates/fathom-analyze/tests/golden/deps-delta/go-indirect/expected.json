@@ -1,0 +1,84 @@
+{
+  "changes": [
+    {
+      "after": "v5.0.13",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "v5.0.12",
+      "detail": "v5.0.12 → v5.0.13",
+      "ecosystem": "go",
+      "kind": "upgraded",
+      "name": "github.com/go-chi/chi/v5",
+      "proof": "@@ -1,4 +1,4 @@ [7 lines]",
+      "scope": "go.sum"
+    },
+    {
+      "after": "v0.24.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "v0.23.0",
+      "detail": "v0.23.0 → v0.24.0",
+      "ecosystem": "go",
+      "kind": "upgraded",
+      "name": "golang.org/x/net",
+      "proof": "@@ -1,4 +1,4 @@ [7 lines]",
+      "scope": "go.sum"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 0,
+    "direct_downgraded": 0,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 2,
+    "downgrades": 0,
+    "explained_transitive": 0,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 0,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 0,
+    "peer_conflicts": 0,
+    "source_switches": 0,
+    "transitive_added": 0,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 0,
+    "unattributed": 0,
+    "unexplained_transitive": 0
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 3,
+        "before": 3,
+        "ecosystem": "go",
+        "net": 0
+      }
+    ],
+    "total": [
+      3,
+      3,
+      0
+    ]
+  },
+  "headline": "2 direct dependencies upgraded.",
+  "licenses": {
+    "added": [],
+    "removed": []
+  },
+  "notes": [
+    "`github.com/lib/pq v1.10.9` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive",
+    "`golang.org/x/net v0.23.0` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive",
+    "`github.com/lib/pq v1.10.9` (go.sum) — its lockfile records no dependency edges, so nothing can be called transitive"
+  ],
+  "pattern": "direct_version_change",
+  "peer_conflicts": [],
+  "sources": [],
+  "sources_gone": [],
+  "storm": false
+}

@@ -1,0 +1,256 @@
+{
+  "changes": [
+    {
+      "after": "1.0.0",
+      "asked_by": [
+        "foo"
+      ],
+      "attribution": "transitive/edges",
+      "before": null,
+      "detail": "new in package-lock.json",
+      "ecosystem": "js",
+      "kind": "added",
+      "name": "bar",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "2.1.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": null,
+      "detail": "new in package-lock.json",
+      "ecosystem": "js",
+      "kind": "added",
+      "name": "foo",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a01",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a02",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a03",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a04",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a05",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a06",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a07",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a08",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a09",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a10",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a11",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": "1.1.0",
+      "asked_by": [
+        "react"
+      ],
+      "attribution": "transitive/edges",
+      "before": "1.0.0",
+      "detail": "1.0.0 → 1.1.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "a12",
+      "proof": "@@ -31,76 +32,91 @@ [12 lines]",
+      "scope": "package-lock.json"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 1,
+    "direct_downgraded": 0,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 0,
+    "downgrades": 0,
+    "explained_transitive": 1,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 1,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 0,
+    "peer_conflicts": 0,
+    "source_switches": 0,
+    "transitive_added": 1,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 12,
+    "unattributed": 0,
+    "unexplained_transitive": 12
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 15,
+        "before": 13,
+        "ecosystem": "js",
+        "net": 2
+      }
+    ],
+    "total": [
+      13,
+      15,
+      2
+    ]
+  },
+  "headline": "Net +2 packages from 1 new direct dependency (foo 2.1.0); plus a mass refresh of 12 transitive packages nobody asked for; licence set +1.",
+  "licenses": {
+    "added": [
+      {
+        "ecosystem": "js",
+        "license": "ISC",
+        "package": "bar 1.0.0"
+      }
+    ],
+    "removed": []
+  },
+  "notes": [],
+  "pattern": "mixed",
+  "peer_conflicts": [],
+  "sources": [],
+  "sources_gone": [],
+  "storm": true
+}

@@ -1,0 +1,4 @@
+github.com/go-chi/chi/v5 v5.0.12 h1:OLD
+github.com/go-chi/chi/v5 v5.0.12/go.mod h1:DBZU8
+github.com/lib/pq v1.10.9 h1:ky1
+golang.org/x/net v0.23.0 h1:OLDNET

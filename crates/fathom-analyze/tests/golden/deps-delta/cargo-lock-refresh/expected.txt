@@ -1,0 +1,109 @@
+dependency delta — 12 transitive packages refreshed — a mass lockfile refresh, no direct dependency changed.
+pattern         transitive_refresh (bump storm)
+graph           cargo 14 → 14 (+0)
+direct          +0 upgraded 0 downgraded 0 -0
+transitive      +0 upgraded 12 downgraded 0 -0 (refresh of 12)
+  explained     0 explained by a direct change, 12 without one
+  transitive    ^ lib01 1.0.1              cargo
+  transitive    ^ lib02 1.0.1              cargo
+  transitive    ^ lib03 1.0.1              cargo
+  transitive    ^ lib04 1.0.1              cargo
+  transitive    ^ lib05 1.0.1              cargo
+  transitive    ^ lib06 1.0.1              cargo
+  transitive    …and 6 more (see `--json`)
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  transitive · upgraded lib01 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …11 earlier lines
+    - "lib09 1.0.0",
+    - "lib10 1.0.0",
+    - "lib11 1.0.0",
+    - "lib12 1.0.0"
+    + "lib01 1.0.1",
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    …93 more lines
+
+  transitive · upgraded lib02 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …12 earlier lines
+    - "lib10 1.0.0",
+    - "lib11 1.0.0",
+    - "lib12 1.0.0"
+    + "lib01 1.0.1",
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    + "lib05 1.0.1",
+    …92 more lines
+
+  transitive · upgraded lib03 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …13 earlier lines
+    - "lib11 1.0.0",
+    - "lib12 1.0.0"
+    + "lib01 1.0.1",
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    + "lib05 1.0.1",
+    + "lib06 1.0.1",
+    …91 more lines
+
+  transitive · upgraded lib04 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …14 earlier lines
+    - "lib12 1.0.0"
+    + "lib01 1.0.1",
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    + "lib05 1.0.1",
+    + "lib06 1.0.1",
+    + "lib07 1.0.1",
+    …90 more lines
+
+  transitive · upgraded lib05 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …15 earlier lines
+    + "lib01 1.0.1",
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    + "lib05 1.0.1",
+    + "lib06 1.0.1",
+    + "lib07 1.0.1",
+    + "lib08 1.0.1",
+    …89 more lines
+
+  transitive · upgraded lib06 1.0.1 · cargo · Cargo.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: serde
+    @@ -10,88 +10,88 @@
+    …16 earlier lines
+    + "lib02 1.0.1",
+    + "lib03 1.0.1",
+    + "lib04 1.0.1",
+    + "lib05 1.0.1",
+    + "lib06 1.0.1",
+    + "lib07 1.0.1",
+    + "lib08 1.0.1",
+    + "lib09 1.0.1",
+    …88 more lines

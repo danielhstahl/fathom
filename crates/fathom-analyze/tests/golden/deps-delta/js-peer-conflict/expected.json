@@ -1,0 +1,89 @@
+{
+  "changes": [
+    {
+      "after": "18.2.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "17.0.1",
+      "detail": "17.0.1 → 18.2.0",
+      "ecosystem": "js",
+      "kind": "upgraded",
+      "name": "react",
+      "proof": "@@ -7,13 +7,13 @@ [12 lines]",
+      "scope": "package-lock.json"
+    },
+    {
+      "after": null,
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": null,
+      "detail": "first declared here in package.json, already resolved by package-lock.json",
+      "ecosystem": "js",
+      "kind": "requirement_changed",
+      "name": "react-dom",
+      "proof": "@@ -2,6 +2,9 @@ [9 lines]",
+      "scope": "package.json"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 0,
+    "direct_downgraded": 0,
+    "direct_removed": 0,
+    "direct_requalified": 1,
+    "direct_unordered": 0,
+    "direct_upgraded": 1,
+    "downgrades": 0,
+    "explained_transitive": 0,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 0,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 0,
+    "peer_conflicts": 1,
+    "source_switches": 0,
+    "transitive_added": 0,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 0,
+    "unattributed": 0,
+    "unexplained_transitive": 0
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 2,
+        "before": 2,
+        "ecosystem": "js",
+        "net": 0
+      }
+    ],
+    "total": [
+      2,
+      2,
+      0
+    ]
+  },
+  "headline": "1 direct dependency upgraded; 1 new peer-dependency conflict.",
+  "licenses": {
+    "added": [],
+    "removed": []
+  },
+  "notes": [
+    "`react-dom 17.0.1` (package-lock.json) — no manifest declares it and no resolved edge asks for it"
+  ],
+  "pattern": "direct_version_change",
+  "peer_conflicts": [
+    {
+      "detail": "storefront requires react-dom >=18; the graph resolves 17.0.1",
+      "peer": "react-dom",
+      "required": ">=18",
+      "resolved": "17.0.1"
+    }
+  ],
+  "sources": [],
+  "sources_gone": [],
+  "storm": false
+}

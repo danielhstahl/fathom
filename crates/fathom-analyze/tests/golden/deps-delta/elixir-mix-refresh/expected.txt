@@ -1,0 +1,59 @@
+dependency delta — 2 packages refreshed, transitive only; source switch: internal; 1 new package source: git:https://github.com/other/internal-fork.
+pattern         transitive_refresh
+graph           elixir 5 → 5 (+0)
+direct          +0 upgraded 0 downgraded 0 -0
+transitive      +0 upgraded 2 downgraded 0 -0 (refresh of 2)
+  explained     0 explained by a direct change, 2 without one
+  transitive    ^ decimal 2.2.0            elixir
+  transitive    ^ jason 1.4.4              elixir
+provenance      source switches 1 · integrity 0 · licence changes 0
+  source_switch  internal         source git:https://github.com/acme/internal@4f2b90c → git:https://github.com/other/internal-fork@4f2b90c
+sources         + git:https://github.com/other/internal-fork (git via internal), - git:https://github.com/acme/internal
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  transitive · upgraded decimal 2.2.0 · elixir · mix.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: ecto
+    @@ -1,7 +1,7 @@
+    …1 earlier lines
+       "ecto": {:hex, :ecto, "3.11.2", "3f9a", [:mix], [{:decimal, "~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}], "hexpm", "b2c"},
+    -  "decimal": {:hex, :decimal, "2.1.0", "dchk", [:mix], [], "hexpm", "dc"},
+    -  "jason": {:hex, :jason, "1.4.1", "jchk", [:mix], [], "hexpm", "jc"},
+    +  "decimal": {:hex, :decimal, "2.2.0", "dchk", [:mix], [], "hexpm", "dc"},
+    +  "jason": {:hex, :jason, "1.4.4", "jchk", [:mix], [], "hexpm", "jc"},
+       "phoenix": {:hex, :phoenix, "1.7.10", "pchk", [:mix], [{:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}], "hexpm", "pc"},
+    -  "internal": {:git, "https://github.com/acme/internal", "4f2b90c", [branch: "stable"]},
+    +  "internal": {:git, "https://github.com/other/internal-fork", "4f2b90c", [branch: "stable"]},
+    …1 more lines
+
+  transitive · upgraded jason 1.4.4 · elixir · mix.lock
+    attribution: transitive — another resolved package asks for it
+    asked for by: phoenix
+    @@ -1,7 +1,7 @@
+    …1 earlier lines
+       "ecto": {:hex, :ecto, "3.11.2", "3f9a", [:mix], [{:decimal, "~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}], "hexpm", "b2c"},
+    -  "decimal": {:hex, :decimal, "2.1.0", "dchk", [:mix], [], "hexpm", "dc"},
+    -  "jason": {:hex, :jason, "1.4.1", "jchk", [:mix], [], "hexpm", "jc"},
+    +  "decimal": {:hex, :decimal, "2.2.0", "dchk", [:mix], [], "hexpm", "dc"},
+    +  "jason": {:hex, :jason, "1.4.4", "jchk", [:mix], [], "hexpm", "jc"},
+       "phoenix": {:hex, :phoenix, "1.7.10", "pchk", [:mix], [{:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}], "hexpm", "pc"},
+    -  "internal": {:git, "https://github.com/acme/internal", "4f2b90c", [branch: "stable"]},
+    +  "internal": {:git, "https://github.com/other/internal-fork", "4f2b90c", [branch: "stable"]},
+    …1 more lines
+
+  direct · source_switch internal · elixir · mix.lock
+    attribution: direct — a manifest in this repository declares it
+    @@ -1,7 +1,7 @@
+    …1 earlier lines
+       "ecto": {:hex, :ecto, "3.11.2", "3f9a", [:mix], [{:decimal, "~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}], "hexpm", "b2c"},
+    -  "decimal": {:hex, :decimal, "2.1.0", "dchk", [:mix], [], "hexpm", "dc"},
+    -  "jason": {:hex, :jason, "1.4.1", "jchk", [:mix], [], "hexpm", "jc"},
+    +  "decimal": {:hex, :decimal, "2.2.0", "dchk", [:mix], [], "hexpm", "dc"},
+    +  "jason": {:hex, :jason, "1.4.4", "jchk", [:mix], [], "hexpm", "jc"},
+       "phoenix": {:hex, :phoenix, "1.7.10", "pchk", [:mix], [{:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}], "hexpm", "pc"},
+    -  "internal": {:git, "https://github.com/acme/internal", "4f2b90c", [branch: "stable"]},
+    +  "internal": {:git, "https://github.com/other/internal-fork", "4f2b90c", [branch: "stable"]},
+    …1 more lines

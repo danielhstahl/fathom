@@ -1,0 +1,59 @@
+dependency delta — Net +2 packages from 1 new direct dependency (puma 6.4.2).
+pattern         new_direct
+graph           ruby 3 → 5 (+2)
+direct          +1 upgraded 0 downgraded 0 -0
+  direct        + puma 6.4.2               ruby
+transitive      +1 upgraded 1 downgraded 0 -0 (refresh of 1)
+  explained     1 explained by a direct change, 1 without one
+  transitive    + nio4r 2.7.0              ruby
+  transitive    ^ activesupport 7.1.4      ruby
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        no change
+peer conflicts  none
+
+drill-down
+
+  transitive · added nio4r 2.7.0 · ruby · Gemfile.lock
+    attribution: transitive — the lockfile states whether it is a direct dependency
+    asked for by: puma
+    @@ -2,14 +2,18 @@
+    …7 earlier lines
+           concurrent-ruby (~> 1.0)
+         concurrent-ruby (1.2.3)
+    +    puma (6.4.2)
+    +      nio4r (~> 2.0)
+    +    nio4r (2.7.0)
+     
+     DEPENDENCIES
+       rails (~> 7.1)
+    …5 more lines
+
+  direct · added puma 6.4.2 · ruby · Gemfile.lock
+    attribution: direct — the lockfile states whether it is a direct dependency
+    @@ -2,14 +2,18 @@
+    …5 earlier lines
+    +      activesupport (= 7.1.4)
+    +    activesupport (7.1.4)
+           concurrent-ruby (~> 1.0)
+         concurrent-ruby (1.2.3)
+    +    puma (6.4.2)
+    +      nio4r (~> 2.0)
+    +    nio4r (2.7.0)
+     
+    …7 more lines
+
+  transitive · upgraded activesupport 7.1.4 · ruby · Gemfile.lock
+    attribution: transitive — the lockfile states whether it is a direct dependency
+    asked for by: rails
+    @@ -2,14 +2,18 @@
+    …2 earlier lines
+         rails (7.1.3)
+    -      activesupport (= 7.1.3)
+    -    activesupport (7.1.3)
+    +      activesupport (= 7.1.4)
+    +    activesupport (7.1.4)
+           concurrent-ruby (~> 1.0)
+         concurrent-ruby (1.2.3)
+    +    puma (6.4.2)
+    …10 more lines

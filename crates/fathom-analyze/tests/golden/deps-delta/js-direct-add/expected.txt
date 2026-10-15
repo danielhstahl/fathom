@@ -1,0 +1,59 @@
+dependency delta — Net +3 packages from 1 new direct dependency (foo 2.1.0); licence set +1.
+pattern         new_direct
+graph           js 1 → 4 (+3)
+direct          +1 upgraded 0 downgraded 0 -0
+  direct        + foo 2.1.0                js
+transitive      +2 upgraded 0 downgraded 0 -0 (refresh of 0)
+  explained     2 explained by a direct change, 0 without one
+  transitive    + bar 1.0.0                js
+  transitive    + baz 3.0.0                js
+provenance      source switches 0 · integrity 0 · licence changes 0
+sources         none new
+licences        + ISC (bar 1.0.0)
+peer conflicts  none
+
+drill-down
+
+  transitive · added bar 1.0.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: foo
+    @@ -15,6 +16,29 @@
+    …6 earlier lines
+    +      "resolved": "https://registry.npmjs.org/foo/-/foo-2.1.0.tgz",
+    +      "integrity": "sha512-FOO2.1.0",
+    +      "license": "MIT",
+    +      "dependencies": {
+    +        "bar": "^1.0.0"
+    +      }
+    +    },
+    +    "node_modules/bar": {
+    …15 more lines
+
+  transitive · added baz 3.0.0 · js · package-lock.json
+    attribution: transitive — another resolved package asks for it
+    asked for by: foo → bar
+    @@ -15,6 +16,29 @@
+    …15 earlier lines
+    +      "resolved": "https://registry.npmjs.org/bar/-/bar-1.0.0.tgz",
+    +      "integrity": "sha512-BAR1.0.0",
+    +      "license": "ISC",
+    +      "dependencies": {
+    +        "baz": "^3.0.0"
+    +      }
+    +    },
+    +    "node_modules/baz": {
+    …6 more lines
+
+  direct · added foo 2.1.0 · js · package-lock.json
+    attribution: direct — a manifest in this repository declares it
+    @@ -15,6 +16,29 @@
+    …2 earlier lines
+           "license": "MIT"
+    +    },
+    +    "node_modules/foo": {
+    +      "version": "2.1.0",
+    +      "resolved": "https://registry.npmjs.org/foo/-/foo-2.1.0.tgz",
+    +      "integrity": "sha512-FOO2.1.0",
+    +      "license": "MIT",
+    +      "dependencies": {
+    …19 more lines

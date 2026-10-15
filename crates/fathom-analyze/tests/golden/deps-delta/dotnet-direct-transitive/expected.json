@@ -1,0 +1,120 @@
+{
+  "changes": [
+    {
+      "after": "2.0.0",
+      "asked_by": [
+        "SayHello"
+      ],
+      "attribution": "transitive/lockfile",
+      "before": null,
+      "detail": "new in packages.lock.json",
+      "ecosystem": "dotnet",
+      "kind": "added",
+      "name": "Greeting",
+      "proof": "@@ -4,23 +4,37 @@ [12 lines]",
+      "scope": "packages.lock.json"
+    },
+    {
+      "after": "1.0.0",
+      "asked_by": [],
+      "attribution": "direct/lockfile",
+      "before": null,
+      "detail": "new in packages.lock.json",
+      "ecosystem": "dotnet",
+      "kind": "added",
+      "name": "SayHello",
+      "proof": "@@ -4,23 +4,37 @@ [12 lines]",
+      "scope": "packages.lock.json"
+    },
+    {
+      "after": "13.0.4",
+      "asked_by": [],
+      "attribution": "direct/lockfile",
+      "before": "13.0.3",
+      "detail": "13.0.3 → 13.0.4",
+      "ecosystem": "dotnet",
+      "kind": "upgraded",
+      "name": "Newtonsoft.Json",
+      "proof": "@@ -4,23 +4,37 @@ [12 lines]",
+      "scope": "packages.lock.json"
+    },
+    {
+      "after": "3.0.1",
+      "asked_by": [],
+      "attribution": "direct/lockfile",
+      "before": "3.1.1",
+      "detail": "3.1.1 → 3.0.1",
+      "ecosystem": "dotnet",
+      "kind": "downgraded",
+      "name": "Serilog",
+      "proof": "@@ -4,23 +4,37 @@ [12 lines]",
+      "scope": "packages.lock.json"
+    },
+    {
+      "after": "4.0.0",
+      "asked_by": [
+        "Serilog"
+      ],
+      "attribution": "transitive/lockfile",
+      "before": "5.0.1",
+      "detail": "5.0.1 → 4.0.0",
+      "ecosystem": "dotnet",
+      "kind": "downgraded",
+      "name": "Serilog.Sinks.Console",
+      "proof": "@@ -4,23 +4,37 @@ [12 lines]",
+      "scope": "packages.lock.json"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 1,
+    "direct_downgraded": 1,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 1,
+    "downgrades": 2,
+    "explained_transitive": 2,
+    "integrity_changes": 0,
+    "license_changes": 0,
+    "licenses_added": 0,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 0,
+    "peer_conflicts": 0,
+    "source_switches": 0,
+    "transitive_added": 1,
+    "transitive_downgraded": 1,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 0,
+    "unattributed": 0,
+    "unexplained_transitive": 0
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 5,
+        "before": 3,
+        "ecosystem": "dotnet",
+        "net": 2
+      }
+    ],
+    "total": [
+      3,
+      5,
+      2
+    ]
+  },
+  "headline": "Net +2 packages from 1 new direct dependency (SayHello 1.0.0); 1 direct dependency upgraded; 2 dependencies downgraded (Serilog 3.0.1, Serilog.Sinks.Console 4.0.0).",
+  "licenses": {
+    "added": [],
+    "removed": []
+  },
+  "notes": [],
+  "pattern": "new_direct",
+  "peer_conflicts": [],
+  "sources": [],
+  "sources_gone": [],
+  "storm": false
+}

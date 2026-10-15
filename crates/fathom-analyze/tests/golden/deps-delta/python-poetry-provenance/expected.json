@@ -1,0 +1,112 @@
+{
+  "changes": [
+    {
+      "after": "2.2.2",
+      "asked_by": [
+        "requests"
+      ],
+      "attribution": "transitive/edges",
+      "before": "2.2.1",
+      "detail": "2.2.1 → 2.2.2",
+      "ecosystem": "python",
+      "kind": "upgraded",
+      "name": "urllib3",
+      "proof": "@@ -4,26 +4,32 @@ [12 lines]",
+      "scope": "poetry.lock"
+    },
+    {
+      "after": "2.5.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "2.6.1",
+      "detail": "2.6.1 → 2.5.0",
+      "ecosystem": "python",
+      "kind": "downgraded",
+      "name": "pydantic",
+      "proof": "@@ -4,26 +4,32 @@ [10 lines]",
+      "scope": "poetry.lock"
+    },
+    {
+      "after": "2.31.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "2.31.0",
+      "detail": "source registry → git:https://github.com/acme/requests@main",
+      "ecosystem": "python",
+      "kind": "source_switch",
+      "name": "requests",
+      "proof": "@@ -4,26 +4,32 @@ [12 lines]",
+      "scope": "poetry.lock"
+    },
+    {
+      "after": "2.31.0",
+      "asked_by": [],
+      "attribution": "direct/manifest",
+      "before": "2.31.0",
+      "detail": "integrity sha256:OLD → sha256:NEW",
+      "ecosystem": "python",
+      "kind": "integrity_change",
+      "name": "requests",
+      "proof": "@@ -4,26 +4,32 @@ [12 lines]",
+      "scope": "poetry.lock"
+    }
+  ],
+  "complete": true,
+  "counts": {
+    "direct_added": 0,
+    "direct_downgraded": 1,
+    "direct_removed": 0,
+    "direct_requalified": 0,
+    "direct_unordered": 0,
+    "direct_upgraded": 0,
+    "downgrades": 1,
+    "explained_transitive": 0,
+    "integrity_changes": 1,
+    "license_changes": 0,
+    "licenses_added": 0,
+    "licenses_removed": 0,
+    "local_changed": 0,
+    "new_sources": 1,
+    "peer_conflicts": 0,
+    "source_switches": 1,
+    "transitive_added": 0,
+    "transitive_downgraded": 0,
+    "transitive_removed": 0,
+    "transitive_unordered": 0,
+    "transitive_upgraded": 1,
+    "unattributed": 0,
+    "unexplained_transitive": 1
+  },
+  "graph": {
+    "per_ecosystem": [
+      {
+        "after": 3,
+        "before": 3,
+        "ecosystem": "python",
+        "net": 0
+      }
+    ],
+    "total": [
+      3,
+      3,
+      0
+    ]
+  },
+  "headline": "1 dependency downgraded (pydantic 2.5.0); source switch: requests 2.31.0; 1 package changed integrity; 1 new package source: git:https://github.com/acme/requests.",
+  "licenses": {
+    "added": [],
+    "removed": []
+  },
+  "notes": [],
+  "pattern": "direct_version_change",
+  "peer_conflicts": [],
+  "sources": [
+    {
+      "identity": "git:https://github.com/acme/requests",
+      "kind": "git",
+      "via": "requests 2.31.0"
+    }
+  ],
+  "sources_gone": [],
+  "storm": false
+}
