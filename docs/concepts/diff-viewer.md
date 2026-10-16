@@ -63,6 +63,13 @@ at a machine:
 | `max_files` | 20 000 | file rows | beyond it the pane is a list nobody can read |
 | `max_hunks` | 20 000 | hunk rows | same, for the file with 8 000 one-line hunks |
 | `pair_run` | 64 | how long a −/+ run is held before split alignment is given up on | aligning is worth a few lines, not a whole hunk |
+| `decode_bytes` | 8 MiB | the decode cache: decoded hunk text held between frames | the number that makes "open the same episode again and it is instant" cost a bounded amount instead of everything (`materialize.rs`) |
+| `max_in_flight` | 32 | decode jobs queued *plus running* at one moment | the cap behind "rapid scrolling cannot queue unbounded work"; see [materialization](materialization.md) §3 |
+| `prefetch_hunks` | 8 | hunks decoded just past the visible window | one `]` should already be there; two pages ahead is guessing |
+| `prewarm_hunks` | 24 | hunks decoded for an episode that has not been opened yet | the first frame of the next episode should read nothing |
+
+The last four are `e1.8`'s, and they are the ones that only mean something together: a prefetch with
+no cap is how a scroll turns into a disk stall.
 
 The claim this buys, and the one worth reading twice: **the index is O(files + hunks), never
 O(lines)**. Per file the index keeps the path, a kind, counts, class, state, evidence spans and the
@@ -72,10 +79,17 @@ in `chunk_bytes` pieces, keeps `files + hunks` of metadata under `index_bytes`, 
 same way as a nine-line diff.
 
 For a window build the working set is smaller still: about `height` source lines plus one
-`pair_run`, because the planner reads lazily and stops at the bottom of the window.
+`pair_run`, because the planner reads lazily and stops at the bottom of the window. The limit is
+passed in as an argument (`doc::decode`'s `limit`), not left to be remembered: a pane asks for the rows
+between the top of its viewport and the end of the hunk, and the decoder stops there.
 `a_window_build_reads_only_the_lines_it_draws` in `tests/diff_behaviour.rs` asserts exactly that
 against a 10 000-line hunk — if a change ever makes the read grow with the file instead of the
 window, that test fails and the guarantee is visibly broken rather than quietly gone.
+
+A worker decoding *for the cache* passes no limit, and that asymmetry is deliberate: a cached hunk has
+to serve every window that later intersects it, so it is decoded whole (up to `window_lines`) and off
+the UI thread. The inline path — no workers, `--plain`, a test that wants to see the answer in the
+same call it made — keeps the window limit, because it is paying for the read in the frame that asked.
 
 When a cap *is* hit the scan stops and says so — `stopped: "the 16 MiB index budget ran out at file
 312"` — and every later pane repeats the sentence. A truncated index that looks complete is a lie; a
@@ -132,7 +146,11 @@ source", and only then "which file". Rows:
 * a collapsed directory shows one file, marked `(+3 more)` — the collapsed subtree must not vanish
   from the count;
 * the tree is built whole and unclipped, then laid out with the same middle-truncation as the
-  recommendation list, because a path whose end is invisible is not searchable.
+  recommendation list, because a path whose end is invisible is not searchable;
+* structure and text are separate objects (`tree.rs`): `TreeShape` is the grouping, sorting and
+  totals — one O(files) pass, rebuilt only when the index or the noise rule changes — and a `Tree`
+  borrows it and draws the rows it is asked for. The pane asks for its 22 rows and gets 22 rows, so a
+  5 000-file episode costs the same as a nine-file one ([materialization](materialization.md) §4).
 
 ## 5 The hunk pane
 
@@ -146,8 +164,20 @@ preference here, it is the only way columns line up), and CR is shown as `␍` a
 column: the whole point of `=` on a CRLF churn is to make the invisible visible, and hiding `\r`
 would be hiding the diff.
 
-Word-diff (`W`) highlights the changed runs inside a −/+ pair, token-run based, and never reflows
-alignment: a highlight is a style on a column range and the columns do not move.
+The pane does not decode what it cannot see, and does not wait for what it can. `doc::build` asks a
+`Hunks` for the rows of each hunk that intersects the window: inline that source reads the rows it is
+allowed to draw; with workers running it is a bounded cache, and a hunk that has not arrived is one
+row that says so —
+
+```
+⋯ hunk 11 (25 row(s)) is being decoded — this window is not complete
+```
+
+— placed at the row the hunk starts at, so the window does not shrink or jump when the rows land, and
+the footer counts what is missing (`2 hunk(s) in this window still decoding`). Nothing is ever drawn
+from a hunk outside the requested window, and nothing is drawn from an old shape: the cache key is
+(origin, path, shape, hunk), which is what makes a `S`/`=`/`W` toggle a cache miss rather than a
+stale frame. [materialization](materialization.md) is the whole story.
 
 Syntax highlighting (`highlight.rs`) is regex-ordered (comment, then string, then number, then keyword,
 then type/call) over a language picked from the extension plus two content probes (a `<?php` line wins
@@ -237,6 +267,9 @@ directly instead of printing a URI nobody asked for.
 * `tests/layout.rs` and `tests/keymap.rs` — still pass against the generated tables; the diff view's
   bindings are the ones in ADR-006 §7 plus `=` for the whitespace toggle, and `tools/tui_tables.py`
   owns all of it.
+* `tests/diff_materialize.rs` and `tests/materialize.rs` — `e1.8`: the four performance criteria, and
+  the queue and the cache underneath them. [materialization](materialization.md) §6 lists which test
+  answers which criterion, with the measured numbers.
 
 Goldens are text, so a rendering change is reviewable in a diff of a `.txt` file; behaviour tests
 press keys through the same chord machine the real terminal uses.

@@ -32,6 +32,17 @@ pub struct Budget {
     /// Longest removed/added run that is still *paired* (for split alignment and for the
     /// whitespace-ignore decision). A longer run is counted exactly but never paired.
     pub pair_run: usize,
+    /// Bytes the decode cache may hold (`e1.8`): decoded hunks, all shapes, all files in range.
+    /// The cap the "bounded decode cache" criterion is asserted against.
+    pub decode_bytes: usize,
+    /// Decode jobs the queue may hold between here and a worker — queued *plus* running. Rapid
+    /// scrolling cannot exceed it, which is what its test asserts.
+    pub max_in_flight: usize,
+    /// Hunks past the bottom of the window that are decoded before anything else is guessed at.
+    /// This is the next PageDown the reviewer has not pressed yet.
+    pub prefetch_hunks: usize,
+    /// How many of a warmed episode's first hunks to decode ahead of a switch to it.
+    pub prewarm_hunks: usize,
 }
 
 impl Budget {
@@ -42,9 +53,13 @@ impl Budget {
         index_bytes: 4 * 1024 * 1024,
         window_lines: 4096,
         window_bytes: 1024 * 1024,
-        max_files: 2000,
+        max_files: 20_000,
         max_hunks: 20_000,
         pair_run: 64,
+        decode_bytes: 8 * 1024 * 1024,
+        max_in_flight: 32,
+        prefetch_hunks: 8,
+        prewarm_hunks: 24,
     };
 
     /// A budget with everything at half, to prove a limit is a limit and not a coincidence.
@@ -59,6 +74,10 @@ impl Budget {
             max_files: self.max_files / 2,
             max_hunks: self.max_hunks / 2,
             pair_run: self.pair_run / 2,
+            decode_bytes: self.decode_bytes / 2,
+            max_in_flight: self.max_in_flight / 2,
+            prefetch_hunks: self.prefetch_hunks / 2,
+            prewarm_hunks: self.prewarm_hunks / 2,
         }
     }
 

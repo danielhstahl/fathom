@@ -828,18 +828,40 @@ impl App {
         // carry a cursor without any row ever being a cell wider than the pane — and the cursor is a
         // character, not a colour, so it survives `--plain` and a monochrome terminal (ADR-006 §10.2).
         let text_width = width.saturating_sub(1);
-        let lines = self.diff.tree_rows(text_width);
-        if lines.is_empty() {
-            return vec![StyledLine::plain("").padded(width)];
+        // With nothing to walk the tree pane prints its statement instead of rows, and the statement
+        // is three lines long, so it goes through the whole-list path and buys nothing.
+        if self.diff.index().is_none_or(|scan| scan.files.is_empty()) {
+            let lines = self.diff.tree_rows(text_width);
+            if lines.is_empty() {
+                return vec![StyledLine::plain("").padded(width)];
+            }
+            let selection = self.selected_row().min(lines.len().saturating_sub(1));
+            return lines
+                .into_iter()
+                .enumerate()
+                .map(|(row, line)| {
+                    let mut out = if row == selection {
+                        StyledLine::with_face("▸", crate::style::Face::Emphasis)
+                    } else {
+                        StyledLine::plain(" ")
+                    };
+                    out.push_line(&line);
+                    out.padded(width)
+                })
+                .collect();
         }
-        let selection = self.selected_row().min(lines.len().saturating_sub(1));
-        let start = if rows >= lines.len() {
+        // Virtualised (`e1.8`): the window's start is arithmetic on the cached tree shape, and only
+        // the `rows` lines that fit are drawn. A 5 000-file episode costs the same as a nine-file one.
+        let total = self.diff.tree_len();
+        let selection = self.selected_row().min(total.saturating_sub(1));
+        let start = if rows >= total {
             0
         } else {
             selection.saturating_sub(rows.saturating_sub(3).max(1))
         };
+        let lines = self.diff.tree_window(start, rows, text_width);
         let mut out: Vec<StyledLine> = Vec::with_capacity(rows);
-        for (offset, line) in lines.iter().enumerate().skip(start).take(rows) {
+        for (offset, line) in lines.iter().enumerate() {
             let mut row = if start + offset == selection {
                 StyledLine::with_face("▸", crate::style::Face::Emphasis)
             } else {

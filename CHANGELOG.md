@@ -15,6 +15,45 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `e1.8` — background materialisation: decode off the UI thread, bounded, cancellable (reco-myd)
+
+- **The frame on screen is never the frame waiting for a read.** Hunk text is decoded by worker threads
+  that serve the visible window first, the next eight hunks second and a guess third
+  (`materialize.rs`: three priority tiers, one hard cap, generations, cancellation). A window whose
+  hunks have not landed draws a stated hole at the row the hunk starts at — `⋯ hunk 11 (25 row(s)) is
+  being decoded — this window is not complete`, `2 hunk(s) in this window still decoding` — and fills
+  it in without moving anything else. Opening a **5 000-file** episode now paints in **209 ms**
+  (1 557 680 patch bytes, debug profile: 209 ms of scan plus 0.29 ms of frame) against the 300 ms the
+  card asks for, and the same test suite checks the shape as well as the clock: 50 tree windows cost
+  14.4 ms at 400 files and 19.4 ms at 4 000, so a frame buys its height, not its index.
+- **Two walls, both asserted by the workload that would breach them.** The decode cache is a byte-bounded
+  LRU (8 MiB default): 60 hunks of 58 912 B against a 16 384 B cap leave **12 138 B held, 2 entries,
+  30 evictions**, and a single hunk larger than the whole cap is refused with its own sentence —
+  `one piece costs 24 576 B, over the 4 096 B decode cache` — rather than squeezed in. The queue caps
+  *queued plus running* jobs (32 default): 1 000 wide requests produce **peak 16 in flight against a
+  cap of 16**, 4 774 counted refusals, and 1 000 scrolls supersede **7 962** queued jobs, because a cap
+  alone still finishes 32 decodes of work the reviewer has already scrolled past.
+- **Scrolling cancels rather than outranks.** Each `(patch origin, path, shape)` lane has a generation,
+  so a new window removes the old window's queued jobs and tells the running ones to stop; a cancelled
+  decode writes nothing to the cache and wakes nothing. `tests/diff_materialize.rs` presses `]` three
+  times with only the last window served and checks every intermediate frame twice over: nothing from
+  a hunk outside its own window, and byte-identical to the inline render once its own answers arrive.
+  A shape toggle is a cache miss for the same reason — the key carries the shape — so `S`/`=`/`W` can
+  never draw last shape's rows.
+- **The next episode is ready before `n` is pressed.** `DiffView::prewarm("next" | "previous", source)`
+  scans the neighbour's patch and decodes its first 24 hunks on a worker; arriving there adopts the
+  index and reads **0 lines from the patch** for the first frame (measured: 18 hunks warm, 0 pending,
+  0 cache misses). The CLI's side of the seam is still empty and says so — `fathom-tui` is IO-free and
+  `insight::episodes` is `e2.11`'s to answer.
+- **The file tree stopped paying for files it does not show.** `TreeShape` (grouping, sorting, totals)
+  is built once per index-and-noise-rule pair and shared; `Tree` draws the rows it is asked for, so the
+  tree pane no longer rebuilds and renders all 5 000 rows to display 22 of them. Every golden frame in
+  `tests/diff_golden.rs` is byte-identical across the change, and the inline decode path — `--plain`,
+  a caller that wants the answer in the same call — keeps its window limit and behaves exactly as
+  before. 28 new tests: `tests/diff_materialize.rs` (13, the four criteria) and `tests/materialize.rs`
+  (15, the queue and the cache on their own, including a worker that panics, reports
+  `WorkerMsg::Died`, and then does the next job).
+
 ### `e1.6` — the timeline view: the episode rail, its filters, and a cursor that follows the episode (reco-bjo)
 
 - **The rail is the home screen, and it draws a window, not the index.** One row per episode —

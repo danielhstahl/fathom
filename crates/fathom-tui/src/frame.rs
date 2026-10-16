@@ -436,6 +436,19 @@ pub fn apply(app: &mut App, message: Message) {
                     app.model.index.progress = Some(format!("{task}: {note}"));
                 }
             }
+            WorkerMsg::Quiet { task } => {
+                // The decode queue is empty: the line that said so goes away rather than becoming
+                // chrome, and nothing else about the frame changes.
+                if app
+                    .model
+                    .index
+                    .progress
+                    .as_deref()
+                    .is_some_and(|said| said.starts_with(task))
+                {
+                    app.model.index.progress = None;
+                }
+            }
             WorkerMsg::Died { task, why } => {
                 // The stated partial, in the frame: a worker that died is reported, not hidden
                 // (ADR-001 §7.2). The terminal is untouched because the loop never left it.
@@ -501,6 +514,10 @@ pub fn run(options: &Options) -> Result<Report, Error> {
         app.resize(size.width, size.height);
     }
     let bus = Bus::new();
+    // The decode workers ride the same bus (`e1.8`): a hunk that arrives mid-scroll wakes a frame
+    // rather than waiting for a keystroke, and a frame that needs a hunk the workers have not got
+    // draws the stated placeholder instead of waiting for one.
+    app.diff.spawn_workers(Arc::clone(&bus));
     let reader = spawn_input_reader(Arc::clone(&bus));
     let mut sink = TerminalSink { terminal };
     let report = run_loop(

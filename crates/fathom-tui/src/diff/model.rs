@@ -466,8 +466,47 @@ pub const fn slot(layout: Layout, ignore_ws: bool) -> usize {
     }) | (if ignore_ws { 1 } else { 0 })
 }
 
+/// One shape of the pane, as a value rather than as two arguments.
+///
+/// This is what a decode is *for*: split alignment and the whitespace rule both change the row list a
+/// hunk becomes, so a decoded hunk belongs to exactly one shape and a shape change is a cache miss
+/// rather than a stale frame. It is `Hash + Ord` because the decode cache keys on it
+/// ([`crate::materialize`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Shape {
+    /// Unified or split.
+    pub layout: Layout,
+    /// Whether whitespace-only pairs are folded into one row.
+    pub ignore_ws: bool,
+}
+
+impl Shape {
+    /// The shape a pane of this layout and whitespace setting is in.
+    #[must_use]
+    pub const fn of(layout: Layout, ignore_ws: bool) -> Shape {
+        Shape { layout, ignore_ws }
+    }
+
+    /// Which row-count table this shape reads — [`slot`], spelled as a method.
+    #[must_use]
+    pub const fn slot(self) -> usize {
+        slot(self.layout, self.ignore_ws)
+    }
+
+    /// The words the strip and the footer print.
+    #[must_use]
+    pub fn name(self) -> String {
+        match (self.layout, self.ignore_ws) {
+            (Layout::Unified, false) => "unified".to_owned(),
+            (Layout::Unified, true) => "unified · ws-ignored".to_owned(),
+            (Layout::Split, false) => "split".to_owned(),
+            (Layout::Split, true) => "split · ws-ignored".to_owned(),
+        }
+    }
+}
+
 /// The pane's two shapes.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Layout {
     /// One column, `+`/`-` under each other. The default, and the only one under ~100 columns.
     #[default]

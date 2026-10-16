@@ -77,6 +77,15 @@ pub enum WorkerMsg {
         /// One line to print, if it has anything to say.
         note: String,
     },
+    /// The task has nothing left to do — a worker's queue ran dry.
+    ///
+    /// Different from [`WorkerMsg::Finished`] on purpose: a decode burst ending is not a job
+    /// completing, and the progress line should disappear rather than be replaced by "done" and sit
+    /// there until the next one.
+    Quiet {
+        /// The task that went quiet.
+        task: &'static str,
+    },
     /// The task panicked. The loop survives: a dead worker is a stated partial, not a dead
     /// terminal — this is the path ADR-006 §8.1's "a panic in a worker never leaves the terminal
     /// in alt-screen" is about, and [`spawn_worker`] is what produces it.

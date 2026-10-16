@@ -27,6 +27,7 @@ pub mod event;
 pub mod frame;
 pub mod keymap;
 pub mod layout;
+pub mod materialize;
 pub mod render;
 pub mod style;
 pub mod terminal;

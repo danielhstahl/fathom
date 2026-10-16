@@ -24,6 +24,7 @@ mod doc;
 mod handoff;
 mod highlight;
 mod lines;
+mod materialize;
 mod model;
 mod plan;
 mod scan;
@@ -35,19 +36,22 @@ mod word;
 // re-exports what it wants the shell to see). Tests and `fathom-cli` build against these names, so a
 // rename inside the subsystem is not a rename outside it.
 pub use budget::Budget;
-pub use doc::{Doc, Request, height_of};
+pub use doc::{Doc, Hunks, Live, Plan, Request, build_from, decode, height_of};
 pub use handoff::{Command, Copy, Editor, Env, Handoff, Os, copy_plan, editor_plan};
+pub use materialize::{FromCache, Key, Materializer, Warm};
 pub use model::{
-    FileEntry, FileKind, Hunk as HunkRecord, Layout, Row, SPLIT_MIN_COLS, Side, Sign, slot,
+    FileEntry, FileKind, Hunk as HunkRecord, Layout, Row, SPLIT_MIN_COLS, Shape, Side, Sign, slot,
 };
+pub use scan::Scan;
 pub use source::{BytesSource, NoSource, PatchReader, PatchSource, Unavailable};
+pub use tree::{Group, Target as TreeTarget, Tree, TreeRow, TreeShape};
 
+use std::cell::RefCell;
 use std::fmt;
+use std::sync::Arc;
 
+use crate::event::Bus;
 use crate::style::{Face, StyledLine};
-
-use scan::Scan;
-use tree::Tree;
 
 /// Which way `[`/`]` move.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,10 +67,18 @@ pub enum Hunk {
 pub struct DiffView {
     /// The ceilings.
     pub budget: Budget,
-    /// Where the bytes come from, once there is a scope to ask about.
-    source: Option<Box<dyn PatchSource>>,
-    /// The index built from them.
-    index: Option<Scan>,
+    /// The decode engine: the bounded cache, the bounded queue, the sources, and the workers if
+    /// anyone started any (`e1.8`).
+    materializer: Materializer,
+    /// The origin of the patch on screen — the name its source gave, which is also its cache lane.
+    origin: Option<String>,
+    /// The index built from it. An `Arc` so a tree row can point into it without a borrow.
+    index: Option<Arc<Scan>>,
+    /// Which load the index came from, so the tree cache can tell a re-scan from a repeat.
+    scan_id: u64,
+    /// The tree's structure, cached per `(load, noise)`: the O(files) pass happens once, not once per
+    /// pane per frame (`e1.8`).
+    tree_cache: RefCell<Option<(u64, bool, Arc<TreeShape>)>>,
     /// Why there is no index, in the source's own words.
     pub unavailable: Option<String>,
     /// Unified or split.
@@ -100,8 +112,11 @@ impl Default for DiffView {
     fn default() -> Self {
         DiffView {
             budget: Budget::DEFAULT,
-            source: None,
+            materializer: Materializer::new(Budget::DEFAULT),
+            origin: None,
             index: None,
+            scan_id: 0,
+            tree_cache: RefCell::new(None),
             unavailable: None,
             layout: Layout::Unified,
             ignore_ws: false,
@@ -120,10 +135,7 @@ impl Default for DiffView {
 impl fmt::Debug for DiffView {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DiffView")
-            .field(
-                "source",
-                &self.source.as_ref().map(|source| source.origin()),
-            )
+            .field("origin", &self.origin)
             .field(
                 "files",
                 &self.index.as_ref().map_or(0, |scan| scan.files.len()),
@@ -133,6 +145,7 @@ impl fmt::Debug for DiffView {
             .field("word_diff", &self.word_diff)
             .field("show_noise", &self.show_noise)
             .field("file", &self.file)
+            .field("decode", &self.materializer.stats())
             .finish()
     }
 }
@@ -152,19 +165,83 @@ impl DiffView {
     #[must_use]
     pub fn with_budget(budget: Budget) -> Self {
         DiffView {
+            materializer: Materializer::new(budget),
             budget,
             ..DiffView::new()
         }
     }
 
+    /// The decode engine, for a caller that wants its counters or wants to drive it by hand.
+    #[must_use]
+    pub fn materializer(&self) -> &Materializer {
+        &self.materializer
+    }
+
+    /// Start the decode workers and switch the hunks pane to the threaded policy: from here a cache
+    /// miss is a stated placeholder, not a read on the UI thread.
+    pub fn spawn_workers(&self, bus: Arc<Bus>) {
+        self.materializer.spawn(bus, 2);
+    }
+
+    /// Serve hunks from the decode cache without starting workers: the queue is this thread's to
+    /// drain, which is how a test inspects the frames a background decode makes on its way to being
+    /// an answer.
+    pub fn serve_from_cache(&self) {
+        self.materializer.serve_from_cache();
+    }
+
+    /// Run the next queued decode on this thread — the deterministic path a test drives instead of
+    /// starting workers.
+    #[must_use]
+    pub fn run_one_decode(&self) -> bool {
+        self.materializer.run_one()
+    }
+
+    /// Run every queued decode on this thread.
+    pub fn drain_decodes(&self) -> usize {
+        self.materializer.drain()
+    }
+
+    /// Offer a neighbour episode — the next or the previous one — to warm in the background: its patch
+    /// is scanned and its first hunks decoded before the reviewer moves to it.
+    ///
+    /// The caller owns the bytes; this only says where they are. A refusal comes back as
+    /// [`Unavailable`] so the shell can print it, because "the next episode's diff is not local" is a
+    /// fact about the next episode and not about this pane.
+    pub fn prewarm(&self, slot: &str, source: Box<dyn PatchSource>) -> Result<String, Unavailable> {
+        self.materializer.prewarm(slot, source, None)
+    }
+
+    /// What a warm-up has to say about one origin, if it was ever offered one.
+    #[must_use]
+    pub fn warm_words(&self, origin: &str) -> Option<String> {
+        self.materializer.warm_words(origin)
+    }
+
     /// Take a source and build the index. The scan is a pass over the bytes and nothing else: no line
     /// text is kept.
+    ///
+    /// When this source was offered as a neighbour a moment earlier, the warm-up's index is adopted
+    /// rather than rebuilt and its decoded hunks are kept — that is the whole reason pre-warming is
+    /// worth a thread.
     pub fn load(&mut self, source: Box<dyn PatchSource>) -> Result<(), Unavailable> {
-        let origin = source.origin();
-        let mut reader = source.open()?;
-        let scan = scan::scan(&origin, reader.as_mut(), &self.budget);
-        self.index = Some(scan);
-        self.source = Some(source);
+        self.materializer.set_budget(self.budget);
+        let adopting = self.materializer.claim_prewarm(&source.origin());
+        let origin = if adopting {
+            self.materializer.adopt(source)?
+        } else {
+            self.materializer.install(source)?
+        };
+        let scan = match self.materializer.take_warm(&origin) {
+            Some(scan) => scan,
+            None => {
+                let mut reader = self.materializer.open(&origin)?;
+                scan::scan(&origin, reader.as_mut(), &self.budget)
+            }
+        };
+        self.index = Some(Arc::new(scan));
+        self.scan_id += 1;
+        self.origin = Some(origin);
         self.file = None;
         self.hunk = None;
         self.unavailable = None;
@@ -175,8 +252,11 @@ impl DiffView {
     ///
     /// A failure here leaves nothing loaded: the source that failed is gone with the error, and the
     /// pane prints the reason rather than a stale index pretending to be current.
+    ///
+    /// Every decoded hunk for these bytes is dropped first: a reload says the bytes moved, and an
+    /// offset into the old bytes is the one thing a viewer must not draw.
     pub fn reload(&mut self) -> Result<(), Unavailable> {
-        let Some(source) = self.source.take() else {
+        let Some(origin) = self.origin.clone() else {
             return Err(Unavailable::new(
                 "no patch is loaded, so there is nothing to reload",
             ));
@@ -187,7 +267,12 @@ impl DiffView {
             .file
             .and_then(|index| self.file_at(index))
             .map(|entry| entry.path.clone());
-        self.load(source)?;
+        self.materializer.invalidate(&origin);
+        let mut reader = self.materializer.open(&origin)?;
+        self.index = Some(Arc::new(scan::scan(&origin, reader.as_mut(), &self.budget)));
+        self.scan_id += 1;
+        self.hunk = None;
+        self.unavailable = None;
         if let Some(path) = was
             && let Some(index) = self
                 .index
@@ -202,7 +287,8 @@ impl DiffView {
     /// Forget everything, with the reason a pane should print.
     pub fn clear(&mut self, why: impl Into<String>) {
         self.index = None;
-        self.source = None;
+        self.scan_id += 1;
+        self.origin = None;
         self.file = None;
         self.hunk = None;
         self.unavailable = Some(why.into());
@@ -217,13 +303,19 @@ impl DiffView {
     /// The index, if there is one.
     #[must_use]
     pub fn index(&self) -> Option<&Scan> {
+        self.index.as_deref()
+    }
+
+    /// The index as a shared handle, for a tree that wants to point into it.
+    #[must_use]
+    pub fn index_shared(&self) -> Option<&Arc<Scan>> {
         self.index.as_ref()
     }
 
     /// Where the bytes came from.
     #[must_use]
     pub fn origin(&self) -> Option<&str> {
-        self.index.as_ref().map(|scan| scan.origin.as_str())
+        self.origin.as_deref()
     }
 
     /// One file's index entry.
@@ -242,11 +334,9 @@ impl DiffView {
         }
         // The first *tree* row that names a file, not the first file in patch order: the cursor and
         // the pane have to be looking at the same file, and the tree reorders by taxonomy.
-        let tree = self.tree();
-        let first = tree.rows.iter().find_map(|row| match row.target {
-            tree::Target::File(file) => Some(file),
-            _ => None,
-        });
+        // The first *tree* row that names a file, not the first file in patch order: the cursor and
+        // the pane have to be looking at the same file, and the tree reorders by taxonomy.
+        let first = self.tree().current(0);
         self.file = first;
         first
     }
@@ -277,8 +367,7 @@ impl DiffView {
     /// Which file the tree row `selection` names, if it names one.
     #[must_use]
     pub fn file_at_row(&self, selection: usize) -> Option<usize> {
-        let index = self.index.as_ref()?;
-        self.tree().current_at(index, selection)
+        self.tree().current(selection)
     }
 
     /// The row of the tree that names the file the pane is showing, if any.
@@ -324,42 +413,94 @@ impl DiffView {
     }
 
     /// The tree at its natural width: every row whole, nothing padded.
+    ///
+    /// Cheap by construction: the structure is cached per `(load, noise)` and a tree is two `Arc`
+    /// clones, so the strip, the clamp and the pane can each ask without one more O(files) pass.
     #[must_use]
     pub fn tree(&self) -> Tree {
+        self.tree_at(0)
+    }
+
+    /// The tree padded to `width`. Width does not change the structure — the tree clips a row, it
+    /// never wraps one — so every width shares one cached shape. Zero is the "do not pad" width; see
+    /// [`crate::style::StyledLine::padded`].
+    #[must_use]
+    pub fn tree_at(&self, width: usize) -> Tree {
         let Some(index) = &self.index else {
             return Tree::default();
         };
-        // Width does not change the structure — the tree clips a row, it never wraps one — so one
-        // unpadded build serves every piece of arithmetic that only needs the shape. Zero is the
-        // "do not pad" width; see [`crate::style::StyledLine::padded`].
-        Tree::build(index, self.show_noise, 0)
+        Tree::from_shape(self.tree_shape(), Arc::clone(index), width)
+    }
+
+    /// The tree's structure: built once per `(load, noise)` pair and shared after that. This is the
+    /// one place the tree is O(files), and `e1.8` is what made it the only one.
+    #[must_use]
+    pub fn tree_shape(&self) -> Arc<TreeShape> {
+        let id = self.scan_id;
+        let noise = self.show_noise;
+        if let Some((cached_id, cached_noise, shape)) = self.tree_cache.borrow().as_ref()
+            && *cached_id == id
+            && *cached_noise == noise
+        {
+            return Arc::clone(shape);
+        }
+        let shape = Arc::new(match &self.index {
+            Some(scan) => TreeShape::build(scan, noise),
+            None => TreeShape::empty(),
+        });
+        *self.tree_cache.borrow_mut() = Some((id, noise, Arc::clone(&shape)));
+        shape
     }
 
     /// Build the hunk pane's window.
+    ///
+    /// Two policies, one function. With a worker running ([`DiffView::spawn_workers`]) the window is
+    /// drawn from the decode cache and whatever is missing is queued at `Visible` priority and drawn
+    /// as a stated placeholder — the frame never waits on a read. Without one (a `--plain` run, a
+    /// golden test, any host that started no threads) the same window is decoded inline, which is
+    /// what `e1.7` did and what keeps the two paths producing the same rows.
     #[must_use]
     pub fn build(&self, file: usize, request: &Request) -> doc::Doc {
         let Some(entry) = self.file_at(file) else {
             return doc::Doc::stated(request.width, request.height, &["no such file".to_owned()]);
         };
         let entry = entry.clone();
-        let Some(source) = self.source.as_ref() else {
+        let Some(origin) = self.origin.clone() else {
             return doc::Doc::stated(
                 request.width,
                 request.height,
                 &["no patch source is attached".to_owned()],
             );
         };
-        let mut reader = match source.open() {
-            Ok(reader) => reader,
-            Err(why) => {
-                return doc::Doc::stated(
-                    request.width,
-                    request.height,
-                    &[format!("`{}`: {why}", source.origin())],
-                );
-            }
-        };
-        doc::build(&entry, reader.as_mut(), request, &self.budget)
+        self.materializer.set_budget(self.budget);
+        if self.materializer.is_threaded() {
+            let shape = Shape::of(request.layout, request.ignore_ws);
+            let window = doc::window_hunks(&entry, request);
+            self.materializer
+                .request(&origin, &entry, shape, window, self.budget.prefetch_hunks);
+            let mut cached = FromCache::new(&self.materializer, &entry, &origin, shape);
+            doc::build_from(&entry, request, &self.budget, &mut cached)
+        } else {
+            let mut reader = match self.materializer.open(&origin) {
+                Ok(reader) => reader,
+                Err(why) => {
+                    return doc::Doc::stated(
+                        request.width,
+                        request.height,
+                        &[format!("`{origin}`: {why}")],
+                    );
+                }
+            };
+            doc::build(&entry, reader.as_mut(), request, &self.budget)
+        }
+    }
+
+    /// Which hunks the request's viewport intersects — `(first, one past last)`. The queue asks this
+    /// before it submits, so the visible window is what gets served first.
+    #[must_use]
+    pub fn window(&self, file: usize, request: &Request) -> (usize, usize) {
+        self.file_at(file)
+            .map_or((0, 0), |entry| doc::window_hunks(entry, request))
     }
 
     /// Which hunk the pane is looking at, given its scroll: the last one whose header row is at or
@@ -452,16 +593,15 @@ impl DiffView {
     /// The text a `y` on the current row copies: a file path, or a directory for a header row.
     #[must_use]
     pub fn path_text(&self, selection: usize) -> Option<String> {
-        let index = self.index.as_ref()?;
         let tree = self.tree();
-        tree.path_of(index, selection)
+        tree.path_of(selection)
     }
 
     /// The raw text of a hunk — header line and all — which is what `Y` copies. Read through the same
     /// chunked reader as everything else, so copying a huge hunk is not an unbounded allocation.
     pub fn hunk_text(&self, file: usize, hunk: Option<usize>) -> Result<String, String> {
         let entry = self.file_at(file).ok_or("no file is selected")?;
-        let source = self.source.as_ref().ok_or("no patch is loaded")?;
+        let origin = self.origin.clone().ok_or("no patch is loaded")?;
         let index = hunk
             .or(self.hunk)
             .or(if entry.hunks.is_empty() {
@@ -474,8 +614,9 @@ impl DiffView {
             .hunks
             .get(index)
             .ok_or("that hunk is not in this file")?;
-        let mut reader = source
-            .open()
+        let mut reader = self
+            .materializer
+            .open(&origin)
             .map_err(|why| format!("the patch is not readable: {why}"))?;
         let mut out = format!(
             "diff --git a/{path} b/{path}\n{}\n",
@@ -619,7 +760,7 @@ impl DiffView {
         self.show_noise = !self.show_noise;
         let rule = self
             .index
-            .as_ref()
+            .as_deref()
             .and_then(Scan::noise_rule)
             .unwrap_or_else(|| "no noise rule applied to this patch".to_owned());
         if self.show_noise {
@@ -638,7 +779,7 @@ impl DiffView {
                 .clone()
                 .unwrap_or_else(|| "no patch is loaded".to_owned());
         };
-        let tree = Tree::build(index, self.show_noise, 0);
+        let tree = self.tree();
         let path = tree
             .current(selection)
             .and_then(|file| self.file_at(file))
@@ -680,9 +821,7 @@ impl DiffView {
     /// width — which is what lets a selection be clamped without drawing anything.
     #[must_use]
     pub fn tree_len(&self) -> usize {
-        self.index
-            .as_ref()
-            .map_or(0, |index| Tree::build(index, self.show_noise, 0).rows.len())
+        self.index.as_ref().map_or(0, |_| self.tree().len())
     }
 
     /// The rows of the tree pane, already clipped to `width`.
@@ -708,7 +847,7 @@ impl DiffView {
             });
             return vec![StyledLine::with_face(said, Face::Warning).padded(width)];
         }
-        let Some(index) = &self.index else {
+        if self.index.is_none() {
             return empty_state(
                 self.unavailable
                     .as_deref()
@@ -718,11 +857,39 @@ impl DiffView {
             .map(|line| StyledLine::with_face(line, Face::Muted).padded(width))
             .collect();
         };
-        Tree::build(index, self.show_noise, width)
-            .rows
-            .iter()
+        self.tree_at(width)
+            .rows()
+            .into_iter()
             .map(|row| row.line.padded(width))
             .collect()
+    }
+
+    /// The rows of the tree pane for the window `scroll..scroll + height`, already clipped to
+    /// `width`, padded to `height`.
+    ///
+    /// This is the virtualised path: a pane 24 rows tall over 5 000 files draws 24 rows and nothing
+    /// else, which is the same claim `e1.8` makes about hunks applied to a list.
+    #[must_use]
+    pub fn tree_window(&self, scroll: usize, height: usize, width: usize) -> Vec<StyledLine> {
+        let width = width.clamp(12, 4096);
+        if self
+            .index
+            .as_ref()
+            .is_some_and(|scan| scan.files.is_empty())
+        {
+            return vec![];
+        }
+        let tree = self.tree_at(width);
+        let start = scroll.min(tree.len());
+        let mut out: Vec<StyledLine> = tree
+            .window(start..start.saturating_add(height))
+            .into_iter()
+            .map(|row| row.line.padded(width))
+            .collect();
+        while out.len() < height {
+            out.push(StyledLine::plain("").padded(width));
+        }
+        out
     }
 }
 
