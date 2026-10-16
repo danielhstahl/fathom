@@ -43,9 +43,17 @@ fn a_frame_is_a_value_so_a_test_can_hold_two_of_them() {
 }
 
 #[test]
-fn the_shell_refuses_by_name_and_ticket() {
-    let err = fathom_tui::frame::run(FIXED_TIMESTAMP)
-        .err()
-        .unwrap_or_else(|| panic!("the scaffolded shell must refuse rather than pretend to draw"));
-    assert!(err.to_string().contains("e1.5"), "{err}");
+fn a_plain_frame_is_text_and_nothing_else() {
+    // `--plain` is the same renderer with no terminal: the shell's own advice in the refusal panel
+    // promises "text for pipes", so this is the promise kept (ADR-006 §6.7).
+    let options = fathom_tui::frame::Options::default();
+    let lines = fathom_tui::frame::render_plain(&options);
+    assert!(
+        !lines.iter().any(|line| line.contains('\x1b')),
+        "a plain frame may not contain an escape sequence: {lines:?}"
+    );
+    assert!(
+        lines.iter().any(|line| line.contains("epoch unknown")),
+        "unknown is a value, not a blank (ADR-001 §7.7): {lines:?}"
+    );
 }

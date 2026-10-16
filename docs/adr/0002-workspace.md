@@ -186,7 +186,7 @@ cheapest way to keep them agreeing is to develop on the floor. CI then proves th
 |---|---|---|---|---|---|---|
 | `fathom-cli` | bin | L5 | cli | `fathom-core`, `fathom-store`, `fathom-ingest`, `fathom-analyze`, `fathom-tui`, `fathom-mcp` | `clap`, `clap_complete`, `eyre`, `color-eyre`, `tracing`, `tracing-subscriber`, `serde`, `serde_json`, `toml_edit` | forbidden |
 | `fathom-mcp` | lib | L4 | mcp | `fathom-core`, `fathom-analyze` | `rmcp`, `serde`, `serde_json`, `thiserror`, `tokio` | forbidden |
-| `fathom-tui` | lib | L4 | tui-shell / tui-views | `fathom-core`, `fathom-analyze` | `ratatui`, `crossterm`, `unicode-width`, `unicode-segmentation`, `thiserror`, `serde`, `serde_json` | forbidden |
+| `fathom-tui` | lib | L4 | tui-shell / tui-views | `fathom-core`, `fathom-analyze` | `ratatui`, `crossterm`, `unicode-width`, `unicode-segmentation`, `thiserror`, `serde`, `serde_json`, `signal-hook` | forbidden |
 | `fathom-analyze` | lib | L3 | analyze-change / analyze-arch / analyze-agents / analyze-insight | `fathom-core`, `fathom-store`, `fathom-ingest` | `serde`, `serde_json`, `thiserror`, `regex`, `similar`, `toml_edit`, `globset`, `rayon`, `smallvec` | forbidden |
 | `fathom-fixtures` | dev | L3 | fixtures | `fathom-core`, `fathom-store`, `fathom-ingest` | `gix`, `serde`, `serde_json` | forbidden |
 | `fathom-ingest` | lib | L2 | ingest-git | `fathom-core`, `fathom-store` | `gix`, `filetime`, `serde`, `serde_json`, `sha2`, `thiserror`, `rayon` | forbidden |

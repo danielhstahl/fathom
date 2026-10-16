@@ -20,5 +20,12 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod app;
 pub mod error;
+pub mod event;
 pub mod frame;
+pub mod keymap;
+pub mod layout;
+pub mod render;
+pub mod terminal;
+pub mod views;

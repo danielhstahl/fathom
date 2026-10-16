@@ -285,7 +285,7 @@ CRATES: tuple[Crate, ...] = (
                 "library, not a binary, so `fathom-cli` owns the process and the exit code.",
         allows=("fathom-core", "fathom-analyze"),
         default_deps=("ratatui", "crossterm", "unicode-width", "unicode-segmentation", "thiserror",
-                      "serde", "serde_json"),
+                      "serde", "serde_json", "signal-hook"),
         features=(
             Feature("graph-layout", "force-directed layout for the architecture map (`petgraph`).",
                     heavy=True, deps=("petgraph",), ticket="e3.4"),

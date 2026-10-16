@@ -18,6 +18,13 @@ pub enum Error {
         why: String,
     },
 
+    /// The screen itself refused: raw mode could not be taken, or a frame could not be written.
+    #[error("the terminal refused: {why}")]
+    Terminal {
+        /// The refusal, as the OS or the backend phrased it.
+        why: String,
+    },
+
     /// A published contract this build does not implement yet.
     #[error("{what} is not implemented yet (owned by {ticket})")]
     NotImplemented {
@@ -32,6 +39,7 @@ impl Diagnosable for Error {
     fn code(&self) -> ErrorCode {
         match self {
             Error::FacadeUnavailable { .. } => ErrorCode::Unknown,
+            Error::Terminal { .. } => ErrorCode::Unknown,
             Error::NotImplemented { .. } => ErrorCode::NotImplemented,
         }
     }
@@ -42,6 +50,9 @@ impl Diagnosable for Error {
                 Some("run `fathom doctor` to see what is compiled in")
             }
             Error::NotImplemented { ticket, .. } => Some(*ticket),
+            Error::Terminal { .. } => {
+                Some("`fathom --plain` renders the same frame as text with no terminal at all")
+            }
         }
     }
 }

@@ -86,6 +86,11 @@ jobs:
         # is three chances for the help overlay to lie, so CI diffs the document against the
         # tables it is generated from — the same contract as e0.8's config reference above.
         run: PYTHONPATH=src python3 -m recommender.tui doc --check
+      - name: "e1.5 TUI: the Rust shell's parity tables are the Python ones, generated"
+        # `crates/fathom-tui/tests/tables/mod.rs` is generated from `src/recommender/tui/`, because
+        # a Rust copy of the keymap that was hand-copied is a second source of truth with a
+        # different opinion. Same argument, same shape of step as the two above (ADR-006 §0).
+        run: python3 tools/tui_tables.py check
       - name: "e0.6 ADR-006: measured key delivery on a real pty (the impossible-chord list)"
         # §8.1's table is measured, not remembered. This is the step that keeps it measured:
         # it prints the same KEYPROBE lines the ADR cites, on a real terminal, in CI.

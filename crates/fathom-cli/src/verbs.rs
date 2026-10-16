@@ -22,9 +22,26 @@ use fathom_core::exit::ExitCode;
     propagate_version = true
 )]
 pub struct Cli {
+    /// Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7).
+    ///
+    /// Chosen automatically when stdout is not a terminal, so a redirected run degrades by itself.
+    #[arg(long, global = true)]
+    pub plain: bool,
+    /// Draw in place instead of taking the alternate screen, which keeps the shell's scrollback.
+    #[arg(long = "no-alt-screen", global = true)]
+    pub no_alt_screen: bool,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
+}
+
+/// The flags that are not a verb: how the process is to meet the terminal (ADR-006 §6.7).
+#[derive(Debug, Clone, Copy)]
+pub struct Globals {
+    /// Render the frame as text and write nothing else.
+    pub plain: bool,
+    /// Draw inline rather than in the alternate screen.
+    pub no_alt_screen: bool,
 }
 
 /// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;
@@ -47,6 +64,8 @@ pub enum Verb {
     Mcp(McpArgs),
     /// Watch the repository and index as it changes
     Watch(WatchArgs),
+    /// Print the terminal UI's keymap, or open the UI itself
+    Tui(TuiArgs),
 }
 
 /// `fathom index`
@@ -213,15 +232,23 @@ pub enum McpAction {
     Serve,
 }
 
+/// `fathom tui`
+#[derive(Args, Debug)]
+pub struct TuiArgs {
+    /// Print the merged keymap — defaults plus your `keys.overrides` — and exit, taking no terminal.
+    #[arg(long)]
+    pub show_keys: bool,
+}
+
 /// Run one verb. The return type is the process contract, not a `Result` a caller forgets to check.
 ///
 /// # Errors
 ///
 /// [`Pending`], or anything a verb chose to raise, when the verb cannot be completed; `main` maps that to
 /// an exit code at the edge, which is the only place the two are joined.
-pub fn dispatch(verb: Option<&Verb>) -> eyre::Result<ExitCode> {
+pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode> {
     match verb {
-        None => open_terminal(),
+        None => open_terminal(globals),
         Some(Verb::Index(args)) => index(args),
         Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
         Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
@@ -232,18 +259,40 @@ pub fn dispatch(verb: Option<&Verb>) -> eyre::Result<ExitCode> {
         Some(Verb::Export(args)) => export(args),
         Some(Verb::Mcp(args)) => mcp(args),
         Some(Verb::Watch(args)) => watch(args),
+        Some(Verb::Tui(args)) => tui(args, globals),
     }
 }
 
-fn open_terminal() -> eyre::Result<ExitCode> {
-    if !cfg!(feature = "tui") {
-        return Err(feature_absent("running with no verb", "tui"));
+/// `fathom tui --show-keys`: the merged keymap as text, no terminal taken.
+///
+/// The overlay inside the shell prints this table; the flag prints it where the shell cannot run —
+/// a pipe, CI, a screen reader — which is what makes "your override changed the table" checkable
+/// without a pty (§8.3, and ADR-006 §7.3's cheatsheet).
+#[cfg(feature = "tui")]
+fn tui(args: &TuiArgs, globals: &Globals) -> eyre::Result<ExitCode> {
+    if args.show_keys {
+        return crate::tui::show_keys();
     }
-    Err(pending(
-        ExitCode::Error,
-        "the terminal UI is compiled in but the shell is not implemented yet",
-        Some("owned by e1.5 (reco-v6t); `fathom --help` lists what works today".to_owned()),
-    ))
+    crate::tui::dispatch(globals)
+}
+
+#[cfg(not(feature = "tui"))]
+fn tui(_args: &TuiArgs, _globals: &Globals) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom tui", "tui"))
+}
+
+fn open_terminal(globals: &Globals) -> eyre::Result<ExitCode> {
+    // The compile-time answer first, because a binary built `--no-default-features` does not contain
+    // the shell at all; the runtime answer (no tty, `--plain`) is `tui`'s to make.
+    #[cfg(feature = "tui")]
+    {
+        crate::tui::dispatch(globals)
+    }
+    #[cfg(not(feature = "tui"))]
+    {
+        let _ = globals;
+        Err(feature_absent("running with no verb", "tui"))
+    }
 }
 
 /// `fathom index`: the whole of ADR-004 §6 behind one verb.
@@ -776,7 +825,11 @@ pub(crate) fn failed(err: impl Diagnosable + std::fmt::Display) -> eyre::Report 
     .into()
 }
 
-fn pending(code: ExitCode, message: impl Into<String>, hint: Option<String>) -> eyre::Report {
+pub(crate) fn pending(
+    code: ExitCode,
+    message: impl Into<String>,
+    hint: Option<String>,
+) -> eyre::Report {
     Pending::new(code, message, hint).into()
 }
 

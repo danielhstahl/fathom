@@ -1,27 +1,48 @@
-//! The frame contract: what a view is handed, and therefore what a view can depend on.
+//! The frame contract and the application loop (`e1.5`).
 //!
-//! A view that reads the terminal size or the clock itself is a view that cannot be tested without a
-//! terminal and a timezone. Both arrive as arguments instead, which is what buys the headless render
-//! `e5.5` needs and the golden file that stays golden.
+//! Two things live here: [`FrameContext`], the narrow thing a view is handed so it can be tested
+//! without a terminal, and [`run`], the loop that owns one.
+//!
+//! The loop is **tickless** (ADR-006 §0.1): it blocks until something happens, drains everything
+//! that arrived, applies all of it, and draws once. A key held down therefore costs one frame per
+//! coalesced batch instead of one per keystroke, and an idle Fathom beside somebody else's shell
+//! costs nothing at all. The only timed wake-ups are the [`crate::terminal::SIGNAL_POLL`] check
+//! that notices `<C-c>` and the [`crate::keymap::CHORD_TIMEOUT`] that decides a half-typed `g` was
+//! meant as the graph view.
+//!
+//! The loop is written against [`FrameSink`] rather than at a terminal, so the same code runs the
+//! real screen and a `Vec<Vec<String>>` in a test — which is what makes the 80×24 / 100×30 / 200×60
+//! smoke criteria ordinary tests instead of a manual ritual.
 
+use std::io::Write;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use ratatui::backend::{Backend, CrosstermBackend};
+use ratatui::{Terminal, TerminalOptions, Viewport};
+
+use crate::app::{App, Model};
 use crate::error::Error;
-use fathom_analyze::insight::{self, PageWindow};
+use crate::event::{Bus, FrameScheduler, Message, Received, WorkerMsg, spawn_input_reader};
+use crate::keymap::{Keymap, Override};
+use crate::terminal::{Guard, Signals, TerminalRestore};
+use crate::views::ViewId;
 use fathom_core::time::Timestamp;
 
-/// The size a headless test renders at (ADR-002 §3, `e5.5`): the smallest terminal fathom promises a
-/// layout for, so a passing golden file is the narrow case, not the comfortable one.
+/// The size a headless test renders at (ADR-002 §3, `e5.5`): the smallest terminal fathom promises
+/// a layout for, so a passing golden file is the narrow case, not the comfortable one.
 pub const HEADLESS_SIZE: (u16, u16) = (80, 24);
 
 /// Everything a frame may depend on.
 ///
-/// Deliberately: a size, an instant and the page the façade agreed to. Not a store, not a terminal, not
-/// "now".
+/// Deliberately: a size, an instant and the page the façade agreed to. Not a store, not a terminal,
+/// not "now".
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrameContext {
     width: u16,
     height: u16,
     now: Timestamp,
-    page: PageWindow,
+    page: fathom_analyze::insight::PageWindow,
 }
 
 impl FrameContext {
@@ -39,7 +60,7 @@ impl FrameContext {
             width,
             height,
             now,
-            page: insight::PageWindow::new(None, page_limit),
+            page: fathom_analyze::insight::PageWindow::new(None, page_limit),
         }
     }
 
@@ -63,29 +84,412 @@ impl FrameContext {
 
     /// The page the façade will answer with, already clamped.
     #[must_use]
-    pub const fn page(&self) -> PageWindow {
+    pub const fn page(&self) -> fathom_analyze::insight::PageWindow {
         self.page
     }
 
     /// Cells in the frame — the budget a view is not allowed to exceed (ADR-004 §7.3).
     #[must_use]
-    pub const fn cells(&self) -> usize {
-        self.width as usize * self.height as usize
+    pub fn cells(&self) -> usize {
+        usize::from(self.width) * usize::from(self.height)
     }
 }
 
-/// Run the application until it exits.
+/// What the process was told about how to draw.
+#[derive(Debug, Clone)]
+pub struct Options {
+    /// Take the alternate screen. `--no-alt-screen` draws inline instead, which keeps the shell's
+    /// scrollback and is the mode that cannot strand a screen on a platform without signal hooks.
+    pub alt_screen: bool,
+    /// `keys.overrides` from the repository and user config, already parsed (`fathom-cli`'s job,
+    /// ADR-002 §4.5).
+    pub overrides: Vec<Override>,
+    /// What the tab bar prints on the right: `fathom/pilot · main`, or why it does not know.
+    pub repo_label: String,
+    /// A forced size, for a scripted or piped run; `None` asks the terminal.
+    pub size: Option<(u16, u16)>,
+    /// Stop after this many frames — how a scripted session, a benchmark and the smoke tests run
+    /// the same loop the user does.
+    pub max_frames: Option<u64>,
+    /// Lines the caller wants kept visible (keymap conflicts, unavailable signal hooks).
+    pub notices: Vec<String>,
+    /// The instant the run is drawn for, passed in: only `fathom-cli` reads the clock
+    /// (ADR-002 §4.4).
+    pub now: Timestamp,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            alt_screen: true,
+            overrides: Vec::new(),
+            repo_label: "no repository".to_owned(),
+            size: None,
+            max_frames: None,
+            notices: Vec::new(),
+            now: Timestamp::UNIX_EPOCH,
+        }
+    }
+}
+
+/// How the loop ended.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoopEnd {
+    /// `app.quit` — `<C-c>`, or the palette running it.
+    Quit,
+    /// Every producer on the bus was gone, so nothing more could happen.
+    Disconnected,
+    /// The scripted frame limit was reached.
+    FrameLimit,
+    /// A signal arrived, and the screen was put back on the way out.
+    Signalled(&'static str),
+}
+
+/// What a run is worth reporting: the numbers behind the frame-budget criterion.
+#[derive(Debug, Clone)]
+pub struct Report {
+    /// Frames drawn.
+    pub frames: u64,
+    /// Events applied.
+    pub events: u64,
+    /// The 99th-percentile draw time in the measurement window.
+    pub p99: Duration,
+    /// The slowest draw in the window.
+    pub worst: Duration,
+    /// Draws that missed the 16 ms budget.
+    pub over_budget: usize,
+    /// How the loop ended.
+    pub end: LoopEnd,
+}
+
+impl Report {
+    /// A one-line summary for `fathom tui`'s exit and for `--plain`'s footer.
+    #[must_use]
+    pub fn summary(&self) -> String {
+        format!(
+            "frames {} · events {} · p99 {:.2}ms · worst {:.2}ms · over-budget {} · {:?}",
+            self.frames,
+            self.events,
+            f64::from(self.p99.as_micros() as f32) / 1000.0,
+            f64::from(self.worst.as_micros() as f32) / 1000.0,
+            self.over_budget,
+            self.end
+        )
+    }
+}
+
+/// Somewhere to put a frame.
+pub trait FrameSink {
+    /// Draw the app's current frame. The sink owns the size the terminal actually has.
+    ///
+    /// # Errors
+    ///
+    /// Whatever the backend's own failure type was, as [`Error::Terminal`].
+    fn draw(&mut self, app: &mut App) -> Result<(), Error>;
+}
+
+/// A sink that keeps every frame as text — the headless path, and the one the smoke tests use.
+#[derive(Debug, Default)]
+pub struct HeadlessSink {
+    /// The frames drawn, oldest first.
+    pub frames: Vec<Vec<String>>,
+    /// The size to force, or `None` to draw at whatever size the app last had — which is what lets
+    /// a test watch a resize in the middle of a batch take effect.
+    pub size: Option<(u16, u16)>,
+}
+
+impl FrameSink for HeadlessSink {
+    fn draw(&mut self, app: &mut App) -> Result<(), Error> {
+        if let Some((cols, rows)) = self.size {
+            app.resize(cols, rows);
+        }
+        self.frames.push(crate::render::frame_lines(app));
+        Ok(())
+    }
+}
+
+/// A sink that writes to a real (or `TestBackend`) ratatui terminal.
+pub struct TerminalSink<B: Backend> {
+    /// The terminal, owned for the length of the run so the guard and the terminal agree on who
+    /// is allowed to touch the screen.
+    pub terminal: Terminal<B>,
+}
+
+impl<B: Backend> FrameSink for TerminalSink<B> {
+    fn draw(&mut self, app: &mut App) -> Result<(), Error> {
+        if let Ok(size) = self.terminal.size() {
+            app.resize(size.width, size.height);
+        }
+        let lines = crate::render::frame_lines(app);
+        self.terminal
+            .draw(|frame| crate::render::blit(frame.buffer_mut(), &lines))
+            .map_err(|err| Error::Terminal {
+                why: format!("{err}"),
+            })?;
+        Ok(())
+    }
+}
+
+/// The loop, with no opinion about where the frame goes.
 ///
-/// Returns the typed failure until `e1.5` (`reco-v6t`) lands the event loop; the binary's `tui` feature
-/// gates whether this is even compiled in, and `e5.5` adds the non-TTY degradation that turns this
-/// refusal into a useful message instead of a wall of escape codes.
+/// One pass is: block for a message (or the shorter chord wait), drain whatever else already
+/// arrived, apply all of it, then draw once if anything changed. `signals` is the process's
+/// signal flags; a scripted run passes `None`.
+pub fn run_loop(
+    app: &mut App,
+    bus: &Bus,
+    sink: &mut dyn FrameSink,
+    signals: Option<&Signals>,
+    max_frames: Option<u64>,
+) -> Result<Report, Error> {
+    let mut scheduler = std::mem::take(&mut app.scheduler);
+    scheduler.mark_dirty();
+    let end = 'outer: loop {
+        let wait = app
+            .chord_wait(Instant::now())
+            .unwrap_or(crate::terminal::SIGNAL_POLL);
+        let mut batch = match bus.recv_timeout(wait) {
+            Received::Message(message) => vec![message],
+            Received::Disconnected => {
+                break 'outer LoopEnd::Disconnected;
+            }
+            Received::Timeout => Vec::new(),
+        };
+        batch.extend(bus.drain());
+        let arrived = !batch.is_empty();
+        for message in batch {
+            scheduler.note_event();
+            apply(app, message);
+        }
+        if let Some(signals) = signals
+            && let Some(signal) = signals.take()
+        {
+            app.quit = Some(format!("signal {signal:?}"));
+            let end = LoopEnd::Signalled(match signal {
+                crate::terminal::Signal::Interrupt => "SIGINT",
+                crate::terminal::Signal::Terminate => "SIGTERM",
+                crate::terminal::Signal::Hangup => "SIGHUP",
+            });
+            break 'outer end;
+        }
+        let mut flushed = false;
+        if app.chords.is_pending()
+            && app
+                .chord_wait(Instant::now())
+                .is_some_and(|left| left.is_zero())
+        {
+            app.chord_timeout(Instant::now());
+            flushed = true;
+        }
+        if arrived || flushed || app.repaint {
+            app.repaint = false;
+            scheduler.mark_dirty();
+        }
+        if scheduler.is_dirty() {
+            let started = Instant::now();
+            sink.draw(app)?;
+            scheduler.note_draw(started.elapsed());
+            app.age_toast();
+            if let Some(limit) = max_frames
+                && scheduler.draws() >= limit
+            {
+                break 'outer LoopEnd::FrameLimit;
+            }
+        }
+        if app.quit.is_some() {
+            break 'outer LoopEnd::Quit;
+        }
+    };
+    app.scheduler = scheduler;
+    Ok(Report {
+        frames: app.scheduler.draws(),
+        events: app.scheduler.events(),
+        p99: app.scheduler.percentile(99),
+        worst: app.scheduler.worst(),
+        over_budget: app.scheduler.over_budget(),
+        end,
+    })
+}
+
+/// Apply one message to the application state. No drawing here, which is what lets the coalescer
+/// hold several of these before one frame.
+pub fn apply(app: &mut App, message: Message) {
+    match message {
+        Message::Key(key) => {
+            app.feed_key_event(key, Instant::now());
+        }
+        Message::Resize { cols, rows } => {
+            app.resize(cols, rows);
+            // A new size is a new answer from the ladder, so the toast that says so is worth more
+            // than the one it replaces.
+            app.age_toast();
+        }
+        Message::Repaint => {}
+        Message::Signal(signal) => {
+            app.quit = Some(format!("signal {signal:?}"));
+        }
+        Message::Worker(msg) => match msg {
+            WorkerMsg::Progress { task, done, of } => {
+                // The line the reviewer reads in the status row: the same thousands separators
+                // every other number in the frame gets (ADR-001 §7.8), and an honest `unknown %`
+                // when the task cannot say how many there are (ADR-001 §7.7).
+                let counts = match of {
+                    Some(total) => format!(
+                        "{} / {} done",
+                        crate::app::format_thousands(done),
+                        crate::app::format_thousands(total)
+                    ),
+                    None => format!("{} done", crate::app::format_thousands(done)),
+                };
+                let percent = match of {
+                    Some(total) if total > 0 => {
+                        format!("{} %", (done.saturating_mul(100) / total).min(100))
+                    }
+                    _ => "unknown %".to_owned(),
+                };
+                app.model.index.progress = Some(format!("{task} {percent} · {counts}"));
+            }
+            WorkerMsg::Rows {
+                view, pane, lines, ..
+            } => {
+                app.model.unavailable = None;
+                app.model.rows.insert((view, pane), lines);
+            }
+            WorkerMsg::Finished { task, note } => {
+                if note.is_empty() {
+                    app.model.index.progress = None;
+                } else {
+                    app.model.index.progress = Some(format!("{task}: {note}"));
+                }
+            }
+            WorkerMsg::Died { task, why } => {
+                // The stated partial, in the frame: a worker that died is reported, not hidden
+                // (ADR-001 §7.2). The terminal is untouched because the loop never left it.
+                app.model.notes.push(format!("{task} stopped: {why}"));
+                app.toast(format!("{task} stopped: {why}"));
+                app.model.index.progress = None;
+            }
+        },
+    }
+}
+
+/// Take the screen, run the loop, put the screen back.
+///
+/// The order is the whole design: install the panic hook and the signal flags *before* taking the
+/// screen, take the screen behind a [`Guard`], run, and let the [`Guard`]'s `Drop` restore it —
+/// whether the loop ended by `<C-c>`, by a panic, by the pane closing, or by falling off the end.
 ///
 /// # Errors
 ///
-/// [`Error::NotImplemented`] until the shell exists.
-pub fn run(_now: Timestamp) -> Result<(), Error> {
-    Err(Error::NotImplemented {
-        what: "the terminal application",
-        ticket: "e1.5",
-    })
+/// [`Error::Terminal`] when raw mode cannot be taken (no terminal, `--plain` is the answer) or when
+/// the backend refuses a frame.
+pub fn run(options: &Options) -> Result<Report, Error> {
+    let restore = TerminalRestore::stdout_sink();
+    crate::terminal::install_panic_hook(&restore);
+    let (signals, signal_notices) = crate::terminal::install_signal_hooks();
+
+    let keymap = Keymap::merged(&options.overrides);
+    let size = options
+        .size
+        .unwrap_or_else(|| crossterm::terminal::size().unwrap_or(HEADLESS_SIZE));
+    let mut app = App::new(
+        keymap,
+        Model::from_facade(),
+        size,
+        options.repo_label.clone(),
+    );
+    app.notices = options.notices.clone();
+    for notice in &signal_notices {
+        app.notices.push(notice.clone());
+    }
+    for problem in app.keymap.problems() {
+        app.notices.push(problem.clone());
+    }
+
+    // The guard is what puts the screen back; `run` returns only after it has run.
+    let guard = Guard::take(&restore, options.alt_screen).map_err(|why| Error::Terminal { why })?;
+    // The viewport is always `Fullscreen`: `--no-alt-screen` means "do not leave the user's screen
+    // buffer", not "draw in a scrolling region". `Viewport::Inline` is the refinement `e5.5` will
+    // pick when there is a resize contract to go with it.
+    let terminal = Terminal::with_options(
+        CrosstermBackend::new(std::io::stdout()),
+        TerminalOptions {
+            viewport: Viewport::Fullscreen,
+        },
+    )
+    .map_err(|err| Error::Terminal {
+        why: err.to_string(),
+    })?;
+    let _ = hide_cursor();
+    if let Ok(size) = terminal.size() {
+        app.resize(size.width, size.height);
+    }
+    let bus = Bus::new();
+    let reader = spawn_input_reader(Arc::clone(&bus));
+    let mut sink = TerminalSink { terminal };
+    let report = run_loop(
+        &mut app,
+        &bus,
+        &mut sink,
+        Some(&signals),
+        options.max_frames,
+    );
+    // The reader thread is parked in `read()`; it exits with the process, and `Guard` runs before
+    // anything the caller prints, so nothing it might still deliver lands in the user's shell.
+    drop(reader);
+    drop(guard);
+    report
+}
+
+/// Draw one frame as text and hand it back — `--plain`, and every headless caller.
+///
+/// No terminal is taken, no escape sequence is written, and the result is the same lines the
+/// interactive frame draws (ADR-006 §6.7: no terminal is a different contract, not a degraded one).
+#[must_use]
+pub fn render_plain(options: &Options) -> Vec<String> {
+    let keymap = Keymap::merged(&options.overrides);
+    let size = options.size.unwrap_or(HEADLESS_SIZE);
+    let mut app = App::new(
+        keymap,
+        Model::from_facade(),
+        size,
+        options.repo_label.clone(),
+    );
+    app.notices = options.notices.clone();
+    app.view = ViewId::Queue;
+    crate::render::plain_lines(&app)
+}
+
+/// One frame, at a chosen size, as text: the shape the smoke tests and `e5.5`'s screenshots use.
+#[must_use]
+pub fn render_at(options: &Options, view: ViewId, size: (u16, u16)) -> Vec<String> {
+    let keymap = Keymap::merged(&options.overrides);
+    let mut app = App::new(
+        keymap,
+        Model::from_facade(),
+        size,
+        options.repo_label.clone(),
+    );
+    app.set_view(view);
+    crate::render::frame_lines(&app)
+}
+
+/// The frame as text for a ready-made app state (used by the palette/help surface and by tests).
+#[must_use]
+pub fn frame_of(app: &App) -> Vec<String> {
+    crate::render::frame_lines(app)
+}
+
+/// Hide the cursor while the frame owns the screen.
+fn hide_cursor() -> std::io::Result<()> {
+    let mut out = std::io::stdout();
+    write!(out, "\x1b[?25l")?;
+    out.flush()
+}
+
+/// The poll interval the loop would use right now, exposed so a test can assert that the chord wait
+/// is shorter than the signal poll.
+#[must_use]
+pub fn poll_for(pending_chord: Option<Duration>) -> Duration {
+    FrameScheduler::poll_for(pending_chord)
 }

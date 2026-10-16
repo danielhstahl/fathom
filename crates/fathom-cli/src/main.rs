@@ -26,6 +26,10 @@ mod sanitize;
 // index at all.
 mod segment;
 mod state;
+// The terminal shell is the one verb whose crate is optional (ADR-002 §6.2): a `minimal` binary says
+// "compiled out" rather than failing to start, so the module is gated with the feature it needs.
+#[cfg(feature = "tui")]
+mod tui;
 mod verbs;
 #[cfg(feature = "watch")]
 mod watch;
@@ -51,12 +55,16 @@ fn run() -> ExitCode {
     // `USAGE` in ADR-002 §7.3 — the contract is satisfied by not fighting it.
     let matches = command.get_matches();
     let cli = verbs::Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
+    let globals = verbs::Globals {
+        plain: cli.plain,
+        no_alt_screen: cli.no_alt_screen,
+    };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching
     // here rather than exiting inside the hook is what lets every `Drop` guard run (ADR-002 §7.2, and the
     // reason `panic = "abort"` is refused).
     let dispatched = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        verbs::dispatch(cli.verb.as_ref())
+        verbs::dispatch(cli.verb.as_ref(), &globals)
     }));
     match dispatched {
         Ok(Ok(code)) => code,

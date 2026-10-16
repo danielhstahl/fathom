@@ -15,9 +15,10 @@ use fathom_core::exit::ExitCode;
 pub fn install() -> Result<()> {
     color_eyre::install()?;
 
-    // `e1.5` is the first verb that takes the screen, and the guard it installs will do the real work.
-    // Until then this is a no-op with a name, so that the ordering below is already correct: restore,
-    // then report.
+    // The shell installs its own restoring hook when it takes the screen (`fathom_tui::terminal::
+    // install_panic_hook`), chained ahead of this one, so a panic inside the UI restores first and
+    // reports second. What stays here is the ordering: restore, then report — for every verb,
+    // including the ones that never touch the terminal.
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         restore_terminal();
@@ -31,8 +32,12 @@ pub fn install() -> Result<()> {
 /// Called from the panic hook and from `main`'s exit path. Idempotent, allocation-free and error-free by
 /// construction, because a cleanup path that can fail is a second failure on the way out.
 pub fn restore_terminal() {
-    // No screen is owned by any verb yet; `e1.5` (reco-v6t) fills this in with the alternate-buffer and
-    // raw-mode restoration its own `Drop` guard shares.
+    // Nothing to do here, and that is a decision rather than a gap: the verb that takes the screen owns
+    // putting it back, because a restore handle held two places is a restore that can be missed. The
+    // shell (`e1.5`, `reco-v6t`) restores through a `Drop` guard on its own stack frame plus the chained
+    // hook above, so a panic, a `<C-c>`, a `SIGTERM` and an ordinary exit all pass through the same
+    // idempotent code — and this function is the seam that would call it if a verb ever owned a screen
+    // without a stack frame to hang the guard on.
 }
 
 /// The code a panic leaves the process with, spelled once so the hook and `main` cannot disagree.

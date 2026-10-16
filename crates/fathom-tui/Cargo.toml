@@ -14,6 +14,7 @@ workspace = true
 ratatui.workspace = true
 crossterm.workspace = true
 unicode-width.workspace = true
+signal-hook.workspace = true
 unicode-segmentation.workspace = true
 thiserror.workspace = true
 serde.workspace = true

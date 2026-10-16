@@ -438,7 +438,7 @@ SEARCH = View(
     chrome=BORDERLESS_CHROME,
     panes=(
         _p("query", "query", 1, 72, 48, 0, "field",
-           ("(input) free text plus filter tokens author: path: risk> dep:"), "e5.2",
+           ("(input) free text plus filter tokens author: path: risk> dep:",), "e5.2",
            ("/  store epoch   author:agent risk>70▏"), strip=False),
         _p("results", "primary", 2, 46, 30, 18, "list",
            ("episode summaries", "paths", "symbol names", "dependency names",
