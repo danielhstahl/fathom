@@ -1,0 +1,218 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "rebase_rewrite",
+  "purpose": "The same work twice. A branch adds a retry budget, a policy and a doc page and is left where it is; the same three changes are then made again on `main` with different parents and different SHAs, and the original branch is merged anyway — which brings nothing, because `main` already has the bytes. Both lineages are reachable, which is the state a repository is really in after a force-push, and the state a history walk double-counts unless it compares content rather than ids.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 9,
+    "head": "93874db8681972a373a1ca30fd98b1752c7c5e7e",
+    "tips": {
+      "refs/heads/main": "93874db8681972a373a1ca30fd98b1752c7c5e7e",
+      "refs/heads/orig": "e8521b2be61a7760b93de681b8d2b4f5a36cb15e"
+    },
+    "objects_digest": "9a9fc2a632c915e643c13eb943b84b72b2308f5645aeb3a9142945f1c1932806",
+    "worktree_digest": "562b84cc9bc134c7a031f3d1cce305a8faa752c0e9469a7e0dd2e95b1a61f2b0",
+    "events_digest": "54be4f298e6678ff06d64216b4210f56957b618bc3da2bcfd996bd46d9f35612",
+    "digest": "a7e8281385ffecc80d005da3bfabac316aa306c1167c4d69fc6faf4ab050d9c4"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-orig-budget",
+      "commits": [
+        1,
+        2
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "orig",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "orig",
+      "turn": "1",
+      "note": "the branch opens here: the author is the same, the lineage is not"
+    },
+    {
+      "id": "ep-orig-docs",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": "orig",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "orig",
+      "turn": "2",
+      "note": null
+    },
+    {
+      "id": "ep-arch",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "back on main, by a different author; the branch rule fires first"
+    },
+    {
+      "id": "ep-rewrite-budget",
+      "commits": [
+        5,
+        6
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": "main",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rewrite",
+      "turn": "3",
+      "note": "the same two commits, different parents"
+    },
+    {
+      "id": "ep-rewrite-docs",
+      "commits": [
+        7
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": "main",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rewrite",
+      "turn": "4",
+      "note": null
+    },
+    {
+      "id": "ep-merge",
+      "commits": [
+        8
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "the merge of a branch whose content is already present"
+    }
+  ],
+  "notes": [
+    "every episode names its lineage, because a single walk order cannot tile two live histories at once: commits 1-3 are on `orig` and interleave with `main` only in creation order"
+  ],
+  "findings": [
+    {
+      "kind": "duplicate_change",
+      "detector": null,
+      "at": 5,
+      "episode": "ep-rewrite-budget",
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "same subject, same tree content, different parent and SHA: an id comparison misses it, a patch-id comparison finds it"
+    },
+    {
+      "kind": "duplicate_change",
+      "detector": null,
+      "at": 7,
+      "episode": "ep-rewrite-docs",
+      "paths": [
+        "docs/retries.md"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the doc page is the same bytes on both lineages"
+    },
+    {
+      "kind": "rebase_rewrite",
+      "detector": null,
+      "at": 8,
+      "episode": "ep-merge",
+      "paths": [
+        "src/scheduler.rs",
+        "docs/retries.md"
+      ],
+      "pairs": [],
+      "expect": "collapse",
+      "detail": "the merge commit is empty: main already contains everything the branch has"
+    },
+    {
+      "kind": "duplicate_change",
+      "detector": null,
+      "at": 1,
+      "episode": null,
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the rewrite is the duplicate, not the original"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/orig"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 8
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/orig",
+      "commit": 3
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 8,
+      "paths": []
+    },
+    {
+      "kind": "text_contains",
+      "commit": 6,
+      "path": "src/scheduler.rs",
+      "needle": "fn policy"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 3,
+      "path": "docs/retries.md",
+      "needle": "Retries"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 7,
+      "path": "docs/retries.md",
+      "needle": "Retries"
+    }
+  ]
+}

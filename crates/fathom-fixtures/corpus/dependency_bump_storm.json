@@ -1,0 +1,340 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "dependency_bump_storm",
+  "purpose": "Every shape a dependency change arrives in, one per turn: a direct bump, the same bump as a lockfile-only commit, a front-end bump with its transitive pin, a Python pin, a dependency added, a dependency removed, a bot's own bump, a human revert of it, and a lockfile regenerated afterwards. Each is a way for a bump detector to be wrong, and two of them are ways for a source-change detector to be wrong about a commit that touched no source.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 11,
+    "head": "f03a762e6a7780520cd055c835d1848705e67ca9",
+    "tips": {
+      "refs/heads/main": "f03a762e6a7780520cd055c835d1848705e67ca9"
+    },
+    "objects_digest": "2f156c31ddff4d5a1fe72176d26c4ff4fd9fec36c39852e2e0c023c5e588bf32",
+    "worktree_digest": "725f915c2f49084f91de3b50d4206d593ebe352bd5fe3ab2b1855eeae306b8de",
+    "events_digest": "84623fa3556f19ff86efba2d01afdf8041d61dfb8feef8f40f62b52caedae2a8",
+    "digest": "0b5d97b96b7332f0e5ca969753f6dc4fcb219d6ef35f6b7b3813d4f4a6717dbc"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-regex",
+      "commits": [
+        1,
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "deps",
+      "turn": "1",
+      "note": "the manifest and its lockfile, one turn apart"
+    },
+    {
+      "id": "ep-express",
+      "commits": [
+        3,
+        4
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "deps",
+      "turn": "2",
+      "note": "the front end and its lockfile, including the transitive pin"
+    },
+    {
+      "id": "ep-reporter",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "the Python pin, by hand"
+    },
+    {
+      "id": "ep-add-drop",
+      "commits": [
+        6,
+        7
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "deps",
+      "turn": "3",
+      "note": "added and removed, same turn"
+    },
+    {
+      "id": "ep-bot",
+      "commits": [
+        8
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "deps-bot",
+      "kind": "bot",
+      "session": "deps",
+      "turn": "4",
+      "note": "the bot's own turn: agent by evidence, not by declaration"
+    },
+    {
+      "id": "ep-revert",
+      "commits": [
+        9
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "a person undoes the bot's bump"
+    },
+    {
+      "id": "ep-lockfile",
+      "commits": [
+        10
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "deps",
+      "turn": "5",
+      "note": null
+    }
+  ],
+  "notes": [
+    "commit 9 writes the manifest the agent started from at commit 6, which is why thiserror is back: the revert restores the file, it does not invert one line"
+  ],
+  "findings": [
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 1,
+      "episode": "ep-regex",
+      "paths": [
+        "Cargo.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "regex 1.10.6 → 1.11.0 in the manifest"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-regex",
+      "paths": [
+        "Cargo.lock"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the lockfile-only half of the same bump"
+    },
+    {
+      "kind": "source_change",
+      "detector": null,
+      "at": 2,
+      "episode": null,
+      "paths": [
+        "Cargo.lock"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "counting the lockfile as source makes every bump look like a code change"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-express",
+      "paths": [
+        "web/package.json"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "express 4.x → 5.1.0"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 4,
+      "episode": "ep-express",
+      "paths": [
+        "web/package-lock.json"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "express and its transitive body-parser in the lockfile"
+    },
+    {
+      "kind": "source_change",
+      "detector": null,
+      "at": 4,
+      "episode": null,
+      "paths": [
+        "web/package-lock.json"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "neither npm file is source"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 5,
+      "episode": "ep-reporter",
+      "paths": [
+        "services/reporter/requirements.txt"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the reporter's requirements get pinned"
+    },
+    {
+      "kind": "dependency_added",
+      "detector": null,
+      "at": 6,
+      "episode": "ep-add-drop",
+      "paths": [
+        "Cargo.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "quick-xml appears"
+    },
+    {
+      "kind": "dependency_removed",
+      "detector": null,
+      "at": 7,
+      "episode": "ep-add-drop",
+      "paths": [
+        "Cargo.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "thiserror disappears"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 8,
+      "episode": "ep-bot",
+      "paths": [
+        "Cargo.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the bot bumps serde"
+    },
+    {
+      "kind": "dependency_revert",
+      "detector": null,
+      "at": 9,
+      "episode": "ep-revert",
+      "paths": [
+        "Cargo.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "a revert of a bump is a bump; an episode that calls it new work has double-counted the dependency"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 10,
+      "episode": "ep-lockfile",
+      "paths": [
+        "Cargo.lock"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the lockfile regenerated after the revert"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 1,
+      "paths": [
+        "Cargo.toml"
+      ]
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 2,
+      "paths": [
+        "Cargo.lock"
+      ]
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 3,
+      "paths": [
+        "web/package.json"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 1,
+      "path": "Cargo.toml",
+      "needle": "regex = \"1.11.0\""
+    },
+    {
+      "kind": "text_contains",
+      "commit": 6,
+      "path": "Cargo.toml",
+      "needle": "quick-xml"
+    },
+    {
+      "kind": "text_absent",
+      "commit": 7,
+      "path": "Cargo.toml",
+      "needle": "thiserror"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 9,
+      "path": "Cargo.toml",
+      "needle": "thiserror"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 10
+    }
+  ]
+}

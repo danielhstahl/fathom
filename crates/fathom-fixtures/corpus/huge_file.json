@@ -1,0 +1,232 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "huge_file",
+  "purpose": "A vendored API description that is 11 MB of generated JSON, a 600 KB minified bundle, a binary logo blob, one summary fixed by hand in the description, and the description regenerated properly afterwards. Four things: the big file is over `fathom-ingest`'s default 8 MiB in-memory blob cap, the bundle and the blob are files no text pipeline may read, and the hand edit and the regeneration are the pair a generated-file detector has to tell apart. The event log covers the first three commits only.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e6.1"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 6,
+    "head": "ddc0b49f19b03ac0bf72e276b9415565b732d339",
+    "tips": {
+      "refs/heads/main": "ddc0b49f19b03ac0bf72e276b9415565b732d339"
+    },
+    "objects_digest": "b02dad677f19f11724f8b99c4ab85eb70cebdac87eeea94b827c3dd830193b4d",
+    "worktree_digest": "df8ace8826e2463bbfeb9c76b40c59243735508f75b0ace6293bc1611ca85a79",
+    "events_digest": "7e833da15b1e232d2b638d261595da9a43c4a346b772e438de657b020d1560a4",
+    "digest": "73a779a9b6e249077fa683abb6572e57efabfb2931ba431965c42c5eb3a74129"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-description",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "vendor",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-bundle",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "vendor",
+      "turn": "2",
+      "note": null
+    },
+    {
+      "id": "ep-checksums",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "deps-bot",
+      "kind": "bot",
+      "session": "vendor",
+      "turn": "3",
+      "note": null
+    },
+    {
+      "id": "ep-hand-edit",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "vendor",
+      "turn": "4",
+      "note": "one line changed by hand in a generated file"
+    },
+    {
+      "id": "ep-regenerated",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "vendor",
+      "turn": "5",
+      "note": "the generator's own output, identical to commit 1's"
+    }
+  ],
+  "notes": [
+    "the event log covers the first three commits only (`Events::First(3)`): this is where the corpus exercises a stream that stops before the history does, rather than in `ten_k_commits`, where a complete stream would be the largest artifact in CI. ADR-005 §3.6's 4 MiB line ceiling is the reason a single enormous generated file is a harness question at all"
+  ],
+  "findings": [
+    {
+      "kind": "generated_file",
+      "detector": null,
+      "at": 1,
+      "episode": "ep-description",
+      "paths": [
+        "openapi/openapi.json"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the description declares itself generated"
+    },
+    {
+      "kind": "over_blob_memory_cap",
+      "detector": null,
+      "at": 1,
+      "episode": "ep-description",
+      "paths": [
+        "openapi/openapi.json"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "fathom-ingest's Limits::blob_memory_cap default; the diff must be counted and skipped, not read into memory"
+    },
+    {
+      "kind": "binary_path",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-bundle",
+      "paths": [
+        "web/assets/logo.bin"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the logo is not text"
+    },
+    {
+      "kind": "generated_file",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-bundle",
+      "paths": [
+        "web/dist/app.min.js"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the bundle carries an @generated header"
+    },
+    {
+      "kind": "regenerated_file",
+      "detector": null,
+      "at": 4,
+      "episode": null,
+      "paths": [
+        "openapi/openapi.json"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the marker is still there and the bytes are not the generator's: this is the case that separates 'generated' from 'regenerated'"
+    },
+    {
+      "kind": "regenerated_file",
+      "detector": null,
+      "at": 5,
+      "episode": "ep-regenerated",
+      "paths": [
+        "openapi/openapi.json"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "back to the generator's output"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "file_at_least",
+      "commit": 1,
+      "path": "openapi/openapi.json",
+      "bytes": 9000000
+    },
+    {
+      "kind": "file_at_least",
+      "commit": 2,
+      "path": "web/dist/app.min.js",
+      "bytes": 500000
+    },
+    {
+      "kind": "binary_at",
+      "commit": 2,
+      "path": "web/assets/logo.bin"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 1,
+      "path": "openapi/openapi.json",
+      "needle": "x-generated"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 2,
+      "path": "web/dist/app.min.js",
+      "needle": "@generated by esbuild"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 4,
+      "path": "openapi/openapi.json",
+      "needle": "touched by hand in the editor"
+    },
+    {
+      "kind": "text_absent",
+      "commit": 5,
+      "path": "openapi/openapi.json",
+      "needle": "touched by hand in the editor"
+    },
+    {
+      "kind": "event_count",
+      "events": 23
+    }
+  ]
+}

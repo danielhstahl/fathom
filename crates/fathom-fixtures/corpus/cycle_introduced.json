@@ -1,0 +1,194 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "cycle_introduced",
+  "purpose": "A three-layer project (core → store → api) in which two commits each add one import that points the wrong way and closes a cycle, and a third deletes a file another module still declares. The cycles are real text: single functions whose doc comments say why they do not belong there. One of the three cycles only exists because a file is gone, which is the shape a source-only cycle finder misses.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 7,
+    "head": "f0b6f07da83ef56c39919d6026aed8429a83b407",
+    "tips": {
+      "refs/heads/main": "f0b6f07da83ef56c39919d6026aed8429a83b407"
+    },
+    "objects_digest": "c846a1579f6da8687a9b26a7a7b51f00c9c26ea6bf99347200e3757846f08c6c",
+    "worktree_digest": "4e0358c06dfbd12f922918f321e62caaed6e2d1889c5b7ba58ba73306fe4c8f2",
+    "events_digest": "b85ff640779528c2e43210efbd173c777acc2ba3c10fe599cf70be65edd4832c",
+    "digest": "e1842be85ba3cee7ff9aef899c6e316d320fb6340cf8cc1b31b0cecf43dbf144"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-core",
+      "commits": [
+        1,
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "layers",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-scheduler",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "layers",
+      "turn": "2",
+      "note": "a second agent, so the author rule has work to do"
+    },
+    {
+      "id": "ep-cycles",
+      "commits": [
+        4,
+        5
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "layers",
+      "turn": "3",
+      "note": "the two back edges, one per commit"
+    },
+    {
+      "id": "ep-delete",
+      "commits": [
+        6
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "layers",
+      "turn": "4",
+      "note": null
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "cycle_introduced",
+      "detector": null,
+      "at": 4,
+      "episode": "ep-cycles",
+      "paths": [
+        "src/core/mod.rs",
+        "src/api/mod.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "core → api and api → core: the layering stated in the files is now a lie"
+    },
+    {
+      "kind": "cycle_introduced",
+      "detector": null,
+      "at": 5,
+      "episode": "ep-cycles",
+      "paths": [
+        "src/store/mod.rs",
+        "src/api/mod.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "store starts importing api too"
+    },
+    {
+      "kind": "cycle_introduced",
+      "detector": null,
+      "at": 6,
+      "episode": "ep-delete",
+      "paths": [
+        "src/api/mod.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the edge survives as a dangling declaration; a finder that only reads existing files will not see it"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 6,
+      "episode": null,
+      "paths": [
+        "src/api/routes.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "nothing took the deleted file's place"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 4,
+      "paths": [
+        "src/core/mod.rs"
+      ]
+    },
+    {
+      "kind": "text_absent",
+      "commit": 3,
+      "path": "src/core/mod.rs",
+      "needle": "crate::api"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 4,
+      "path": "src/core/mod.rs",
+      "needle": "use crate::api"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 5,
+      "path": "src/store/mod.rs",
+      "needle": "use crate::api"
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 6,
+      "paths": [
+        "src/api/routes.rs"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 6,
+      "path": "src/api/mod.rs",
+      "needle": "mod routes"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 6
+    }
+  ]
+}

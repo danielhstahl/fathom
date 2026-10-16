@@ -324,6 +324,12 @@ under test verifies nothing: a wrong analysis would certify itself, forever. The
 `e0.10`'s corpus are hand-authored data reviewed by a human, which is the only way a golden file can
 disagree with reality.
 
+A third thing, settled when the crate was built: `e0.10` (`reco-whw`) publishes **no features**, which
+amends the `corpus` row §6 was drawn with. The golden corpus is compiled in unconditionally — the
+ground-truth files are `include_str!`d — because a scenario whose expectations are missing must be a
+compile error, and a feature whose off position compiles a crate that materialises repositories with no
+expectations is a knob that switches the point of the crate off.
+
 ### 4.5 There is no `fathom-config` crate
 
 `e0.8`'s config system splits along the IO line, like everything else here. The **typed schema** — the
@@ -464,7 +470,6 @@ meant to grow. One decision point makes that class of accident visible in one di
 | `fathom-cli` | `net-llm` | no | **yes** | — | forwards `fathom-analyze/net-llm`. | `privacy.llm` | e4.7 |
 | `fathom-cli` | `net-http-transport` | no | **yes** | — | forwards `fathom-mcp/net-http-transport`: the MCP server listens on a socket instead of speaking stdio. | `privacy.mcp_http_transport` | e6.4 |
 | `fathom-cli` | `schema-gen` | no | — | — | builds `schemas/fathom.schema.json` into the binary so `fathom config schema` can print it; CI regenerates and diffs the checked-in file. | — | e0.8 |
-| `fathom-fixtures` | `corpus` | no | — | — | materialise the golden scenario corpus of `e0.10` to a directory. | — | e0.10 |
 
 Transitive default feature set of the shipped binary (`cargo build -p fathom-cli`, nothing passed):
 

@@ -387,10 +387,11 @@ CRATES: tuple[Crate, ...] = (
                 "builders. Dev-dependencies only — never in a release build.",
         allows=("fathom-core", "fathom-store", "fathom-ingest"),
         default_deps=("gix", "serde", "serde_json"),
-        features=(
-            Feature("corpus", "materialise the golden scenario corpus of `e0.10` to a directory.",
-                    ticket="e0.10"),
-        ),
+        # No published features, which is an amendment to §6 made by `reco-whw` (`e0.10`) when the crate was
+        # built: the golden corpus cannot be compiled out, because the ground-truth files are `include_str!`d
+        # and that is what makes a scenario without expectations a compile error rather than a silent gap. A
+        # `corpus` feature would have been a knob whose off position is a broken crate.
+        features=(),
         io=True,
         notes=(
             "**It may not depend on `fathom-analyze`.** A fixture that computes its own expectations with "

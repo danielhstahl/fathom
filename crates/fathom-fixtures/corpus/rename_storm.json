@@ -1,0 +1,282 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "rename_storm",
+  "purpose": "Four module paths move with unchanged bytes in one commit, a fifth moves with its content rewritten, and two later turns do a delayed rename and a reformat that is not a rename. A rename detector has to report all four moves as moves, must not report any of them as a deletion plus an addition, and must not mistake whitespace for a move.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 8,
+    "head": "880e4755466e9b8741a0f5f203f0fd91531cfb1b",
+    "tips": {
+      "refs/heads/main": "880e4755466e9b8741a0f5f203f0fd91531cfb1b"
+    },
+    "objects_digest": "da4f019cfdde220d4d5d7a83a85f9f6c2ac50963071204262469bf3777d96196",
+    "worktree_digest": "54d92b998e06fc8edb6e1a44498bd71f4fe576a7ece8196d8d6671c770dd0b14",
+    "events_digest": "058c90e393f8132b50a06647a22c869b4105d723b29f8bd49e64465fabe6544a",
+    "digest": "21bdfe64853332a470fed31dbb763061029c9bb11d3c5e9a000251d88e468468"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "a person scaffolds; no session, no turn"
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rename",
+      "turn": "1",
+      "note": "the tree the renames will move"
+    },
+    {
+      "id": "ep-storm",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rename",
+      "turn": "1",
+      "note": "second commit of the same turn: one turn, two commits"
+    },
+    {
+      "id": "ep-router",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rename",
+      "turn": "2",
+      "note": "the rename that also rewrote the file"
+    },
+    {
+      "id": "ep-docs",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rename",
+      "turn": "3",
+      "note": null
+    },
+    {
+      "id": "ep-ci",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "a person commits between two agent turns"
+    },
+    {
+      "id": "ep-late",
+      "commits": [
+        6,
+        7
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "rename",
+      "turn": "4",
+      "note": "a reformat and a delayed rename, same turn"
+    }
+  ],
+  "notes": [
+    "the reformat at commit 6 and the rename at commit 7 are the same turn, so they are one episode: an episode that is half noise and half a move is the case a rename detector and a noise detector disagree about, and both expectations are stated here"
+  ],
+  "findings": [
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-storm",
+      "paths": [
+        "src/store/mod.rs",
+        "src/api/handlers.rs",
+        "src/scheduler.rs",
+        "tests/query.rs"
+      ],
+      "pairs": [
+        [
+          "src/core/store.rs",
+          "src/store/mod.rs"
+        ],
+        [
+          "src/api/routes.rs",
+          "src/api/handlers.rs"
+        ],
+        [
+          "src/queue.rs",
+          "src/scheduler.rs"
+        ],
+        [
+          "tests/api.rs",
+          "tests/query.rs"
+        ]
+      ],
+      "expect": "fire",
+      "detail": "four paths moved with identical bytes"
+    },
+    {
+      "kind": "file_removed",
+      "detector": null,
+      "at": 2,
+      "episode": null,
+      "paths": [
+        "src/core/store.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "a rename reported as a removal double-counts the change"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-router",
+      "paths": [
+        "src/http/handlers.rs"
+      ],
+      "pairs": [
+        [
+          "src/api/handlers.rs",
+          "src/http/handlers.rs"
+        ]
+      ],
+      "expect": "fire",
+      "detail": "the router moved and gained the cache struct"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 7,
+      "episode": "ep-late",
+      "paths": [
+        "src/scheduler/mod.rs"
+      ],
+      "pairs": [
+        [
+          "src/scheduler.rs",
+          "src/scheduler/mod.rs"
+        ]
+      ],
+      "expect": "fire",
+      "detail": "the delayed move, two turns after the rest"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 6,
+      "episode": null,
+      "paths": [
+        "src/http/handlers.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the file's bytes changed and its path did not"
+    },
+    {
+      "kind": "noise",
+      "detector": null,
+      "at": 6,
+      "episode": "ep-late",
+      "paths": [
+        "src/http/handlers.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the reformat-only commit is the noise case"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 2,
+      "paths": [
+        "src/api/handlers.rs",
+        "src/scheduler.rs",
+        "src/store/mod.rs",
+        "tests/query.rs"
+      ]
+    },
+    {
+      "kind": "rename",
+      "commit": 2,
+      "pairs": [
+        [
+          "src/core/store.rs",
+          "src/store/mod.rs"
+        ],
+        [
+          "src/api/routes.rs",
+          "src/api/handlers.rs"
+        ],
+        [
+          "src/queue.rs",
+          "src/scheduler.rs"
+        ],
+        [
+          "tests/api.rs",
+          "tests/query.rs"
+        ]
+      ]
+    },
+    {
+      "kind": "whitespace_only_change",
+      "commit": 6,
+      "paths": [
+        "src/http/handlers.rs"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 3,
+      "path": "src/http/handlers.rs",
+      "needle": "misses"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 7
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "scope_creep",
+  "purpose": "Two turns that arrived at more than the intent they declared. The first fixes one parser and in the same commit reindents an unrelated renderer, adds two hundred and forty lines of notes, leaves a four-hundred-line debug log behind, turns a CI job on and edits .envrc. The second re-cleans the reporter and commits a notebook and a scheduler it was not asked about. A person then deletes the debris.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 5,
+    "head": "d15f0675a16056488d1c2d896e5853544bca16dc",
+    "tips": {
+      "refs/heads/main": "d15f0675a16056488d1c2d896e5853544bca16dc"
+    },
+    "objects_digest": "bb8dbb07f7b60d8c2a60509aede58ea159ce8a7273d750df799928f4abeabb91",
+    "worktree_digest": "36ee536f144084d700ead62da1c10e0c887e2ab76b5aef7f4a09deb3816678a3",
+    "events_digest": "38feac26690a575410a759b384a23c39cec676b34bc9d27b8bf0df2eb8e1c194",
+    "digest": "ad2d9d50e6c5bca2ee472987581cafc5bf9da4173873ae494ec35eebda7e7afc"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "creep",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-creep-fix",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "creep",
+      "turn": "2",
+      "note": "Agent-Intent named the parser; six paths arrived"
+    },
+    {
+      "id": "ep-creep-report",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "creep",
+      "turn": "3",
+      "note": "Agent-Intent named the reporter; five paths arrived"
+    },
+    {
+      "id": "ep-clean",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "scope_creep",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-creep-fix",
+      "paths": [
+        "src/render.rs",
+        "docs/notes.md",
+        "debug.log",
+        ".envrc",
+        ".github/workflows/ci.yml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "Agent-Intent: 'fix the trailing comma in parse'"
+    },
+    {
+      "kind": "scratch_committed",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-creep-fix",
+      "paths": [
+        "debug.log",
+        "docs/notes.md"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the debug log and the notes are not deliverables"
+    },
+    {
+      "kind": "scope_creep",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-creep-report",
+      "paths": [
+        "src/scheduler.rs",
+        "notebooks/exploration.ipynb",
+        "config/scheduler.toml"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "Agent-Intent: 'update the nightly report'"
+    },
+    {
+      "kind": "scope_creep",
+      "detector": null,
+      "at": 4,
+      "episode": null,
+      "paths": [
+        "debug.log",
+        "notebooks/exploration.ipynb",
+        "docs/notes.md"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "a person deleting debris is not scope creep"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 2,
+      "paths": [
+        ".envrc",
+        ".github/workflows/ci.yml",
+        "debug.log",
+        "docs/notes.md",
+        "src/parse.rs",
+        "src/render.rs"
+      ]
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 4,
+      "paths": [
+        "debug.log",
+        "docs/notes.md",
+        "notebooks/exploration.ipynb"
+      ]
+    },
+    {
+      "kind": "file_at_least",
+      "commit": 2,
+      "path": "debug.log",
+      "bytes": 10000
+    },
+    {
+      "kind": "file_at_least",
+      "commit": 2,
+      "path": "docs/notes.md",
+      "bytes": 2000
+    },
+    {
+      "kind": "text_contains",
+      "commit": 2,
+      "path": ".envrc",
+      "needle": "LUMEN_WINDOW"
+    }
+  ]
+}

@@ -1,0 +1,346 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "many_merges",
+  "purpose": "Five feature branches, five merges into `main`, one conflict resolved by hand in the merge commit, and one branch nobody ever merged. Merge commits are where an episode's author is least trustworthy: the author of a merge is whoever typed `git merge`, and two of these merges are a person landing an agent's work. The conflict resolution is the opposite case — lines a person really wrote, in a merge commit, appearing nowhere else — and `feat/never` is the history walk that silently drops a tip.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 13,
+    "head": "dea4d0a02136494f9348462294b502129cb7a741",
+    "tips": {
+      "refs/heads/feat/a": "1692a3ed00f7ae6b5f87ba289f80ac4099705e01",
+      "refs/heads/feat/b": "59624db54259cfe9d10cb3845280654a49458a39",
+      "refs/heads/feat/c": "7ca12c72ddb3689dd97eb4c848654392f89f3ab4",
+      "refs/heads/feat/d": "32e9226c17b67d182ab08ef54acecf15a5dcb2fc",
+      "refs/heads/feat/e": "4a6c3061a2bb100527e518266893bc872461e9d3",
+      "refs/heads/feat/never": "85723749448ae782adb9a3ab8097a337709b99c8",
+      "refs/heads/main": "dea4d0a02136494f9348462294b502129cb7a741"
+    },
+    "objects_digest": "72f1f54d831bc0da104fb0af9b0516ea207e039ab2a8bd4a3c93c575473d3962",
+    "worktree_digest": "ceb7d755bdc26ac9eca00cd14be630bac646bd67fc859fddd96419b523d2fb76",
+    "events_digest": "cd06a5f81dea68119efc09957e7e4cc63c03e6fb46377902d3409f2013a286c5",
+    "digest": "ce8ea31c53f0b848b8d3c0e3947a40193eb7eb047489ea9a583aae90c4d18197"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": "main",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "publish",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-feat-a",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/a",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "feat-a",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-feat-b",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/b",
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "feat-b",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-merge-a",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "a person lands an agent's branch: the merge's author is not the work's author"
+    },
+    {
+      "id": "ep-merge-b",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-feat-c",
+      "commits": [
+        6
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/c",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "feat-c",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-feat-d",
+      "commits": [
+        7
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/d",
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "feat-d",
+      "turn": "1",
+      "note": "the same lines feat/c changed, from the same base"
+    },
+    {
+      "id": "ep-merge-c",
+      "commits": [
+        8
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": "main",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "feat-c",
+      "turn": "2",
+      "note": "an agent landing its own branch"
+    },
+    {
+      "id": "ep-merge-d",
+      "commits": [
+        9
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": "main",
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "the conflict resolution: these lines exist only here"
+    },
+    {
+      "id": "ep-feat-e",
+      "commits": [
+        10
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/e",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-merge-e",
+      "commits": [
+        11
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": "main",
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-feat-never",
+      "commits": [
+        12
+      ],
+      "span": null,
+      "rule": "branch",
+      "lineage": "feat/never",
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "feat-never",
+      "turn": "1",
+      "note": "a tip nothing reaches, and an episode a default-branch walk would never see"
+    }
+  ],
+  "notes": [
+    "merges are commits too: the merge of feat/a reports the merged file as its changed path, which is how a consumer that attributes work by commit author ends up crediting the wrong person"
+  ],
+  "findings": [
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 4,
+      "episode": "ep-merge-a",
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the retry budget lands"
+    },
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 5,
+      "episode": "ep-merge-b",
+      "paths": [
+        "src/queue.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the queue bound lands"
+    },
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 8,
+      "episode": "ep-merge-c",
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the wider window lands"
+    },
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 9,
+      "episode": "ep-merge-d",
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the spin change lands, with a conflict"
+    },
+    {
+      "kind": "conflict_resolution",
+      "detector": null,
+      "at": 9,
+      "episode": "ep-merge-d",
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the resolution is hand-written and appears nowhere else"
+    },
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 11,
+      "episode": "ep-merge-e",
+      "paths": [
+        "docs/merging.md"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the doc page lands"
+    },
+    {
+      "kind": "merge_commit",
+      "detector": null,
+      "at": 2,
+      "episode": null,
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "a branch commit is not a merge"
+    },
+    {
+      "kind": "branch_never_merged",
+      "detector": null,
+      "at": 12,
+      "episode": "ep-feat-never",
+      "paths": [
+        "src/export.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "feat/never is a tip with no path to main"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/feat/never"
+    },
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/feat/a"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 11
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/feat/never",
+      "commit": 12
+    },
+    {
+      "kind": "text_contains",
+      "commit": 9,
+      "path": "src/scheduler.rs",
+      "needle": "Round 4 of the same argument"
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 11,
+      "paths": [
+        "docs/merging.md"
+      ]
+    }
+  ]
+}

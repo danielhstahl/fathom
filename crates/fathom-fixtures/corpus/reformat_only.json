@@ -1,0 +1,238 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "reformat_only",
+  "purpose": "One turn that reformats five files, reorders the items in a sixth and regenerates the lockfile; a person's unrelated commit five hours later; and one turn that fixes a real parsing bug while also reformatting a file. The last one is why a noise detector has to be per-change rather than per-episode: call that episode noise and a bug fix disappears with it.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 7,
+    "head": "e9bdad5cbea890f424312775e38d713c295ec0b4",
+    "tips": {
+      "refs/heads/main": "e9bdad5cbea890f424312775e38d713c295ec0b4"
+    },
+    "objects_digest": "16a005a7865a1e51b929348be3e988b550cc06f71a9b717d07d4c6ac7420eed4",
+    "worktree_digest": "410f3a1e0fccd79a40c91336ca83d07eeea9f3f5a10d88bfff5e8cf392a29bdf",
+    "events_digest": "6f704d666122465ff1fea51eba9734acb0935d6f2498505fadfa7efb5f0af5c4",
+    "digest": "d254ffc89c95f7831b77e4fe418abf4bba1ea8fe202e5a68c5f077f0a0352492"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "publish",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-format",
+      "commits": [
+        2,
+        3,
+        4
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "format",
+      "turn": "1",
+      "note": "three commits, one turn, nothing but churn"
+    },
+    {
+      "id": "ep-typo",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "time-gap",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "five hours after the format turn: the gap, not the author, is what opens this one"
+    },
+    {
+      "id": "ep-fix",
+      "commits": [
+        6
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "format",
+      "turn": "2",
+      "note": "one whitespace-only file and one real fix, same turn"
+    }
+  ],
+  "notes": [
+    "the gap between commit 4 and commit 5 is five hours and the gap between 5 and 6 is one hour, so the time-gap rule is exercised against a threshold rather than against an obvious infinity"
+  ],
+  "findings": [
+    {
+      "kind": "noise",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-format",
+      "paths": [
+        "src/api/mod.rs",
+        "src/api/routes.rs",
+        "src/core/mod.rs",
+        "src/parse.rs",
+        "src/render.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "five files reformatted and nothing else"
+    },
+    {
+      "kind": "whitespace_only_change",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-format",
+      "paths": [
+        "src/api/mod.rs",
+        "src/api/routes.rs",
+        "src/core/mod.rs",
+        "src/parse.rs",
+        "src/render.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "every line moved, no token moved"
+    },
+    {
+      "kind": "whitespace_only_change",
+      "detector": null,
+      "at": 3,
+      "episode": null,
+      "paths": [
+        "src/parse.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the items moved, so the bytes differ beyond whitespace; a whitespace check says no and a token-multiset check says the behaviour is unchanged"
+    },
+    {
+      "kind": "noise",
+      "detector": null,
+      "at": 4,
+      "episode": "ep-format",
+      "paths": [
+        "Cargo.lock"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "a regenerated lockfile is churn"
+    },
+    {
+      "kind": "noise",
+      "detector": null,
+      "at": 6,
+      "episode": null,
+      "paths": [
+        "src/parse.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the episode also contains a real change, and the finding would hide it"
+    },
+    {
+      "kind": "bug_fix",
+      "detector": null,
+      "at": 6,
+      "episode": "ep-fix",
+      "paths": [
+        "src/parse.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the trailing comma the review caught"
+    },
+    {
+      "kind": "whitespace_only_change",
+      "detector": null,
+      "at": 6,
+      "episode": "ep-fix",
+      "paths": [
+        "src/main.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the same commit reformatted main.rs"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "whitespace_only_change",
+      "commit": 2,
+      "paths": [
+        "src/api/mod.rs",
+        "src/api/routes.rs",
+        "src/core/mod.rs",
+        "src/parse.rs",
+        "src/render.rs"
+      ]
+    },
+    {
+      "kind": "whitespace_only_change",
+      "commit": 6,
+      "paths": [
+        "src/main.rs"
+      ]
+    },
+    {
+      "kind": "text_absent",
+      "commit": 1,
+      "path": "src/parse.rs",
+      "needle": "trim_end_matches"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 6,
+      "path": "src/parse.rs",
+      "needle": "trim_end_matches"
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 6,
+      "paths": [
+        "src/main.rs",
+        "src/parse.rs"
+      ]
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 6
+    }
+  ]
+}

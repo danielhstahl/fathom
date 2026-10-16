@@ -1,0 +1,180 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "churn_loop",
+  "purpose": "One turn, six commits, the same four lines in the same two files argued over each time: the window size and the spin behaviour, round after round, and then a seventh commit that puts back what the first round had. The gross change across the turn is twenty-four lines added and twenty-four removed and the net is nothing, which is the difference between a churn detector that measures edits and one that measures outcomes.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 10,
+    "head": "9b8b1c9839351c23eb5df3147c24e6764077f156",
+    "tips": {
+      "refs/heads/main": "9b8b1c9839351c23eb5df3147c24e6764077f156"
+    },
+    "objects_digest": "abe961e2a5b033f53bf0339d083db4c74e7eb8041e9179f276ce12b37a14790b",
+    "worktree_digest": "9483654b5d5193ad1c141ae9e3bcfcf8c16841b5afe5dc3b4a4e00076e75c7a8",
+    "events_digest": "6de8b108170cdf538b7802f0d4e00bc1f517ecc06cb8a0891ce7b77983f80d2d",
+    "digest": "a0709d582d8081118d47ed358f011d35597cc4c71d226b6c9e85ccc4e650339f"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-add",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "churn",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-churn",
+      "commits": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "churn",
+      "turn": "2",
+      "note": "six rounds of the same argument, one turn"
+    },
+    {
+      "id": "ep-settle",
+      "commits": [
+        8
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "churn",
+      "turn": "3",
+      "note": "back to the first round's content"
+    },
+    {
+      "id": "ep-note",
+      "commits": [
+        9
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "churn_loop",
+      "detector": null,
+      "at": 7,
+      "episode": "ep-churn",
+      "paths": [
+        "src/scheduler.rs",
+        "src/queue.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "each round rewrites the window and the spin; the per-commit diffs are small and the turn's total is not"
+    },
+    {
+      "kind": "reverted_change",
+      "detector": null,
+      "at": 8,
+      "episode": "ep-settle",
+      "paths": [
+        "src/scheduler.rs",
+        "src/queue.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the file at commit 8 has the content it had at commit 1"
+    },
+    {
+      "kind": "churn_loop",
+      "detector": null,
+      "at": 1,
+      "episode": null,
+      "paths": [
+        "src/scheduler.rs"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the first commit is not churn"
+    },
+    {
+      "kind": "churn_loop",
+      "detector": null,
+      "at": 9,
+      "episode": null,
+      "paths": [
+        "docs/drain.md"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the note is not churn"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 4,
+      "paths": [
+        "src/queue.rs",
+        "src/scheduler.rs"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 3,
+      "path": "src/scheduler.rs",
+      "needle": "Round 2 of the same argument"
+    },
+    {
+      "kind": "text_absent",
+      "commit": 8,
+      "path": "src/scheduler.rs",
+      "needle": "Round 6 of the same argument"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 8,
+      "path": "src/scheduler.rs",
+      "needle": "Round 0 of the same argument"
+    }
+  ]
+}

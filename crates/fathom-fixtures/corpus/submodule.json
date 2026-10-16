@@ -1,0 +1,167 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "submodule",
+  "purpose": "A vendored upstream that is a real repository with its own history, mounted as a gitlink and then bumped to a released commit. The companion is built first, into a sibling directory, because a gitlink names a commit and a fixture pointing at one that does not exist is a broken repository rather than a fixture. `git fsck --strict` inside the result is what proves the gitlink was written the way git wants it, including the git dir living inside the parent at `.git/modules/<name>`.",
+  "consumers": [
+    "e1.3",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 5,
+    "head": "ea904105250cfd63f5523a2c6cd89dd709514be0",
+    "tips": {
+      "refs/heads/main": "ea904105250cfd63f5523a2c6cd89dd709514be0"
+    },
+    "objects_digest": "b707a419ab5db9e7493a5343863c35f4ab61d47a18bdf74ccd163d51d13b8230",
+    "worktree_digest": "e83e86cfb4fbfb230c64a5f0ec981ee592694892fc8aeeff0237ec32ad928d86",
+    "events_digest": "106197053ceeb2002a188d7083b21678441e735a428fb6958757d5ded0b3ec23",
+    "digest": "2222bbdc098a19671cac2d395053f3f28faef9695f04cdc5d93330a8fa906711"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "sub",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-mount",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "sub",
+      "turn": "2",
+      "note": "the gitlink appears, with .gitmodules"
+    },
+    {
+      "id": "ep-bump",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "sub",
+      "turn": "3",
+      "note": "the pointer moves to the released upstream commit"
+    },
+    {
+      "id": "ep-note",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "submodule_change",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-mount",
+      "paths": [
+        "vendor/upstream",
+        ".gitmodules"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the upstream is mounted"
+    },
+    {
+      "kind": "submodule_change",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-bump",
+      "paths": [
+        "vendor/upstream"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the pointer moves to the release"
+    },
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 3,
+      "episode": null,
+      "paths": [
+        "vendor/upstream"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "counting it as one would price a vendored checkout as a library upgrade"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "gitlink",
+      "commit": 2,
+      "path": "vendor/upstream",
+      "companion": "upstream",
+      "at": 1
+    },
+    {
+      "kind": "gitlink",
+      "commit": 3,
+      "path": "vendor/upstream",
+      "companion": "upstream",
+      "at": 3
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 2,
+      "paths": [
+        ".gitmodules",
+        "vendor/upstream"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 2,
+      "path": ".gitmodules",
+      "needle": "vendor/upstream"
+    },
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/main"
+    }
+  ]
+}

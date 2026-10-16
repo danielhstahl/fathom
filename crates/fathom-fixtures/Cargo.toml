@@ -25,6 +25,3 @@ fathom-ingest.workspace = true
 #
 # It is a `[dev-dependencies]` crate and nothing else (R7, lint `E05`), so it is absent from every
 # release build: CI's shipped-closure check and `deny.toml`'s `[bans] deny` do not see it at all.
-[features]
-default = []
-corpus = []

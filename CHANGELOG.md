@@ -15,6 +15,33 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `e0.10` — the fixture corpus: deterministic repositories with hand-authored ground truth (reco-whw)
+
+- **15 scenarios, 10 105 commits, 190 expected episodes, 83 expected findings — 25 of which say a rule must
+  stay silent.** `fathom-fixtures` writes real Git repositories from hand-assembled object bytes
+  (`git.rs`: loose objects, tree serialisation, a `DIRC` v2 index, `.git/shallow`, gitlinks) in named
+  scenarios, and the whole corpus verifies in **42.5 s** in a debug build — `ten_k_commits` is 22.9 s of
+  that, `huge_file` 12.6 s, the other thirteen under two seconds together. Every fixture is then handed to
+  the real `git` binary: `fsck --strict` clean, `status --porcelain` empty, and
+  `rev-list --all --count` equal to the manifest's commit count. `clean_baseline` exists because a corpus of
+  only positives proves an analyser fires, not that it fires *because of* what it is looking at.
+- **Two halves of a ground-truth file, with different owners.** `corpus/<scenario>.json` carries a machine
+  block — digest, commit count, head, tips — that `--bless` alone rewrites, and a semantic block (episodes,
+  findings, claims, purpose, consumers) authored by `tools/author_corpus.py` and reviewed by a human. That
+  split is what stops the corpus being re-recorded into agreement with a regression, and `verify.rs` refuses
+  incoherent expectations: overlapping episodes, findings naming commits that do not exist, paths no commit
+  touched.
+- **Determinism is a policy with a lint behind it.** One fixed instant, five committers at `example.invalid`,
+  byte-order collation, no `SystemTime`, no `HashMap` order, no filesystem metadata in any digest, and
+  absolute paths normalised to `<ROOT>` before hashing — asserted by a test that greps the crate for the
+  banned constructs and by one that builds a scenario twice under two different paths and compares digests.
+- **Event logs the contract, not a paraphrase of it.** `.fathom/events.jsonl` follows ADR-005's two layers
+  (`docs/concepts/fixtures.md`), and its projection table mirrors `harness.py`'s `project()` row for row; the
+  audit re-derives all 780 generated records through that reference function rather than restating the rule.
+  No `test_run` is written, because §2.2 derives it — the fixture supplies the `cargo test` tool pair instead.
+- **Amends ADR-002**: `fathom-fixtures` publishes no features (see §4.4), and adding a scenario is one
+  function plus one ground-truth file, documented in `docs/concepts/fixtures.md`.
+
 ### `e1.8` — background materialisation: decode off the UI thread, bounded, cancellable (reco-myd)
 
 - **The frame on screen is never the frame waiting for a read.** Hunk text is decoded by worker threads

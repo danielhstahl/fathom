@@ -1,0 +1,112 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "shallow_clone",
+  "purpose": "A depth-three clone of a ten-commit upstream. The three commits that came over were rewritten: the window's first commit has no parent at all, because there is nothing below the cut to point at, and `.git/shallow` names the tip. A history walker that walks to the root instead of to the shallow cut will ask for an object that is not in this repository and fail with a message nobody in the product can act on, so the corpus contains the shape and names the cut.",
+  "consumers": [
+    "e1.3",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 3,
+    "head": "ad23fe4c4515daf9c79f19436213b7486999abcf",
+    "tips": {
+      "refs/heads/main": "ad23fe4c4515daf9c79f19436213b7486999abcf",
+      "refs/remotes/origin/main": "ad23fe4c4515daf9c79f19436213b7486999abcf"
+    },
+    "objects_digest": "686088b01cb8a414a0c38ece19a3ac15b0e2f375827b626361ff5460750abb48",
+    "worktree_digest": "672d660fc185be60386c0028a46082bd7c4eff86f4b75171edb29f20f78aaa22",
+    "events_digest": "b86717c1204788bc8ffa23f492b0f7dab16912a18b2a3d6d419473a2547e5c35",
+    "digest": "11a6d958a988958e8545794e5722ce9c3fcc2ca70edd377ae17e3eb30d5408f6"
+  },
+  "episodes": [
+    {
+      "id": "ep-window-0",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "the shallow cut: a commit with no parent because the parent was never fetched"
+    },
+    {
+      "id": "ep-window-1",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "upstream",
+      "turn": "r7",
+      "note": null
+    },
+    {
+      "id": "ep-window-2",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "upstream",
+      "turn": "r8",
+      "note": null
+    }
+  ],
+  "notes": [
+    "the three visible commits are upstream rounds 6 to 8 with their ids intact, because a rewritten commit would no longer be a clone of anything; the boundary commit keeps a `parent` line pointing at round 5, which this repository does not contain, and `.git/shallow` names the boundary — that is exactly what `git clone --depth 3` leaves behind, and `git fsck --strict` agrees"
+  ],
+  "findings": [
+    {
+      "kind": "history_truncated",
+      "detector": null,
+      "at": 0,
+      "episode": "ep-window-0",
+      "paths": [],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the boundary commit's parent line names an object that was never fetched; the ingest must stop there and say so rather than fail"
+    },
+    {
+      "kind": "missing_object",
+      "detector": null,
+      "at": null,
+      "episode": null,
+      "paths": [],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "a shallow clone is not a corrupt one; fsck says so, and the fixture's own test says so"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "is_shallow",
+      "tips": [
+        0
+      ]
+    },
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/main"
+    },
+    {
+      "kind": "ref_exists",
+      "ref": "refs/remotes/origin/main"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 2
+    }
+  ]
+}

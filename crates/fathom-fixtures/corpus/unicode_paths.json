@@ -1,0 +1,212 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "unicode_paths",
+  "purpose": "Paths that are not ASCII, and a rename from the composed spelling of a name to its decomposed spelling. The two café pages differ by nothing a normalising filesystem can see, so they are never both in the tree at once; the Cyrillic module name and the en dash in a note are the two a Windows console and a shell quoting layer have to survive. The paths are written with escapes in the generator so that no editor or git filter gets to choose the normalisation form.",
+  "consumers": [
+    "e1.3",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 6,
+    "head": "a0da9378fcbea284052cb2178c0078cabb8c3d2d",
+    "tips": {
+      "refs/heads/main": "a0da9378fcbea284052cb2178c0078cabb8c3d2d"
+    },
+    "objects_digest": "b79da27aab10ad75b3ee3438f54165b790b885665c2d2ed187ff6cf95e57b70a",
+    "worktree_digest": "266b5c50ac084a986c75f1bc91209b491dca1cff97c85290ab89979ecaebd7ae",
+    "events_digest": "23c678a395b72a43fd2cf1b10ad950fbd86feb1e6d387eac99138b3fa5aaaeea",
+    "digest": "93cf4d7aaca33cbe57aed5848423efb4ba4668ab72a1556f6d367c0c16f5d48d"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-translated",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "i18n",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-cyrillic",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "i18n",
+      "turn": "2",
+      "note": null
+    },
+    {
+      "id": "ep-rename",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "i18n",
+      "turn": "3",
+      "note": "composed → decomposed, content unchanged"
+    },
+    {
+      "id": "ep-notes",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-rewrite",
+      "commits": [
+        5
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "codex-agent",
+      "kind": "agent",
+      "session": "i18n",
+      "turn": "4",
+      "note": null
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "non_ascii_path",
+      "detector": null,
+      "at": 1,
+      "episode": "ep-translated",
+      "paths": [
+        "docs/café.md",
+        "docs/日本語.md"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "two translated pages arrive"
+    },
+    {
+      "kind": "non_ascii_path",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-cyrillic",
+      "paths": [
+        "src/api/модуль.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "a module named in Cyrillic"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-rename",
+      "paths": [
+        "docs/café.md"
+      ],
+      "pairs": [
+        [
+          "docs/café.md",
+          "docs/café.md"
+        ]
+      ],
+      "expect": "fire",
+      "detail": "on a normalising filesystem this commit changes nothing at all, which is the trap"
+    },
+    {
+      "kind": "non_ascii_path",
+      "detector": null,
+      "at": 4,
+      "episode": "ep-notes",
+      "paths": [
+        "docs/naïve–notes.md"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "an en dash in a file name"
+    },
+    {
+      "kind": "rename",
+      "detector": null,
+      "at": 5,
+      "episode": null,
+      "paths": [
+        "docs/日本語.md"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the page's content changed and its name did not"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "rename",
+      "commit": 3,
+      "pairs": [
+        [
+          "docs/café.md",
+          "docs/café.md"
+        ]
+      ]
+    },
+    {
+      "kind": "paths_changed",
+      "commit": 3,
+      "paths": [
+        "docs/café.md"
+      ]
+    },
+    {
+      "kind": "text_contains",
+      "commit": 2,
+      "path": "src/api/модуль.rs",
+      "needle": "cyrillic is here"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 5,
+      "path": "docs/日本語.md",
+      "needle": "新版"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 5
+    }
+  ]
+}

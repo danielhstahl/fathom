@@ -1,0 +1,218 @@
+{
+  "schema": "fathom.fixture-ground-truth/1",
+  "scenario": "clean_baseline",
+  "purpose": "The control: nothing is wrong here. A human scaffold, one agent session of three turns that publishes a module tree and adds a module with its test, one dependency bump done properly with its lockfile, and a person's commit that touches two unrelated surfaces. Every detector in the product is claimed to be quiet on a tidy repository, and a corpus made only of pathological cases would let a detector that fires on everything score perfectly.",
+  "consumers": [
+    "e1.3",
+    "e2.2",
+    "e4.3"
+  ],
+  "determinism": {
+    "note": "written by `fathom-fixtures --bless`; everything else in this file is hand-authored and is not touched by that command",
+    "commit_count": 5,
+    "head": "d35916b99a3cd93ce584422ecb5429c63da3fb4d",
+    "tips": {
+      "refs/heads/main": "d35916b99a3cd93ce584422ecb5429c63da3fb4d"
+    },
+    "objects_digest": "fdd593d08e155044814c9b137b2675be411fc51a23558d5cc74b22224b3bcd1b",
+    "worktree_digest": "fe7a551e75a97b780593ac71c789571ce12856cc0c249c30c4ec076fc11204e8",
+    "events_digest": "61e11c300764a09f40f9dac753a80ff36c3ea8a130253f5ee705ac90e52cc1f0",
+    "digest": "c9a27cca71716e23e4544d7e3820e4c12e4ccf8a0bd73cdb74c5cc82d2bca70c"
+  },
+  "episodes": [
+    {
+      "id": "ep-scaffold",
+      "commits": [
+        0
+      ],
+      "span": null,
+      "rule": "root",
+      "lineage": null,
+      "author": "sam",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": null
+    },
+    {
+      "id": "ep-publish",
+      "commits": [
+        1
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "clean",
+      "turn": "1",
+      "note": null
+    },
+    {
+      "id": "ep-export",
+      "commits": [
+        2
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "clean",
+      "turn": "2",
+      "note": "a module and its test, the way it is supposed to be done"
+    },
+    {
+      "id": "ep-bump",
+      "commits": [
+        3
+      ],
+      "span": null,
+      "rule": "trailer",
+      "lineage": null,
+      "author": "pi-agent",
+      "kind": "agent",
+      "session": "clean",
+      "turn": "3",
+      "note": "the manifest and the lockfile in one commit"
+    },
+    {
+      "id": "ep-docs",
+      "commits": [
+        4
+      ],
+      "span": null,
+      "rule": "author",
+      "lineage": null,
+      "author": "dana",
+      "kind": "human",
+      "session": null,
+      "turn": null,
+      "note": "two unrelated surfaces in one commit: the only thing here a detector may call unusual"
+    }
+  ],
+  "notes": [],
+  "findings": [
+    {
+      "kind": "dependency_bump",
+      "detector": null,
+      "at": 3,
+      "episode": "ep-bump",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "regex, with its lockfile"
+    },
+    {
+      "kind": "test_added",
+      "detector": null,
+      "at": 2,
+      "episode": "ep-export",
+      "paths": [
+        "tests/export.rs"
+      ],
+      "pairs": [],
+      "expect": "fire",
+      "detail": "the export module arrives with its test"
+    },
+    {
+      "kind": "scope_creep",
+      "detector": null,
+      "at": 4,
+      "episode": null,
+      "paths": [
+        "docs/export.md",
+        "config/scheduler.toml"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "this is the pair a creep detector must decline to name"
+    },
+    {
+      "kind": "noise",
+      "detector": null,
+      "at": 4,
+      "episode": null,
+      "paths": [
+        "docs/export.md"
+      ],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "a documentation commit is not noise"
+    },
+    {
+      "kind": "test_deletion",
+      "detector": null,
+      "at": null,
+      "episode": null,
+      "paths": [],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "nothing was deleted"
+    },
+    {
+      "kind": "churn_loop",
+      "detector": null,
+      "at": null,
+      "episode": null,
+      "paths": [],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "nothing was argued over"
+    },
+    {
+      "kind": "rename_storm",
+      "detector": null,
+      "at": null,
+      "episode": null,
+      "paths": [],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "nothing moved"
+    },
+    {
+      "kind": "cycle_introduced",
+      "detector": null,
+      "at": null,
+      "episode": null,
+      "paths": [],
+      "pairs": [],
+      "expect": "silent",
+      "detail": "the layering holds"
+    }
+  ],
+  "claims": [
+    {
+      "kind": "paths_changed",
+      "commit": 3,
+      "paths": [
+        "Cargo.lock",
+        "Cargo.toml"
+      ]
+    },
+    {
+      "kind": "text_absent",
+      "commit": 4,
+      "path": "src/export.rs",
+      "needle": "crate::api"
+    },
+    {
+      "kind": "text_contains",
+      "commit": 3,
+      "path": "Cargo.lock",
+      "needle": "regex"
+    },
+    {
+      "kind": "ref_exists",
+      "ref": "refs/heads/main"
+    },
+    {
+      "kind": "tip_is",
+      "ref": "refs/heads/main",
+      "commit": 4
+    }
+  ]
+}
