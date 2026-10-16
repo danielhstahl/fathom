@@ -1,0 +1,26 @@
+# deleted — deleted file: every line removed, no new side
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +0 −4
+▾ unknown  +0 −4  (1 f)
+  src/  +0 −4
+  gone.py del +0 −4
+
+## hunks (64 columns × 16 rows)
+src/gone.py  del +0 −4  python
+@@ -1,4 +0,0 @@
+   1      - # This module was never imported.
+   2      - def unused():
+   3      -     return None
+   4      -
+
+
+
+
+
+
+
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+

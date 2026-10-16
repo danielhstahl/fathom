@@ -1,0 +1,15 @@
+diff --git a/src/off.rs b/src/off.rs
+index 9191919..a2a2a2a 100644
+X-Fathom-Skip: unavailable reason="blob not in the local object store" hint="fathom fetch --blob a2a2a2a"
+--- a/src/off.rs
++++ b/src/off.rs
+@@ -1,1 +1,1 @@
+-old line
++new line
+diff --git a/src/on.rs b/src/on.rs
+index b3b3b3b..c4c4c4c 100644
+--- a/src/on.rs
++++ b/src/on.rs
+@@ -1,1 +1,1 @@
+-old here
++new here

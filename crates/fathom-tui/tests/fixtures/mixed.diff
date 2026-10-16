@@ -1,0 +1,96 @@
+X-Fathom-Class: source
+diff --git a/crates/fathom-analyze/src/score.rs b/crates/fathom-analyze/src/score.rs
+index 1111111..2222222 100644
+--- a/crates/fathom-analyze/src/score.rs
++++ b/crates/fathom-analyze/src/score.rs
+@@ -10,9 +10,10 @@ impl Score {
+     /// The weight the risk line uses, in `[0, 1]`.
+     pub fn weight(&self) -> f64 {
+-        self.raw / self.total.max(1) as f64
++        let floor = self.total.max(1) as f64;
++        self.raw as f64 / floor
+     }
+ 
+-    fn clamp(value: f64) -> f64 {
+-        value.min(1.0)
++    fn clamp(value: f64) -> f64 {
++        value.clamp(0.0, 1.0)
+     }
+ }
+@@ -40,4 +42,7 @@ impl Score {
+     pub fn is_noise(&self) -> bool {
+         self.raw == 0
+     }
++
++    #[cfg(test)]
++    fn for_test(raw: u32) -> Self { Self { raw, total: 10 } }
+ }
+X-Fathom-Class: test
+diff --git a/crates/fathom-analyze/tests/score.rs b/crates/fathom-analyze/tests/score.rs
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/crates/fathom-analyze/tests/score.rs
+@@ -0,0 +1,4 @@
++#[test]
++fn weight_never_divides_by_zero() {
++    assert_eq!(Score::for_test(0).weight(), 0.0);
++}
+diff --git a/docs/usage.md b/docs/usage.md
+index 4444444..5555555 100644
+--- a/docs/usage.md
++++ b/docs/usage.md
+@@ -1,4 +1,5 @@
+ # Usage
+-Run `fathom queue` to see the queue.
++Run `fathom queue` to see the queue, or `fathom diff <episode>` to read
++what an episode actually touched.
+ 
+ The risk line is a 0-100 score.
+diff --git a/scripts/deploy.sh b/scripts/deploy.sh
+old mode 100644
+new mode 100755
+diff --git a/src/legacy.py b/src/renamed.py
+similarity index 92%
+rename from src/legacy.py
+rename to src/renamed.py
+index 6666666..7777777 100644
+--- a/src/legacy.py
++++ b/src/renamed.py
+@@ -1,6 +1,6 @@
+-def load(path):
+-    f = open(path)
+-    return f.read()
++def load(path):
++    with open(path, encoding="utf-8") as handle:
++        return handle.read()
+ 
+ 
+ def save(path, text):
+diff --git a/src/gone.py b/src/gone.py
+deleted file mode 100644
+index 8888888..0000000
+--- a/src/gone.py
++++ /dev/null
+@@ -1,3 +0,0 @@
+-# This module was never imported.
+-def unused():
+-    return None
+diff --git a/assets/logo.png b/assets/logo.png
+new file mode 100644
+index 0000000..9999999
+Binary files /dev/null b/assets/logo.png differ
+X-Fathom-Binary-Size: 48120
+diff --git a/package-lock.json b/package-lock.json
+index aaaaaaa..bbbbbbb 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,4 +1,5 @@
+ {
+   "name": "demo",
+-  "version": "1.0.0"
++  "version": "1.0.1",
++  "lockfileVersion": 3
+ }
+X-Fathom-Noise: lockfile rule=generated+bulk
+X-Fathom-Class: generated

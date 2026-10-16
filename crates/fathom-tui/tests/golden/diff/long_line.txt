@@ -1,0 +1,26 @@
+# long_line — one line over the per-line cap: clipped, and the clip is admitted
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +1 −1
+▾ unknown  +1 −1  (1 f)
+  dist/  +1 −1
+  bundle.js ~ +1 −1
+
+## hunks (64 columns × 16 rows)
+dist/bundle.js  ~ +1 −1  javascript
+@@ -1,2 +1,2 @@
+   1      - var bundle=0;
+        1 + var bundle=chunk0,chunk1,chunk2,chunk3,chunk4,chunk…
+   2    2   fn untouched() {}
+
+
+
+
+
+
+
+
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+1 line(s) clipped at the 8 192 B cap

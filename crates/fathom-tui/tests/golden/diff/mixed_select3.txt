@@ -1,0 +1,39 @@
+# mixed — the cursor on a file rather than the counts row
+# layout unified · whitespace as written · word-diff off · cursor row 3 · scroll 0
+
+## tree (44 columns)
+8 files · +18 −11 · noise 1 (b)
+▾ test  +7 −3  (1 f)
+  crates/fathom-analyze/src/  +7 −3
+▸score.rs ~ +7 −3
+▾ unknown  +9 −7  (6 f)
+  assets/  +0 −0
+  logo.png bin +0 −0 48 120 B
+  crates/fathom-analyze/tests/  +4 −0
+  score.rs new +4 −0
+  docs/  +2 −1
+  usage.md ~ +2 −1
+  scripts/  +0 −0
+  deploy.sh mode 00644→00755 +0 −0
+  src/  +3 −6
+  gone.py del +0 −3
+  renamed.py ren +3 −3
+noise: 1 hidden by `generated+bulk` (b)
+
+## hunks (64 columns × 16 rows)
+crates/fathom-analyze/src/score.rs  ~ +7 −3  rust
+@@ -10,9 +10,10 @@ impl Score {
+  10   10       /// The weight the risk line uses, in `[0, 1]`.
+  11   11       pub fn weight(&self) -> f64 {
+  12      -         self.raw / self.total.max(1) as f64
+       12 +         let floor = self.total.max(1) as f64;
+       13 +         self.raw as f64 / floor
+  13   14       }
+  14   15
+  15      -     fn clamp(value: f64) -> f64 {
+  16      -         value.min(1.0)
+       16 +     fn clamp(value: f64) -> f64 {
+       17 +         value.clamp(0.0, 1.0)
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+

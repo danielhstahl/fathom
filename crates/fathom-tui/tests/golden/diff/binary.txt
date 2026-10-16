@@ -1,0 +1,26 @@
+# binary — binary: no line text, and the size the source stated
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +0 −0
+▾ asset  +0 −0  (1 f)
+  assets/  +0 −0
+  icon.png bin +0 −0 20 480 B
+
+## hunks (64 columns × 16 rows)
+assets/icon.png  bin +0 −0  plain
+no line text for this change
+binary · +0 −0 · unified layout (\)
+
+
+
+
+
+
+
+
+
+
+
+
+

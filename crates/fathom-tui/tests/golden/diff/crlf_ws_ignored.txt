@@ -1,0 +1,26 @@
+# crlf — the same churn with whitespace ignored: folded, counted, and still stated
+# layout unified · whitespace ignored · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +7 −7
+▾ unknown  +7 −7  (1 f)
+  pkg/  +7 −7
+  util.py ~ +7 −7
+
+## hunks (64 columns × 16 rows)
+pkg/util.py  ~ +7 −7  python
+@@ -1,5 +1,5 @@
+≈ 5 whitespace-only pairs (= shows)
+@@ -7,2 +7,2 @@
+≈ 2 whitespace-only pairs (= shows)
+
+
+
+
+
+
+
+
+word-diff off · W on
+ws ignored · 7 pair(s) folded · = shows
+

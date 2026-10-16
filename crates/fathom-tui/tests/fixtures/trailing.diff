@@ -1,0 +1,9 @@
+diff --git a/notes.md b/notes.md
+index 5151515..6161616 100644
+--- a/notes.md
++++ b/notes.md
+@@ -1,2 +1,2 @@
+-# Notes   
++# Notes
+-body text with a trailing space at the end of the line   
++body text with a trailing space at the end of the line

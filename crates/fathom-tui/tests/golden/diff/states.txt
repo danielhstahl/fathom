@@ -1,0 +1,30 @@
+# states — read / dirty / unread markers and evidence ids, from the store's headers
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸3 files · +3 −3
+▾ docs  +1 −1  (1 f)
+  src/  +1 −1
+  c.rs ~ +1 −1
+▾ unknown  +2 −2  (2 f)
+  src/  +2 −2
+  a.rs ~ +1 −1 ✓
+  b.rs ~ +1 −1 *
+
+## hunks (64 columns × 16 rows)
+src/c.rs  ~ +1 −1  rust
+@@ -1,1 +1,1 @@
+   1      - old c
+        1 + new c
+
+
+
+
+
+
+
+
+
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+

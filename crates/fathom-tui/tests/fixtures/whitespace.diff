@@ -1,0 +1,11 @@
+diff --git a/src/indent.rs b/src/indent.rs
+index 1212121..3434343 100644
+--- a/src/indent.rs
++++ b/src/indent.rs
+@@ -1,4 +1,4 @@
+-fn one() { }
++fn one() {}
+ fn two() {
+-    let x = 1;
++        let x = 1;
+ }

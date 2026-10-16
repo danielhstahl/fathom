@@ -21,11 +21,13 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod app;
+pub mod diff;
 pub mod error;
 pub mod event;
 pub mod frame;
 pub mod keymap;
 pub mod layout;
 pub mod render;
+pub mod style;
 pub mod terminal;
 pub mod views;

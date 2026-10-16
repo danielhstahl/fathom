@@ -1,0 +1,26 @@
+# crlf — CRLF churn, as written: every line changed, and the marker says why
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +7 −7
+▾ unknown  +7 −7  (1 f)
+  pkg/  +7 −7
+  util.py ~ +7 −7
+
+## hunks (64 columns × 16 rows)
+pkg/util.py  ~ +7 −7  python
+@@ -1,5 +1,5 @@
+   1      - def helper():␍
+   2      -     return 1␍
+   3      - ␍
+   4      - def other():␍
+   5      -     return 2␍
+        1 + def helper():
+        2 +     return 1
+        3 +
+        4 + def other():
+        5 +     return 2
+@@ -7,2 +7,2 @@
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+

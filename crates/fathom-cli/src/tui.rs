@@ -60,6 +60,9 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         notices: frame_notices,
         // The clock is read here, at the edge, and passed in (ADR-002 §4.4).
         now: crate::clock::SystemClock.now(),
+        // So is the environment the copy and `$EDITOR` plans are written against: the shell may not
+        // read variables or walk `PATH` for itself (ADR-002 §3), so this crate does it instead.
+        handoff_env: crate::handoff::environment(),
     };
     if plain {
         for notice in &notices {

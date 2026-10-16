@@ -1,0 +1,29 @@
+# oversize — over the materialisation cap: the file is listed, its text is not decoded
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸2 files · +1 −0
+▾ generated  +0 −0  (1 f)
+  vendor/  +0 −0
+  big.min.js big +0 −0
+▾ unknown  +1 −0  (1 f)
+  src/  +1 −0
+  normal.rs ~ +1 −0
+
+## hunks (64 columns × 16 rows)
+vendor/big.min.js  big 9 123 456 B  javascript
+over the 5 242 880 materialisation cap
+this file is 9 123 456 — its text is not decoded
+oversize · 9 123 456 B · unified layout (\)
+
+
+
+
+
+
+
+
+
+
+
+

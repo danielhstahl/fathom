@@ -1,0 +1,9 @@
+# unavailable — the whole patch is not available offline, with the command that would fetch it
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸not available offline — episode predates the local pack…
+
+## hunks (64 columns × 16 rows)
+not available offline — episode predates the local packfile
+run: fathom fetch --episode 0:12

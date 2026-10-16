@@ -1,0 +1,7 @@
+diff --git a/third_party/other b/third_party/other
+index d5d5d5d..e6e6e6e 160000
+--- a/third_party/other
++++ b/third_party/other
+@@ -1,1 +1,1 @@
+-Subproject commit d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5
++Subproject commit e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6

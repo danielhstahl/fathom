@@ -1,0 +1,24 @@
+1 ▣ Diff · (T pins this view)                                                         fathom/diff · fixture 
+┌· tree · e1.7                                           ┬▸ hunks · e1.7                                   ┐
+│▸8 files · +18 −11 · noise 1 (b)                        │@@ -40,4 +42,7 @@ impl Score {                   │
+│ ▾ test  +7 −3  (1 f)                                   │  40   42       pub fn is_noise(&self) -> bool { │
+│   crates/fathom-analyze/src/  +7 −3                    │  41   43           self.raw == 0                │
+│   score.rs ~ +7 −3                                     │  42   44       }                                │
+│ ▾ unknown  +9 −7  (6 f)                                │       45 +                                      │
+│   assets/  +0 −0                                       │       46 +     #[cfg(test)]                     │
+│   logo.png bin +0 −0 48 120 B                          │       47 +     fn for_test(raw: u32) -> Self { …│
+│   crates/fathom-analyze/tests/  +4 −0                  │  43   48   }                                    │
+│   score.rs new +4 −0                                   │                                                 │
+│   docs/  +2 −1                                         │                                                 │
+│   usage.md ~ +2 −1                                     │                                                 │
+│   scripts/  +0 −0                                      │                                                 │
+│   deploy.sh mode 00644→00755 +0 −0                     │                                                 │
+│   src/  +3 −6                                          │                                                 │
+│   gone.py del +0 −3                                    │                                                 │
+│   renamed.py ren +3 −3                                 │word-diff off · W on                             │
+│ noise: 1 hidden by `generated+bulk` (b)                │ws as written · = ignores CRLF/indent            │
+│                                                        │                                                 │
+│crates/fathom-analyze/src/score.rs · unified · plain · …│hunk 2 of 2 · @@ -40,4 +42,7 @@ · unified · as w…│
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+⏺ epoch unknown · unknown eps · queue unknown open · idx unknown                                            
+hunk 2 of 2 · @@ -40,4 +42,7 @@ · the pane moved to it                                                      

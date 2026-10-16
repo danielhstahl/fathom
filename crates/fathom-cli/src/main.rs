@@ -28,6 +28,10 @@ mod segment;
 mod state;
 // The terminal shell is the one verb whose crate is optional (ADR-002 §6.2): a `minimal` binary says
 // "compiled out" rather than failing to start, so the module is gated with the feature it needs.
+// The handoff environment is read for the shell and for nothing else, so it is gated exactly as the
+// shell is: a `minimal` binary has no terminal to hand back and no plan to read variables for.
+#[cfg(feature = "tui")]
+mod handoff;
 #[cfg(feature = "tui")]
 mod tui;
 mod verbs;

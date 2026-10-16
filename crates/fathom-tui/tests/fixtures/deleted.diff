@@ -1,0 +1,10 @@
+diff --git a/src/gone.py b/src/gone.py
+deleted file mode 100644
+index 8888888..0000000
+--- a/src/gone.py
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# This module was never imported.
+-def unused():
+-    return None
+-

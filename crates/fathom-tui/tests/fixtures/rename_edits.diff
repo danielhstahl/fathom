@@ -1,0 +1,20 @@
+diff --git a/src/legacy.py b/src/renamed.py
+similarity index 78%
+rename from src/legacy.py
+rename to src/renamed.py
+index 6666666..7777777 100644
+--- a/src/legacy.py
++++ b/src/renamed.py
+@@ -1,7 +1,8 @@
+-def load(path):
+-    f = open(path)
+-    return f.read()
++def load(path):
++    with open(path, encoding="utf-8") as handle:
++        return handle.read()
+ 
+ 
+ def save(path, text):
+-    f.write(text)
++    with open(path, "w", encoding="utf-8") as handle:
++        handle.write(text)

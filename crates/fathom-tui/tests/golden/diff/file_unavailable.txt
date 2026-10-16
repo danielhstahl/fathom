@@ -1,0 +1,27 @@
+# file_unavailable — one file's text is not in the local object store; the other one still reads
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸2 files · +2 −2
+▾ unknown  +2 −2  (2 f)
+  src/  +2 −2
+  off.rs ~ +1 −1
+  on.rs ~ +1 −1
+
+## hunks (64 columns × 16 rows)
+src/off.rs  ~ +1 −1  rust
+not available offline — blob not in the local object store
+run: fathom fetch --blob a2a2a2a
+modified · +1 −1 · unified layout (\)
+
+
+
+
+
+
+
+
+
+
+
+

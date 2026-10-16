@@ -344,6 +344,14 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
+        id: "diff.ws_toggle",
+        label: "Diff: ignore whitespace",
+        scope: "view",
+        ticket: "e1.7",
+        modes: &[Mode::Diff],
+        palette: true,
+    },
+    Action {
         id: "drill.in",
         label: "Drill in (follow selection / evidence)",
         scope: "frame",
@@ -1363,6 +1371,7 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     // `timeline` adds no bindings of its own: it inherits the shared motion set.
     bind(Mode::Diff, "E", "diff.open_editor");
     bind(Mode::Diff, "W", "diff.word_toggle");
+    bind(Mode::Diff, "=", "diff.ws_toggle");
     bind(Mode::Diff, "Y", "diff.copy_hunk");
     bind(Mode::Diff, "[", "diff.hunk_prev");
     bind(Mode::Diff, "\\", "diff.split_toggle");

@@ -265,6 +265,7 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
     # --- view-local content controls (bound only inside their own view mode) --
     _a("diff.split_toggle", "Diff: split / unified", "view", "e1.7", modes=("diff",)),
     _a("diff.word_toggle", "Diff: word-diff on / off", "view", "e1.7", modes=("diff",)),
+    _a("diff.ws_toggle", "Diff: ignore whitespace", "view", "e1.7", modes=("diff",)),
     _a("diff.noise_toggle", "Diff: show suppressed noise (the rule is printed)",
        "view", "e2.2", modes=("diff",)),
     _a("diff.hunk_next", "Diff: next hunk", "view", "e1.7", modes=("diff",)),
@@ -441,6 +442,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     "diff": {
         "\\": "diff.split_toggle",
         "W": "diff.word_toggle",
+        "=": "diff.ws_toggle",
         "b": "diff.noise_toggle",
         "[": "diff.hunk_prev",
         "]": "diff.hunk_next",

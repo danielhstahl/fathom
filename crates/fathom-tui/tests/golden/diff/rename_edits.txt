@@ -1,0 +1,26 @@
+# rename_edits — rename with edits: old path, new path, similarity, and the edits
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +5 −4
+▾ unknown  +5 −4  (1 f)
+  src/  +5 −4
+  renamed.py ren +5 −4
+
+## hunks (64 columns × 16 rows)
+src/renamed.py  ren +5 −4  ← src/legacy.py (78%)  python
+@@ -1,7 +1,8 @@
+   1      - def load(path):
+   2      -     f = open(path)
+   3      -     return f.read()
+        1 + def load(path):
+        2 +     with open(path, encoding="utf-8") as handle:
+        3 +         return handle.read()
+   4    4
+   5    5
+   6    6   def save(path, text):
+   7      -     f.write(text)
+        7 +     with open(path, "w", encoding="utf-8") as handl…
+word-diff off · W on
+ws as written · = ignores CRLF/indent
+

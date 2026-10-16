@@ -1,0 +1,26 @@
+# mode_only — mode-only change: the bytes did not move, and the pane says so
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸1 files · +0 −0
+▾ ops  +0 −0  (1 f)
+  scripts/  +0 −0
+  deploy.sh mode 00644→00755 +0 −0
+
+## hunks (64 columns × 16 rows)
+scripts/deploy.sh  mode 00644→00755 +0 −0  shell
+mode 100644 → 100755 — the bytes did not change
+mode change only · +0 −0 · unified layout (\)
+
+
+
+
+
+
+
+
+
+
+
+
+

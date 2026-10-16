@@ -1,0 +1,8 @@
+# not_a_diff — somebody pointed the viewer at a file that is not a patch
+# layout unified · whitespace as written · word-diff off · cursor row 0 · scroll 0
+
+## tree (44 columns)
+▸no file headers in these 2 lines — that is not a unifie…
+
+## hunks (64 columns × 16 rows)
+not a unified diff: no file headers in these 2 lines

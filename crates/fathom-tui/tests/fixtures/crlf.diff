@@ -1,0 +1,20 @@
+diff --git a/pkg/util.py b/pkg/util.py
+index 1234567..8901234 100644
+--- a/pkg/util.py
++++ b/pkg/util.py
+@@ -1,5 +1,5 @@
+-def helper():
+-    return 1
+-
+-def other():
+-    return 2
++def helper():
++    return 1
++
++def other():
++    return 2
+@@ -7,2 +7,2 @@
+-tail one
+-tail two
++tail one
++tail two

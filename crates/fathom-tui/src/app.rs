@@ -19,9 +19,12 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+use crate::diff::{self, DiffView};
+use crate::diff::{Env, Handoff};
 use crate::event::FrameScheduler;
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
 use crate::layout::{Fit, FitState, fit};
+use crate::style::StyledLine;
 use crate::views::{Pane, Role, View, ViewId, view};
 use fathom_analyze::insight;
 
@@ -282,6 +285,8 @@ pub struct App {
     pub scope: Scope,
     /// What the panes may draw.
     pub model: Model,
+    /// The diff viewer's own state, including the budget it will not exceed (`e1.7`).
+    pub diff: DiffView,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
     /// The palette row under the cursor, when the palette is open.
@@ -368,6 +373,7 @@ impl App {
             active_tab: 0,
             scope: Scope::empty(),
             model,
+            diff: DiffView::new(),
             prompt: String::new(),
             palette_row: 0,
             selection: BTreeMap::new(),
@@ -455,6 +461,9 @@ impl App {
     /// The rows a pane prints: its own, or the honest empty state.
     #[must_use]
     pub fn pane_rows(&self, pane: &Pane) -> Vec<String> {
+        if let Some(lines) = self.diff_text(pane) {
+            return lines;
+        }
         let rows = self.model.rows_for(self.view, pane.name);
         if !rows.is_empty() {
             let mut out = rows.to_vec();
@@ -514,6 +523,21 @@ impl App {
     /// The line a pane's footer strip carries (ADR-006 §5's `Strip` column).
     #[must_use]
     pub fn pane_strip(&self, pane: &Pane) -> String {
+        if self.view == ViewId::Diff {
+            // The diff view's strips are the two lines the ADR's own mock puts in the panes: what the
+            // cursor points at, and what the hunk pane is doing about whitespace and word-diff.
+            return match pane.name {
+                "tree" => self.diff.tree_strip(self.selected_row()),
+                "hunks" => self.diff.file.map_or_else(
+                    || "no file selected".to_owned(),
+                    |file| {
+                        let hunk = self.diff.hunk_at(file, self.scroll_of());
+                        self.diff.hunk_strip(file, hunk)
+                    },
+                ),
+                _ => format!("`{}` — owned by {}", pane.name, pane.ticket),
+            };
+        }
         if pane.role == Role::Primary {
             self.current().question.to_owned()
         } else {
@@ -528,6 +552,353 @@ impl App {
                 pane.ticket
             )
         }
+    }
+
+    // --- the diff view (`e1.7`) ---------------------------------------------------------------
+
+    /// Hand the viewer a patch and open the view it belongs to.
+    ///
+    /// This is the seam `e1.8` will widen: the source is a trait object, so the lazy materialiser can
+    /// hand over hunks from the index with no change here. A failure is returned, not swallowed — the
+    /// caller says it out loud, because an empty pane whose cause nobody printed is the failure mode
+    /// this whole crate is built to avoid.
+    pub fn load_patch(
+        &mut self,
+        source: Box<dyn diff::PatchSource>,
+    ) -> Result<(), diff::Unavailable> {
+        if let Err(err) = self.diff.load(source) {
+            // The source's own words become the pane's sentence. An empty pane whose cause nobody
+            // printed is the failure this crate exists to avoid.
+            self.diff.clear(err.to_string());
+            self.set_view(ViewId::Diff);
+            self.toast(err.to_string());
+            return Err(err);
+        }
+        self.diff.ensure_file();
+        self.set_view(ViewId::Diff);
+        // …and the tree cursor lands on the file that is about to be drawn, so the first thing a
+        // reviewer sees is a cursor on a name and that name's diff next to it.
+        if let Some(row) = self.diff.file_row() {
+            self.set_selection(row);
+        }
+        let origin = self.diff.origin().unwrap_or("the patch").to_owned();
+        let scan = self.diff.index();
+        let files = scan.map_or(0, |scan| scan.files.len());
+        self.toast(format!(
+            "{} · {} file(s){}",
+            origin,
+            files,
+            scan.and_then(|scan| scan.stopped.clone())
+                .map_or_else(String::new, |why| format!(" — {why}"))
+        ));
+        Ok(())
+    }
+
+    /// Is the diff view live with something to draw?
+    #[must_use]
+    pub fn diff_live(&self) -> bool {
+        self.view == ViewId::Diff && self.diff.is_loaded()
+    }
+
+    /// The diff view's rows as text, for the paths that only ever need text.
+    ///
+    /// Sized to the pane, because the hunks pane is a window over a file and not a list: the rows it
+    /// "has" are the ones on screen, and the rest is one scroll away.
+    #[must_use]
+    pub fn diff_text(&self, pane: &Pane) -> Option<Vec<String>> {
+        if self.view != ViewId::Diff {
+            return None;
+        }
+        let cols = self.pane_cols(pane.name).max(12);
+        match pane.name {
+            "tree" => {
+                let lines = self.diff.tree_rows(cols);
+                let selection = self.selected_row().min(lines.len().saturating_sub(1));
+                Some(
+                    lines
+                        .iter()
+                        .enumerate()
+                        .map(|(row, line)| {
+                            let text = line.text().trim_end();
+                            if row == selection {
+                                // Same mark the styled pane draws, in the channel that has no faces.
+                                format!("▸{}", text.trim_start())
+                            } else {
+                                text.to_owned()
+                            }
+                        })
+                        .collect(),
+                )
+            }
+            "hunks" => Some(
+                self.diff_hunk_lines(cols, usize::from(self.size.1).max(1))
+                    .lines
+                    .iter()
+                    .map(|line| line.text().trim_end().to_owned())
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    /// The styled, windowed rows of a diff pane, sized to it. `None` for every other view, which is
+    /// what lets the shell's generic list path stay exactly as it was.
+    #[must_use]
+    pub fn diff_body(&self, pane: &Pane, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
+        if self.view != ViewId::Diff {
+            return None;
+        }
+        match pane.name {
+            "tree" => Some(self.diff_tree_body(width, rows)),
+            "hunks" => Some(self.diff_hunk_lines(width, rows).lines.clone()),
+            _ => None,
+        }
+    }
+
+    /// The tree pane, windowed so the cursor is always on screen: a list you cannot see the selection
+    /// of is a list you cannot drive.
+    fn diff_tree_body(&self, width: usize, rows: usize) -> Vec<StyledLine> {
+        // One column is the cursor's, and the tree gets the rest. Reserving it is what lets every row
+        // carry a cursor without any row ever being a cell wider than the pane — and the cursor is a
+        // character, not a colour, so it survives `--plain` and a monochrome terminal (ADR-006 §10.2).
+        let text_width = width.saturating_sub(1);
+        let lines = self.diff.tree_rows(text_width);
+        if lines.is_empty() {
+            return vec![StyledLine::plain("").padded(width)];
+        }
+        let selection = self.selected_row().min(lines.len().saturating_sub(1));
+        let start = if rows >= lines.len() {
+            0
+        } else {
+            selection.saturating_sub(rows.saturating_sub(3).max(1))
+        };
+        let mut out: Vec<StyledLine> = Vec::with_capacity(rows);
+        for (offset, line) in lines.iter().enumerate().skip(start).take(rows) {
+            let mut row = if start + offset == selection {
+                StyledLine::with_face("▸", crate::style::Face::Emphasis)
+            } else {
+                StyledLine::plain(" ")
+            };
+            row.push_line(line);
+            out.push(row.padded(width));
+        }
+        while out.len() < rows {
+            out.push(StyledLine::plain("").padded(width));
+        }
+        out
+    }
+
+    /// The hunks pane: the window the shell is scrolled to, or the stated reason there is none.
+    fn diff_hunk_lines(&self, width: usize, rows: usize) -> diff::Doc {
+        let Some(file) = self.diff.file else {
+            let why = if self.diff.index().is_some_and(|scan| !scan.files.is_empty()) {
+                // Files to walk, none under the cursor yet: the motion keys are the answer.
+                vec![
+                    "no file selected — `j` walks the tree, `<Enter>` opens the one under the cursor"
+                        .to_owned(),
+                ]
+            } else {
+                // Nothing to walk at all, and the reason why, one row per statement — the second row
+                // of an unavailable patch is the command that fixes it, so both go up.
+                self.diff.empty_statements()
+            };
+            return diff::Doc::stated(width, rows, &why);
+        };
+        let request = diff::Request {
+            layout: self.diff.layout,
+            ignore_ws: self.diff.ignore_ws,
+            word_diff: self.diff.word_diff,
+            width,
+            height: rows,
+            scroll: self.scroll_of(),
+        };
+        self.diff.build(file, &request)
+    }
+
+    /// How many rows a pane has, from whatever owns them — the number a selection or a scroll is
+    /// clamped against.
+    #[must_use]
+    pub fn row_count(&self, pane: &Pane) -> usize {
+        if self.view == ViewId::Diff {
+            return match pane.name {
+                "tree" => self.diff.tree_len(),
+                "hunks" => self.diff.file.map_or(0, |file| {
+                    diff::height_of(
+                        match self.diff.file_at(file) {
+                            Some(entry) => entry,
+                            None => return 0,
+                        },
+                        self.diff.layout,
+                        self.diff.ignore_ws,
+                    )
+                }),
+                _ => 0,
+            };
+        }
+        self.model.rows_for(self.view, pane.name).len()
+    }
+
+    /// Columns a pane has in the current layout, which is what decides whether a split can be drawn.
+    #[must_use]
+    pub fn pane_cols(&self, name: &str) -> usize {
+        let applied = self.fit.applied.clone();
+        if self.zoomed {
+            // `<C-w>o` hands the focused pane the whole frame, and that is the width the pane really
+            // has — which is exactly when a split becomes possible. Measuring the unzoomed layout here
+            // would refuse a split that would have fitted.
+            return usize::from(self.size.0)
+                .saturating_sub(usize::from(crate::layout::frame_cols(
+                    self.current(),
+                    &applied,
+                )))
+                .max(1);
+        }
+        crate::layout::pane_widths(self.view, self.size.0, &applied)
+            .into_iter()
+            .find(|(pane, _width)| pane.name == name)
+            .map_or(0, |(_pane, width)| usize::from(width))
+    }
+
+    /// The queued external work, if a keystroke asked for some: a program to run with the terminal
+    /// handed back, or bytes to write to the terminal.
+    #[must_use]
+    pub fn take_handoff(&mut self) -> Option<Handoff> {
+        self.diff.take_handoff()
+    }
+
+    /// Install the host's environment for the copy and `$EDITOR` plans — the variables and the `PATH`
+    /// answer, read by `fathom-cli` at startup, because this crate reads neither (ADR-002 §3).
+    pub fn install_handoff_env(&mut self, env: Env<'static>) {
+        self.diff.install_env(env, crate::diff::Os::current());
+    }
+
+    /// Run the diff actions — the half of the registry `e1.7` owns.
+    fn dispatch_diff(&mut self, action: &str) -> bool {
+        let pane_hunks = self.focused_pane().is_some_and(|pane| pane.name == "hunks");
+        match action {
+            "diff.split_toggle" => {
+                let cols = self.pane_cols("hunks");
+                let said = self.diff.toggle_layout(cols);
+                self.toast(said);
+                true
+            }
+            "diff.word_toggle" => {
+                let said = self.diff.toggle_word();
+                self.toast(said);
+                true
+            }
+            "diff.ws_toggle" => {
+                let said = self.diff.toggle_whitespace();
+                // Whitespace is the one toggle that changes how many rows there are, so a scroll that
+                // was pointing at hunk 3 can be pointing at nothing. Stay inside the file instead of
+                // showing a blank pane and making the keystroke look broken.
+                if let Some(file) = self.diff.file {
+                    let scroll = self.scroll_of();
+                    let rows = diff::height_of(
+                        match self.diff.file_at(file) {
+                            Some(entry) => entry,
+                            None => return true,
+                        },
+                        self.diff.layout,
+                        self.diff.ignore_ws,
+                    );
+                    self.scroll.insert(
+                        (self.view, "hunks".to_owned()),
+                        scroll.saturating_sub(rows.saturating_sub(1)),
+                    );
+                }
+                self.toast(said);
+                true
+            }
+            "diff.noise_toggle" => {
+                let said = self.diff.toggle_noise();
+                // The tree is what changes, so the cursor goes back to the first file it can see.
+                self.diff.ensure_file();
+                self.set_selection(1);
+                self.toast(said);
+                true
+            }
+            "diff.hunk_next" | "diff.hunk_prev" => {
+                let Some(file) = self.diff.file else {
+                    self.toast("no file is selected — `j` walks the tree");
+                    return true;
+                };
+                let direction = if action.ends_with("next") {
+                    diff::Hunk::Next
+                } else {
+                    diff::Hunk::Previous
+                };
+                let scroll = self.scroll_of();
+                let target = self.diff.jump(file, scroll, direction);
+                self.scroll.insert((self.view, "hunks".to_owned()), target);
+                let hunk = self.diff.hunk_at(file, target);
+                let label = self.diff.hunk_label(file, hunk);
+                self.toast(format!(
+                    "{label} · {}",
+                    if pane_hunks {
+                        "the pane moved to it"
+                    } else {
+                        "`<Tab>` or `<Enter>` to read it"
+                    }
+                ));
+                true
+            }
+            "diff.copy_path" => {
+                let selection = self.selected_row();
+                match self.diff.path_text(selection) {
+                    Some(path) => {
+                        let outcome = self.diff.copy(&path);
+                        self.toast(match outcome {
+                            Ok(said) => format!("{said}: {path}"),
+                            Err(why) => format!("{why} — the path was `{path}`"),
+                        });
+                    }
+                    None => {
+                        self.toast("nothing selectable is under the cursor to copy a path from")
+                    }
+                }
+                true
+            }
+            "diff.copy_hunk" => {
+                let Some(file) = self.diff.file else {
+                    self.toast("no file is selected");
+                    return true;
+                };
+                let hunk = self.diff.hunk_at(file, self.scroll_of());
+                match self.diff.hunk_text(file, hunk) {
+                    Ok(text) => {
+                        let outcome = self.diff.copy(&text);
+                        self.toast(match outcome {
+                            Ok(said) => format!("{said} · {}", self.diff.hunk_label(file, hunk)),
+                            Err(why) => format!("{why} · {}", self.diff.hunk_label(file, hunk)),
+                        });
+                    }
+                    Err(why) => self.toast(format!("nothing to copy — {why}")),
+                }
+                true
+            }
+            "diff.open_editor" => {
+                let Some(entry) = self.diff.file.and_then(|file| self.diff.file_at(file)) else {
+                    self.toast("no file is selected");
+                    return true;
+                };
+                let path = entry.path.clone();
+                let line = self.diff_first_line();
+                let said = self.diff.open_in_editor(&path, line);
+                self.toast(said);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The new-side line number at the top of the hunk pane, which is where `E` should land.
+    fn diff_first_line(&self) -> u32 {
+        if self.diff.file.is_none() {
+            return 0;
+        };
+        let built = self.diff_hunk_lines(self.pane_cols("hunks").max(40), 12);
+        built.first_line.unwrap_or(1)
     }
 
     /// The status line's contents, degradation notice first (ADR-006 §6.4).
@@ -803,10 +1174,20 @@ impl App {
         let Some(pane) = self.focused_pane() else {
             return;
         };
-        let count = self.model.rows_for(self.view, pane.name).len();
+        let count = self.row_count(pane);
         let clamped = if count == 0 { 0 } else { row.min(count - 1) };
         self.selection
             .insert((self.view, pane.name.to_owned()), clamped);
+        if self.view == ViewId::Diff && pane.name == "tree" {
+            // The tree cursor *is* the file selection in this view: moving the cursor to a file row
+            // moves the hunk pane with it, and leaving one (onto a group or the counts row) leaves the
+            // last file on screen instead of blanking the pane. A cursor pointing at one file while
+            // the pane shows another is the bug this prevents.
+            if let Some(file) = self.diff.file_at_row(clamped) {
+                self.diff.select_file(file);
+                self.scroll.remove(&(self.view, "hunks".to_owned()));
+            }
+        }
     }
 
     /// The focused pane's scroll offset.
@@ -821,7 +1202,7 @@ impl App {
         let Some(pane) = self.focused_pane() else {
             return;
         };
-        let rows = self.pane_rows(pane).len();
+        let rows = self.row_count(pane);
         let current = i32::try_from(self.scroll_of()).unwrap_or(i32::MAX);
         let max = i32::try_from(rows).unwrap_or(i32::MAX).saturating_sub(1);
         let next = (current + delta).clamp(0, max.max(0));
@@ -965,6 +1346,12 @@ impl App {
             if let Ok(index) = number.parse::<usize>() {
                 self.select_tab(index.saturating_sub(1));
             }
+            return;
+        }
+        if self.dispatch_diff(action) {
+            // The diff view's own registry half (`e1.7`): the hunk jumps, the three toggles, and the
+            // three ways out. Handled before the frame actions so a diff key cannot fall through to
+            // the "owned by another ticket" toast.
             return;
         }
         match action {

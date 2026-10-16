@@ -1,0 +1,9 @@
+diff --git a/src/fresh.rs b/src/fresh.rs
+new file mode 100644
+index 0000000..abcdef0
+--- /dev/null
++++ b/src/fresh.rs
+@@ -0,0 +1,3 @@
++pub fn fresh() -> u32 {
++    42
++}

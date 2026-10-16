@@ -22,6 +22,7 @@ use ratatui::backend::{Backend, CrosstermBackend};
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::app::{App, Model};
+use crate::diff::Env;
 use crate::error::Error;
 use crate::event::{Bus, FrameScheduler, Message, Received, WorkerMsg, spawn_input_reader};
 use crate::keymap::{Keymap, Override};
@@ -116,6 +117,9 @@ pub struct Options {
     /// The instant the run is drawn for, passed in: only `fathom-cli` reads the clock
     /// (ADR-002 §4.4).
     pub now: Timestamp,
+    /// The environment the copy and `$EDITOR` plans read: variables and the `PATH` answer, gathered by
+    /// `fathom-cli`, because this crate reads neither (ADR-002 §3).
+    pub handoff_env: Env<'static>,
 }
 
 impl Default for Options {
@@ -128,6 +132,7 @@ impl Default for Options {
             max_frames: None,
             notices: Vec::new(),
             now: Timestamp::UNIX_EPOCH,
+            handoff_env: Env::empty(),
         }
     }
 }
@@ -186,6 +191,31 @@ pub trait FrameSink {
     ///
     /// Whatever the backend's own failure type was, as [`Error::Terminal`].
     fn draw(&mut self, app: &mut App) -> Result<(), Error>;
+
+    /// Hand the terminal back for the length of one external program, then take it again.
+    ///
+    /// This is the only door an outside process comes through, and it is on the sink rather than in
+    /// the action handler because only the loop owns the screen: raw mode, the alternate screen and
+    /// the repaint afterwards all belong to whoever took them. A sink with no terminal to hand back —
+    /// the headless one, a `--plain` run — says so, and the reviewer reads that instead of a screen
+    /// that silently did nothing.
+    fn run_external(&mut self, command: &crate::diff::Command) -> Result<String, String> {
+        let _ = command;
+        Err("this sink has no terminal to hand back".to_owned())
+    }
+
+    /// Write raw bytes to the terminal the sink is holding — the OSC 52 clipboard escape, which is the
+    /// one way to copy over `ssh` with no clipboard program on either side. A sink with no terminal (the
+    /// headless one, a `--plain` run) refuses: escape bytes in a pipe would claim to have copied
+    /// something, and a pane that lies about a copy is worse than one that refuses.
+    ///
+    /// # Errors
+    ///
+    /// Why nothing was written.
+    fn write_terminal(&mut self, bytes: &[u8]) -> Result<String, String> {
+        let _ = bytes;
+        Err("this sink has no terminal to write to".to_owned())
+    }
 }
 
 /// A sink that keeps every frame as text — the headless path, and the one the smoke tests use.
@@ -216,11 +246,27 @@ pub struct TerminalSink<B: Backend> {
 }
 
 impl<B: Backend> FrameSink for TerminalSink<B> {
+    fn write_terminal(&mut self, bytes: &[u8]) -> Result<String, String> {
+        use std::io::{IsTerminal as _, Write as _};
+        if !std::io::stdout().is_terminal() {
+            return Err(
+                "stdout is not a terminal, so there is nothing to send the escape sequence to"
+                    .to_owned(),
+            );
+        }
+        let mut stdout = std::io::stdout();
+        stdout
+            .write_all(bytes)
+            .and_then(|()| stdout.flush())
+            .map_err(|err| format!("the terminal would not take the escape sequence: {err}"))?;
+        Ok("the terminal took the escape sequence".to_owned())
+    }
+
     fn draw(&mut self, app: &mut App) -> Result<(), Error> {
         if let Ok(size) = self.terminal.size() {
             app.resize(size.width, size.height);
         }
-        let lines = crate::render::frame_lines(app);
+        let lines = crate::render::frame_styled(app);
         self.terminal
             .draw(|frame| crate::render::blit(frame.buffer_mut(), &lines))
             .map_err(|err| Error::Terminal {
@@ -273,6 +319,25 @@ pub fn run_loop(
             break 'outer end;
         }
         let mut flushed = false;
+        // An external program was asked for: `$EDITOR` does not work inside a raw-mode alternate
+        // screen, so the sink hands the terminal back, the child runs, and the frame is redrawn. One
+        // per iteration, because a queue of editors is a queue of surprises.
+        if let Some(handoff) = app.take_handoff() {
+            let outcome = match handoff {
+                crate::diff::Handoff::Run(command) => sink.run_external(&command),
+                crate::diff::Handoff::Write(sequence) => sink
+                    .write_terminal(sequence.as_bytes())
+                    .map(|said| format!("{said} — if nothing landed, set FATHOM_CLIPBOARD")),
+                crate::diff::Handoff::Refused => {
+                    Err("nothing was queued for the terminal".to_owned())
+                }
+            };
+            app.toast(match outcome {
+                Ok(said) => said,
+                Err(why) => why,
+            });
+            flushed = true;
+        }
         if app.chords.is_pending()
             && app
                 .chord_wait(Instant::now())
@@ -399,6 +464,7 @@ pub fn run(options: &Options) -> Result<Report, Error> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    app.install_handoff_env(options.handoff_env.clone());
     for notice in &signal_notices {
         app.notices.push(notice.clone());
     }
