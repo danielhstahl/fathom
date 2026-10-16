@@ -7,29 +7,35 @@
 //! that says which rule made it is debuggable, and a wrong guess that does not is a mystery the reviewer
 //! resolves by reading the diff anyway.
 //!
-//! # The boundary rules, in priority order
+//! # The boundary rules, in priority order (ADR-003 §4.2)
 //!
-//! | # | Rule | Fires when | Confidence |
-//! |---|---|---|---|
-//! | 1 | `hook` | The commit names a harness turn that differs from the previous commit's | 1.0 |
-//! | 2 | `trailer` | An explicit `Fathom-Episode:` / `Agent-Session:`+`Agent-Turn:` trailer starts it | 0.9 |
-//! | 3 | `override` | `fathom.toml` forces a split before, or a merge with, this commit | 1.0 |
-//! | 4 | `branch` | The commit is a merge: a branch boundary is a reviewable unit by itself | 0.8 |
-//! | 5 | `author` | The author identity changed | 0.75 |
-//! | 6 | `time-gap` | The gap since the previous commit exceeds [`Rules::gap_millis`] | 0.6 |
-//! | 7 | `message-shape` | The subject is a *continuation* (`wip`, `fixup!`, "address review") or a new conventional type | 0.4 |
-//! | 8 | `root` | Nothing above fired and there is no previous commit | 0.5 |
+//! This table *is* [ADR-003 §4.2](../../../docs/adr/0003-episodes.md), and the order is the tie-breaker
+//! (its TB2): first opinion wins, nothing is blended, one rule is recorded. `tools/check_docs.py` does not
+//! read Rust, so `tests/test_episode_identity_contract.py` diffs this table against the ADR and against
+//! the config vocabulary, and fails on drift.
 //!
-//! Rules 1–3 are *evidence*; 4–7 are *heuristics*. Confidence is the number that distinction prices: an
-//! episode whose boundary says `message-shape 0.40` is one the reviewer may want to re-cut, and the card
-//! says so.
+//! | # | Rule | Class | Fires when | Confidence |
+//! |---|---|---|---|---|
+//! | 1 | `override` | human | `fathom.toml` forces a split before, or a merge with, this commit | 1.0 |
+//! | 2 | `hook` | evidence | The commit names a harness turn that differs from the previous commit's | 1.0 |
+//! | 3 | `trailer` | evidence | An explicit `Fathom-Episode:` trailer names this commit as a start | 0.9 |
+//! | 4 | `branch` | graph | The commit is a merge (or the previous one was): a branch boundary is a reviewable unit | 0.8 |
+//! | 5 | `author` | heuristic | The author identity changed | 0.75 |
+//! | 6 | `time-gap` | heuristic | The gap since the previous commit exceeds [`Rules::gap_millis`] | 0.6 |
+//! | 7 | `message-shape` | heuristic | The subject is a *continuation* (`wip`, `fixup!`, "address review") or a new conventional type | 0.4 |
+//! | 8 | `root` | heuristic | Nothing above fired and there is no previous commit | 0.5 |
+//!
+//! Rules 1–3 are what someone *stated* (a config line, an event, a trailer); 4 is a fact about the graph;
+//! 5–7 are guesses. Confidence is what that distinction prices: an episode whose boundary says
+//! `message-shape 0.40` is one the reviewer may want to re-cut, and the card says so (ADR-003 §4.7).
 //!
 //! # Identity, and why a rebase does not orphan a review
 //!
 //! [`identity`] derives the episode id from the three facts a rewrite preserves — who authored it, what
 //! its subject says, which paths it touches — so the id of an episode survives `commit --amend`,
-//! `rebase -i` and a force-push. The store side ([`fathom_store::episode`]) adds a fallback digest and a
-//! relink pass for the rewrites that change the subject or move files between commits.
+//! `rebase -i` and a force-push (ADR-003 I1). The store side ([`fathom_store::episode`]) adds a fallback
+//! digest and a relink pass for the rewrites that change the subject or move files between commits
+//! (ADR-003 §6).
 //!
 //! # What is deliberately not here
 //!
@@ -214,9 +220,12 @@ pub struct Rules {
 impl Default for Rules {
     fn default() -> Self {
         Rules {
-            // 45 minutes: long enough that one turn's commits stay together, short enough that a lunch
-            // break is not one episode. `s2` (the segmentation spike) is the ticket that gets to move it.
-            gap_millis: 45 * 60 * 1000,
+            // 30 minutes: the published default — `schemas/fathom.schema.json`,
+            // `docs/concepts/config.md` and the repository's own `fathom.toml` all say 30, and ADR-003
+            // §4.4 refuses to let a fourth number exist. Long enough that one turn's commits stay
+            // together, short enough that a lunch break is not one episode. `s2` (reco-q6r) is the ticket
+            // that gets to move it, with measurements (ADR-003 §13.7).
+            gap_millis: 30 * 60 * 1000,
             agent_markers: [
                 "bot",
                 "agent",
@@ -386,6 +395,10 @@ pub fn identity(author_identity: &str, subject: &str, paths: &[impl AsRef<str>])
 }
 
 /// The three digests [`identity`] derives for one change, in decreasing order of trust.
+///
+/// Kept next to [`identity`] rather than in the store because the framing *is* the identity contract:
+/// ADR-003 Appendix A publishes digests for three fact-sets, and both this function and
+/// `src/recommender/segment.py` must reproduce them byte for byte.
 ///
 /// No single digest survives the three rewrites a reviewer actually performs, which is why there are three
 /// and why the store's relink pass tries them in this order:
@@ -567,7 +580,7 @@ pub fn segment(commits: &[CommitFacts], rules: &Rules) -> Vec<Episode> {
             .chain(rules.force_merge.iter())
             .any(|force| force.matches(commit));
         if episodes.is_empty() || (starts && index > 0) {
-            let mut episode = new_episode(commit, rule, confidence, overridden);
+            let mut episode = new_episode(commit, rule, confidence, overridden, rules);
             let base = episode_id(&episode.fingerprint);
             let count = used_ids.entry(base.clone()).or_insert(0);
             *count += 1;
@@ -590,9 +603,19 @@ pub fn segment(commits: &[CommitFacts], rules: &Rules) -> Vec<Episode> {
     episodes
 }
 
-fn new_episode(commit: &CommitFacts, rule: Rule, confidence: f64, overridden: bool) -> Episode {
+fn new_episode(
+    commit: &CommitFacts,
+    rule: Rule,
+    confidence: f64,
+    overridden: bool,
+    rules: &Rules,
+) -> Episode {
     let identity = identity(&commit.author_identity(), &commit.subject, &commit.paths);
-    let (kind, kind_confidence) = author_kind(commit, &Rules::default());
+    // ADR-003 §8 H4: the marker table is a rule value like every other tunable, so the attribution used
+    // here is the caller's rather than a second compiled-in copy of it. Reading `Rules::default()` here
+    // would hand a repository that extends the marker list one attribution for the boundary and another
+    // for the card.
+    let (kind, kind_confidence) = author_kind(commit, rules);
     Episode {
         id: String::new(),
         fingerprint: identity.fingerprint,
@@ -905,6 +928,72 @@ mod tests {
             reworded.shape_fingerprint, original.shape_fingerprint,
             "so the third digest is over author and paths, which is what a reword leaves alone"
         );
+    }
+
+    #[test]
+    fn identity_matches_the_published_golden_vector() {
+        // ADR-003 Appendix A. The framing (namespace, NUL separators, author-then-subject-then-sorted-
+        // paths) is the identity contract, and two implementations — this one and
+        // `src/recommender/segment.py` — must agree with the published bytes rather than with each
+        // other's source. If this test fails, *nothing* here has been misread: it means an id already
+        // issued by a user's store no longer resolves, which is the §2.4 namespace bump.
+        let vector = identity(
+            "dev@example.invalid",
+            "add the epoch column",
+            &["src/b.rs", "src/a.rs", "src/a.rs"],
+        );
+        assert_eq!(
+            vector.fingerprint, "9461ceafd7f5d52996f6d47a058857ed874a520a56616fca89f416cc7694bda7",
+            "strong digest: author + normalised subject + sorted path set"
+        );
+        assert_eq!(
+            vector.fallback_fingerprint,
+            "603dca60ea5b444ea8133b587c9804bc5d83d2dc6fd848173a90c1ddc36d6124",
+            "relink tier 1's key: author + subject only"
+        );
+        assert_eq!(
+            vector.shape_fingerprint,
+            "c3115f2777576a3da22bc546ca75a58c9fd3679405ed02f6cd6d6b5990a54b02",
+            "relink tier 2's key: author + path set only"
+        );
+        assert_eq!(episode_id(&vector.fingerprint), "ep-9461ceafd7f5d52996f6");
+        // Vector 2: the normalisation is part of the vector, not an implementation detail — the fixup
+        // prefix and the conventional type are stripped to a fixed point before hashing.
+        assert_eq!(
+            identity(
+                "dev@example.invalid",
+                "fixup! feat(store): Make Epochs  SAFE",
+                &["src/store.rs"],
+            )
+            .fingerprint,
+            "6a045309070f68ff6f8c5ae912da2ff12d2eef6ae99bbf841810653a0bbb3f69"
+        );
+    }
+
+    #[test]
+    fn a_cherry_pick_is_a_second_episode_that_shares_the_digest_not_the_id() {
+        // ADR-003 §5.9. `git cherry-pick` preserves the author, the subject and the paths, so the pick
+        // and its source hash identically — which is the one case where the digest is *too* equal, and
+        // TB10 is the answer: walk order keeps the bare id, the later twin gets `-2`, and the two stay
+        // separate episodes with separate review state, because a sign-off on `main` is not a sign-off on
+        // the release branch.
+        let commits = vec![
+            commit("c1", "dev", 0, "fix: the crash", &["src/a.rs"]),
+            commit("c2", "dev", 60, "fix: the crash", &["src/a.rs"]),
+        ];
+        let episodes = segment(&commits, &Rules::default());
+        assert_eq!(episodes.len(), 2, "two lands, two reviews");
+        assert_eq!(
+            episodes[0].fingerprint, episodes[1].fingerprint,
+            "the same change, so the same digest"
+        );
+        assert_eq!(episodes[0].id, "ep-82b50d5356e8f59a3473", "vector 3");
+        assert_eq!(
+            episodes[1].id,
+            format!("{}-2", episodes[0].id),
+            "the twin is disambiguated, not merged"
+        );
+        assert_eq!(episodes[1].rule, Rule::TimeGap);
     }
 
     #[test]

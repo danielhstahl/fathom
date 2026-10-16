@@ -8,7 +8,7 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 |---|---|---|---|---|
 | 001 | Product thesis, glossary, north-star metric and non-goals | Accepted | `reco-982` (`e0.1`) | [../concepts/thesis.md](../concepts/thesis.md) |
 | 002 | Rust workspace layout and crate boundaries | Accepted | `reco-a54` (`e0.2`) | [0002-workspace.md](0002-workspace.md) |
-| 003 | The Episode: identity, segmentation, stability across rewrites | Open — blocked by 001, spike `s2` | `reco-ubw` (`e0.3`) | `0003-episodes.md` |
+| 003 | The Episode: identity, segmentation, stability across rewrites | Accepted | `reco-ubw` (`e0.3`) | [0003-episodes.md](0003-episodes.md) |
 | 004 | Storage, indexing and cache strategy | Accepted (graph-snapshot policy open pending `s3`) | `reco-79b` (`e0.4`) | [0004-storage.md](0004-storage.md) |
 | 005 | Harness integration contract: hook wire formats, canonical events, MCP surface, versioning | Accepted | `reco-3pu` (`e0.5`) | [0005-harness-contract.md](0005-harness-contract.md) |
 | 006 | TUI information architecture, view inventory and keymap | Accepted | `reco-e0e` (`e0.6`) | [0006-tui.md](0006-tui.md) |
@@ -19,9 +19,16 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 non-goals. A later ADR that needs a different meaning for one of those words must amend ADR-001 in the
 same change rather than redefine it locally.
 
-**002, 004, 005 and 006 are filled** — by `reco-a54` (`e0.2`), `reco-79b` (`e0.4`), `reco-3pu`
-(`e0.5`) and `reco-e0e` (`e0.6`). 003 is listed as open so the reserved number is visible and the file
-can be added by its owning ticket without a numbering argument.
+**002–006 are filled** — by `reco-a54` (`e0.2`), `reco-ubw` (`e0.3`), `reco-79b` (`e0.4`), `reco-3pu`
+(`e0.5`) and `reco-e0e` (`e0.6`).
+
+ADR-003 is the ADR written *after* part of its own code, and it says so: §14 lists the six places the code
+moved rather than the prose approving it, and its identity rule is implemented twice on purpose —
+`crates/fathom-ingest/src/segment.rs` and `src/recommender/segment.py` — against the published digest
+vectors in its Appendix A. `tests/test_episode_identity_contract.py` diffs the ADR's tables (boundary
+cascade, relink tiers, closed vocabularies, the gap default, the `created_source` prices) against both
+implementations and both schema copies, because an identity rule only three documents agree on is an
+identity rule that breaks in the fourth place someone writes it.
 
 ADR-006 is the second ADR whose normative text is *generated*: its size table, layouts, degradation
 tables, keymap, action registry, palette dump and canonical task sequences are rendered from

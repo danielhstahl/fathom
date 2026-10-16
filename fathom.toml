@@ -80,9 +80,13 @@ blast = 0.2
 new_dependency = 0.2
 
 [episode]
-# ADR-003 is still open (`e0.3`), so the boundary order here is the plan's current guess and is
-# `replace`, not `extend`: the order is the meaning.
+# ADR-003 §4.5: the boundary order is fixed by the ADR and is *not* configurable, because the order is an
+# argument about which evidence is trustworthy. This line restates the canonical prefix; a different value
+# is named on the run that ignored it rather than obeyed quietly. Move a boundary with force_split /
+# force_merge below — those are specific, named, and recorded on the episode as `overridden`.
 boundaries = ["hook", "trailer", "author"]
+# 30 minutes, and it is the same 30 in the schema, the docs and the Rust default (ADR-003 §4.4); `s2`
+# (reco-q6r) is the ticket that moves it, with measurements.
 time_gap_minutes = 30
 # A boundary a human drew is a rule too, and the only one that outranks the heuristics instead of
 # competing with them. Two spellings, `oid:<prefix>` and `subject:<substring>`; an entry that is

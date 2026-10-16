@@ -38,7 +38,8 @@ exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fa
 | Area | Where | State |
 |---|---|---|
 | Product thesis, glossary, metrics, non-goals | [docs/concepts/thesis.md](docs/concepts/thesis.md) | accepted (ADR-001) |
-| Architecture decision records | [docs/adr/](docs/adr/) | ADR-001, [ADR-002](docs/adr/0002-workspace.md), [ADR-004](docs/adr/0004-storage.md) and [ADR-005](docs/adr/0005-harness-contract.md) accepted; ADR-003, 006 open |
+| Architecture decision records | [docs/adr/](docs/adr/) | all six accepted: ADR-001, [ADR-002](docs/adr/0002-workspace.md), [ADR-003](docs/adr/0003-episodes.md), [ADR-004](docs/adr/0004-storage.md), [ADR-005](docs/adr/0005-harness-contract.md), [ADR-006](docs/adr/0006-tui.md) |
+| Episode identity and segmentation (what a review is keyed to, and what survives a rebase) | [docs/adr/0003-episodes.md](docs/adr/0003-episodes.md), `crates/fathom-ingest/src/segment.rs`, `src/recommender/segment.py` | accepted; the digests, the boundary cascade and the relink tiers are asserted by `tests/test_episode_identity_contract.py` |
 | Storage, indexing and cache contract (schema, invalidation matrix, perf budgets) | [docs/adr/0004-storage.md](docs/adr/0004-storage.md), `src/recommender/store/`, [benchmarks/budgets.json](benchmarks/budgets.json) | accepted; `e0.11` gates CI on `benchmarks/budgets.json` |
 | Harness integration contract (hooks v1, events, MCP surface) | [docs/adr/0005-harness-contract.md](docs/adr/0005-harness-contract.md) | accepted; contract fixtures in `src/recommender/harness/`, `src/recommender/hooks/` |
 | Configuration: `fathom.toml`, five layers, schema, `config explain` | [docs/concepts/config.md](docs/concepts/config.md), `src/recommender/config/`, [schemas/fathom.schema.json](schemas/fathom.schema.json), `fathom.toml` | `e0.8` (`reco-dq3`) built: the schema and the key reference are generated and CI diffs them; this repo's own `fathom.toml` is validated in CI |

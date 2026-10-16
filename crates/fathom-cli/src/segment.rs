@@ -10,10 +10,12 @@
 //!
 //! `time_gap_minutes`, `force_split` and `force_merge` are read. `boundaries` — the declared *priority
 //! order* of the boundary sources — is recognised and reported as not-yet-honoured: the order in
-//! `segment.rs` is the order ADR-003 will fix, and ADR-003 is still open (`reco-ubw`). Silently accepting a
-//! key and ignoring its contents is the failure mode this repository's whole config surface exists to
-//! prevent, so an unusual `boundaries` value produces a notice on the run that ignored it rather than a
-//! quiet difference in the result.
+//! `segment.rs` is fixed by ADR-003 §4.5 and is **not configurable** — the order is an argument about which
+//! evidence is trustworthy, and a cascade a user reordered is a boundary nobody can explain. The supported
+//! way to disagree is `force_split` / `force_merge`, which are specific, named, and recorded on the episode
+//! as `overridden`. Silently accepting a key and ignoring its contents is the failure mode this
+//! repository's whole config surface exists to prevent, so an unusual `boundaries` value produces a notice
+//! on the run that ignored it rather than a quiet difference in the result.
 //!
 //! Layering is `recommender.config`'s business (precedence, user file, environment); this reads the repo
 //! layer, which is the layer the ticket's criterion is about, and takes the resolved text as an argument in
@@ -131,8 +133,9 @@ pub fn rules_from_toml(text: &str) -> Resolved {
             .collect();
         if !(declared == ["hook", "trailer", "author"].map(str::to_owned)) {
             out.notices.push(format!(
-                "episode.boundaries = {:?} is recorded but not applied: the boundary order is \
-                 ADR-003's, and `reco-ubw` is still open",
+                "episode.boundaries = {:?} is recorded but not applied: the boundary order is fixed by \
+                 ADR-003 §4.5 and is not configurable; move a boundary with episode.force_split or \
+                 episode.force_merge instead",
                 declared
             ));
         }
@@ -259,7 +262,7 @@ mod tests {
             "asking for a different order is: {:?}",
             reordered.notices
         );
-        assert!(reordered.notices[0].contains("reco-ubw"));
+        assert!(reordered.notices[0].contains("ADR-003"));
     }
 
     #[test]

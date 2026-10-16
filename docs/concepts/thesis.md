@@ -216,20 +216,42 @@ config. A sign-off without an identity is not a sign-off. — `e4.6`.
 
 **Commit** — a git commit. Input, not unit of review; commits are *members* of episodes.
 
-**Episode identity** — the stable address of an episode: ordered member commit SHAs plus parent
-boundary, plus a *content fingerprint* used to re-link the same logical episode after the graph is
-rewritten. — ADR-003 (`e0.3`).
+**Episode identity** — the stable address of an episode: a content digest of the facts a rewrite
+*preserves* — who authored it, what its normalised subject claims, which paths it touches — used to
+re-link the same logical episode after the graph is rewritten. The member SHAs and the parent boundary
+are its *extent* (§4.3), never its identity. Amended by ADR-003 (`e0.3`), which rejected member-SHA
+identity because a rewrite changes exactly those.
 
-**Content fingerprint** — the content-derived digest (and fuzzy similarity structure) of an episode's
-change that survives a rewrite when the SHAs do not; the mechanism by which sign-offs and notes
-re-attach after rebase, amend or squash. — ADR-003, verified by `e4.6`.
+**Episode extent** — which commits an episode covers and what its diff is compared against: the ordered
+member commit SHAs plus the parent of the first member. It changes on every rewrite; the identity must
+not. — ADR-003 §3.
+
+**Content fingerprint** — the content-derived digest of an episode's change that survives a rewrite when
+the SHAs do not; the mechanism by which sign-offs and notes re-attach after rebase, amend or squash.
+ADR-003 §2.2 publishes **three** exact digests (author+subject+paths, author+subject, author+paths) plus
+one shared-commit test, in place of the single fuzzy fingerprint the ticket proposed — see ADR-003 §13.1
+for why similarity is deferred. — ADR-003, verified by `e4.6`.
+
+**Digest tier** — one of the ordered re-link tests ADR-003 §6 runs when an episode's id moved: strongest
+tier that matches wins, the match is always written down, and a weaker tier never overwrites a stronger
+one.
+
+**Episode twin** — a second live episode with the same identity digest as another live episode: the same
+change landing twice (a cherry-pick, a duplicated "bump version"). Twins are separate episodes with
+separate review state, disambiguated by an ordered suffix. — ADR-003 §2.3, §5.9.
+
+**Fail-visible** — the tie-break of last resort for episode identity: when Fathom cannot *prove* that a
+rewritten change is the one a human already reviewed, the change returns as unread rather than inheriting
+the old decision. Re-reviewing is annoying and visible; trusting the wrong change is invisible. —
+ADR-003 §6.3.
 
 **Lineage** — the ordering context an episode is measured within: the ref/branch sequence of episodes
 after it, used to define windows such as "the next N episodes". — `e1.3`, used by §5.
 
 **Provisional episode** — an episode built from uncommitted (staged or unstaged) working-tree state so
 the reviewer can see work in progress. Provisional state is always visible as such; nothing is
-permanently keyed to a provisional identity. — `e1.4`.
+permanently keyed to a provisional identity, and no provisional episode may be signed off. — `e1.4`
+(the cache half, which exists), ADR-003 §7 (the rules), `e1.6`/`e5.1` (the row writer, which does not yet).
 
 **Rewrite** — any history mutation that changes SHAs without changing intent: amend, `rebase -i`, squash,
 merge train, cherry-pick, force-push. A rewrite must not orphan review state; that is a bug class, not a
@@ -911,3 +933,29 @@ question 2.
    events, and where it is missing the fallback is used **and counted** (§5.2's denominator reports the
    fallback share alongside the rate). A metric whose fallback path is invisible is a metric that will
    quietly change meaning when the fallback stops firing.
+
+### Amendment 2 — 2026-10-16 — an episode is addressed by what a rewrite preserves, and its commits are its extent
+
+**Amends**: §4.3 (*Episode identity*, *Content fingerprint*, *Provisional episode*), and adds the four
+nouns *episode extent*, *digest tier*, *episode twin*, *fail-visible*.
+**Owned by**: `reco-ubw` (`e0.3`), with the contract in [ADR-003](../adr/0003-episodes.md).
+
+1. ***Episode identity* is given the scheme §4.3 left open.** The address is
+   `sha256("fathom-episode/1" ‖ author ‖ normalised subject ‖ sorted path set of the first member)`, stored
+   as `ep-` plus the first twenty hex characters, and the *content fingerprint* is the same digest without
+   the framing — with two weaker digests over the same three facts (author+subject, author+paths) so a
+   rewrite that changes one of them can still be recognised. The words in §4.3 did not change their meaning:
+   a rewrite preserves author, subject and paths, and rewriting them was always what "the work itself
+   reappears under a new address" meant. What changed is that the address is no longer left to be invented
+   per surface.
+2. **The ordered member commit SHAs and the parent boundary — the scheme the ticket proposed — are the
+   episode's *extent*, not its identity.** They are what the diff endpoint and the rework detector need, and
+   they are precisely what `git rebase -i` and `--amend` rewrite, so keying a sign-off to them loses it on
+   the operations users perform most (§7.8 with a severity attached). Any place that did key to them is a
+   defect, not a competing definition; one such place existed in the reference store and is corrected in the
+   same change.
+3. ***Provisional episode* becomes operational.** "Nothing may be permanently keyed to a provisional
+   identity" now means: no review row, no ledger entry, no finding of record, no risk score of record, no
+   metric numerator or denominator — and **sign-off is refused**, because a sign-off must be about content
+   that can be reproduced. The boundary cascade, its confidence *prices* (an ordinal, never a probability)
+   and the re-link tiers are in ADR-003 §4 and §6, and are the only ones v1 has.

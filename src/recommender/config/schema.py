@@ -393,9 +393,12 @@ KEY_LIST: list[Key] = [
     # --- episode ------------------------------------------------------------
     _k(path="episode.boundaries", kind="string_list", merge="replace",
        default=["hook", "trailer", "author"],
-       enum=("hook", "trailer", "author", "time", "merge"),
-       doc="Boundary sources in priority order (ADR-003). `replace`, not `extend`: the "
-           "*order* is the meaning, and a merged list has no coherent order.",
+       enum=("hook", "trailer", "author", "branch", "time-gap", "message-shape"),
+       doc="Boundary sources, spelled exactly as `episode.boundary_rule` stores them (ADR-003 "
+           "App. B). `replace`, not `extend`: the *order* is the meaning, and a merged list has no "
+           "coherent order. The order itself is fixed by ADR-003 §4.5 and is not configurable: a "
+           "value other than the canonical prefix is named on the run that ignored it. "
+           "`force_split`/`force_merge` are the supported way to move a boundary.",
        analyzer="episode.segment", ticket="e1.3"),
     _k(path="episode.time_gap_minutes", kind="integer", default=30, minimum=1,
        maximum=1440, units="minutes",

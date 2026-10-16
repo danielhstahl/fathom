@@ -25,6 +25,7 @@ import time
 from pathlib import Path
 
 from recommender.taxonomy import Taxonomy, default_taxonomy
+from recommender.segment import episode_id, identity
 
 from . import cache as C
 from .schema import GITIGNORE_STANZA, SqliteStore
@@ -538,11 +539,21 @@ def _write_commit(conn, c: dict, files: list[dict], run_id: int, now_ms: int,
 
 
 def _segment(conn, commits: list[dict], epoch: int) -> list[tuple[str, list[dict]]]:
-    """Group commits into episodes by the `Agent-Session`/`Agent-Turn` trailer (ADR-003).
+    """Group commits into episodes by the `Agent-Session`/`Agent-Turn` trailer (ADR-003 §9.1).
 
-    Episode id is content-addressed over the ordered member oids; the *fingerprint* is
-    content-addressed over the resulting trees, which is what survives a rewrite and
-    therefore what the ledger links to (§10.3).
+    The grouping here is the trailer rule only — this module is a store contract fixture,
+    not the boundary engine (`e1.3`'s cascade lives in
+    `crates/fathom-ingest/src/segment.rs`). What this module *does* have to get right is the
+    **id**: ADR-003 §2 addresses an episode by the three facts a rewrite preserves — the
+    author identity, the normalised subject and the sorted path set of the episode's *first
+    member* — and stores that digest as the `fingerprint` the ledger anchors on (§6, §10.3).
+
+    It used to address episodes by the ordered member oids and fingerprint them by the
+    resulting trees, which is precisely the scheme ADR-003 §2 rejects: a rebase changes every
+    oid in the range and an `--amend` changes the tree, so a sign-off keyed that way evaporated
+    on the operations users perform most (ADR-001 §7.8's defect with a severity, §14.4 of the
+    ADR). The Rust side and this one now derive the same bytes; ADR-003 Appendix A's vectors are
+    asserted against both, so neither can quietly re-define "same episode" again.
     """
     groups: list[list[dict]] = []
     for c in commits:
@@ -551,10 +562,13 @@ def _segment(conn, commits: list[dict], epoch: int) -> list[tuple[str, list[dict
         else:
             groups.append([c])
     out = []
+    twins: dict[str, int] = {}           # TB10: live-id collisions, in walk order
     for n, g in enumerate(groups):
-        oids = [c["oid"] for c in g]
-        ep_id = "ep_" + hashlib.sha256(_frame(oids)).hexdigest()[:24]
-        fp = "fp_" + hashlib.sha256(_frame([c["tree"] for c in g])).hexdigest()[:24]
+        ident = identity(_author_of(g[0]), _subject_of(g[0]), _paths_of(conn, g[0]["oid"]))
+        base = episode_id(ident["fingerprint"])
+        twins[base] = twins.get(base, 0) + 1
+        ep_id = episode_id(ident["fingerprint"], twins[base])
+        fp = ident["fingerprint"]
         # Upsert, never REPLACE: `episode` has ON DELETE CASCADE children (delta, finding,
         # evidence, risk, episode_doc), and REPLACE is a DELETE plus an INSERT — so a re-index
         # that REPlaceD an episode silently destroyed its derived rows while the §5 cache went
@@ -569,7 +583,11 @@ def _segment(conn, commits: list[dict], epoch: int) -> list[tuple[str, list[dict
             "kind=excluded.kind,intent=excluded.intent,epoch=excluded.epoch",
             (ep_id, "committed", fp, "refs/heads/main", n, g[0]["author_utc"], "commit", 0.7,
              g[0].get("session"), "%s:%s" % (g[0].get("session"), g[0].get("turn")),
-             "trailer", 0.8, "agent", 0.9,
+             # ADR-003 §4.2 prices the trailer rule at 0.9 and §8 H4 prices trailer evidence of an agent
+             # at 0.95; these commits carry `Agent-Session`/`Agent-Turn` trailers, so those are the two
+             # prices that apply. A fixture that inflates its own confidence is a fixture that teaches the
+             # reader to distrust the column.
+             "trailer", 0.9, "agent", 0.95,
              json.dumps({"session": g[0].get("session")}), 0.0, epoch))
         for i, c in enumerate(g):
             conn.execute("INSERT OR REPLACE INTO episode_member(episode_id,ordinal,commit_oid) "
@@ -578,12 +596,22 @@ def _segment(conn, commits: list[dict], epoch: int) -> list[tuple[str, list[dict
     return out
 
 
-def _frame(parts) -> bytes:
-    out = bytearray()
-    for p in parts:
-        b = p.encode()
-        out += len(b).to_bytes(4, "big") + b
-    return bytes(out)
+def _author_of(commit: dict) -> str:
+    """ADR-003 §2.1's author identity: the address, else the name, lower-cased."""
+    email = (commit.get("author_email") or "").strip().lower()
+    return email or (commit.get("author_name") or "").strip().lower()
+
+
+def _subject_of(commit: dict) -> str:
+    """The message's first line — the subject, not the body (§2.1: trailers are not identity)."""
+    return (commit.get("message") or "").splitlines()[0] if commit.get("message") else ""
+
+
+def _paths_of(conn, oid: str) -> list[str]:
+    """The post-change path set of one commit, straight out of §4.3's `git_commit_file`."""
+    return [r[0] for r in conn.execute(
+        "SELECT new_path FROM git_commit_file WHERE commit_oid=? ORDER BY new_path", (oid,))
+        if r[0]]
 
 
 def _h(s: str) -> str:

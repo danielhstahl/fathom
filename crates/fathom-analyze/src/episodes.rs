@@ -114,8 +114,13 @@ fn to_row(episode: &segment::Episode, lineage: &str) -> EpisodeRow {
         lineage_ref: lineage.to_owned(),
         lineage_seq: episode.lineage_seq,
         created_utc: episode.first_utc,
+        // ADR-003 §9.3: `created_source` answers *how Fathom learned this episode existed*, and this run
+        // learned it by walking git with no harness evidence at all — the weakest of the three, priced at
+        // 0.3 by ADR-004 §4.3's published table. The `hook` (1.0) and `commit` (0.7) rows get their own
+        // writers when `e6.1`'s event ingest and the trailer path land; until then nothing here may claim
+        // a confidence it did not earn.
         created_source: "index".to_owned(),
-        created_confidence: 0.7,
+        created_confidence: 0.3,
         session_id: episode.session_id.clone(),
         turn_id: episode.turn_id.clone(),
         boundary_rule: episode.rule.as_str().to_owned(),

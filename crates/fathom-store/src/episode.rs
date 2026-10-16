@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS episode (
   created_confidence REAL NOT NULL,        -- 1.0 hook, 0.7 commit, 0.3 index (e1.3)
   session_id    TEXT,
   turn_id       TEXT,
-  boundary_rule TEXT NOT NULL,             -- hook|trailer|author|time-gap|branch (ADR-003)
+  boundary_rule TEXT NOT NULL,             -- ADR-003 App. B, closed: override|hook|trailer|branch|author|time-gap|message-shape|root
   boundary_confidence REAL NOT NULL,
   author_kind   TEXT NOT NULL CHECK (author_kind IN ('agent','human','unknown')),
   author_confidence REAL NOT NULL,

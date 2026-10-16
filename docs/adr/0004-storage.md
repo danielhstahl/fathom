@@ -1492,7 +1492,7 @@ CREATE TABLE IF NOT EXISTS episode (
   created_confidence REAL NOT NULL,        -- 1.0 hook, 0.7 commit, 0.3 index (e1.3)
   session_id    TEXT,
   turn_id       TEXT,
-  boundary_rule TEXT NOT NULL,             -- hook|trailer|author|time-gap|branch (ADR-003)
+  boundary_rule TEXT NOT NULL,             -- ADR-003 App. B, closed: override|hook|trailer|branch|author|time-gap|message-shape|root
   boundary_confidence REAL NOT NULL,
   author_kind   TEXT NOT NULL CHECK (author_kind IN ('agent','human','unknown')),
   author_confidence REAL NOT NULL,
@@ -1514,12 +1514,14 @@ CREATE TABLE IF NOT EXISTS episode_member (
 CREATE INDEX IF NOT EXISTS episode_member_commit ON episode_member(commit_oid);
 
 -- episode_rewrite: the observed rewrite history (amend/rebase/squash/cherry-pick).
--- ADR-003 §"stability" is only testable if the rewrites themselves are recorded.
+-- ADR-003 §6.4 is the closed vocabulary: `shape` is present because ADR-003 §6.2's tier 2 (the
+-- author+paths digest, the one a reword rides across on) writes it, and a published CHECK that
+-- forbids a value the writer writes is a contract that fails at INSERT time in someone's release.
 CREATE TABLE IF NOT EXISTS episode_rewrite (
   old_id   TEXT NOT NULL,
   new_id   TEXT NOT NULL,
   relation TEXT NOT NULL CHECK (relation IN ('amend','rebase','squash','split','cherry','merge','other')),
-  method   TEXT NOT NULL CHECK (method IN ('exact','fingerprint','member-set','manual')),
+  method   TEXT NOT NULL CHECK (method IN ('exact','fingerprint','shape','member-set','manual')),
   score    REAL NOT NULL,
   at_utc   INTEGER NOT NULL,
   PRIMARY KEY (old_id, new_id)
@@ -1749,7 +1751,7 @@ CREATE TABLE IF NOT EXISTS ledger_entry (
   signed_utc  INTEGER NOT NULL,
   scope       TEXT NOT NULL,               -- JSON: which members/paths the sign-off covers
   content_sha TEXT NOT NULL,               -- sha256 of the entry body: tamper detection
-  link_method TEXT NOT NULL CHECK (link_method IN ('exact','fingerprint','member-set','manual','none')),
+  link_method TEXT NOT NULL CHECK (link_method IN ('exact','fingerprint','shape','member-set','manual','none')),
   link_score  REAL NOT NULL DEFAULT 1,
   state TEXT NOT NULL CHECK (state IN ('fresh','stale','orphan')),
   stale_reason TEXT,

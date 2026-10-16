@@ -4,7 +4,18 @@ All notable changes to fathom are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), the versions are
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and — because a toolchain floor is a promise
 to whoever packages this — a dropped MSRV is a **Minor** change recorded under its own
-[`## `e1.10` — the headless verbs: `index`, `show`, `stats`, `doctor`, `export` (reco-ld8)
+[`Toolchain`](docs/adr/0002-workspace.md) heading, per ADR-002 §2.
+
+This file is also the release-notes source `cargo-dist` reads when it builds a GitHub release body, so
+an unreleased section that describes nothing is a release body that says nothing. Keep it true, keep it
+short.
+
+## [Unreleased]
+
+Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
+No product behaviour is claimed by any entry on this page yet.
+
+### `e1.10` — the headless verbs: `index`, `show`, `stats`, `doctor`, `export` (reco-ld8)
 
 - **`fathom index` grew the two flags ADR-004 §9.3 promises**: `--rebuild` (advance the epoch and re-walk;
   the epoch is settled on success and stays `building` if the run dies, which `fathom stats` then reports)
@@ -55,16 +66,53 @@ to whoever packages this — a dropped MSRV is a **Minor** change recorded under
   the aggregates behind two verbs are one read each and no SQL leaks into the composition root (ADR-002
   §4.3). `clock.rs` is now unconditional: reporting the world needs the instant the report describes.
 
-## Toolchain`](docs/adr/0002-workspace.md) heading, per ADR-002 §2.
+### `e0.3` — ADR-003: the Episode — identity, segmentation, boundary tie-breakers, stability across rewrites (reco-ubw)
 
-This file is also the release-notes source `cargo-dist` reads when it builds a GitHub release body, so
-an unreleased section that describes nothing is a release body that says nothing. Keep it true, keep it
-short.
-
-## [Unreleased]
-
-Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
-No product behaviour is claimed by any entry on this page yet.
+- **The identity rule, decided and published** ([docs/adr/0003-episodes.md](docs/adr/0003-episodes.md)):
+  an episode is addressed by `sha256("fathom-episode/1" 0 author 0 normalised-subject 0 sorted-path-set)`
+  — the three facts a rewrite preserves — and **never** by the member SHAs, the parent boundary, the tree
+  or the dates, which are what a rewrite changes. That is invariant **I1** (identity is stable across
+  `git rebase -i` of the same content) and it is why `--amend`, `rebase -i` and a force-push no longer
+  orphan a sign-off. The ticket's "member SHAs plus parent boundary" is kept as the episode's **extent**
+  (§3), which is what the diff endpoint and the rework detector need, and ADR-001's glossary was amended
+  in the same change rather than redefined locally.
+- **Three exact digests instead of one fuzzy fingerprint**: `fingerprint` (author+subject+paths, the id),
+  `fallback_fingerprint` (author+subject — survives an amend that adds files, a squash that keeps the
+  subject) and `shape_fingerprint` (author+paths — survives a reword, including mid-rebase). §13.1 declines
+  similarity-based re-linking for v1 and names the measurement that would reopen it: a guessed link
+  attaches a human sign-off to the wrong change, silently.
+- **The closed boundary cascade**, in the order that was already in `decide()` (a human `force_split`
+  outranks harness evidence; turn evidence outranks every git heuristic; the graph outranks the author;
+  the clock outranks the subject line), with **TB1–TB10** tie-breakers — one rule recorded per boundary,
+  no blending, same-store-same-episodes, and twin ids (`ep-x`, `ep-x-2`) for the same change landing twice.
+- **Re-link tiers RL0–RL7**: dead→live only, never onto an episode that already has a verdict, one claim
+  per live episode, closest-in-time inside a tier, every carry written to `episode_rewrite`. Worked
+  examples for amend, amend `--reset-author`, rebase, reword, `fixup!`+squash, PR squash-merge, merge
+  trains, cherry-pick twins, backports, dropped commits and splits (§5). Where all three tiers fail — a
+  rebase that reworded *and* moved files — the rule is **fail-visible**: the episode comes back `unread`
+  rather than inheriting a decision it cannot prove.
+- **Six places the code moved instead of the prose approving it** (§14): the `segment.rs` module doc listed
+  a different cascade from the code (the code's won); `created_source='index'` was stamped at 0.7 where
+  ADR-004 §4.3 publishes 0.3 (now 0.3); the compiled-in gap was 45 minutes where three published places
+  said 30 (now 30); `store/git.py` addressed episodes by member oids and fingerprinted them by tree oids —
+  the scheme §2 rejects (now the ADR's digests, same framing, same prefix); the config enum spelled two
+  rules `time`/`merge` where the store stores `time-gap`/`branch` (one vocabulary now, App. B); and the
+  published `episode_rewrite.method` CHECK lacked `shape`, which the relink writes.
+- **A second implementation on purpose**: `src/recommender/segment.py` re-derives the digests and holds the
+  closed vocabularies, and ADR-003 Appendix A publishes the golden vectors both must reproduce
+  (`identity_matches_the_published_golden_vector`, `test_the_published_vectors_in_appendix_a_are_reproducible`).
+  `tests/test_episode_identity_contract.py` (19 tests) parses the ADR's own tables and diffs them against
+  both implementations and both schema copies — cascade order and prices, relink tiers, `created_source`
+  prices, the gap default in four places, the CHECK vocabularies, the new glossary nouns and the docs'
+  status lines.
+- **Also decided here**: a partial tree is a provisional episode and nothing durable may be keyed to it —
+  no sign-off, no finding, no metric denominator (§7); a human commit between agent commits is its own
+  episode and splits the agent's work in two, with the turn-evidence and `force_merge` remedies named (§8);
+  the boundary order is **not** configurable, and `episode.boundaries` now restates it rather than
+  pretending to control it (§4.5); `lineage_seq`, not `created_utc`, is the canonical successor order the
+  metrics read (L2).
+- **Fixed in passing**: the CHANGELOG's opening paragraph had swallowed a later ticket's section as its own
+  link text (the `e1.10` heading is a `###` under `[Unreleased]` now, where it belongs).
 
 ### Added
 

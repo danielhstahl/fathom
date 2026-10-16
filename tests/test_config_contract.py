@@ -301,8 +301,8 @@ def test_negations_keep_their_position(repo):
 
 
 def test_replace_is_for_ordered_lists(repo):
-    write(repo / "fathom.toml", '[episode]\nboundaries = ["time", "hook"]\n')
-    assert value(resolve(repo), "episode.boundaries") == ["time", "hook"]
+    write(repo / "fathom.toml", '[episode]\nboundaries = ["time-gap", "hook"]\n')
+    assert value(resolve(repo), "episode.boundaries") == ["time-gap", "hook"]
 
 
 def test_open_map_merges_entry_wise_with_two_provenances(repo, tmp_path):
