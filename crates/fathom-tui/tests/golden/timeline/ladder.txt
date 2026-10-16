@@ -1,0 +1,13 @@
+# ladder
+# the column ladder, §5.2's fixed order: sparkline, relative time to date, author, risk number, and the state glyph last of all.
+
+ 42 all six columns  |▸ e8f1a2 0:12 agent +412 −90 ●●●●●● 82 ⚑  |
+ 40 all six columns  |▸ e8f1a2 0:12 agent +412 −90 ●●●●●● 82 ⚑|
+ 38 no sparkline     |▸ e8f1a2 0:12 agent +412 −90 82 ⚑     |
+ 34 no sparkline     |▸ e8f1a2 0:12 agent +412 −90 82 ⚑ |
+ 32 date instead of age |▸ e8f1a2 14 Oct agent +412 −90 ⚑|
+ 30 no author        |▸ e8f1a2 14 Oct +412 −90 82 ⚑ |
+ 27 no author        |▸ e8f1a2 14 Oct +412 −90 ⚑ |
+ 24 no risk number   |▸ e8f1a2 14 Oct ⚑       |
+ 22 no risk number   |▸ e8f1a2 14 Oct ⚑     |
+ 18 id and state only |▸ e8f1a2 14 Oct ⚑ |

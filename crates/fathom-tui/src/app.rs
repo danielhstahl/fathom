@@ -25,6 +25,7 @@ use crate::event::FrameScheduler;
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
 use crate::layout::{Fit, FitState, fit};
 use crate::style::StyledLine;
+use crate::timeline::{self, Timeline};
 use crate::views::{Pane, Role, View, ViewId, view};
 use fathom_analyze::insight;
 
@@ -99,6 +100,9 @@ pub enum Overlay {
     Palette,
     /// `/` — the search field and its results.
     Search,
+    /// `F` — the filter chooser (`filter.edit`, `e1.6`). A `prompt` like the other two, because the
+    /// registry has no keys of its own to spend and the prompt's are already exclusive (§7.1).
+    Filter,
 }
 
 impl Overlay {
@@ -107,7 +111,7 @@ impl Overlay {
     pub const fn mode(self) -> Mode {
         match self {
             Overlay::Help => Mode::Pick,
-            Overlay::Palette | Overlay::Search => Mode::Prompt,
+            Overlay::Palette | Overlay::Search | Overlay::Filter => Mode::Prompt,
         }
     }
 }
@@ -287,6 +291,8 @@ pub struct App {
     pub model: Model,
     /// The diff viewer's own state, including the budget it will not exceed (`e1.7`).
     pub diff: DiffView,
+    /// The timeline rail's own state: its rows, its filter, its cursor (`e1.6`).
+    pub timeline: Timeline,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
     /// The palette row under the cursor, when the palette is open.
@@ -374,6 +380,7 @@ impl App {
             scope: Scope::empty(),
             model,
             diff: DiffView::new(),
+            timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             prompt: String::new(),
             palette_row: 0,
             selection: BTreeMap::new(),
@@ -458,9 +465,19 @@ impl App {
         mode_chain(crate::keymap::Mode::for_view(self.view), self.interaction())
     }
 
+    /// Is the focused pane the timeline's rail? The one place that asks is every place that has to
+    /// decide between a list's motion and a document's scroll.
+    #[must_use]
+    pub fn rail_focus(&self) -> bool {
+        self.view == ViewId::Timeline && self.focused_pane().is_some_and(|pane| pane.name == "rail")
+    }
+
     /// The rows a pane prints: its own, or the honest empty state.
     #[must_use]
     pub fn pane_rows(&self, pane: &Pane) -> Vec<String> {
+        if let Some(lines) = self.timeline_text(pane) {
+            return lines;
+        }
         if let Some(lines) = self.diff_text(pane) {
             return lines;
         }
@@ -538,6 +555,9 @@ impl App {
                 _ => format!("`{}` — owned by {}", pane.name, pane.ticket),
             };
         }
+        if let Some(strip) = self.timeline_strip(pane) {
+            return strip;
+        }
         if pane.role == Role::Primary {
             self.current().question.to_owned()
         } else {
@@ -551,6 +571,152 @@ impl App {
                 },
                 pane.ticket
             )
+        }
+    }
+
+    // --- the timeline view (`e1.6`) ---------------------------------------------------------------
+
+    /// Hand the rail a batch of episodes and say what it did, in the toast's words.
+    ///
+    /// This is the seam the worker writes to: rows come from
+    /// [`fathom_analyze::insight`] on a worker thread ([`crate::event::WorkerMsg`]) and land here,
+    /// never on the draw path — scrolling does not touch the store because nothing on the draw path
+    /// can (`e1.6`'s "never block" criterion, ADR-001 §7.6).
+    pub fn load_episodes(&mut self, batch: timeline::Batch) -> String {
+        let said = self.timeline.load(batch);
+        self.toast(said.clone());
+        said
+    }
+
+    /// The rows the timeline's pane would print, as text — the `--plain` and golden projection of the
+    /// rail and its preview, sized to the pane like every other list.
+    #[must_use]
+    pub fn timeline_text(&self, pane: &Pane) -> Option<Vec<String>> {
+        if self.view != ViewId::Timeline {
+            return None;
+        }
+        let cols = self.pane_cols(pane.name).max(12);
+        let rows = self.pane_body_rows();
+        match pane.name {
+            "rail" => Some(self.timeline.rail_text(cols, rows)),
+            "card" => Some(
+                self.timeline
+                    .preview_lines(cols, rows)
+                    .into_iter()
+                    .map(|line| line.text().to_owned())
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    /// The timeline's panes as styled rows: the rail is a windowed list, the card a short document,
+    /// and neither is a list of strings the shell can slice on its own.
+    #[must_use]
+    pub fn timeline_body(&self, pane: &Pane, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
+        if self.view != ViewId::Timeline {
+            return None;
+        }
+        match pane.name {
+            "rail" => Some(self.timeline.rail_lines(width, rows)),
+            "card" => Some(self.timeline.preview_lines(width, rows)),
+            _ => None,
+        }
+    }
+
+    /// Content rows a pane has at this frame — the number the rail's window is sized to.
+    ///
+    /// The renderer computes its own row budget from the chrome the ladder left standing; this is the
+    /// same arithmetic from the app's side, so the rail's window and the frame's body rows cannot
+    /// disagree about how many rows there are.
+    #[must_use]
+    pub fn pane_body_rows(&self) -> usize {
+        let view = self.current();
+        let applied = self.fit.applied.clone();
+        let gone = |id: &str| applied.iter().any(|a| a == id);
+        let boxed =
+            view.has_chrome(crate::views::CH_FRAME) && !gone(crate::layout::Step::Frame.id());
+        let strips =
+            view.has_chrome(crate::views::CH_STRIPS) && !gone(crate::layout::Step::Strips.id());
+        let tabs = view.has_chrome(crate::views::CH_TABS) && !gone(crate::layout::Step::Tabs.id());
+        let hint = view.has_chrome(crate::views::CH_HINT) && !gone(crate::layout::Step::Hint.id());
+        let query_rows = view
+            .panes
+            .iter()
+            .filter(|pane| pane.role == crate::views::Role::Query)
+            .count();
+        let overhead = usize::from(tabs)
+            + query_rows
+            + 1
+            + usize::from(strips)
+            + usize::from(boxed)
+            + usize::from(view.has_chrome(crate::views::CH_STATUS))
+            + usize::from(hint);
+        usize::from(self.size.1).saturating_sub(overhead).max(1)
+    }
+
+    /// The strip a timeline pane carries: the rail prints its filter and what survived it (the
+    /// ADR's `filter: area=any state=unread (F edits)` line), the preview keeps the citation strip.
+    #[must_use]
+    pub fn timeline_strip(&self, pane: &Pane) -> Option<String> {
+        if self.view != ViewId::Timeline || pane.name != "rail" {
+            return None;
+        }
+        Some(self.timeline.strip())
+    }
+
+    /// Run the half of the action registry this view owns (`e1.6`).
+    fn dispatch_timeline(&mut self, action: &str) -> bool {
+        match action {
+            "filter.edit" => {
+                self.overlay = Some(Overlay::Filter);
+                self.timeline.open_editor();
+                self.prompt.clear();
+                self.toast(
+                    "filters — type to narrow, `<C-n>`/`<C-p>` move, `<Enter>` chooses, `<Esc>` closes",
+                );
+                true
+            }
+            "filter.clear" => {
+                let said = self.timeline.clear_filters();
+                self.toast(said);
+                true
+            }
+            "goto.first_unread" => {
+                let said = self.timeline.goto_first_unread();
+                self.scope.episode = self.timeline.selected().map(|episode| episode.id.clone());
+                self.toast(said);
+                true
+            }
+            "goto.today" => {
+                let said = self.timeline.goto_today();
+                self.scope.episode = self.timeline.selected().map(|episode| episode.id.clone());
+                self.toast(said);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The filter chooser's rows, for the prompt keys that move its cursor.
+    #[must_use]
+    pub fn filter_rows(&self) -> Vec<timeline::EditorRow> {
+        self.timeline.editor_rows(&self.prompt)
+    }
+
+    /// Choose the filter row under the chooser's cursor.
+    fn filter_choose(&mut self) {
+        let row = self.timeline.editor_cursor();
+        let buffer = self.prompt.clone();
+        let (said, next) = self.timeline.editor_apply(row, &buffer);
+        self.prompt.clear();
+        self.toast(said);
+        match next {
+            timeline::EditorNext::Close => {
+                self.overlay = None;
+                self.timeline.close_editor();
+            }
+            timeline::EditorNext::Back | timeline::EditorNext::Stay => {}
         }
     }
 
@@ -719,6 +885,15 @@ impl App {
     /// clamped against.
     #[must_use]
     pub fn row_count(&self, pane: &Pane) -> usize {
+        if self.view == ViewId::Timeline {
+            // The rail's rows belong to the rail: group headers count, collapsed groups' hidden rows
+            // do not, and the number the motion keys clamp against is the number of slots.
+            return if pane.name == "rail" {
+                self.timeline.len()
+            } else {
+                0
+            };
+        }
         if self.view == ViewId::Diff {
             return match pane.name {
                 "tree" => self.diff.tree_len(),
@@ -1021,6 +1196,7 @@ impl App {
                     Overlay::Help => "help",
                     Overlay::Palette => "palette",
                     Overlay::Search => "search",
+                    Overlay::Filter => "filters",
                 }
             ));
             return;
@@ -1160,6 +1336,9 @@ impl App {
     /// The row the primary pane's selection sits on.
     #[must_use]
     pub fn selected_row(&self) -> usize {
+        if self.rail_focus() {
+            return self.timeline.cursor();
+        }
         self.focused_pane()
             .and_then(|pane| {
                 self.selection
@@ -1174,6 +1353,15 @@ impl App {
         let Some(pane) = self.focused_pane() else {
             return;
         };
+        if self.view == ViewId::Timeline && pane.name == "rail" {
+            // The rail owns its cursor, because the cursor is an *episode* and not a row: moving it
+            // updates the anchor, the scope and the window together (ADR-006 §5.2).
+            self.timeline.move_to(row);
+            self.scope.episode = self.timeline.selected().map(|episode| episode.id.clone());
+            self.selection
+                .insert((self.view, pane.name.to_owned()), self.timeline.cursor());
+            return;
+        }
         let count = self.row_count(pane);
         let clamped = if count == 0 { 0 } else { row.min(count - 1) };
         self.selection
@@ -1199,6 +1387,10 @@ impl App {
 
     /// Scroll the focused pane, never below its last row.
     pub fn scroll_by(&mut self, delta: i32) {
+        if self.rail_focus() {
+            self.timeline.scroll_by(delta);
+            return;
+        }
         let Some(pane) = self.focused_pane() else {
             return;
         };
@@ -1348,6 +1540,12 @@ impl App {
             }
             return;
         }
+        if self.dispatch_timeline(action) {
+            // The timeline's own registry half (`e1.6`): the filter surface and the two jumps that
+            // have no keys of their own. Before the frame actions, so `F` is not the frame's to give
+            // away as "owned by e1.6".
+            return;
+        }
         if self.dispatch_diff(action) {
             // The diff view's own registry half (`e1.7`): the hunk jumps, the three toggles, and the
             // three ways out. Handled before the frame actions so a diff key cannot fall through to
@@ -1389,8 +1587,32 @@ impl App {
                 let cut = head.rfind(char::is_whitespace).map_or(0, |i| i + 1);
                 self.prompt.truncate(cut);
             }
-            "prompt.result_down" => self.palette_row += 1,
-            "prompt.result_up" => self.palette_row = self.palette_row.saturating_sub(1),
+            "prompt.result_down" => {
+                if self.overlay == Some(Overlay::Filter) {
+                    let len = self.filter_rows().len();
+                    let next = self.timeline.editor_cursor() + 1;
+                    self.timeline.editor_move(next, len);
+                } else {
+                    self.palette_row += 1;
+                }
+            }
+            "prompt.result_up" => {
+                if self.overlay == Some(Overlay::Filter) {
+                    let len = self.filter_rows().len();
+                    let next = self.timeline.editor_cursor().saturating_sub(1);
+                    self.timeline.editor_move(next, len);
+                } else {
+                    self.palette_row = self.palette_row.saturating_sub(1);
+                }
+            }
+            "list.expand" => {
+                if self.rail_focus() {
+                    let said = self.timeline.toggle_collapse();
+                    self.toast(said);
+                } else {
+                    self.toast("nothing expandable here — `<Space>` is for a list node (e1.7 owns the tree's)".to_owned());
+                }
+            }
             "prompt.submit" => self.submit_prompt(),
             "pick.choose" => self.submit_prompt(),
             "list.down" => self.set_selection(self.selected_row() + 1),
@@ -1406,10 +1628,10 @@ impl App {
                 let page = usize::from(self.size.1).saturating_sub(1);
                 self.set_selection(self.scroll_of() + page);
             }
-            "list.page_down" => self.scroll_by(i32::from(self.size.1.saturating_sub(1))),
-            "list.page_up" => self.scroll_by(-i32::from(self.size.1.saturating_sub(1))),
-            "list.half_down" => self.scroll_by(i32::from(self.size.1.saturating_sub(1) / 2)),
-            "list.half_up" => self.scroll_by(-i32::from(self.size.1.saturating_sub(1) / 2)),
+            "list.page_down" => self.page_by(i32::from(self.size.1.saturating_sub(1))),
+            "list.page_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1))),
+            "list.half_down" => self.page_by(i32::from(self.size.1.saturating_sub(1) / 2)),
+            "list.half_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1) / 2)),
             "list.scroll_down" => self.scroll_by(1),
             "list.scroll_up" => self.scroll_by(-1),
             other => self.dispatch_other(other),
@@ -1452,6 +1674,10 @@ impl App {
 
     /// `<Enter>` in a prompt: run the palette row, or hand the search query to the search owner.
     fn submit_prompt(&mut self) {
+        if self.overlay == Some(Overlay::Filter) {
+            self.filter_choose();
+            return;
+        }
         match self.overlay {
             Some(Overlay::Palette) => {
                 let entries = self.palette_rows();
@@ -1514,5 +1740,23 @@ impl FrameScheduler {
     #[must_use]
     pub fn poll_for(pending_chord: Option<Duration>) -> Duration {
         pending_chord.unwrap_or(crate::terminal::SIGNAL_POLL)
+    }
+}
+
+impl App {
+    /// A page's worth of motion.
+    ///
+    /// On a **list** pane a page moves the *selection* — a reviewer paging down a queue wants the
+    /// cursor down there, and the window follows it — and on a **body** pane it moves the window,
+    /// because a document has nothing to select. The rail is the list case even though it is also the
+    /// one that scrolls independently, which is why this is a branch and not one `scroll_by`.
+    fn page_by(&mut self, delta: i32) {
+        if self.rail_focus() {
+            let rows = isize::try_from(self.timeline.rail().visible().max(1)).unwrap_or(1);
+            let step = if delta < 0 { -rows } else { rows };
+            self.set_selection(self.selected_row().saturating_add_signed(step));
+            return;
+        }
+        self.scroll_by(delta);
     }
 }

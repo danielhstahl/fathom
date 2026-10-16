@@ -129,6 +129,7 @@ pub fn frame_styled(app: &App) -> Vec<StyledLine> {
     match app.overlay {
         Some(Overlay::Help) => help(&mut grid, app),
         Some(Overlay::Palette) => palette(&mut grid, app),
+        Some(Overlay::Filter) => filters(&mut grid, app),
         Some(Overlay::Search) => {
             // The search overlay borrows the frame (§1) and brings its own query row; the live
             // view behind it keeps its selection, which is what `<Esc>` returning to it means.
@@ -371,6 +372,46 @@ fn palette(grid: &mut Grid, app: &App) {
     );
 }
 
+/// The `F` chooser: the filter dimensions and their current values, filtered by what has been typed.
+///
+/// Same mechanism as the palette and for the same reason — the prompt is already the exclusive text
+/// surface, so the filter editor adds no keys, no precedence and nothing for `keys.overrides` to get
+/// wrong. What is on screen is the filter: `state · unread ✓` cannot be forgotten about the way a
+/// filter hidden in a status line can (ADR-001 §7.2).
+fn filters(grid: &mut Grid, app: &App) {
+    let (cols, rows) = (grid.cols, grid.rows);
+    let width = 76.min(cols).max(24);
+    let panel_rows = app.filter_rows();
+    // The chooser draws its own cursor, because it knows which row is the *editor's* and which is a
+    // header line; the panel is text the moment it leaves the view.
+    let shown: Vec<String> = app
+        .timeline
+        .editor_panel(&app.prompt, &panel_rows, width.saturating_sub(2))
+        .into_iter()
+        .collect();
+    // The panel is as tall as its rows, never a fixed box padded with blank lines: the chooser has
+    // nine rows on the dimensions list and three on a dimension with three values, and a 16-row frame
+    // that leaves 13 rows of nothing on screen is a panel lying about how much it needs (ADR-006 §6.1
+    // D8's rule about trimming applies to a floating panel before it applies to a pane).
+    let height = (shown.len() + 2).min(rows.saturating_sub(1)).clamp(4, 16);
+    let shown: Vec<String> = shown.into_iter().take(height.saturating_sub(2)).collect();
+    draw_panel(
+        grid,
+        Panel {
+            x: cols.saturating_sub(width) / 2,
+            // Above the chrome, not over it. The status line is the last chrome standing (§1) and it is
+            // where the index state and any degradation notice live, so a filter chooser that painted
+            // over it would hide the facts a reviewer needs most while deciding what to filter.
+            y: rows.saturating_sub(height + 3).max(1),
+            width,
+            height,
+            title: "filters — what the rail selects (ADR-006 §7.4 filter.edit)",
+            lines: &shown,
+            selection: None,
+        },
+    );
+}
+
 /// Draw a boxed panel into the grid.
 fn draw_panel(grid: &mut Grid, panel: Panel<'_>) {
     if panel.width < 6 || panel.height < 4 {
@@ -413,7 +454,11 @@ fn pane_head(app: &App, pane: &Pane) -> String {
 /// A pane's body: its rows from the model, or the empty state, clipped and padded to the pane.
 fn pane_body(app: &App, pane: &Pane, width: usize, rows: usize) -> Vec<StyledLine> {
     // The diff view draws its own panes: the tree carries a cursor and the hunks pane is a window
-    // into a file, so neither is a list of strings the shell can slice on its own.
+    // into a file, so neither is a list of strings the shell can slice on its own. The timeline's
+    // rail does the same thing for the same reason — it is a window over a list it keeps virtual.
+    if let Some(lines) = app.timeline_body(pane, width, rows) {
+        return lines;
+    }
     if let Some(lines) = app.diff_body(pane, width, rows) {
         return lines;
     }

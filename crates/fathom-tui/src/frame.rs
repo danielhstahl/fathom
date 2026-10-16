@@ -27,6 +27,7 @@ use crate::error::Error;
 use crate::event::{Bus, FrameScheduler, Message, Received, WorkerMsg, spawn_input_reader};
 use crate::keymap::{Keymap, Override};
 use crate::terminal::{Guard, Signals, TerminalRestore};
+use crate::timeline;
 use crate::views::ViewId;
 use fathom_core::time::Timestamp;
 
@@ -120,6 +121,13 @@ pub struct Options {
     /// The environment the copy and `$EDITOR` plans read: variables and the `PATH` answer, gathered by
     /// `fathom-cli`, because this crate reads neither (ADR-002 §3).
     pub handoff_env: Env<'static>,
+    /// The episodes the timeline starts with, if the caller has them.
+    ///
+    /// A batch, not a store handle: `fathom-cli` reads the index (or a worker pushes
+    /// [`crate::event::WorkerMsg`]), and the rail draws what it was given. `None` is the honest case
+    /// today — `insight::episodes` is `e2.11`'s to answer — and the rail says so instead of showing
+    /// an empty list that looks like an empty repository.
+    pub episodes: Option<timeline::Batch>,
 }
 
 impl Default for Options {
@@ -133,6 +141,7 @@ impl Default for Options {
             notices: Vec::new(),
             now: Timestamp::UNIX_EPOCH,
             handoff_env: Env::empty(),
+            episodes: None,
         }
     }
 }
@@ -465,6 +474,7 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     );
     app.notices = options.notices.clone();
     app.install_handoff_env(options.handoff_env.clone());
+    prime(&mut app, options);
     for notice in &signal_notices {
         app.notices.push(notice.clone());
     }
@@ -507,6 +517,16 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     report
 }
 
+/// Put a finished `App` in the state a set of options describes: the instant it is drawn for, and the
+/// rows the caller supplied. Shared by every entry point so the interactive frame, the piped frame and
+/// a test's frame start from one answer (ADR-001 §7.10).
+fn prime(app: &mut App, options: &Options) {
+    app.timeline.set_now(options.now);
+    if let Some(batch) = &options.episodes {
+        app.timeline.load(batch.clone());
+    }
+}
+
 /// Draw one frame as text and hand it back — `--plain`, and every headless caller.
 ///
 /// No terminal is taken, no escape sequence is written, and the result is the same lines the
@@ -522,6 +542,7 @@ pub fn render_plain(options: &Options) -> Vec<String> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    prime(&mut app, options);
     app.view = ViewId::Queue;
     crate::render::plain_lines(&app)
 }
@@ -536,6 +557,7 @@ pub fn render_at(options: &Options, view: ViewId, size: (u16, u16)) -> Vec<Strin
         size,
         options.repo_label.clone(),
     );
+    prime(&mut app, options);
     app.set_view(view);
     crate::render::frame_lines(&app)
 }

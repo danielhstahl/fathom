@@ -63,6 +63,11 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         // So is the environment the copy and `$EDITOR` plans are written against: the shell may not
         // read variables or walk `PATH` for itself (ADR-002 §3), so this crate does it instead.
         handoff_env: crate::handoff::environment(),
+        // The timeline's rows come from a batch, never from a store handle the shell would hold
+        // (ADR-002 §5.2). `insight::episodes` is `e2.11`'s to answer, so today's honest value is
+        // `None` — and the rail prints "nothing loaded yet, run `fathom index`" rather than an empty
+        // list that a reviewer would read as a quiet repository.
+        episodes: None,
     };
     if plain {
         for notice in &notices {

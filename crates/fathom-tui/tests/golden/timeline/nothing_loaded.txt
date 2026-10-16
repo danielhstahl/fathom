@@ -1,0 +1,40 @@
+# nothing_loaded
+# an index that has never been read: the pane names the verb to run
+
+· nothing loaded yet — run `fathom index` 
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+
+## rail strip
+filter: area=any state=any group=day (F edits) · nothing loaded yet — run `fathom index`
+
+## card (35 columns × 14 rows)
+no episode selected                
+`j`/`k` walk the rail, `<Enter>` o…
+the card's delta rows are owned by…
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+
+## card strip
+
+
+## cursor
+nothing

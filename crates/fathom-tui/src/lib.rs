@@ -30,4 +30,5 @@ pub mod layout;
 pub mod render;
 pub mod style;
 pub mod terminal;
+pub mod timeline;
 pub mod views;

@@ -1,0 +1,40 @@
+# big_index
+# the 10 000-episode fixture: four-digit counts, real sizes, and a window of rows drawn out of all of it
+
+▸ 0005e5 2:31 human +118 −10 ●●●●○○ ? ⚑   
+  0006e9 3:02 ?     +48 −33 ●●●●○○ ? ✓    
+  0007ed 3:30 ?     +114 −23 ●●●●○○ ? ✔   
+  0008e5 4:06 human +111 −9 ●●●●○○ ? ⚐    
+  0009e7 4:31 agent +91 −8 ●●●●○○ ? ×     
+  000ae5 5:00 human +49 −26 ●●●○○○ ? ⚐    
+  000be1 5:32 agent +109 −30 ●●●●○○ ? ⚐   
+  000ce9 6:00 human +67 −7 ●●●○○○ ? ⚑     
+  000dee 6:32 human +23 −15 ●●●○○○ ? ⚑    
+  000eee 7:01 agent +53 −2 ●●●○○○ ? ⚑     
+  000fe3 7:30 ?     +116 −16 ●●●●○○ ? ⚑   
+  0010e5 8:03 human +51 −8 ●●●○○○ ? ✔     
+
+## rail strip
+filter: area=any state=any group=day (F edits) · 10 000 of 10 000
+
+## card (35 columns × 14 rows)
+0005e5 — typo in the docs #5       
+4 commits · human 0.90 · 2:31 ago  
+⚑ unread · UTC · fixture index     
+                                   
+size     +118 −10 · 9 files        
+where    tools (9)                 
+boundary time-gap 0.60 — a rule,   
+         not a fact (ADR-003 §4.7) 
+session  no harness session on this
+         episode                   
+members  6d9637em0 7500b3cm1       
+         881a854m2 +1 more         
+                                   
+… 7 more rows — `<C-w>o` gives thi…
+
+## card strip
+
+
+## cursor
+0005e58

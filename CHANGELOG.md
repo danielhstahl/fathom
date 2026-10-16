@@ -15,6 +15,37 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `e1.6` — the timeline view: the episode rail, its filters, and a cursor that follows the episode (reco-bjo)
+
+- **The rail is the home screen, and it draws a window, not the index.** One row per episode —
+  id, relative time, author badge, change size, a log-scaled sparkline, risk, and the review-state
+  glyph — grouped by UTC day or agent session, and `Rail::lines` builds exactly the rows on screen:
+  a 10 000-episode batch scrolls at **p99 1.8 ms** (worst 2.1 ms, 240 drawn frames, debug profile)
+  while allocating **51 KB per frame** — the same 51 KB the same keystrokes cost at 500 episodes,
+  measured by a counting global allocator (`tests/timeline_bench.rs`), so "constant memory" is a
+  number and not an adjective. Rows arrive as a `Batch` from `fathom-cli`
+  (`frame::Options::episodes`), never as a store handle: `fathom-tui` still opens nothing (ADR-002 §3).
+- **Selection follows the episode, not the row.** The cursor's anchor carries id, the author+subject
+  digest, the author+paths digest and the member SHAs, and a re-index or a rewrite re-attaches it
+  through ADR-003 §6's tiers in order — so a rebase moves nothing, a reword rides tier 2, a squash
+  rides tier 3 *and says it landed on a different episode*, and an episode that left is announced
+  rather than replaced by a cursor on somebody else's row.
+- **Filters compose the way the store composes them** — OR inside a dimension, AND across author, kind,
+  review state, path area and a typed date range — and they are a value with a key
+  (`timeline.filter`, `timeline.selection`, `timeline.members`), so `e1.11` can restore a run to the
+  rows and the cursor it had. `F` opens the chooser as a prompt, which is why it added no keys: the
+  surface spends the palette's existing chords and nothing for `keys.overrides` to get wrong.
+- **The column ladder is the ADR's order, and the state glyph is the last cell standing** (§5.2, §6.3),
+  with a fit rule underneath it that drops the risk number and then the change size rather than clip
+  the glyph — `tests/golden/timeline/ladder.txt` prints every rung. Grouping counts what it groups and
+  a collapsed group leaves a counted `··· 17 more` behind it, because silent suppression is the one
+  failure a review tool is not allowed (ADR-001 §7.2).
+- **Nothing is blank and nothing is invented.** An unranked episode prints `?`, an unknown author prints
+  `?`, a dead episode prints `gone`, an empty rail names the verb (`run \`fathom index\``), a filter
+  that selected nothing says so and names the key, and the card prints whose delta fields it is missing
+  and which command will fill them. 37 behaviour tests, 14 goldens and 2 perf tests
+  (`cargo test -p fathom-tui --test 'timeline_*'`), all from one deterministic fixture corpus.
+
 ### `e1.10` — the headless verbs: `index`, `show`, `stats`, `doctor`, `export` (reco-ld8)
 
 - **`fathom index` grew the two flags ADR-004 §9.3 promises**: `--rebuild` (advance the epoch and re-walk;

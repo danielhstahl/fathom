@@ -1,0 +1,40 @@
+# collapsed
+# the first group collapsed: `··· N more` is counted, not hidden
+
+▸Tue 14 Oct ── 3 episodes                 
+ ··· 3 more — <Space> opens               
+ Mon 13 Oct ── 3 episodes                 
+  77aa0c 1d1h agent +1 204 −90 ●●●●●● ? ✔ 
+  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑     
+  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑    
+ Thu 18 Sep · session 2 (pi) ── 1 episode 
+  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     
+ Sun 14 Sep · session 1 (pi) ── 1 episode 
+  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   
+ Sat 13 Sep ── 1 episode                  
+  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    
+
+## rail strip
+filter: area=any state=any group=day (F edits) · 10 of 10
+
+## card (35 columns × 14 rows)
+no episode selected                
+`j`/`k` walk the rail, `<Enter>` o…
+the card's delta rows are owned by…
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+
+## card strip
+
+
+## cursor
+nothing

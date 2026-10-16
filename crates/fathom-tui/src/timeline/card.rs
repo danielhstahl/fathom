@@ -1,0 +1,265 @@
+//! `fathom_tui::timeline::card` — the details pane: what the selected episode is, and what the rail
+//! does not know about it.
+//!
+//! The card belongs to `e2.10`, and the *delta* belongs to `e2.11`: structure, dependency, shape and
+//! finding rows are theirs to render, and until they land this pane prints the fields the rail is
+//! actually cited on (ADR-006 §5.2's `rail`/`card` `reads` columns) plus one block saying which
+//! ticket owns the rest and what to run instead. A preview that invented a `structure` line from the
+//! file count would be the exact lie ADR-001 §7.10 is written against.
+//!
+//! Width matters here: the card is the pane the layout sells first, and at its documented minimum
+//! (26 columns) a long path list has to wrap rather than clip a fact away.
+
+use fathom_core::time::Timestamp;
+
+use crate::style::{Face, StyledLine};
+
+use super::days;
+use super::episode::Episode;
+use super::render::compact;
+
+/// The card for the selected episode.
+///
+/// `width` is the pane's, `rows` the number the shell has for it; the result is exactly `rows` lines,
+/// padded, so a short card never leaves the pane's border ragged.
+#[must_use]
+pub fn lines(
+    episode: Option<&Episode>,
+    now: Timestamp,
+    origin: &str,
+    width: usize,
+    rows: usize,
+) -> Vec<StyledLine> {
+    let mut body: Vec<StyledLine> = match episode {
+        None => stated(width),
+        Some(episode) => detailed(episode, now, origin, width),
+    };
+    // The overflow note is what the `Body` pane's `trim_rows` rule requires: content goes from the
+    // end, and the last thing on screen says that happened rather than letting a line vanish.
+    if body.len() > rows && rows > 0 {
+        let hidden = body.len() - rows + 1;
+        body.truncate(rows.saturating_sub(1));
+        body.push(StyledLine::with_face(
+            format!(
+                "… {hidden} more {} — `<C-w>o` gives this pane the frame",
+                super::rail::plural(hidden, "row"),
+            ),
+            Face::Faint,
+        ));
+    }
+    while body.len() < rows {
+        body.push(StyledLine::plain(""));
+    }
+    body.truncate(rows);
+    body.into_iter().map(|line| line.padded(width)).collect()
+}
+
+/// The "nothing is selected" card: a reason, and the key that changes it.
+fn stated(_width: usize) -> Vec<StyledLine> {
+    vec![
+        StyledLine::with_face("no episode selected", Face::Emphasis),
+        StyledLine::with_face(
+            "`j`/`k` walk the rail, `<Enter>` opens the card here",
+            Face::Muted,
+        ),
+        StyledLine::with_face(
+            "the card's delta rows are owned by e2.10 and e2.11",
+            Face::Muted,
+        ),
+    ]
+}
+
+/// The card for one episode.
+fn detailed(episode: &Episode, now: Timestamp, origin: &str, width: usize) -> Vec<StyledLine> {
+    let mut out: Vec<StyledLine> = Vec::new();
+    let title = format!("{} — {}", episode.short_id(), episode.summary);
+    out.push(StyledLine::with_face(title, Face::Emphasis));
+    let confidence = episode
+        .author_confidence
+        .map_or_else(|| "?".to_owned(), |value| format!("{value:.2}"));
+    out.push(StyledLine::plain(format!(
+        "{} commit{} · {} {} · {}",
+        thousands(u64::try_from(episode.n_commits()).unwrap_or(u64::MAX)),
+        if episode.n_commits() == 1 { "" } else { "s" },
+        episode.author.badge(),
+        confidence,
+        days::relative_ago(now, episode.created)
+    )));
+    out.push(StyledLine::with_face(
+        format!(
+            "{} {} · {} · {origin}",
+            episode.state.glyph(),
+            episode.state,
+            "UTC"
+        ),
+        Face::Muted,
+    ));
+    if !episode.live {
+        out.push(StyledLine::with_face(
+            "gone — no current commit is in this episode any more (ADR-003 §6.3)",
+            Face::Warning,
+        ));
+    }
+    out.push(StyledLine::plain(""));
+    push_field(
+        &mut out,
+        width,
+        "size",
+        &format!(
+            "+{} −{} · {} file{}{}",
+            compact(episode.n_add),
+            compact(episode.n_del),
+            thousands(episode.n_files),
+            if episode.n_files == 1 { "" } else { "s" },
+            if episode.n_binary == 0 {
+                String::new()
+            } else {
+                format!(" · {} binary", thousands(episode.n_binary))
+            }
+        ),
+    );
+    if episode.paths.is_empty() {
+        push_field(
+            &mut out,
+            width,
+            "where",
+            "paths unknown — the index recorded none for this episode",
+        );
+    } else {
+        let counts = top_paths(&episode.paths);
+        let list: Vec<String> = counts
+            .iter()
+            .map(|(path, count)| format!("{path} ({count})"))
+            .collect();
+        push_field(&mut out, width, "where", &list.join(" · "));
+    }
+    if let Some(rule) = &episode.boundary_rule {
+        let confidence = episode
+            .boundary_confidence
+            .map_or_else(|| "?".to_owned(), |value| format!("{value:.2}"));
+        push_field(
+            &mut out,
+            width,
+            "boundary",
+            &format!("{rule} {confidence} — a rule, not a fact (ADR-003 §4.7)"),
+        );
+    } else {
+        push_field(
+            &mut out,
+            width,
+            "boundary",
+            "unknown — no rule was recorded",
+        );
+    }
+    let session = match (&episode.session, &episode.turn) {
+        (Some(session), Some(turn)) => format!("session {session} · turn {turn}"),
+        (Some(session), None) => format!("session {session} · turn unknown"),
+        (None, _) => "no harness session on this episode".to_owned(),
+    };
+    push_field(&mut out, width, "session", &session);
+    push_field(
+        &mut out,
+        width,
+        "members",
+        &if episode.members.is_empty() {
+            "unknown — the index named no member commits".to_owned()
+        } else {
+            let shown: Vec<&str> = episode.members.iter().take(3).map(String::as_str).collect();
+            let rest = episode.members.len().saturating_sub(shown.len());
+            format!(
+                "{}{}",
+                shown
+                    .iter()
+                    // A SHA is one token: cutting it at seven cells produced `e8f1a2-`, which looks
+                    // like a typo rather than an id. Ellipsis on the end is the honest cut.
+                    .map(|sha| {
+                        let chars: Vec<char> = sha.chars().collect();
+                        if chars.len() <= 12 {
+                            (*sha).to_owned()
+                        } else {
+                            format!("{}…", chars[..11].iter().collect::<String>())
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                if rest > 0 {
+                    format!(" +{rest} more")
+                } else {
+                    String::new()
+                }
+            )
+        },
+    );
+    out.push(StyledLine::plain(""));
+    // The not-here block: what the full card will carry that this build cannot cite, named with the
+    // ticket that owns it and the verb that answers today. One field, not five, because the honest
+    // statement is that the *model* is missing, and five rows of `not in this build` would push the
+    // facts that are here off a 35-column pane.
+    push_field(
+        &mut out,
+        width,
+        "delta",
+        "shape/deps/tests/findings: not in this build (e2.11's model, e4.3's detectors) — \
+`fathom analyze <episode>``",
+    );
+    push_field(
+        &mut out,
+        width,
+        "risk",
+        &episode.risk.map_or_else(
+            || "unknown — e4.4 ranks it (the rail prints `?`)".to_owned(),
+            |risk| format!("{risk}, as the queue ranked it (`w` asks why)"),
+        ),
+    );
+    out
+}
+
+/// `label  value`, wrapped at the pane's width with the continuation lined up under the value.
+fn push_field(out: &mut Vec<StyledLine>, width: usize, label: &str, value: &str) {
+    let head = format!("{label:<9}");
+    let indent = " ".repeat(head.chars().count().min(width));
+    let room = width.saturating_sub(head.chars().count()).max(8);
+    let mut first = true;
+    for chunk in wrap(value, room) {
+        if first {
+            let mut line = StyledLine::new();
+            line.push(Face::Muted, &head);
+            line.push(Face::Text, &chunk);
+            out.push(line);
+            first = false;
+        } else {
+            out.push(StyledLine::plain(format!("{indent}{chunk}")));
+        }
+    }
+}
+
+/// The wrap lives with the rail's renderer now (`render::wrap`): the empty rail and the card
+/// fold text the same way, and two copies of a word-wrap drift.
+use super::render::wrap;
+
+/// The four path prefixes that account for the most of the episode's files — `where`, the way the
+/// card's mock prints it (`src/store (7) · tests (2)`).
+#[must_use]
+pub fn top_paths(paths: &[String]) -> Vec<(String, usize)> {
+    let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for path in paths {
+        // Two levels: `src/store/epoch.rs` counts as `src/store`, a root file counts as itself.
+        let key = match path.split_once('/') {
+            Some((head, rest)) => match rest.split_once('/') {
+                Some((second, _)) => format!("{head}/{second}"),
+                None => head.to_owned(),
+            },
+            None => path.clone(),
+        };
+        *counts.entry(key).or_insert(0) += 1;
+    }
+    let mut rows: Vec<(String, usize)> = counts.into_iter().collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    rows.truncate(4);
+    rows
+}
+
+/// A number with its thousands separators, for counts the card states in words.
+fn thousands(value: u64) -> String {
+    crate::app::format_thousands(value)
+}
