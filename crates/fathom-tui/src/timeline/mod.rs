@@ -202,6 +202,22 @@ impl Timeline {
         self.rail.goto_first_unread()
     }
 
+    /// Replace the read set the rail treats as opened (`e1.11`'s restore path).
+    pub fn set_seen(&mut self, ids: impl IntoIterator<Item = String>) {
+        self.rail.set_seen(ids);
+    }
+
+    /// Mark one episode opened in the read set.
+    pub fn mark_seen(&mut self, id: &str) -> bool {
+        self.rail.mark_seen(id)
+    }
+
+    /// How many episodes this session knows were opened.
+    #[must_use]
+    pub fn seen_len(&self) -> usize {
+        self.rail.seen_len()
+    }
+
     /// `goto.today`.
     #[must_use]
     pub fn goto_today(&mut self) -> String {

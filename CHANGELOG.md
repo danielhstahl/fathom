@@ -15,6 +15,38 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `e1.11` — session state: what a repository remembers about the last reviewer (reco-6hp)
+
+- **Quitting saves the session; reopening restores it.** Selected episode, every filter (the rail's own
+  `timeline.*` encoding, which existed and had no caller), focused pane and tab strip, zoom, pane sizes,
+  the jump mark, the last search pattern, and the read set — the episodes `Enter` materialised a card for,
+  which is what `e1.6`'s `goto.first_unread` had been computing from nothing. It lives in `session_state`
+  **per repository**, not in a global config, because "where I got to" is a fact about this clone: a
+  different repository opens with a different filter and a different unread set, and neither is anybody's
+  default. `fathom tui --show-session` (plus `--json`) prints what the repository holds.
+- **One row per fact, and every decoder total** — which is what makes "corrupt state degrades" a shape
+  rather than a handler. A blob has two states, valid and useless; rows have a state per fact, so a torn
+  value costs the tab strip and not the afternoon, and `restore` classifies every row as applied,
+  newer-than-this-build or damaged, warns on the latter two and draws the frame anyway. Keys this build
+  does not *own* are unknown rather than corrupt — an unrelated subsystem's `session_state` rows, or a
+  newer fathom's, never get quarantined out of the store.
+- **Two TUIs in one repository cannot clobber each other, because the write is a SQL compare-and-set**
+  (`Store::set_ui_state_if`: `UPDATE … WHERE key = ? AND value = ?`), not last-writer-wins over the
+  whole state. A session commits only the delta it took since its own baseline read, so a row another
+  session moved is left alone and said (`session kept another session's state for the timeline: 2 row(s)`)
+  rather than silently overwritten — the naive version of this feature deleted the afternoon of whichever
+  TUI quit first. Nothing is written at all when nothing changed, including under `--fresh`.
+- **Damage is moved, never deleted, and never fatal.** A `.fathom/index.sqlite3` that is not SQLite (a
+  truncated copy, someone's `sqlite3` experiment) has the store plus its `-wal`/`-shm` siblings moved to
+  `.fathom/quarantine/` and the run starts clean with the warning on stderr and exit 0; a damaged *row*
+  is copied to a JSON record in the same directory and deleted from the store, and the good rows still
+  apply. A warning you can keep working under beats a refusal that costs the session.
+- Asserted by `crates/fathom-tui/tests/session.rs` (13), `crates/fathom-cli`'s session tests (8, the
+  only Rust unit tests in that crate with a store handle), and the store's
+  `a_session_state_write_lands_only_on_the_value_the_writer_read` / `a_session_state_row_survives_a_reopen`;
+  `every_key_the_shell_writes_is_one_the_writer_owns` fails the moment `fathom-tui` writes a key the
+  writer would not know what with, which is the seam ADR-002 §3 creates.
+
 ### `reconcile` — spike `s2`: do episodes segment the way a reviewer would cut them? (reco-q6r)
 
 - **The measurement ADR-003 §4.4 asked for, on a corpus that says what it is.** 204 hand-annotated turns

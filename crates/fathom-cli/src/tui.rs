@@ -33,6 +33,21 @@ use crate::verbs::Globals;
 pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let (overrides, mut notices) = keymap_overrides(&root);
+    // The session (`e1.11`): read before the shell starts, so the reviewer's cursor, filter and layout
+    // are in the first frame rather than two keystrokes away, and written back only if the reviewer
+    // changed something. `--fresh` still reads it — so that a fresh run that *does* change something can
+    // write against what is really stored — it just does not apply what it read.
+    let loaded = crate::session::load(&root, crate::clock::now_millis());
+    for warning in &loaded.warnings {
+        notices.push(warning.clone());
+    }
+    if globals.fresh {
+        notices.push(
+            "--fresh: the stored session was left unread, so this run starts from defaults \
+             (`e1.11`)"
+                .to_owned(),
+        );
+    }
     // A pipe is not a failure and not a degraded mode: it is the other contract (ADR-006 §6.7). The
     // shell would fail to take a screen it does not have, so the choice is made here and *said*.
     let plain = globals.plain || !std::io::stdout().is_terminal();
@@ -68,6 +83,11 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         // `None` — and the rail prints "nothing loaded yet, run `fathom index`" rather than an empty
         // list that a reviewer would read as a quiet repository.
         episodes: None,
+        session: if globals.fresh {
+            Vec::new()
+        } else {
+            loaded.entries.clone()
+        },
     };
     if plain {
         for notice in &notices {
@@ -80,7 +100,7 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         }
         return Ok(ExitCode::Ok);
     }
-    let _report = run(&options).map_err(|err| {
+    let report = run(&options).map_err(|err| {
         crate::verbs::pending(
             ExitCode::Error,
             format!("the terminal could not be taken: {err}"),
@@ -89,7 +109,14 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
             ),
         )
     })?;
-    // The screen is back by now. The run's own numbers are not the answer anyone asked for, so they
+    // The screen is back, so a printed complaint about the write cannot land under a raw-mode pane.
+    // An untouched run writes nothing at all — no row, no `mtime` (`e1.11`).
+    if report.session.changed {
+        let saved =
+            crate::session::save(&loaded, &report.session.entries, crate::clock::now_millis());
+        crate::session::report_saved(&saved);
+    }
+    // The run's own numbers are not the answer anyone asked for, so they
     // stay in the report and out of the pipe; `fathom doctor` is where a slow frame gets reported.
     Ok(ExitCode::Ok)
 }

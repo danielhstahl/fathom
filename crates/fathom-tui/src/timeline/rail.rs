@@ -160,6 +160,11 @@ pub struct Rail {
     chars_built: Cell<usize>,
     /// Collapsed groups.
     collapsed: BTreeSet<GroupKey>,
+    /// Episodes this reviewer opened — in this session, or in one it resumed (`e1.11`).
+    ///
+    /// The session's read set, kept apart from `review_state` on purpose: the rail may use it to decide
+    /// what still counts as unread, but it is not a decision and never becomes a sign-off.
+    seen: BTreeSet<String>,
     /// What the cursor is about, across a reload.
     anchor: Option<Anchor>,
     /// The filter in force.
@@ -199,6 +204,7 @@ impl Default for Rail {
             rows_built: Cell::new(0),
             chars_built: Cell::new(0),
             collapsed: BTreeSet::new(),
+            seen: BTreeSet::new(),
             anchor: None,
             filter: Filter::default(),
             facets: Facets::default(),
@@ -667,13 +673,18 @@ impl Rail {
     }
 
     /// Jump to the first unread row in the *filtered* order (`goto.first_unread`).
+    ///
+    /// "Unread" means *not opened*, and the session's read set is part of that answer (`e1.11`): a row
+    /// the reviewer read yesterday and did not mark is not the row to send them to today, and a jump that
+    /// walks them back to it makes `goto.first_unread` a rewind button.
     pub fn goto_first_unread(&mut self) -> String {
         self.rebuild();
-        if let Some(index) = self
-            .slots
-            .iter()
-            .position(|slot| self.episode_of(slot).is_some_and(Episode::is_unread))
-        {
+        if let Some(index) = self.slots.iter().position(|slot| {
+            self.episode_of(slot).is_some_and(|episode| {
+                // Unread in the ledger, and not opened in any session this one remembers.
+                episode.is_unread() && !self.seen.contains(&episode.id)
+            })
+        }) {
             self.move_to(index);
             let episode = self.selected().map_or_else(String::new, Episode::short_id);
             return format!("first unread — `{episode}`");
@@ -686,14 +697,40 @@ impl Rail {
             .iter()
             .filter(|episode| episode.is_unread())
             .count();
-        if unread > 0 {
+        let unseen = self
+            .episodes
+            .iter()
+            .filter(|episode| episode.is_unread() && !self.seen.contains(&episode.id))
+            .count();
+        if unseen > 0 {
             format!(
-                "{unread} unread in what is loaded, none of them in this filter — `F` edits it, \
+                "{unseen} unread in what is loaded, none of them in this filter — `F` edits it, \
                  `filter clear` is in the palette"
+            )
+        } else if unread > 0 {
+            format!(
+                "every unread row here was opened in an earlier session ({unread} of them) — `x` \
+                 marks one accepted, `F` edits what this filter admits"
             )
         } else {
             "nothing unread in what is loaded".to_owned()
         }
+    }
+
+    /// Replace the read set (`e1.11`'s restore path).
+    pub fn set_seen(&mut self, ids: impl IntoIterator<Item = String>) {
+        self.seen = ids.into_iter().collect();
+    }
+
+    /// Mark one episode opened; `false` when it already was.
+    pub fn mark_seen(&mut self, id: &str) -> bool {
+        self.seen.insert(id.to_owned())
+    }
+
+    /// How many episodes the read set holds.
+    #[must_use]
+    pub fn seen_len(&self) -> usize {
+        self.seen.len()
     }
 
     /// Jump to today's first row (`goto.today`), or to the newest row before today when the day is
@@ -752,6 +789,20 @@ impl Rail {
                 " · index holds {} ({})",
                 format_thousands(total),
                 self.origin
+            ));
+        }
+        // Only said when it is true (ADR-001 §7.2 cuts both ways): the rows that read `unread` in the
+        // ledger and were opened anyway are the ones a reviewer would otherwise re-read, and the wording
+        // keeps the distinction the ledger cares about — opened is not marked (`e1.11`).
+        let opened = self
+            .episodes
+            .iter()
+            .filter(|episode| episode.is_unread() && self.seen.contains(&episode.id))
+            .count();
+        if opened > 0 {
+            out.push_str(&format!(
+                " · {} opened, not marked",
+                format_thousands(u64::try_from(opened).unwrap_or(u64::MAX))
             ));
         }
         out

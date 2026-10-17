@@ -32,6 +32,10 @@ mod state;
 // shell is: a `minimal` binary has no terminal to hand back and no plan to read variables for.
 #[cfg(feature = "tui")]
 mod handoff;
+// The reviewer's session lives in the store, and only the shell has a use for it, so it is gated the
+// same way the shell is: a `minimal` binary has no session to resume (`e1.11`).
+#[cfg(feature = "tui")]
+mod session;
 #[cfg(feature = "tui")]
 mod tui;
 mod verbs;
@@ -62,6 +66,7 @@ fn run() -> ExitCode {
     let globals = verbs::Globals {
         plain: cli.plain,
         no_alt_screen: cli.no_alt_screen,
+        fresh: cli.fresh,
     };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching

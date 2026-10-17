@@ -26,6 +26,7 @@ use crate::diff::Env;
 use crate::error::Error;
 use crate::event::{Bus, FrameScheduler, Message, Received, WorkerMsg, spawn_input_reader};
 use crate::keymap::{Keymap, Override};
+use crate::session::{self, Delta, Restored};
 use crate::terminal::{Guard, Signals, TerminalRestore};
 use crate::timeline;
 use crate::views::ViewId;
@@ -128,6 +129,12 @@ pub struct Options {
     /// today — `insight::episodes` is `e2.11`'s to answer — and the rail says so instead of showing
     /// an empty list that looks like an empty repository.
     pub episodes: Option<timeline::Batch>,
+    /// The `session_state` rows the caller read for this repository (`e1.11`).
+    ///
+    /// The shell does not open a store (ADR-002 §5.2, lint `E01`), so the composition root reads the
+    /// rows and hands them over as `(key, value)` pairs. Empty is not a failure: it is a first session,
+    /// an unindexed repository, or `--fresh`, and each of those says so in its own words.
+    pub session: Vec<(String, String)>,
 }
 
 impl Default for Options {
@@ -142,6 +149,7 @@ impl Default for Options {
             now: Timestamp::UNIX_EPOCH,
             handoff_env: Env::empty(),
             episodes: None,
+            session: Vec::new(),
         }
     }
 }
@@ -174,6 +182,12 @@ pub struct Report {
     pub over_budget: usize,
     /// How the loop ended.
     pub end: LoopEnd,
+    /// What the reviewer left behind, for `fathom-cli` to write back (`e1.11`).
+    ///
+    /// The shell cannot write it — no store handle — and it cannot decide whether it is worth writing
+    /// either, because that depends on what was in the store when the run started. So it reports the
+    /// snapshot and the fact of whether it moved, and the composition root does the writing.
+    pub session: Delta,
 }
 
 impl Report {
@@ -382,6 +396,9 @@ pub fn run_loop(
         worst: app.scheduler.worst(),
         over_budget: app.scheduler.over_budget(),
         end,
+        // A `run_loop` caller owns its own `App` and can snapshot it directly; only `run`, which takes
+        // the screen and drops the app on the way out, reports a delta (`e1.11`).
+        session: Delta::default(),
     })
 }
 
@@ -476,18 +493,26 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     let (signals, signal_notices) = crate::terminal::install_signal_hooks();
 
     let keymap = Keymap::merged(&options.overrides);
-    let size = options
-        .size
-        .unwrap_or_else(|| crossterm::terminal::size().unwrap_or(HEADLESS_SIZE));
     let mut app = App::new(
         keymap,
         Model::from_facade(),
-        size,
+        HEADLESS_SIZE,
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
     app.install_handoff_env(options.handoff_env.clone());
-    prime(&mut app, options);
+    let resumed = prime(&mut app, options);
+    // The size to open at, in the order anyone's authority outranks anyone else's: what the caller
+    // forced, what the terminal says, the size this repository was last read at (`e1.11`), and the
+    // smallest frame fathom promises a layout for. The terminal wins over the stored size because a
+    // window that was resized while fathom was closed is a fact about now, and the stored size is a
+    // fact about then — but a stored size still beats a guess when nothing can answer.
+    let size = options
+        .size
+        .or_else(|| crossterm::terminal::size().ok())
+        .or(resumed.size)
+        .unwrap_or(HEADLESS_SIZE);
+    app.resize(size.0, size.1);
     for notice in &signal_notices {
         app.notices.push(notice.clone());
     }
@@ -520,6 +545,10 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     app.diff.spawn_workers(Arc::clone(&bus));
     let reader = spawn_input_reader(Arc::clone(&bus));
     let mut sink = TerminalSink { terminal };
+    // The baseline the exit snapshot is diffed against (`e1.11`): taken after the terminal answered its
+    // size and the session was restored, so "changed" means *the reviewer changed it*, and a run that
+    // was opened and closed again asks the store for nothing.
+    let baseline = session::snapshot(&app);
     let report = run_loop(
         &mut app,
         &bus,
@@ -531,17 +560,30 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // anything the caller prints, so nothing it might still deliver lands in the user's shell.
     drop(reader);
     drop(guard);
-    report
+    let mut report = report?;
+    report.session = session::delta(&baseline, &session::snapshot(&app));
+    Ok(report)
 }
 
-/// Put a finished `App` in the state a set of options describes: the instant it is drawn for, and the
-/// rows the caller supplied. Shared by every entry point so the interactive frame, the piped frame and
-/// a test's frame start from one answer (ADR-001 §7.10).
-fn prime(app: &mut App, options: &Options) {
+/// Put a finished `App` in the state a set of options describes: the instant it is drawn for, the rows
+/// the caller supplied, and the session the caller read. Shared by every entry point so the interactive
+/// frame, the piped frame and a test's frame start from one answer (ADR-001 §7.10).
+///
+/// Episodes before session, because the session's cursor is a claim about a row: the rows have to exist
+/// before it can be checked, and what came back is reported against them.
+fn prime(app: &mut App, options: &Options) -> Restored {
     app.timeline.set_now(options.now);
     if let Some(batch) = &options.episodes {
         app.timeline.load(batch.clone());
     }
+    let resumed = session::restore(app, &options.session);
+    for warning in &resumed.warnings {
+        app.notices.push(warning.clone());
+    }
+    if !resumed.applied.is_empty() {
+        app.toast(resumed.summary());
+    }
+    resumed
 }
 
 /// Draw one frame as text and hand it back — `--plain`, and every headless caller.
@@ -559,8 +601,17 @@ pub fn render_plain(options: &Options) -> Vec<String> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
-    prime(&mut app, options);
-    app.view = ViewId::Queue;
+    let resumed = prime(&mut app, options);
+    // A piped frame has no terminal to ask, so the reviewer's own last frame size is the honest answer
+    // for a width — the pipe draws the layout they read, not the one a default picked (`e1.11`).
+    if options.size.is_none()
+        && let Some((cols, rows)) = resumed.size
+    {
+        app.resize(cols, rows);
+    }
+    // Not `app.view = ViewId::Queue` any more (`e1.11`): `--plain` promises the same frame the terminal
+    // would have been given, and a resumed session's frame is the reviewer's view. A first session lands
+    // on the queue anyway, because that is what `App::new` opens.
     crate::render::plain_lines(&app)
 }
 

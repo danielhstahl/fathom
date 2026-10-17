@@ -29,6 +29,7 @@ pub mod keymap;
 pub mod layout;
 pub mod materialize;
 pub mod render;
+pub mod session;
 pub mod style;
 pub mod terminal;
 pub mod timeline;

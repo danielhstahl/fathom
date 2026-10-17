@@ -295,6 +295,19 @@ pub struct App {
     pub timeline: Timeline,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
+    /// The last search submitted with `/` then `<Enter>` (`e1.11`).
+    ///
+    /// Kept as its own field rather than read back out of `prompt`, because `prompt` belongs to whatever
+    /// overlay is open and is cleared by `<Esc>`, `<Enter>` and every view switch. The reviewer's
+    /// question outlives the field it was typed into.
+    pub last_search: Option<String>,
+    /// Episodes this reviewer opened, oldest first, capped at [`crate::session::MAX_READ`] (`e1.11`).
+    ///
+    /// The session's read set, and *not* the ledger's: opening is not a decision, and the durable marker
+    /// that records one belongs to `x` (`e4.6`). What this drives is the rail's idea of what is still
+    /// unread, so that `goto.first_unread` means "not looked at" across sessions and not "since this
+    /// one started".
+    pub opened: Vec<String>,
     /// The palette row under the cursor, when the palette is open.
     pub palette_row: usize,
     /// Row per `(view, pane)`. Selection follows identity when a row list carries it; the shell
@@ -382,6 +395,8 @@ impl App {
             diff: DiffView::new(),
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             prompt: String::new(),
+            last_search: None,
+            opened: Vec::new(),
             palette_row: 0,
             selection: BTreeMap::new(),
             scroll: BTreeMap::new(),
@@ -1181,6 +1196,15 @@ impl App {
         if ring_len == 0 {
             return;
         }
+        if self.rail_focus() {
+            // The rail's own strip calls `<Enter>` "opens the card", so this is the gesture that means
+            // *I am looking at this one*. `e1.11` remembers it; the ledger does not, because opening is
+            // not a decision and `x` is the one that signs off.
+            let opened = self.timeline.selected().map(|episode| episode.id.clone());
+            if let Some(id) = opened {
+                self.note_opened(&id);
+            }
+        }
         if self.pane + 1 < ring_len {
             self.drill.push(Drill {
                 view: self.view,
@@ -1400,6 +1424,21 @@ impl App {
         }
     }
 
+    /// Remember that this reviewer opened `id` (`e1.11`), most recent last.
+    ///
+    /// Bounded, because a session that opened 4 000 episodes does not need all 4 000 rows to tell it
+    /// where the cursor was: the oldest fall out, and the read set is the size of a working memory.
+    pub fn note_opened(&mut self, id: &str) {
+        let id = id.to_owned();
+        self.opened.retain(|have| have != &id);
+        self.opened.push(id.clone());
+        if self.opened.len() > crate::session::MAX_READ {
+            let cut = self.opened.len() - crate::session::MAX_READ;
+            self.opened.drain(0..cut);
+        }
+        self.timeline.mark_seen(&id);
+    }
+
     /// The focused pane's scroll offset.
     pub fn scroll_of(&self) -> usize {
         self.focused_pane()
@@ -1434,7 +1473,10 @@ impl App {
     }
 
     /// Ask the ladder again, and make a noise if the answer changed (ADR-001 §7.2).
-    fn refit(&mut self) {
+    ///
+    /// `pub(crate)` for `e1.11`: restoring a stored view changes the frame without going through
+    /// [`App::set_view`], which would spend the reviewer's zoom and pane position to do it.
+    pub(crate) fn refit(&mut self) {
         let before = self.fit.clone();
         self.fit = fit(self.view, self.size.0, self.size.1);
         if before.state != self.fit.state
@@ -1714,6 +1756,12 @@ impl App {
                 let query = self.prompt.clone();
                 self.overlay = None;
                 self.prompt.clear();
+                // The query survives the field that held it (`e1.11`): the next session starts from the
+                // reviewer's last question rather than from an empty box, and `--show-session` can say
+                // what was asked.
+                if !query.trim().is_empty() {
+                    self.last_search = Some(query.trim().to_owned());
+                }
                 self.toast(format!(
                     "search `{query}` — the scorer is owned by e5.2; `,` lists every action"
                 ));

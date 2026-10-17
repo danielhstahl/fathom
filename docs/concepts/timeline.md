@@ -144,8 +144,10 @@ chooser that painted over it would hide the facts a reviewer needs most while de
 
 ### Persistence
 
-The filter is a value with a key, so `fathom-cli` (`e1.11`) can put it in `session_state` and hand it
-back next run. Three keys, namespaced for `ui_state_all("timeline.")`:
+The filter is a value with a key, so `fathom-cli` can put it in `session_state` and hand it back next
+run — which is what `e1.11` (**reco-6hp**) now does; [session state](session-state.md) is that whole
+contract: the keys, the damage rules, two TUIs in one repository, `--fresh`. Three keys, namespaced for
+`ui_state_all("timeline.")`:
 
 ```
 timeline.filter     = author=pi&author=stahl;kind=agent;state=unread;area=src/store;since=…;group=session

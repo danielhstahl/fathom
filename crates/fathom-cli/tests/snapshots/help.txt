@@ -24,6 +24,11 @@ Options:
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
 
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -55,6 +60,11 @@ Options:
 
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
       --refresh
           Look up every stored unit, and recompute the ones that hit too.
@@ -106,6 +116,11 @@ Options:
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
 
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -135,6 +150,11 @@ Options:
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
 
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -154,6 +174,11 @@ Options:
 
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -183,6 +208,11 @@ Options:
 
       --deep
           Run the whole-database `integrity_check` rather than `quick_check` (ADR-004 §9.6)
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
       --strict
           Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want
@@ -227,6 +257,11 @@ Options:
           
           [default: HEAD]
 
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
       --root <ROOT>
           The repository to read
           
@@ -266,6 +301,11 @@ Options:
 
       --once
           Index once, then exit: what a script or a CI check wants from `watch`
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
       --max-cycles <MAX_CYCLES>
           Stop after this many looks at the filesystem
@@ -325,6 +365,11 @@ Options:
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
 
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -344,6 +389,11 @@ Options:
 
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
   -h, --help
           Print help (see a summary with '-h')

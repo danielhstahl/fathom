@@ -97,6 +97,11 @@ the one with more to do about it, and both are printed).
   printed** — a config layer is reported as a path, a size and an mtime. That is what makes
   `fathom doctor --json` safe to paste into a bug report (`e1.10`'s third criterion), and the test that
   asserts it plants a token in a config file under a fake `$HOME` and a password in a remote URL.
+- **A recovered session is a warning, not a failure.** `e1.11` prints its way out of damage on stderr —
+  the store that was not SQLite and is now under `.fathom/quarantine/`, the row that did not decode, the
+  `--fresh` run that is starting from defaults — and exits 0, because the exit code answers "did fathom do
+  the thing", and it did the thing. The one case that exits non-zero is the one where it cannot: a store it
+  opened and cannot overwrite, which says so instead of minting a second index.
 
 ## Reading the cache numbers
 

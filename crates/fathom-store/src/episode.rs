@@ -723,13 +723,36 @@ impl Store {
     ///
     /// [`Error::StoreCorrupt`] if the read fails.
     pub fn ui_state_all(&self, prefix: &str) -> Result<Vec<(String, String)>, Error> {
+        Ok(self
+            .ui_state_rows(prefix)?
+            .into_iter()
+            .map(|(key, value, _)| (key, value))
+            .collect())
+    }
+
+    /// Every `session_state` key starting with a prefix, as `(key, value, updated_utc)`.
+    ///
+    /// The stamp is what makes a resumed session able to say *when* a value was written, which is the
+    /// difference between "your pane sizes came back" and "another fathom session was here 4 s ago and
+    /// its answer is the one on screen" (`e1.11`).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn ui_state_rows(&self, prefix: &str) -> Result<Vec<(String, String, i64)>, Error> {
         let mut statement = self
             .connection()
-            .prepare("SELECT key, value FROM session_state WHERE key LIKE ?1 ORDER BY key")
+            .prepare(
+                "SELECT key, value, updated_utc FROM session_state WHERE key LIKE ?1 ORDER BY key",
+            )
             .map_err(|err| corrupt("reading session state", &err))?;
         let rows = statement
             .query_map(params![format!("{prefix}%")], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
             })
             .map_err(|err| corrupt("reading session state", &err))?;
         rows.collect::<Result<Vec<_>, _>>()
@@ -754,6 +777,58 @@ impl Store {
         }
         .map(|_| ())
         .map_err(|err| corrupt("writing session state", &err))
+    }
+
+    /// Write one `session_state` row **only if it still holds what the caller read** — the compare half
+    /// of a compare-and-set — and say whether the row was written.
+    ///
+    /// This is `e1.11`'s concurrent-TUI rule, pushed down to the one place that can enforce it. Two
+    /// fathom sessions on one repository both read the same `session_state`, and the one that quits
+    /// last must not be able to overwrite what the other one wrote in between: `fathom.toml`-style
+    /// "last writer wins on the whole blob" loses a filter, a cursor and a read set with no trace, and
+    /// a reviewer who signed nothing off finds their queue rewritten. So the writer states the value it
+    /// believes is there (`expected`, `None` for "there was no row"), and a row that moved in between is
+    /// left alone and reported — the loser keeps its own screen and is told its write did not land,
+    /// which is a fact it can act on, instead of a silent clobber.
+    ///
+    /// Every case is one statement, so the check and the write cannot be split by another writer:
+    ///
+    /// | `expected` | `value` | Statement | `Ok(true)` means |
+    /// |---|---|---|---|
+    /// | `Some(e)` | `Some(v)` | `UPDATE … WHERE key AND value = e` | the row still held `e`, and now holds `v` |
+    /// | `Some(e)` | `None` | `DELETE … WHERE key AND value = e` | the row still held `e`, and is gone |
+    /// | `None` | `Some(v)` | `INSERT … ON CONFLICT DO NOTHING` | there was no row, and now there is |
+    /// | `None` | `None` | nothing | nothing to do |
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn set_ui_state_if(
+        &mut self,
+        key: &str,
+        expected: Option<&str>,
+        value: Option<&str>,
+        now: i64,
+    ) -> Result<bool, Error> {
+        let changed = match (expected, value) {
+            (None, None) => return Ok(true),
+            (None, Some(value)) => self.conn_mut().execute(
+                "INSERT INTO session_state(key, value, updated_utc) VALUES (?1,?2,?3)
+                 ON CONFLICT(key) DO NOTHING",
+                params![key, value, now],
+            ),
+            (Some(expected), Some(value)) => self.conn_mut().execute(
+                "UPDATE session_state SET value = ?2, updated_utc = ?3
+                 WHERE key = ?1 AND value = ?4",
+                params![key, value, now, expected],
+            ),
+            (Some(expected), None) => self.conn_mut().execute(
+                "DELETE FROM session_state WHERE key = ?1 AND value = ?2",
+                params![key, expected],
+            ),
+        }
+        .map_err(|err| corrupt("writing session state", &err))?;
+        Ok(changed > 0)
     }
 
     /// The rewrite ledger, newest first: `(old, new, relation, method)`.

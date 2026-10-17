@@ -30,6 +30,13 @@ pub struct Cli {
     /// Draw in place instead of taking the alternate screen, which keeps the shell's scrollback.
     #[arg(long = "no-alt-screen", global = true)]
     pub no_alt_screen: bool,
+    /// Ignore the session this repository has stored, and start from defaults (`e1.11`).
+    ///
+    /// The escape hatch for a session that came back wrong: a filter that hides the episode you are
+    /// looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes
+    /// nothing writes nothing — it is simply not applied to this one.
+    #[arg(long, global = true)]
+    pub fresh: bool,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
@@ -42,6 +49,8 @@ pub struct Globals {
     pub plain: bool,
     /// Draw inline rather than in the alternate screen.
     pub no_alt_screen: bool,
+    /// Do not apply the repository's stored session (`e1.11`).
+    pub fresh: bool,
 }
 
 /// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;
@@ -238,6 +247,15 @@ pub struct TuiArgs {
     /// Print the merged keymap — defaults plus your `keys.overrides` — and exit, taking no terminal.
     #[arg(long)]
     pub show_keys: bool,
+    /// Print the session state stored for this repository, and exit, taking no terminal (`e1.11`).
+    ///
+    /// The rows, when each was written, and what this build would apply — which is the only way to see
+    /// what a resumed session is resuming *from*, and the reader for the keys no landed view draws yet.
+    #[arg(long)]
+    pub show_session: bool,
+    /// With `--show-session`: the rows as JSON on stdout, and nothing else there.
+    #[arg(long, requires = "show_session")]
+    pub json: bool,
 }
 
 /// Run one verb. The return type is the process contract, not a `Result` a caller forgets to check.
@@ -272,6 +290,9 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
 fn tui(args: &TuiArgs, globals: &Globals) -> eyre::Result<ExitCode> {
     if args.show_keys {
         return crate::tui::show_keys();
+    }
+    if args.show_session {
+        return crate::session::show(&std::path::PathBuf::from("."), args.json);
     }
     crate::tui::dispatch(globals)
 }

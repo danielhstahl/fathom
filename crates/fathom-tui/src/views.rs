@@ -904,3 +904,16 @@ pub fn view(id: ViewId) -> &'static View {
 pub fn view_for_key(key: &str) -> Option<ViewId> {
     ViewId::ALL.iter().copied().find(|v| view(*v).key == key)
 }
+
+/// The view a stored name names (`e1.11`): `timeline`, `diff`, …
+///
+/// `None` for anything else, on purpose. A session written by a fathom that had a tenth view must not
+/// be able to stop this one from starting — the caller reports the name it did not know and keeps the
+/// view it does.
+#[must_use]
+pub fn view_for_name(name: &str) -> Option<ViewId> {
+    ViewId::ALL
+        .iter()
+        .copied()
+        .find(|v| v.name() == name.trim())
+}

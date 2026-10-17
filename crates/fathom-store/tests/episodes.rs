@@ -565,6 +565,82 @@ fn session_state_round_trips_and_a_none_deletes_it() {
     );
 }
 
+#[test]
+fn a_session_state_write_lands_only_on_the_value_the_writer_read() {
+    // `e1.11`'s concurrent-session rule, at the one layer that can enforce it: a `session_state` write
+    // states the value it believes is there, and a row that moved in between is not touched.
+    let mut store = seeded(&[commit(1, None, "pi-agent", 0, "feat: one", &["src/a.rs"])]);
+    assert!(
+        store
+            .set_ui_state_if("timeline.filter", None, Some("state=unread"), T0)
+            .unwrap(),
+        "a row that was absent and is still absent is ours to write"
+    );
+    assert!(
+        !store
+            .set_ui_state_if("timeline.filter", None, Some("group=day"), T0)
+            .unwrap(),
+        "a second writer that read no row must not create one over the first one's"
+    );
+    assert_eq!(
+        store.ui_state("timeline.filter").unwrap().as_deref(),
+        Some("state=unread")
+    );
+    assert!(
+        store
+            .set_ui_state_if(
+                "timeline.filter",
+                Some("state=unread"),
+                Some("state=unread;group=session"),
+                T0
+            )
+            .unwrap(),
+        "the writer that read the current value may replace it"
+    );
+    assert!(
+        !store
+            .set_ui_state_if(
+                "timeline.filter",
+                Some("state=unread"),
+                Some("author=pi"),
+                T0
+            )
+            .unwrap(),
+        "and a writer still holding the old read is refused rather than last-writer-wins"
+    );
+    assert_eq!(
+        store.ui_state("timeline.filter").unwrap().as_deref(),
+        Some("state=unread;group=session"),
+        "the loser wrote nothing"
+    );
+    assert!(
+        !store
+            .set_ui_state_if("timeline.filter", Some("state=unread"), None, T0)
+            .unwrap(),
+        "a delete only deletes what it read"
+    );
+    assert!(
+        store
+            .set_ui_state_if(
+                "timeline.filter",
+                Some("state=unread;group=session"),
+                None,
+                T0
+            )
+            .unwrap(),
+        "and deletes it when nothing moved"
+    );
+    assert_eq!(store.ui_state("timeline.filter").unwrap(), None);
+    store
+        .set_ui_state("tui.view", Some("timeline"), T0 + 5_000)
+        .unwrap();
+    assert_eq!(
+        store.ui_state_rows("tui.").unwrap(),
+        vec![("tui.view".to_owned(), "timeline".to_owned(), T0 + 5_000)],
+        "the stamp is what lets a resumed session say when a row was written"
+    );
+}
+
 /// The ids of a page of episodes, for assertions that read as a list of names.
 fn ids(rows: &[EpisodeRow]) -> Vec<String> {
     rows.iter().map(|row| row.id.clone()).collect()
