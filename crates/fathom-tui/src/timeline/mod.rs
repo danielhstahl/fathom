@@ -141,6 +141,12 @@ impl Timeline {
         &mut self.rail
     }
 
+    /// Tell the rail what the index holds, so an empty one can say so instead of guessing
+    /// (`reco-1nu`). The rail itself decides what that is worth printing.
+    pub fn set_index_facts(&mut self, facts: &crate::index::Facts) {
+        self.rail.set_index_facts(facts);
+    }
+
     /// The episode under the cursor.
     #[must_use]
     pub fn selected(&self) -> Option<&Episode> {

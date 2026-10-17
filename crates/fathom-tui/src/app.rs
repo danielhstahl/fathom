@@ -190,6 +190,12 @@ pub fn format_thousands(value: u64) -> String {
 pub struct Model {
     /// The index and analysis state.
     pub index: IndexState,
+    /// What the caller read from the store before the shell started (`reco-1nu`).
+    ///
+    /// [`Model::index`] is what the shell knows at runtime — mostly `unknown`, because the shell has no
+    /// store handle to ask. This is what the composition root *saw*, and it is what an empty pane is
+    /// allowed to claim: a pane may not guess whether the repository is indexed.
+    pub index_facts: crate::index::Facts,
     /// Rows per `(view, pane)`.
     pub rows: BTreeMap<(ViewId, String), Vec<String>>,
     /// Why the analysis is not answering, in its own words (ADR-001 §7.6).
@@ -208,6 +214,7 @@ impl Model {
         let status = insight::status();
         let mut model = Model {
             index: IndexState::unknown(),
+            index_facts: crate::index::Facts::unknown(),
             rows: BTreeMap::new(),
             unavailable: None,
             notes: Vec::new(),
@@ -242,6 +249,7 @@ impl Model {
     pub fn empty(reason: impl Into<String>) -> Self {
         Model {
             index: IndexState::unknown(),
+            index_facts: crate::index::Facts::unknown(),
             rows: BTreeMap::new(),
             unavailable: Some(reason.into()),
             notes: Vec::new(),
@@ -507,18 +515,25 @@ impl App {
             }
             return out;
         }
-        // The empty states ADR-006 §10.3 fixes. A list pane says what to run; a card says what is
-        // missing and who owns it. Neither one shrugs, and neither one is blank.
-        let empty_index =
-            "no episodes yet — run fathom index, or start with fathom --demo".to_owned();
+        // The empty states ADR-006 §10.3 fixes. A list pane says what the index holds and what to run;
+        // a card says what is missing and who owns it. Neither one shrugs, and neither one is blank.
+        let facts = self.model.index_facts.clone();
         let mut out = match pane.role {
-            Role::Primary => vec![
-                self.model.index.progress.clone().unwrap_or(empty_index),
-                self.model
-                    .unavailable
-                    .clone()
-                    .unwrap_or_else(|| "nothing selected".to_owned()),
-            ],
+            Role::Primary => {
+                // A converging progress estimate outranks the empty state: an index still running is a
+                // different fact from one that finished and reads nothing (`reco-1nu`).
+                let mut lines = self.model.index.progress.clone().map_or_else(
+                    || vec![facts.summary(), facts.remedy()],
+                    |progress| vec![progress],
+                );
+                lines.push(
+                    self.model
+                        .unavailable
+                        .clone()
+                        .unwrap_or_else(|| "nothing selected".to_owned()),
+                );
+                lines
+            }
             Role::Secondary => vec![
                 format!("`{}` — nothing to show yet", pane.name),
                 self.model
@@ -590,6 +605,19 @@ impl App {
     }
 
     // --- the timeline view (`e1.6`) ---------------------------------------------------------------
+
+    /// Say what the caller knows about the index (`reco-1nu`).
+    ///
+    /// Three places read the answer, and they must not disagree about it: the status strip's `⏺ epoch`
+    /// bits, an empty pane's first two rows, and the rail's empty statement — the last of which used to
+    /// print *run `fathom index`* in front of a reviewer whose index was finished. Called by the frame
+    /// primers, so the interactive frame, the piped frame and a test's frame all say the same thing.
+    pub fn set_index_facts(&mut self, facts: &crate::index::Facts) {
+        self.model.index_facts = facts.clone();
+        self.model.index.epoch = facts.epoch;
+        self.model.index.episodes = facts.episodes;
+        self.timeline.set_index_facts(facts);
+    }
 
     /// Hand the rail a batch of episodes and say what it did, in the toast's words.
     ///
@@ -1216,10 +1244,12 @@ impl App {
         }
         // One pane, or already at the bottom of the ring: the drill belongs to the view's owner.
         if !self.model.has_rows() {
-            self.toast(
-                "nothing indexed to drill into — run `fathom index`, or `fathom --demo` \
-                 for the fixture corpus",
-            );
+            // The same honest sentence the panes print, not the one that sent the reviewer to an index
+            // that had already run (`reco-1nu`).
+            self.toast(format!(
+                "nothing to drill into — {}",
+                self.model.index_facts.remedy()
+            ));
         } else {
             self.toast(format!(
                 "the next level of `{}` is owned by {}",

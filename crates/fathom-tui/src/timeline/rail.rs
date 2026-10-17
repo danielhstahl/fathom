@@ -212,7 +212,11 @@ impl Default for Rail {
             origin: "no index".to_owned(),
             total: None,
             epoch: None,
-            why_empty: Some("nothing loaded yet — run `fathom index`".to_owned()),
+            // Nothing yet, and no caller has said why. `empty_words` prints the shell's own honest
+            // fallback for that, and `set_index_facts` replaces it the moment the caller speaks
+            // (`reco-1nu`): a rail may not assert that the repository is unindexed, because it has no
+            // way to know.
+            why_empty: None,
             now: Timestamp::UNIX_EPOCH,
             kept: 0,
             dirty: true,
@@ -872,6 +876,21 @@ impl Rail {
         start.min(self.slots.len().saturating_sub(visible))
     }
 
+    /// Say what the index holds, now that the caller has said (`reco-1nu`).
+    ///
+    /// Only ever touches an empty rail: rows that exist outrank a description of their absence, and a
+    /// batch that arrived with its own `why_empty` said something more specific than the shell can and
+    /// keeps it.
+    pub fn set_index_facts(&mut self, facts: &crate::index::Facts) {
+        if !self.episodes.is_empty() {
+            return;
+        }
+        self.origin = facts.origin();
+        if self.why_empty.is_none() {
+            self.why_empty = Some(facts.empty_words());
+        }
+    }
+
     /// The same rows as text — `--plain`, a pipe, and the golden files read this.
     #[must_use]
     pub fn text(&self, width: usize, visible: usize) -> Vec<String> {
@@ -882,13 +901,16 @@ impl Rail {
     }
 
     /// The empty statement the rail prints instead of rows.
+    ///
+    /// Three sources, in order of who knows best: a batch's own reason, what the caller said about the
+    /// index (`reco-1nu`), and the shell's fallback for a frame nobody primed.
     #[must_use]
     pub fn empty_words(&self) -> String {
         if self.episodes.is_empty() {
             return self
                 .why_empty
                 .clone()
-                .unwrap_or_else(|| "no episodes yet — run `fathom index`".to_owned());
+                .unwrap_or_else(|| crate::index::Facts::unknown().empty_words());
         }
         if self.kept == 0 {
             return "the filter selects nothing — `F` edits it, `filter clear` is in the palette"

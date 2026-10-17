@@ -4,8 +4,8 @@
 //! the keystrokes (ADR-006 §1, §5); this module owns what the two `diff` panes mean, and it is
 //! deliberately a *viewer* — it is handed patch bytes through [`source::PatchSource`] and never opens a
 //! repository, because `fathom-tui` has no store handle and no ingest edge (ADR-002 §5.2). `e1.8`'s
-//! lazy materialisation implements that trait against the index; until then `fathom tui --patch <file>`
-//! hands it a file, which is what the golden tests use too.
+//! lazy materialisation implements that trait against the index; nothing in this build hands it a
+//! patch yet, so the golden tests — and every review of this pane today — read the empty state.
 //!
 //! Three properties the rest of the module is organised around:
 //!
@@ -894,10 +894,15 @@ impl DiffView {
 }
 
 /// The empty state of the tree pane: what to run, and who owns the thing that is missing.
+///
+/// The remedy is the headless verb, not a flag: `fathom tui --patch <file>` used to be named here, and
+/// no build of this binary has ever had that flag (the rule ADR-006 §10.3 now states — a sentence may
+/// not name a command the binary does not have).
 fn empty_state(why: &str) -> Vec<String> {
     vec![
         format!("no diff — {why}"),
-        "e1.8 materialises hunks from the index; `fathom tui --patch <file>` opens a patch file now"
+        "nothing hands this pane a patch in this build; `fathom show <episode>` prints its files \
+         headlessly today"
             .to_owned(),
     ]
 }

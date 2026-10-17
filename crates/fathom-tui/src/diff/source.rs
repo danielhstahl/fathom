@@ -193,7 +193,11 @@ impl PatchSource for NoSource {
     fn open(&self) -> Result<Box<dyn PatchReader>, Unavailable> {
         Err(Unavailable::with_hint(
             self.0.clone(),
-            "e1.8 materialises hunks from the index; `fathom tui --patch <file>` opens a patch file",
+            // No flag is named here: `fathom tui --patch <file>` used to be, and no build of this
+            // binary has ever had it (ADR-006 §10.3: a sentence may not name a command the binary does
+            // not have). The headless verb is the one that answers today.
+            "nothing hands this pane a patch in this build; `fathom show <episode>` prints its files \
+             headlessly today",
         ))
     }
 }

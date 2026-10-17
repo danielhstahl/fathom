@@ -498,7 +498,9 @@ impl EpisodeSource for MemorySource {
         if let Some(why) = &self.unavailable {
             return Err(Unavailable::with_hint(
                 why.clone(),
-                "run `fathom index`, or `fathom tui --no-index` to see the shell with nothing in it",
+                // The same remedy the empty rail prints, from the same place, so the two cannot drift.
+                // (`fathom tui --no-index` used to be named here; no build has ever had that flag.)
+                &crate::index::Facts::absent().remedy(),
             ));
         }
         let limit = usize::try_from(page.limit()).unwrap_or(usize::MAX);

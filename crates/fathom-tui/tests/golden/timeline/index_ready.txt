@@ -1,0 +1,40 @@
+# index_ready
+# the acceptance run's first minute, told honestly: epoch 1 is ready and holds 500 commits, so the pane says that and names the read that is missing instead of sending the reviewer to an index that already finished (`reco-1nu`)
+
+· index epoch 1 ready · 500 commits · 412 
+  eps — the episode read is e2.11's, not  
+  in this build; nothing in this build can
+  list them, and `fathom show <episode>`  
+  prints one headlessly today             
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+                                          
+
+## rail strip
+filter: area=any state=any group=day (F edits) · index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this build; nothing in this build can list them, and `fathom show <episode>` prints one headlessly today
+
+## card (35 columns × 14 rows)
+no episode selected                
+`j`/`k` walk the rail, `<Enter>` o…
+the card's delta rows are owned by…
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+                                   
+
+## card strip
+
+
+## cursor
+nothing

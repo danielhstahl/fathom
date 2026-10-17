@@ -35,9 +35,13 @@ pub struct Batch {
 way rows enter, and it is also the way a **re-index** enters — same method, same relink arithmetic (§6).
 
 The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills. Today it is
-`None` and the rail says `nothing loaded yet — run \`fathom index\``, because `insight::episodes` is
-`e2.11`'s to answer; a build that showed an empty list instead would be claiming the repository is
-quiet. The frame's instant is passed in the same way (`Options::now`, ADR-002 §4.4): the rail ages every
+`None`, because `insight::episodes` is `e2.11`'s to answer; a build that showed an empty list instead
+would be claiming the repository is quiet. What the shell is told instead is the index itself —
+`Options::index`, an `fathom_tui::index::Facts` the composition root read from the store, because the
+rail may not (the empty-state defect the MVP walkthrough filed). That is what lets an empty rail say
+*index epoch 1 ready · 500 commits ·
+412 eps* rather than sending the reviewer to an index that already finished (§9). The frame's instant
+is passed in the same way (`Options::now`, ADR-002 §4.4): the rail ages every
 row against a `Timestamp` it was handed, never against `now`, which is what makes every golden in
 `tests/golden/timeline/` stable enough to read.
 
@@ -230,12 +234,25 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 
 | Situation | What the rail prints |
 |---|---|
-| nothing ever loaded | `nothing loaded yet — run \`fathom index\`` |
+| there is no index | `no index here yet — run \`fathom index\` here, then reopen fathom` |
+| the index is finished and the shell has no episode read | `index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this build; nothing in this build can list them, and \`fathom show <episode>\` prints one headlessly today` |
+| the epoch is still `building` | `index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, \`fathom index --rebuild\` starts a clean one` |
+| the store would not open | `the index would not open — \`fathom doctor\` says what is wrong` |
+| the caller said nothing (a test frame, an embedding shell) | `nothing loaded yet — the shell was handed no index state` |
 | the index answered nothing | whatever `Batch::why_empty` said, verbatim |
 | the filter selects nothing | `the filter selects nothing — \`F\` edits it, \`filter clear\` is in the palette` |
 | a page of a bigger index | strip: `500 of 3 412 · index holds 3 412 (index epoch 41)` |
 | the selection left the index | `…left the index`, cursor at the top |
 | the card has nothing selected | `no episode selected`, then the two keys that would |
+
+The first five rows are one decision, not five: they are the `Read` variants of
+`fathom_tui::index::Facts`, and each row's sentence is the join of its `summary()` (what the index
+holds) and its `remedy()` (what to type, or who owns what is missing). A narrow pane prints the two
+halves as two rows; the rail body and the strip print the whole join, so the pane and the strip cannot
+disagree about a fact the caller already answered. The MVP walkthrough's empty-state defect is the
+reason the split exists: with one
+sentence for both states, a reviewer with 500 commits indexed was told to run `fathom index`, did, and
+was told it again.
 
 ## 10 The performance shape
 

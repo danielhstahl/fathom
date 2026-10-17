@@ -129,6 +129,13 @@ pub struct Options {
     /// today — `insight::episodes` is `e2.11`'s to answer — and the rail says so instead of showing
     /// an empty list that looks like an empty repository.
     pub episodes: Option<timeline::Batch>,
+    /// What the caller read from the store before the shell started (`reco-1nu`).
+    ///
+    /// The shell has no store handle and may not go and get one (ADR-002 §5.2, lint `E01`), so it cannot
+    /// tell "this repository was never indexed" from "this index holds 500 commits and the episode read
+    /// is not in this build". Those are different sentences and the wrong one is a dead end the reviewer
+    /// walks into; `fathom-cli` reads the store and hands the numbers over here.
+    pub index: crate::index::Facts,
     /// The `session_state` rows the caller read for this repository (`e1.11`).
     ///
     /// The shell does not open a store (ADR-002 §5.2, lint `E01`), so the composition root reads the
@@ -149,6 +156,7 @@ impl Default for Options {
             now: Timestamp::UNIX_EPOCH,
             handoff_env: Env::empty(),
             episodes: None,
+            index: crate::index::Facts::unknown(),
             session: Vec::new(),
         }
     }
@@ -576,6 +584,9 @@ fn prime(app: &mut App, options: &Options) -> Restored {
     if let Some(batch) = &options.episodes {
         app.timeline.load(batch.clone());
     }
+    // After the rows, so a batch that carried its own reason keeps it and a rail that got none prints
+    // what the index really holds instead of a guess (`reco-1nu`).
+    app.set_index_facts(&options.index);
     let resumed = session::restore(app, &options.session);
     for warning in &resumed.warnings {
         app.notices.push(warning.clone());

@@ -1,8 +1,9 @@
 //! Golden output for the timeline (`e1.6`, acceptance criteria 2 and 4).
 //!
 //! A golden per *shape*, not per keystroke: the ordinary rail, every rung of the column ladder, both
-//! groupings, a collapsed group, a filter that narrowed the list, a filter that emptied it, an index
-//! that has never been loaded, a dead episode, a 10 000-row index, and the `F` surface open. Those are
+//! groupings, a collapsed group, a filter that narrowed the list, a filter that emptied it, the two
+//! empty states (`reco-1nu`: no index at all, and an index that is finished but reads nothing), a dead
+//! episode, a 10 000-row index, and the `F` surface open. Those are
 //! the cases where a plausible-looking change is the dangerous kind — a sparkline that quietly stops
 //! being drawn, a `··· N more` that goes missing, a card that starts claiming delta facts `e2.11` does
 //! not produce yet.
@@ -31,6 +32,7 @@ use std::path::{Path, PathBuf};
 
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model, Overlay};
+use fathom_tui::index::Facts;
 use fathom_tui::keymap::Keymap;
 use fathom_tui::render::frame_lines;
 use fathom_tui::timeline::{self, Batch, Filter, GroupBy};
@@ -65,6 +67,9 @@ struct Case {
     collapse: bool,
     /// Draw the `F` surface on top of the frame.
     editor: bool,
+    /// What the caller told the shell about the index (`reco-1nu`). Only an empty rail prints it, which
+    /// is exactly the case the two empty states are about.
+    index: Facts,
 }
 
 /// Which corpus a case loads.
@@ -90,6 +95,7 @@ impl Default for Case {
             cursor: 0,
             collapse: false,
             editor: false,
+            index: Facts::unknown(),
         }
     }
 }
@@ -178,8 +184,18 @@ fn cases() -> Vec<Case> {
         },
         Case {
             golden: "nothing_loaded",
-            note: "an index that has never been read: the pane names the verb to run",
+            note: "no index at all: the pane names the verb that actually works here, `fathom index`",
             rows: Rows::None,
+            index: Facts::absent(),
+            ..Case::default()
+        },
+        Case {
+            golden: "index_ready",
+            note: "the acceptance run's first minute, told honestly: epoch 1 is ready and holds 500 \
+                   commits, so the pane says that and names the read that is missing instead of \
+                   sending the reviewer to an index that already finished (`reco-1nu`)",
+            rows: Rows::None,
+            index: Facts::present(Some(1), Some("ready".to_owned()), Some(500), Some(412)),
             ..Case::default()
         },
         Case {
@@ -228,6 +244,7 @@ fn build(case: &Case, size: (u16, u16)) -> App {
         "fathom/pilot · main",
     );
     app.timeline.set_now(NOW);
+    app.set_index_facts(&case.index);
     app.set_view(ViewId::Timeline);
     let rows = match case.rows {
         Rows::Mock => mock(),

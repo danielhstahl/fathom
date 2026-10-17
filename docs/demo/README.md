@@ -166,7 +166,10 @@ The four P1s, in the order a reviewer meets them:
    starving.
 2. **The empty state lies.** On an indexed repository the rail says *run `fathom index`*, and the
    queue offers *`fathom --demo`*, a flag that does not exist. ADR-006's note on that row is "a
-   shrug is not a remedy"; this is worse than a shrug.
+   shrug is not a remedy"; this is worse than a shrug. **Closed since:** the composition root
+   now reads the store and hands the shell what it found, so an empty pane over a finished index
+   prints `index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this
+   build …`, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table.
 3. **The diff viewer is never handed a patch.** Eighteen golden fixtures, a chunked `PatchSource`,
    a byte-budgeted materialiser — and no production code ever constructs one, while `fathom show
    --json` proves the store holds every hunk header.
@@ -176,7 +179,9 @@ The four P1s, in the order a reviewer meets them:
 
 The P2s are the spine not quite joined up: `<C-r>` narrates a re-index instead of doing one, an open
 TUI never notices a commit made next door (ambient mode, the product premise, shows a frozen frame),
-the status strip prints four `unknown`s that `fathom stats` answers, a rewritten history leaves the
+the status strip prints four `unknown`s that `fathom stats` answers (two of them — `epoch` and the
+episode count — stopped being `unknown` when the composition root started telling the shell both), a
+rewritten history leaves the
 index counting dead commits, no verb enumerates episodes headlessly, a prompt cannot accept a space,
 `fathom tui` discards its own frame report, and the noop re-index costs 5× its budget. The P3s are
 honest little cruelties: toasts that evict the hint line forever, keys that are silent when they

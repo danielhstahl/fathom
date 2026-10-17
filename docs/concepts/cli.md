@@ -74,7 +74,10 @@ Every row is a finding, printed with a remedy, and asserted in
 | `feature_absent` | this binary was built without a SQLite backend | 9 | rebuild with `--features sqlite-bundled` |
 
 An index that is empty because the *repository* has no commits is not degraded. That is ADR-006 §10.3's
-empty state, printed with its fixed copy: `no episodes yet — run fathom index`.
+empty state, printed with its fixed copy: `no index here yet — run \`fathom index\` here, then reopen
+fathom`. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
+filed): `fathom stats` says the
+index is missing, and the TUI says it too rather than guessing.
 
 **Which verb exits for what.** `fathom stats` and `fathom show` exit with the worst finding they print — a
 script asking "is this repo indexed?" should not have to parse prose. `fathom doctor` exits **0** by

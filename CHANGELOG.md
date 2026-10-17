@@ -15,6 +15,31 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `reco-1nu` — the empty rail stopped sending the reviewer to an index that had already finished
+
+- **One sentence was standing in for two facts.** A repository whose index held 500 commits and
+  reported `epoch 1 ready` was told *nothing loaded yet — run `fathom index`*, the same sentence an
+  unindexed repository gets. The reviewer ran it, reopened the shell, and was told it again; the queue
+  meanwhile offered `fathom --demo`, a flag no binary of this project has ever had. ADR-006 §10.3's note
+  on that row is "a shrug is not a remedy", and a false remedy is worse than a shrug because it gets
+  followed.
+- **The composition root now says what the store said.** New `fathom_tui::index` holds `Facts` — whether
+  a store was there, whether it opened, its epoch, its status, and its commit and episode counts — filled
+  by `fathom-cli` before the first frame and passed in `frame::Options::index`, because the shell may not
+  open a store (ADR-002 §5.2, lint `E01`) and must not guess. Every empty pane and the rail strip branch
+  on it: no index prints `no index here yet — run \`fathom index\` here, then reopen fathom`, a finished
+  one prints `index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this
+  build; nothing in this build can list them, and \`fathom show <episode>\` prints one headlessly today`,
+  and a `building` epoch and an unreadable store get their own sentences with their own remedies. The
+  status strip's `⏺ epoch` and episode count stopped being `unknown` in the same breath.
+- **`fathom --demo` is gone** — from the queue's empty state, from the drill refusal, from ADR-006 §10.3's
+  table (which now carries five empty states instead of one, and the two rules that separate them), and
+  from `docs/concepts/`. Pinned three ways: `crates/fathom-tui/tests/empty_state.rs` pins both sentences
+  to the character and refuses any state that names a flag the binary lacks; two goldens
+  (`nothing_loaded`, the new `index_ready`) pin what a pane draws; and
+  `crates/fathom-cli/tests/cli.rs::an_empty_frame_names_the_index_it_actually_found` indexes a real
+  repository with the `git` binary and asks the built `fathom` what its empty frame says before and after.
+
 ### `e1.12` — MVP acceptance: a 500-commit agent repository, reviewed in the TUI (reco-glv)
 
 - **The walkthrough ran, and the spine does not reach the frame.** A scripted reviewer — no mouse, no

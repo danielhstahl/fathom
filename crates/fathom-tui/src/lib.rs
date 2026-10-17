@@ -25,6 +25,7 @@ pub mod diff;
 pub mod error;
 pub mod event;
 pub mod frame;
+pub mod index;
 pub mod keymap;
 pub mod layout;
 pub mod materialize;

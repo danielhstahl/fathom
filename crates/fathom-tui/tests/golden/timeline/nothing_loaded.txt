@@ -1,8 +1,8 @@
 # nothing_loaded
-# an index that has never been read: the pane names the verb to run
+# no index at all: the pane names the verb that actually works here, `fathom index`
 
-· nothing loaded yet — run `fathom index` 
-                                          
+· no index here yet — run `fathom index`  
+  here, then reopen fathom                
                                           
                                           
                                           
@@ -15,7 +15,7 @@
                                           
 
 ## rail strip
-filter: area=any state=any group=day (F edits) · nothing loaded yet — run `fathom index`
+filter: area=any state=any group=day (F edits) · no index here yet — run `fathom index` here, then reopen fathom
 
 ## card (35 columns × 14 rows)
 no episode selected                

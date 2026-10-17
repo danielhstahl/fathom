@@ -22,6 +22,7 @@
 use std::time::Instant;
 
 use fathom_tui::app::{App, Model};
+use fathom_tui::index::Facts;
 use fathom_tui::keymap::Keymap;
 use fathom_tui::timeline::{
     self, AuthorKind, Batch, Columns, Dimension, Episode, Filter, GroupBy, ReviewState, Slot,
@@ -1064,6 +1065,8 @@ fn a_dead_episode_is_marked_rather_than_quietly_kept() {
     );
 }
 
+/// An empty rail states why it is empty, and which sentence depends on what the caller said about the
+/// index (`reco-1nu`).
 #[test]
 fn an_unloaded_rail_names_the_verb_to_run() {
     let mut app = App::new(
@@ -1079,5 +1082,32 @@ fn an_unloaded_rail_names_the_verb_to_run() {
     assert!(
         !lines.is_empty(),
         "an empty rail is a stated rail, never a blank pane"
+    );
+
+    // ...and once the caller says what the index holds, the rail says that instead (`reco-1nu`). An
+    // index that finished must not be sent back to `fathom index`: the reviewer who does that is told
+    // the same thing twice and calls it a broken tool.
+    let mut indexed = App::new(
+        Keymap::defaults(),
+        Model::empty("nothing indexed"),
+        (80, 24),
+        "fathom/pilot · main",
+    );
+    indexed.set_view(ViewId::Timeline);
+    indexed.set_index_facts(&Facts::present(
+        Some(1),
+        Some("ready".to_owned()),
+        Some(500),
+        Some(412),
+    ));
+    let strip = indexed.timeline.strip();
+    assert!(strip.contains("index epoch 1 ready"), "{strip}");
+    assert!(
+        !strip.contains("run `fathom index`"),
+        "a finished index was sent back to `fathom index`: {strip}"
+    );
+    assert!(
+        !rail(&mut indexed).is_empty(),
+        "an empty rail over a real index is still a stated rail, never a blank pane"
     );
 }

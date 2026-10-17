@@ -1056,3 +1056,63 @@ fn index_rebuild_moves_the_epoch_and_watch_hands_over_after_indexing() {
     assert_eq!(report["commits"]["new"].as_u64(), Some(0));
     let _ = std::fs::remove_dir_all(&base);
 }
+
+/// The empty states, from outside the process (`reco-1nu`'s second acceptance criterion).
+///
+/// The bug was one sentence for two facts: the frame an unindexed repository gets and the frame a
+/// finished one gets were identical, and both said *run `fathom index`*. On the indexed repository that
+/// is a dead end the reviewer walks into — the index is done, running it again changes nothing — and the
+/// same frame offered `fathom --demo`, a flag this binary has never had.
+///
+/// This test indexes a real repository with the git binary and then asks the built `fathom` what its
+/// empty frame says, before and after. `--plain` is the same renderer the terminal gets (ADR-006 §6.7),
+/// and `--fresh` keeps a stored session from deciding which view is drawn.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn an_empty_frame_names_the_index_it_actually_found() {
+    let dir = repository();
+    let frame = |args: &[&str]| {
+        let out = Command::new(env!("CARGO_BIN_EXE_fathom"))
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .expect("the built fathom binary is runnable");
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        stdout(&out)
+    };
+
+    // Nothing indexed: `fathom index` is the honest remedy, so the frame is allowed to say it.
+    let bare = frame(&["--plain", "--fresh"]);
+    assert!(
+        bare.contains("no index here yet")
+            && bare.contains("run `fathom index` here, then reopen fathom"),
+        "the unindexed frame should name the verb that works:\n{bare}"
+    );
+
+    let indexed = fathom(&["index", dir.to_str().expect("utf-8")]);
+    assert_eq!(code(&indexed), 0, "{}", stderr(&indexed));
+
+    let filled = frame(&["--plain", "--fresh"]);
+    // The index state the caller actually read, printed instead of the command that would do nothing.
+    let line = filled
+        .lines()
+        .find(|line| line.contains("index epoch 1 ready · "))
+        .unwrap_or_else(|| {
+            panic!("the indexed frame should print the epoch and the counts:\n{filled}")
+        });
+    assert!(line.contains(" commits") && line.contains(" eps"), "{line}");
+    assert!(
+        filled.contains("the episode read is e2.11's, not in this build"),
+        "the indexed frame should name what is missing and who owns it:\n{filled}"
+    );
+    assert!(
+        !filled.contains("run `fathom index`") && !filled.contains("run fathom index"),
+        "the index is finished; the frame must not send the reviewer to run it again:\n{filled}"
+    );
+
+    // And neither frame may name a flag this binary does not have.
+    for text in [&bare, &filled] {
+        assert!(!text.contains("--demo"), "`--demo` is not a flag: {text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

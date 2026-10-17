@@ -80,9 +80,13 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         handoff_env: crate::handoff::environment(),
         // The timeline's rows come from a batch, never from a store handle the shell would hold
         // (ADR-002 §5.2). `insight::episodes` is `e2.11`'s to answer, so today's honest value is
-        // `None` — and the rail prints "nothing loaded yet, run `fathom index`" rather than an empty
-        // list that a reviewer would read as a quiet repository.
+        // `None` — and the rail says so rather than showing an empty list a reviewer would read as a
+        // quiet repository.
         episodes: None,
+        // ...and the shell is told what the index *does* hold, in the same breath, because it cannot go
+        // and look (`reco-1nu`): an empty pane over a finished index must not send the reviewer to
+        // `fathom index`, which is already done and changes nothing.
+        index: index_facts(&root),
         session: if globals.fresh {
             Vec::new()
         } else {
@@ -219,4 +223,46 @@ fn repo_label(root: &std::path::Path) -> String {
             |name| name.to_string_lossy().into_owned(),
         ),
     }
+}
+
+/// What the store says about this repository, as the shell's empty states need it (`reco-1nu`).
+///
+/// The shell may not open a store (ADR-002 §5.2, lint `E01`), so the composition root looks once,
+/// before the first frame, and hands the numbers over. This is the read `fathom stats` makes with the
+/// checks left off: the shell is not diagnosing a store, it is deciding which sentence an empty pane
+/// prints — and which one matters more than it looks, because *"run `fathom index`"* over an index
+/// that already finished is a minute of an acceptance run spent walking into a dead end.
+///
+/// A number that could not be read stays `None` rather than becoming a zero: `unknown` is a value
+/// (ADR-006 §0.1), and `0 commits` printed over a store that would not open is the same lie with a
+/// digit on it.
+#[cfg(feature = "sqlite-bundled")]
+fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
+    use fathom_store::episode::EpisodeQuery;
+    use fathom_store::spine::Store;
+
+    let width = |value: Result<i64, _>| value.ok().and_then(|value| u64::try_from(value).ok());
+    let path = crate::session::store_path(root);
+    if !path.is_file() {
+        return fathom_tui::index::Facts::absent();
+    }
+    let Ok(store) = Store::open(&path) else {
+        return fathom_tui::index::Facts::unreadable();
+    };
+    fathom_tui::index::Facts::present(
+        width(store.epoch()),
+        store.meta("epoch_status").ok().flatten(),
+        store
+            .scale()
+            .ok()
+            .and_then(|scale| u64::try_from(scale.commits).ok()),
+        width(store.count_episodes(&EpisodeQuery::default())),
+    )
+}
+
+/// A binary built without a SQLite backend cannot read any store, and says so instead of reporting
+/// that the repository is empty (`fathom --version` names the feature that is missing).
+#[cfg(not(feature = "sqlite-bundled"))]
+fn index_facts(_root: &std::path::Path) -> fathom_tui::index::Facts {
+    fathom_tui::index::Facts::no_backend()
 }
