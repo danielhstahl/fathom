@@ -1,0 +1,478 @@
+{
+ "title": "e1.12 \u2014 reviewing a 500-commit agent repository entirely inside fathom's TUI",
+ "total_s": 34.8,
+ "first_paint_ms": 14.7,
+ "paint_p95_ms": 2.0,
+ "paint_worst_ms": 2.5,
+ "visible_p95_ms": 2.0,
+ "visible_worst_ms": 250.5,
+ "visible_absent": 11,
+ "shell_output": [
+  {
+   "step": 34,
+   "stdout": "head=ced1cca commits=500"
+  },
+  {
+   "step": 37,
+   "stdout": "pass --stats for the per-analyzer cache table, or --json for the same as data\nindex .fathom/index.sqlite3\n  scale     505 commit(s), 635 file row(s), 5 author(s)\n  churn     +31504 -28435 over 2025-01-06T10:40:00Z to 2025-01-24T20:53:00Z\n  state     epoch 1 ready, integrity ok, 0 commit(s) owed an analysis"
+  },
+  {
+   "step": 39,
+   "stdout": "session state in .fathom/index.sqlite3\n  timeline.filter        = group=day   \u2190 written 2026-10-17 17:25 UTC\n  tui.mark               = marked%3A no episode in scope   \u2190 written 2026-10-17 17:25 UTC\n  tui.pane               = 0   \u2190 written 2026-10-17 17:25 UTC\n  tui.pane_sizes         = 83,46   \u2190 written 2026-10-17 17:25 UTC\n  tui.search             = DROPCOLUMN   \u2190 written 2026-10-17 17:25 UTC\n  tui.size               = 132x40   \u2190 written 2026-10-17 17:25 UTC\n  tui.state_version      = 1   \u2190 written 2026-10-17 17:25 UTC\n  tui.tabs               = deps::0:0   \u2190 written 2026-10-17 17:25 UTC\n  tui.view               = deps   \u2190 written 2026-10-17 17:25 UTC\n  tui.zoom               = 1   \u2190 written 2026-10-17 17:25 UTC\n  applied: last search `DROPCOLUMN`"
+  }
+ ],
+ "rss_peak_kib": 8976,
+ "steps": [
+  {
+   "step": 1,
+   "note": "A: open `fathom tui` on an indexed repository \u2014 500 commits, epoch 1 ready (part A: orient). The queue is the landing view, and it has no episodes in it",
+   "keys": "",
+   "at_s": 0.219,
+   "elapsed_s": 1.202,
+   "paint_ms": null,
+   "visible_ms": null,
+   "settled_ms": null,
+   "rss_kib": 8952
+  },
+  {
+   "step": 2,
+   "note": "the keymap overlay: the three canonical tasks, every action with its key. A newcomer can read the whole contract without leaving the TUI",
+   "keys": "?",
+   "at_s": 1.422,
+   "elapsed_s": 1.401,
+   "paint_ms": 2.5,
+   "visible_ms": 2.5,
+   "settled_ms": 6.6,
+   "rss_kib": 8952
+  },
+  {
+   "step": 3,
+   "note": "close the help",
+   "keys": "<Esc>",
+   "at_s": 2.822,
+   "elapsed_s": 0.154,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 1.8,
+   "rss_kib": 8952
+  },
+  {
+   "step": 4,
+   "note": "the timeline \u2014 the reviewer's front page. The rail is where 213 agent turns should be listed",
+   "keys": "t",
+   "at_s": 2.976,
+   "elapsed_s": 0.9,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 0.7,
+   "rss_kib": 8952
+  },
+  {
+   "step": 5,
+   "note": "walk the rail with j/k: the cursor has nowhere to go, because the shell hands the rail no episodes at all",
+   "keys": "jjjj",
+   "at_s": 3.877,
+   "elapsed_s": 0.801,
+   "paint_ms": 0.5,
+   "visible_ms": null,
+   "settled_ms": 0.5,
+   "rss_kib": 8952
+  },
+  {
+   "step": 6,
+   "note": "jump to first row",
+   "keys": "gg",
+   "at_s": 4.678,
+   "elapsed_s": 0.703,
+   "paint_ms": 0.8,
+   "visible_ms": null,
+   "settled_ms": 0.8,
+   "rss_kib": 8952
+  },
+  {
+   "step": 7,
+   "note": "jump to last row",
+   "keys": "G",
+   "at_s": 5.382,
+   "elapsed_s": 0.701,
+   "paint_ms": 1.8,
+   "visible_ms": null,
+   "settled_ms": 1.8,
+   "rss_kib": 8952
+  },
+  {
+   "step": 8,
+   "note": "the filter form: author, kind, state, area, date range, path fragment \u2014 nine composable filters, all of them functional, none of them with anything to filter",
+   "keys": "F",
+   "at_s": 6.083,
+   "elapsed_s": 1.0,
+   "paint_ms": 1.5,
+   "visible_ms": 1.5,
+   "settled_ms": 2.9,
+   "rss_kib": 8952
+  },
+  {
+   "step": 9,
+   "note": "<C-n>/<C-p> move the form, <Enter> chooses. Keyboard-only so far, exactly as ADR-006 \u00a79 promises",
+   "keys": "<C-n>",
+   "at_s": 7.083,
+   "elapsed_s": 0.601,
+   "paint_ms": 0.7,
+   "visible_ms": 0.7,
+   "settled_ms": 0.7,
+   "rss_kib": 8952
+  },
+  {
+   "step": 10,
+   "note": "close the filters",
+   "keys": "<Esc>",
+   "at_s": 7.685,
+   "elapsed_s": 0.157,
+   "paint_ms": 0.6,
+   "visible_ms": 0.6,
+   "settled_ms": 1.1,
+   "rss_kib": 8952
+  },
+  {
+   "step": 11,
+   "note": "the attention queue: what should a human look at first. Nothing is ranked, because nothing is loaded",
+   "keys": "q",
+   "at_s": 7.842,
+   "elapsed_s": 0.9,
+   "paint_ms": 2.0,
+   "visible_ms": 2.0,
+   "settled_ms": 6.8,
+   "rss_kib": 8952
+  },
+  {
+   "step": 12,
+   "note": "the command palette: every action in the registry is reachable from here, which is the keyboard-reachability promise (K1)",
+   "keys": ",",
+   "at_s": 8.743,
+   "elapsed_s": 0.801,
+   "paint_ms": 1.6,
+   "visible_ms": 1.6,
+   "settled_ms": 2.1,
+   "rss_kib": 8952
+  },
+  {
+   "step": 13,
+   "note": "type to narrow: 'Jump to first unread episode' is a real, bound action",
+   "keys": "unread",
+   "at_s": 9.545,
+   "elapsed_s": 0.7,
+   "paint_ms": 2.0,
+   "visible_ms": 2.0,
+   "settled_ms": 2.0,
+   "rss_kib": 8952
+  },
+  {
+   "step": 14,
+   "note": "run it. With no episodes loaded, 'first unread' is silent \u2014 no count, no empty-state sentence",
+   "keys": "<Enter>",
+   "at_s": 10.245,
+   "elapsed_s": 0.902,
+   "paint_ms": 0.6,
+   "visible_ms": 0.6,
+   "settled_ms": 1.0,
+   "rss_kib": 8952
+  },
+  {
+   "step": 15,
+   "note": "B: find the riskiest episodes (part B). Search is the reviewer's other front door: free text plus author:/path:/risk>/dep: tokens",
+   "keys": "/",
+   "at_s": 11.148,
+   "elapsed_s": 0.701,
+   "paint_ms": 1.1,
+   "visible_ms": 1.1,
+   "settled_ms": 2.0,
+   "rss_kib": 8952
+  },
+  {
+   "step": 16,
+   "note": "search for the planted one: a production Stripe key added to CI, three lines long \u2014 the change a size-ranked list hides",
+   "keys": "stripe",
+   "at_s": 11.849,
+   "elapsed_s": 0.701,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 0.5,
+   "rss_kib": 8952
+  },
+  {
+   "step": 17,
+   "note": "submit. The search view closes and the toast says the scorer belongs to e5.2: no match count, no empty state, no landing spot",
+   "keys": "<Enter>",
+   "at_s": 12.55,
+   "elapsed_s": 0.902,
+   "paint_ms": 0.4,
+   "visible_ms": 0.4,
+   "settled_ms": 0.7,
+   "rss_kib": 8952
+  },
+  {
+   "step": 18,
+   "note": "n/N walk the matches. With no scorer there are no matches and the key is silent",
+   "keys": "n",
+   "at_s": 13.452,
+   "elapsed_s": 0.702,
+   "paint_ms": 1.4,
+   "visible_ms": 1.4,
+   "settled_ms": 1.4,
+   "rss_kib": 8956
+  },
+  {
+   "step": 19,
+   "note": "second of the three riskiest: a migration that drops a column with no rollback file",
+   "keys": "/",
+   "at_s": 14.154,
+   "elapsed_s": 0.601,
+   "paint_ms": 1.2,
+   "visible_ms": 1.2,
+   "settled_ms": 2.0,
+   "rss_kib": 8956
+  },
+  {
+   "step": 20,
+   "note": "search the SQL itself",
+   "keys": "DROP COLUMN",
+   "at_s": 14.756,
+   "elapsed_s": 0.703,
+   "paint_ms": 1.4,
+   "visible_ms": 1.4,
+   "settled_ms": 1.4,
+   "rss_kib": 8956
+  },
+  {
+   "step": 21,
+   "note": "same answer",
+   "keys": "<Enter>",
+   "at_s": 15.459,
+   "elapsed_s": 0.8,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 1.0,
+   "rss_kib": 8956
+  },
+  {
+   "step": 22,
+   "note": "the diff viewer (part B, reading). e1.8's materialiser and the diff viewer's eighteen golden fixtures are real; nothing in the shell ever hands them a patch",
+   "keys": "d",
+   "at_s": 16.259,
+   "elapsed_s": 0.901,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 0.5,
+   "rss_kib": 8956
+  },
+  {
+   "step": 23,
+   "note": "hunk motion, then i (intent), w (why this risk), x (mark reviewed): four keys over an empty scope. Each one is the review loop the product is for",
+   "keys": "[]",
+   "at_s": 17.161,
+   "elapsed_s": 0.801,
+   "paint_ms": 0.4,
+   "visible_ms": 0.4,
+   "settled_ms": 0.4,
+   "rss_kib": 8956
+  },
+  {
+   "step": 24,
+   "note": "intent, then the risk explanation, on the episode in scope \u2014 which is no episode",
+   "keys": "iw",
+   "at_s": 17.962,
+   "elapsed_s": 0.801,
+   "paint_ms": 0.5,
+   "visible_ms": 0.5,
+   "settled_ms": 0.5,
+   "rss_kib": 8956
+  },
+  {
+   "step": 25,
+   "note": "mark reviewed: the acceptance criterion (d) is 'a rebase must not lose this'. It cannot be set, so it cannot be checked",
+   "keys": "x",
+   "at_s": 18.764,
+   "elapsed_s": 0.8,
+   "paint_ms": 0.6,
+   "visible_ms": 0.6,
+   "settled_ms": 0.6,
+   "rss_kib": 8956
+  },
+  {
+   "step": 26,
+   "note": "endpoint mark for compare-with-mark; the toast is honest about e5.3 owning the comparison",
+   "keys": "m",
+   "at_s": 19.564,
+   "elapsed_s": 0.701,
+   "paint_ms": 0.4,
+   "visible_ms": 0.4,
+   "settled_ms": 0.4,
+   "rss_kib": 8956
+  },
+  {
+   "step": 27,
+   "note": "the artefact view: the review record you would post on the PR",
+   "keys": "o",
+   "at_s": 20.266,
+   "elapsed_s": 0.802,
+   "paint_ms": 1.0,
+   "visible_ms": 1.0,
+   "settled_ms": 1.9,
+   "rss_kib": 8956
+  },
+  {
+   "step": 28,
+   "note": "ambient mode: the second-terminal glance",
+   "keys": "a",
+   "at_s": 21.069,
+   "elapsed_s": 0.802,
+   "paint_ms": 1.0,
+   "visible_ms": 1.0,
+   "settled_ms": 1.7,
+   "rss_kib": 8956
+  },
+  {
+   "step": 29,
+   "note": "structure view",
+   "keys": "s",
+   "at_s": 21.871,
+   "elapsed_s": 0.601,
+   "paint_ms": 1.7,
+   "visible_ms": 1.7,
+   "settled_ms": 2.7,
+   "rss_kib": 8956
+  },
+  {
+   "step": 30,
+   "note": "graph view \u2014 measured: nothing paints for 251 ms, because `g` is also the prefix of `gg`, and the wait is unmarked",
+   "keys": "g",
+   "at_s": 22.473,
+   "elapsed_s": 1.002,
+   "paint_ms": 0.4,
+   "visible_ms": 250.5,
+   "settled_ms": 250.9,
+   "rss_kib": 8956
+  },
+  {
+   "step": 31,
+   "note": "deps view",
+   "keys": "p",
+   "at_s": 23.475,
+   "elapsed_s": 0.605,
+   "paint_ms": 1.3,
+   "visible_ms": 1.3,
+   "settled_ms": 2.2,
+   "rss_kib": 8956
+  },
+  {
+   "step": 32,
+   "note": "zoom the focused pane; <C-w>h/l move focus, T pins a tab \u2014 the frame's own motions all work",
+   "keys": "<C-w>o",
+   "at_s": 24.081,
+   "elapsed_s": 0.703,
+   "paint_ms": 1.5,
+   "visible_ms": 1.5,
+   "settled_ms": 1.5,
+   "rss_kib": 8956
+  },
+  {
+   "step": 33,
+   "note": "D: the rebase (part D) starts here. First, re-index from inside the TUI after the history moves \u2014 the shell has no store handle, so this key can only narrate",
+   "keys": "<C-r>",
+   "at_s": 24.784,
+   "elapsed_s": 1.002,
+   "paint_ms": 1.5,
+   "visible_ms": 1.5,
+   "settled_ms": 1.5,
+   "rss_kib": 8956
+  },
+  {
+   "step": 34,
+   "note": "another terminal rewrites the last five commits \u2014 the force-push case ADR-003 exists for. The five old commits are unreachable: pruned, not hidden",
+   "keys": null,
+   "at_s": 25.786,
+   "elapsed_s": 3.198,
+   "paint_ms": null,
+   "visible_ms": null,
+   "settled_ms": null,
+   "rss_kib": 8956
+  },
+  {
+   "step": 35,
+   "note": "the open TUI notices none of it: the watcher is a separate verb and no producer feeds the frame",
+   "keys": "",
+   "at_s": 28.984,
+   "elapsed_s": 1.0,
+   "paint_ms": null,
+   "visible_ms": null,
+   "settled_ms": null,
+   "rss_kib": 8956
+  },
+  {
+   "step": 36,
+   "note": "so the reviewer asks the shell to re-index, and the shell says it has no store handle and names e1.4, a ticket that closed weeks ago",
+   "keys": "<C-r>",
+   "at_s": 29.985,
+   "elapsed_s": 1.001,
+   "paint_ms": 2.0,
+   "visible_ms": null,
+   "settled_ms": 2.0,
+   "rss_kib": 8956
+  },
+  {
+   "step": 37,
+   "note": "the index catches up in a separate process: 5 rewalked, 0 new \u2014 the rewritten commits are the same content, and the identity digest is what makes that true",
+   "keys": null,
+   "at_s": 30.986,
+   "elapsed_s": 2.227,
+   "paint_ms": null,
+   "visible_ms": null,
+   "settled_ms": null,
+   "rss_kib": 8720
+  },
+  {
+   "step": 38,
+   "note": "quit. e1.11 writes the session on the way out: the filter, the pinned tab, the layout, the `m` mark, the last search",
+   "keys": "<C-c>",
+   "at_s": 33.214,
+   "elapsed_s": 0.008,
+   "paint_ms": 1.9,
+   "visible_ms": null,
+   "settled_ms": 2.0,
+   "rss_kib": null
+  },
+  {
+   "step": 39,
+   "note": "from another terminal, with the TUI shut: what the repository remembers about the reviewer after a rewritten history \u2014 this is the review state the build can hold",
+   "keys": null,
+   "at_s": 33.222,
+   "elapsed_s": 0.01,
+   "paint_ms": null,
+   "visible_ms": null,
+   "settled_ms": null,
+   "rss_kib": null
+  },
+  {
+   "step": 40,
+   "note": "reopen: the toast names what came back, and `t` is the timeline again on the rewritten history \u2014 same rail, same message telling the reviewer to run an index that is already done",
+   "keys": "t",
+   "at_s": 33.586,
+   "elapsed_s": 1.201,
+   "paint_ms": 0.3,
+   "visible_ms": 0.3,
+   "settled_ms": 2.2,
+   "rss_kib": 8976
+  },
+  {
+   "step": 41,
+   "note": "end of the walkthrough: no mouse, no leaving the TUI except where the work genuinely is elsewhere, and no episode ever read",
+   "keys": "<C-c>",
+   "at_s": 34.788,
+   "elapsed_s": 0.011,
+   "paint_ms": 1.2,
+   "visible_ms": null,
+   "settled_ms": 1.4,
+   "rss_kib": null
+  }
+ ]
+}

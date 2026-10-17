@@ -38,7 +38,7 @@ Session state is the reviewer's posture, has no evidentiary value, and is worth 
 | `timeline.members` | `author:` / `kind:` / `area:` / `repo:` / `remote:` / `sha:` prefixes | each filter's multi-member set |
 | `unread:<episode-id>` | `opened` / `read`, written when the card materialised | the read set, and therefore where `goto.first_unread` lands |
 
-`session_state` is the store's own table (`schema.rs`, since `e1.0`) with `key TEXT PRIMARY KEY, value
+`session_state` is the store's own table (`episode.rs`, since `e1.3`) with `key TEXT PRIMARY KEY, value
 TEXT, updated_utc INTEGER`. The write path is `Store::ui_state_rows` (sorted by key, so a diff is
 comparable) and `Store::set_ui_state_if`, which is the whole concurrency story and is [§3](#3-two-tuis-one-repository).
 

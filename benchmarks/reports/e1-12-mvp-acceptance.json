@@ -1,0 +1,237 @@
+{
+ "schema_version": 1,
+ "ticket": "reco-glv",
+ "stage": "e1.12",
+ "generated_utc": "2026-10-17T17:39:40Z",
+ "environment": {
+  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Sun Sep 20 16:14:09 UTC 2026",
+  "cpu_count": 8,
+  "binary": "target/release/fathom",
+  "python": "3.14.5",
+  "git": "git version 2.47.3",
+  "profile": "release"
+ },
+ "corpus": {
+  "repository": "harbour-perf",
+  "commits": 500,
+  "size_class": "small",
+  "shape": "500-commit agent-driven fixture from tools/agent_fixture.py: 3 agents and 2 humans, ~200 trailer-named turns over ~19 days, feature/fix/docs/migration/lockfile/CI/generated/reformat rotations plus ten planted risky episodes"
+ },
+ "budget_source": "benchmarks/budgets.json",
+ "samples_note": "three samples per number; p95 of three samples is the maximum, and the report prints the samples so nobody reads p95 as a tail estimate",
+ "measured": [
+  {
+   "measurement": "cold index of the 500-commit agent fixture",
+   "budget_id": "cold.index.ms.small",
+   "budget": 1500,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 464.0,
+   "samples_ms": [
+    463.99,
+    402.7,
+    386.62
+   ],
+   "met": true,
+   "blocked_by": null,
+   "note": "three cold runs, each into a deleted store; the machine is one laptop, not the CI box"
+  },
+  {
+   "measurement": "peak RSS of `fathom index`",
+   "budget_id": "rss.cold_index.peak_mib.small",
+   "budget": 300,
+   "statistic": "peak",
+   "unit": "MiB",
+   "measured": 20.4,
+   "samples_ms": null,
+   "met": true,
+   "blocked_by": null,
+   "note": "VmHWM of the index child; the graph lane is not built yet, so this is the spine alone"
+  },
+  {
+   "measurement": "store bytes per commit, spine tables only",
+   "budget_id": "store.bytes_per_commit_spine.small",
+   "budget": 4096,
+   "statistic": "p50",
+   "unit": "bytes",
+   "measured": 3358,
+   "samples_ms": null,
+   "met": true,
+   "blocked_by": null,
+   "note": "1,679,360 spine bytes + 679,936 cache/other bytes = 2,359,296 in the file, for 500 commits; the split is dbstat's, so the cache the analysis wrote is not charged to the spine"
+  },
+  {
+   "measurement": "store file size",
+   "budget_id": "store.size.mib.small",
+   "budget": 400,
+   "statistic": "ceiling",
+   "unit": "MiB",
+   "measured": 2.25,
+   "samples_ms": null,
+   "met": true,
+   "blocked_by": null,
+   "note": "the whole `.fathom/index.sqlite3`, cache included"
+  },
+  {
+   "measurement": "warm re-index after one new commit",
+   "budget_id": "warm.reindex.ms.small",
+   "budget": 150,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 70.0,
+   "samples_ms": [
+    53.01,
+    69.96,
+    61.77
+   ],
+   "met": true,
+   "blocked_by": null,
+   "note": "the new commit carries the fixture's trailers, so segmentation has work to do too"
+  },
+  {
+   "measurement": "re-index with nothing new",
+   "budget_id": "warm.reindex.noop.ms.small",
+   "budget": 10,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 61.3,
+   "samples_ms": [
+    61.3,
+    56.9,
+    58.99
+   ],
+   "met": false,
+   "blocked_by": null,
+   "note": ""
+  },
+  {
+   "measurement": "commit made elsewhere, noticed by `fathom watch`",
+   "budget_id": "watch.detect.ms.small",
+   "budget": 1000,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 163.3,
+   "samples_ms": [
+    156.73,
+    156.61,
+    163.31
+   ],
+   "met": true,
+   "blocked_by": null,
+   "note": "0.6 s of warm-up is excluded: the clock starts at the commit, not at the spawn"
+  },
+  {
+   "measurement": "TUI: keystroke to a changed screen (p95, excluding the `g` chord)",
+   "budget_id": "query.frame_store_budget.ms.small",
+   "budget": 8,
+   "statistic": "hard limit",
+   "unit": "ms",
+   "measured": 2.5,
+   "samples_ms": null,
+   "met": true,
+   "blocked_by": null,
+   "note": "measured through the pty: keystroke written, screen grid changed. The worst value is 255.2 ms, and it is `g`, whose answer is the 250 ms chord timeout for `gg`, not the store"
+  },
+  {
+   "measurement": "TUI: peak RSS",
+   "budget_id": "rss.tui.mib.small",
+   "budget": 120,
+   "statistic": "ceiling",
+   "unit": "MiB",
+   "measured": 8.76,
+   "samples_ms": null,
+   "met": true,
+   "blocked_by": null,
+   "note": "VmHWM of the TUI child, sampled after every keystroke"
+  },
+  {
+   "measurement": "TUI: the queue answers with episodes",
+   "budget_id": "cold.queue_visible.ms.small",
+   "budget": 3000,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "the shell hands the queue and the rail no episodes at all (`fathom-cli` passes `episodes: None`; `insight::episodes` is e2.11)",
+   "note": "time to first frame was 11.0 ms, which is not the same question: the budget is time to the first useful answer"
+  },
+  {
+   "measurement": "TUI: queue query",
+   "budget_id": "query.queue.ms.small",
+   "budget": 8,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no queue is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  },
+  {
+   "measurement": "TUI: timeline rail query",
+   "budget_id": "query.timeline.ms.small",
+   "budget": 8,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no timeline rail is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  },
+  {
+   "measurement": "TUI: episode card query",
+   "budget_id": "query.card.ms.small",
+   "budget": 50,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no episode card is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  },
+  {
+   "measurement": "TUI: diff pane query",
+   "budget_id": "query.diff_open.ms.small",
+   "budget": 120,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no diff pane is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  },
+  {
+   "measurement": "TUI: first hunk query",
+   "budget_id": "query.diff_first_hunk.ms.small",
+   "budget": 40,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no first hunk is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  },
+  {
+   "measurement": "TUI: search query",
+   "budget_id": "query.search.ms.small",
+   "budget": 30,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": null,
+   "samples_ms": null,
+   "met": null,
+   "blocked_by": "no search is ever populated: the frame has no store\u2192view path",
+   "note": ""
+  }
+ ],
+ "not_measured": [
+  "cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms \u2014 the graph lane is e3.2's and is not built",
+  "frame p99 from the shell's own Report \u2014 `fathom tui` discards it; nothing in the product prints it, so the frame numbers here come from the pty (key to visible change)",
+  "rss.daemon.mib \u2014 no daemon (e6.3)"
+ ]
+}

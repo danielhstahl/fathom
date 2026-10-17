@@ -1,0 +1,218 @@
+{
+  "title": "e1.12 \u2014 reviewing a 500-commit agent repository entirely inside fathom's TUI",
+  "comment": [
+    "The acceptance script of reco-glv, as data. `python3 tools/tui_session.py --root <fixture> \\",
+    "--script docs/demo/mvp-500-commit-review.json --cast docs/demo/mvp-500-commit-review.cast`.",
+    "The reviewer here did not write any of the code under review and never touches the mouse.",
+    "The fixture is `python3 tools/agent_fixture.py --out /tmp/harbour-mvp` (500 commits, 213 turns,",
+    "3 agents and 2 humans) indexed with `fathom index`. `shell` steps run between keystrokes: those",
+    "are the things that genuinely happen in another terminal, like the rebase in part D."
+  ],
+  "steps": [
+    {
+      "keys": "",
+      "note": "A: open `fathom tui` on an indexed repository \u2014 500 commits, epoch 1 ready (part A: orient). The queue is the landing view, and it has no episodes in it",
+      "hold": 1.2
+    },
+    {
+      "keys": "?",
+      "note": "the keymap overlay: the three canonical tasks, every action with its key. A newcomer can read the whole contract without leaving the TUI",
+      "hold": 1.4
+    },
+    {
+      "keys": "<Esc>",
+      "note": "close the help",
+      "settle": 0.5
+    },
+    {
+      "keys": "t",
+      "note": "the timeline \u2014 the reviewer's front page. The rail is where 213 agent turns should be listed",
+      "hold": 0.9
+    },
+    {
+      "keys": "jjjj",
+      "note": "walk the rail with j/k: the cursor has nowhere to go, because the shell hands the rail no episodes at all",
+      "hold": 0.8
+    },
+    {
+      "keys": "gg",
+      "note": "jump to first row",
+      "hold": 0.7
+    },
+    {
+      "keys": "G",
+      "note": "jump to last row",
+      "hold": 0.7
+    },
+    {
+      "keys": "F",
+      "note": "the filter form: author, kind, state, area, date range, path fragment \u2014 nine composable filters, all of them functional, none of them with anything to filter",
+      "hold": 1.0
+    },
+    {
+      "keys": "<C-n>",
+      "note": "<C-n>/<C-p> move the form, <Enter> chooses. Keyboard-only so far, exactly as ADR-006 \u00a79 promises",
+      "hold": 0.6
+    },
+    {
+      "keys": "<Esc>",
+      "note": "close the filters",
+      "settle": 0.5
+    },
+    {
+      "keys": "q",
+      "note": "the attention queue: what should a human look at first. Nothing is ranked, because nothing is loaded",
+      "hold": 0.9
+    },
+    {
+      "keys": ",",
+      "note": "the command palette: every action in the registry is reachable from here, which is the keyboard-reachability promise (K1)",
+      "hold": 0.8
+    },
+    {
+      "keys": "unread",
+      "note": "type to narrow: 'Jump to first unread episode' is a real, bound action",
+      "hold": 0.7
+    },
+    {
+      "keys": "<Enter>",
+      "note": "run it. With no episodes loaded, 'first unread' is silent \u2014 no count, no empty-state sentence",
+      "hold": 0.9
+    },
+    {
+      "keys": "/",
+      "note": "B: find the riskiest episodes (part B). Search is the reviewer's other front door: free text plus author:/path:/risk>/dep: tokens",
+      "hold": 0.7
+    },
+    {
+      "keys": "stripe",
+      "note": "search for the planted one: a production Stripe key added to CI, three lines long \u2014 the change a size-ranked list hides",
+      "hold": 0.7
+    },
+    {
+      "keys": "<Enter>",
+      "note": "submit. The search view closes and the toast says the scorer belongs to e5.2: no match count, no empty state, no landing spot",
+      "hold": 0.9
+    },
+    {
+      "keys": "n",
+      "note": "n/N walk the matches. With no scorer there are no matches and the key is silent",
+      "hold": 0.7
+    },
+    {
+      "keys": "/",
+      "note": "second of the three riskiest: a migration that drops a column with no rollback file",
+      "hold": 0.6
+    },
+    {
+      "keys": "DROP COLUMN",
+      "note": "search the SQL itself",
+      "hold": 0.7
+    },
+    {
+      "keys": "<Enter>",
+      "note": "same answer",
+      "hold": 0.8
+    },
+    {
+      "keys": "d",
+      "note": "the diff viewer (part B, reading). e1.8's materialiser and the diff viewer's eighteen golden fixtures are real; nothing in the shell ever hands them a patch",
+      "hold": 0.9
+    },
+    {
+      "keys": "[]",
+      "note": "hunk motion, then i (intent), w (why this risk), x (mark reviewed): four keys over an empty scope. Each one is the review loop the product is for",
+      "hold": 0.8
+    },
+    {
+      "keys": "iw",
+      "note": "intent, then the risk explanation, on the episode in scope \u2014 which is no episode",
+      "hold": 0.8
+    },
+    {
+      "keys": "x",
+      "note": "mark reviewed: the acceptance criterion (d) is 'a rebase must not lose this'. It cannot be set, so it cannot be checked",
+      "hold": 0.8
+    },
+    {
+      "keys": "m",
+      "note": "endpoint mark for compare-with-mark; the toast is honest about e5.3 owning the comparison",
+      "hold": 0.7
+    },
+    {
+      "keys": "o",
+      "note": "the artefact view: the review record you would post on the PR",
+      "hold": 0.8
+    },
+    {
+      "keys": "a",
+      "note": "ambient mode: the second-terminal glance",
+      "hold": 0.8
+    },
+    {
+      "keys": "s",
+      "note": "structure view",
+      "hold": 0.6
+    },
+    {
+      "keys": "g",
+      "note": "graph view \u2014 measured: nothing paints for 251 ms, because `g` is also the prefix of `gg`, and the wait is unmarked",
+      "hold": 1.0
+    },
+    {
+      "keys": "p",
+      "note": "deps view",
+      "hold": 0.6
+    },
+    {
+      "keys": "<C-w>o",
+      "note": "zoom the focused pane; <C-w>h/l move focus, T pins a tab \u2014 the frame's own motions all work",
+      "hold": 0.7
+    },
+    {
+      "keys": "<C-r>",
+      "note": "D: the rebase (part D) starts here. First, re-index from inside the TUI after the history moves \u2014 the shell has no store handle, so this key can only narrate",
+      "hold": 1.0
+    },
+    {
+      "shell": "tip=$(git rev-parse HEAD); base=$(git rev-parse HEAD~5); git reset --hard -q $base && git cherry-pick $(git rev-list --reverse $base..$tip) >/dev/null && git reflog expire --expire=now --all && git gc -q --prune=now; echo \"head=$(git rev-parse --short HEAD) commits=$(git rev-list --all --count)\"",
+      "note": "another terminal rewrites the last five commits \u2014 the force-push case ADR-003 exists for. The five old commits are unreachable: pruned, not hidden",
+      "sleep": 3.0
+    },
+    {
+      "keys": "",
+      "note": "the open TUI notices none of it: the watcher is a separate verb and no producer feeds the frame",
+      "hold": 1.0
+    },
+    {
+      "keys": "<C-r>",
+      "note": "so the reviewer asks the shell to re-index, and the shell says it has no store handle and names e1.4, a ticket that closed weeks ago",
+      "hold": 1.0
+    },
+    {
+      "shell": "$FATHOM index 2>&1 | tail -1; $FATHOM stats 2>&1 | sed -n '4,7p'",
+      "note": "the index catches up in a separate process: 5 rewalked, 0 new \u2014 the rewritten commits are the same content, and the identity digest is what makes that true",
+      "sleep": 2.0
+    },
+    {
+      "keys": "<C-c>",
+      "settle": 0.5,
+      "note": "quit. e1.11 writes the session on the way out: the filter, the pinned tab, the layout, the `m` mark, the last search"
+    },
+    {
+      "shell": "$FATHOM tui --show-session 2>&1 | head -12",
+      "restart": true,
+      "note": "from another terminal, with the TUI shut: what the repository remembers about the reviewer after a rewritten history \u2014 this is the review state the build can hold"
+    },
+    {
+      "keys": "t",
+      "hold": 1.2,
+      "note": "reopen: the toast names what came back, and `t` is the timeline again on the rewritten history \u2014 same rail, same message telling the reviewer to run an index that is already done"
+    },
+    {
+      "keys": "<C-c>",
+      "note": "end of the walkthrough: no mouse, no leaving the TUI except where the work genuinely is elsewhere, and no episode ever read",
+      "settle": 0.5
+    }
+  ]
+}

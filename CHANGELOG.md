@@ -15,6 +15,41 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `e1.12` — MVP acceptance: a 500-commit agent repository, reviewed in the TUI (reco-glv)
+
+- **The walkthrough ran, and the spine does not reach the frame.** A scripted reviewer — no mouse, no
+  leaving the terminal — opened `fathom tui` on a 500-commit, 213-turn agent-driven repository with a
+  warm index (`epoch 1 ready`) and could not read a single episode. The pane that should carry them is
+  handed `episodes: None` by `fathom-cli`, and `insight::episodes()` returns `NotImplemented` under
+  the ticket number `e2.11` — an Epic 2 ticket Epic 1 does not depend on. Seventeen defects filed, four
+  of them P1, and by the epic's own rule Epic 1 and the alpha milestone stay open. The record is
+  [docs/demo/](docs/demo/): an asciinema cast, the walkthrough as JSON, the measured per-step timings,
+  and the budget table.
+- **A fixture for the ordinary history, and the reviewer as a pty client.** `tools/agent_fixture.py`
+  builds the 500-commit agent-driven repository deterministically — one fixed clock, `.invalid`
+  identities, no PRNG, real `git fast-import`, `git fsck --strict` clean, and ten planted episodes a
+  reviewer is supposed to find (a destructive migration, a live key plus `permissions: write-all` in
+  CI, a bump storm, tests deleted behind a rewrite, scope creep, an API removal, a declared-but-unread
+  env var, a new cycle, generated churn, one enormous turn). `tools/tui_session.py` drives the shipped
+  binary through a real pty and writes an asciicast v2 plus the one measurement an outsider can trust:
+  the interval between a keystroke and the screen actually changing. Asserted by
+  `tests/test_mvp_acceptance_contract.py` (10), which also refuses a build twice that disagrees with
+  itself.
+- **Perf, measured and published rather than asserted.** `tools/mvp_acceptance.py` runs the budget
+  numbers into [benchmarks/reports/e1-12-mvp-acceptance.json](benchmarks/reports/e1-12-mvp-acceptance.json):
+  cold index **464 ms** p95 (budget 1 500), warm re-index after one commit **70 ms** (150), spine
+  **3 358 B/commit** (4 096 — the file itself is around 4 700 B/commit once the analyse cache is
+  counted, which is why the budget is measured per table with `dbstat` and not per file), index peak
+  RSS **20 MiB** (300), watcher detection **163 ms** (1 000), TUI RSS **8.8 MiB** (120), keystroke to
+  visible change **2.5 ms** p95 with one 250 ms outlier that is the `g`/`gg` chord timeout. Two
+  numbers are **over budget**: a re-index with nothing new costs **61 ms against a 10 ms floor** — so
+  every script that asks "is this fresh?" pays for the whole walk — and seven query families are
+  **unmeasurable**, because nothing carries a row from the store to a pane, `cold.queue_visible.ms`
+  (the budget this ticket depends on) among them.
+
+- One incidental fix: `docs/concepts/session-state.md` cited `e1.0`, which is not a plan key, and
+  `schema.rs`, which is not the file — so `tools/check_docs.py` was failing on `main` and is green again.
+
 ### `e1.11` — session state: what a repository remembers about the last reviewer (reco-6hp)
 
 - **Quitting saves the session; reopening restores it.** Selected episode, every filter (the rail's own
