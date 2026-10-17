@@ -96,6 +96,10 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         } else {
             loaded.entries.clone()
         },
+        // ...and the diff pane gets its byte source the same way (`reco-0kw`): the shell never opens
+        // the store or the object store, so `d` asks this provider, and the provider is the only
+        // party that can answer. `None` is the no-backend build, and the pane says which it has.
+        patches: crate::patches::provider(&root),
     };
     if plain {
         for notice in &notices {

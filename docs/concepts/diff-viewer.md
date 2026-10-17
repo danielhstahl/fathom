@@ -15,8 +15,8 @@ whose text is huge, binary, deleted or merely absent gets a sentence, not a blan
 
 The viewer never opens the object store, never shells out to `git`, never reads a file, a variable or a
 `PATH`, and never starts a process: `fathom-tui` is IO-free (ADR-002 §3, lint `W1`). Patch bytes arrive
-through one trait, implemented wherever the bytes actually live — `fathom-cli` for a file, `e1.8` for a
-decoded blob, a future adapter for `git diff`:
+through one trait, implemented wherever the bytes actually live — today that is `fathom-cli`, reading
+the store on the episode's behalf (`reco-0kw`); a future adapter would shell out to `git diff`:
 
 ```rust
 pub trait PatchSource {
@@ -30,9 +30,14 @@ pub trait PatchReader {
 ```
 
 `read_at` is positioned, so a window over a 400 MiB patch reads the window and nothing else. Two
-implementations exist today: `BytesSource` (a blob already in memory — tests, `--diff-file`) and
-`FileSource` (a file on disk, read with `read_at`-style positioned reads). A store-backed source and
-a `git diff` source are the same shape and are wired by the tickets that own those boundaries.
+implementations exist today: `BytesSource` (bytes already in memory — the shell's own, and tests') and
+`NoSource` (there is nothing to read, and the pane prints why instead of blanking). The reason the
+product path is in-memory is one seam up: a `PatchProvider` (`frame::Options::patches`) turns *the
+episode under review* into a `PatchSource`, and `fathom-cli` installs one — `crates/fathom-cli/src/patches.rs`
+resolves the selected episode to its member commits in the index, renders the net old→new blob pair
+per file, and hands the pane a patch whose hunks carry `X-Fathom-Class`, `X-Fathom-Noise` and
+`X-Fathom-Skip` headers. The bytes are the ones the store's `git_commit_file` rows point at, so `d`
+reads the episode, not a re-run of `git` (`reco-0kw`). A `git diff` source would be the same shape.
 
 `Unavailable` is a typed reason with an optional `hint`, and the hint is part of the type, not a
 string someone remembers to append: `not available offline — episode predates the local packfile`

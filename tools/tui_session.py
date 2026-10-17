@@ -271,21 +271,34 @@ class Recorder:
 
 
 def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
-          quiet: bool = True) -> tuple:
+          quiet: bool = True, until: str | None = None) -> tuple:
     """Read whatever the terminal produced until it goes quiet or the deadline passes.
 
-    Returns `(first, last, changed)`: when the first byte of the answer arrived, when the last one
-    did, and when the *screen* actually changed — a keystroke can emit a cursor sequence and draw
-    nothing, so the third number is the one that means "the reviewer saw something happen".
+    Returns `(first, last, changed, found)`: when the first byte of the answer arrived, when the
+    last one did, when the *screen* actually changed — a keystroke can emit a cursor sequence and
+    draw nothing, so the third number is the one that means "the reviewer saw something happen" —
+    and, if the step named an `until` string, when the screen first contained it. That fourth
+    number is what makes "time until the first hunk is on screen" a measurement (`reco-0kw`):
+    `changed` says the pane moved, `found` says it moved to the thing that was asked about.
     """
     first: float | None = None
     last: float | None = None
     changed: float | None = None
+    found: float | None = None
+
+    def note(now: float) -> None:
+        nonlocal changed, found
+        text = screen.text()
+        if changed is None and text != before:
+            changed = now
+        if found is None and until is not None and until in text:
+            found = now
+
     before = screen.text()
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return first, last, changed
+            return first, last, changed, found
         ready, _, _ = select.select([master], [], [], min(0.05, remaining))
         if not ready and not quiet:
             continue
@@ -299,29 +312,37 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
                     try:
                         data = os.read(master, 65536)
                     except OSError:
-                        return first, last, changed
+                        return first, last, changed, found
+                    if not data:
+                        # EOF: the child is gone (its last slave fd closed). Some kernels report this
+                        # as a readable-then-empty master rather than EIO, and a loop that only
+                        # watches for EIO spins forever on a hangup that never raises.
+                        return first, last, changed, found
                     now = time.monotonic()
                     first = first or now
                     last = now
                     recorder.add(data)
                     screen.feed(data)
-                    changed = changed or (time.monotonic() if screen.text() != before else None)
+                    note(now)
                     if raw:
                         raw.write(data)
                         raw.flush()
                 else:
                     settled_ticks += 1
-            return first, last, changed
+            return first, last, changed, found
         try:
             data = os.read(master, 65536)
         except OSError:
-            return first, last, changed
+            return first, last, changed, found
+        if not data:
+            # EOF on the master: the child exited; a select loop that only stops on EIO would spin.
+            return first, last, changed, found
         now = time.monotonic()
         first = first or now
         last = now
         recorder.add(data)
         screen.feed(data)
-        changed = changed or (now if screen.text() != before else None)
+        note(now)
         if raw:
             raw.write(data)
             raw.flush()
@@ -403,7 +424,8 @@ def main() -> int:
 
     try:
         # Let the shell take the screen before the first keystroke.
-        opened_at, settled, _first_change = drain(master, time.monotonic() + 1.2, recorder, raw, screen)
+        opened_at, settled, _first_change, _found = drain(
+            master, time.monotonic() + 1.2, recorder, raw, screen)
         first_paint_ms = round((opened_at - opened) * 1000, 1) if opened_at else None
         _ = settled
         for index, step in enumerate(steps, start=1):
@@ -432,9 +454,12 @@ def main() -> int:
                         time.sleep(per)
             # `settle` is a deadline, not a sleep: the frame is measured until it stops arriving,
             # which is what makes `paint_ms` the terminal's latency rather than this script's.
-            painted, settled, changed = drain(
+            # A step may also name an `until` string; `until_ms` is then the moment the screen first
+            # said it — "time until the first hunk is on screen" made measurable (`reco-0kw`).
+            painted, settled, changed, found = drain(
                 master, time.monotonic() + float(step.get("hold" , step.get("settle", args.settle))),
-                recorder, raw, screen, quiet="hold" not in step)
+                recorder, raw, screen, quiet="hold" not in step,
+                until=step.get("until"))
             time.sleep(float(step.get("sleep", 0.0)))
             timings.append({
                 "step": index,
@@ -444,6 +469,7 @@ def main() -> int:
                 "elapsed_s": round(time.monotonic() - began, 3),
                 "paint_ms": round((painted - began) * 1000, 1) if painted else None,
                 "visible_ms": round((changed - began) * 1000, 1) if changed else None,
+                "until_ms": round((found - began) * 1000, 1) if found else None,
                 "settled_ms": round((settled - began) * 1000, 1) if settled else None,
                 "rss_kib": child_rss_kib(pid),
                 "screen": screen.text(),

@@ -121,22 +121,22 @@ Corpus: 500 commits, size class **small**. Binary profile `release`, `git versio
 
 | measurement | budget | budget value | measured | verdict |
 |---|---|---:|---:|---|
-| cold index of the 500-commit agent fixture | `cold.index.ms.small` | 1,500 ms | 464.0 | met |
-| peak RSS of `fathom index` | `rss.cold_index.peak_mib.small` | 300 MiB | 20.4 | met |
+| cold index of the 500-commit agent fixture | `cold.index.ms.small` | 1,500 ms | 412.5 | met |
+| peak RSS of `fathom index` | `rss.cold_index.peak_mib.small` | 300 MiB | 20.5 | met |
 | store bytes per commit, spine tables only | `store.bytes_per_commit_spine.small` | 4,096 bytes | 3,358 | met |
 | store file size | `store.size.mib.small` | 400 MiB | 2.25 | met |
-| warm re-index after one new commit | `warm.reindex.ms.small` | 150 ms | 70.0 | met |
-| re-index with nothing new | `warm.reindex.noop.ms.small` | 10 ms | 61.3 | **over budget** |
-| commit made elsewhere, noticed by `fathom watch` | `watch.detect.ms.small` | 1,000 ms | 163.3 | met |
-| TUI: keystroke to a changed screen (p95, excluding the `g` chord) | `query.frame_store_budget.ms.small` | 8 ms | 2.5 | met |
-| TUI: peak RSS | `rss.tui.mib.small` | 120 MiB | 8.76 | met |
+| warm re-index after one new commit | `warm.reindex.ms.small` | 150 ms | 52.0 | met |
+| re-index with nothing new | `warm.reindex.noop.ms.small` | 10 ms | 49.2 | **over budget** |
+| commit made elsewhere, noticed by `fathom watch` | `watch.detect.ms.small` | 1,000 ms | 161.5 | met |
+| TUI: keystroke to a changed screen (p95, excluding the `g` chord) | `query.frame_store_budget.ms.small` | 8 ms | 2.3 | met |
+| TUI: peak RSS | `rss.tui.mib.small` | 120 MiB | 9.89 | met |
 | TUI: the queue answers with episodes | `cold.queue_visible.ms.small` | 3,000 ms | — | blocked — the shell hands the queue and the rail no episodes at all (`fathom-cli` passes `episodes: None`; `insight::episodes` is e2.11) |
 | TUI: queue query | `query.queue.ms.small` | 8 ms | — | blocked — no queue is ever populated: the frame has no store→view path |
 | TUI: timeline rail query | `query.timeline.ms.small` | 8 ms | — | blocked — no timeline rail is ever populated: the frame has no store→view path |
 | TUI: episode card query | `query.card.ms.small` | 50 ms | — | blocked — no episode card is ever populated: the frame has no store→view path |
-| TUI: diff pane query | `query.diff_open.ms.small` | 120 ms | — | blocked — no diff pane is ever populated: the frame has no store→view path |
-| TUI: first hunk query | `query.diff_first_hunk.ms.small` | 40 ms | — | blocked — no first hunk is ever populated: the frame has no store→view path |
 | TUI: search query | `query.search.ms.small` | 30 ms | — | blocked — no search is ever populated: the frame has no store→view path |
+| TUI: `d` to the diff pane painting its tree | `query.diff_open.ms.small` | 120 ms | 4.5 | met |
+| TUI: `d` to the first hunk on screen | `query.diff_first_hunk.ms.small` | 40 ms | 5.0 | met |
 
 Declared but not measurable at all from this build: cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms — the graph lane is e3.2's and is not built; frame p99 from the shell's own Report — `fathom tui` discards it; nothing in the product prints it, so the frame numbers here come from the pty (key to visible change); rss.daemon.mib — no daemon (e6.3).
 
@@ -144,8 +144,10 @@ Declared but not measurable at all from this build: cold.graph.ms / warm.graph.m
 
 The blocked rows are the finding, not the gap. `cold.queue_visible.ms.small` is the budget `e1.12`
 actually depends on — its own rationale says it is "the first *useful* answer" — and a queue that is
-never handed episodes does not answer at any latency. The same missing seam blocks six `query.*`
-families: no code path carries a row from `fathom-store` to a `fathom-tui` pane.
+never handed episodes does not answer at any latency. The same missing seam still blocks four `query.*`
+families (queue, rail, card, search): no code path yet carries a row from `fathom-store` to those
+`fathom-tui` panes — the diff pane got its path in `reco-0kw`, and its two numbers are the first
+measured `query.*` budgets in this table.
 
 Full machine-readable version:
 [`benchmarks/reports/e1-12-mvp-acceptance.json`](../../benchmarks/reports/e1-12-mvp-acceptance.json).

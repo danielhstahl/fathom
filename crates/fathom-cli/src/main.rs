@@ -24,6 +24,11 @@ mod episodes;
 mod features;
 mod hooks;
 mod output;
+// The diff pane's byte source (`reco-0kw`): the episode's patch, materialised from the store and
+// the object store here, because the shell may not do either (ADR-002 §5.2). Only the shell has a
+// use for it, so it is gated with the shell.
+#[cfg(feature = "tui")]
+mod patches;
 mod query;
 mod sanitize;
 // The episode boundary knobs are configuration, and configuration is read here and nowhere else below the

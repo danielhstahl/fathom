@@ -18,13 +18,15 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 | peak RSS of the index process | `rss.cold_index.peak_mib.small` | `VmHWM` of the child |
 | a commit made elsewhere, noticed by the watcher | `watch.detect.ms.small` | `fathom watch --json`, one commit, time to the line |
 | the TUI: open → first frame, key → visible change, RSS | `rss.tui.mib.small` | `tools/tui_session.py` over a pty |
+| the TUI: `d` → the diff pane paints, and its first hunk | `query.diff_open.ms.small`, `query.diff_first_hunk.ms.small` | same pty; the first step whose grid changed, and the first frame carrying an `@@` (`reco-0kw`) |
 
 Numbers that **cannot** be measured from the shipped binary are reported as blocked with the reason,
-rather than left out: the query families (`query.queue.ms`, `query.timeline.ms`, `query.card.ms`,
-`query.diff_*`, `query.search.ms`) all answer a store→frame path that does not exist yet, and
+rather than left out: the query families still without a store→frame path (`query.queue.ms`,
+`query.timeline.ms`, `query.card.ms`, `query.search.ms`) stay blocked, and
 `cold.queue_visible.ms.small` — the budget `e1.12` actually depends on — is the time until the queue
 *answers*, which an unpopulated queue never does. A blocked number is a finding, not a gap in the
-report.
+report. The two diff numbers were blocked this way until `reco-0kw` wired the store as the diff
+pane's byte source; they are measured from the product now.
 """
 
 from __future__ import annotations
@@ -284,10 +286,62 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
            note=f"time to first frame was {tui.get('first_paint_ms')} ms, which is not the same "
                 "question: the budget is time to the first useful answer")
     for family, pane in (("query.queue.ms", "queue"), ("query.timeline.ms", "timeline rail"),
-                         ("query.card.ms", "episode card"), ("query.diff_open.ms", "diff pane"),
-                         ("query.diff_first_hunk.ms", "first hunk"), ("query.search.ms", "search")):
+                         ("query.card.ms", "episode card"), ("query.search.ms", "search")):
         record(f"TUI: {pane} query", family + ".small", None, unit="ms",
                blocked_by=f"no {pane} is ever populated: the frame has no store→view path")
+
+    # --- the diff pane: `d` on a selected episode, timed to the frame and to the first hunk.
+    # These two were blocked on "nothing ever hands the diff pane a patch"; `reco-0kw` wired the
+    # store as the byte source, so the numbers are now the product's, measured through the same pty
+    # as every other TUI number.
+    opens, hunks = [], []
+    diff_script = Path("/tmp") / f"e1-12-diff-{os.getpid()}.json"
+    diff_steps_file = Path("/tmp") / f"e1-12-diff-steps-{os.getpid()}.json"
+    diff_script.write_text(json.dumps({
+        "title": "e1.12 — the diff-pane probe (reco-0kw)",
+        "steps": [
+            {"keys": "t", "note": "open the timeline", "settle": 0.6},
+            {"keys": "j", "note": "put a row under the cursor", "settle": 0.4},
+            {"keys": "d", "note": "open the diff: frame on change, first hunk on `@@`",
+             "until": "@@", "hold": 3.0},
+            {"keys": "j", "note": "next episode", "settle": 0.4},
+            {"keys": "d", "note": "open its diff too", "until": "@@", "hold": 3.0},
+            {"keys": "<C-c>", "note": "quit", "settle": 0.3},
+        ],
+    }), encoding="utf-8")
+    for _ in range(3):
+        subprocess.run([sys.executable, str(ROOT / "tools" / "tui_session.py"), "--root",
+                        str(fixture), "--binary", str(binary), "--script", str(diff_script),
+                        "--steps", str(diff_steps_file)],
+                       check=True, stdout=subprocess.DEVNULL)
+        probe = json.loads(diff_steps_file.read_text())
+        for step in probe["steps"]:
+            if step.get("keys") == "d" and step.get("visible_ms") is not None:
+                opens.append(step["visible_ms"])
+                if step.get("until_ms") is not None:
+                    hunks.append(step["until_ms"])
+    diff_steps_file.unlink(missing_ok=True)
+    diff_script.unlink(missing_ok=True)
+    if opens:
+        record("TUI: `d` to the diff pane painting its tree", "query.diff_open.ms.small",
+               round(p95(opens), 1), unit="ms", samples=opens,
+               note="keystroke written to the pty until the grid changed, through the same pty as "
+                    "the frame-latency numbers; the pane draws the episode's file tree from the "
+                    "store's rows (`reco-0kw`)")
+    else:
+        record("TUI: `d` to the diff pane painting its tree", "query.diff_open.ms.small", None,
+               unit="ms", blocked_by="`d` drew no visible change on the probe fixture — the store→"
+                                      "diff-pane path (`reco-0kw`) did not answer")
+    if hunks:
+        record("TUI: `d` to the first hunk on screen", "query.diff_first_hunk.ms.small",
+               round(p95(hunks), 1), unit="ms", samples=hunks,
+               note="keystroke until the screen first printed an `@@` hunk header — the budget's "
+                    "own streaming rule (`hunk headers before bodies`), timed as it is written")
+    else:
+        record("TUI: `d` to the first hunk on screen", "query.diff_first_hunk.ms.small", None,
+               unit="ms", blocked_by="no `@@` hunk header reached the screen within 3 s of `d` — "
+                                      "check the decode path (`e1.8`) and the byte source "
+                                      "(`reco-0kw`)")
 
     return {
         "schema_version": 1,

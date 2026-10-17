@@ -105,6 +105,49 @@ pub trait PatchSource: Send {
     fn open(&self) -> Result<Box<dyn PatchReader>, Unavailable>;
 }
 
+/// Something that can say *where* the patch for a named scope lives.
+///
+/// The viewer takes bytes through [`PatchSource`]; it cannot know which patch a scope *means*,
+/// because scopes ("the episode under the cursor") are the shell's idea, not the pane's. A provider
+/// is that lookup turned inside out: the composition root — the only party with a store handle —
+/// installs one on the shell (`frame::Options::patches`), and the shell asks it when a keystroke
+/// (`d`) asks the diff pane about an episode. The provider stays a trait object for the same reason
+/// [`PatchSource`] is: `fathom-tui` opens nothing itself (ADR-002 §3), so the party that opens
+/// things hands over a verb instead of a handle.
+pub trait PatchProvider: Send + Sync {
+    /// Produce the patch for the scope named by `scope` (the rail row's episode id).
+    ///
+    /// A refusal is a stated [`Unavailable`], which the pane prints — "no episode with that id in
+    /// the index" is a fact the reviewer can act on, not an empty pane.
+    ///
+    /// # Errors
+    ///
+    /// [`Unavailable`] when there is no patch to show for that scope, with the reason.
+    fn patch_for(&self, scope: &str) -> Result<Box<dyn PatchSource>, Unavailable>;
+}
+
+/// A provider in the shape `Options` and `App` can hold: `Arc`-cloned, and `Debug`-able without the
+/// trait opting into `Debug` (a provider holds store and repository handles; whatever they can print
+/// about themselves is theirs to print, not the frame's).
+#[derive(Clone)]
+pub struct Provider(pub std::sync::Arc<dyn PatchProvider>);
+
+impl Provider {
+    /// Wrap a provider for the frame.
+    #[must_use]
+    pub fn new(provider: impl PatchProvider + 'static) -> Self {
+        Provider(std::sync::Arc::new(provider))
+    }
+}
+
+impl std::fmt::Debug for Provider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Provider")
+            .field(&"<patch provider>")
+            .finish()
+    }
+}
+
 /// A patch already in memory/// A patch already in memory — what a test, a pipe, or `e1.8`'s decode cache hands over.
 #[derive(Debug, Clone)]
 pub struct BytesSource {
@@ -195,9 +238,11 @@ impl PatchSource for NoSource {
             self.0.clone(),
             // No flag is named here: `fathom tui --patch <file>` used to be, and no build of this
             // binary has ever had it (ADR-006 §10.3: a sentence may not name a command the binary does
-            // not have). The headless verb is the one that answers today.
-            "nothing hands this pane a patch in this build; `fathom show <episode>` prints its files \
-             headlessly today",
+            // not have). Since `reco-0kw` the shipped shell hands this pane a patch itself — `d` reads
+            // the selected episode out of the index — so this source is what a host *without* a
+            // provider still gets, and the headless verb is the fallback that answers there.
+            "no patch source is installed in this build of the pane; where the binary has an index, `d` \
+             loads the selected episode's diff, and `fathom show <episode>` prints its files headlessly",
         ))
     }
 }

@@ -299,6 +299,16 @@ pub struct App {
     pub model: Model,
     /// The diff viewer's own state, including the budget it will not exceed (`e1.7`).
     pub diff: DiffView,
+    /// Who can turn a scope into patch bytes, if anyone (`reco-0kw`).
+    ///
+    /// Installed by the composition root through [`crate::frame::Options::patches`]; `None` is a
+    /// pane with no source of bytes (a test, an embedder, a binary built without the index), which
+    /// is a stated empty state, not a silent one.
+    pub patches: Option<diff::Provider>,
+    /// Which episode the loaded patch belongs to, so `d` re-presses cheaply and a scope move is a
+    /// re-load. `None` whenever the pane holds no episode-shaped patch (an unavailable scope's
+    /// refusal, a cleared pane).
+    pub diff_episode: Option<String>,
     /// The timeline rail's own state: its rows, its filter, its cursor (`e1.6`).
     pub timeline: Timeline,
     /// The text in the prompt field (search query, palette filter).
@@ -401,6 +411,8 @@ impl App {
             scope: Scope::empty(),
             model,
             diff: DiffView::new(),
+            patches: None,
+            diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             prompt: String::new(),
             last_search: None,
@@ -775,6 +787,7 @@ impl App {
         &mut self,
         source: Box<dyn diff::PatchSource>,
     ) -> Result<(), diff::Unavailable> {
+        self.diff_episode = None;
         if let Err(err) = self.diff.load(source) {
             // The source's own words become the pane's sentence. An empty pane whose cause nobody
             // printed is the failure this crate exists to avoid.
@@ -801,6 +814,47 @@ impl App {
                 .map_or_else(String::new, |why| format!(" — {why}"))
         ));
         Ok(())
+    }
+
+    /// `d` (`reco-0kw`): paint a diff for the episode in scope, from whoever has its bytes.
+    ///
+    /// The resolution order is the shell's, not the pane's: the scope the tabs pin and the history
+    /// walk back to wins, and the rail's cursor is the fallback for the common case — a reviewer
+    /// sitting in the timeline with a row under the cursor and no explicit scope yet. Already-loaded
+    /// and same episode is a bare view switch (re-pressing `d` must not reset the tree cursor or
+    /// re-read the store); a different episode is a fresh load. With no provider installed the pane
+    /// opens on its stated empty state, which is what a fixture-fed test with no store gets.
+    pub fn open_diff(&mut self) {
+        let episode = self
+            .scope
+            .episode
+            .clone()
+            .or_else(|| self.timeline.selected().map(|ep| ep.id.clone()));
+        let (Some(provider), Some(id)) = (self.patches.clone(), episode.as_deref()) else {
+            self.set_view(ViewId::Diff);
+            return;
+        };
+        if self.diff.is_loaded() && self.diff_episode.as_deref() == Some(id) {
+            // Same episode, same bytes: the pane already answers this question; do not disturb where
+            // the reviewer was reading it.
+            self.set_view(ViewId::Diff);
+            return;
+        }
+        match provider.0.patch_for(id) {
+            Ok(source) => {
+                if self.load_patch(source).is_ok() {
+                    self.diff_episode = Some(id.to_owned());
+                }
+            }
+            Err(why) => {
+                // The refusal is the pane's content now — printed, toasted, and view opened, so the
+                // reviewer sees *why* rather than an empty rectangle (ADR-001 §7.2).
+                self.diff.clear(why.to_string());
+                self.diff_episode = None;
+                self.set_view(ViewId::Diff);
+                self.toast(why.to_string());
+            }
+        }
     }
 
     /// Is the diff view live with something to draw?
@@ -1649,6 +1703,9 @@ impl App {
         match action {
             "app.quit" => self.quit = Some("app.quit".to_owned()),
             "screen.redraw" => self.repaint = true,
+            // `d` resolves its own scope and bytes (`reco-0kw`), so it does not fall through to the
+            // plain view switch in `dispatch_other`.
+            "view.diff" => self.open_diff(),
             "help.open" => self.overlay = Some(Overlay::Help),
             "palette.open" => {
                 self.overlay = Some(Overlay::Palette);

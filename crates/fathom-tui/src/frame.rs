@@ -144,6 +144,14 @@ pub struct Options {
     /// rows and hands them over as `(key, value)` pairs. Empty is not a failure: it is a first session,
     /// an unindexed repository, or `--fresh`, and each of those says so in its own words.
     pub session: Vec<(String, String)>,
+    /// Who turns the scope's episode into patch bytes, if anyone (`reco-0kw`).
+    ///
+    /// The same inversion as [`Self::episodes`], pointed the other way: the diff pane is a viewer of
+    /// bytes it cannot go and get (ADR-002 §5.2 — `fathom-tui` holds no store handle and opens no
+    /// files), so the composition root installs the party that *can* — `fathom-cli`'s store-backed
+    /// provider on the shipped binary — and `d` asks it. `None` is a build with no index behind the
+    /// pane, and the pane says exactly that instead of drawing an empty rectangle.
+    pub patches: Option<crate::diff::Provider>,
 }
 
 impl Default for Options {
@@ -160,6 +168,7 @@ impl Default for Options {
             episodes: None,
             index: crate::index::Facts::unknown(),
             session: Vec::new(),
+            patches: None,
         }
     }
 }
@@ -511,6 +520,9 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     );
     app.notices = options.notices.clone();
     app.install_handoff_env(options.handoff_env.clone());
+    // The party that can produce patch bytes, installed before `prime` so a session that resumes
+    // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).
+    app.patches = options.patches.clone();
     let resumed = prime(&mut app, options);
     // The size to open at, in the order anyone's authority outranks anyone else's: what the caller
     // forced, what the terminal says, the size this repository was last read at (`e1.11`), and the
@@ -602,6 +614,12 @@ fn prime(app: &mut App, options: &Options) -> Restored {
     } else if !loaded.is_empty() {
         app.toast(loaded);
     }
+    // A session that *left* on the diff view comes back to a loaded one (`reco-0kw`): the same
+    // resolution `d` performs, run once at open. `open_diff` is cheap when no provider is installed,
+    // which is every fixture that never had a store.
+    if app.view == ViewId::Diff {
+        app.open_diff();
+    }
     resumed
 }
 
@@ -620,6 +638,7 @@ pub fn render_plain(options: &Options) -> Vec<String> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    app.patches = options.patches.clone();
     let resumed = prime(&mut app, options);
     // A piped frame has no terminal to ask, so the reviewer's own last frame size is the honest answer
     // for a width — the pipe draws the layout they read, not the one a default picked (`e1.11`).
@@ -645,7 +664,13 @@ pub fn render_at(options: &Options, view: ViewId, size: (u16, u16)) -> Vec<Strin
         options.repo_label.clone(),
     );
     prime(&mut app, options);
-    app.set_view(view);
+    if view == ViewId::Diff {
+        // Same reason as in `prime`: the diff view answers a question about bytes, and the caller
+        // that installed a provider expects it to be able to answer (`reco-0kw`).
+        app.open_diff();
+    } else {
+        app.set_view(view);
+    }
     crate::render::frame_lines(&app)
 }
 

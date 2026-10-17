@@ -408,25 +408,26 @@ impl Materializer {
         let current = generation;
         let (first, last) = window;
         let mut jobs: Vec<Job<Key>> = Vec::new();
-        for number in first..last.min(entry.hunks.len()) {
+        // A hunk the cache already answers must not be queued again. The engine dedupes queued and
+        // running keys, but a *completed* decode is not in either set, and a pane that re-asks what
+        // it already has turns into a loop: decode, notify, redraw, re-ask. Since `reco-0kw` the
+        // pane can actually be loaded, so that loop is no longer hypothetical — it is a TUI that
+        // never stops redrawing.
+        let mut ask = |number: usize, priority: Priority| {
             let Some(record) = entry.hunks.get(number) else {
-                continue;
+                return;
             };
-            jobs.push(Job::new(
-                Key::new(origin, &entry.path, shape, Plan::of(number, record)),
-                Priority::Visible,
-                generation,
-            ));
+            let key = Key::new(origin, &entry.path, shape, Plan::of(number, record));
+            if self.engine.cached(&key).is_some() {
+                return;
+            }
+            jobs.push(Job::new(key, priority, generation));
+        };
+        for number in first..last.min(entry.hunks.len()) {
+            ask(number, Priority::Visible);
         }
         for number in last..entry.hunks.len().min(last.saturating_add(extra_after)) {
-            let Some(record) = entry.hunks.get(number) else {
-                continue;
-            };
-            jobs.push(Job::new(
-                Key::new(origin, &entry.path, shape, Plan::of(number, record)),
-                Priority::Adjacent,
-                generation,
-            ));
+            ask(number, Priority::Adjacent);
         }
         let wanted_first = first;
         let wanted_last = last.saturating_add(extra_after);

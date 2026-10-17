@@ -657,6 +657,139 @@ impl gix::diff::blob::unified_diff::ConsumeHunk for &mut HunkCollector {
     fn finish(self) {}
 }
 
+// ---------------------------------------------------------------------------
+// rendering — the same diff, as text
+// ---------------------------------------------------------------------------
+
+/// What rendering one (old blob, new blob) pair produced.
+///
+/// The text half of what [`measure_blobs`] measures: same inputs, same algorithm, same context,
+/// so the `@@` lines in [`Rendered::Text`] are byte-for-byte the `@@` lines the spine recorded as
+/// `hunk_headers` — one arithmetic, stated twice (ADR-001 §7.10). The absence cases are the
+/// [`Content`] vocabulary again: a file the tool declined to read has its reason here, not as an
+/// empty `Vec` that reads as "changed nothing".
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Rendered {
+    /// The hunk text: `@@` lines and bodies, in order, ending at the last hunk's last line.
+    /// Empty when the two sides hold the same lines (a mode-only change, a rename with no edit).
+    Text {
+        /// The hunk text: `@@` lines and bodies, in order, ending at the last hunk's last line.
+        hunks: Vec<u8>,
+    },
+    /// Binary by git's rule; there is no line text to render, and the caller says so in prose
+    /// (`Binary files … differ`) rather than leaving a silent gap.
+    Binary,
+    /// Not examined, with the reason — oversized, missing, not a blob.
+    NotExamined {
+        /// Why the pair was not diffed, in the same vocabulary a spine row uses.
+        reason: NotExamined,
+    },
+}
+
+/// Render one (old blob, new blob) pair's hunks as unified-diff text.
+///
+/// This is [`measure_blobs`] with the counts traded for the bytes: both read each side under
+/// [`Limits::blob_memory_cap`], both diff with the histogram algorithm over
+/// [`Limits::hunk_context_lines`] of context, and both stop inflating at the same cap. A missing
+/// object is the same [`Error::ObjectUnavailable`] `measure_blobs` returns — a pair the store names
+/// but the object store cannot produce is a stated skip for the caller, not a half-rendered file.
+///
+/// # Errors
+///
+/// [`Error::ObjectUnavailable`] if a side is named and missing, plus the usual read failures.
+pub fn render_blobs(
+    repo: &Repository,
+    old: Option<Oid>,
+    new: Option<Oid>,
+    limits: &Limits,
+) -> Result<Rendered, Error> {
+    let before = read_side(repo, old, limits)?;
+    let after = read_side(repo, new, limits)?;
+    Ok(match (before, after) {
+        (Side::Skipped(reason), _) | (_, Side::Skipped(reason)) => Rendered::NotExamined { reason },
+        (before, after) => render_bytes(
+            before.bytes().unwrap_or_default(),
+            after.bytes().unwrap_or_default(),
+            limits,
+        ),
+    })
+}
+
+/// Render one pair of byte strings, applying the same binary rule as [`measure_bytes`].
+#[must_use]
+pub fn render_bytes(old: &[u8], new: &[u8], limits: &Limits) -> Rendered {
+    if is_binary(old) || is_binary(new) {
+        return Rendered::Binary;
+    }
+    if old.is_empty() && new.is_empty() {
+        return Rendered::Text { hunks: Vec::new() };
+    }
+    let input = gix::diff::blob::InternedInput::new(old, new);
+    let diff =
+        gix::diff::blob::diff_with_slider_heuristics(gix::diff::blob::Algorithm::Histogram, &input);
+    let mut sink = TextSink(Vec::new());
+    let rendered = gix::diff::blob::UnifiedDiff::new(
+        &diff,
+        &input,
+        &mut sink,
+        gix::diff::blob::unified_diff::ContextSize::symmetrical(limits.hunk_context_lines),
+    )
+    .consume();
+    if rendered.is_err() {
+        // The writer's only failure mode is an I/O error and a `Vec` sink cannot produce one; were
+        // it ever to, what was rendered is still valid text to stop at, and `measure_bytes`'s
+        // comment says why half an answer beats none.
+        return Rendered::Text {
+            hunks: std::mem::take(&mut sink.0),
+        };
+    }
+    Rendered::Text { hunks: sink.0 }
+}
+
+/// Writes `gix`'s unified-diff hunks out as patch text.
+///
+/// The header comes from [`Hunk::header`] — the same formatter the spine's `hunk_headers` column
+/// uses — so a rendered hunk and a stored header are the same sentence. Each body token is written
+/// with its `+`/`-`/` ` prefix and exactly one trailing newline: `gix` hands out lines without their
+/// terminators, and a patch whose last body line runs into the next `@@` header is a patch whose
+/// next hunk does not exist.
+struct TextSink(Vec<u8>);
+
+impl gix::diff::blob::unified_diff::ConsumeHunk for &mut TextSink {
+    type Out = ();
+
+    fn consume_hunk(
+        &mut self,
+        header: gix::diff::blob::unified_diff::HunkHeader,
+        lines: &[(gix::diff::blob::unified_diff::DiffLineKind, &[u8])],
+    ) -> std::io::Result<()> {
+        use std::io::Write as _;
+        let line = Hunk::new(
+            header.before_hunk_start,
+            header.before_hunk_len,
+            header.after_hunk_start,
+            header.after_hunk_len,
+        );
+        self.0.write_all(line.header().as_bytes())?;
+        self.0.write_all(b"\n")?;
+        for (kind, bytes) in lines {
+            let prefix = match kind {
+                gix::diff::blob::unified_diff::DiffLineKind::Context => b' ',
+                gix::diff::blob::unified_diff::DiffLineKind::Add => b'+',
+                gix::diff::blob::unified_diff::DiffLineKind::Remove => b'-',
+            };
+            self.0.write_all(&[prefix])?;
+            self.0.write_all(bytes)?;
+            if !bytes.ends_with(b"\n") {
+                self.0.write_all(b"\n")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(self) {}
+}
+
 /// What a working-tree path yielded when it was read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkingRead {

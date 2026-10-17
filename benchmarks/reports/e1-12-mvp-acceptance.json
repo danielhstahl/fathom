@@ -2,7 +2,7 @@
  "schema_version": 1,
  "ticket": "reco-glv",
  "stage": "e1.12",
- "generated_utc": "2026-10-17T17:39:40Z",
+ "generated_utc": "2026-10-17T20:36:16Z",
  "environment": {
   "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Sun Sep 20 16:14:09 UTC 2026",
   "cpu_count": 8,
@@ -26,11 +26,11 @@
    "budget": 1500,
    "statistic": "p95",
    "unit": "ms",
-   "measured": 464.0,
+   "measured": 412.5,
    "samples_ms": [
-    463.99,
-    402.7,
-    386.62
+    412.5,
+    367.6,
+    390.58
    ],
    "met": true,
    "blocked_by": null,
@@ -42,7 +42,7 @@
    "budget": 300,
    "statistic": "peak",
    "unit": "MiB",
-   "measured": 20.4,
+   "measured": 20.5,
    "samples_ms": null,
    "met": true,
    "blocked_by": null,
@@ -78,11 +78,11 @@
    "budget": 150,
    "statistic": "p95",
    "unit": "ms",
-   "measured": 70.0,
+   "measured": 52.0,
    "samples_ms": [
-    53.01,
-    69.96,
-    61.77
+    52.01,
+    50.66,
+    50.15
    ],
    "met": true,
    "blocked_by": null,
@@ -94,11 +94,11 @@
    "budget": 10,
    "statistic": "p95",
    "unit": "ms",
-   "measured": 61.3,
+   "measured": 49.2,
    "samples_ms": [
-    61.3,
-    56.9,
-    58.99
+    46.86,
+    49.21,
+    46.84
    ],
    "met": false,
    "blocked_by": null,
@@ -110,11 +110,11 @@
    "budget": 1000,
    "statistic": "p95",
    "unit": "ms",
-   "measured": 163.3,
+   "measured": 161.5,
    "samples_ms": [
-    156.73,
-    156.61,
-    163.31
+    159.93,
+    156.65,
+    161.47
    ],
    "met": true,
    "blocked_by": null,
@@ -126,11 +126,11 @@
    "budget": 8,
    "statistic": "hard limit",
    "unit": "ms",
-   "measured": 2.5,
+   "measured": 2.3,
    "samples_ms": null,
    "met": true,
    "blocked_by": null,
-   "note": "measured through the pty: keystroke written, screen grid changed. The worst value is 255.2 ms, and it is `g`, whose answer is the 250 ms chord timeout for `gg`, not the store"
+   "note": "measured through the pty: keystroke written, screen grid changed. The worst value is 252.3 ms, and it is `g`, whose answer is the 250 ms chord timeout for `gg`, not the store"
   },
   {
    "measurement": "TUI: peak RSS",
@@ -138,7 +138,7 @@
    "budget": 120,
    "statistic": "ceiling",
    "unit": "MiB",
-   "measured": 8.76,
+   "measured": 9.89,
    "samples_ms": null,
    "met": true,
    "blocked_by": null,
@@ -154,7 +154,7 @@
    "samples_ms": null,
    "met": null,
    "blocked_by": "the shell hands the queue and the rail no episodes at all (`fathom-cli` passes `episodes: None`; `insight::episodes` is e2.11)",
-   "note": "time to first frame was 11.0 ms, which is not the same question: the budget is time to the first useful answer"
+   "note": "time to first frame was 17.2 ms, which is not the same question: the budget is time to the first useful answer"
   },
   {
    "measurement": "TUI: queue query",
@@ -193,30 +193,6 @@
    "note": ""
   },
   {
-   "measurement": "TUI: diff pane query",
-   "budget_id": "query.diff_open.ms.small",
-   "budget": 120,
-   "statistic": "p95",
-   "unit": "ms",
-   "measured": null,
-   "samples_ms": null,
-   "met": null,
-   "blocked_by": "no diff pane is ever populated: the frame has no store\u2192view path",
-   "note": ""
-  },
-  {
-   "measurement": "TUI: first hunk query",
-   "budget_id": "query.diff_first_hunk.ms.small",
-   "budget": 40,
-   "statistic": "p95",
-   "unit": "ms",
-   "measured": null,
-   "samples_ms": null,
-   "met": null,
-   "blocked_by": "no first hunk is ever populated: the frame has no store\u2192view path",
-   "note": ""
-  },
-  {
    "measurement": "TUI: search query",
    "budget_id": "query.search.ms.small",
    "budget": 30,
@@ -227,6 +203,37 @@
    "met": null,
    "blocked_by": "no search is ever populated: the frame has no store\u2192view path",
    "note": ""
+  },
+  {
+   "measurement": "TUI: `d` to the diff pane painting its tree",
+   "budget_id": "query.diff_open.ms.small",
+   "budget": 120,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 4.5,
+   "samples_ms": [
+    4.5,
+    4.0,
+    3.2
+   ],
+   "met": true,
+   "blocked_by": null,
+   "note": "keystroke written to the pty until the grid changed, through the same pty as the frame-latency numbers; the pane draws the episode's file tree from the store's rows (`reco-0kw`)"
+  },
+  {
+   "measurement": "TUI: `d` to the first hunk on screen",
+   "budget_id": "query.diff_first_hunk.ms.small",
+   "budget": 40,
+   "statistic": "p95",
+   "unit": "ms",
+   "measured": 5.0,
+   "samples_ms": [
+    5.0,
+    4.5
+   ],
+   "met": true,
+   "blocked_by": null,
+   "note": "keystroke until the screen first printed an `@@` hunk header \u2014 the budget's own streaming rule (`hunk headers before bodies`), timed as it is written"
   }
  ],
  "not_measured": [
