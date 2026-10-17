@@ -418,6 +418,50 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `test.proxy.confidence.lines_only` | `number` | `0.3` | `replace` | `any` | confidence | test.surface | `e2.9` |
 | `test.card.max_findings` | `integer` | `12` | `replace` | `any` | rows | test.surface | `e2.9` |
 | `non_code.patterns` | `glob_list` | `**/migrations/**, .github/workflows/**` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_added` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_removed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_declared_unread` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_stale_reference` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_renamed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.env_value_committed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.flag_added` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.flag_removed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.flag_default_changed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.flag_read_no_default` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.migration_added` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.migration_forward_only` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.migration_destructive` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.migration_with_model` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.deploy_coordination` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.ci_secret_new` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.ci_permission_escalation` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.ci_oidc_changed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.ci_runner_changed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.ci_trigger_main_push` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.iac_resource_added` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.iac_resource_removed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.iac_policy_widened` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.container_base_changed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.container_base_unpinned` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.container_supply_chain` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.findings.container_privilege_changed` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.declaration_globs` | `glob_list` | `.env.example, .env.sample, .env.template, .env.default, .env.dist, **/.env.example, **/.env.sample, **/.env.template, **/*.env.example, **/*.env.sample, config/env.example, docs/env.example` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.committed_globs` | `glob_list` | `.env, .env.local, .env.production, **/.env, **/.env.production, **/.env.staging, config/env.ini, **/secrets.yaml, **/secrets.yml` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.placeholder_values` | `string_list` | `, changeme, change-me, change_me, your-value-here, your_value_here, your-secret-here, xxx, xxxx, xxxxx, <value>, <secret>, placeholder, sample, example, examples, test, dummy, todo, none, null, true, false, 0, 1, secret, password, admin, foo, bar, undefined, REPLACE_ME, insert-here, redacted` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.secret_name_pattern` | `string` | `(?i)(^|_)(secret|token|password|passwd|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth[_-]?key|dsn|_key|_cert|_certificate)($|_)|(^|_)(aws|gcp|azure|oidc)(_|-)?(key|secret|token|credential)` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.reference_scope` | `string` | `episode` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.rename_similarity` | `number` | `0.6` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.flags.globs` | `glob_list` | `flags.yaml, flags.yml, flags.json, feature-flags.yaml, feature-flags.json, **/flags.yaml, **/flags.yml, **/flags.json, **/features.yaml, **/features.json, **/featureflags.json, **/flip-flop.json, **/unleash-toggles.json, config/flags/**, **/config/flags/**, **/feature_flags.py, **/flags.php` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.flags.require_default` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.migration.globs` | `glob_list` | `**/migrations/**, **/migration/**, db/migrate/**, db/migrations/**, **/alembic/versions/**, **/migrations/versions/**, prisma/migrations/**, **/flyway/sql/**, src/main/resources/db/migration/**, **/migrations/**.sql, **/migrations/**.up.sql, resource/migrations/**` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.migration.model_globs` | `glob_list` | `**/models.py, **/models/**.py, **/model.py, db/schema.rb, db/schema.sql, app/models/**, **/entities/**.java, **/Entity/**.php, **/*.prisma, **/schema.sql, **/models/**.go, internal/model/**.go, **/Models/**.cs, **/migrations/**/schema.rs` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.migration.destructive_ops` | `string_list` | `drop table, drop column, drop index, drop constraint, drop database, truncate table, truncate , set not null, alter column, modify column, rename to, delete from, update , alter type, drop materialized view, drop_table, remove_column, remove_index, change_column_null, delete_all, destroy_all, execute ` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.ci.default_branches` | `string_list` | `main, master` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.ci.escalating_permissions` | `string_list` | `contents:write, actions:write, security-events:write, id-token:write, pull-requests:write, deployments:write, packages:write, statuses:write, checks:write, issues:write, discussions:write, pages:write, organization-secrets:write, organization-administration:write, write-all` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.iac.globs` | `glob_list` | `**/*.tf, **/*.tfvars, **/*.hcl, cloudformation*.y*ml, **/cloudformation*.y*ml, **/cfn-*.y*ml, k8s/**.y*ml, **/k8s/**.y*ml, **/kubernetes/**.y*ml, **/manifests/**.y*ml, **/helm/**/values.y*ml, **/Chart.yaml, ansible/**.y*ml, **/*.stack.yaml, Pulumi.*.yaml, **/*.cue` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.iac.widened_patterns` | `string_list` | `"*", "arn:aws:iam::aws:policy/AdministratorAccess", "0.0.0.0/0", ::/0, "Principal": "*", associate_public_ip_address = true, cidr_blocks = ["0.0.0.0/0"], Action = ["*"], --privileged` | `extend` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.container.require_digest_pin` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.card.max_actions` | `integer` | `12` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |

@@ -501,6 +501,207 @@ KEY_LIST: list[Key] = [
        default=["**/migrations/**", ".github/workflows/**"], item_pattern=GLOB_ITEM,
        doc="Non-code surfaces a reviewer must be told about: config, env, flags, "
            "migrations and CI.", analyzer="non_code.surface", ticket="e2.8"),
+    # --- non-code surfaces (e2.8 owns these; `reco-bjd`) --------------------
+    # One switch per finding, then the numbers that decide what counts as a new
+    # secret, a destructive statement, an escalation or a floating base image. The
+    # ticket standard is that the definition is documented and tunable rather than a
+    # guess, and `fathom noncode definition` prints these numbers as sentences so a
+    # card and a config file cannot drift from each other.
+    _k(path="non_code.findings.env_added", kind="boolean", default=True,
+       doc="A variable this episode introduces, either declared in an env file or read by new "
+           "code. The process environment is not in the repository, so nothing about the diff "
+           "makes it exist in production.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.env_removed", kind="boolean", default=True,
+       doc="A variable that is no longer declared or read. Retiring it is the operator's job: a "
+           "value left in a secret store with nothing reading it is a stale credential with an "
+           "expiry nobody watches.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.env_declared_unread", kind="boolean", default=True,
+       doc="Declared in `.env.example` (or a ConfigMap, compose block or workflow `env:`) with no "
+           "read found for it. Either the code that reads it has not landed, or the declaration is "
+           "theatre and the operator will set a value that changes nothing.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.env_stale_reference", kind="boolean", default=True,
+       doc="The declaration is gone and a reference is not. This is the rename that was only half "
+           "done: the process starts, reads nothing, and fails at the first request that needed it "
+           "rather than at boot.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.env_renamed", kind="boolean", default=True,
+       doc="One variable removed and a similar one added in the same episode, with the old name "
+           "still referenced. Renames are the failure mode of a diff-shaped tool: both halves look "
+           "harmless alone.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.env_value_committed", kind="boolean", default=True,
+       doc="A non-placeholder value for a secret-shaped name landed in a committed file. The value "
+           "is now in every clone and every object the history holds.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.flag_added", kind="boolean", default=True,
+       doc="A new flag with the default value the code will see if the provider never answers. The "
+           "default is the rollout plan whether the author meant it as one or not.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.flag_removed", kind="boolean", default=True,
+       doc="A flag the code no longer reads, or a declaration that went while reads remained. Flag "
+           "rows in a provider outlive the code that read them and confuse whoever inherits the "
+           "panel.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.flag_default_changed", kind="boolean", default=True,
+       doc="The default flipped. When the default is what ships, this diff *is* the rollout, and "
+           "it happens to 100 % of traffic at the moment the deploy finishes.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.flag_read_no_default", kind="boolean", default=True,
+       doc="The call site supplies no fallback, so the provider is on the request path: a missing "
+           "flag or a provider outage becomes the caller's problem.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.migration_added", kind="boolean", default=True,
+       doc="An ordered, execute-once change to durable state. It runs against a database that is "
+           "still serving traffic, in an order the deploy has to get right.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.migration_forward_only", kind="boolean", default=True,
+       doc="A forward path with no down path: no `-- +goose Down`, no `def down`, no `.down.sql`, "
+           "no undo script. A rollback of the release is now a manual repair with a different "
+           "author.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.migration_destructive", kind="boolean", default=True,
+       doc="A `DROP`, `TRUNCATE`, `SET NOT NULL`, type change or rename in the forward path. These "
+           "take locks, and some of them cannot be undone by anything.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.migration_with_model", kind="boolean", default=True,
+       doc="The schema file and the code that reads it move together, which is correct and also an "
+           "ordering problem: one of the two will be true before the other.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.deploy_coordination", kind="boolean", default=True,
+       doc="The episode changes only durable-state surface: nothing here is safe to ship on the "
+           "normal path, because there is no code for the migration to be compatible with.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.ci_secret_new", kind="boolean", default=True,
+       doc="A workflow now reads `${{ secrets.X }}`. The build fails until somebody types that "
+           "name into the repository, organisation or environment secrets — a fact nobody learns "
+           "until a red tick.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.ci_permission_escalation", kind="boolean", default=True,
+       doc="A `permissions:` block gained a write scope, or `write-all`. The token the job holds "
+           "is now worth more than it was, and it is handed to every step in that job.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.ci_oidc_changed", kind="boolean", default=True,
+       doc="`id-token: write`, a role ARN, an `environment:` binding or a vault login changed: the "
+           "workflow can now mint an identity a cloud provider trusts. This is an access review, "
+           "not a code review.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.ci_runner_changed", kind="boolean", default=True,
+       doc="A job moved onto a runner this project owns, or onto a new label. Everything the job "
+           "can see — network, cache, credentials on the host — changed with it.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.ci_trigger_main_push", kind="boolean", default=True,
+       doc="A `push` trigger that includes the default branch appeared, or a job gained one. "
+           "Whatever that workflow does — publish, deploy, sign — now happens on merge.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.iac_resource_added", kind="boolean", default=True,
+       doc="A managed resource appeared in a plan. It costs money, has a name that must be "
+           "globally unique, and will outlive the branch.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.iac_resource_removed", kind="boolean", default=True,
+       doc="A managed resource disappeared from the configuration, which in every IaC tool means "
+           "*destroy it*. For a bucket, a table or a database that is the data, not the "
+           "infrastructure.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.iac_policy_widened", kind="boolean", default=True,
+       doc="A new line widens an IAM policy, opens an ingress to the internet, or makes an "
+           "instance public. The blast radius of this diff is not the repository.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.container_base_changed", kind="boolean", default=True,
+       doc="The `FROM` moved: a different vendor, a different major, or a different digest. Every "
+           "binary in the image was built against the old one.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.container_base_unpinned", kind="boolean", default=True,
+       doc="No digest, or a tag that floats (`latest`, or no tag at all). The image you build next "
+           "week is not the image you reviewed today.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.container_supply_chain", kind="boolean", default=True,
+       doc="A `curl … | sh` in a Dockerfile: the build's reproducibility and the reviewer's threat "
+           "model both now include whatever that server returns at build time.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.findings.container_privilege_changed", kind="boolean", default=True,
+       doc="`USER root` added, the last non-root `USER` removed, `--privileged` or a capability "
+           "granted. A container escape is now a root escape.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.declaration_globs", kind="glob_list", merge="extend", default=['.env.example', '.env.sample', '.env.template', '.env.default', '.env.dist', '**/.env.example', '**/.env.sample', '**/.env.template', '**/*.env.example', '**/*.env.sample', 'config/env.example', 'docs/env.example'],
+       doc="Files whose whole job is to declare environment variables (`.env.example` and "
+           "friends). A key added here is a key an operator must set; a key added only in code is "
+           "the same finding with a different location.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.committed_globs", kind="glob_list", merge="extend", default=['.env', '.env.local', '.env.production', '**/.env', '**/.env.production', '**/.env.staging', 'config/env.ini', '**/secrets.yaml', '**/secrets.yml'],
+       doc="Files where a *value* is a real value rather than documentation. A `.env` in a "
+           "repository is usually an accident; a secret-shaped name in one is a rotation.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.placeholder_values", kind="string_list", merge="extend", default=['', 'changeme', 'change-me', 'change_me', 'your-value-here', 'your_value_here', 'your-secret-here', 'xxx', 'xxxx', 'xxxxx', '<value>', '<secret>', 'placeholder', 'sample', 'example', 'examples', 'test', 'dummy', 'todo', 'none', 'null', 'true', 'false', '0', '1', 'secret', 'password', 'admin', 'foo', 'bar', 'undefined', 'REPLACE_ME', 'insert-here', 'redacted'],
+       doc="Values that read as documentation (`changeme`, `<secret>`, empty). Compared case- "
+           "insensitively: this list is what keeps the committed-value finding from firing on the "
+           "`.env` in every README.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.secret_name_pattern", kind="string", default='(?i)(^|_)(secret|token|password|passwd|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth[_-]?key|dsn|_key|_cert|_certificate)($|_)|(^|_)(aws|gcp|azure|oidc)(_|-)?(key|secret|token|credential)',
+       doc="Which variable names mean 'belongs in a secret store'. Deliberately a pattern, not a "
+           "list: the useful part is the shape (`_KEY`, `TOKEN`, `DSN`), and every company has "
+           "names the shape catches that a list does not.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.reference_scope", kind="string", default='episode', enum=("episode", "repo"),
+       doc="`episode`: 'nothing reads this' is claimed about the files in this episode only, and "
+           "the finding says so at a lower confidence. `repo`: the caller supplied the "
+           "repository's full reference set, which is the only basis for the confident version of "
+           "the claim — and the card says out loud when `repo` was asked for and not given.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.env.rename_similarity", kind="number", default=0.6, minimum=0.0, maximum=1.0,
+       doc="Name-token similarity at which a removed variable and an added one are called one "
+           "rename (`DATABASE_URL` → `PG_DATABASE_URL` shares 2 of 3 tokens). Low values merge "
+           "unrelated removals into a rename; high values leave a half-done rename as two "
+           "harmless-looking rows.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.flags.globs", kind="glob_list", merge="extend", default=['flags.yaml', 'flags.yml', 'flags.json', 'feature-flags.yaml', 'feature-flags.json', '**/flags.yaml', '**/flags.yml', '**/flags.json', '**/features.yaml', '**/features.json', '**/featureflags.json', '**/flip-flop.json', '**/unleash-toggles.json', 'config/flags/**', '**/config/flags/**', '**/feature_flags.py', '**/flags.php'],
+       doc="Files that declare flags with their defaults. Code that *reads* a flag is scanned "
+           "wherever it lives, so this list only decides where defaults come from.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.flags.require_default", kind="boolean", default=True,
+       doc="Report a flag read that supplies no fallback. Off for a repository that runs its "
+           "provider on the same node and treats a missing flag as a bug in the deploy.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.migration.globs", kind="glob_list", merge="extend", default=['**/migrations/**', '**/migration/**', 'db/migrate/**', 'db/migrations/**', '**/alembic/versions/**', '**/migrations/versions/**', 'prisma/migrations/**', '**/flyway/sql/**', 'src/main/resources/db/migration/**', '**/migrations/**.sql', '**/migrations/**.up.sql', 'resource/migrations/**'],
+       doc="Migration layouts. The `e0.9`/`e2.1` taxonomy class `migration` is consulted first and "
+           "these only add to it, so a repository with an unusual directory says it once.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.migration.model_globs", kind="glob_list", merge="extend", default=['**/models.py', '**/models/**.py', '**/model.py', 'db/schema.rb', 'db/schema.sql', 'app/models/**', '**/entities/**.java', '**/Entity/**.php', '**/*.prisma', '**/schema.sql', '**/models/**.go', 'internal/model/**.go', '**/Models/**.cs', '**/migrations/**/schema.rs'],
+       doc="The model half of 'the migration and the model moved together': ORM definitions, "
+           "`db/schema.rb`, `*.prisma`. Narrow on purpose — a Java package called `model` that "
+           "moves without a migration is not a schema change.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.migration.destructive_ops", kind="string_list", merge="extend", default=['drop table', 'drop column', 'drop index', 'drop constraint', 'drop database', 'truncate table', 'truncate ', 'set not null', 'alter column', 'modify column', 'rename to', 'delete from', 'update ', 'alter type', 'drop materialized view', 'drop_table', 'remove_column', 'remove_index', 'change_column_null', 'delete_all', 'destroy_all', 'execute '],
+       doc="Statements treated as destroying or rewriting data in a forward path. Matched against "
+           "statement text, case-insensitively, and extendable per repository.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.ci.default_branches", kind="string_list", merge="extend", default=['main', 'master'],
+       doc="Which branch names count as 'the default branch' when deciding whether a trigger means "
+           "every merge runs this job.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.ci.escalating_permissions", kind="string_list", merge="extend", default=['contents:write', 'actions:write', 'security-events:write', 'id-token:write', 'pull-requests:write', 'deployments:write', 'packages:write', 'statuses:write', 'checks:write', 'issues:write', 'discussions:write', 'pages:write', 'organization-secrets:write', 'organization-administration:write', 'write-all'],
+       doc="`permissions:` moves that are escalations, in `scope:access` spelling. `write-all` is "
+           "in the list because it is the escalation that does not name what it escalates.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.iac.globs", kind="glob_list", merge="extend", default=['**/*.tf', '**/*.tfvars', '**/*.hcl', 'cloudformation*.y*ml', '**/cloudformation*.y*ml', '**/cfn-*.y*ml', 'k8s/**.y*ml', '**/k8s/**.y*ml', '**/kubernetes/**.y*ml', '**/manifests/**.y*ml', '**/helm/**/values.y*ml', '**/Chart.yaml', 'ansible/**.y*ml', '**/*.stack.yaml', 'Pulumi.*.yaml', '**/*.cue'],
+       doc="Infrastructure-as-code files: Terraform, CloudFormation, Kubernetes manifests, Helm "
+           "values, Pulumi, Ansible. A manifest with `kind:` is also detected by content, because "
+           "nothing about a path says a YAML file is a Deployment.",
+       item_pattern=GLOB_ITEM, analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.iac.widened_patterns", kind="string_list", merge="extend", default=['"*"', '"arn:aws:iam::aws:policy/AdministratorAccess"', '"0.0.0.0/0"', '::/0', '"Principal": "*"', 'associate_public_ip_address = true', 'cidr_blocks = ["0.0.0.0/0"]', 'Action = ["*"]', '--privileged'],
+       doc="Text that widens an infrastructure exposure when it appears on an added line: a "
+           "wildcard principal or action, a default route from anywhere, a public address.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.container.require_digest_pin", kind="boolean", default=True,
+       doc="Insist that a new or changed base image is pinned by digest. Off in a repository that "
+           "rebuilds nightly and considers a floating tag the honest answer.",
+       analyzer="non_code.surface", ticket="e2.8"),
+    _k(path="non_code.card.max_actions", kind="integer", default=12,
+       doc="Action rows a card prints before it says how many more there are and which verb lists "
+           "them. A cap that names its remainder, never a truncation without a trace.",
+       analyzer="non_code.surface", ticket="e2.8"),
     _k(path="graph.ignored_dirs", kind="string_list", merge="extend",
        default=["node_modules"],
        doc="Directory names excluded from the structure/dependency graph entirely.",

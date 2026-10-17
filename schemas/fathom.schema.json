@@ -523,6 +523,687 @@
       "additionalProperties": false,
       "description": "Config, env, flags, migrations and CI \u2014 the surfaces a reviewer must be told about even though they are not code.",
       "properties": {
+        "card": {
+          "additionalProperties": false,
+          "description": "Action rows a card prints before it says how many more there are and which verb lists them. A cap that names its remainder, never a truncation without a trace.",
+          "properties": {
+            "max_actions": {
+              "default": 12,
+              "description": "Action rows a card prints before it says how many more there are and which verb lists them. A cap that names its remainder, never a truncation without a trace.",
+              "type": "integer",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "ci": {
+          "additionalProperties": false,
+          "description": "Which branch names count as 'the default branch' when deciding whether a trigger means every merge runs this job.",
+          "properties": {
+            "default_branches": {
+              "default": [
+                "main",
+                "master"
+              ],
+              "description": "Which branch names count as 'the default branch' when deciding whether a trigger means every merge runs this job.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "escalating_permissions": {
+              "default": [
+                "contents:write",
+                "actions:write",
+                "security-events:write",
+                "id-token:write",
+                "pull-requests:write",
+                "deployments:write",
+                "packages:write",
+                "statuses:write",
+                "checks:write",
+                "issues:write",
+                "discussions:write",
+                "pages:write",
+                "organization-secrets:write",
+                "organization-administration:write",
+                "write-all"
+              ],
+              "description": "`permissions:` moves that are escalations, in `scope:access` spelling. `write-all` is in the list because it is the escalation that does not name what it escalates.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "container": {
+          "additionalProperties": false,
+          "description": "Insist that a new or changed base image is pinned by digest. Off in a repository that rebuilds nightly and considers a floating tag the honest answer.",
+          "properties": {
+            "require_digest_pin": {
+              "default": true,
+              "description": "Insist that a new or changed base image is pinned by digest. Off in a repository that rebuilds nightly and considers a floating tag the honest answer.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "env": {
+          "additionalProperties": false,
+          "description": "Files whose whole job is to declare environment variables (`.env.example` and friends). A key added here is a key an operator must set; a key added only in code is the same finding with a different location.",
+          "properties": {
+            "committed_globs": {
+              "default": [
+                ".env",
+                ".env.local",
+                ".env.production",
+                "**/.env",
+                "**/.env.production",
+                "**/.env.staging",
+                "config/env.ini",
+                "**/secrets.yaml",
+                "**/secrets.yml"
+              ],
+              "description": "Files where a *value* is a real value rather than documentation. A `.env` in a repository is usually an accident; a secret-shaped name in one is a rotation.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "declaration_globs": {
+              "default": [
+                ".env.example",
+                ".env.sample",
+                ".env.template",
+                ".env.default",
+                ".env.dist",
+                "**/.env.example",
+                "**/.env.sample",
+                "**/.env.template",
+                "**/*.env.example",
+                "**/*.env.sample",
+                "config/env.example",
+                "docs/env.example"
+              ],
+              "description": "Files whose whole job is to declare environment variables (`.env.example` and friends). A key added here is a key an operator must set; a key added only in code is the same finding with a different location.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "placeholder_values": {
+              "default": [
+                "",
+                "changeme",
+                "change-me",
+                "change_me",
+                "your-value-here",
+                "your_value_here",
+                "your-secret-here",
+                "xxx",
+                "xxxx",
+                "xxxxx",
+                "<value>",
+                "<secret>",
+                "placeholder",
+                "sample",
+                "example",
+                "examples",
+                "test",
+                "dummy",
+                "todo",
+                "none",
+                "null",
+                "true",
+                "false",
+                "0",
+                "1",
+                "secret",
+                "password",
+                "admin",
+                "foo",
+                "bar",
+                "undefined",
+                "REPLACE_ME",
+                "insert-here",
+                "redacted"
+              ],
+              "description": "Values that read as documentation (`changeme`, `<secret>`, empty). Compared case- insensitively: this list is what keeps the committed-value finding from firing on the `.env` in every README.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "reference_scope": {
+              "default": "episode",
+              "description": "`episode`: 'nothing reads this' is claimed about the files in this episode only, and the finding says so at a lower confidence. `repo`: the caller supplied the repository's full reference set, which is the only basis for the confident version of the claim \u2014 and the card says out loud when `repo` was asked for and not given.",
+              "enum": [
+                "episode",
+                "repo"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "rename_similarity": {
+              "default": 0.6,
+              "description": "Name-token similarity at which a removed variable and an added one are called one rename (`DATABASE_URL` \u2192 `PG_DATABASE_URL` shares 2 of 3 tokens). Low values merge unrelated removals into a rename; high values leave a half-done rename as two harmless-looking rows.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "secret_name_pattern": {
+              "default": "(?i)(^|_)(secret|token|password|passwd|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth[_-]?key|dsn|_key|_cert|_certificate)($|_)|(^|_)(aws|gcp|azure|oidc)(_|-)?(key|secret|token|credential)",
+              "description": "Which variable names mean 'belongs in a secret store'. Deliberately a pattern, not a list: the useful part is the shape (`_KEY`, `TOKEN`, `DSN`), and every company has names the shape catches that a list does not.",
+              "type": "string",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "findings": {
+          "additionalProperties": false,
+          "description": "A variable this episode introduces, either declared in an env file or read by new code. The process environment is not in the repository, so nothing about the diff makes it exist in production.",
+          "properties": {
+            "ci_oidc_changed": {
+              "default": true,
+              "description": "`id-token: write`, a role ARN, an `environment:` binding or a vault login changed: the workflow can now mint an identity a cloud provider trusts. This is an access review, not a code review.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "ci_permission_escalation": {
+              "default": true,
+              "description": "A `permissions:` block gained a write scope, or `write-all`. The token the job holds is now worth more than it was, and it is handed to every step in that job.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "ci_runner_changed": {
+              "default": true,
+              "description": "A job moved onto a runner this project owns, or onto a new label. Everything the job can see \u2014 network, cache, credentials on the host \u2014 changed with it.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "ci_secret_new": {
+              "default": true,
+              "description": "A workflow now reads `${{ secrets.X }}`. The build fails until somebody types that name into the repository, organisation or environment secrets \u2014 a fact nobody learns until a red tick.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "ci_trigger_main_push": {
+              "default": true,
+              "description": "A `push` trigger that includes the default branch appeared, or a job gained one. Whatever that workflow does \u2014 publish, deploy, sign \u2014 now happens on merge.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "container_base_changed": {
+              "default": true,
+              "description": "The `FROM` moved: a different vendor, a different major, or a different digest. Every binary in the image was built against the old one.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "container_base_unpinned": {
+              "default": true,
+              "description": "No digest, or a tag that floats (`latest`, or no tag at all). The image you build next week is not the image you reviewed today.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "container_privilege_changed": {
+              "default": true,
+              "description": "`USER root` added, the last non-root `USER` removed, `--privileged` or a capability granted. A container escape is now a root escape.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "container_supply_chain": {
+              "default": true,
+              "description": "A `curl \u2026 | sh` in a Dockerfile: the build's reproducibility and the reviewer's threat model both now include whatever that server returns at build time.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "deploy_coordination": {
+              "default": true,
+              "description": "The episode changes only durable-state surface: nothing here is safe to ship on the normal path, because there is no code for the migration to be compatible with.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_added": {
+              "default": true,
+              "description": "A variable this episode introduces, either declared in an env file or read by new code. The process environment is not in the repository, so nothing about the diff makes it exist in production.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_declared_unread": {
+              "default": true,
+              "description": "Declared in `.env.example` (or a ConfigMap, compose block or workflow `env:`) with no read found for it. Either the code that reads it has not landed, or the declaration is theatre and the operator will set a value that changes nothing.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_removed": {
+              "default": true,
+              "description": "A variable that is no longer declared or read. Retiring it is the operator's job: a value left in a secret store with nothing reading it is a stale credential with an expiry nobody watches.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_renamed": {
+              "default": true,
+              "description": "One variable removed and a similar one added in the same episode, with the old name still referenced. Renames are the failure mode of a diff-shaped tool: both halves look harmless alone.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_stale_reference": {
+              "default": true,
+              "description": "The declaration is gone and a reference is not. This is the rename that was only half done: the process starts, reads nothing, and fails at the first request that needed it rather than at boot.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "env_value_committed": {
+              "default": true,
+              "description": "A non-placeholder value for a secret-shaped name landed in a committed file. The value is now in every clone and every object the history holds.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "flag_added": {
+              "default": true,
+              "description": "A new flag with the default value the code will see if the provider never answers. The default is the rollout plan whether the author meant it as one or not.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "flag_default_changed": {
+              "default": true,
+              "description": "The default flipped. When the default is what ships, this diff *is* the rollout, and it happens to 100 % of traffic at the moment the deploy finishes.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "flag_read_no_default": {
+              "default": true,
+              "description": "The call site supplies no fallback, so the provider is on the request path: a missing flag or a provider outage becomes the caller's problem.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "flag_removed": {
+              "default": true,
+              "description": "A flag the code no longer reads, or a declaration that went while reads remained. Flag rows in a provider outlive the code that read them and confuse whoever inherits the panel.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "iac_policy_widened": {
+              "default": true,
+              "description": "A new line widens an IAM policy, opens an ingress to the internet, or makes an instance public. The blast radius of this diff is not the repository.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "iac_resource_added": {
+              "default": true,
+              "description": "A managed resource appeared in a plan. It costs money, has a name that must be globally unique, and will outlive the branch.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "iac_resource_removed": {
+              "default": true,
+              "description": "A managed resource disappeared from the configuration, which in every IaC tool means *destroy it*. For a bucket, a table or a database that is the data, not the infrastructure.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "migration_added": {
+              "default": true,
+              "description": "An ordered, execute-once change to durable state. It runs against a database that is still serving traffic, in an order the deploy has to get right.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "migration_destructive": {
+              "default": true,
+              "description": "A `DROP`, `TRUNCATE`, `SET NOT NULL`, type change or rename in the forward path. These take locks, and some of them cannot be undone by anything.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "migration_forward_only": {
+              "default": true,
+              "description": "A forward path with no down path: no `-- +goose Down`, no `def down`, no `.down.sql`, no undo script. A rollback of the release is now a manual repair with a different author.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "migration_with_model": {
+              "default": true,
+              "description": "The schema file and the code that reads it move together, which is correct and also an ordering problem: one of the two will be true before the other.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "flags": {
+          "additionalProperties": false,
+          "description": "Files that declare flags with their defaults. Code that *reads* a flag is scanned wherever it lives, so this list only decides where defaults come from.",
+          "properties": {
+            "globs": {
+              "default": [
+                "flags.yaml",
+                "flags.yml",
+                "flags.json",
+                "feature-flags.yaml",
+                "feature-flags.json",
+                "**/flags.yaml",
+                "**/flags.yml",
+                "**/flags.json",
+                "**/features.yaml",
+                "**/features.json",
+                "**/featureflags.json",
+                "**/flip-flop.json",
+                "**/unleash-toggles.json",
+                "config/flags/**",
+                "**/config/flags/**",
+                "**/feature_flags.py",
+                "**/flags.php"
+              ],
+              "description": "Files that declare flags with their defaults. Code that *reads* a flag is scanned wherever it lives, so this list only decides where defaults come from.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "require_default": {
+              "default": true,
+              "description": "Report a flag read that supplies no fallback. Off for a repository that runs its provider on the same node and treats a missing flag as a bug in the deploy.",
+              "type": "boolean",
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "iac": {
+          "additionalProperties": false,
+          "description": "Infrastructure-as-code files: Terraform, CloudFormation, Kubernetes manifests, Helm values, Pulumi, Ansible. A manifest with `kind:` is also detected by content, because nothing about a path says a YAML file is a Deployment.",
+          "properties": {
+            "globs": {
+              "default": [
+                "**/*.tf",
+                "**/*.tfvars",
+                "**/*.hcl",
+                "cloudformation*.y*ml",
+                "**/cloudformation*.y*ml",
+                "**/cfn-*.y*ml",
+                "k8s/**.y*ml",
+                "**/k8s/**.y*ml",
+                "**/kubernetes/**.y*ml",
+                "**/manifests/**.y*ml",
+                "**/helm/**/values.y*ml",
+                "**/Chart.yaml",
+                "ansible/**.y*ml",
+                "**/*.stack.yaml",
+                "Pulumi.*.yaml",
+                "**/*.cue"
+              ],
+              "description": "Infrastructure-as-code files: Terraform, CloudFormation, Kubernetes manifests, Helm values, Pulumi, Ansible. A manifest with `kind:` is also detected by content, because nothing about a path says a YAML file is a Deployment.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "widened_patterns": {
+              "default": [
+                "\"*\"",
+                "\"arn:aws:iam::aws:policy/AdministratorAccess\"",
+                "\"0.0.0.0/0\"",
+                "::/0",
+                "\"Principal\": \"*\"",
+                "associate_public_ip_address = true",
+                "cidr_blocks = [\"0.0.0.0/0\"]",
+                "Action = [\"*\"]",
+                "--privileged"
+              ],
+              "description": "Text that widens an infrastructure exposure when it appears on an added line: a wildcard principal or action, a default route from anywhere, a public address.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
+        "migration": {
+          "additionalProperties": false,
+          "description": "Migration layouts. The `e0.9`/`e2.1` taxonomy class `migration` is consulted first and these only add to it, so a repository with an unusual directory says it once.",
+          "properties": {
+            "destructive_ops": {
+              "default": [
+                "drop table",
+                "drop column",
+                "drop index",
+                "drop constraint",
+                "drop database",
+                "truncate table",
+                "truncate ",
+                "set not null",
+                "alter column",
+                "modify column",
+                "rename to",
+                "delete from",
+                "update ",
+                "alter type",
+                "drop materialized view",
+                "drop_table",
+                "remove_column",
+                "remove_index",
+                "change_column_null",
+                "delete_all",
+                "destroy_all",
+                "execute "
+              ],
+              "description": "Statements treated as destroying or rewriting data in a forward path. Matched against statement text, case-insensitively, and extendable per repository.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "globs": {
+              "default": [
+                "**/migrations/**",
+                "**/migration/**",
+                "db/migrate/**",
+                "db/migrations/**",
+                "**/alembic/versions/**",
+                "**/migrations/versions/**",
+                "prisma/migrations/**",
+                "**/flyway/sql/**",
+                "src/main/resources/db/migration/**",
+                "**/migrations/**.sql",
+                "**/migrations/**.up.sql",
+                "resource/migrations/**"
+              ],
+              "description": "Migration layouts. The `e0.9`/`e2.1` taxonomy class `migration` is consulted first and these only add to it, so a repository with an unusual directory says it once.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            },
+            "model_globs": {
+              "default": [
+                "**/models.py",
+                "**/models/**.py",
+                "**/model.py",
+                "db/schema.rb",
+                "db/schema.sql",
+                "app/models/**",
+                "**/entities/**.java",
+                "**/Entity/**.php",
+                "**/*.prisma",
+                "**/schema.sql",
+                "**/models/**.go",
+                "internal/model/**.go",
+                "**/Models/**.cs",
+                "**/migrations/**/schema.rs"
+              ],
+              "description": "The model half of 'the migration and the model moved together': ORM definitions, `db/schema.rb`, `*.prisma`. Narrow on purpose \u2014 a Java package called `model` that moves without a migration is not a schema change.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "non_code.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.8"
+            }
+          },
+          "type": "object"
+        },
         "patterns": {
           "default": [
             "**/migrations/**",

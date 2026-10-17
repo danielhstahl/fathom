@@ -133,6 +133,51 @@ jobs:
           PYTHONPATH=src python3 -m recommender.testsurface demo | tail -2
           PYTHONPATH=src python3 -m recommender.testsurface demo --capped | grep -q "more: fathom testsurface card --all"
           PYTHONPATH=src python3 -m recommender.testsurface bench --repeat 2 | tail -1
+      - name: "e2.8 non-code surfaces: the labelled corpus clears its bars, printed (AC 1-4)"
+        # Three absolute bars, each because a softer one would hide a specific lie: rule
+        # accuracy 1.0 over 37 fixtures (one per finding kind — the test derives that
+        # requirement from the rule table, so a kind without a fixture fails here), precision
+        # 1.0 over 12 traps (a false "this migration is irreversible" costs as much reviewer
+        # trust as a missed one), episode accuracy 1.0 (counts and coordination are
+        # arithmetic), and 6 of 6 surfaces covered — "the CI surface has a fixture" is
+        # satisfiable by one fixture out of five findings, so the gate is per surface. Labels
+        # are hand-written in `corpus.py` against the built-in policy, so this never reads
+        # this repo's fathom.toml.
+        run: |
+          PYTHONPATH=src python3 -m recommender.noncode score --min-rules 1.0 \
+            --min-precision 1.0 --min-episodes 1.0 --min-surfaces 6
+      - name: "e2.8 non-code surfaces: the verb surface is the same engine, and the card audits clean"
+        # The ticket's two headline criteria are grepped out of real output here: the env
+        # cross-check in both directions (added-and-never-read, and removed-while-still-read),
+        # and the explicit `needs deploy coordination` line for a migration-only episode.
+        # `render.audit` / `checklist.audit` run on the CLI's own output and exit non-zero, so
+        # every one of these steps is also an audit step; `demo --capped` is the row-cap path
+        # a real episode takes, and its remainder line must name the verb that lists the rest.
+        run: |
+          mkdir -p /tmp/nc/before/src /tmp/nc/before/db/migrate /tmp/nc/before/.github/workflows
+          mkdir -p /tmp/nc/after/src /tmp/nc/after/db/migrate /tmp/nc/after/.github/workflows
+          printf '# Service configuration\nDATABASE_URL=postgres://localhost/app\nSEARCH_INDEX_HOST=search:9200\n' > /tmp/nc/before/.env.example
+          printf '# Service configuration\nPG_DATABASE_URL=postgres://localhost/app\nPAYMENT_WEBHOOK_SECRET=\n' > /tmp/nc/after/.env.example
+          printf 'DATABASE_URL = os.environ["DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/before/src/settings.py
+          printf 'PG_DATABASE_URL = os.environ["PG_DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/after/src/settings.py
+          printf 'name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n' > /tmp/nc/before/.github/workflows/release.yml
+          # `$` is split out so GitHub's expression parser never sees `${{ … }}` in *this*
+          # workflow and tries to resolve a secret of ours; the fixture file gets the literal.
+          DOLLAR='$'
+          printf "name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - run: sign ${DOLLAR}{{ secrets.SIGNING_KEY }}\n" > /tmp/nc/after/.github/workflows/release.yml
+          printf 'class AddOrdersToInvoices < ActiveRecord::Migration[7.1]\n  def up\n    add_column :invoices, :order_id, :integer\n    execute "UPDATE invoices SET order_id = 0 WHERE order_id IS NULL"\n  end\nend\n' > /tmp/nc/after/db/migrate/20261017120000_add_orders_to_invoices.rb
+          PYTHONPATH=src python3 -m recommender.noncode card --old-repo /tmp/nc/before --repo /tmp/nc/after --path .env.example src/settings.py .github/workflows/release.yml | grep -q "Code still reads a removed environment variable: SEARCH_INDEX_HOST"
+          PYTHONPATH=src python3 -m recommender.noncode card --old-repo /tmp/nc/before --repo /tmp/nc/after --path .env.example src/settings.py .github/workflows/release.yml | grep -q "Environment variable added: PAYMENT_WEBHOOK_SECRET"
+          PYTHONPATH=src python3 -m recommender.noncode card --old-repo /tmp/nc/before --repo /tmp/nc/after --path .env.example src/settings.py .github/workflows/release.yml --json | head -1
+          PYTHONPATH=src python3 -m recommender.noncode checklist --repo /tmp/nc/after --path db/migrate/20261017120000_add_orders_to_invoices.rb | grep -q "needs deploy coordination: yes"
+          PYTHONPATH=src python3 -m recommender.noncode findings --old-repo /tmp/nc/before --repo /tmp/nc/after --path .env.example src/settings.py | grep -q env-renamed
+          PYTHONPATH=src python3 -m recommender.noncode explain .env.example --old-repo /tmp/nc/before --repo /tmp/nc/after | grep -q "env reader:"
+          PYTHONPATH=src python3 -m recommender.noncode surfaces | head -3
+          PYTHONPATH=src python3 -m recommender.noncode policy | tail -3
+          PYTHONPATH=src python3 -m recommender.noncode definition | head -3
+          PYTHONPATH=src python3 -m recommender.noncode demo | tail -2
+          PYTHONPATH=src python3 -m recommender.noncode demo --capped | grep -q "more: fathom noncode checklist"
+          PYTHONPATH=src python3 -m recommender.noncode bench --repeat 2 | tail -1
       - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
         # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
         # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap

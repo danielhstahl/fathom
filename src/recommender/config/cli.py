@@ -374,18 +374,33 @@ def _sentences(doc: str) -> list[str]:
 
 
 
+def _toml_string(value: str) -> str:
+    """One TOML string literal, escaped into a form TOML can read back.
+
+    A literal (`'...'`) string cannot contain an apostrophe, and a bare `"%s"` interpolation
+    of a value that itself contains `"` produces TOML that does not parse at all — which the
+    starter-file test discovers by uncommenting every line and parsing the result. A default
+    like `non_code.iac.widened_patterns`, whose first entry is the *text* `"*"`, is the case
+    that proves it. JSON's string escapes are a subset of TOML's basic-string escapes, so
+    `json.dumps` is the shortest correct encoder here.
+    """
+    if "'" not in value and '"' not in value:
+        return "'%s'" % value
+    return json.dumps(value)
+
+
 def _tomlish(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, list):
-        return "[%s]" % ", ".join('"%s"' % item for item in value)
+        return "[%s]" % ", ".join(_toml_string(str(item)) for item in value)
     if isinstance(value, dict):
         return "{ %s }" % ", ".join("%s = %s" % (k, _tomlish(v))
                                     for k, v in sorted(value.items()))
     if value is None:
         return '""'
     if isinstance(value, str):
-        return "'%s'" % value
+        return _toml_string(value)
     return str(value)
 
 

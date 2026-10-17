@@ -58,6 +58,15 @@ schema = [
 # Surfaces `e2.8` reports separately from code: CI, budgets and the generated schema are all
 # reviewed as contracts, not as lines of logic.
 patterns = [".github/workflows/**", "benchmarks/budgets.json", "schemas/**", ".plan/**"]
+# `e2.8`'s findings and thresholds are keys too (`non_code.findings.*`, `non_code.env.*`,
+# `non_code.flags.*`, `non_code.migration.*`, `non_code.ci.*`, `non_code.iac.*`,
+# `non_code.container.*`, `non_code.card.max_actions`), and this repository runs every one of
+# them at the built-in default for the same reason `[test]` does: the built-ins are what
+# `tests/test_noncode_contract.py` scores, and a repo config that moved them would be tuning
+# the tool to pass its own tests. `python3 -m recommender.noncode definition` prints those
+# numbers as sentences and `... policy` prints which layer each one came from — which is also
+# how this file stays honest about running none of them: a key that is set here would show up
+# in `policy` as `repo fathom.toml` rather than `built-in default`.
 
 [graph]
 ignored_dirs = ["node_modules", "__pycache__"]
