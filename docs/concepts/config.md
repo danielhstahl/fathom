@@ -389,6 +389,14 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `noise.globs` | `glob_list` | `**/dist/**, **/*.snap` | `extend` | `any` | — | taxonomy.path | `e0.9` |
 | `taxonomy.classes.<class-name>` | `glob_list` | `—` | `extend` | `any` | — | taxonomy.path | `e0.9` |
 | `noise.builtins_version` | `integer` | `1` | `replace` | `any` | version | taxonomy.path | `e0.9` |
+| `noise.suppress.reformat` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.suppress.generated_churn` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.suppress.lockfile` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.suppress.vendored` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.suppress.user_glob` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.collapse.noise_only` | `boolean` | `True` | `replace` | `any` | — | noise.suppress | `e2.2` |
+| `noise.keep` | `glob_list` | `—` | `extend` | `any` | — | noise.suppress | `e2.2` |
+| `noise.expand` | `string` | `b` | `replace` | `any` | — | noise.suppress | `e2.2` |
 | `test.globs` | `glob_list` | `tests/**, **/test_*.py` | `extend` | `any` | — | test.surface | `e2.6` |
 | `non_code.patterns` | `glob_list` | `**/migrations/**, .github/workflows/**` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |

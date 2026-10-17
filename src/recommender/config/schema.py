@@ -344,6 +344,55 @@ KEY_LIST: list[Key] = [
        doc="Version of the *built-in* noise table e0.9 ships. Declared so a taxonomy "
            "table bump invalidates the analyzers that read noise (ADR-004 §6).",
        analyzer="taxonomy.path", ticket="e0.9"),
+    # --- noise suppression (e2.2 owns these; `reco-zqf`) ---------------------
+    # One boolean per suppression rule, because the thesis makes folding a *policy* (§7:
+    # "never hide silently") and a policy has to be answerable to the person it hides from.
+    # `last` merge, not `extend`: turning a rule off is the whole point of the key, and a
+    # merge that could only ever add `true` would let a user layer undo a repository's "no".
+    _k(path="noise.suppress.reformat", kind="boolean", default=True,
+       doc="Fold a file pair whose token streams are identical — a rustfmt/prettier/gofmt "
+           "re-layout, not a change. The rule only ever applies to a pair the token model "
+           "can read; an unreadable pair is never folded. The fold line names the formatter.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.suppress.generated_churn", kind="boolean", default=True,
+       doc="Fold a generated file whose diff is a stamp line, a re-order of generated "
+           "entries, or a whole-file regeneration. Deliberately narrower than 'the path is "
+           "generated': a small edit inside a generated file stays visible, because that is "
+           "the case where a person edited the generator's output by hand and wants it seen.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.suppress.lockfile", kind="boolean", default=True,
+       doc="Fold a lockfile to one counted line ('3 dependencies upgraded'). The rule stands "
+           "aside when the declaring manifest moved too — then the lockfile diff is the "
+           "dependency decision and is shown.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.suppress.vendored", kind="boolean", default=True,
+       doc="Fold vendored code (the `vendored` taxonomy class, `e0.9`). A person did not "
+           "write it and cannot review it here; `fathom config explain --path` says which "
+           "assertion made a path vendored.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.suppress.user_glob", kind="boolean", default=True,
+       doc="Fold a path the layers put in `noise.globs`. A repository adding a glob is "
+           "asking for its own noise to be folded, not for it to be hidden, so the fold "
+           "quotes the glob that caught the path.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.collapse.noise_only", kind="boolean", default=True,
+       doc="When *every* file in an episode folded, collapse the episode to one line. This "
+           "is the 'a reformat-only commit is one line' behaviour, and it is a separate "
+           "switch so a reviewer can keep per-file fold lines while refusing whole-episode "
+           "collapses.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.keep", kind="glob_list", merge="extend", default=[],
+       item_pattern=GLOB_ITEM,
+       doc="Paths suppression must never fold, whatever the rules say — the reviewer's "
+           "'always show me this file' list. Beats every rule, including a repository's own "
+           "assertion, because the only thing that outranks 'show it' is 'show it'.",
+       analyzer="noise.suppress", ticket="e2.2"),
+    _k(path="noise.expand", kind="string", default="b",
+       pattern=r"^[A-Za-z0-9<>^+_,.\- ]{1,12}$",
+       doc="The key that shows a folded change again (AC 4). Configurable because every "
+           "other key here is configurable, and because the fold lines are *rendered* from "
+           "this value — a fold that said `[press b]` after you rebind it would be a lie.",
+       analyzer="noise.suppress", ticket="e2.2"),
     _k(path="test.globs", kind="glob_list", merge="extend",
        default=["tests/**", "**/test_*.py"], item_pattern=GLOB_ITEM,
        doc="Paths counted as test surface.", analyzer="test.surface", ticket="e2.6"),

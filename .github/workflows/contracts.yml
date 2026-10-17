@@ -80,6 +80,27 @@ jobs:
           PYTHONPATH=src python3 -m recommender.change classes >/dev/null
           PYTHONPATH=src python3 -m recommender.change markers | head -3
           PYTHONPATH=src python3 -m recommender.change bench --repeat 2 | tail -1
+      - name: "e2.2 noise suppression: fold precision, reported (AC 1, AC 2)"
+        # The bar that matters is precision and it is absolute: every false fold is one real
+        # change the tool hid. `score` prints the four tables and names each false fold, so a
+        # red run says which change was hidden rather than only that an average slipped. The
+        # labels are written against the built-in tables, so this does not read this repo's
+        # fathom.toml.
+        run: PYTHONPATH=src python3 -m recommender.noise score --min-accuracy 0.95 --min-precision 1.0 --min-recall 0.90 --min-episodes 1.0
+      - name: "e2.2 noise suppression: the verb surface reads real pairs and prints its receipts"
+        # Same engine as the renderer: the CLI's fold line is `Suppression.render()`, and the
+        # audit the CLI runs on its own output is the one the contract test blesses.
+        run: |
+          PYTHONPATH=src python3 -m recommender.noise languages | head -3
+          PYTHONPATH=src python3 -m recommender.noise policy | tail -3
+          mkdir -p /tmp/noise/before/src /tmp/noise/after/src
+          printf 'use std::collections::HashMap;\n\npub fn thing(a: i32, b: i32) -> i32 {\n    let total = a + b;\n    total\n}\n' > /tmp/noise/before/src/a.rs
+          printf 'use std::collections::HashMap;\n\npub fn thing(\n    a: i32,\n    b: i32,\n) -> i32 {\n\tlet total = a + b;\n\ttotal\n}\n' > /tmp/noise/after/src/a.rs
+          PYTHONPATH=src python3 -m recommender.noise explain src/a.rs --old-repo /tmp/noise/before --repo /tmp/noise/after | head -4
+          PYTHONPATH=src python3 -m recommender.noise episode --old-repo /tmp/noise/before --repo /tmp/noise/after --path src/a.rs | head -3
+          PYTHONPATH=src python3 -m recommender.noise episode --old-repo /tmp/noise/before --repo /tmp/noise/after --path src/a.rs --json | head -1
+          PYTHONPATH=src python3 -m recommender.noise episode --old-repo /tmp/noise/before --repo /tmp/noise/after --path src/a.rs --no-suppress | head -2
+          PYTHONPATH=src python3 -m recommender.noise bench --repeat 2 | tail -1
       - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
         # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
         # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap
