@@ -24,7 +24,7 @@ NODES = []
 
 
 def t(key, parent, title, typ="task", prio=2, est=None, deps=None, desc="",
-      ac="", notes=None, labels=None):
+      ac="", notes=None, labels=None, **extra):
     n = {"key": key, "title": title, "type": typ, "priority": prio}
     if parent:
         n["parent"] = parent
@@ -40,6 +40,7 @@ def t(key, parent, title, typ="task", prio=2, est=None, deps=None, desc="",
         n["deps"] = [{"target": d, "type": "blocks"} for d in deps]
     if labels:
         n["labels"] = labels
+    n.update(extra)   # per-ticket extras the graph format allows (e.g. e0.5's contract)
     NODES.append(n)
     return key
 
@@ -182,7 +183,16 @@ t("e0.5", "e0", "ADR-005: harness integration contract (hooks v1 and MCP surface
             "Two independent adapter sketches (pi-style hooks, generic git hook) judged implementable",
             "Explicit list of read vs gated-write MCP tools and their gating",
             "Contract states what happens on missing, stale or malformed events (degrade, never block the agent)"),
-  labels=["adr", "integration"])
+  labels=["adr", "integration"],
+  # Carried as data because `e0.11`'s CI gate and `e4.x`'s adapters both read them, and the
+  # plan file is generated: a hand-edit here would be lost by the next `gen.py` run.
+  contract="docs/adr/0005-harness-contract.md",
+  verification={"runtime_probe": "python3 -m recommender.harness.elf_probe --machine",
+                "startup_gate": "python3 -m recommender.harness.harness run verify",
+                "tests": "python3 -m pytest -q",
+                "docs": "python3 tools/check_docs.py"},
+  implementation=["src/recommender/harness/", "src/recommender/hooks/",
+                  "tests/test_harness_contract.py"])
 
 t("e0.6", "e0", "ADR-006: TUI information architecture, view inventory and keymap", "decision", 1, 240,
   deps=["e0.1"],
@@ -599,13 +609,22 @@ t("e3.2", "e3", "Per-revision module and symbol graph builder with snapshot stor
   deps=["e3.1", "e0.4", "s3"],
   desc="Build the graph that makes architectural questions answerable: nodes are modules and exported "
        "symbols, edges are imports, uses, implementations and inheritance, with layer tags from config. "
-       "Store a snapshot per tree hash using structural sharing between adjacent revisions (per s3) rather "
-       "than a full rebuild per commit, and expose a query API: dependencies of X, dependents of X, path "
-       "between A and B, subgraph of a layer, changed edges between two snapshots.",
+       "STORED AS `s3` MEASURED (ADR-004 §13.7/§14.1): one graph DELTA per revision in `graph_delta` plus a "
+       "shared content-addressed anchor every `graph.chain_full_every = 32` revisions, capped by "
+       "`graph.query.max_chain_walk = 32`, derived from the blob-keyed per-file structural substrate of "
+       "e1.4/e3.1 — measured 22 335 B/revision against a 32 KiB budget. NOT a full snapshot per tree hash: "
+       "measured 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, because the "
+       "per-revision membership list is the cost. Materialise one revision on selection (budget: "
+       "`graph.materialise_revision.ms`), apply a delta when the cursor moves one commit, and expose a query "
+       "API: dependencies of X, dependents of X, path between A and B, subgraph of a layer, changed edges "
+       "between two snapshots — with node ids interned, which `s3` left as the ~3x byte reduction it projected "
+       "but did not bank. See docs/concepts/graph-storage.md.",
   ac=bullet("1000-commit fixture: cold full build under 60s, marginal cost per new commit under 50ms (bench)",
-            "Snapshot storage for the fixture under 50MB with structural sharing (measured and reported)",
+            "Per-revision graph storage under store.bytes_per_commit_graph (32 KiB) on the s3 workload, "
+            "and the materialisation p95 under graph.materialise_revision.ms (both measured and reported)",
             "Subgraph and path queries answer p95 under 20ms at 5000 nodes",
-            "Graph for a revision is reproducible: rebuilding from an empty cache yields identical results"),
+            "Graph for a revision is reproducible: rebuilding from an empty cache yields identical results",
+            "A revision whose anchor is missing answers as a stated partial, never as a smaller graph"),
   labels=["architecture", "graph"])
 
 t("e3.3", "e3", "Graph delta between adjacent revisions and between arbitrary episodes", "feature", 2, 500,
@@ -614,7 +633,10 @@ t("e3.3", "e3", "Graph delta between adjacent revisions and between arbitrary ep
        "module to another (distinguished from delete+add), files whose public surface changed, and an "
        "edge-churn metric per module that flags 'this module keeps getting reworked'. Must work for adjacent "
        "episodes (the common case, optimised) and for arbitrary pairs (e5.3). Deterministic ordering and a "
-       "JSON form usable by the exporter and MCP.",
+       "JSON form usable by the exporter and MCP. For adjacent revisions the answer is a SELECT over the delta "
+       "rows `s3`'s policy stores (measured 0.26 ms p95, `query.graph_delta_adjacent.ms`); any representation "
+       "without stored deltas pays two full materialisations for the same question, which is one of the three "
+       "reasons that policy was chosen.",
   ac=bullet("Fixtures for moved symbol, split module, dependency inversion and dead-edge removal produce the expected delta",
             "Symbol move is reported as a move, not as a deletion plus an addition",
             "Delta between two non-adjacent episodes matches the composition of the intermediate deltas (property test)",
@@ -1183,7 +1205,10 @@ SPKES = [
   "Epic 3 assumes a graph snapshot per revision is affordable with structural sharing; measure it before "
   "e3.2 is designed. Prototype snapshot storage with and without sharing, measure time and bytes per commit on "
   "a real 10k-commit repository, measure incremental query latency, and test alternative invalidation policies "
-  "(full snapshot every N commits plus a delta window, on-demand recomputation, content-defined chunking).",
+  "(full snapshot every N commits plus a delta window, on-demand recomputation, content-defined chunking). "
+  "DONE: five strategies written into ADR-004 §4.6's real DDL and run over a 10 004-commit repository "
+  "(2 298 modules, 54 025 graph rows); decision in ADR-004 §14.1, tables generated from "
+  "benchmarks/reports/s3-graph-snapshots.json, method and limits in docs/concepts/graph-storage.md.",
   bullet("Measured time and bytes per revision for each strategy",
          "Recommended invalidation and storage policy with the numbers behind it",
          "Latency figures for the queries the TUI actually issues",

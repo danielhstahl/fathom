@@ -1,0 +1,710 @@
+{
+ "budgets_under_test": {
+  "cold.graph.ms": 480000,
+  "query.frame_store_budget.ms": 8,
+  "query.graph_delta_adjacent.ms": 20,
+  "query.graph_dependents.ms": 20,
+  "query.graph_path.ms": 60,
+  "store.bytes_per_commit_graph": 24576,
+  "warm.graph.marginal.ms": 60
+ },
+ "chain_sweep": [
+  {
+   "anchor_manifest_bytes": 234243894,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 39062,
+   "bytes_per_revision_without_manifest": 15647,
+   "bytes_projected_at_10k": 390776630,
+   "delta_adjacent_p95_ms": 0.22,
+   "dependents_p95_ms": 0.005,
+   "duplicate_trees": 0,
+   "every": 8,
+   "materialize_ms_p50": 72.866,
+   "materialize_ms_p95": 209.535,
+   "record_ms_p50": 0.769,
+   "record_ms_p95": 33.148,
+   "rows_per_revision": 312.2,
+   "warm_step_ms_p50": 0.066,
+   "warm_step_ms_p95": 0.314
+  },
+  {
+   "anchor_manifest_bytes": 117147620,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 28029,
+   "bytes_per_revision_without_manifest": 16319,
+   "bytes_projected_at_10k": 280401892,
+   "delta_adjacent_p95_ms": 0.173,
+   "dependents_p95_ms": 0.006,
+   "duplicate_trees": 0,
+   "every": 16,
+   "materialize_ms_p50": 71.546,
+   "materialize_ms_p95": 204.49,
+   "record_ms_p50": 0.69,
+   "record_ms_p95": 32.51,
+   "rows_per_revision": 175.7,
+   "warm_step_ms_p50": 0.054,
+   "warm_step_ms_p95": 0.291
+  },
+  {
+   "anchor_manifest_bytes": 58496201,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 22335,
+   "bytes_per_revision_without_manifest": 16488,
+   "bytes_projected_at_10k": 223438025,
+   "delta_adjacent_p95_ms": 0.194,
+   "dependents_p95_ms": 0.006,
+   "duplicate_trees": 0,
+   "every": 32,
+   "materialize_ms_p50": 70.921,
+   "materialize_ms_p95": 204.555,
+   "record_ms_p50": 0.66,
+   "record_ms_p95": 31.96,
+   "rows_per_revision": 107.0,
+   "warm_step_ms_p50": 0.056,
+   "warm_step_ms_p95": 0.381
+  },
+  {
+   "anchor_manifest_bytes": 29273509,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 19353,
+   "bytes_per_revision_without_manifest": 16427,
+   "bytes_projected_at_10k": 193609125,
+   "delta_adjacent_p95_ms": 0.174,
+   "dependents_p95_ms": 0.006,
+   "duplicate_trees": 0,
+   "every": 64,
+   "materialize_ms_p50": 72.561,
+   "materialize_ms_p95": 204.871,
+   "record_ms_p50": 0.646,
+   "record_ms_p95": 31.81,
+   "rows_per_revision": 72.7,
+   "warm_step_ms_p50": 0.049,
+   "warm_step_ms_p95": 0.256
+  },
+  {
+   "anchor_manifest_bytes": 14662823,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 17597,
+   "bytes_per_revision_without_manifest": 16131,
+   "bytes_projected_at_10k": 176037031,
+   "delta_adjacent_p95_ms": 0.248,
+   "dependents_p95_ms": 0.006,
+   "duplicate_trees": 0,
+   "every": 128,
+   "materialize_ms_p50": 73.413,
+   "materialize_ms_p95": 202.761,
+   "record_ms_p50": 0.639,
+   "record_ms_p95": 30.929,
+   "rows_per_revision": 55.4,
+   "warm_step_ms_p50": 0.043,
+   "warm_step_ms_p95": 0.231
+  },
+  {
+   "anchor_manifest_bytes": 7357452,
+   "assemble_ms_p50": null,
+   "bytes_per_revision": 16476,
+   "bytes_per_revision_without_manifest": 15741,
+   "bytes_projected_at_10k": 164828172,
+   "delta_adjacent_p95_ms": 0.198,
+   "dependents_p95_ms": 0.006,
+   "duplicate_trees": 0,
+   "every": 256,
+   "materialize_ms_p50": 80.52,
+   "materialize_ms_p95": 218.329,
+   "record_ms_p50": 0.638,
+   "record_ms_p95": 30.613,
+   "rows_per_revision": 46.6,
+   "warm_step_ms_p50": 0.033,
+   "warm_step_ms_p95": 0.181
+  }
+ ],
+ "convention": "prototype floors: Python, one process, one container, a stand-in extractor. Bytes carry to `fathom-store`; times are floors.",
+ "environment": {
+  "compile_options": {
+   "SQLITE_ENABLE_DBSTAT_VTAB": true,
+   "SQLITE_ENABLE_FTS5": true,
+   "SQLITE_ENABLE_MATH_FUNCTIONS": true,
+   "fts5_runtime": true
+  },
+  "cpu_count": 8,
+  "git": "git version 2.47.3",
+  "platform": "Linux aarch64",
+  "python": "3.14.5",
+  "sqlite": "3.46.1"
+ },
+ "notes": [
+  "The repository is a real git history, written by `git fast-import` and read back through `git log -r --raw` and `git cat-file --batch`.",
+  "`ten_k_commits` from the corpus is not the workload: its graph is a dozen nodes (scenarios.rs: 'the files stay few and the commits stay many'), so it measures the small-class floor, not the medium-class question this spike asks.",
+  "\u00a74.6 findings this run surfaced: a `graph_delta` row cannot name a node op without a dummy `dst=''`; `graph_chunk_link`'s FK forces an anchor manifest to have a `graph_chunk` row of its own; and a materialised-tree strategy wants the \u00a74.5 cache+blob pair rather than a graph table."
+ ],
+ "query_battery": [
+  {
+   "meaning": "dependencies of X (fan-out)",
+   "query": "dependencies"
+  },
+  {
+   "meaning": "dependents of X (fan-in) \u2014 `query.graph_dependents.ms`",
+   "query": "dependents"
+  },
+  {
+   "meaning": "shortest path A\u2192B, depth-capped (\u00a78.5)",
+   "query": "path"
+  },
+  {
+   "meaning": "subgraph of a layer \u2014 the architecture map's filter (`e3.4`)",
+   "query": "layer"
+  },
+  {
+   "meaning": "changed edges between adjacent revisions \u2014 `e3.3`, the delta overlay",
+   "query": "delta_adjacent"
+  },
+  {
+   "meaning": "changed edges between revisions 500 apart",
+   "query": "delta_distant"
+  }
+ ],
+ "recommendation": {
+  "budget_bytes_per_revision": 24576,
+  "budget_interactive_ms": 20,
+  "chain_bytes_per_revision": 22335,
+  "chain_bytes_per_revision_without_manifest": 16488,
+  "chain_cold_materialise_p95_ms": 204.555,
+  "chain_full_every": 32,
+  "chain_query_max_chain_walk": 32,
+  "chain_warm_step_p95_ms": 0.381,
+  "cheapest": "PER_FILE: per-file rows keyed by blob, revision graph rebuilt on demand",
+  "cheapest_bytes_per_revision": 4564,
+  "headroom_vs_budget": 1.1,
+  "strategies_over_budget": [
+   "FULL: a full snapshot per revision, nothing shared",
+   "CHUNKED: content-defined chunks; every revision links every chunk"
+  ],
+  "strategies_within_budget": [
+   "MERKLE: full snapshot per revision, persistent trie, path-copied",
+   "PER_FILE: per-file rows keyed by blob, revision graph rebuilt on demand"
+  ]
+ },
+ "sampling": {
+  "o_graph_strategies": "32 revisions sampled, stride 312; per-revision cost is linear in the revision count, so totals for those rows are projections and carry `extrapolated: true`",
+  "sequential_strategies": "every revision measured"
+ },
+ "spike": {
+  "adr": "ADR-004 \u00a714.1, \u00a713.7",
+  "id": "reco-279",
+  "plan_key": "s3",
+  "question": "is a graph snapshot per revision affordable at 10k commits?"
+ },
+ "strategies": [
+  {
+   "assemble_ms_p50": 51.042,
+   "bytes_measured": 552333312,
+   "bytes_per_revision": 16737373,
+   "bytes_projected_at_10k": 167440680401,
+   "direct_sql_ms": {
+    "dependencies": {
+     "n": 1,
+     "p50": 0.119,
+     "p95": 0.119
+    },
+    "dependents": {
+     "n": 1,
+     "p50": 0.105,
+     "p95": 0.105
+    },
+    "layer": {
+     "n": 1,
+     "p50": 0.804,
+     "p95": 0.804
+    }
+   },
+   "extra": {},
+   "extrapolated": true,
+   "materialize_ms_p50": 79.733,
+   "materialize_ms_p95": 189.606,
+   "notes": [],
+   "per_table_bytes": {
+    "graph_delta": 186568704,
+    "graph_delta_dst": 177545216,
+    "graph_delta_src": 188231680,
+    "sqlite_autoindex_ref_tip_1": 4096,
+    "sqlite_autoindex_scorecard_1": 4096,
+    "sqlite_autoindex_session_state_1": 4096,
+    "sqlite_schema": 32768,
+    "store_event": 4096,
+    "suppression": 4096,
+    "usage_snapshot": 4096
+   },
+   "query_ms": {
+    "dependencies": {
+     "n": 1,
+     "p50": 0.003,
+     "p95": 0.003
+    },
+    "dependents": {
+     "n": 1,
+     "p50": 0.001,
+     "p95": 0.001
+    },
+    "layer": {
+     "n": 1,
+     "p50": 2.056,
+     "p95": 2.056
+    },
+    "path": {
+     "n": 1,
+     "p50": 0.014,
+     "p95": 0.014
+    }
+   },
+   "record_ms_p50": 1594.677,
+   "record_ms_p95": 3020.342,
+   "record_ms_total_s": 52.85,
+   "revisions_in_workload": 10004,
+   "revisions_written": 33,
+   "rows_per_revision": 49225.0,
+   "rows_written": 1624426,
+   "scaling_claim": "O(nodes + edges) per revision",
+   "strategy": "FULL: a full snapshot per revision, nothing shared",
+   "usage_basis": "dbstat",
+   "warm_step_ms_p50": 88.316,
+   "warm_step_ms_p95": 189.613
+  },
+  {
+   "assemble_ms_p50": null,
+   "bytes_measured": 35950592,
+   "bytes_per_revision": 1089412,
+   "bytes_projected_at_10k": 10898476435,
+   "direct_sql_ms": {},
+   "extra": {},
+   "extrapolated": true,
+   "materialize_ms_p50": 33.635,
+   "materialize_ms_p95": 143.291,
+   "notes": [],
+   "per_table_bytes": {
+    "blob": 22720512,
+    "graph_chunk": 1384448,
+    "graph_chunk_link": 9195520,
+    "sqlite_autoindex_blob_1": 1335296,
+    "sqlite_autoindex_graph_chunk_1": 1335296,
+    "sqlite_autoindex_session_state_1": 4096,
+    "sqlite_schema": 32768,
+    "store_event": 4096,
+    "suppression": 4096,
+    "usage_snapshot": 4096
+   },
+   "query_ms": {
+    "dependencies": {
+     "n": 1,
+     "p50": 0.004,
+     "p95": 0.004
+    },
+    "dependents": {
+     "n": 1,
+     "p50": 0.001,
+     "p95": 0.001
+    },
+    "layer": {
+     "n": 1,
+     "p50": 2.085,
+     "p95": 2.085
+    },
+    "path": {
+     "n": 1,
+     "p50": 0.02,
+     "p95": 0.02
+    }
+   },
+   "record_ms_p50": 43.528,
+   "record_ms_p95": 158.069,
+   "record_ms_total_s": 1.87,
+   "revisions_in_workload": 10004,
+   "revisions_written": 33,
+   "rows_per_revision": 4823.8,
+   "rows_written": 159185,
+   "scaling_claim": "O(changed) new chunks + O(modules) link rows per revision",
+   "strategy": "CHUNKED: content-defined chunks; every revision links every chunk",
+   "usage_basis": "dbstat",
+   "warm_step_ms_p50": 70.572,
+   "warm_step_ms_p95": 192.028
+  },
+  {
+   "assemble_ms_p50": null,
+   "bytes_measured": 190779392,
+   "bytes_per_revision": 19070,
+   "bytes_projected_at_10k": 190779392,
+   "direct_sql_ms": {},
+   "extra": {},
+   "extrapolated": false,
+   "materialize_ms_p50": 71.589,
+   "materialize_ms_p95": 196.314,
+   "notes": [
+    "fan-in needs a full trie walk: chunks are keyed by source module",
+    "a reverse (dst-keyed) index would double the write cost"
+   ],
+   "per_table_bytes": {
+    "blob": 104157184,
+    "graph_chunk": 27828224,
+    "graph_chunk_link": 1298432,
+    "graph_snapshot": 1085440,
+    "graph_snapshot_base": 544768,
+    "sqlite_autoindex_blob_1": 27680768,
+    "sqlite_autoindex_graph_chunk_1": 27680768,
+    "sqlite_autoindex_graph_snapshot_1": 536576,
+    "sqlite_schema": 32768,
+    "usage_snapshot": 4096
+   },
+   "query_ms": {
+    "delta_adjacent": {
+     "n": 59,
+     "p50": 378.102,
+     "p95": 426.456
+    },
+    "delta_distant": {
+     "n": 59,
+     "p50": 380.711,
+     "p95": 447.334
+    },
+    "dependencies": {
+     "n": 244,
+     "p50": 0.008,
+     "p95": 0.018
+    },
+    "dependents": {
+     "n": 244,
+     "p50": 0.003,
+     "p95": 0.005
+    },
+    "layer": {
+     "n": 244,
+     "p50": 17.45,
+     "p95": 20.959
+    },
+    "path": {
+     "n": 244,
+     "p50": 0.645,
+     "p95": 2.827
+    }
+   },
+   "record_ms_p50": 0.958,
+   "record_ms_p95": 28.131,
+   "record_ms_total_s": 39.72,
+   "revisions_in_workload": 10004,
+   "revisions_written": 10004,
+   "rows_per_revision": 68.4,
+   "rows_written": 684036,
+   "scaling_claim": "O(changed x log n) path-copied rows per revision",
+   "strategy": "MERKLE: full snapshot per revision, persistent trie, path-copied",
+   "usage_basis": "dbstat",
+   "warm_step_ms_p50": 106.957,
+   "warm_step_ms_p95": 229.084
+  },
+  {
+   "assemble_ms_p50": null,
+   "bytes_measured": 45654016,
+   "bytes_per_revision": 4564,
+   "bytes_projected_at_10k": 45654016,
+   "direct_sql_ms": {},
+   "extra": {},
+   "extrapolated": false,
+   "materialize_ms_p50": 59.597,
+   "materialize_ms_p95": 180.143,
+   "notes": [
+    "substrate: 25041 blob-scoped cache rows in 1097 ms (0.044 ms each)"
+   ],
+   "per_table_bytes": {
+    "blob": 34402304,
+    "cache": 4902912,
+    "cache_analyzer": 778240,
+    "cache_epoch": 262144,
+    "cache_input": 1159168,
+    "sqlite_autoindex_blob_1": 2035712,
+    "sqlite_autoindex_cache_1": 2142208,
+    "sqlite_schema": 32768,
+    "suppression": 4096,
+    "usage_snapshot": 4096
+   },
+   "query_ms": {
+    "delta_adjacent": {
+     "n": 59,
+     "p50": 233.753,
+     "p95": 272.239
+    },
+    "delta_distant": {
+     "n": 59,
+     "p50": 117.289,
+     "p95": 250.058
+    },
+    "dependencies": {
+     "n": 244,
+     "p50": 0.008,
+     "p95": 0.018
+    },
+    "dependents": {
+     "n": 244,
+     "p50": 0.003,
+     "p95": 0.006
+    },
+    "layer": {
+     "n": 244,
+     "p50": 15.577,
+     "p95": 21.168
+    },
+    "path": {
+     "n": 244,
+     "p50": 0.65,
+     "p95": 2.581
+    }
+   },
+   "record_ms_p50": null,
+   "record_ms_p95": null,
+   "record_ms_total_s": 0.0,
+   "revisions_in_workload": 10004,
+   "revisions_written": 10004,
+   "rows_per_revision": 5.0,
+   "rows_written": 50082,
+   "scaling_claim": "O(1) per revision; O(files) only when a revision is asked about",
+   "strategy": "PER_FILE: per-file rows keyed by blob, revision graph rebuilt on demand",
+   "usage_basis": "dbstat",
+   "warm_step_ms_p50": 0.019,
+   "warm_step_ms_p95": 0.092
+  }
+ ],
+ "walk": {
+  "blob_read_s": 0.87,
+  "distinct_blobs": 25041,
+  "extract_ms_total": 1033.9,
+  "history_read_s": 5.06,
+  "peak_rss_mib": 738.9,
+  "tree_read_ms": 9.95,
+  "walk_s": 353.2
+ },
+ "workload": {
+  "avg_changed_files_per_commit": 2.56,
+  "avg_graph_ops_per_commit": 36.3,
+  "build_seconds": 5.05,
+  "commits": 10004,
+  "commits_measured": 10004,
+  "distinct_blobs": 25041,
+  "file_ops": {
+   "add": 441,
+   "delete": 143,
+   "edit": 22599,
+   "move": 203
+  },
+  "git_dir_bytes": 13203631,
+  "graph_edges_at_head": 33200,
+  "graph_nodes_at_head": 20825,
+  "graph_sizes_sampled": [
+   [
+    0,
+    9372
+   ],
+   [
+    200,
+    47040
+   ],
+   [
+    400,
+    47122
+   ],
+   [
+    600,
+    47153
+   ],
+   [
+    800,
+    47190
+   ],
+   [
+    1000,
+    47430
+   ],
+   [
+    1200,
+    47525
+   ],
+   [
+    1400,
+    47710
+   ],
+   [
+    1600,
+    48055
+   ],
+   [
+    1800,
+    48205
+   ],
+   [
+    2000,
+    48235
+   ],
+   [
+    2200,
+    48337
+   ],
+   [
+    2400,
+    48402
+   ],
+   [
+    2600,
+    48586
+   ],
+   [
+    2800,
+    48714
+   ],
+   [
+    3000,
+    49084
+   ],
+   [
+    3200,
+    49289
+   ],
+   [
+    3400,
+    49420
+   ],
+   [
+    3600,
+    49588
+   ],
+   [
+    3800,
+    49563
+   ],
+   [
+    4000,
+    49796
+   ],
+   [
+    4200,
+    49893
+   ],
+   [
+    4400,
+    50122
+   ],
+   [
+    4600,
+    50316
+   ],
+   [
+    4800,
+    50493
+   ],
+   [
+    5000,
+    50448
+   ],
+   [
+    5200,
+    50533
+   ],
+   [
+    5400,
+    50705
+   ],
+   [
+    5600,
+    50840
+   ],
+   [
+    5800,
+    50883
+   ],
+   [
+    6000,
+    50997
+   ],
+   [
+    6200,
+    51156
+   ],
+   [
+    6400,
+    51345
+   ],
+   [
+    6600,
+    51365
+   ],
+   [
+    6800,
+    51651
+   ],
+   [
+    7000,
+    51840
+   ],
+   [
+    7200,
+    52032
+   ],
+   [
+    7400,
+    52311
+   ],
+   [
+    7600,
+    52440
+   ],
+   [
+    7800,
+    52539
+   ],
+   [
+    8000,
+    52738
+   ],
+   [
+    8200,
+    52760
+   ],
+   [
+    8400,
+    52857
+   ],
+   [
+    8600,
+    53113
+   ],
+   [
+    8800,
+    53298
+   ],
+   [
+    9000,
+    53395
+   ],
+   [
+    9200,
+    53527
+   ],
+   [
+    9400,
+    53682
+   ],
+   [
+    9600,
+    53884
+   ],
+   [
+    9800,
+    54087
+   ],
+   [
+    10000,
+    54032
+   ],
+   [
+    10003,
+    54025
+   ]
+  ],
+  "modules_at_head": 2298,
+  "probe_revisions": 244
+ }
+}

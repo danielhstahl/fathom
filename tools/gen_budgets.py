@@ -45,9 +45,12 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "of `cold.index.ms`."),
     ("cold.graph.ms", {"small": 60_000, "medium": 480_000, "large": 1_800_000, "xlarge": 6_000_000},
      "ms", "p95",
-     "Graph lane, lazy and interruptible (§8.5). Per-commit cost must *fall* with size "
-     "(structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, "
-     "carried here rather than restated. `s3` may rewrite these with measured numbers."),
+     "Graph lane, lazy and interruptible (§8.5). The small-class value is `e3.2`'s own 60 s/1 000 "
+     "commits, carried here rather than restated. `s3` measured the *write* half of this lane at "
+     "0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 §13.7) — "
+     "about 7 s per 10 000 commits against this budget — so it stays where `e3.2` put it: the lane "
+     "is not write-bound, it is materialisation-bound, and that number has a budget of its own "
+     "(`graph.materialise_revision.ms`)."),
     # --- warm re-index ----------------------------------------------------------
     ("warm.reindex.ms", {"small": 150, "medium": 200, "large": 300, "xlarge": 400},
      "ms", "p95",
@@ -77,7 +80,21 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
     ("warm.graph.marginal.ms", {"small": 50, "medium": 60, "large": 80, "xlarge": 120},
      "ms", "p95",
      "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s "
-     "'under 50 ms per new commit'."),
+     "'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it "
+     "chose on the prototype (ADR-004 §13.7): the policy is O(changed files), so this budget "
+     "does not have to grow with the repository."),
+    ("graph.materialise_revision.ms", {"small": 64, "medium": 256, "large": 600, "xlarge": 1200},
+     "ms", "p95",
+     "Loading one revision's whole graph into the pane about to ask five questions of it — "
+     "`e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only "
+     "graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + "
+     "33 200 edges on a 10 004-commit prototype store (ADR-004 §13.7), flat across every storage "
+     "strategy, and paid when an episode is *selected*, not on a keystroke (that one is "
+     "`query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the "
+     "prototype floor with 1.25× headroom — `medium` is the only class the spike measured, and the "
+     "other three are that shape scaled by the row counts in §11.6. Rust is expected to clear it by "
+     "5–10×; the budget exists so that a Rust implementation which does not is a red build rather "
+     "than a surprise, because this is the one graph latency no other budget covers."),
     # --- query latency, keystroke path ------------------------------------------
     ("query.timeline.ms", {"small": 8, "medium": 12, "large": 20, "xlarge": 30}, "ms", "p95",
      "One page (100 episodes) of the episode rail with review state joined in. Inside the "
@@ -165,10 +182,17 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
                                       "xlarge": 4_096}, "bytes", "p50",
      "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: "
      "2 462 B/commit (spine) + 225 B/commit (episode, risk)."),
-    ("store.bytes_per_commit_graph", {"small": 24_576, "medium": 24_576, "large": 24_576,
-                                      "xlarge": 24_576}, "bytes", "p50",
-     "Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is "
-     "50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it."),
+    ("store.bytes_per_commit_graph", {"small": 32_768, "medium": 32_768, "large": 32_768,
+                                      "xlarge": 32_768}, "bytes", "p50",
+     "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision "
+     "plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph "
+     "over 10 004 commits (ADR-004 §13.7). 32 KiB is that measurement with 1.47× headroom — the "
+     "same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It "
+     "replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot "
+     "with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision "
+     "unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a "
+     "different shape rather than a smaller one. `e3.2`'s node-id interning should take the real "
+     "figure near 8 KiB, and budgets ratchet, so it tightens then."),
     ("cache.budget.mib", {"small": 256, "medium": 512, "large": 2_048, "xlarge": 4_096},
      "MiB", "ceiling",
      "LRU cap on class-R cache rows and their blobs: measured as 51 % of store bytes in "

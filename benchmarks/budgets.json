@@ -76,7 +76,7 @@
    "budget": 60000,
    "family": "cold.graph.ms",
    "id": "cold.graph.ms.small",
-   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). Per-commit cost must *fall* with size (structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` may rewrite these with measured numbers.",
+   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 \u00a713.7) \u2014 about 7 s per 10 000 commits against this budget \u2014 so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`).",
    "size_class": "small",
    "statistic": "p95",
    "unit": "ms"
@@ -85,7 +85,7 @@
    "budget": 480000,
    "family": "cold.graph.ms",
    "id": "cold.graph.ms.medium",
-   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). Per-commit cost must *fall* with size (structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` may rewrite these with measured numbers.",
+   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 \u00a713.7) \u2014 about 7 s per 10 000 commits against this budget \u2014 so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`).",
    "size_class": "medium",
    "statistic": "p95",
    "unit": "ms"
@@ -94,7 +94,7 @@
    "budget": 1800000,
    "family": "cold.graph.ms",
    "id": "cold.graph.ms.large",
-   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). Per-commit cost must *fall* with size (structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` may rewrite these with measured numbers.",
+   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 \u00a713.7) \u2014 about 7 s per 10 000 commits against this budget \u2014 so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`).",
    "size_class": "large",
    "statistic": "p95",
    "unit": "ms"
@@ -103,7 +103,7 @@
    "budget": 6000000,
    "family": "cold.graph.ms",
    "id": "cold.graph.ms.xlarge",
-   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). Per-commit cost must *fall* with size (structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` may rewrite these with measured numbers.",
+   "rationale": "Graph lane, lazy and interruptible (\u00a78.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 \u00a713.7) \u2014 about 7 s per 10 000 commits against this budget \u2014 so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`).",
    "size_class": "xlarge",
    "statistic": "p95",
    "unit": "ms"
@@ -292,7 +292,7 @@
    "budget": 50,
    "family": "warm.graph.marginal.ms",
    "id": "warm.graph.marginal.ms.small",
-   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'.",
+   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it chose on the prototype (ADR-004 \u00a713.7): the policy is O(changed files), so this budget does not have to grow with the repository.",
    "size_class": "small",
    "statistic": "p95",
    "unit": "ms"
@@ -301,7 +301,7 @@
    "budget": 60,
    "family": "warm.graph.marginal.ms",
    "id": "warm.graph.marginal.ms.medium",
-   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'.",
+   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it chose on the prototype (ADR-004 \u00a713.7): the policy is O(changed files), so this budget does not have to grow with the repository.",
    "size_class": "medium",
    "statistic": "p95",
    "unit": "ms"
@@ -310,7 +310,7 @@
    "budget": 80,
    "family": "warm.graph.marginal.ms",
    "id": "warm.graph.marginal.ms.large",
-   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'.",
+   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it chose on the prototype (ADR-004 \u00a713.7): the policy is O(changed files), so this budget does not have to grow with the repository.",
    "size_class": "large",
    "statistic": "p95",
    "unit": "ms"
@@ -319,7 +319,43 @@
    "budget": 120,
    "family": "warm.graph.marginal.ms",
    "id": "warm.graph.marginal.ms.xlarge",
-   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'.",
+   "rationale": "Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it chose on the prototype (ADR-004 \u00a713.7): the policy is O(changed files), so this budget does not have to grow with the repository.",
+   "size_class": "xlarge",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 64,
+   "family": "graph.materialise_revision.ms",
+   "id": "graph.materialise_revision.ms.small",
+   "rationale": "Loading one revision's whole graph into the pane about to ask five questions of it \u2014 `e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + 33 200 edges on a 10 004-commit prototype store (ADR-004 \u00a713.7), flat across every storage strategy, and paid when an episode is *selected*, not on a keystroke (that one is `query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the prototype floor with 1.25\u00d7 headroom \u2014 `medium` is the only class the spike measured, and the other three are that shape scaled by the row counts in \u00a711.6. Rust is expected to clear it by 5\u201310\u00d7; the budget exists so that a Rust implementation which does not is a red build rather than a surprise, because this is the one graph latency no other budget covers.",
+   "size_class": "small",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 256,
+   "family": "graph.materialise_revision.ms",
+   "id": "graph.materialise_revision.ms.medium",
+   "rationale": "Loading one revision's whole graph into the pane about to ask five questions of it \u2014 `e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + 33 200 edges on a 10 004-commit prototype store (ADR-004 \u00a713.7), flat across every storage strategy, and paid when an episode is *selected*, not on a keystroke (that one is `query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the prototype floor with 1.25\u00d7 headroom \u2014 `medium` is the only class the spike measured, and the other three are that shape scaled by the row counts in \u00a711.6. Rust is expected to clear it by 5\u201310\u00d7; the budget exists so that a Rust implementation which does not is a red build rather than a surprise, because this is the one graph latency no other budget covers.",
+   "size_class": "medium",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 600,
+   "family": "graph.materialise_revision.ms",
+   "id": "graph.materialise_revision.ms.large",
+   "rationale": "Loading one revision's whole graph into the pane about to ask five questions of it \u2014 `e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + 33 200 edges on a 10 004-commit prototype store (ADR-004 \u00a713.7), flat across every storage strategy, and paid when an episode is *selected*, not on a keystroke (that one is `query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the prototype floor with 1.25\u00d7 headroom \u2014 `medium` is the only class the spike measured, and the other three are that shape scaled by the row counts in \u00a711.6. Rust is expected to clear it by 5\u201310\u00d7; the budget exists so that a Rust implementation which does not is a red build rather than a surprise, because this is the one graph latency no other budget covers.",
+   "size_class": "large",
+   "statistic": "p95",
+   "unit": "ms"
+  },
+  {
+   "budget": 1200,
+   "family": "graph.materialise_revision.ms",
+   "id": "graph.materialise_revision.ms.xlarge",
+   "rationale": "Loading one revision's whole graph into the pane about to ask five questions of it \u2014 `e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + 33 200 edges on a 10 004-commit prototype store (ADR-004 \u00a713.7), flat across every storage strategy, and paid when an episode is *selected*, not on a keystroke (that one is `query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the prototype floor with 1.25\u00d7 headroom \u2014 `medium` is the only class the spike measured, and the other three are that shape scaled by the row counts in \u00a711.6. Rust is expected to clear it by 5\u201310\u00d7; the budget exists so that a Rust implementation which does not is a red build rather than a surprise, because this is the one graph latency no other budget covers.",
    "size_class": "xlarge",
    "statistic": "p95",
    "unit": "ms"
@@ -1189,37 +1225,37 @@
    "unit": "bytes"
   },
   {
-   "budget": 24576,
+   "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.small",
-   "rationale": "Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is 50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
    "size_class": "small",
    "statistic": "p50",
    "unit": "bytes"
   },
   {
-   "budget": 24576,
+   "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.medium",
-   "rationale": "Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is 50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
    "size_class": "medium",
    "statistic": "p50",
    "unit": "bytes"
   },
   {
-   "budget": 24576,
+   "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.large",
-   "rationale": "Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is 50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
    "size_class": "large",
    "statistic": "p50",
    "unit": "bytes"
   },
   {
-   "budget": 24576,
+   "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.xlarge",
-   "rationale": "Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is 50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
    "size_class": "xlarge",
    "statistic": "p50",
    "unit": "bytes"

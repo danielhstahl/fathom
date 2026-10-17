@@ -1,7 +1,10 @@
 # ADR-004: storage, indexing and cache strategy
 
-- **Status**: Accepted, with one policy left explicitly open (§14.1, pending spike `s3`)
-- **Date**: 2026-10-14
+- **Status**: Accepted. The one policy left open at acceptance (§14.1, the graph-snapshot
+  strategy) was **closed by spike `s3` (`reco-279`) on 2026-10-17**: the measurement is §13.7,
+  the decision is §14.1, and no DDL changed — the deferral was shaped so that it would cost
+  configuration, not a migration, and that is what it cost.
+- **Date**: 2026-10-14 (amended 2026-10-17 by `reco-279`)
 - **Ticket / plan key**: `reco-79b` / `e0.4`
 - **Implements**: [ADR-001](0001-product-thesis.md) §7 principles 4 (deterministic), 5 (local by
   default), 6 (degrade, never block), 7 (`unknown` is a value), 8 (stability across rewrites),
@@ -16,13 +19,20 @@
   (`e2.11` `EpisodeDelta`), `reco-4ey` (`e2.10` card), `reco-p3i` (`e6.4` MCP), `reco-ld8`
   (`e1.10` `doctor`/`stats`), `reco-pef` (`e0.11` budget gate), `reco-66q` (`e7.2` real-repo
   perf pass), `reco-e77` (`e0.7` CI harness)
-- **Depends on**: spike `s3` (`reco-279`) for the graph-snapshot storage *policy*. The schema is
-  shaped to hold all three candidate strategies, so the spike chooses between configuration
-  settings instead of forcing a migration (§14.1).
+- **Depends on**: spike `s3` (`reco-279`) for the graph-snapshot storage *policy* —
+  **satisfied**. All three candidate strategies were written into §4.6's real DDL and measured
+  on a 10 004-commit repository (§13.7); the chosen policy and the two configuration values
+  are in §14.1, and the schema, the cache key, the durability classes and the ledger were not
+  touched, exactly as §14.1 predicted. [The spike report](../concepts/graph-storage.md) holds
+  the method and the limits.
 - **Executed by**: `src/recommender/store/` (`schema.py`, `cache.py`, `git.py`, `retention.py`,
   `bench.py`), `tests/test_storage_contract.py` (47 storage clauses; 79 tests with ADR-005's),
   `benchmarks/budgets.json` + `tools/gen_budgets.py`,
-  `benchmarks/reports/adr004-baseline.json`, `tools/gen_adr_tables.py`
+  `benchmarks/reports/adr004-baseline.json`, `tools/gen_adr_tables.py`.
+  §13.7/§14.1 additionally executed by the `s3` spike: `src/recommender/store/graphsnap.py`
+  (the five strategies, all on this ADR's DDL) + `graphbench.py` (the workload and the query
+  battery), `benchmarks/reports/s3-graph-snapshots.json`, `tools/gen_graph_tables.py`,
+  `tests/test_graph_spike_contract.py`, [graph-storage.md](../concepts/graph-storage.md)
 
 > **The rule this ADR exists to make unavoidable.**
 > A cached analysis result is addressed by *everything it actually depended on*. Therefore
@@ -263,6 +273,19 @@ the span-level guard (§8.3). ADR-005's "unprojectable is counted, not dropped" 
 `graph_chunk` + `graph_chunk_link` (content-defined chunking). Both are written by the same path,
 so **`s3` measures three policies against one schema** and its answer changes configuration, not
 DDL (§14.1).
+
+**`s3` did that, and the claim held: no DDL changed.** The policy it chose (§14.1) writes
+per-revision *ops* into `graph_delta`, an anchor per `graph.chain_full_every` revisions as one
+manifest blob in `blob` + a `graph_chunk`/`graph_chunk_link` pair, and nothing per revision
+beyond that — the substrate lives in the §4.5 `cache`+`blob` pair, keyed by blob. Three rough
+edges surfaced by writing into the schema rather than reading it, none of them worth a
+migration and all of them worth knowing before `e3.2` discovers them: `graph_delta` cannot name
+a node op without `dst = ''` (`dst` is in the PK and not nullable);
+`graph_chunk_link`'s FK reaches `graph_chunk` and not `blob`, so an anchor's manifest needs a
+`graph_chunk` row of its own; and two commits reaching one tree cannot both have a
+`graph_snapshot` row, so the chain must be *walked*, never patched with `INSERT OR REPLACE`
+(D16's rule, with a worse failure mode if broken). Details and numbers:
+[graph-storage.md](../concepts/graph-storage.md).
 
 ### 4.7 The single computation site
 
@@ -617,6 +640,14 @@ that `query.graph_dependents.ms` holds, and **both belong to `s3`** (§14.1). Th
 interruptible and resumable (R6): a half-built lane surfaces as a stated partial in `v_unknowns`,
 never as a missing architecture view.
 
+**`s3` set both to 32** (§14.1), on the measurement in §13.7: 32 is the smallest anchor period
+whose bytes fit the budget **as it stood when the measurement was taken** (24 KiB then; §11
+records why it is 32 KiB now, and that change buys headroom for `e3.2`'s encoding, not a
+shorter chain — at N = 16 the anchor manifest is paid twice as often for a reconstruction
+latency measured identical to within 0.1 ms). It is therefore also the shortest chain walk on
+offer. The two keys are registered as configuration by the ticket that reads them (`e3.2`);
+until then these lines are their definition.
+
 ### 8.6 Cache LRU
 
 `cache.budget.mib` per size class (§11). Eviction is by `last_used_utc` with a protection set: rows
@@ -838,7 +869,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `cold.graph.ms` | ms | p95 | 1,800,000 | 480,000 | 60,000 | 6,000,000 | Graph lane, lazy and interruptible (§8.5). Per-commit cost must *fall* with size (structural sharing); the small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` may rewrite these with measured numbers. |
+| `cold.graph.ms` | ms | p95 | 1,800,000 | 480,000 | 60,000 | 6,000,000 | Graph lane, lazy and interruptible (§8.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 §13.7) — about 7 s per 10 000 commits against this budget — so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`). |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -847,6 +878,10 @@ is a budget row lookup, never an `if` in product code.
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
 | `cold.queue_visible.ms` | ms | p95 | 20,000 | 8,000 | 3,000 | 45,000 | Time to the first *useful* answer: queue populated, timeline browsable, graph lane still pending and labelled. This is the number `e1.12` (time-to-first-orientation < 60 s) actually depends on, which is why it is a separate budget and not a fraction of `cold.index.ms`. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `graph.materialise_revision.ms` | ms | p95 | 600 | 256 | 64 | 1,200 | Loading one revision's whole graph into the pane about to ask five questions of it — `e3.2`'s snapshot, in the representation `s3` chose. Added by `s3` because it is the only graph number the spike could not shrink: measured 70.9 ms p50 / 204.6 ms p95 at 20 825 nodes + 33 200 edges on a 10 004-commit prototype store (ADR-004 §13.7), flat across every storage strategy, and paid when an episode is *selected*, not on a keystroke (that one is `query.frame_store_budget.ms`, spent against a materialised graph). `medium` is the prototype floor with 1.25× headroom — `medium` is the only class the spike measured, and the other three are that shape scaled by the row counts in §11.6. Rust is expected to clear it by 5–10×; the budget exists so that a Rust implementation which does not is a red build rather than a surprise, because this is the one graph latency no other budget covers. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -938,7 +973,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `store.bytes_per_commit_graph` | bytes | p50 | 24,576 | 24,576 | 24,576 | 24,576 | Graph lane per revision with structural sharing. `e3.2`'s fixture ceiling is 50 KB/commit (50 MB per 1 000 commits); 24 KB is the budget and `s3` may move it. |
+| `store.bytes_per_commit_graph` | bytes | p50 | 32,768 | 32,768 | 32,768 | 32,768 | Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 §13.7). 32 KiB is that measurement with 1.47× headroom — the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -954,7 +989,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `warm.graph.marginal.ms` | ms | p95 | 80 | 60 | 50 | 120 | Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. |
+| `warm.graph.marginal.ms` | ms | p95 | 80 | 60 | 50 | 120 | Marginal cost of adding one revision to the graph lane. `small` is `e3.2`'s 'under 50 ms per new commit'. `s3` measured 0.68 ms p50 / 33 ms p95 for the policy it chose on the prototype (ADR-004 §13.7): the policy is O(changed files), so this budget does not have to grow with the repository. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1051,8 +1086,9 @@ Measured at 1 000 commits (§13.4), per commit: spine rows **2 462 B**, episode 
 cache rows plus their indexes **6 132 B**, blob payloads **2 093 B** — **12 046 B/commit** total,
 with the cache and every fixture analyzer's payload stored. Budgeted as
 `store.bytes_per_commit_spine = 4 KiB` (headroom for the hex-OID choice and for the columns `e1.2`
-will add) plus `store.bytes_per_commit_graph = 24 KiB` (under `e3.2`'s own 50 KB/commit fixture
-ceiling). Hence `store.size.mib` for `medium` ≈ 10 000 × 28 KiB + `cache.budget` ≈ 2 GiB, and so
+will add) plus `store.bytes_per_commit_graph = 32 KiB` — which is no longer a fixture ceiling but
+`s3`'s measurement of the policy it chose (22 335 B/revision, §13.7). Hence `store.size.mib` for
+`medium` ≈ 10 000 × 36 KiB + `cache.budget` ≈ 0.9 GiB against a 2 GiB ceiling, and so
 on down the row. **The size budgets are arithmetic on a measured byte model**, which is the only
 reason they are worth failing a build on.
 
@@ -1234,19 +1270,91 @@ Two related findings that are properties of the design rather than bugs in it:
   repository — a warm path bumps a counter, an FTS index merges a segment. A determinism claim that
   is sensitive to bookkeeping is a claim that will be turned off.
 
+### 13.7 The graph lane, measured (spike `s3`, `reco-279`)
+
+§14.1's one open question, measured by writing all five candidate storage strategies into §4.6's
+real DDL and running them over a real 10 004-commit repository of realistic shape (2 298 live
+modules, 20 825 nodes + 33 200 edges, 2.56 files and 36.3 graph ops per commit) built by
+`git fast-import` and read back through `git log -r --raw` / `git cat-file --batch`. Prototype
+floors like every other number in §13: Python, one container, a regex stand-in for `e3.1` —
+bytes carry to `fathom-store` because bytes are row layout, times are floors.
+
+Full method, limits and the query battery:
+[docs/concepts/graph-storage.md](../concepts/graph-storage.md). Reproduce with
+`PYTHONPATH=src python3 -m recommender.store.graphbench --report
+benchmarks/reports/s3-graph-snapshots.json`; the committed report is
+`benchmarks/reports/s3-graph-snapshots.json` and `test_graph_spike_report_matches_the_adr`
+checks this section's claims against it.
+
+<!-- BEGIN GENERATED: graph_spike_strategies -->
+| Strategy | Cost claim (stated before measuring) | B/revision | × budget | Projected at 10 000 rev | rows/rev | write p50 ms | cold materialise p95 ms | warm step p95 ms | Δ adjacent p95 ms | Δ 500 apart p95 ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **FULL** | O(nodes + edges) per revision | 16,737,373 | 681.05× | 155.94 GiB (projected) | 49225 | 1594.677 | 189.606 | 189.613 | — | — |
+| **CHUNKED** | O(changed) new chunks + O(modules) link rows per revision | 1,089,412 | 44.33× | 10.15 GiB (projected) | 4823.8 | 43.528 | 143.291 | 192.028 | — | — |
+| **MERKLE** | O(changed x log n) path-copied rows per revision | 19,070 | 0.78× | 181.9 MiB | 68.4 | 0.958 | 196.314 | 229.084 | 426.456 | 447.334 |
+| **PER_FILE** | O(1) per revision; O(files) only when a revision is asked about | 4,564 | 0.19× | 43.5 MiB | 5 | — | 180.143 | 0.092 | 272.239 | 250.058 |
+
+`store.bytes_per_commit_graph` at the time of measurement was **24,576 B/revision** (§11; it is 32 KiB now, and §14.1 says why). `write` is the cost of storing one revision; `cold materialise` is loading a whole revision's graph; `warm step` is the cursor moving one commit on a graph already in hand; the Δ columns are `e3.3`'s changed-edges query, adjacent and 500 revisions apart. Two kinds of `—`, and they mean opposite things: `PER_FILE` writes *nothing* per revision (its blob-keyed row was written when the file was first seen), and no delta is measured for `FULL` or `CHUNKED` because the only way they can answer one is to materialise *both* revisions and diff them — two of the cold-materialise figures in the previous column, which is a finding rather than a gap. `CHAIN` has no row here: it is swept per anchor period in the next table, because the anchor period is the one knob it has.
+<!-- END GENERATED: graph_spike_strategies -->
+
+<!-- BEGIN GENERATED: graph_spike_sweep -->
+| `graph.chain_full_every` | B/revision | × budget | of which the anchor manifest | rows/rev | write p50 ms | write p95 ms | cold materialise p95 ms | warm step p95 ms | `dependents(X)` p95 ms | Δ adjacent p95 ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| N = 8 | 39,062 | 1.59× | 23,415 | 312.2 | 0.769 | 33.148 | 209.535 | 0.314 | 0.005 | 0.22 |
+| N = 16 | 28,029 | 1.14× | 11,710 | 175.7 | 0.69 | 32.51 | 204.49 | 0.291 | 0.006 | 0.173 |
+| N = 32 | 22,335 | 0.91× | 5,847 | 107 | 0.66 | 31.96 | 204.555 | 0.381 | 0.006 | 0.194 |
+| N = 64 | 19,353 | 0.79× | 2,926 | 72.7 | 0.646 | 31.81 | 204.871 | 0.256 | 0.006 | 0.174 |
+| N = 128 | 17,597 | 0.72× | 1,466 | 55.4 | 0.639 | 30.929 | 202.761 | 0.231 | 0.006 | 0.248 |
+| N = 256 | 16,476 | 0.67× | 735 | 46.6 | 0.638 | 30.613 | 218.329 | 0.181 | 0.006 | 0.198 |
+
+The two right-hand columns are what an architecture pane and `e3.3` pay; the two `write` columns are what the lane pays per commit. Read down them: only the bytes move with N. That is the whole argument for choosing the anchor period on bytes and not on latency.
+<!-- END GENERATED: graph_spike_sweep -->
+
+Three things these numbers decide, in order of how much they surprised the writing of them:
+
+1. **The membership list, not the payload, is what a per-revision snapshot costs.** `CHUNKED`
+   shares every chunk payload by content and still costs 1 089 412 B/revision, because every
+   revision must still say which 2 298 chunks it contains. Any representation that spells out
+   a revision's whole graph pays that: `FULL` pays it 15× worse and `MERKLE` escapes it only
+   by making every read walk a tree.
+2. **Anchors are cheap only because their payload is shared.** The manifest is O(modules)
+   bytes per anchor, which is why `chain_full_every` moves bytes/revision from 39 KiB at N=8
+   to 16 KiB at N=256 while the delta rows themselves cost ~10 KiB regardless.
+3. **What survives the spike is materialisation, not storage.** Loading one revision's graph
+   is 70.9 ms p50 / 204.6 ms p95 in this prototype (chain, N = 32; every strategy lands in the
+   60–80 ms p50 band), and no byte budget touches it. The keystroke budget is safe (a warm
+   cursor step is one delta apply, 0.381 ms p95, and the sweep's p95 barely moves between
+   N = 8 and N = 256 because the anchor read dominates the reconstruction either way); the
+   *selection* path is what `e3.2` has to make fast in Rust, and it is named as a floor here
+   under its own budget (`graph.materialise_revision.ms`) rather than hidden in a pane.
+
 ---
 
 ## 14. Deferred, with named reasons
 
 Recorded rather than quietly implemented as code that pretends.
 
-1. **Graph snapshot policy — spike `s3` (`reco-279`).** Full snapshots, delta-chain windows and
-   content-defined chunking are all representable in §4.6; which is right at 10k commits is a
-   measurement this ADR refuses to guess. `s3` must return bytes and ms per revision per strategy,
-   incremental query latency, and values for `graph.chain_full_every` and
-   `graph.query.max_chain_walk`. **What its answer changes**: `store.bytes_per_commit_graph`,
-   `cold.graph.ms`, the `query.graph_*` budgets, `e3.2`'s approach. **What it does not change**:
-   the schema, the cache key, the durability classes, the ledger.
+1. **Graph snapshot policy — spike `s3` (`reco-279`).** **CLOSED 2026-10-17.** Full snapshots,
+   delta-chain windows and content-defined chunking were all written into §4.6 and measured on a
+   10 004-commit repository (§13.7). **Decided:** store a *delta* per revision (graph ops, in
+   `graph_delta`, both endpoints indexed), plus a shared content-addressed anchor every
+   **`graph.chain_full_every = 32`** revisions and a **`graph.query.max_chain_walk = 32`** cap
+   (a chain longer than the anchor period means an anchor was lost, which is §8.5's stated
+   partial, not a slow query); the per-file blob-keyed structural cache of §4.5/§5 is the
+   substrate the deltas are derived from, so warm cost stays O(changed files) as R1/R7 demand.
+   **Refused:** a full snapshot per revision unshared (16.7 MB/rev, 681× the byte budget),
+   content-defined chunking with a per-revision membership list (1.09 MB/rev, for the same
+   reason), and a persistent-trie snapshot — affordable at 19 KiB/rev but every read walks the
+   trie, so `dependents(X)` and `e3.3`'s delta each cost a full materialisation unless a
+   reverse-keyed index doubles the write cost. **What its answer changed**:
+   `store.bytes_per_commit_graph` moved 24 KiB → 32 KiB with the measurement behind it (§11),
+   and `e3.2`'s approach is now "ops + anchors + per-file substrate" (see
+   [graph-storage.md](../concepts/graph-storage.md) §"What changes in `e3.2`'s approach").
+   **What it did not change**, as predicted: the schema, the cache key, the durability classes,
+   the ledger. What it *left open* for `e3.2`: registering the two `graph.*` config keys
+   (§8.5), the node-id interning that should take the delta rows to ~8 KiB/rev, and re-running
+   the spike if `e3.1` chooses symbol-granularity edges (an order of magnitude more rows per
+   revision, and every number here scales with it).
 2. **Windows durability and locking** — `FlushFileBuffers` semantics, rename-over-open-file retry,
    `LockFileEx`. Not testable here; §7.8 and §9.3 are *specified*, not *verified*, until `e0.7`'s
    matrix runs them.
@@ -1332,6 +1440,10 @@ PYTHONPATH=src python3 -m recommender.store.bench --report benchmarks/reports/ad
 # quick version (SQL feature and write-discipline facts only; the invalidation matrix and
 # the pipeline numbers live in the big fixture, so `--quick` does not report them):
 PYTHONPATH=src python3 -m recommender.store.bench --quick --json
+# §13.7 / §14.1 — the graph-lane policy `s3` measured (~15 min; --quick is a ~1 min smoke run):
+PYTHONPATH=src python3 -m recommender.store.graphbench \
+    --report benchmarks/reports/s3-graph-snapshots.json
+python3 tools/gen_graph_tables.py check   # §13.7 and graph-storage.md match that report
 ```
 
 | Acceptance criterion | Test that enforces it |
@@ -1347,6 +1459,7 @@ PYTHONPATH=src python3 -m recommender.store.bench --quick --json
 | Determinism (§10.2), including the mixed warm-then-rebuild path | `test_two_independent_builds_have_equal_content_digest`, `test_reindex_never_destroys_derived_rows_under_the_cache` |
 | **Deleting `.fathom/` rebuilds identical state modulo reviews** | `test_deleting_fathom_rebuilds_identical_state_modulo_reviews` |
 | Named perf budgets per size class that `e0.11` can assert on | `test_budgets_file_is_machine_readable_and_complete`, `test_budgets_agree_with_ticket_anchors`, `test_adr_budget_table_matches_budgets_json`, `test_measured_baseline_report_exists` |
+| §14.1's graph-snapshot policy is measured, not guessed, and the recorded decision is the one the measurement produced | `test_graph_spike_report_matches_the_adr`, `test_graph_spike_decision_rule_reproduces_the_recorded_policy`, `test_graph_spike_budget_moves_are_the_measured_ones`, `test_graph_spike_tables_are_in_sync_with_the_report` (all in `tests/test_graph_spike_contract.py`) |
 
 Like ADR-005 §13, the rule is that **a clause with no test is a clause that will drift**:
 `test_no_change_invalidates_nothing` fails if a key ever depends on a clock;
