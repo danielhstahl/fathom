@@ -15,3 +15,4 @@ tmp.txt
 # cargo-dist writes local artefacts here; the committed release artefacts live in GitHub releases.
 dist/
 # --- end Rust ------------------------------------------------------------------------------------
+.transcripts/
