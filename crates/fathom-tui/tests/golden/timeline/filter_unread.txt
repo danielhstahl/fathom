@@ -31,7 +31,7 @@ members  e8f1:0 e8f1:1 e8f1:2 +1
          more                      
                                    
 delta    shape/deps/tests/findings:
-… 6 more rows — `<C-w>o` gives thi…
+… 9 more rows — `<C-w>o` gives thi…
 
 ## card strip
 

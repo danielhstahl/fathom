@@ -25,7 +25,7 @@ use fathom_tui::app::{App, Model};
 use fathom_tui::index::Facts;
 use fathom_tui::keymap::Keymap;
 use fathom_tui::timeline::{
-    self, AuthorKind, Batch, Columns, Dimension, Episode, Filter, GroupBy, ReviewState, Slot,
+    self, AuthorKind, Batch, Columns, Dimension, Episode, Filter, GroupBy, ReviewState, Risk, Slot,
 };
 use fathom_tui::views::ViewId;
 
@@ -175,7 +175,11 @@ fn the_columns_drop_in_the_order_the_adr_fixes_and_the_glyph_survives_every_one(
 
 fn rail_at(width: usize) -> String {
     let mut rows = mock();
-    rows[0].risk = Some(82);
+    // A risk number from a fixture, because this build's risk source is `reco-c05`'s read and a
+    // `--test` binary has no store. `Risk::new` is the shape for exactly that: the number, with no
+    // reasons invented to go with it (the card prints it as an unexplained number rather than a
+    // confident one).
+    rows[0].risk = Some(Risk::new(82));
     let mut rail = timeline::Rail::new(NOW);
     rail.load(Batch::new("fixture", rows));
     rail.text(width, 3).join("\n")

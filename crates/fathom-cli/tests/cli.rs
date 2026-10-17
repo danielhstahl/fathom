@@ -1096,16 +1096,21 @@ fn an_empty_frame_names_the_index_it_actually_found() {
     // The index state the caller actually read, printed instead of the command that would do nothing.
     let line = filled
         .lines()
-        .find(|line| line.contains("index epoch 1 ready · "))
+        .find(|line| line.starts_with('\u{23fa}'))
         .unwrap_or_else(|| {
             panic!("the indexed frame should print the epoch and the counts:\n{filled}")
         });
-    assert!(line.contains(" commits") && line.contains(" eps"), "{line}");
+    assert!(line.contains("eps"), "{line}");
     // `reco-wzt` rewrote this half of the sentence. It used to name the missing episode read; the read
-    // exists now, so the remedy is the key that reaches the pane that has rows.
+    // exists now, and so does the queue that lists what it found — so the frame prints the episodes,
+    // the epoch it read them from and the order it put them in, instead of a remedy.
     assert!(
-        filled.contains("`t` opens the timeline"),
-        "the indexed frame should point at the timeline, which lists them:\n{filled}"
+        filled.contains("from index epoch 1 (ready)"),
+        "the indexed frame should say which epoch it listed:\n{filled}"
+    );
+    assert!(
+        filled.contains("order: spine-1"),
+        "the indexed frame should say what order the queue is in:\n{filled}"
     );
     assert!(
         !filled.contains("run `fathom index`") && !filled.contains("run fathom index"),

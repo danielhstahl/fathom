@@ -38,14 +38,15 @@ mod render;
 mod session;
 
 pub use card::lines as card_lines;
+pub use card::risk_lines;
 pub use days::{date_only, date_or_any, day_label, day_start, relative};
 pub use editor::{Editor, Next as EditorNext, Row as EditorRow, Stage as EditorStage, Target};
 pub use episode::{
-    AuthorKind, Batch, Episode, EpisodeSource, GroupKey, MemorySource, NoIndex, ReviewState,
+    AuthorKind, Batch, Episode, EpisodeSource, GroupKey, MemorySource, NoIndex, ReviewState, Risk,
 };
 pub use filter::{Dimension, FACET_CAP, Facets, Filter, GroupBy};
 pub use rail::{Anchor, Rail, RailStats, Slot};
-pub use render::{Columns, SPARK_CELLS, Scale};
+pub use render::{Columns, SPARK_CELLS, Scale, compact};
 pub use session::{KEY_FILTER, KEY_MEMBERS, KEY_SELECTION, Restore, SESSION_MAX, Session};
 
 use fathom_core::time::Timestamp;
@@ -151,6 +152,69 @@ impl Timeline {
     #[must_use]
     pub fn selected(&self) -> Option<&Episode> {
         self.rail.selected()
+    }
+
+    /// Where the loaded rows came from, as the strip prints it.
+    #[must_use]
+    pub fn origin(&self) -> &str {
+        self.rail.origin()
+    }
+
+    /// The rows the filter selects, as episodes, in the rail's order (newest first).
+    ///
+    /// This is the set the queue ranks: a filter has to mean the same thing in `t` and in `q`, or the
+    /// reviewer is shown a ranking of a list they did not ask for (`reco-c05`).
+    #[must_use]
+    pub fn on_screen(&self) -> Vec<&Episode> {
+        self.rail
+            .order()
+            .into_iter()
+            .filter_map(|index| self.rail.episodes().get(index))
+            .collect()
+    }
+
+    /// The same rows, riskiest first — `reco-c05`'s answer to "which three episodes are the riskiest",
+    /// ordered by the number the ranking handed over rather than by anything computed here.
+    ///
+    /// The order itself lives in the rail, next to the display order, and is rebuilt with it: a frame
+    /// that re-ranked every held episode would cost what the index costs.
+    #[must_use]
+    pub fn ranked(&self) -> Vec<&Episode> {
+        self.rail
+            .ranked()
+            .iter()
+            .filter_map(|index| self.rail.episodes().get(*index))
+            .collect()
+    }
+
+    /// How many rows the queue has — the number the motion keys clamp against.
+    #[must_use]
+    pub fn ranked_len(&self) -> usize {
+        self.rail.ranked().len()
+    }
+
+    /// The queue's row `at`, without building the list it came from.
+    #[must_use]
+    pub fn ranked_row(&self, at: usize) -> Option<&Episode> {
+        self.rail
+            .ranked()
+            .get(at)
+            .and_then(|index| self.rail.episodes().get(*index))
+    }
+
+    /// `(rows carrying a ranking, rows still unread)` over the rows on screen — the strip's and the
+    /// status line's numbers.
+    #[must_use]
+    pub fn queue_counts(&self) -> (usize, usize) {
+        self.rail.counts()
+    }
+
+    /// How many rows on screen are still unread — the `queue N open` number, and the only honest one
+    /// the shell can produce without a store handle. Counted when the order was built, not at draw
+    /// time: a status line that costs O(episodes) per frame is what `timeline_bench` exists to catch.
+    #[must_use]
+    pub fn unread(&self) -> usize {
+        self.rail.counts().1
     }
 
     // --- the filter -------------------------------------------------------------------------------

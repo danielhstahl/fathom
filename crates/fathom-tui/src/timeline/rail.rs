@@ -187,6 +187,16 @@ pub struct Rail {
     kept: usize,
     /// The order is stale and will be rebuilt before anything reads it.
     dirty: bool,
+    /// The rows on screen in queue order — episode indices, riskiest first (`reco-c05`). Built here
+    /// for the same reason the display order is: `rebuild()` is the only place the rail is
+    /// O(episodes), and a worklist that re-ranked on every frame would cost what the index costs
+    /// (which is what `timeline_bench` measures).
+    ranked: Vec<usize>,
+    /// How many on-screen rows carry a ranking, and how many are unread. Both are printed every
+    /// frame — the strip's `N ranked of M held` and the status line's `queue N open` — so neither
+    /// may be a pass over the index at draw time.
+    risked: usize,
+    unread: usize,
     /// The last re-attach: the tier that fired, and its words.
     pub reattached: Option<(u8, String)>,
     /// The counters.
@@ -219,6 +229,9 @@ impl Default for Rail {
             why_empty: None,
             now: Timestamp::UNIX_EPOCH,
             kept: 0,
+            ranked: Vec::new(),
+            risked: 0,
+            unread: 0,
             dirty: true,
             reattached: None,
             stats: RailStats::default(),
@@ -353,6 +366,20 @@ impl Rail {
         self.slots.iter().filter_map(Slot::index).collect()
     }
 
+    /// The on-screen rows in queue order: episode indices, riskiest first, unranked ones last
+    /// (`reco-c05`). A slice, because the worklist draws a window of it and must not rebuild one.
+    #[must_use]
+    pub fn ranked(&self) -> &[usize] {
+        &self.ranked
+    }
+
+    /// How many on-screen rows carry a ranking, and how many are still unread: the strip's and the
+    /// status line's numbers, counted when the order was built rather than at draw time.
+    #[must_use]
+    pub fn counts(&self) -> (usize, usize) {
+        (self.risked, self.unread)
+    }
+
     /// The first row sharing one of these member SHAs — ADR-003 §6 tier 3, used when a session is
     /// restored onto an index whose ids have moved.
     #[must_use]
@@ -422,6 +449,22 @@ impl Rail {
         self.stats.slots = slots.len();
         self.stats.retained_bytes = self.episodes.iter().map(Episode::retained_bytes).sum();
         self.slots = slots;
+        // The queue's order over the same rows the rail is showing, so a filter is one question
+        // answered once: the worklist ranks what the filter kept (`reco-c05`).
+        let on_screen: Vec<usize> = self.slots.iter().filter_map(Slot::index).collect();
+        self.risked = on_screen
+            .iter()
+            .filter(|index| self.episodes[**index].risk.is_some())
+            .count();
+        self.unread = on_screen
+            .iter()
+            .filter(|index| self.episodes[**index].is_unread())
+            .count();
+        let mut ranked = on_screen;
+        ranked.sort_by(|left, right| {
+            crate::worklist::precede(&self.episodes[*left], &self.episodes[*right])
+        });
+        self.ranked = ranked;
         self.cursor = self.cursor.min(self.slots.len().saturating_sub(1));
         self.clamp_offset();
     }

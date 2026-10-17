@@ -271,6 +271,50 @@ impl EpisodeRow {
     }
 }
 
+/// One path's summed change inside one episode.
+///
+/// The per-episode rollups on [`EpisodeRow`] (`n_add`, `n_del`, `n_files`) are the numbers the rail
+/// prints, and they are not enough to say *what* an episode did: a turn that adds 520 lines of source
+/// and deletes 380 lines of tests has the same `n_del` as one that deletes 380 lines of a lockfile,
+/// and only one of those is a review problem. This is the row that distinguishes them, summed per
+/// `(episode, path)` over `episode_member ⋈ git_commit_file` — so a four-commit turn that edited the
+/// same file four times is one row, which is what "what did this episode do to this file" asks.
+///
+/// The two taxonomy columns are read back rather than re-derived (docs/concepts/paths.md §1: "the
+/// store records the taxonomy decision, nothing downstream re-derives it"). They are `unknown` in
+/// every index built before the e0.9 table is wired into the Rust indexer, and a consumer that reads
+/// them must handle that as "no answer", not as a class.
+#[derive(Debug, Clone)]
+pub struct EpisodeFile {
+    /// The path as the file row recorded it (the new path, after a rename).
+    pub path: String,
+    /// Lines added across the episode's commits.
+    pub add: i64,
+    /// Lines removed across the episode's commits.
+    pub del: i64,
+    /// How many of the episode's commits touched it — more than one is a file the turn kept returning to.
+    pub commits: i64,
+    /// Whether any of those touches was binary.
+    pub binary: bool,
+    /// The e0.9 class the indexer stamped, or `unknown` when it stamped none.
+    pub path_class: String,
+    /// The e0.9 noise level the indexer stamped, or `unknown` when it stamped none.
+    pub noise_class: String,
+}
+
+/// What [`Store::episode_files`] read, and how much of the index it had to leave out.
+#[derive(Debug, Clone)]
+pub struct EpisodeFiles {
+    /// The summed file rows, as `episode id → files`, sorted by path.
+    pub by_episode: std::collections::BTreeMap<String, Vec<EpisodeFile>>,
+    /// `(episode, path)` rows read.
+    pub rows: u64,
+    /// Whether [`Store::EPISODE_FILE_CAP`] cut the read short. Truncation is a fact the reader has to
+    /// print, not a detail it gets to forget (ADR-001 §7.2): a ranking that saw 50 000 of 90 000 file
+    /// rows is a ranking that says so.
+    pub truncated: bool,
+}
+
 /// The composable filter `e1.6`'s rail asks for (author AND path AND unread must compose).
 #[derive(Debug, Clone, Default)]
 pub struct EpisodeQuery {
@@ -646,6 +690,89 @@ impl Store {
         }
         Ok(out)
     }
+
+    /// The summed per-file change of each given episode, as [`EpisodeFiles`].
+    ///
+    /// [`Store::episode_paths`] answers "which files"; this answers "what happened to each of them",
+    /// which is the difference between an episode that added 900 lines and one that added 520 and
+    /// deleted 380 of the test suite. It is one grouped statement over
+    /// `episode_member ⋈ git_commit_file` for the ids asked for, for the same reason
+    /// [`Store::episode_paths`] is one statement: a read whose cost grows with the episodes it
+    /// describes is a read a first frame cannot afford.
+    ///
+    /// A `SUM`, not a raw dump: an episode whose four commits all edited `pricing.py` is one row with
+    /// four commits on it. A path whose class the indexer actually decided wins over a sibling commit
+    /// where it wrote `unknown`, so a partially-classified index is not read as an unclassified one.
+    ///
+    /// The read is capped at [`Store::EPISODE_FILE_CAP`] grouped rows and says whether it hit the cap,
+    /// because a 10 000-commit repository's page of episodes can hold more file rows than a frame
+    /// should be holding (ADR-004 §7).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if any read fails.
+    pub fn episode_files(&self, ids: &[String]) -> Result<EpisodeFiles, Error> {
+        const CHUNK: usize = 500;
+        let mut out = EpisodeFiles {
+            by_episode: std::collections::BTreeMap::new(),
+            rows: 0,
+            truncated: false,
+        };
+        'chunks: for chunk in ids.chunks(CHUNK) {
+            let marks = vec!["?"; chunk.len()].join(",");
+            let sql = format!(
+                "SELECT m.episode_id, f.new_path, SUM(f.n_add), SUM(f.n_del), COUNT(*), \
+                 MAX(f.is_binary), \
+                 CASE WHEN SUM(CASE WHEN f.path_class <> 'unknown' THEN 1 ELSE 0 END) > 0 \
+                      THEN MAX(CASE WHEN f.path_class <> 'unknown' THEN f.path_class END) \
+                      ELSE 'unknown' END, \
+                 CASE WHEN SUM(CASE WHEN f.noise_class <> 'unknown' THEN 1 ELSE 0 END) > 0 \
+                      THEN MAX(CASE WHEN f.noise_class <> 'unknown' THEN f.noise_class END) \
+                      ELSE 'unknown' END \
+                 FROM episode_member m JOIN git_commit_file f ON f.commit_oid = m.commit_oid \
+                 WHERE m.episode_id IN ({marks}) \
+                 GROUP BY m.episode_id, f.new_path \
+                 ORDER BY m.episode_id, f.new_path"
+            );
+            let mut statement = self
+                .connection()
+                .prepare(&sql)
+                .map_err(|err| corrupt("reading episode file stats", &err))?;
+            let rows = statement
+                .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        EpisodeFile {
+                            path: row.get::<_, String>(1)?,
+                            add: row.get::<_, i64>(2)?,
+                            del: row.get::<_, i64>(3)?,
+                            commits: row.get::<_, i64>(4)?,
+                            binary: row.get::<_, i64>(5)? != 0,
+                            path_class: row.get::<_, String>(6)?,
+                            noise_class: row.get::<_, String>(7)?,
+                        },
+                    ))
+                })
+                .map_err(|err| corrupt("reading episode file stats", &err))?;
+            for row in rows {
+                let (id, file) = row.map_err(|err| corrupt("reading episode file stats", &err))?;
+                if out.rows >= Self::EPISODE_FILE_CAP {
+                    out.truncated = true;
+                    break 'chunks;
+                }
+                out.rows += 1;
+                out.by_episode.entry(id).or_default().push(file);
+            }
+        }
+        Ok(out)
+    }
+
+    /// The grouped `(episode, path)` rows [`Store::episode_files`] will read before it stops.
+    ///
+    /// Sized so a page of episodes at the façade's own page ceiling fits in a frame's worth of memory
+    /// even in a repository where every commit touches a hundred files; the count is printed when it
+    /// binds rather than the read silently coming up short.
+    pub const EPISODE_FILE_CAP: u64 = 50_000;
 
     /// The review marker on one episode, defaulting to `Unread`.
     ///

@@ -202,16 +202,165 @@ fn detailed(episode: &Episode, now: Timestamp, origin: &str, width: usize) -> Ve
         "shape/deps/tests/findings: not in this build (e2.11's model, e4.3's detectors) — \
 `fathom analyze <episode>``",
     );
-    push_field(
-        &mut out,
-        width,
-        "risk",
-        &episode.risk.map_or_else(
-            || "unknown — e4.4 ranks it (the rail prints `?`)".to_owned(),
-            |risk| format!("{risk}, as the queue ranked it (`w` asks why)"),
-        ),
-    );
+    push_risk(&mut out, width, episode);
     out
+}
+
+/// The `risk` field, and the reasons behind it.
+///
+/// Three depths, because the pane is small and the question has three sizes. With no ranking the row
+/// says so and names the ticket; with a bare score it prints the score; with a full [`Risk`] it prints
+/// the score, its place in the ranking, the arithmetic, and one line per component that contributed —
+/// which is what `w` opens and what makes the number an argument rather than an assertion.
+fn push_risk(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
+    let Some(risk) = episode.risk.as_ref() else {
+        push_field(
+            out,
+            width,
+            "risk",
+            "unknown — nothing has ranked this episode (`reco-c05` ranks the spine; e4.4 ranks \
+             findings)",
+        );
+        return;
+    };
+    let head = format!(
+        "{model}{score}{place}",
+        model = if risk.model.is_empty() {
+            String::new()
+        } else {
+            format!("{} ", risk.model)
+        },
+        score = risk.score,
+        place = if risk.place().is_empty() {
+            String::new()
+        } else {
+            format!(" · {}", risk.place())
+        }
+    );
+    push_field(out, width, "risk", &head);
+    if !risk.badge.is_empty() {
+        push_field(out, width, "surfaces", &risk.badge);
+    }
+    if !risk.vector.is_empty() {
+        push_field(out, width, "vector", &risk.vector);
+    }
+    for reason in &risk.reasons {
+        push_field(out, width, "why", reason);
+    }
+    if let Some(first) = risk.blind_spots.first() {
+        push_field(
+            out,
+            width,
+            "blind",
+            &format!(
+                "a spine cannot see: {}{} — `w` lists all {}",
+                first,
+                if risk.blind_spots.len() > 1 {
+                    format!(" ({} more)", risk.blind_spots.len() - 1)
+                } else {
+                    String::new()
+                },
+                risk.blind_spots.len()
+            ),
+        );
+    }
+}
+
+/// The `w` pane: one episode's ranking, in full, with the ceiling it comes under.
+///
+/// This is the answer to "why that one", which ADR-006 §5.1 insists is a sentence and not a
+/// recommendation ("rank 4 of 7 because risk 82 = 0.4·size + 0.3·test + 0.3·blast" is checkable;
+/// "recommended for you" is not).
+#[must_use]
+pub fn risk_lines(
+    episode: Option<&Episode>,
+    width: usize,
+    rows: usize,
+) -> Vec<StyledLine> {
+    let mut body: Vec<StyledLine> = match episode {
+        None => vec![StyledLine::with_face(
+            "no episode selected — `j`/`k` choose one, then `w`",
+            Face::Muted,
+        )],
+        Some(episode) => {
+            let mut out: Vec<StyledLine> = Vec::new();
+            out.push(StyledLine::with_face(
+                format!("{} — {}", episode.short_id(), episode.summary),
+                Face::Emphasis,
+            ));
+            match episode.risk.as_ref() {
+                None => out.push(StyledLine::with_face(
+                    "nothing has ranked this episode, so there is nothing to explain (reco-c05 \
+                     ranks the spine; e4.4 ranks findings)",
+                    Face::Warning,
+                )),
+                Some(risk) => {
+                    out.push(StyledLine::plain(format!(
+                        "{} · {}",
+                        if risk.vector.is_empty() {
+                            format!("risk {}", risk.score)
+                        } else {
+                            risk.vector.clone()
+                        },
+                        risk.place()
+                    )));
+                    if !risk.badge.is_empty() {
+                        out.push(StyledLine::with_face(
+                            format!("surfaces {badge}", badge = risk.badge),
+                            Face::Muted,
+                        ));
+                    }
+                    out.push(StyledLine::plain(""));
+                    for reason in &risk.reasons {
+                        for chunk in wrap(reason, width.saturating_sub(2).max(8)) {
+                            out.push(StyledLine::with_face(format!("· {chunk}"), Face::Text));
+                        }
+                    }
+                    if !risk.blind_spots.is_empty() {
+                        out.push(StyledLine::plain(""));
+                        out.push(StyledLine::with_face(
+                            format!(
+                                "a spine cannot see {} thing{}:",
+                                risk.blind_spots.len(),
+                                if risk.blind_spots.len() == 1 {
+                                    ""
+                                } else {
+                                    "s"
+                                }
+                            ),
+                            Face::Warning,
+                        ));
+                        for spot in &risk.blind_spots {
+                            for chunk in wrap(spot, width.saturating_sub(4).max(8)) {
+                                out.push(StyledLine::with_face(
+                                    format!("  − {chunk}"),
+                                    Face::Warning,
+                                ));
+                            }
+                        }
+                        out.push(StyledLine::with_face(
+                            "read those by hand: the ranking is a reading order, not an all-clear",
+                            Face::Faint,
+                        ));
+                    }
+                }
+            }
+            out
+        }
+    };
+    if body.len() > rows && rows > 0 {
+        let hidden = body.len() - rows + 1;
+        body.truncate(rows.saturating_sub(1));
+        body.push(StyledLine::with_face(
+            format!("… {hidden} more rows — `<C-w>o` gives this pane the frame"),
+            Face::Faint,
+        ));
+    }
+    while body.len() < rows {
+        body.push(StyledLine::plain(""));
+    }
+    body.truncate(rows);
+    body.into_iter().map(|line| line.padded(width)).collect()
 }
 
 /// `label  value`, wrapped at the pane's width with the continuation lined up under the value.

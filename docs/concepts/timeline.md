@@ -10,9 +10,10 @@ The timeline is the screen a reviewer arrives at first and returns to whenever t
 *what happened, in what order, and which of it have I not read?* It is a list of episodes — one row per
 episode — with grouping, composable filters, quick jumps, and a details pane about the row under the
 cursor. Everything below follows from the same rule the diff viewer plays by: **the rail never lies and
-never goes quiet.** A row with no author prints `unknown`; a risk nobody has computed prints `?`; a
-group that is collapsed says how many rows are behind it; a rail with nothing loaded names the command
-that fills it.
+never goes quiet.** A row with no author prints `unknown`; a risk nothing could rank prints `?`, and a
+risk the spine did rank prints its number with `w` beside it
+([risk-ranking.md](risk-ranking.md)); a group that is collapsed says how many rows are behind it; a
+rail with nothing loaded names the command that fills it.
 
 ## 1 What it reads, and what it refuses to read
 
@@ -36,11 +37,14 @@ way rows enter, and it is also the way a **re-index** enters — same method, sa
 
 The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills from the spine
 (`crates/fathom-cli/src/episodes.rs`, the read `reco-glv`'s first P1 asked for): the live episodes,
-newest first, one page of them, with the review markers and the paths each one touched. That read needs no delta model — identity,
-authorship, scale, session/turn and review state are rows `e1.3` already writes — which is why the rail
-has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to answer. What the store
-cannot say stays `None` and prints `?`, so a filled rail is not a claim that the delta model landed: the
-risk column is `?` and the card's `delta` row is still the stated absence (§8). The toast line at open
+newest first, one page of them, with the review markers, the paths each one touched, and the per-file
+rollup the ranking reads. That read needs no delta model — identity, authorship, scale, session/turn
+and review state are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows —
+which is why the rail has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to
+answer. What the store cannot say stays `None` and prints `?`, so a filled rail is not a claim that the
+delta model landed: the risk column carries the spine-only ranking's number and its reasons
+([risk-ranking.md](risk-ranking.md)) while the card's `delta` row is still the stated absence (§8). The
+toast line at open
 says `500 episodes from index epoch 1 (ready) · index holds 4 000`, because a rail that is merely full
 does not otherwise tell the reviewer how much of the index it was given.
 
@@ -73,7 +77,7 @@ says they are not in this build (§8).
 | `agent` | `AuthorKind` badge: `agent`, `human`, `?` | the `?` **is** the answer: attribution failed, and blank would read as "no author" |
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
-| `?` / `82` | `Episode::risk`, `None` until `e2.11`/`e4.4` rank it | anything at all until then, which is why it prints `?` and not a number |
+| `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
 
 The sparkline is a **log** scale against the largest loaded episode, in six cells, clamped to at least
@@ -226,11 +230,14 @@ cannot fill:
 
 ```
 delta    shape/deps/tests/findings: not in this build (e2.11's model, e4.3's detectors) — `fathom analyze <episode>`
-risk     unknown — e4.4 ranks it (the rail prints `?`)
+risk     spine-1 82 = surfaces 50 + author 8 + size 24 · rank 1 of 21
 ```
 
 That is the whole design constraint in two lines: a pane whose data does not exist yet says whose it is
-and which command will print it, rather than rendering a confident `0` or an empty box. What it *can*
+and which command will print it, rather than rendering a confident `0` or an empty box. The `risk` row
+is the one that changed: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
+name, its vector and its own ceiling, and `w` opens all of it
+([risk-ranking.md](risk-ranking.md)). What it *can*
 say it says precisely: commit count, author kind with its confidence, age, review state, the timezone
 the day bounds use, where the change landed (top path prefixes with file counts), the boundary rule and
 its confidence labelled "a rule, not a fact" (ADR-003 §4.7), the session and turn, and the member SHAs
@@ -307,8 +314,12 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
 
 ## 12 Deliberately not here yet
 
-`delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the risk number and the attention queue
-the rail is the entry point for (`e4.4`, `e1.8`'s worklist); the delta model's own read —
+`delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
+queue now orders by — what it orders by is the spine-only ranking and its stated ceiling
+([risk-ranking.md](risk-ranking.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
+ordering function itself with risk × staleness × blast radius (`e1.8`'s worklist); the queue's own
+selection history and per-view scroll (one cursor and one filter are what the session carries,
+which is the honest amount); the delta model's own read —
 `insight::episodes` is still `e2.11`'s, and the rail's rows come from the store columns Epic 1 owns
 instead (§1), one page of them, which is why the strip says `index holds N` on a repository
 bigger than a page; saved, named filters and

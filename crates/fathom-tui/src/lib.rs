@@ -10,6 +10,10 @@
 //!    else, because a view that runs its own query is how the human and the MCP server end up with two
 //!    different ideas of the same list — ADR-001 §7.10, which is a bug with a severity, not a smell.
 //!    Lint `M02` enforces the path, and `E01` refuses the `fathom-store` edge the layering would allow.
+//!    The risk numbers the rail and the queue print arrived the same way `reco-c05` found everything
+//!    else: `fathom-cli` reads the spine, asks `fathom_analyze::risk` for the ranking, and hands the
+//!    shell the value and its reasons in the row. Nothing here sorts or scores an episode from its own
+//!    reading of the fields — the queue's order is a sort of a number it was given.
 //! 2. **No terminal-size or clock reads outside the frame loop.** Rendering takes a [`FrameContext`]
 //!    carrying the size and the instant, so a view is testable headlessly at a fixed 80×24 (`e5.5`)
 //!    and a golden render does not depend on the window it was captured in.
@@ -35,3 +39,5 @@ pub mod style;
 pub mod terminal;
 pub mod timeline;
 pub mod views;
+/// The Queue view's ranked worklist (`reco-c05`): a list, not a scorer.
+pub mod worklist;

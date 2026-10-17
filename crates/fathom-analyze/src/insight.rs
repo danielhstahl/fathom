@@ -119,3 +119,18 @@ pub fn episodes(_window: PageWindow) -> Result<DeltaRows, Error> {
         ticket: "e2.11",
     })
 }
+
+// --- the spine-only ranking (`reco-c05`) ---------------------------------------------------------
+//
+// The façade does not compute it — [`crate::risk`] does, in the open — but this is the door the
+// surfaces name, and ADR-002 §5.3 is not a rule you may route around when the thing behind the door
+// happens to be pure. Before this, a reviewer in the shipped TUI could not answer "which three
+// episodes are the riskiest": the rail's risk column printed `?`, the queue had no rows, and `w`
+// said *owned by e4.4*. Every input here is a row the spine already writes, so the ordering is
+// auditable from the frame while `e4.4`'s feature vector is still on the other side of epic 2.
+//
+// `views_ready` stays false and this does not change it: a ranking built from the spine is not the
+// delta model, and a surface that reads these numbers is not being told `e2.11` landed.
+pub use crate::risk::{
+    BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank,
+};

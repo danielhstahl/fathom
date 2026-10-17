@@ -31,7 +31,7 @@ session  no harness session on this
 members  6d9637em0 7500b3cm1       
          881a854m2 +1 more         
                                    
-… 7 more rows — `<C-w>o` gives thi…
+… 10 more rows — `<C-w>o` gives th…
 
 ## card strip
 

@@ -22,6 +22,8 @@ pub mod deps;
 pub mod error;
 pub mod export;
 pub mod insight;
+/// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
+pub mod risk;
 
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

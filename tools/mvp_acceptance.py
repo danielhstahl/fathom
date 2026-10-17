@@ -21,12 +21,12 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 | the TUI: `d` → the diff pane paints, and its first hunk | `query.diff_open.ms.small`, `query.diff_first_hunk.ms.small` | same pty; the first step whose grid changed, and the first frame carrying an `@@` (`reco-0kw`) |
 
 Numbers that **cannot** be measured from the shipped binary are reported as blocked with the reason,
-rather than left out: the query families still without a store→frame path (`query.queue.ms`,
-`query.timeline.ms`, `query.card.ms`, `query.search.ms`) stay blocked, and
-`cold.queue_visible.ms.small` — the budget `e1.12` actually depends on — is the time until the queue
-*answers*, which an unpopulated queue never does. A blocked number is a finding, not a gap in the
-report. The two diff numbers were blocked this way until `reco-0kw` wired the store as the diff
-pane's byte source; they are measured from the product now.
+rather than left out. The rail has no query of its own beyond the frame budget, and the search scorer
+is `e5.2`, so those two families stay blocked. `cold.queue_visible.ms.small` — the budget `e1.12`
+actually depends on — was blocked that way until `reco-c05` gave the worklist rows to rank; it, and
+the queue and card query families, are measured from the product now. A blocked number is a finding,
+not a gap in the report. The two diff numbers were blocked this way until `reco-0kw` wired the store
+as the diff pane's byte source; they are measured from the product now.
 """
 
 from __future__ import annotations
@@ -280,15 +280,79 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
     record("TUI: peak RSS", "rss.tui.mib.small",
            round((tui.get("rss_peak_kib") or 0) / 1024.0, 2), unit="MiB",
            note="VmHWM of the TUI child, sampled after every keystroke")
-    record("TUI: the queue answers with episodes", "cold.queue_visible.ms.small", None, unit="ms",
-           blocked_by="the shell hands the queue and the rail no episodes at all "
-                      "(`fathom-cli` passes `episodes: None`; `insight::episodes` is e2.11)",
-           note=f"time to first frame was {tui.get('first_paint_ms')} ms, which is not the same "
-                "question: the budget is time to the first useful answer")
-    for family, pane in (("query.queue.ms", "queue"), ("query.timeline.ms", "timeline rail"),
-                         ("query.card.ms", "episode card"), ("query.search.ms", "search")):
-        record(f"TUI: {pane} query", family + ".small", None, unit="ms",
-               blocked_by=f"no {pane} is ever populated: the frame has no store→view path")
+    # The queue's own numbers. `cold.queue_visible.ms.small` was blocked on the pane painting an
+    # empty list, and the note said so; since the worklist ranks the episodes the shell was given
+    # (`reco-c05`), asking for the queue is enough to get an answer. The probe asks for it with `q`
+    # rather than trusting the view the session left pinned — three probe runs share one store, and a
+    # probe that measured whichever pane happened to be up would measure nothing.
+    paint, walk, explains = [], [], []
+    queue_script = Path("/tmp") / f"e1-12-queue-{os.getpid()}.json"
+    queue_steps_file = Path("/tmp") / f"e1-12-queue-steps-{os.getpid()}.json"
+    queue_script.write_text(json.dumps({
+        "title": "e1.12 — the queue probe (reco-c05)",
+        "steps": [
+            {"keys": "q", "note": "ask for the queue: until it prints a ranking", "until": "order: ",
+             "hold": 3.0},
+            {"keys": "j", "note": "next riskiest: frame on the redraw", "settle": 0.4},
+            {"keys": "w", "note": "explain the ranking: frame on the vector",
+             "until": "cannot see", "hold": 3.0},
+            {"keys": "<C-c>", "note": "quit", "settle": 0.3},
+        ],
+    }), encoding="utf-8")
+    for _ in range(3):
+        subprocess.run([sys.executable, str(ROOT / "tools" / "tui_session.py"), "--root",
+                        str(fixture), "--binary", str(binary), "--script", str(queue_script),
+                        "--steps", str(queue_steps_file)],
+                       check=True, stdout=subprocess.DEVNULL)
+        probe = json.loads(queue_steps_file.read_text())
+        first = next((step for step in probe["steps"] if step.get("keys") == "q"), None)
+        # The strip's own line and a row's number, not a paint: a frame that drew an empty pane is
+        # not an answer, and the budget is the time to the answer.
+        if first and first.get("until_ms") is not None and "risk " in first.get("screen", ""):
+            paint.append(first["until_ms"])
+        for step in probe["steps"]:
+            if step.get("keys") == "j" and step.get("visible_ms") is not None:
+                walk.append(step["visible_ms"])
+            if step.get("keys") == "w" and step.get("until_ms") is not None:
+                explains.append(step["until_ms"])
+    queue_steps_file.unlink(missing_ok=True)
+    queue_script.unlink(missing_ok=True)
+    if paint:
+        record("TUI: the queue answers with a ranked worklist", "cold.queue_visible.ms.small",
+               round(p95(paint), 1), unit="ms", samples=paint,
+               note="`q` until the screen printed `order: …` and a `risk` number — the queue's first "
+                    "frame is the answer now, so this is the time to the first useful answer and not "
+                    "to a paint (`reco-c05` wired the queue). On a cold store the queue is the "
+                    f"default view, where the same instant is the first paint at "
+                    f"{tui.get('first_paint_ms')} ms")
+    else:
+        record("TUI: the queue answers with episodes", "cold.queue_visible.ms.small", None,
+               unit="ms",
+               blocked_by="the queue printed no ranking on the probe fixture: no `order: ` strip and "
+                          "no `risk` number arrived after `q`",
+               note=f"time to first frame was {tui.get('first_paint_ms')} ms, which is not the same "
+                    "question: the budget is time to the first useful answer")
+    if walk:
+        record("TUI: `j` walks the ranked queue", "query.queue.ms.small",
+               round(p95(walk), 1), unit="ms", samples=walk,
+               note="keystroke written until the grid changed: the worklist redraws the ranked rows "
+                    "from the values the composition root handed it, and orders by them")
+    else:
+        record("TUI: queue query", "query.queue.ms.small", None, unit="ms",
+               blocked_by="`j` in the queue drew no visible change on the probe fixture")
+    if explains:
+        record("TUI: `w` explains why the selected episode ranks where it does",
+               "query.card.ms.small", round(p95(explains), 1), unit="ms", samples=explains,
+               note="keystroke until the card first printed what the ranking cannot see: the "
+                    "explanation arrives with its ceiling, not after it (`reco-c05`)")
+    else:
+        record("TUI: episode card query", "query.card.ms.small", None, unit="ms",
+               blocked_by="`w` printed no explanation on the probe fixture")
+    record("TUI: timeline rail query", "query.timeline.ms.small", None, unit="ms",
+           blocked_by="the rail has no query of its own beyond the frame budget "
+                      "(query.frame_store_budget.ms.small): it lists the index in the index's order")
+    record("TUI: search query", "query.search.ms.small", None, unit="ms",
+           blocked_by="search has no scorer yet — `/` says so, and the matcher is `e5.2`")
 
     # --- the diff pane: `d` on a selected episode, timed to the frame and to the first hunk.
     # These two were blocked on "nothing ever hands the diff pane a patch"; `reco-0kw` wired the

@@ -31,7 +31,7 @@ members  9c4d:0 9c4d:1
                                    
 delta    shape/deps/tests/findings:
          not in this build (e2.11's
-… 5 more rows — `<C-w>o` gives thi…
+… 8 more rows — `<C-w>o` gives thi…
 
 ## card strip
 

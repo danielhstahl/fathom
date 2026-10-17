@@ -234,9 +234,11 @@ pub struct Episode {
     pub boundary_rule: Option<String>,
     /// See [`Episode::boundary_rule`].
     pub boundary_confidence: Option<f64>,
-    /// The risk the queue ranked it by — `None` until `e2.11`/`e4.4` publish it, printed as `?`
-    /// until then. The rail cites it or does not print it.
-    pub risk: Option<u64>,
+    /// The risk the queue ranked it by, or `None` when nothing has ranked it — printed as `?`, because
+    /// "unranked" and "ranked zero" are different claims (ADR-001 §7.7). `reco-c05` fills this from
+    /// the spine-only ranking in `fathom_analyze::risk`; `e4.4`'s scorer is the ticket that replaces
+    /// the *inputs*, not the shape.
+    pub risk: Option<Risk>,
     /// Whether any current commit still belongs to it (ADR-003 §6.3): a dead episode is shown, marked
     /// `gone`, because "your sign-off is on history that is no longer here" must not be silent.
     pub live: bool,
@@ -268,6 +270,62 @@ impl Default for Episode {
             boundary_confidence: None,
             risk: None,
             live: true,
+        }
+    }
+}
+
+/// What a risk *number* comes with: the ranking that produced it, the arithmetic, the reasons, and
+/// where the episode sits among its peers.
+///
+/// The rail prints only [`Risk::score`], and that is the whole argument for putting the rest in the
+/// same value instead of leaving it in the store: a number a reviewer cannot interrogate from the
+/// same pane is a number they have to take on faith, and ADR-001 §7.9 forbids that. Every field is
+/// produced by the ranking and printed beside it — nothing here is a UI opinion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Risk {
+    /// Which ranking produced the number, printed so a screenshot says where it came from.
+    pub model: String,
+    /// 0..=100.
+    pub score: u64,
+    /// `spine-1 88 = size 32 + surfaces 26 + deletions 20 + breadth 8 + author 2`.
+    pub vector: String,
+    /// One line per component that contributed, largest first — the checkable evidence.
+    pub reasons: Vec<String>,
+    /// The surfaces touched, as a row badge (`migration+ci`).
+    pub badge: String,
+    /// This episode's place in the ranking, 1-based, when the caller ranked a set.
+    pub rank: Option<u64>,
+    /// How many episodes were ranked to produce [`Risk::rank`].
+    pub ranked: Option<u64>,
+    /// What the ranking cannot see, printed with the reasons (`reco-c05`'s honest ceiling).
+    pub blind_spots: Vec<String>,
+}
+
+impl Risk {
+    /// A ranked row with only a score — what a fixture or a test hands the rail when it wants the
+    /// column filled and nothing else. The card prints it as an unexplained number rather than
+    /// inventing reasons for it.
+    #[must_use]
+    pub fn new(score: u64) -> Self {
+        Risk {
+            model: String::new(),
+            score,
+            vector: String::new(),
+            reasons: Vec::new(),
+            badge: String::new(),
+            rank: None,
+            ranked: None,
+            blind_spots: Vec::new(),
+        }
+    }
+
+    /// `rank 3 of 212`, or the model name when no set was ranked.
+    #[must_use]
+    pub fn place(&self) -> String {
+        match (self.rank, self.ranked) {
+            (Some(rank), Some(ranked)) => format!("rank {rank} of {ranked}"),
+            (Some(rank), None) => format!("rank {rank}"),
+            (None, _) => self.model.clone(),
         }
     }
 }
@@ -346,6 +404,11 @@ impl Episode {
             &self.summary,
         ];
         let mut total = strings.iter().map(|s| s.len()).sum::<usize>();
+        if let Some(risk) = &self.risk {
+            total += risk.model.len() + risk.vector.len() + risk.badge.len();
+            total += risk.reasons.iter().map(String::len).sum::<usize>();
+            total += risk.blind_spots.iter().map(String::len).sum::<usize>();
+        }
         total += self.members.iter().map(String::len).sum::<usize>();
         total += self.paths.iter().map(String::len).sum::<usize>();
         total += self
@@ -502,7 +565,7 @@ impl EpisodeSource for MemorySource {
                 why.clone(),
                 // The same remedy the empty rail prints, from the same place, so the two cannot drift.
                 // (`fathom tui --no-index` used to be named here; no build has ever had that flag.)
-                &crate::index::Facts::absent().remedy(),
+                crate::index::Facts::absent().remedy(),
             ));
         }
         let limit = usize::try_from(page.limit()).unwrap_or(usize::MAX);

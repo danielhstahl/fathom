@@ -14,18 +14,21 @@
 //! hands it to the shell in [`crate::tui`], which is the composition root's job precisely because the
 //! shell may not open a store (ADR-002 §5.2, lint `E01`).
 //!
-//! What the store does not know stays `None` and prints `?` — the risk column above all, and the card's
-//! `delta` row stays the stated not-in-this-build — so opening the data path does not quietly become a
-//! claim that `e2.11` landed. [`fathom_analyze::insight::status`]'s `views_ready` is still false, and
-//! this module does not change it.
+//! What the store does not know stays `None` and prints `?` — the card's `delta` row stays the stated
+//! not-in-this-build — so opening the data path does not quietly become a claim that `e2.11` landed.
+//! [`fathom_analyze::insight::status`]'s `views_ready` is still false, and this module does not change
+//! it. The one column that used to be `?` and is not any more is risk (`reco-c05`): the spine cannot
+//! rank by findings it has not computed, but it can rank by size, surfaces, deletions and breadth, and
+//! it does — [`risk_of`] is the seam between the store's rows and `fathom_analyze::risk`.
 //!
 //! Three rules hold it together:
 //!
 //! * **The page is the façade's.** ADR-002 §5.3 gives the memory budget to `insight`, so the size of a
 //!   first frame is a [`PageWindow`], clamped there. A rail that holds part of the index says
 //!   `index holds N` in its strip rather than letting the reviewer conclude the repository was quiet.
-//! * **A first frame is three queries.** One episode read, one review-state read, one path join — not
-//!   one per row (`Store::episode_paths` is written for that reason, and says so).
+//! * **A first frame is four queries.** One episode read, one review-state read, one path join and one
+//!   per-file rollup — not one per row (`Store::episode_paths` and `Store::episode_files` are written
+//!   for that reason, and say so).
 //! * **An empty result is not this module's story.** No store, a store the caller could not open
 //!   either, or an index with nothing live in it all return `None`, which is the signal `reco-1nu` built
 //!   the empty states around: the shell prints what the caller knows about the index instead. A store the
@@ -89,16 +92,19 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
         rows,
         states,
         paths,
+        files,
     } = raw;
     let held = u64::try_from(rows.len()).unwrap_or(u64::MAX);
-    let episodes = rows
+    let mut episodes: Vec<Episode> = rows
         .into_iter()
         .map(|row| {
             let state = states.get(&row.id).copied().unwrap_or_default();
             let touched = paths.get(&row.id).cloned().unwrap_or_default();
-            into_episode(row, state, touched)
+            let stats = files.by_episode.get(&row.id).map(Vec::as_slice);
+            into_episode(row, state, touched, stats, files.truncated)
         })
         .collect();
+    rank_page(&mut episodes);
     Some(Batch {
         origin: facts.origin(),
         episodes,
@@ -126,6 +132,9 @@ struct Raw {
     states: BTreeMap<String, StoredState>,
     /// The paths each selected episode touched.
     paths: BTreeMap<String, Vec<String>>,
+    /// What happened to each path (`reco-c05`): the per-file adds and deletes the ranking reads, and
+    /// whether the read had to stop early.
+    files: fathom_store::episode::EpisodeFiles,
 }
 
 /// Run them. The order is deliberate: the path join is keyed by the ids the episode read returned.
@@ -140,6 +149,7 @@ fn read(store: &Store, page: &PageWindow) -> Result<Raw, StoreError> {
     Ok(Raw {
         states: store.review_states()?,
         paths: store.episode_paths(&ids)?,
+        files: store.episode_files(&ids)?,
         rows,
     })
 }
@@ -150,10 +160,23 @@ fn read(store: &Store, page: &PageWindow) -> Result<Raw, StoreError> {
 /// microseconds (the same conversion `e1.11` uses for session stamps), and the review-state enum is
 /// spelled identically in both crates on purpose, so the conversion is the shared spelling rather than
 /// a match that can drift.
+///
+/// The `risk` field is the one thing here that is not a copy of a column: it is the spine-only ranking
+/// (`fathom_analyze::risk`) applied to the row plus that episode's per-file change, computed once per
+/// page in the composition root — the shell may not score an episode any more than it may query a
+/// store (ADR-002 §5.2, §5.3). `stats` is `None` when the file read did not reach the episode, and
+/// then there is no ranking to print rather than a ranking of nothing.
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
-fn into_episode(row: EpisodeRow, state: StoredState, paths: Vec<String>) -> Episode {
+fn into_episode(
+    row: EpisodeRow,
+    state: StoredState,
+    paths: Vec<String>,
+    stats: Option<&[fathom_store::episode::EpisodeFile]>,
+    partial: bool,
+) -> Episode {
     let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
     let micros = |millis: i64| Timestamp::from_unix_micros(millis.saturating_mul(1_000));
+    let risk = stats.map(|stats| risk_of(&row, stats, partial));
     Episode {
         id: row.id,
         fingerprint: row.fingerprint,
@@ -176,9 +199,107 @@ fn into_episode(row: EpisodeRow, state: StoredState, paths: Vec<String>) -> Epis
         turn: row.turn_id,
         boundary_rule: (!row.boundary_rule.is_empty()).then_some(row.boundary_rule),
         boundary_confidence: Some(row.boundary_confidence),
-        // Not in the store, not in this build: `?` in the rail's risk column is the honest cell, and
-        // `e4.4`'s scorer is the ticket that fills it (`e2.11`'s model carries it here).
-        risk: None,
+        // Rank 1..=N is filled in by [`rank_page`] once every row of the page exists; a score is
+        // meaningless among its peers until there are peers to compare it with.
+        risk,
         live: row.live,
+    }
+}
+
+/// Score one episode from its own row and its own file rows.
+///
+/// The reasons are assembled here rather than in the analysis crate so that each one names what the
+/// reviewer can go and check — a path, a line count, a surface — which is the difference between an
+/// explanation and an assertion (ADR-001 §7.9).
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
+fn risk_of(
+    row: &EpisodeRow,
+    stats: &[fathom_store::episode::EpisodeFile],
+    partial: bool,
+) -> fathom_tui::timeline::Risk {
+    use fathom_analyze::risk::{BLIND_SPOTS, FileChange, Signals, rank};
+
+    let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
+    let files: Vec<FileChange<'_>> = stats
+        .iter()
+        .map(|file| FileChange {
+            path: file.path.as_str(),
+            add: scale(file.add),
+            del: scale(file.del),
+            binary: file.binary,
+            path_class: file.path_class.as_str(),
+            noise_class: file.noise_class.as_str(),
+        })
+        .collect();
+    let signals = Signals {
+        files: &files,
+        n_add: scale(row.n_add),
+        n_del: scale(row.n_del),
+        n_files: scale(row.n_files),
+        n_binary: scale(row.n_binary),
+        n_commits: scale(row.n_commits()),
+        author: &row.author_kind,
+        partial_files: partial,
+    };
+    let scored = rank(&signals);
+    let mut reasons: Vec<String> = scored
+        .components
+        .iter()
+        .map(|component| {
+            format!(
+                "{} {}/{} — {}",
+                component.name, component.points, component.cap, component.detail
+            )
+        })
+        .collect();
+    if let Some(caveat) = scored.caveat() {
+        reasons.push(format!("caveat — {caveat}"));
+    }
+    fathom_tui::timeline::Risk {
+        model: fathom_analyze::risk::MODEL.to_owned(),
+        score: scored.value(),
+        vector: scored.vector(),
+        reasons,
+        badge: scored.badge(),
+        rank: None,
+        ranked: None,
+        blind_spots: BLIND_SPOTS.iter().map(|spot| (*spot).to_owned()).collect(),
+    }
+}
+
+/// Give every row of the page its place in the page: `risk.rank` / `risk.ranked`.
+///
+/// The order is the queue's order and is stated here rather than trusted from the shell because the
+/// number printed in a row has to agree with the position of that row in the list, and the two are
+/// computed in different crates. A row that is unranked (the file read never reached it) is not
+/// counted, so "rank 3 of 212" never has holes in it.
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
+fn rank_page(episodes: &mut [Episode]) {
+    let mut places: Vec<usize> = episodes
+        .iter()
+        .enumerate()
+        .filter(|(_, episode)| episode.risk.is_some())
+        .map(|(index, _)| index)
+        .collect();
+    let score = |episode: &Episode| {
+        episode
+            .risk
+            .as_ref()
+            .map_or(0, |risk| i64::try_from(risk.score).unwrap_or(i64::MAX))
+    };
+    places.sort_by(|a, b| {
+        let (left, right) = (&episodes[*a], &episodes[*b]);
+        score(right)
+            .cmp(&score(left))
+            .then_with(|| right.size().cmp(&left.size()))
+            .then_with(|| right.created.cmp(&left.created))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    let ranked = u64::try_from(places.len()).unwrap_or(u64::MAX);
+    for (place, index) in places.into_iter().enumerate() {
+        if let Some(risk) = episodes[index].risk.as_mut() {
+            risk.rank = u64::try_from(place + 1).ok();
+            risk.ranked = Some(ranked);
+        }
     }
 }

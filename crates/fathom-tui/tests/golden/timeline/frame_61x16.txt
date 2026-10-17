@@ -13,10 +13,10 @@
 │  c1f5e2 13 Oct ?     +22 −22 ⚑ │where    src/store (9) ·  │
 │ Thu 18 Sep · session 2 (pi) ──…│         tests (1)        │
 │  08d4b1 18 Sep agent +3 −1 ? ✔ │boundary author 0.75 — a  │
-│ Sun 14 Sep · session 1 (pi) ──…│… 17 more rows — `<C-w>o`…│
+│ Sun 14 Sep · session 1 (pi) ──…│… 20 more rows — `<C-w>o`…│
 │filter: area=any state=any grou…│card · reads delta.struct…│
 └───────────────────────────────────────────────────────────┘
-⏺ epoch unknown · unknown eps · queue unknown open · idx unk…
+⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
 10 episodes from fixture index
 
 ## rail (42 columns × 12 rows)
@@ -50,7 +50,7 @@ members  e8f1:0 e8f1:1 e8f1:2 +1
          more                      
                                    
 delta    shape/deps/tests/findings:
-… 6 more rows — `<C-w>o` gives thi…
+… 9 more rows — `<C-w>o` gives thi…
 
 ## card strip
 

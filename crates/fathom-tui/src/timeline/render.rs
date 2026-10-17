@@ -205,9 +205,9 @@ pub fn episode_line(
     if columns < Columns::NoSparkline {
         cells.push((face::SPARK, format!(" {}", scale.spark(episode)), 4));
     }
-    match episode.risk {
+    match episode.risk.as_ref() {
         Some(risk) if columns < Columns::NoRisk => {
-            cells.push((face::RISK, format!(" {risk}"), 6));
+            cells.push((face::RISK, format!(" {}", risk.score), 6));
         }
         Some(_) => {}
         // `unknown` is a value, and it prints: an empty risk column reads as "this episode is

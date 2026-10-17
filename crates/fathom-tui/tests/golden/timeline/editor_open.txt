@@ -24,7 +24,7 @@
 │ │ 1 of 9 · <C-n>/<C-p> move · <Enter> choose · <Esc> close                 │…│
 │f└──────────────────────────────────────────────────────────────────────────┘…│
 └──────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch unknown · unknown eps · queue unknown open · idx unknown
+⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
 10 episodes from fixture index
 
 ## rail (42 columns × 12 rows)
@@ -58,7 +58,7 @@ members  e8f1:0 e8f1:1 e8f1:2 +1
          more                      
                                    
 delta    shape/deps/tests/findings:
-… 6 more rows — `<C-w>o` gives thi…
+… 9 more rows — `<C-w>o` gives thi…
 
 ## card strip
 

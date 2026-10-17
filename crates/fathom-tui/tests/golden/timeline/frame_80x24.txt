@@ -21,10 +21,10 @@
 │ Thu 11 Sep · session 1 (pi) ── 1 episode │         model, e4.3's detectors) —│
 │  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │         `fathom analyze           │
 │                                          │         <episode>``               │
-│                                          │… 2 more rows — `<C-w>o` gives thi…│
+│                                          │… 5 more rows — `<C-w>o` gives thi…│
 │filter: area=any state=any group=day (F e…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch unknown · unknown eps · queue unknown open · idx unknown
+⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
 10 episodes from fixture index
 
 ## rail (42 columns × 12 rows)
@@ -58,7 +58,7 @@ members  e8f1:0 e8f1:1 e8f1:2 +1
          more                      
                                    
 delta    shape/deps/tests/findings:
-… 6 more rows — `<C-w>o` gives thi…
+… 9 more rows — `<C-w>o` gives thi…
 
 ## card strip
 
