@@ -1,0 +1,2022 @@
+{
+  "environment": {
+    "arch": "aarch64",
+    "os": "linux",
+    "profile": "release",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "what_these_numbers_are": "Definitions, exports and import edges are exact set comparisons against hand-authored truth, so they carry over to `fathom-analyze` only as well as the spike's extractors do — they are an upper bound on what the grammar can be made to say, not a promise about `e3.1`'s implementation. Throughput is one thread, one process, debug profile unless stated: a floor, not a prediction."
+  },
+  "grammars": [
+    {
+      "checksum": "439e577dbe07423ec2582ac62c7531120dbfccfa6e5f92406f93dd271a120e45",
+      "crate": "tree-sitter-rust",
+      "grammar_abi": 15,
+      "grammar_name": "rust",
+      "language": "rust",
+      "version": "0.24.2"
+    },
+    {
+      "checksum": "6bf85fd39652e740bf60f46f4cda9492c3a9ad75880575bf14960f775cb74a1c",
+      "crate": "tree-sitter-python",
+      "grammar_abi": 15,
+      "grammar_name": "python",
+      "language": "python",
+      "version": "0.25.0"
+    },
+    {
+      "checksum": "6c5f76ed8d947a75cc446d5fccd8b602ebf0cde64ccf2ffa434d873d7a575eff",
+      "crate": "tree-sitter-typescript",
+      "grammar_abi": 14,
+      "grammar_name": "?",
+      "language": "typescript",
+      "version": "0.23.2"
+    },
+    {
+      "checksum": "c8560a4d2f835cc0d4d2c2e03cbd0dde2f6114b43bc491164238d333e28b16ea",
+      "crate": "tree-sitter-go",
+      "grammar_abi": 15,
+      "grammar_name": "go",
+      "language": "go",
+      "version": "0.25.0"
+    },
+    {
+      "checksum": "be0484ea4ef6bb9c575b4fdabde7e31340a8d2dbc7d52b321ac83da703249f95",
+      "crate": "tree-sitter-ruby",
+      "grammar_abi": 14,
+      "grammar_name": "?",
+      "language": "ruby",
+      "version": "0.23.1"
+    },
+    {
+      "checksum": "0aa6cbcdc8c679b214e616fd3300da67da0e492e066df01bcf5a5921a71e90d6",
+      "crate": "tree-sitter-java",
+      "grammar_abi": 14,
+      "grammar_name": "?",
+      "language": "java",
+      "version": "0.23.5"
+    }
+  ],
+  "languages": [
+    {
+      "blind_spots": [
+        {
+          "count": 2,
+          "kind": "associated_type_binding"
+        },
+        {
+          "count": 2,
+          "kind": "macro_definition"
+        }
+      ],
+      "corpus": {
+        "bytes": 7516,
+        "definitions": 90,
+        "exports": 41,
+        "files": 10,
+        "import_edges": 24
+      },
+      "grammar_crate": "tree-sitter-rust",
+      "language": "rust",
+      "missing_definitions": [
+        "macros.rs • fn • from_macro",
+        "macros.rs • fn • left",
+        "macros.rs • fn • right"
+      ],
+      "missing_edges": [],
+      "missing_exports": [
+        "macros.rs • from_macro",
+        "macros.rs • left",
+        "macros.rs • right"
+      ],
+      "relations": {
+        "definitions": {
+          "f1": 0.9831,
+          "false_positive": 0,
+          "missed": 3,
+          "precision": 1.0,
+          "recall": 0.9667,
+          "true_positive": 87
+        },
+        "exports": {
+          "f1": 0.962,
+          "false_positive": 0,
+          "missed": 3,
+          "precision": 1.0,
+          "recall": 0.9268,
+          "true_positive": 38
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 23
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "associated_const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "associated_type"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "cfg_attr"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "cfg_conditional"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "dyn_trait"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "enum"
+        },
+        {
+          "expected": 41,
+          "found": 38,
+          "recall": 0.9268,
+          "tag": "export"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "extern_abi"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "external_trait"
+        },
+        {
+          "expected": 25,
+          "found": 25,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "impl_block"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "import:crate_path"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:import_group"
+        },
+        {
+          "expected": 15,
+          "found": 15,
+          "recall": 1.0,
+          "tag": "import:import_use"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:import_wildcard"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "import:mod_decl_edge"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:reexport_hop"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:super_path"
+        },
+        {
+          "expected": 3,
+          "found": 0,
+          "recall": 0.0,
+          "tag": "macro_generated"
+        },
+        {
+          "expected": 25,
+          "found": 25,
+          "recall": 1.0,
+          "tag": "method"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "method_default"
+        },
+        {
+          "expected": 12,
+          "found": 12,
+          "recall": 1.0,
+          "tag": "method_trait_impl"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "mod_file"
+        },
+        {
+          "expected": 16,
+          "found": 16,
+          "recall": 1.0,
+          "tag": "module_decl"
+        },
+        {
+          "expected": 11,
+          "found": 11,
+          "recall": 1.0,
+          "tag": "nested_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "static"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "struct"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "test_only"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "trait_method"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "trait_or_interface"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "type_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "unsafe"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "visibility_doc_hidden"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "visibility_private"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "visibility_pub_crate"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "where_clause"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 11.689,
+        "measured_over": "repository",
+        "ok": true
+      },
+      "verdict": "go_with_conditions"
+    },
+    {
+      "blind_spots": [
+        {
+          "count": 3,
+          "kind": "decorated_class"
+        },
+        {
+          "count": 2,
+          "kind": "monkeypatch"
+        },
+        {
+          "count": 2,
+          "kind": "nested_function"
+        }
+      ],
+      "corpus": {
+        "bytes": 6072,
+        "definitions": 62,
+        "exports": 28,
+        "files": 7,
+        "import_edges": 19
+      },
+      "grammar_crate": "tree-sitter-python",
+      "language": "python",
+      "missing_definitions": [
+        "models.py • method • Circle.__init__",
+        "models.py • method • Shape.__init__"
+      ],
+      "missing_edges": [],
+      "missing_exports": [],
+      "relations": {
+        "definitions": {
+          "f1": 0.9836,
+          "false_positive": 0,
+          "missed": 2,
+          "precision": 1.0,
+          "recall": 0.9677,
+          "true_positive": 60
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 28
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 19
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 12,
+          "found": 12,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "classmethod"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "conditional_def"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "cross_file"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dataclass"
+        },
+        {
+          "expected": 2,
+          "found": 0,
+          "recall": 0.0,
+          "tag": "dataclass_generated"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "decorated"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "decorator"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "decorator_factory"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dunder"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dunder_all"
+        },
+        {
+          "expected": 28,
+          "found": 28,
+          "recall": 1.0,
+          "tag": "export"
+        },
+        {
+          "expected": 18,
+          "found": 18,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "forward_reference"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:conditional_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:import_in_function"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:module_import"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 19,
+          "found": 19,
+          "recall": 1.0,
+          "tag": "import:relative_import"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:star_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:type_checking"
+        },
+        {
+          "expected": 23,
+          "found": 21,
+          "recall": 0.913,
+          "tag": "method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module_getattr"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "monkeypatch"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "namedtuple_base"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "namedtuple_call"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "nested_class"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "not_implemented"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "override"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "private"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "property"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "staticmethod"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "subclass"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "type_checking"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "typeddict_base"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "var"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 11.8756,
+        "measured_over": "repository",
+        "ok": true
+      },
+      "verdict": "go_with_conditions"
+    },
+    {
+      "blind_spots": [],
+      "corpus": {
+        "bytes": 4488,
+        "definitions": 53,
+        "exports": 38,
+        "files": 9,
+        "import_edges": 25
+      },
+      "grammar_crate": "tree-sitter-typescript",
+      "language": "typescript",
+      "missing_definitions": [],
+      "missing_edges": [],
+      "missing_exports": [],
+      "relations": {
+        "definitions": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 53
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 38
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 25
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "abstract"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "accessor"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "alias"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "ambient"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "arrow_function"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "declare_module"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "decorator"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "default_export"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "enum"
+        },
+        {
+          "expected": 38,
+          "found": 38,
+          "recall": 1.0,
+          "tag": "export"
+        },
+        {
+          "expected": 17,
+          "found": 17,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generated_into_foreign_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generator"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 15,
+          "found": 15,
+          "recall": 1.0,
+          "tag": "import:barrel"
+        },
+        {
+          "expected": 7,
+          "found": 7,
+          "recall": 1.0,
+          "tag": "import:barrel_hop"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:namespace_import"
+        },
+        {
+          "expected": 7,
+          "found": 7,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:side_effect_import"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "import:single_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:star_reexport"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "import:type_only_import"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "interface"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "interface_element"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "member"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "merged_declaration"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "namespace"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "nested_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "overload"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "static"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "type_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "var"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 11.7551,
+        "measured_over": "replica",
+        "ok": true
+      },
+      "verdict": "go"
+    },
+    {
+      "blind_spots": [],
+      "corpus": {
+        "bytes": 3869,
+        "definitions": 54,
+        "exports": 26,
+        "files": 11,
+        "import_edges": 14
+      },
+      "grammar_crate": "tree-sitter-go",
+      "language": "go",
+      "missing_definitions": [],
+      "missing_edges": [],
+      "missing_exports": [],
+      "relations": {
+        "definitions": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 54
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 26
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 14
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "build_tag"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "const_group"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "embedded_field"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "embedded_interface"
+        },
+        {
+          "expected": 26,
+          "found": 26,
+          "recall": 1.0,
+          "tag": "export"
+        },
+        {
+          "expected": 18,
+          "found": 18,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "func_type"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "functional_option"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:blank_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:build_tag"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:dot_import"
+        },
+        {
+          "expected": 14,
+          "found": 14,
+          "recall": 1.0,
+          "tag": "import:package_import"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:test_only"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "init_func"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "interface"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "interface_element"
+        },
+        {
+          "expected": 16,
+          "found": 16,
+          "recall": 1.0,
+          "tag": "method"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "pointer_receiver"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "struct"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "test_only"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "type_alias"
+        },
+        {
+          "expected": 12,
+          "found": 12,
+          "recall": 1.0,
+          "tag": "unexported"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "value_receiver"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "var"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "variadic"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 15.0791,
+        "measured_over": "replica",
+        "ok": true
+      },
+      "verdict": "go"
+    },
+    {
+      "blind_spots": [
+        {
+          "count": 1,
+          "kind": "alias"
+        },
+        {
+          "count": 1,
+          "kind": "class_eval"
+        },
+        {
+          "count": 2,
+          "kind": "define_method_dynamic"
+        },
+        {
+          "count": 7,
+          "kind": "macro_method"
+        },
+        {
+          "count": 1,
+          "kind": "monkeypatch_or_data"
+        },
+        {
+          "count": 3,
+          "kind": "struct_new"
+        }
+      ],
+      "corpus": {
+        "bytes": 3517,
+        "definitions": 67,
+        "exports": 8,
+        "files": 6,
+        "import_edges": 7
+      },
+      "grammar_crate": "tree-sitter-ruby",
+      "language": "ruby",
+      "missing_definitions": [
+        "lib/demo/core/shape.rb • method • Demo.Core.Shape.side1",
+        "lib/demo/core/shape.rb • method • Demo.Core.Shape.side2",
+        "lib/demo/report.rb • method • Demo.Report.area",
+        "lib/demo/report.rb • method • Demo.Report.name"
+      ],
+      "missing_edges": [],
+      "missing_exports": [],
+      "relations": {
+        "definitions": {
+          "f1": 0.9692,
+          "false_positive": 0,
+          "missed": 4,
+          "precision": 1.0,
+          "recall": 0.9403,
+          "true_positive": 63
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 8
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 7
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "alias"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "attr_dsl"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "class_eval"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "cross_file_reopen"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "defdelegate"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "define_method"
+        },
+        {
+          "expected": 4,
+          "found": 0,
+          "recall": 0.0,
+          "tag": "define_method_loop"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dunder"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "eigenclass"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "export"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "freeze"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:autoload"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:conditional_require"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:load_path_require"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:monkeypatch_target"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "import:require_relative"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "initialize"
+        },
+        {
+          "expected": 43,
+          "found": 39,
+          "recall": 0.907,
+          "tag": "method"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "module"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "module_reopen"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "nested_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "not_implemented"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "operator_method"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "override"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "percent_list"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "private_scope"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "protected_scope"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "scope_resolution"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "setter"
+        },
+        {
+          "expected": 7,
+          "found": 7,
+          "recall": 1.0,
+          "tag": "singleton_def"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "struct_block"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "struct_new"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "subclass"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "top_level_def"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 0.64,
+        "measured_over": "replica",
+        "ok": false
+      },
+      "verdict": "go_with_conditions"
+    },
+    {
+      "blind_spots": [
+        {
+          "count": 6,
+          "kind": "constructor"
+        },
+        {
+          "count": 2,
+          "kind": "record_accessor"
+        }
+      ],
+      "corpus": {
+        "bytes": 3897,
+        "definitions": 47,
+        "exports": 8,
+        "files": 10,
+        "import_edges": 14
+      },
+      "grammar_crate": "tree-sitter-java",
+      "language": "java",
+      "missing_definitions": [
+        "com/acme/app/model/Circle.java • method • Circle.name",
+        "com/acme/app/model/Circle.java • method • Circle.r"
+      ],
+      "missing_edges": [],
+      "missing_exports": [],
+      "relations": {
+        "definitions": {
+          "f1": 0.9783,
+          "false_positive": 0,
+          "missed": 2,
+          "precision": 1.0,
+          "recall": 0.9574,
+          "true_positive": 45
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 8
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 14
+        }
+      },
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "tags": [
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "annotation_element"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "annotation_type"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "annotation_use"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "default_method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "deprecated"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "enum"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "enum_implementation"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "export"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "implements"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:annotation_use"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:implements"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "import:same_package"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:sealed_permits"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:single_import"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:static_import"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "import:wildcard_import"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "interface"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "interface_element"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "lambda"
+        },
+        {
+          "expected": 32,
+          "found": 30,
+          "recall": 0.9375,
+          "tag": "method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module_info"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module_not_exported"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "nested_class"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "override"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "package_private"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "protected"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "record"
+        },
+        {
+          "expected": 2,
+          "found": 0,
+          "recall": 0.0,
+          "tag": "record_accessor"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "sealed"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "second_top_level_type"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "static"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "static_final_field"
+        }
+      ],
+      "throughput_check": {
+        "enforced": true,
+        "floor_mib_per_second": 5.0,
+        "measured_mib_per_second": 15.0614,
+        "measured_over": "replica",
+        "ok": true
+      },
+      "verdict": "go_with_conditions"
+    }
+  ],
+  "recommendation": {
+    "go": [
+      "typescript",
+      "go"
+    ],
+    "go_with_conditions": [
+      "rust",
+      "python",
+      "ruby",
+      "java"
+    ],
+    "no_go": []
+  },
+  "spike": {
+    "corpus": "crates/fathom-analyze/spike/s1/corpus",
+    "harness": "crates/fathom-analyze/examples/s1_spike.rs",
+    "id": "reco-alj",
+    "plan_key": "s1",
+    "reproduce": "cargo run -p fathom-analyze --features langs-all --example s1_spike -- --repo . --report benchmarks/reports/s1-tree-sitter-accuracy.json",
+    "thresholds": "crates/fathom-analyze/spike/s1/thresholds.json",
+    "title": "tree-sitter extraction accuracy across six languages"
+  },
+  "thresholds": {
+    "granularity": {
+      "definitions": "one row per named declaration at file top level or inside a type/module container, members included, function-local declarations excluded",
+      "exports": "one row per top-level symbol nameable from outside the declaring unit, per the language's own access rules",
+      "imports": "one row per (file, resolved file, symbol) dependency resolvable inside the repository"
+    },
+    "how_thresholds_are_set": "Recall is the bar that matters for a graph, because a missing edge is an invisible dependency; precision matters more for an export surface, because a wrong 'public' is a false promise in a breaking-change report. Each floor below is stated as (a) what a reviewer would notice and (b) what a grammar plus a language model can actually deliver, and `hard: true` means 'missing this makes the language unusable for e3.2..e3.7 at file granularity, so it goes to the fallback rather than to a caveat'.",
+    "irreducible_blind_spots": {
+      "default": [],
+      "go": [],
+      "java": [
+        "record_accessor"
+      ],
+      "python": [
+        "decorated_class",
+        "generated_method",
+        "monkeypatch"
+      ],
+      "ruby": [
+        "macro_method",
+        "define_method_dynamic",
+        "class_eval",
+        "struct_new",
+        "monkeypatch_or_data",
+        "alias"
+      ],
+      "rust": [
+        "macro_definition",
+        "macro_generated_item"
+      ],
+      "typescript": [],
+      "what": "Blind-spot categories the spike could not remove at any effort level, per language. A language whose run records one of these still passes, but the verdict is `go_with_conditions`: the category becomes a stated limitation of e3.1 rather than a rounding error. Anything not listed here is a bug in the extractor, not a property of the language."
+    },
+    "relations": {
+      "default": {
+        "definitions": {
+          "hard": true,
+          "precision": 0.95,
+          "recall": 0.95
+        },
+        "exports": {
+          "hard": false,
+          "precision": 0.9,
+          "recall": 0.9
+        },
+        "imports": {
+          "hard": false,
+          "precision": 0.9,
+          "recall": 0.9
+        }
+      },
+      "ruby": {
+        "definitions": {
+          "hard": false,
+          "precision": 0.95,
+          "recall": 0.9
+        },
+        "exports": {
+          "hard": false,
+          "precision": 1.0,
+          "recall": 0.9
+        },
+        "imports": {
+          "hard": false,
+          "precision": 0.9,
+          "recall": 0.9
+        }
+      }
+    },
+    "throughput": {
+      "comment": "Parse-only throughput per core, release profile, over the corpus that represents the language: real files of that language when the host repository has any, otherwise the replica. The budgets this has to fit inside are ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms`, paid per changed file, so 5 MiB/s clears them by two orders of magnitude; the floor is a canary against a pathological grammar, not a performance target. Missing it is a condition, never a no-go: cost is a feature-gate question (ADR-002 §6.5).",
+      "parse_mb_per_second_floor": 5.0,
+      "symbols_per_second_floor": 2000
+    },
+    "what": "The acceptance bar spike s1 (reco-alj) proposes for e3.1 (reco-zoz). These are the numbers an extractor has to hit for the module graph, the API surface and the architecture panes to be worth drawing; a language that misses one is not cut from the plan, it gets the fallback recorded in docs/concepts/structure-extraction.md and the reason the report gives."
+  },
+  "throughput": [
+    {
+      "fixture": {
+        "bytes": 7516,
+        "extract_mib_per_second": 25.7412,
+        "files": 10,
+        "parse_mib_per_second": 7.2238,
+        "per_file_us_max": 266.584,
+        "per_file_us_p50": 69.167,
+        "per_file_us_p95": 266.584,
+        "rss_delta_kib": 88
+      },
+      "language": "rust",
+      "replica": {
+        "bytes": 2010103,
+        "extract_mib_per_second": 33.6986,
+        "files": 1900,
+        "parse_mib_per_second": 10.7087,
+        "per_file_us_max": 352.5,
+        "per_file_us_p50": 69.375,
+        "per_file_us_p95": 242.5,
+        "rss_delta_kib": 216
+      },
+      "repository": {
+        "bytes": 3546177,
+        "extract_mib_per_second": 168.9137,
+        "files": 196,
+        "parse_mib_per_second": 11.689,
+        "per_file_us_max": 6063.708,
+        "per_file_us_p50": 1184.25,
+        "per_file_us_p95": 4010.667,
+        "rss_delta_kib": 2112
+      }
+    },
+    {
+      "fixture": {
+        "bytes": 6072,
+        "extract_mib_per_second": 46.4498,
+        "files": 7,
+        "parse_mib_per_second": 7.7472,
+        "per_file_us_max": 201.292,
+        "per_file_us_p50": 104.333,
+        "per_file_us_p95": 201.292,
+        "rss_delta_kib": 0
+      },
+      "language": "python",
+      "replica": {
+        "bytes": 2003028,
+        "extract_mib_per_second": 37.0637,
+        "files": 1708,
+        "parse_mib_per_second": 2.3432,
+        "per_file_us_max": 1021.209,
+        "per_file_us_p50": 473.959,
+        "per_file_us_p95": 822.583,
+        "rss_delta_kib": 0
+      },
+      "repository": {
+        "bytes": 2070573,
+        "extract_mib_per_second": 193.3674,
+        "files": 110,
+        "parse_mib_per_second": 11.8756,
+        "per_file_us_max": 6430.416,
+        "per_file_us_p50": 1179.084,
+        "per_file_us_p95": 4082.125,
+        "rss_delta_kib": 4
+      }
+    },
+    {
+      "fixture": {
+        "bytes": 4488,
+        "extract_mib_per_second": 37.0831,
+        "files": 9,
+        "parse_mib_per_second": 7.3678,
+        "per_file_us_max": 167.666,
+        "per_file_us_p50": 61.791,
+        "per_file_us_p95": 167.666,
+        "rss_delta_kib": 0
+      },
+      "language": "typescript",
+      "replica": {
+        "bytes": 2005428,
+        "extract_mib_per_second": 51.8605,
+        "files": 2493,
+        "parse_mib_per_second": 11.7551,
+        "per_file_us_max": 255.875,
+        "per_file_us_p50": 63.875,
+        "per_file_us_p95": 168.583,
+        "rss_delta_kib": 0
+      }
+    },
+    {
+      "fixture": {
+        "bytes": 3869,
+        "extract_mib_per_second": 71.0158,
+        "files": 11,
+        "parse_mib_per_second": 8.7332,
+        "per_file_us_max": 102.083,
+        "per_file_us_p50": 30.0,
+        "per_file_us_p95": 102.083,
+        "rss_delta_kib": 0
+      },
+      "language": "go",
+      "replica": {
+        "bytes": 2001160,
+        "extract_mib_per_second": 104.7428,
+        "files": 3047,
+        "parse_mib_per_second": 15.0791,
+        "per_file_us_max": 242.041,
+        "per_file_us_p50": 33.875,
+        "per_file_us_p95": 105.0,
+        "rss_delta_kib": 0
+      }
+    },
+    {
+      "fixture": {
+        "bytes": 3517,
+        "extract_mib_per_second": 26.8952,
+        "files": 6,
+        "parse_mib_per_second": 4.5114,
+        "per_file_us_max": 237.084,
+        "per_file_us_p50": 121.292,
+        "per_file_us_p95": 237.084,
+        "rss_delta_kib": 0
+      },
+      "language": "ruby",
+      "replica": {
+        "bytes": 2004559,
+        "extract_mib_per_second": 41.3452,
+        "files": 2244,
+        "parse_mib_per_second": 0.64,
+        "per_file_us_max": 4270.208,
+        "per_file_us_p50": 1309.792,
+        "per_file_us_p95": 2432.458,
+        "rss_delta_kib": 384
+      }
+    },
+    {
+      "fixture": {
+        "bytes": 3897,
+        "extract_mib_per_second": 11.2096,
+        "files": 10,
+        "parse_mib_per_second": 8.8796,
+        "per_file_us_max": 152.5,
+        "per_file_us_p50": 33.708,
+        "per_file_us_p95": 152.5,
+        "rss_delta_kib": 0
+      },
+      "language": "java",
+      "replica": {
+        "bytes": 2000221,
+        "extract_mib_per_second": 17.0206,
+        "files": 2880,
+        "parse_mib_per_second": 15.0614,
+        "per_file_us_max": 195.208,
+        "per_file_us_p50": 35.917,
+        "per_file_us_p95": 140.208,
+        "rss_delta_kib": 0
+      }
+    }
+  ],
+  "verdicts": {
+    "go": "go",
+    "java": "go_with_conditions",
+    "python": "go_with_conditions",
+    "ruby": "go_with_conditions",
+    "rust": "go_with_conditions",
+    "typescript": "go"
+  }
+}

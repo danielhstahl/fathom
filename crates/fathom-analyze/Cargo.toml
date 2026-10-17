@@ -74,3 +74,10 @@ net-llm = ["dep:ureq"]
 
 [dev-dependencies]
 fathom-fixtures.workspace = true
+
+# The `s1` spike harness (`reco-alj`) lives here, not in the library: it is throwaway code that
+# has to compile against the same six grammar crates `e3.1` will ship with, and `required-features`
+# keeps it — and the C build of all six — out of every default `cargo build` and `cargo test`.
+[[example]]
+name = "s1_spike"
+required-features = ["langs-all"]

@@ -1,0 +1,147 @@
+{
+  "language": "go",
+  "root": "go.mod",
+  "notes": "Go import resolution is package-granular: an import names a directory, not a file, so a resolved import fans out to every non-test file of the package directory with symbol `*` (the whole package really is visible to the importer). The module path is read from `go.mod` and stripped to find the directory. `*_test.go` files are excluded from the package index — `shape_test.go` declares a *different* package (`shape_test`) in the same directory, which is the dir-to-package mapping trap. The `package` clause is a file's identity, not a definition. Export = first rune is an upper-case letter, which is a name property, not a declaration marker. Two files with `//go:build` constraints both declare `metrics.Init`.",
+  "files": {
+    "main.go": {
+      "definitions": [
+        { "k": "var", "n": "version", "t": ["var", "unexported"] },
+        { "k": "const", "n": "commit", "t": ["const", "unexported"] },
+        { "k": "fn", "n": "init", "t": ["fn", "init_func", "unexported"] },
+        { "k": "fn", "n": "main", "t": ["fn", "unexported"] },
+        { "k": "fn", "n": "banner", "t": ["fn", "unexported"] }
+      ],
+      "exports": [],
+      "imports": [
+        { "f": "pkg/metrics/metrics.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/metrics/init_linux.go", "s": "*", "t": ["package_import", "build_tag"] },
+        { "f": "pkg/metrics/init_other.go", "s": "*", "t": ["package_import", "build_tag"] },
+        { "f": "pkg/shape/shape.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/shape/circle.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/shape/doc.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/units/units.go", "s": "*", "t": ["package_import", "dot_import"] },
+        { "f": "pkg/version/version.go", "s": "*", "t": ["package_import", "blank_import"] }
+      ],
+      "external": ["fmt"]
+    },
+    "pkg/shape/shape.go": {
+      "definitions": [
+        { "k": "interface", "n": "Shape", "t": ["interface"] },
+        { "k": "method", "n": "Shape.Area", "t": ["method", "interface_element"] },
+        { "k": "method", "n": "Shape.Name", "t": ["method", "interface_element"] },
+        { "k": "type", "n": "Visitor", "t": ["type_alias", "func_type"] },
+        { "k": "struct", "n": "Options", "t": ["struct", "embedded_field"] },
+        { "k": "struct", "n": "Rect", "t": ["struct"] },
+        { "k": "const", "n": "DefaultSides", "t": ["const", "const_group"] },
+        { "k": "const", "n": "maxSides", "t": ["const", "const_group", "unexported"] },
+        { "k": "var", "n": "ErrEmpty", "t": ["var"] },
+        { "k": "fn", "n": "NewRect", "t": ["fn"] },
+        { "k": "method", "n": "Rect.Area", "t": ["method", "value_receiver"] },
+        { "k": "method", "n": "Rect.Scale", "t": ["method", "pointer_receiver"] },
+        { "k": "method", "n": "Rect.Name", "t": ["method", "value_receiver"] },
+        { "k": "fn", "n": "Map", "t": ["fn", "generic"] }
+      ],
+      "exports": ["Shape", "Visitor", "Options", "Rect", "DefaultSides", "ErrEmpty", "NewRect", "Map"],
+      "imports": [],
+      "external": ["errors"]
+    },
+    "pkg/shape/circle.go": {
+      "definitions": [
+        { "k": "struct", "n": "Circle", "t": ["struct"] },
+        { "k": "fn", "n": "NewCircle", "t": ["fn"] },
+        { "k": "method", "n": "Circle.Area", "t": ["method", "value_receiver"] },
+        { "k": "method", "n": "Circle.Name", "t": ["method", "value_receiver"] },
+        { "k": "method", "n": "Circle.Grow", "t": ["method", "pointer_receiver"] },
+        { "k": "fn", "n": "smooth", "t": ["fn", "unexported"] },
+        { "k": "fn", "n": "init", "t": ["fn", "init_func", "unexported"] }
+      ],
+      "exports": ["Circle", "NewCircle"],
+      "imports": [],
+      "external": ["math"]
+    },
+    "pkg/shape/doc.go": {
+      "definitions": [],
+      "exports": [],
+      "imports": []
+    },
+    "pkg/shape/shape_test.go": {
+      "definitions": [
+        { "k": "struct", "n": "fake", "t": ["struct", "test_only", "unexported"] },
+        { "k": "method", "n": "fake.Area", "t": ["method", "test_only"] },
+        { "k": "method", "n": "fake.Name", "t": ["method", "test_only"] },
+        { "k": "fn", "n": "TestArea", "t": ["fn", "test_only"] },
+        { "k": "fn", "n": "BenchmarkArea", "t": ["fn", "test_only"] }
+      ],
+      "exports": ["TestArea", "BenchmarkArea"],
+      "imports": [
+        { "f": "pkg/shape/shape.go", "s": "*", "t": ["package_import", "test_only"] },
+        { "f": "pkg/shape/circle.go", "s": "*", "t": ["package_import", "test_only"] },
+        { "f": "pkg/shape/doc.go", "s": "*", "t": ["package_import", "test_only"] }
+      ],
+      "external": ["testing"]
+    },
+    "pkg/metrics/metrics.go": {
+      "definitions": [
+        { "k": "struct", "n": "Counter", "t": ["struct"] },
+        { "k": "method", "n": "Counter.Inc", "t": ["method", "pointer_receiver"] },
+        { "k": "method", "n": "Counter.Value", "t": ["method", "pointer_receiver"] },
+        { "k": "const", "n": "Name", "t": ["const"] }
+      ],
+      "exports": ["Counter", "Name"],
+      "imports": [],
+      "external": ["sync"]
+    },
+    "pkg/metrics/init_linux.go": {
+      "definitions": [
+        { "k": "fn", "n": "Init", "t": ["fn", "build_tag"] },
+        { "k": "fn", "n": "register", "t": ["fn", "build_tag", "unexported"] }
+      ],
+      "exports": ["Init"],
+      "imports": []
+    },
+    "pkg/metrics/init_other.go": {
+      "definitions": [{ "k": "fn", "n": "Init", "t": ["fn", "build_tag"] }],
+      "exports": ["Init"],
+      "imports": []
+    },
+    "pkg/units/units.go": {
+      "definitions": [
+        { "k": "const", "n": "Km", "t": ["const"] },
+        { "k": "var", "n": "Table", "t": ["var"] },
+        { "k": "fn", "n": "Meters", "t": ["fn"] },
+        { "k": "fn", "n": "normalize", "t": ["fn", "unexported"] }
+      ],
+      "exports": ["Km", "Table", "Meters"],
+      "imports": []
+    },
+    "pkg/version/version.go": {
+      "definitions": [
+        { "k": "const", "n": "Tag", "t": ["const"] },
+        { "k": "fn", "n": "init", "t": ["fn", "init_func", "unexported"] }
+      ],
+      "exports": ["Tag"],
+      "imports": []
+    },
+    "internal/store/store.go": {
+      "definitions": [
+        { "k": "interface", "n": "Bucket", "t": ["interface"] },
+        { "k": "method", "n": "Bucket.Has", "t": ["method", "interface_element"] },
+        { "k": "interface", "n": "Repo", "t": ["interface", "embedded_interface"] },
+        { "k": "method", "n": "Repo.Get", "t": ["method", "interface_element"] },
+        { "k": "type", "n": "Option", "t": ["type_alias", "func_type"] },
+        { "k": "struct", "n": "Store", "t": ["struct"] },
+        { "k": "fn", "n": "New", "t": ["fn", "variadic"] },
+        { "k": "fn", "n": "WithCache", "t": ["fn", "functional_option"] },
+        { "k": "method", "n": "Store.Save", "t": ["method", "pointer_receiver"] },
+        { "k": "method", "n": "Store.Load", "t": ["method", "pointer_receiver"] }
+      ],
+      "exports": ["Bucket", "Repo", "Option", "Store", "New", "WithCache"],
+      "imports": [
+        { "f": "pkg/shape/shape.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/shape/circle.go", "s": "*", "t": ["package_import"] },
+        { "f": "pkg/shape/doc.go", "s": "*", "t": ["package_import"] }
+      ],
+      "external": ["context"]
+    }
+  }
+}

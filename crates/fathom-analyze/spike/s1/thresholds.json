@@ -1,0 +1,76 @@
+{
+  "what": "The acceptance bar spike s1 (reco-alj) proposes for e3.1 (reco-zoz). These are the numbers an extractor has to hit for the module graph, the API surface and the architecture panes to be worth drawing; a language that misses one is not cut from the plan, it gets the fallback recorded in docs/concepts/structure-extraction.md and the reason the report gives.",
+  "how_thresholds_are_set": "Recall is the bar that matters for a graph, because a missing edge is an invisible dependency; precision matters more for an export surface, because a wrong 'public' is a false promise in a breaking-change report. Each floor below is stated as (a) what a reviewer would notice and (b) what a grammar plus a language model can actually deliver, and `hard: true` means 'missing this makes the language unusable for e3.2..e3.7 at file granularity, so it goes to the fallback rather than to a caveat'.",
+  "relations": {
+    "default": {
+      "definitions": {
+        "precision": 0.95,
+        "recall": 0.95,
+        "hard": true
+      },
+      "exports": {
+        "precision": 0.9,
+        "recall": 0.9,
+        "hard": false
+      },
+      "imports": {
+        "precision": 0.9,
+        "recall": 0.9,
+        "hard": false
+      }
+    },
+    "ruby": {
+      "definitions": {
+        "precision": 0.95,
+        "recall": 0.9,
+        "hard": false
+      },
+      "exports": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "hard": false
+      },
+      "imports": {
+        "precision": 0.9,
+        "recall": 0.9,
+        "hard": false
+      }
+    }
+  },
+  "throughput": {
+    "parse_mb_per_second_floor": 5.0,
+    "comment": "Parse-only throughput per core, release profile, over the corpus that represents the language: real files of that language when the host repository has any, otherwise the replica. The budgets this has to fit inside are ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms`, paid per changed file, so 5 MiB/s clears them by two orders of magnitude; the floor is a canary against a pathological grammar, not a performance target. Missing it is a condition, never a no-go: cost is a feature-gate question (ADR-002 \u00a76.5).",
+    "symbols_per_second_floor": 2000
+  },
+  "granularity": {
+    "definitions": "one row per named declaration at file top level or inside a type/module container, members included, function-local declarations excluded",
+    "exports": "one row per top-level symbol nameable from outside the declaring unit, per the language's own access rules",
+    "imports": "one row per (file, resolved file, symbol) dependency resolvable inside the repository"
+  },
+  "irreducible_blind_spots": {
+    "what": "Blind-spot categories the spike could not remove at any effort level, per language. A language whose run records one of these still passes, but the verdict is `go_with_conditions`: the category becomes a stated limitation of e3.1 rather than a rounding error. Anything not listed here is a bug in the extractor, not a property of the language.",
+    "default": [],
+    "rust": [
+      "macro_definition",
+      "macro_generated_item"
+    ],
+    "python": [
+      "decorated_class",
+      "generated_method",
+      "monkeypatch"
+    ],
+    "typescript": [],
+    "go": [],
+    "ruby": [
+      "macro_method",
+      "define_method_dynamic",
+      "class_eval",
+      "struct_new",
+      "monkeypatch_or_data",
+      "alias"
+    ],
+    "java": [
+      "record_accessor"
+    ]
+  }
+}

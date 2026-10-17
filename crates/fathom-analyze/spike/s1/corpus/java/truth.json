@@ -1,0 +1,134 @@
+{
+  "language": "java",
+  "root": "module-info.java",
+  "notes": "Java names a dependency by package, and the package is a directory: `import com.acme.app.model.Circle` resolves to `com/acme/app/model/Circle.java`, a wildcard import resolves to every file of the directory, and a *same-package* reference needs no statement at all — `sealed interface Shape permits Circle` is a dependency edge with nothing to parse an import out of. Those edges are annotated here (tag `same_package`); whether a parser can find them by scanning type references is the measured question, and the FP risk is that a type-shaped identifier that is not a corpus type produces an edge that is not there. Records generate accessors for their components, and generated members are annotated as definitions, exactly as `@dataclass` members are in Python. Constructors are not symbols; neither are fields, so no Java file has a `const` row. `module-info.java` declares the module and its `exports` list, which is the authority for API surface (`e3.7`) though not for nameability inside this module. Export is the module's external surface: a `public` top-level type in a package that `module-info.java` exports. A package-private type (tag `package_private`) is nameable only inside its own package, and a type in a package the module does not export (`com.acme.app.legacy`) is nameable inside this module but not outside it, so neither is an export — which is why `module-info.java` has to be read, not skipped.",
+  "files": {
+    "module-info.java": {
+      "definitions": [{ "k": "module", "n": "com.acme.app", "t": ["module_info"] }],
+      "exports": [],
+      "imports": []
+    },
+    "com/acme/app/App.java": {
+      "definitions": [
+        { "k": "class", "n": "App", "t": ["class", "annotation_use", "static_final_field"] },
+        { "k": "method", "n": "App.main", "t": ["method", "static"] },
+        { "k": "method", "n": "App.maxOf", "t": ["method", "generic", "static"] },
+        { "k": "method", "n": "App.task", "t": ["method", "lambda"] },
+        { "k": "method", "n": "App.toString", "t": ["method", "override"] },
+        { "k": "class", "n": "App.Helper", "t": ["class", "nested_class"] },
+        { "k": "method", "n": "App.Helper.depth", "t": ["method", "nested_class"] },
+        { "k": "class", "n": "App.Helper.Internal", "t": ["class", "nested_class"] },
+        { "k": "method", "n": "App.Helper.Internal.secret", "t": ["method", "nested_class"] },
+        { "k": "interface", "n": "App.Callback", "t": ["interface", "nested_class"] },
+        { "k": "method", "n": "App.Callback.call", "t": ["method", "interface_element", "nested_class"] },
+        { "k": "method", "n": "App.Callback.arity", "t": ["method", "default_method", "nested_class"] },
+        { "k": "enum", "n": "App.Mode", "t": ["enum", "nested_class"] },
+        { "k": "method", "n": "App.Mode.label", "t": ["method", "nested_class"] }
+      ],
+      "exports": ["App"],
+      "imports": [
+        { "f": "com/acme/app/model/Circle.java", "s": "Circle", "t": ["single_import"] },
+        { "f": "com/acme/app/util/Geom.java", "s": "area", "t": ["static_import"] }
+      ],
+      "external": ["java.util.ArrayList", "java.util.List"]
+    },
+    "com/acme/app/Tracked.java": {
+      "definitions": [
+        { "k": "interface", "n": "Tracked", "t": ["interface", "annotation_type"] },
+        { "k": "method", "n": "Tracked.value", "t": ["method", "annotation_element"] },
+        { "k": "method", "n": "Tracked.level", "t": ["method", "annotation_element"] }
+      ],
+      "exports": ["Tracked"],
+      "imports": []
+    },
+    "com/acme/app/model/Shape.java": {
+      "definitions": [
+        { "k": "interface", "n": "Shape", "t": ["interface", "sealed"] },
+        { "k": "method", "n": "Shape.area", "t": ["method", "interface_element"] },
+        { "k": "method", "n": "Shape.name", "t": ["method", "interface_element"] },
+        { "k": "method", "n": "Shape.describe", "t": ["method", "default_method"] },
+        { "k": "method", "n": "Shape.none", "t": ["method", "static"] }
+      ],
+      "exports": ["Shape"],
+      "imports": [
+        { "f": "com/acme/app/model/Circle.java", "s": "Circle", "t": ["same_package", "sealed_permits"] },
+        { "f": "com/acme/app/model/Point.java", "s": "Point", "t": ["same_package", "sealed_permits"] },
+        { "f": "com/acme/app/model/Color.java", "s": "Color", "t": ["same_package", "sealed_permits"] }
+      ]
+    },
+    "com/acme/app/model/Circle.java": {
+      "definitions": [
+        { "k": "class", "n": "Circle", "t": ["class", "record", "annotation_use"] },
+        { "k": "method", "n": "Circle.area", "t": ["method", "override"] },
+        { "k": "method", "n": "Circle.center", "t": ["method"] },
+        { "k": "method", "n": "Circle.unit", "t": ["method", "static"] },
+        { "k": "method", "n": "Circle.name", "t": ["method", "record_accessor"] },
+        { "k": "method", "n": "Circle.r", "t": ["method", "record_accessor"] }
+      ],
+      "exports": ["Circle"],
+      "imports": [
+        { "f": "com/acme/app/Tracked.java", "s": "Tracked", "t": ["single_import", "annotation_use"] },
+        { "f": "com/acme/app/model/Shape.java", "s": "Shape", "t": ["same_package", "implements"] },
+        { "f": "com/acme/app/model/Point.java", "s": "Point", "t": ["same_package"] }
+      ]
+    },
+    "com/acme/app/model/Point.java": {
+      "definitions": [
+        { "k": "class", "n": "Point", "t": ["class"] },
+        { "k": "method", "n": "Point.norm", "t": ["method"] },
+        { "k": "method", "n": "Point.origin", "t": ["method", "static"] }
+      ],
+      "exports": ["Point"],
+      "imports": []
+    },
+    "com/acme/app/model/Color.java": {
+      "definitions": [
+        { "k": "enum", "n": "Color", "t": ["enum", "enum_implementation", "implements"] },
+        { "k": "method", "n": "Color.area", "t": ["method", "override"] },
+        { "k": "method", "n": "Color.name", "t": ["method", "override"] },
+        { "k": "method", "n": "Color.byWeight", "t": ["method", "static"] }
+      ],
+      "exports": ["Color"],
+      "imports": [
+        { "f": "com/acme/app/model/Shape.java", "s": "Shape", "t": ["same_package", "implements"] }
+      ]
+    },
+    "com/acme/app/util/Geom.java": {
+      "definitions": [
+        { "k": "class", "n": "Geom", "t": ["class"] },
+        { "k": "method", "n": "Geom.area", "t": ["method", "static"] },
+        { "k": "method", "n": "Geom.perimeter", "t": ["method", "static"] },
+        { "k": "class", "n": "Helper", "t": ["class", "package_private", "second_top_level_type"] },
+        { "k": "method", "n": "Helper.depth", "t": ["method", "package_private"] }
+      ],
+      "exports": ["Geom"],
+      "imports": [
+        { "f": "com/acme/app/model/Shape.java", "s": "Shape", "t": ["single_import"] }
+      ]
+    },
+    "com/acme/app/util/Wildcard.java": {
+      "definitions": [
+        { "k": "class", "n": "Wildcard", "t": ["class"] },
+        { "k": "method", "n": "Wildcard.pick", "t": ["method", "static"] },
+        { "k": "method", "n": "Wildcard.kinds", "t": ["method", "static"] }
+      ],
+      "exports": ["Wildcard"],
+      "imports": [
+        { "f": "com/acme/app/model/Shape.java", "s": "*", "t": ["wildcard_import"] },
+        { "f": "com/acme/app/model/Circle.java", "s": "*", "t": ["wildcard_import"] },
+        { "f": "com/acme/app/model/Point.java", "s": "*", "t": ["wildcard_import"] },
+        { "f": "com/acme/app/model/Color.java", "s": "*", "t": ["wildcard_import"] }
+      ],
+      "external": ["java.util.*"]
+    },
+    "com/acme/app/legacy/Old.java": {
+      "definitions": [
+        { "k": "class", "n": "Old", "t": ["class", "module_not_exported"] },
+        { "k": "method", "n": "Old.go", "t": ["method", "deprecated"] },
+        { "k": "method", "n": "Old.level", "t": ["method", "protected"] }
+      ],
+      "exports": [],
+      "imports": []
+    }
+  }
+}

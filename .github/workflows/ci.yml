@@ -74,6 +74,26 @@ jobs:
       - name: clippy (all targets: tests may unwrap)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+  structure-spike:
+    name: spike s1 reproduces (six grammars)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: "spike s1: the committed accuracy report reproduces"
+        # Spike `s1` (`reco-alj`) decided which tree-sitter grammars ship (ADR-002 §6.5) and what
+        # each language's fallback is (docs/concepts/structure-extraction.md). The report is a
+        # measurement, so CI re-measures it: relation counts and verdicts must match the committed
+        # report exactly. Throughput is excluded on purpose — a busy runner is not a regression —
+        # and the debug profile is allowed because `--check` never writes the file it audits.
+        run: >
+          cargo run --locked -p fathom-analyze --features langs-all --example s1_spike --
+          --repo . --report benchmarks/reports/s1-tree-sitter-accuracy.json --check
+      - name: "spike s1: the harness itself builds with every grammar"
+        run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
+
   deny:
     name: cargo-deny (licences, advisories, bans, sources)
     runs-on: ubuntu-latest

@@ -1,0 +1,136 @@
+{
+  "language": "python",
+  "root": "__init__.py",
+  "notes": "The corpus root is a package, so `from .models import Shape` is a relative import with a determinate target. Export is `__all__` where a module defines one, otherwise every module-level name without a leading underscore — a rule about names, not about declarations, so a re-export (`from .models import Shape` in `__init__.py`) is a definition the file does not have and an export it does not own; those land in the import relation instead. `@dataclass` writes an `__init__`, so a decorated class's generated `__init__` is annotated as a definition: the decorator is documented to do it, and whether a parser knows that is the measured question, not a thing the annotation gets to skip. A module-level binding assigned a `namedtuple(...)` call is a class. Statements inside a function body are not symbols, but imports inside a function body *are* import edges, because Python's lazy imports are load-bearing for the dependency graph.",
+  "files": {
+    "__init__.py": {
+      "definitions": [{ "k": "var", "n": "__all__", "t": ["var", "dunder_all"] }],
+      "exports": [],
+      "imports": [
+        { "f": "models.py", "s": "Shape", "t": ["relative_import", "reexport"] },
+        { "f": "models.py", "s": "Circle", "t": ["relative_import", "import_alias", "reexport"] },
+        { "f": "service.py", "s": "run", "t": ["relative_import", "reexport"] }
+      ],
+      "external": ["ujson", "json"]
+    },
+    "models.py": {
+      "definitions": [
+        { "k": "class", "n": "Shape", "t": ["class", "dataclass"] },
+        { "k": "method", "n": "Shape.__init__", "t": ["method", "dataclass_generated"] },
+        { "k": "method", "n": "Shape.area", "t": ["method", "not_implemented"] },
+        { "k": "method", "n": "Shape.perimeter", "t": ["method", "property"] },
+        { "k": "method", "n": "Shape.origin", "t": ["method", "staticmethod"] },
+        { "k": "method", "n": "Shape.named", "t": ["method", "classmethod"] },
+        { "k": "method", "n": "Shape.as_row", "t": ["method"] },
+        { "k": "class", "n": "Circle", "t": ["class", "dataclass", "subclass"] },
+        { "k": "method", "n": "Circle.__init__", "t": ["method", "dataclass_generated"] },
+        { "k": "method", "n": "Circle.area", "t": ["method", "override"] },
+        { "k": "method", "n": "Circle.scaled", "t": ["method"] },
+        { "k": "class", "n": "Registry", "t": ["class"] },
+        { "k": "class", "n": "Registry.Entry", "t": ["class", "nested_class"] },
+        { "k": "method", "n": "Registry.Entry.__init__", "t": ["method", "nested_class"] },
+        { "k": "method", "n": "Registry.__init__", "t": ["method"] },
+        { "k": "method", "n": "Registry.add", "t": ["method"] },
+        { "k": "method", "n": "Registry.report", "t": ["method"] },
+        { "k": "method", "n": "Registry.__len__", "t": ["method", "dunder"] },
+        { "k": "class", "n": "Record", "t": ["class", "namedtuple_call"] },
+        { "k": "const", "n": "MAX_SHAPES", "t": ["const"] },
+        { "k": "var", "n": "DEFAULTS", "t": ["var"] }
+      ],
+      "exports": ["Shape", "Circle", "Registry", "Record", "MAX_SHAPES", "DEFAULTS"],
+      "imports": [
+        { "f": "util.py", "s": "DEFAULT_TIMEOUT", "t": ["relative_import"] },
+        { "f": "util.py", "s": "label", "t": ["relative_import"] },
+        { "f": "service.py", "s": "Report", "t": ["relative_import", "type_checking", "conditional_import"] }
+      ],
+      "external": ["__future__", "collections", "dataclasses", "typing"]
+    },
+    "service.py": {
+      "definitions": [
+        { "k": "class", "n": "Report", "t": ["class"] },
+        { "k": "method", "n": "Report.__init__", "t": ["method"] },
+        { "k": "method", "n": "Report.total", "t": ["method"] },
+        { "k": "method", "n": "Report.count", "t": ["method", "property"] },
+        { "k": "class", "n": "Report.Row", "t": ["class", "nested_class"] },
+        { "k": "method", "n": "Report.Row.__init__", "t": ["method", "nested_class"] },
+        { "k": "fn", "n": "run", "t": ["fn"] },
+        { "k": "fn", "n": "_coerce", "t": ["fn", "private"] },
+        { "k": "fn", "n": "stream", "t": ["fn", "async"] },
+        { "k": "fn", "n": "make_handler", "t": ["fn"] }
+      ],
+      "exports": ["Report", "run", "stream", "make_handler"],
+      "imports": [
+        { "f": "models.py", "s": "Circle", "t": ["relative_import"] },
+        { "f": "models.py", "s": "Shape", "t": ["relative_import"] },
+        { "f": "registry.py", "s": "Handler", "t": ["relative_import"] },
+        { "f": "util.py", "s": "*", "t": ["relative_import", "star_import"] },
+        { "f": "util.py", "s": "label", "t": ["relative_import", "import_alias"] }
+      ],
+      "external": ["json", "typing", "importlib"]
+    },
+    "util.py": {
+      "definitions": [
+        { "k": "const", "n": "DEFAULT_TIMEOUT", "t": ["const"] },
+        { "k": "const", "n": "UNITS", "t": ["const"] },
+        { "k": "var", "n": "_REGISTRY", "t": ["var", "private"] },
+        { "k": "fn", "n": "label", "t": ["fn"] },
+        { "k": "fn", "n": "public_pair", "t": ["fn"] },
+        { "k": "fn", "n": "_private", "t": ["fn", "private"] },
+        { "k": "fn", "n": "register", "t": ["fn", "decorator_factory"] },
+        { "k": "fn", "n": "units_to_base", "t": ["fn"] },
+        { "k": "fn", "n": "hypotenuse", "t": ["fn"] },
+        { "k": "var", "n": "_UNIT_FACTORS", "t": ["var", "private", "forward_reference"] },
+        { "k": "fn", "n": "stub", "t": ["fn", "conditional_def", "type_checking"] }
+      ],
+      "exports": ["DEFAULT_TIMEOUT", "UNITS", "label", "public_pair", "register", "units_to_base", "hypotenuse", "stub"],
+      "imports": [
+        { "f": "models.py", "s": "Shape", "t": ["relative_import", "type_checking", "conditional_import"] }
+      ],
+      "external": ["__future__", "math", "typing"]
+    },
+    "registry.py": {
+      "definitions": [
+        { "k": "class", "n": "Handler", "t": ["class"] },
+        { "k": "method", "n": "Handler.handle", "t": ["method"] },
+        { "k": "class", "n": "Deferred", "t": ["class", "subclass"] },
+        { "k": "method", "n": "Deferred.handle", "t": ["method", "async"] },
+        { "k": "fn", "n": "ping", "t": ["fn", "decorated"] },
+        { "k": "fn", "n": "pong", "t": ["fn", "decorated"] },
+        { "k": "var", "n": "HANDLERS", "t": ["var"] }
+      ],
+      "exports": ["Handler", "Deferred", "ping", "pong", "HANDLERS"],
+      "imports": [{ "f": "util.py", "s": "register", "t": ["relative_import"] }]
+    },
+    "cli.py": {
+      "definitions": [
+        { "k": "fn", "n": "build_parser", "t": ["fn"] },
+        { "k": "fn", "n": "main", "t": ["fn"] },
+        { "k": "fn", "n": "_exit", "t": ["fn", "private"] }
+      ],
+      "exports": ["build_parser", "main"],
+      "imports": [
+        { "f": "service.py", "s": "*", "t": ["relative_import", "module_import"] },
+        { "f": "models.py", "s": "Circle", "t": ["relative_import"] },
+        { "f": "service.py", "s": "run", "t": ["relative_import"] },
+        { "f": "util.py", "s": "label", "t": ["relative_import"] },
+        { "f": "registry.py", "s": "Handler", "t": ["relative_import", "import_in_function"] }
+      ],
+      "external": ["argparse", "sys"]
+    },
+    "dynamic.py": {
+      "definitions": [
+        { "k": "class", "n": "Box", "t": ["class", "namedtuple_base"] },
+        { "k": "class", "n": "Movie", "t": ["class", "typeddict_base"] },
+        { "k": "fn", "n": "__getattr__", "t": ["fn", "dunder", "module_getattr"] },
+        { "k": "fn", "n": "_factory", "t": ["fn", "private", "decorator"] },
+        { "k": "class", "n": "Slate", "t": ["class", "decorated"] },
+        { "k": "method", "n": "Slate.make", "t": ["method"] },
+        { "k": "method", "n": "Slate.extra", "t": ["method", "monkeypatch"] },
+        { "k": "method", "n": "Shape.describe", "t": ["method", "monkeypatch", "cross_file"] },
+        { "k": "var", "n": "__all__", "t": ["var", "dunder_all"] }
+      ],
+      "exports": ["Box", "Movie", "Slate"],
+      "imports": [{ "f": "models.py", "s": "Shape", "t": ["relative_import"] }]
+    }
+  }
+}

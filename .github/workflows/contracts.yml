@@ -107,6 +107,12 @@ jobs:
         # is three chances for the help overlay to lie, so CI diffs the document against the
         # tables it is generated from — the same contract as e0.8's config reference above.
         run: PYTHONPATH=src python3 -m recommender.tui doc --check
+      - name: "spike s1: the tree-sitter accuracy tables are the report's, generated"
+        # `docs/concepts/structure-extraction.md` carries the verdict that decides which grammars
+        # `e3.1` ships (ADR-002 §6.5), and every number in it is generated from
+        # `benchmarks/reports/s1-tree-sitter-accuracy.json`. The pytest suite asserts the same thing
+        # plus the corpus/threshold invariants; this step is here so the failure says what it is.
+        run: python3 tools/gen_structure_tables.py check
       - name: "e1.5 TUI: the Rust shell's parity tables are the Python ones, generated"
         # `crates/fathom-tui/tests/tables/mod.rs` is generated from `src/recommender/tui/`, because
         # a Rust copy of the keymap that was hand-copied is a second source of truth with a

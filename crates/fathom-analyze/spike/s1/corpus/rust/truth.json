@@ -1,0 +1,190 @@
+{
+  "language": "rust",
+  "root": "lib.rs",
+  "notes": "The corpus is a crate root: `lib.rs` declares the module tree, so module paths are derivable. Hand-annotated against the Rust reference, not against any parser. Definitions are what a file *declares*, cfg-gated arms included (a file that declares both arms declares two definitions). Export is the crate's external surface: an item is exported if a file outside this crate could name it in a *default unix build* — which needs the item's own visibility (`pub`, not `pub(crate)`), every module on its path from the crate root being `pub`, and, for an item in a private module, a public re-export somewhere that gives it a public path. That is the reading `e3.7`'s public-API surface needs, and it is the one that makes `pub use` load-bearing: `secret::helper` is public only because `lib.rs` re-exports it. Members are excluded from the export set (top level only). Associated items of an impl for an external type are attributed to the self type's base name (`Vec.measured`), because that is what a graph node for 'method of Vec declared in this file' means.",
+  "files": {
+    "lib.rs": {
+      "definitions": [
+        { "k": "module", "n": "shapes", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "geo", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "cfg_split", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "macros", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "traits", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "secret", "t": ["module_decl", "mod_file", "visibility_private"] },
+        { "k": "module", "n": "prelude", "t": ["module_decl", "nested_module"] },
+        { "k": "module", "n": "tests", "t": ["module_decl", "nested_module", "cfg_conditional", "test_only"] },
+        { "k": "fn", "n": "tests.shape_is_a_shape", "t": ["fn", "test_only", "nested_module"] }
+      ],
+      "exports": ["shapes", "geo", "cfg_split", "macros", "traits", "prelude"],
+      "imports": [
+        { "f": "shapes.rs", "s": "shapes", "t": ["mod_decl_edge"] },
+        { "f": "geo/mod.rs", "s": "geo", "t": ["mod_decl_edge"] },
+        { "f": "cfg_split.rs", "s": "cfg_split", "t": ["mod_decl_edge"] },
+        { "f": "macros.rs", "s": "macros", "t": ["mod_decl_edge"] },
+        { "f": "traits.rs", "s": "traits", "t": ["mod_decl_edge"] },
+        { "f": "secret.rs", "s": "secret", "t": ["mod_decl_edge"] },
+        { "f": "shapes.rs", "s": "Shape", "t": ["import_use", "reexport"] },
+        { "f": "secret.rs", "s": "helper", "t": ["import_use", "reexport", "import_alias"] },
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "reexport", "crate_path"] },
+        { "f": "geo/point.rs", "s": "ORIGIN", "t": ["import_use", "reexport", "super_path"] },
+        { "f": "geo/dist.rs", "s": "distance", "t": ["import_use", "crate_path"] },
+        { "f": "shapes.rs", "s": "*", "t": ["import_use", "import_wildcard"] }
+      ]
+    },
+    "shapes.rs": {
+      "definitions": [
+        { "k": "type", "n": "Area", "t": ["type_alias"] },
+        { "k": "const", "n": "SIDES", "t": ["const"] },
+        { "k": "const", "n": "ORIGIN_COUNT", "t": ["static"] },
+        { "k": "interface", "n": "Shape", "t": ["trait_or_interface"] },
+        { "k": "method", "n": "Shape.name", "t": ["method", "trait_method"] },
+        { "k": "method", "n": "Shape.area", "t": ["method", "method_default"] },
+        { "k": "const", "n": "Shape.KIND", "t": ["const", "associated_const"] },
+        { "k": "struct", "n": "Rect", "t": ["struct"] },
+        { "k": "method", "n": "Rect.new", "t": ["method", "impl_block"] },
+        { "k": "method", "n": "Rect.diagonal", "t": ["method", "impl_block", "visibility_private"] },
+        { "k": "method", "n": "Rect.grow", "t": ["method", "impl_block", "visibility_pub_crate"] },
+        { "k": "method", "n": "Rect.name", "t": ["method", "method_trait_impl"] },
+        { "k": "const", "n": "Rect.KIND", "t": ["const", "associated_const", "method_trait_impl"] },
+        { "k": "enum", "n": "Kind", "t": ["enum"] },
+        { "k": "struct", "n": "Circle", "t": ["struct"] },
+        { "k": "method", "n": "Circle.name", "t": ["method", "method_trait_impl"] },
+        { "k": "method", "n": "Circle.area", "t": ["method", "method_trait_impl"] },
+        { "k": "const", "n": "Circle.KIND", "t": ["const", "associated_const", "method_trait_impl"] },
+        { "k": "method", "n": "Circle.fmt", "t": ["method", "method_trait_impl", "external_trait"] },
+        { "k": "fn", "n": "describe", "t": ["fn", "generic", "where_clause"] },
+        { "k": "fn", "n": "measure", "t": ["fn", "generic", "async"] },
+        { "k": "fn", "n": "crate_internal_total", "t": ["fn", "visibility_pub_crate"] },
+        { "k": "fn", "n": "hidden_but_public", "t": ["fn", "visibility_doc_hidden"] },
+        { "k": "fn", "n": "extra_only", "t": ["fn", "cfg_conditional"] }
+      ],
+      "exports": ["Area", "SIDES", "ORIGIN_COUNT", "Shape", "Rect", "Kind", "Circle", "describe", "measure", "hidden_but_public", "extra_only"],
+      "imports": [
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "crate_path"] }
+      ],
+      "external": ["std::fmt"]
+    },
+    "geo/mod.rs": {
+      "definitions": [
+        { "k": "module", "n": "point", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "dist", "t": ["module_decl", "mod_file"] },
+        { "k": "module", "n": "private_math", "t": ["module_decl", "mod_file", "visibility_private"] }
+      ],
+      "exports": ["point", "dist"],
+      "imports": [
+        { "f": "geo/point.rs", "s": "point", "t": ["mod_decl_edge"] },
+        { "f": "geo/dist.rs", "s": "dist", "t": ["mod_decl_edge"] },
+        { "f": "geo/private_math.rs", "s": "private_math", "t": ["mod_decl_edge"] },
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "reexport"] },
+        { "f": "geo/private_math.rs", "s": "approx", "t": ["import_use", "reexport"] }
+      ]
+    },
+    "geo/point.rs": {
+      "definitions": [
+        { "k": "type", "n": "Coordinates", "t": ["type_alias"] },
+        { "k": "const", "n": "ORIGIN", "t": ["const"] },
+        { "k": "struct", "n": "Point", "t": ["struct"] },
+        { "k": "const", "n": "Point.ZERO", "t": ["const", "associated_const"] },
+        { "k": "method", "n": "Point.new", "t": ["method", "impl_block"] },
+        { "k": "method", "n": "Point.manhattan", "t": ["method", "impl_block"] },
+        { "k": "method", "n": "Point.scale", "t": ["method", "impl_block"] },
+        { "k": "method", "n": "Point.add", "t": ["method", "method_trait_impl", "external_trait"] },
+        { "k": "method", "n": "Point.fmt", "t": ["method", "method_trait_impl", "external_trait"] }
+      ],
+      "exports": ["Coordinates", "ORIGIN", "Point"],
+      "imports": [],
+      "external": ["std::ops::Add"]
+    },
+    "geo/dist.rs": {
+      "definitions": [
+        { "k": "fn", "n": "distance", "t": ["fn"] },
+        { "k": "fn", "n": "manhattan_between", "t": ["fn"] },
+        { "k": "fn", "n": "far", "t": ["fn", "visibility_pub_crate"] }
+      ],
+      "exports": ["distance", "manhattan_between"],
+      "imports": [
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "crate_path", "import_alias"] },
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "super_path", "reexport_hop", "import_alias"] }
+      ],
+      "external": ["std::f64"]
+    },
+    "geo/private_math.rs": {
+      "definitions": [
+        { "k": "fn", "n": "approx", "t": ["fn"] },
+        { "k": "const", "n": "TAU", "t": ["const"] },
+        { "k": "fn", "n": "internal", "t": ["fn", "visibility_private"] }
+      ],
+      "exports": ["approx"],
+      "imports": []
+    },
+    "secret.rs": {
+      "definitions": [
+        { "k": "fn", "n": "helper", "t": ["fn"] },
+        { "k": "fn", "n": "only_inside", "t": ["fn", "visibility_pub_crate"] },
+        { "k": "module", "n": "nested_private", "t": ["module_decl", "nested_module"] },
+        { "k": "fn", "n": "nested_private.deep", "t": ["fn", "nested_module"] }
+      ],
+      "exports": ["helper"],
+      "imports": []
+    },
+    "cfg_split.rs": {
+      "definitions": [
+        { "k": "module", "n": "platform", "t": ["module_decl", "nested_module", "cfg_conditional"] },
+        { "k": "fn", "n": "platform.open", "t": ["fn", "cfg_conditional"] },
+        { "k": "const", "n": "platform.SEP", "t": ["const", "cfg_conditional"] },
+        { "k": "module", "n": "test_only", "t": ["module_decl", "nested_module", "cfg_conditional", "test_only"] },
+        { "k": "fn", "n": "test_only.assert_sep", "t": ["fn", "test_only"] },
+        { "k": "fn", "n": "use_sep", "t": ["fn"] },
+        { "k": "fn", "n": "attributed", "t": ["fn", "cfg_attr"] },
+        { "k": "module", "n": "gated", "t": ["module_decl", "nested_module", "cfg_conditional"] },
+        { "k": "fn", "n": "gated.only_with_extra", "t": ["fn", "cfg_conditional"] }
+      ],
+      "exports": ["platform", "use_sep", "attributed"],
+      "imports": []
+    },
+    "macros.rs": {
+      "definitions": [
+        { "k": "fn", "n": "from_macro", "t": ["macro_generated"] },
+        { "k": "fn", "n": "left", "t": ["macro_generated"] },
+        { "k": "fn", "n": "right", "t": ["macro_generated"] },
+        { "k": "fn", "n": "caller", "t": ["fn"] }
+      ],
+      "exports": ["from_macro", "left", "right", "caller"],
+      "imports": []
+    },
+    "traits.rs": {
+      "definitions": [
+        { "k": "interface", "n": "Render", "t": ["trait_or_interface"] },
+        { "k": "type", "n": "Render.Target", "t": ["associated_type"] },
+        { "k": "method", "n": "Render.render", "t": ["method", "trait_method"] },
+        { "k": "method", "n": "Render.render_to_string", "t": ["method", "method_default", "where_clause"] },
+        { "k": "interface", "n": "Measured", "t": ["trait_or_interface"] },
+        { "k": "method", "n": "Measured.measured", "t": ["method", "trait_method"] },
+        { "k": "method", "n": "Vec.measured", "t": ["method", "method_trait_impl", "generic", "external_trait"] },
+        { "k": "method", "n": "Point.measured", "t": ["method", "method_trait_impl"] },
+        { "k": "struct", "n": "Batch", "t": ["struct", "generic", "where_clause"] },
+        { "k": "method", "n": "Batch.push", "t": ["method", "impl_block", "generic"] },
+        { "k": "method", "n": "Batch.total", "t": ["method", "impl_block", "generic"] },
+        { "k": "method", "n": "Batch.report", "t": ["method", "impl_block", "generic"] },
+        { "k": "method", "n": "Batch.render", "t": ["method", "method_trait_impl", "generic"] },
+        { "k": "method", "n": "Batch.seal", "t": ["method", "method_trait_impl"] },
+        { "k": "fn", "n": "collect", "t": ["fn", "generic", "async"] },
+        { "k": "fn", "n": "raw_len", "t": ["fn", "unsafe"] },
+        { "k": "fn", "n": "c_entry", "t": ["fn", "extern_abi"] },
+        { "k": "fn", "n": "dyn_call", "t": ["fn", "dyn_trait"] },
+        { "k": "module", "n": "helpers", "t": ["module_decl", "nested_module"] },
+        { "k": "fn", "n": "helpers.area_of", "t": ["fn", "generic", "nested_module"] },
+        { "k": "interface", "n": "helpers.Sealed", "t": ["trait_or_interface", "nested_module"] },
+        { "k": "method", "n": "helpers.Sealed.seal", "t": ["method", "trait_method"] }
+      ],
+      "exports": ["Render", "Measured", "Batch", "collect", "raw_len", "c_entry", "dyn_call", "helpers"],
+      "imports": [
+        { "f": "geo/point.rs", "s": "Point", "t": ["import_use", "crate_path"] },
+        { "f": "shapes.rs", "s": "describe", "t": ["import_use", "crate_path", "import_group"] },
+        { "f": "shapes.rs", "s": "Area", "t": ["import_use", "crate_path", "import_group"] },
+        { "f": "shapes.rs", "s": "Shape", "t": ["import_use", "crate_path", "import_group"] }
+      ],
+      "external": ["std::fmt"]
+    }
+  }
+}
