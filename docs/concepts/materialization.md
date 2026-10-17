@@ -176,10 +176,10 @@ patch is not in the local packfile", which is a fact about the neighbour and not
 
 The seam is deliberate and, as of this ticket, unoccupied on purpose: `fathom-tui` is IO-free (ADR-002
 §3, lint `W1`), so the CLI owns "give me the patch bytes for episode X" and hands them over as a
-`PatchSource`. Today `fathom-cli` has one patch — the one named on the command line (`tui.rs`,
-`episodes: None`) — because the episode list itself is still `insight::episodes`, which is `e2.11`'s
-to answer. The mechanism is tested through `BytesSource`; the wiring is one call in the CLI the day
-the façade answers.
+`PatchSource`. Today `fathom-cli` has one patch — the one named on the command line (`tui.rs`) — and it
+is not attached to the row under the cursor, which is the walkthrough's third P1. The episode list
+itself has arrived since this document was written: a page of live episodes is read out of the spine
+before the first frame, so the seam has rows to attach to and is one call in the CLI from occupied.
 
 ## 6 The four criteria, and what proves each one
 
@@ -221,12 +221,14 @@ wastes one read and delivers nothing, which is the honest limit of cooperative c
 windowed by `e1.6` — `Rail::lines` builds exactly the rows on screen, p99 1.8 ms and 51 KB per frame at
 10 000 episodes (`tests/timeline_bench.rs`) — and its filter/sort rebuild is memoised behind a dirty
 flag, so there is no O(index) work left on the frame path to move. What the pattern would still have to
-wrap is the *fetch*: pages of episodes from `EpisodeSource`, which the rail does not call because the
-store-backed source is `insight::episodes` (`e2.11`) and `fathom-cli` currently hands over
-`episodes: None`. When that answers, the pager is this engine with `PageKey(origin, filter, page)` and
+wrap is the *fetch*: the pages of episodes past the one the shell opens with. The rail still does not
+call `EpisodeSource` — the composition root reads a single page before the first frame, sized by the
+façade's own `PAGE_LIMIT_MAX`, and the strip prints `index holds N` when the index is bigger than the
+page — so when that page is not enough, the pager is this engine with `PageKey(origin, filter, page)` and
 `EpisodeSource::load` as the `Work` function — priority by cursor position, cancellation of pages the
-cursor left, a byte-bounded page cache — and the reason it is not written today is that a pager with no
-source is a machine with nothing to feed it. The long-file-tree half of the ticket's second sentence is
+cursor left, a byte-bounded page cache — and the reason it is not written today is that scrolling past
+the first page is the same missing machine, from the store side as much as this one. The long-file-tree
+half of the ticket's second sentence is
 done, and it is where the pattern actually bit: [§7.1](#7-1-the-tree-was-the-worst-offender).
 
 **No persisted cache.** Decodes live in memory for the life of the run. A cold start re-decodes; that

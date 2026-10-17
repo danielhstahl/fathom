@@ -598,6 +598,55 @@ impl Store {
             .map_err(|err| corrupt("reading episode authors", &err))
     }
 
+    /// The paths the given episodes touched, as `episode id → paths`, sorted and deduplicated.
+    ///
+    /// This is a *join*, not a stored column: the store records paths per commit (`git_commit_file`)
+    /// and an episode is a set of commits, so an episode's paths are their union. It is read as one
+    /// statement over `episode_member ⋈ git_commit_file` for the ids asked for rather than one per
+    /// episode, for the reason [`Store::episode_inputs`] gives for its own single pass — a read whose
+    /// cost grows with the rows it describes is a read a first frame cannot afford, and `reco-wzt`
+    /// fills a whole page of the rail before that frame is drawn.
+    ///
+    /// An episode with no file rows is *absent* from the map rather than present and empty, because
+    /// "the index recorded nothing for it" and "this episode touches nothing" are different claims and
+    /// the card prints the first as `paths unknown` (ADR-001 §7.7).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if any read fails.
+    pub fn episode_paths(
+        &self,
+        ids: &[String],
+    ) -> Result<std::collections::BTreeMap<String, Vec<String>>, Error> {
+        // Bound on the placeholder list, not a guess at SQLite's `SQLITE_LIMIT_VARIABLE_NUMBER`: 999 is
+        // the historical floor, and half of it leaves room for whatever else a statement grows.
+        const CHUNK: usize = 500;
+        let mut out: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for chunk in ids.chunks(CHUNK) {
+            let marks = vec!["?"; chunk.len()].join(",");
+            let sql = format!(
+                "SELECT DISTINCT m.episode_id, f.new_path \
+                 FROM episode_member m JOIN git_commit_file f ON f.commit_oid = m.commit_oid \
+                 WHERE m.episode_id IN ({marks}) ORDER BY m.episode_id, f.new_path"
+            );
+            let mut statement = self
+                .connection()
+                .prepare(&sql)
+                .map_err(|err| corrupt("reading episode paths", &err))?;
+            let rows = statement
+                .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
+                .map_err(|err| corrupt("reading episode paths", &err))?;
+            for row in rows {
+                let (id, path) = row.map_err(|err| corrupt("reading episode paths", &err))?;
+                out.entry(id).or_default().push(path);
+            }
+        }
+        Ok(out)
+    }
+
     /// The review marker on one episode, defaulting to `Unread`.
     ///
     /// # Errors

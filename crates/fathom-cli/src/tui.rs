@@ -33,6 +33,9 @@ use crate::verbs::Globals;
 pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let (overrides, mut notices) = keymap_overrides(&root);
+    // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
+    // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
+    let index = index_facts(&root);
     // The session (`e1.11`): read before the shell starts, so the reviewer's cursor, filter and layout
     // are in the first frame rather than two keystrokes away, and written back only if the reviewer
     // changed something. `--fresh` still reads it — so that a fresh run that *does* change something can
@@ -79,14 +82,15 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         // read variables or walk `PATH` for itself (ADR-002 §3), so this crate does it instead.
         handoff_env: crate::handoff::environment(),
         // The timeline's rows come from a batch, never from a store handle the shell would hold
-        // (ADR-002 §5.2). `insight::episodes` is `e2.11`'s to answer, so today's honest value is
-        // `None` — and the rail says so rather than showing an empty list a reviewer would read as a
-        // quiet repository.
-        episodes: None,
+        // (ADR-002 §5.2). `reco-wzt` is the read: the composition root pulls the live episodes out of the
+        // spine — identity, authorship, scale, paths, session/turn and review state are all rows the
+        // index already writes — and hands the rail rows instead of an apology. `None` is still what an
+        // unindexed repository gets, and the rail says which of the two it is looking at.
+        episodes: crate::episodes::load(&root, &index),
         // ...and the shell is told what the index *does* hold, in the same breath, because it cannot go
         // and look (`reco-1nu`): an empty pane over a finished index must not send the reviewer to
         // `fathom index`, which is already done and changes nothing.
-        index: index_facts(&root),
+        index,
         session: if globals.fresh {
             Vec::new()
         } else {

@@ -64,5 +64,10 @@ net-llm = ["fathom-analyze/net-llm"]
 net-http-transport = ["fathom-mcp/net-http-transport"]
 schema-gen = ["fathom-core/json-schema"]
 
-# No `[dev-dependencies] fathom-fixtures` yet: the binary-level tests in `tests/cli.rs` drive the real
-# process and need no fixtures. `e1.12` (the MVP acceptance scenario) is the ticket that wants them here.
+# No `fathom-fixtures` here yet: the binary-level tests drive the real process and need no fixture
+# generator. `e1.12` (the MVP acceptance scenario) is the ticket that wants one.
+[dev-dependencies]
+# `tests/tui_data.rs` reads the store back to check what a frame was built from, and writes one
+# `session_state` row so the shell opens on the timeline instead of the queue (`reco-wzt`). The feature
+# is turned on here and nowhere in the binary's own dependency list, exactly as `fathom-ingest` does it.
+fathom-store = { workspace = true, features = ["sqlite-bundled"] }

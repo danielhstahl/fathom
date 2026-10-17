@@ -15,6 +15,56 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `reco-wzt` — the TUI got a data path: the rail now lists the episodes the index holds
+
+- **No pane ever received an episode.** `fathom-cli` built every frame with `episodes: None`
+  (`crates/fathom-cli/src/tui.rs:85` before this change), and the one read anyone had written for the
+  purpose — `fathom_analyze::insight::episodes()` — answers `Error::NotImplemented { ticket: "e2.11" }`.
+  So the timeline rail, the queue, the card, the diff and the deps panes each printed their honest "not
+  in this build" over an index that held 500 episodes, and Epic 1's exit criterion ("a human reviews a
+  500-commit agent repo entirely inside the TUI") was unsatisfiable by construction, because no Epic 1
+  ticket owned the read. A rail row needs no delta model: identity, author kind, scale, paths,
+  session/turn and review state are all rows `e1.3` writes.
+- **Epic 1 owns that read now.** New `crates/fathom-cli/src/episodes.rs` opens the store the composition
+  root may open and the shell may not (ADR-002 §5.2, lint `E01`), reads the live episodes newest-first
+  with their review markers and their paths, maps them into `timeline::Episode`, and hands
+  `frame::Options::episodes` a `Batch` whose `origin` and `total` come from the same
+  `fathom_tui::index::Facts` the empty states print — so the rows, the strip's `⏺ epoch` and the empty
+  sentence cannot disagree about the epoch. The page size is the façade's (`insight::PageWindow`,
+  `PAGE_LIMIT_MAX`), which is what lets a rail holding part of a big index say `index holds N` instead
+  of letting the reviewer conclude the repository was quiet. `Timeline::load` is reached from
+  `fathom-cli` on every run of the shell that has an index.
+- **One new store read, and it is a join.** `Store::episode_paths(&ids)` answers the card's `where` line
+  with one `episode_member ⋈ git_commit_file` pass instead of one query per episode, for the same reason
+  `episode_inputs` reads its paths in a single pass: a first frame that costs N queries is a first frame
+  whose cost grows with the index. Three queries fill a whole page of rail.
+- **What is still missing is still stated.** The risk column prints `?`, the card's `delta` row is
+  unchanged, `insight::status().views_ready` is still `false` and `insight::episodes` still refuses with
+  `e2.11`'s ticket number: this is the spine's data reaching the frame, not a claim that the delta model
+  exists. Scrolling past the first page is not wired either — the strip says so — and that pager is
+  `e1.8`'s list virtualization with a source attached
+  ([docs/concepts/materialization.md](docs/concepts/materialization.md)).
+- **A remedy that stopped being true was rewritten.** The finished-index empty state promised *nothing in
+  this build can list them*; it now says `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the
+  timeline, which lists them as the index knows them; \`fathom show <episode>\` prints one in full`, and a
+  finished index holding **no** episodes got its own sentence rather than a pointer at an empty timeline.
+  ADR-006 §10.3 and `docs/concepts/timeline.md` §9 carry six empty states now, and the MVP walkthrough's
+  P1 list says which of its four defects this closes.
+- **Proved by running the binary.** New `crates/fathom-cli/tests/tui_data.rs` builds a 500-commit
+  agent-driven repository with `git fast-import` (fixed clock, three agent identities with
+  `Agent-Session`/`Agent-Turn` trailers, two human ones — the acceptance fixture in miniature), indexes
+  it, and asks the built `fathom` what it draws: rows with author badges and sparklines, a day header
+  that counts real episodes, a strip that names the same number twice (`· 500 of 500`, parsed rather
+  than matched, because how many episodes 500 commits segment into is the boundary rules' business and
+  not this test's), a card whose `where`, `members` and `session` lines are store data, and none of the
+  three sentences that used to stand in for the missing path. The first frame's toast now says
+  `500 episodes from index epoch 1 (ready)` — the frame admitting how much of the index it loaded — and
+  on a 4 000-episode index it adds `· index holds 4 000`, checked by hand. A second test restores a
+  selection by episode id and gets that episode's card, which is ADR-003 §2's identity claim checked
+  end-to-end; a third refuses the timeline pointer when there is nothing to list. `fathom-store` joins
+  `fathom-cli`'s `[dev-dependencies]` so a test can read the store the binary wrote, and one golden
+  (`index_ready`) was re-baked for the new wording.
+
 ### `reco-1nu` — the empty rail stopped sending the reviewer to an index that had already finished
 
 - **One sentence was standing in for two facts.** A repository whose index held 500 commits and

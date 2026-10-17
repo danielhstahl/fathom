@@ -23,17 +23,21 @@ fn no_index_prints_the_verb_that_works() {
     );
 }
 
-/// State two: the index is finished, and nothing is loaded because the episode read is not in this
-/// build. Every clause is doing work: the numbers are the caller's, the owner is named, and the one
-/// verb that does print an episode today is offered in place of the command that would do nothing.
+/// State two: the index is finished, the shell can list its episodes, and this pane is the one that has
+/// no rows — the queue, whose ranking is the delta model's. Every clause is doing work: the numbers are
+/// the caller's, the remedy is a keystroke that works, and the headless verb is offered next to it.
+///
+/// This is the sentence `reco-1nu` pinned, rewritten by `reco-wzt`. The old one said *nothing in this
+/// build can list them*, which was true the day it was written and became a lie the day the composition
+/// root started reading episodes out of the spine — and a false remedy is the exact defect `reco-1nu`
+/// was filed against.
 #[test]
 fn a_finished_index_prints_what_it_holds_instead_of_an_index_command() {
     let facts = Facts::present(Some(1), Some("ready".to_owned()), Some(500), Some(412));
     assert_eq!(
         facts.empty_words(),
-        "index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this \
-         build; nothing in this build can list them, and `fathom show <episode>` prints one \
-         headlessly today"
+        "index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as \
+         the index knows them; `fathom show <episode>` prints one in full"
     );
     // The loop this ticket exists to break: the index is done, so do not tell anyone to run it.
     assert!(
@@ -45,6 +49,40 @@ fn a_finished_index_prints_what_it_holds_instead_of_an_index_command() {
         !facts.summary().contains("no episodes"),
         "the index holds 412 of them: {}",
         facts.summary()
+    );
+    // And the remedy must be a thing the reviewer can do, not a description of what is missing.
+    assert!(
+        facts.remedy().contains("`t`"),
+        "the ranked queue's empty state should point at the view that has rows: {}",
+        facts.remedy()
+    );
+}
+
+/// State two-and-a-half: a finished index with nothing in it. Not the same sentence — there is no
+/// timeline to send anybody to when the count the caller read is zero.
+#[test]
+fn a_finished_index_with_no_episodes_does_not_offer_an_empty_timeline() {
+    let facts = Facts::present(Some(1), Some("ready".to_owned()), Some(0), Some(0));
+    assert_eq!(facts.summary(), "index epoch 1 ready · 0 commits · 0 eps");
+    assert_eq!(
+        facts.empty_words(),
+        "index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; `fathom doctor` \
+         says whether that is the repository or the run"
+    );
+    assert!(
+        !facts.remedy().contains("`t`"),
+        "there is nothing on the timeline to list: {}",
+        facts.remedy()
+    );
+    assert!(
+        facts.remedy().contains("`fathom doctor`"),
+        "zero over a finished index is a fact to check, not a quiet repository: {}",
+        facts.remedy()
+    );
+    assert!(
+        !facts.empty_words().contains("`fathom show"),
+        "there is no episode to show: {}",
+        facts.empty_words()
     );
 }
 

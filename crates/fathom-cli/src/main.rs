@@ -16,6 +16,11 @@
 // so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
 mod clock;
 mod diagnose;
+// The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not
+// open one (ADR-002 §5.2), and handed over as a batch the rail draws. Only the shell has a use for them,
+// which is the only reason the module is gated with the shell.
+#[cfg(feature = "tui")]
+mod episodes;
 mod features;
 mod hooks;
 mod output;

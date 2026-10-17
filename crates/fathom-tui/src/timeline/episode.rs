@@ -437,8 +437,10 @@ impl Batch {
 /// the store" true by construction rather than by care (ADR-006 §0.1, ADR-001 §7.6).
 ///
 /// There is deliberately no store-backed source in this crate — `fathom-tui` has no store handle and
-/// no ingest edge (ADR-002 §5.2, lints `M01`/`M02`/`E01`). `fathom-cli` implements this over the
-/// index, and a fixture implements it over a table.
+/// no ingest edge (ADR-002 §5.2, lints `M01`/`M02`/`E01`). Today the only rows anyone fetches are the
+/// page `fathom-cli` reads over the index and hands to [`super::Timeline::load`] before the first frame
+/// (`frame::Options::episodes`), which is a `Batch` rather than a source because nothing fetches a
+/// second page yet; a worker that pages on scroll, or a fixture over a table, is what implements this.
 pub trait EpisodeSource: Send {
     /// Where the rows come from, as the strip prints it.
     fn origin(&self) -> String;

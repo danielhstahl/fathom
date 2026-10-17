@@ -34,11 +34,20 @@ pub struct Batch {
 `500 of 3 412 · index holds 3 412 (index epoch 41)` instead (ADR-001 §7.2). `Timeline::load` is the one
 way rows enter, and it is also the way a **re-index** enters — same method, same relink arithmetic (§6).
 
-The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills. Today it is
-`None`, because `insight::episodes` is `e2.11`'s to answer; a build that showed an empty list instead
-would be claiming the repository is quiet. What the shell is told instead is the index itself —
-`Options::index`, an `fathom_tui::index::Facts` the composition root read from the store, because the
-rail may not (the empty-state defect the MVP walkthrough filed). That is what lets an empty rail say
+The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills from the spine
+(`crates/fathom-cli/src/episodes.rs`, the read `reco-glv`'s first P1 asked for): the live episodes,
+newest first, one page of them, with the review markers and the paths each one touched. That read needs no delta model — identity,
+authorship, scale, session/turn and review state are rows `e1.3` already writes — which is why the rail
+has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to answer. What the store
+cannot say stays `None` and prints `?`, so a filled rail is not a claim that the delta model landed: the
+risk column is `?` and the card's `delta` row is still the stated absence (§8). The toast line at open
+says `500 episodes from index epoch 1 (ready) · index holds 4 000`, because a rail that is merely full
+does not otherwise tell the reviewer how much of the index it was given.
+
+The shell is *also* told what the index holds — `Options::index`, an `fathom_tui::index::Facts` the
+composition root read from the store, because the rail may not (the empty-state defect the MVP
+walkthrough filed). It is where the batch's `origin` and the strip's epoch come from, so the rows and
+their provenance cannot disagree, and it is what lets an empty rail say
 *index epoch 1 ready · 500 commits ·
 412 eps* rather than sending the reviewer to an index that already finished (§9). The frame's instant
 is passed in the same way (`Options::now`, ADR-002 §4.4): the rail ages every
@@ -235,7 +244,8 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 | Situation | What the rail prints |
 |---|---|
 | there is no index | `no index here yet — run \`fathom index\` here, then reopen fathom` |
-| the index is finished and the shell has no episode read | `index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this build; nothing in this build can list them, and \`fathom show <episode>\` prints one headlessly today` |
+| the index is finished and this pane is the queue | `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them as the index knows them; \`fathom show <episode>\` prints one in full` |
+| the index is finished and holds no episodes | `index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; \`fathom doctor\` says whether that is the repository or the run` |
 | the epoch is still `building` | `index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, \`fathom index --rebuild\` starts a clean one` |
 | the store would not open | `the index would not open — \`fathom doctor\` says what is wrong` |
 | the caller said nothing (a test frame, an embedding shell) | `nothing loaded yet — the shell was handed no index state` |
@@ -245,14 +255,16 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 | the selection left the index | `…left the index`, cursor at the top |
 | the card has nothing selected | `no episode selected`, then the two keys that would |
 
-The first five rows are one decision, not five: they are the `Read` variants of
+The first six rows are one decision, not six: they are the `Read` variants of
 `fathom_tui::index::Facts`, and each row's sentence is the join of its `summary()` (what the index
 holds) and its `remedy()` (what to type, or who owns what is missing). A narrow pane prints the two
 halves as two rows; the rail body and the strip print the whole join, so the pane and the strip cannot
 disagree about a fact the caller already answered. The MVP walkthrough's empty-state defect is the
 reason the split exists: with one
 sentence for both states, a reviewer with 500 commits indexed was told to run `fathom index`, did, and
-was told it again.
+was told it again. The walkthrough's first P1 rewrote the second row for the same reason it was filed:
+a remedy that is not true is worse than none, and *nothing in this build can list them* stopped being
+true the day the composition root started listing them.
 
 ## 10 The performance shape
 
@@ -288,12 +300,18 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
   minimum 61×16, each degenerate state, and `ladder.txt`. Re-bake with
   `FATHOM_GOLDEN=write cargo test -p fathom-tui --test timeline_golden`, then read the diff.
 * `timeline_bench.rs` — §10's two measurements, serialised so the allocator's counters mean something.
+* `crates/fathom-cli/tests/tui_data.rs` — the read, from outside the process: it builds a 500-commit
+  repository with `git fast-import`, indexes it, and asks the shipped binary what its rail draws, so
+  that "a fixture handed to the view" is never mistaken for "the binary can fill a rail" — the check
+  the walkthrough's first P1 asked for.
 
 ## 12 Deliberately not here yet
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the risk number and the attention queue
-the rail is the entry point for (`e4.4`, `e1.8`'s worklist); store-backed batches (`insight::episodes`,
-`e2.11`) — until then `Options::episodes` is `None` and the rail says so; saved, named filters and
+the rail is the entry point for (`e4.4`, `e1.8`'s worklist); the delta model's own read —
+`insight::episodes` is still `e2.11`'s, and the rail's rows come from the store columns Epic 1 owns
+instead (§1), one page of them, which is why the strip says `index holds N` on a repository
+bigger than a page; saved, named filters and
 filter history (`e1.11`'s session state stores one filter, which is the honest amount); `gone` derived
 from the store's dead-episode markers rather than handed in per row (`e1.3`'s ledger edge); colour-blind
 verification of the glyph set (`e5.6`).

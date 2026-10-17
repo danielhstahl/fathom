@@ -1101,9 +1101,11 @@ fn an_empty_frame_names_the_index_it_actually_found() {
             panic!("the indexed frame should print the epoch and the counts:\n{filled}")
         });
     assert!(line.contains(" commits") && line.contains(" eps"), "{line}");
+    // `reco-wzt` rewrote this half of the sentence. It used to name the missing episode read; the read
+    // exists now, so the remedy is the key that reaches the pane that has rows.
     assert!(
-        filled.contains("the episode read is e2.11's, not in this build"),
-        "the indexed frame should name what is missing and who owns it:\n{filled}"
+        filled.contains("`t` opens the timeline"),
+        "the indexed frame should point at the timeline, which lists them:\n{filled}"
     );
     assert!(
         !filled.contains("run `fathom index`") && !filled.contains("run fathom index"),

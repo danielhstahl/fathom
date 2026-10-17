@@ -192,8 +192,9 @@ fn cases() -> Vec<Case> {
         Case {
             golden: "index_ready",
             note: "the acceptance run's first minute, told honestly: epoch 1 is ready and holds 500 \
-                   commits, so the pane says that and names the read that is missing instead of \
-                   sending the reviewer to an index that already finished (`reco-1nu`)",
+                   commits, so the pane says that, points at the view that lists them, and does not \
+                   send the reviewer to an index that already finished (`reco-1nu`, reworded once \
+                   `reco-wzt` put a data path under the timeline)",
             rows: Rows::None,
             index: Facts::present(Some(1), Some("ready".to_owned()), Some(500), Some(412)),
             ..Case::default()

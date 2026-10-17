@@ -186,6 +186,11 @@ impl Facts {
     /// What to do about it, as one line short enough to read whole in the narrowest pane — or who owns
     /// what is missing, when nothing in this build can be done. A remedy that is not true is worse than
     /// none, which is the whole reason this module exists (`reco-1nu`).
+    ///
+    /// `reco-wzt` moved one sentence here. This used to say *the episode read is `e2.11`'s, not in this
+    /// build*, which was the truth right up until the composition root started reading live episodes out
+    /// of the spine: the read exists now, and what is still missing is the delta model behind the ranked
+    /// queue and the card's `delta` row. A remedy has to be something the reviewer can do.
     #[must_use]
     pub fn remedy(&self) -> String {
         match self.read {
@@ -196,12 +201,23 @@ impl Facts {
             Read::Present if self.is_building() => {
                 "the epoch is still being written — wait for it".to_owned()
             }
-            Read::Present => "the episode read is e2.11's, not in this build".to_owned(),
+            Read::Present
+                if self
+                    .episodes
+                    .is_some_and(|episodes| episodes == 0) =>
+            {
+                "the index has nothing to list; `fathom doctor` says whether that is the repository or \
+                 the run"
+                    .to_owned()
+            }
+            Read::Present => {
+                "`t` opens the timeline, which lists them as the index knows them".to_owned()
+            }
         }
     }
 
-    /// The whole empty state: index state, remedy, and — for a finished index — the fact that the
-    /// missing read is not in this build at all, plus the verb that does work today.
+    /// The whole empty state: index state, remedy, and — for a finished index that has episodes in it —
+    /// the headless verb that prints one, plus who owns the read this build has not got.
     ///
     /// The rail body wraps this and the rail strip prints it whole, so it may be long; a narrow pane
     /// prints [`Facts::summary`] and [`Facts::remedy`] as two rows instead.
@@ -213,11 +229,8 @@ impl Facts {
                 "{base}; if a rebuild died halfway, `fathom index --rebuild` starts a clean one"
             );
         }
-        if self.is_present() {
-            return format!(
-                "{base}; nothing in this build can list them, and `fathom show <episode>` prints one \
-                 headlessly today"
-            );
+        if self.is_present() && self.episodes.is_some_and(|episodes| episodes > 0) {
+            return format!("{base}; `fathom show <episode>` prints one in full");
         }
         base
     }

@@ -125,9 +125,11 @@ pub struct Options {
     /// The episodes the timeline starts with, if the caller has them.
     ///
     /// A batch, not a store handle: `fathom-cli` reads the index (or a worker pushes
-    /// [`crate::event::WorkerMsg`]), and the rail draws what it was given. `None` is the honest case
-    /// today — `insight::episodes` is `e2.11`'s to answer — and the rail says so instead of showing
-    /// an empty list that looks like an empty repository.
+    /// [`crate::event::WorkerMsg`]), and the rail draws what it was given. Since `reco-wzt` the shipped
+    /// binary does have them on any indexed repository — `fathom-cli`'s `episodes` module builds the
+    /// batch from the spine — and `None` is left for what genuinely has none: no index, an index that
+    /// would not open, an epoch with no live episodes. The rail prints which of those it is looking at
+    /// instead of showing an empty list that looks like an empty repository.
     pub episodes: Option<timeline::Batch>,
     /// What the caller read from the store before the shell started (`reco-1nu`).
     ///
@@ -581,8 +583,12 @@ pub fn run(options: &Options) -> Result<Report, Error> {
 /// before it can be checked, and what came back is reported against them.
 fn prime(app: &mut App, options: &Options) -> Restored {
     app.timeline.set_now(options.now);
+    let mut loaded = String::new();
     if let Some(batch) = &options.episodes {
-        app.timeline.load(batch.clone());
+        // Kept for the toast line: "500 episodes from index epoch 1 (ready) · index holds 4 000" is the
+        // frame saying how much of the index it took, which is the one thing a reviewer cannot see from
+        // a rail that is merely full (`reco-wzt`).
+        loaded = app.timeline.load(batch.clone());
     }
     // After the rows, so a batch that carried its own reason keeps it and a rail that got none prints
     // what the index really holds instead of a guess (`reco-1nu`).
@@ -593,6 +599,8 @@ fn prime(app: &mut App, options: &Options) -> Restored {
     }
     if !resumed.applied.is_empty() {
         app.toast(resumed.summary());
+    } else if !loaded.is_empty() {
+        app.toast(loaded);
     }
     resumed
 }

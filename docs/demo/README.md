@@ -163,13 +163,20 @@ The four P1s, in the order a reviewer meets them:
    `fathom_analyze::insight::episodes()` returns `NotImplemented`, owned by `e2.11` (reco-tt4) —
    an Epic 2 ticket that Epic 1 does not depend on. That is a plan-sequencing defect, not a missing
    view: the timeline, queue, card, diff, deps and structure panes are all built, tested and
-   starving.
+   starving. **Closed since:** Epic 1 owns a store→frame path of its own —
+   `crates/fathom-cli/src/episodes.rs` reads the live episodes, their review state and their paths
+   straight out of the spine and hands the rail a page of them before the first frame, which needs
+   nothing `e2.11` owns. `fathom tui` on this fixture now lists 500 rows, asserted by
+   `crates/fathom-cli/tests/tui_data.rs` against the built binary rather than against a fixture handed
+   to the view.
 2. **The empty state lies.** On an indexed repository the rail says *run `fathom index`*, and the
    queue offers *`fathom --demo`*, a flag that does not exist. ADR-006's note on that row is "a
    shrug is not a remedy"; this is worse than a shrug. **Closed since:** the composition root
    now reads the store and hands the shell what it found, so an empty pane over a finished index
-   prints `index epoch 1 ready · 500 commits · 412 eps — the episode read is e2.11's, not in this
-   build …`, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table.
+   prints `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them
+   …`, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table. (The tail of
+   that sentence was rewritten once more when the read above arrived: it used to promise that nothing in
+   this build could list the episodes, and that stopped being true.)
 3. **The diff viewer is never handed a patch.** Eighteen golden fixtures, a chunked `PatchSource`,
    a byte-budgeted materialiser — and no production code ever constructs one, while `fathom show
    --json` proves the store holds every hunk header.
@@ -195,6 +202,8 @@ waiting.
   fixture nobody verifies is a fixture that quietly stops being real.
 * Not a measure of the analysis layers. Epic 2's delta model is what feeds the frame; until it
   exists, the honest statement about the TUI is "the shell is complete and the data is not", which is
-  what the cast shows.
+  what the cast shows. The first P1 above has since split that sentence in two: the rail's *rows* come
+  from the spine and are there now, and the ranked, risk-scored, delta-carrying frame this walkthrough
+  asked for still waits on `e2.11` and `e4.4`.
 * Not a fair machine. Every timing here is one laptop, three samples, warm page cache, debug
   features off. The budgets' own CI gate (`e0.11`) is where these numbers become promises.
