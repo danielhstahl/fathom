@@ -349,7 +349,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `paths` | e0.8 / ADR-004 §12 | The four paths Fathom writes to. Every relative path is resolved against the repository root and must stay inside it. |
 | `noise` | e0.9 (`reco-5vz`) | Globs for change that carries no reviewable information. `e0.9` owns the built-in table; this is the user half of it. |
 | `taxonomy` | e0.9 (`reco-5vz`) | Assert what a set of paths IS, relative to the built-in table: one open map keyed by class. The engine and the built-ins are `reco-5vz`'s; only the overrides live here. |
-| `test` | e1.7 / e2.6 | What counts as a test, for the test-surface analyzer. |
+| `test` | e2.9 (`reco-6pl`) | What counts as a test, which test-surface findings fire, and the numbers that define 'new public logic, no new test'. The finding policy is here rather than in `[detectors]` because these findings are one definition with knobs, not a detector registry. |
 | `non_code` | e2.8 (`reco-bjd`) | Config, env, flags, migrations and CI — the surfaces a reviewer must be told about even though they are not code. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
@@ -398,6 +398,25 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `noise.keep` | `glob_list` | `—` | `extend` | `any` | — | noise.suppress | `e2.2` |
 | `noise.expand` | `string` | `b` | `replace` | `any` | — | noise.suppress | `e2.2` |
 | `test.globs` | `glob_list` | `tests/**, **/test_*.py` | `extend` | `any` | — | test.surface | `e2.6` |
+| `test.findings.test_removed` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.test_file_removed` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.test_skipped` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.assertion_weakened` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.assertion_removed` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.untested_public` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.findings.focused_test` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.untested.min_body_lines` | `integer` | `4` | `replace` | `any` | lines | test.surface | `e2.9` |
+| `test.untested.require_logic` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.untested.visibility` | `string` | `public` | `replace` | `any` | visibility | test.surface | `e2.9` |
+| `test.untested.scope` | `string` | `episode` | `replace` | `any` | scope | test.surface | `e2.9` |
+| `test.untested.name_overlap` | `integer` | `1` | `replace` | `any` | tokens | test.surface | `e2.9` |
+| `test.untested.path_overlap` | `integer` | `1` | `replace` | `any` | tokens | test.surface | `e2.9` |
+| `test.untested.mention_in_test` | `boolean` | `True` | `replace` | `any` | — | test.surface | `e2.9` |
+| `test.untested.exclude` | `glob_list` | `—` | `extend` | `any` | — | test.surface | `e2.9` |
+| `test.proxy.confidence.parsed` | `number` | `0.9` | `replace` | `any` | confidence | test.surface | `e2.9` |
+| `test.proxy.confidence.partial` | `number` | `0.6` | `replace` | `any` | confidence | test.surface | `e2.9` |
+| `test.proxy.confidence.lines_only` | `number` | `0.3` | `replace` | `any` | confidence | test.surface | `e2.9` |
+| `test.card.max_findings` | `integer` | `12` | `replace` | `any` | rows | test.surface | `e2.9` |
 | `non_code.patterns` | `glob_list` | `**/migrations/**, .github/workflows/**` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |

@@ -101,6 +101,38 @@ jobs:
           PYTHONPATH=src python3 -m recommender.noise episode --old-repo /tmp/noise/before --repo /tmp/noise/after --path src/a.rs --json | head -1
           PYTHONPATH=src python3 -m recommender.noise episode --old-repo /tmp/noise/before --repo /tmp/noise/after --path src/a.rs --no-suppress | head -2
           PYTHONPATH=src python3 -m recommender.noise bench --repeat 2 | tail -1
+      - name: "e2.9 test surface: the labelled corpus clears its bars, printed (AC 1-5)"
+        # Two of the five bars are absolute and for different reasons: a missed test deletion
+        # and a false one are both a card that lies about a test, so recall and precision are
+        # both 1.0 and every miss is named. Episode accuracy is arithmetic, not judgement, so
+        # there is no slack in it either; only parse accuracy has any, for the one genuinely
+        # ambiguous construct (`describe` with no `it`). Labels are hand-written in
+        # `corpus.py` against the built-in policy, so this does not read this repo's fathom.toml.
+        run: |
+          PYTHONPATH=src python3 -m recommender.testsurface score --min-parse 0.95 \
+            --min-pairs 1.0 --min-precision 1.0 --min-recall 1.0 --min-episodes 1.0
+      - name: "e2.9 test surface: the verb surface is the same engine, and the demo audits clean"
+        # The card's invariants (ratio with its absolutes, a location on every finding row, a
+        # stated confidence) are checked by `render.audit`, which the CLI runs on its own
+        # output and exits non-zero when it fails — so a step that runs a verb is also a step
+        # that audits it. `demo` is the card the concept document prints, and `--capped` is the
+        # row-cap path a real episode takes.
+        run: |
+          mkdir -p /tmp/ts/before/src /tmp/ts/before/tests /tmp/ts/after/src /tmp/ts/after/tests
+          printf 'def test_a():\n    assert f() == 1\n\n\ndef test_b():\n    assert g() == 2\n' > /tmp/ts/before/tests/test_x.py
+          printf 'def test_a():\n    assert f()\n' > /tmp/ts/after/tests/test_x.py
+          printf 'def g():\n    return 1\n' > /tmp/ts/before/src/x.py
+          printf 'def g():\n    return 1\n\n\ndef scale_and_shift(x):\n    y = x + 1\n    z = y * 2\n    w = z + x\n    return w\n' > /tmp/ts/after/src/x.py
+          PYTHONPATH=src python3 -m recommender.testsurface card --old-repo /tmp/ts/before --repo /tmp/ts/after --path tests/test_x.py src/x.py | grep -q "New public logic, no new test"
+          PYTHONPATH=src python3 -m recommender.testsurface card --old-repo /tmp/ts/before --repo /tmp/ts/after --path tests/test_x.py src/x.py --json | head -1
+          PYTHONPATH=src python3 -m recommender.testsurface findings --old-repo /tmp/ts/before --repo /tmp/ts/after --path tests/test_x.py src/x.py | head -3
+          PYTHONPATH=src python3 -m recommender.testsurface explain tests/test_x.py --old-repo /tmp/ts/before --repo /tmp/ts/after | grep -q "delta:"
+          PYTHONPATH=src python3 -m recommender.testsurface languages | head -3
+          PYTHONPATH=src python3 -m recommender.testsurface policy | tail -3
+          PYTHONPATH=src python3 -m recommender.testsurface definition | head -3
+          PYTHONPATH=src python3 -m recommender.testsurface demo | tail -2
+          PYTHONPATH=src python3 -m recommender.testsurface demo --capped | grep -q "more: fathom testsurface card --all"
+          PYTHONPATH=src python3 -m recommender.testsurface bench --repeat 2 | tail -1
       - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
         # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
         # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap

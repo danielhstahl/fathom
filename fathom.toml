@@ -29,6 +29,12 @@ builtins_version = 1
 
 [test]
 globs = ["tests/**", "**/test_*.py"]
+# `e2.9`'s findings and their thresholds are keys too (`test.findings.*`, `test.untested.*`,
+# `test.proxy.confidence.*`, `test.card.max_findings`), but this repository runs every one of
+# them at the built-in default: the built-ins are the thing `tests/test_test_surface_contract.py`
+# scores, and a repo config that moved them would be tuning the tool to pass its own tests.
+# `python3 -m recommender.testsurface definition` prints those numbers as sentences, and
+# `... policy` prints which layer each one came from.
 
 [taxonomy.classes]
 # `e0.9`'s built-in table already knows this repository's shapes, so only what it *cannot* see

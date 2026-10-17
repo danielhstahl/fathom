@@ -1052,8 +1052,96 @@
     },
     "test": {
       "additionalProperties": false,
-      "description": "What counts as a test, for the test-surface analyzer.",
+      "description": "What counts as a test, which test-surface findings fire, and the numbers that define 'new public logic, no new test'. The finding policy is here rather than in `[detectors]` because these findings are one definition with knobs, not a detector registry.",
       "properties": {
+        "card": {
+          "additionalProperties": false,
+          "description": "How many finding rows the card prints before it says how many more there are and which verb lists them. A cap that names the remainder, never a truncation without a trace.",
+          "properties": {
+            "max_findings": {
+              "default": 12,
+              "description": "How many finding rows the card prints before it says how many more there are and which verb lists them. A cap that names the remainder, never a truncation without a trace.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "rows"
+            }
+          },
+          "type": "object"
+        },
+        "findings": {
+          "additionalProperties": false,
+          "description": "Report a named test case that existed in the old revision and is gone. A deletion is a first-class finding with the case name and its line, including the cases lost because the whole file went.",
+          "properties": {
+            "assertion_removed": {
+              "default": true,
+              "description": "Report a test case that survived but lost exact assertions and gained none.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "assertion_weakened": {
+              "default": true,
+              "description": "Report an exact assertion replaced by a presence check on the same subject (`assert_eq!(x, 42)` \u2192 `assert!(x.is_ok())`, `expect(x).toBe(3)` \u2192 `.toBeDefined()`). The comparison is subject-to-subject, so it is about the same value both times.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "focused_test": {
+              "default": true,
+              "description": "Report a committed `it.only`/`fit`/`fdescribe`: every other test in that file is silently not running.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "test_file_removed": {
+              "default": true,
+              "description": "Also report the file-level row when a test file is deleted, beside the case-level rows for the tests inside it.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "test_removed": {
+              "default": true,
+              "description": "Report a named test case that existed in the old revision and is gone. A deletion is a first-class finding with the case name and its line, including the cases lost because the whole file went.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "test_skipped": {
+              "default": true,
+              "description": "Report a case that used to run and is now `#[ignore]`, `@pytest.mark.skip`, `xfail`, `t.Skip`, `it.skip` or `@Disabled`. A skipped test still exists and proves nothing, so it shares the channel a deletion gets.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "untested_public": {
+              "default": true,
+              "description": "Report new public logic that no test surface in the episode covers. What 'public', 'logic' and 'covers' mean is the `test.untested.*` block below, not a hunch.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            }
+          },
+          "type": "object"
+        },
         "globs": {
           "default": [
             "tests/**",
@@ -1070,10 +1158,160 @@
           "x-fathom-merge": "extend",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e2.6"
+        },
+        "proxy": {
+          "additionalProperties": false,
+          "description": "Stated confidence when every test surface in the episode was parsed into named cases. Printed on the card, never left implicit.",
+          "properties": {
+            "confidence": {
+              "additionalProperties": false,
+              "description": "Stated confidence when every test surface in the episode was parsed into named cases. Printed on the card, never left implicit.",
+              "properties": {
+                "lines_only": {
+                  "default": 0.3,
+                  "description": "Stated confidence when no test framework was found and the only honest number is a line count. Deliberately low: a line count correlates with test effort and does not measure it.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-analyzer": "test.surface",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.9",
+                  "x-fathom-units": "confidence"
+                },
+                "parsed": {
+                  "default": 0.9,
+                  "description": "Stated confidence when every test surface in the episode was parsed into named cases. Printed on the card, never left implicit.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-analyzer": "test.surface",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.9",
+                  "x-fathom-units": "confidence"
+                },
+                "partial": {
+                  "default": 0.6,
+                  "description": "Stated confidence when some test surface had no parser or a parser refused it: the case names are partly known, so the counts are a lower bound.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-analyzer": "test.surface",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.9",
+                  "x-fathom-units": "confidence"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "untested": {
+          "additionalProperties": false,
+          "description": "How many non-blank body lines a new public symbol needs before the episode is said to have added logic. Below it a one-line re-export helper raises the finding; above it a small real function does not.",
+          "properties": {
+            "exclude": {
+              "default": [],
+              "description": "Paths the untested-public finding never fires for: example code, benches, generated helpers. `extend`, so a repository adds to the list.",
+              "items": {
+                "pattern": "^!?[^\\x00]+$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "mention_in_test": {
+              "default": true,
+              "description": "If a new symbol's name appears in lines the episode added to a test file, treat it as covered. The loosest of the three coverage tests, and the only one that catches a new function asserted inside a pre-existing test.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "min_body_lines": {
+              "default": 4,
+              "description": "How many non-blank body lines a new public symbol needs before the episode is said to have added logic. Below it a one-line re-export helper raises the finding; above it a small real function does not.",
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "lines"
+            },
+            "name_overlap": {
+              "default": 1,
+              "description": "Name tokens a new test case must share with a new symbol to count as covering it (`load_snapshot` \u2194 `TestSnapshotLoading` share `snapshot`).",
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "tokens"
+            },
+            "path_overlap": {
+              "default": 1,
+              "description": "Path-name tokens a changed test file must share with the source file (`src/store/load.rs` \u2194 `tests/store_load_test.rs` share `store`, `load`). For repositories whose test layout is not worth encoding in `test.globs`.",
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "tokens"
+            },
+            "require_logic": {
+              "default": true,
+              "description": "Only count a symbol as logic if its body calls, assigns, branches or returns. Off means a new `pub struct` or constant can raise the finding, which is what a repository that reviews schemas as API surface may want.",
+              "type": "boolean",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9"
+            },
+            "scope": {
+              "default": "episode",
+              "description": "`episode`: a covering test must be in this episode \u2014 the only thing measurable from a diff. `repo`: a symbol the repository's existing tests already mention is not flagged; needs the index to supply those mentions, and the card says so when it could not.",
+              "enum": [
+                "episode",
+                "repo"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "scope"
+            },
+            "visibility": {
+              "default": "public",
+              "description": "Which Rust visibilities count as public: `public` is plain `pub` only, `crate` also counts `pub(crate)`. Other languages have no equivalent, and the default refuses to guess that a crate-internal item owed the reviewer a test.",
+              "enum": [
+                "public",
+                "crate"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "test.surface",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.9",
+              "x-fathom-units": "visibility"
+            }
+          },
+          "type": "object"
         }
       },
       "type": "object",
-      "x-fathom-owner": "e1.7 / e2.6",
+      "x-fathom-owner": "e2.9 (`reco-6pl`)",
       "x-fathom-section-title": "Test surface"
     },
     "watch": {
@@ -1280,7 +1518,7 @@
         "title": "Path taxonomy overrides"
       },
       "test": {
-        "owner": "e1.7 / e2.6",
+        "owner": "e2.9 (`reco-6pl`)",
         "title": "Test surface"
       },
       "watch": {

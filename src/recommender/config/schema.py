@@ -221,8 +221,11 @@ SECTIONS: dict[str, dict] = {
                  "doc": "Assert what a set of paths IS, relative to the built-in table: "
                         "one open map keyed by class. The engine and the built-ins are "
                         "`reco-5vz`'s; only the overrides live here."},
-    "test": {"title": "Test surface", "owner": "e1.7 / e2.6",
-             "doc": "What counts as a test, for the test-surface analyzer."},
+    "test": {"title": "Test surface", "owner": "e2.9 (`reco-6pl`)",
+             "doc": "What counts as a test, which test-surface findings fire, and the "
+                    "numbers that define 'new public logic, no new test'. The finding "
+                    "policy is here rather than in `[detectors]` because these findings "
+                    "are one definition with knobs, not a detector registry."},
     "non_code": {"title": "Non-code surface", "owner": "e2.8 (`reco-bjd`)",
                  "doc": "Config, env, flags, migrations and CI — the surfaces a reviewer "
                         "must be told about even though they are not code."},
@@ -396,6 +399,104 @@ KEY_LIST: list[Key] = [
     _k(path="test.globs", kind="glob_list", merge="extend",
        default=["tests/**", "**/test_*.py"], item_pattern=GLOB_ITEM,
        doc="Paths counted as test surface.", analyzer="test.surface", ticket="e2.6"),
+    # --- test surface (e2.9 owns these; `reco-6pl`) -------------------------
+    # One switch per finding, then the numbers that define "new public logic, no new
+    # test". The ticket's acceptance criterion is that the definition is *documented and
+    # tunable rather than a guess*, and a number in a source file is a guess with an
+    # author: these are declared here so a repository can disagree with one in
+    # `fathom.toml`, have it layer, and have the card quote the layer that won.
+    _k(path="test.findings.test_removed", kind="boolean", default=True,
+       doc="Report a named test case that existed in the old revision and is gone. A "
+           "deletion is a first-class finding with the case name and its line, including "
+           "the cases lost because the whole file went.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.test_file_removed", kind="boolean", default=True,
+       doc="Also report the file-level row when a test file is deleted, beside the "
+           "case-level rows for the tests inside it.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.test_skipped", kind="boolean", default=True,
+       doc="Report a case that used to run and is now `#[ignore]`, `@pytest.mark.skip`, "
+           "`xfail`, `t.Skip`, `it.skip` or `@Disabled`. A skipped test still exists and "
+           "proves nothing, so it shares the channel a deletion gets.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.assertion_weakened", kind="boolean", default=True,
+       doc="Report an exact assertion replaced by a presence check on the same subject "
+           "(`assert_eq!(x, 42)` → `assert!(x.is_ok())`, `expect(x).toBe(3)` → "
+           "`.toBeDefined()`). The comparison is subject-to-subject, so it is about the "
+           "same value both times.", analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.assertion_removed", kind="boolean", default=True,
+       doc="Report a test case that survived but lost exact assertions and gained none.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.untested_public", kind="boolean", default=True,
+       doc="Report new public logic that no test surface in the episode covers. What "
+           "'public', 'logic' and 'covers' mean is the `test.untested.*` block below, not "
+           "a hunch.", analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.findings.focused_test", kind="boolean", default=True,
+       doc="Report a committed `it.only`/`fit`/`fdescribe`: every other test in that file "
+           "is silently not running.", analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.min_body_lines", kind="integer", default=4, minimum=0,
+       units="lines",
+       doc="How many non-blank body lines a new public symbol needs before the episode is "
+           "said to have added logic. Below it a one-line re-export helper raises the "
+           "finding; above it a small real function does not.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.require_logic", kind="boolean", default=True,
+       doc="Only count a symbol as logic if its body calls, assigns, branches or returns. "
+           "Off means a new `pub struct` or constant can raise the finding, which is what "
+           "a repository that reviews schemas as API surface may want.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.visibility", kind="string", default="public",
+       enum=("public", "crate"), units="visibility",
+       doc="Which Rust visibilities count as public: `public` is plain `pub` only, `crate` "
+           "also counts `pub(crate)`. Other languages have no equivalent, and the default "
+           "refuses to guess that a crate-internal item owed the reviewer a test.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.scope", kind="string", default="episode", units="scope",
+       enum=("episode", "repo"),
+       doc="`episode`: a covering test must be in this episode — the only thing measurable "
+           "from a diff. `repo`: a symbol the repository's existing tests already mention "
+           "is not flagged; needs the index to supply those mentions, and the card says so "
+           "when it could not.", analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.name_overlap", kind="integer", default=1, minimum=0,
+       units="tokens",
+       doc="Name tokens a new test case must share with a new symbol to count as covering "
+           "it (`load_snapshot` ↔ `TestSnapshotLoading` share `snapshot`).",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.path_overlap", kind="integer", default=1, minimum=0,
+       units="tokens",
+       doc="Path-name tokens a changed test file must share with the source file "
+           "(`src/store/load.rs` ↔ `tests/store_load_test.rs` share `store`, `load`). For "
+           "repositories whose test layout is not worth encoding in `test.globs`.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.mention_in_test", kind="boolean", default=True,
+       doc="If a new symbol's name appears in lines the episode added to a test file, "
+           "treat it as covered. The loosest of the three coverage tests, and the only one "
+           "that catches a new function asserted inside a pre-existing test.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.untested.exclude", kind="glob_list", merge="extend", default=[],
+       item_pattern=GLOB_ITEM,
+       doc="Paths the untested-public finding never fires for: example code, benches, "
+           "generated helpers. `extend`, so a repository adds to the list.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.proxy.confidence.parsed", kind="number", default=0.9, minimum=0.0,
+       maximum=1.0, units="confidence",
+       doc="Stated confidence when every test surface in the episode was parsed into named "
+           "cases. Printed on the card, never left implicit.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.proxy.confidence.partial", kind="number", default=0.6, minimum=0.0,
+       maximum=1.0, units="confidence",
+       doc="Stated confidence when some test surface had no parser or a parser refused it: "
+           "the case names are partly known, so the counts are a lower bound.",
+       analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.proxy.confidence.lines_only", kind="number", default=0.3, minimum=0.0,
+       maximum=1.0, units="confidence",
+       doc="Stated confidence when no test framework was found and the only honest number "
+           "is a line count. Deliberately low: a line count correlates with test effort and "
+           "does not measure it.", analyzer="test.surface", ticket="e2.9"),
+    _k(path="test.card.max_findings", kind="integer", default=12, minimum=1, units="rows",
+       doc="How many finding rows the card prints before it says how many more there are "
+           "and which verb lists them. A cap that names the remainder, never a truncation "
+           "without a trace.", analyzer="test.surface", ticket="e2.9"),
     _k(path="non_code.patterns", kind="glob_list", merge="extend",
        default=["**/migrations/**", ".github/workflows/**"], item_pattern=GLOB_ITEM,
        doc="Non-code surfaces a reviewer must be told about: config, env, flags, "
