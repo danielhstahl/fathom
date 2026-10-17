@@ -1,0 +1,566 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-dependency_bump_storm",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the dependency_bump_storm scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "dependency_bump_storm",
+  "blessed_digest": "0b5d97b96b7332f0e5ca969753f6dc4fcb219d6ef35f6b7b3813d4f4a6717dbc",
+  "commit_count": 11,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "35781774b895f215c3276f1f6649706d1ba7ccc3",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Bump regex to 1.11.0",
+   "trailers": {
+    "agent-intent": "bump regex",
+    "agent-session": "deps",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.toml"
+   ],
+   "n_files": 1,
+   "n_add": 1,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:1",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "632567a5ddb6141f52cc57c18d5bb61fbe35fa63",
+   "parents": [
+    "35781774b895f215c3276f1f6649706d1ba7ccc3"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Update the lockfile for the regex bump",
+   "trailers": {
+    "agent-intent": "bump regex",
+    "agent-session": "deps",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.lock"
+   ],
+   "n_files": 1,
+   "n_add": 30,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:1",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "799c374d2f1153696e7fa71f81087e4041bf76ba",
+   "parents": [
+    "632567a5ddb6141f52cc57c18d5bb61fbe35fa63"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Bump express to 5.1.0 in the front end",
+   "trailers": {
+    "agent-intent": "bump express",
+    "agent-session": "deps",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "web/package.json"
+   ],
+   "n_files": 1,
+   "n_add": 12,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:2",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "ef852bcc711199a9aff8fe7c19c127fd69e4b199",
+   "parents": [
+    "799c374d2f1153696e7fa71f81087e4041bf76ba"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Update the npm lockfile, express and its body-parser",
+   "trailers": {
+    "agent-intent": "bump express",
+    "agent-session": "deps",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "web/package-lock.json"
+   ],
+   "n_files": 1,
+   "n_add": 16,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:2",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "b648e97ccaa87fd11538a4561d681e411f1990b7",
+   "parents": [
+    "ef852bcc711199a9aff8fe7c19c127fd69e4b199"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Pin the reporter's requirements",
+   "trailers": {},
+   "paths": [
+    "services/reporter/report.py",
+    "services/reporter/requirements.txt"
+   ],
+   "n_files": 2,
+   "n_add": 10,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "376a293ed2b107bce7f88183832a462143a48551",
+   "parents": [
+    "b648e97ccaa87fd11538a4561d681e411f1990b7"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Add quick-xml for the export path",
+   "trailers": {
+    "agent-intent": "add quick-xml",
+    "agent-session": "deps",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.toml"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:3",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "7ae2fc702d51f9b7421ac4d8331a8693aa4d8e38",
+   "parents": [
+    "376a293ed2b107bce7f88183832a462143a48551"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735696800000,
+   "at": "2025-01-01T02:00:00.000Z",
+   "subject": "Drop thiserror, nothing uses it",
+   "trailers": {
+    "agent-intent": "drop thiserror",
+    "agent-session": "deps",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.toml"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:3",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "1c8e9af2b6753598c5724b88183d03a5458dafd7",
+   "parents": [
+    "7ae2fc702d51f9b7421ac4d8331a8693aa4d8e38"
+   ],
+   "author_name": "deps-bot",
+   "author_email": "",
+   "author_millis": 1735697700000,
+   "at": "2025-01-01T02:15:00.000Z",
+   "subject": "chore(deps): bump serde to 1.0.228",
+   "trailers": {
+    "agent-session": "deps",
+    "agent-turn": "4",
+    "assisted-by": "dependabot"
+   },
+   "paths": [
+    "Cargo.toml"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:4",
+    "session_id": "deps"
+   }
+  },
+  {
+   "oid": "78d0767719a5fffc0c197e044f10f26893ad0d04",
+   "parents": [
+    "1c8e9af2b6753598c5724b88183d03a5458dafd7"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735711200000,
+   "at": "2025-01-01T06:00:00.000Z",
+   "subject": "Revert the serde bump, it breaks the build",
+   "trailers": {},
+   "paths": [
+    "Cargo.toml"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "f03a762e6a7780520cd055c835d1848705e67ca9",
+   "parents": [
+    "78d0767719a5fffc0c197e044f10f26893ad0d04"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735699500000,
+   "at": "2025-01-01T02:45:00.000Z",
+   "subject": "Regenerate the lockfile after the revert",
+   "trailers": {
+    "agent-intent": "regenerate the lockfile",
+    "agent-session": "deps",
+    "agent-turn": "5",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.lock"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": "deps",
+   "turn_id": "5",
+   "merge": false,
+   "harness": {
+    "turn_id": "deps:5",
+    "session_id": "deps"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-regex",
+    "commits": [
+     "35781774b895",
+     "632567a5ddb6"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "deps",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the manifest and its lockfile, one turn apart"
+   },
+   {
+    "id": "ep-express",
+    "commits": [
+     "799c374d2f11",
+     "ef852bcc7111"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "deps",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the front end and its lockfile, including the transitive pin"
+   },
+   {
+    "id": "ep-reporter",
+    "commits": [
+     "b648e97ccaa8"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "the Python pin, by hand"
+   },
+   {
+    "id": "ep-add-drop",
+    "commits": [
+     "376a293ed2b1",
+     "7ae2fc702d51"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "deps",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "added and removed, same turn"
+   },
+   {
+    "id": "ep-bot",
+    "commits": [
+     "1c8e9af2b675"
+    ],
+    "author": "deps-bot",
+    "kind": "bot",
+    "turn": "4",
+    "session": "deps",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the bot's own turn: agent by evidence, not by declaration"
+   },
+   {
+    "id": "ep-revert",
+    "commits": [
+     "78d0767719a5"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "a person undoes the bot's bump"
+   },
+   {
+    "id": "ep-lockfile",
+    "commits": [
+     "f03a762e6a77"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "5",
+    "session": "deps",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "dependency_bump",
+    "at": "35781774b895",
+    "episode": "ep-regex",
+    "paths": [
+     "Cargo.toml"
+    ],
+    "why": "regex 1.10.6 → 1.11.0 in the manifest",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "632567a5ddb6",
+    "episode": "ep-regex",
+    "paths": [
+     "Cargo.lock"
+    ],
+    "why": "the lockfile-only half of the same bump",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "799c374d2f11",
+    "episode": "ep-express",
+    "paths": [
+     "web/package.json"
+    ],
+    "why": "express 4.x → 5.1.0",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "ef852bcc7111",
+    "episode": "ep-express",
+    "paths": [
+     "web/package-lock.json"
+    ],
+    "why": "express and its transitive body-parser in the lockfile",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "b648e97ccaa8",
+    "episode": "ep-reporter",
+    "paths": [
+     "services/reporter/requirements.txt"
+    ],
+    "why": "the reporter's requirements get pinned",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_added",
+    "at": "376a293ed2b1",
+    "episode": "ep-add-drop",
+    "paths": [
+     "Cargo.toml"
+    ],
+    "why": "quick-xml appears",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_removed",
+    "at": "7ae2fc702d51",
+    "episode": "ep-add-drop",
+    "paths": [
+     "Cargo.toml"
+    ],
+    "why": "thiserror disappears",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "1c8e9af2b675",
+    "episode": "ep-bot",
+    "paths": [
+     "Cargo.toml"
+    ],
+    "why": "the bot bumps serde",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_revert",
+    "at": "78d0767719a5",
+    "episode": "ep-revert",
+    "paths": [
+     "Cargo.toml"
+    ],
+    "why": "a revert of a bump is a bump; an episode that calls it new work has double-counted the dependency",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "dependency_bump",
+    "at": "f03a762e6a77",
+    "episode": "ep-lockfile",
+    "paths": [
+     "Cargo.lock"
+    ],
+    "why": "the lockfile regenerated after the revert",
+    "source": "corpus/dependency_bump_storm.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "Every shape a dependency change arrives in, one per turn: a direct bump, the same bump as a lockfile-only commit, a front-end bump with its transitive pin, a Python pin, a dependency added, a dependency removed, a bot's own bump, a human revert of it, and a lockfile regenerated afterwards. Each is a way for a bump detector to be wrong, and two of them are ways for a source-change detector to be wrong about a commit that touched no source."
+  ]
+ }
+}

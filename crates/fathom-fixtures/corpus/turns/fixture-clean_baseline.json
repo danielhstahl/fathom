@@ -1,0 +1,272 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-clean_baseline",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the clean_baseline scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "clean_baseline",
+  "blessed_digest": "c9a27cca71716e23e4544d7e3820e4c12e4ccf8a0bd73cdb74c5cc82d2bca70c",
+  "commit_count": 5,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "a86aaf438021272edad529a77e3ba99af6e98089",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Publish the module tree",
+   "trailers": {
+    "agent-intent": "publish the module tree",
+    "agent-session": "clean",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/mod.rs",
+    "src/api/routes.rs",
+    "src/core/mod.rs",
+    "src/lib.rs",
+    "src/main.rs",
+    "src/store/mod.rs"
+   ],
+   "n_files": 6,
+   "n_add": 110,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "clean",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "clean:1",
+    "session_id": "clean"
+   }
+  },
+  {
+   "oid": "7e4075ab69870f1975d4d32ecdf3e22bd49d9769",
+   "parents": [
+    "a86aaf438021272edad529a77e3ba99af6e98089"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Add the export module and its test",
+   "trailers": {
+    "agent-intent": "add the export module",
+    "agent-session": "clean",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/export.rs",
+    "tests/export.rs"
+   ],
+   "n_files": 2,
+   "n_add": 20,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "clean",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "clean:2",
+    "session_id": "clean"
+   }
+  },
+  {
+   "oid": "4a3faadb4878b0978066fe51b32e98c49d9c2181",
+   "parents": [
+    "7e4075ab69870f1975d4d32ecdf3e22bd49d9769"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Bump regex to 1.11.0 and update the lockfile",
+   "trailers": {
+    "agent-intent": "bump regex",
+    "agent-session": "clean",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "Cargo.lock",
+    "Cargo.toml"
+   ],
+   "n_files": 2,
+   "n_add": 31,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "clean",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "clean:3",
+    "session_id": "clean"
+   }
+  },
+  {
+   "oid": "d35916b99a3cd93ce584422ecb5429c63da3fb4d",
+   "parents": [
+    "4a3faadb4878b0978066fe51b32e98c49d9c2181"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Document the export path and note the window setting",
+   "trailers": {},
+   "paths": [
+    "config/scheduler.toml",
+    "docs/export.md"
+   ],
+   "n_files": 2,
+   "n_add": 8,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-publish",
+    "commits": [
+     "a86aaf438021"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "clean",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-export",
+    "commits": [
+     "7e4075ab6987"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "clean",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "a module and its test, the way it is supposed to be done"
+   },
+   {
+    "id": "ep-bump",
+    "commits": [
+     "4a3faadb4878"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "clean",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the manifest and the lockfile in one commit"
+   },
+   {
+    "id": "ep-docs",
+    "commits": [
+     "d35916b99a3c"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "two unrelated surfaces in one commit: the only thing here a detector may call unusual"
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "dependency_bump",
+    "at": "4a3faadb4878",
+    "episode": "ep-bump",
+    "paths": [
+     "Cargo.toml",
+     "Cargo.lock"
+    ],
+    "why": "regex, with its lockfile",
+    "source": "corpus/clean_baseline.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "test_added",
+    "at": "7e4075ab6987",
+    "episode": "ep-export",
+    "paths": [
+     "tests/export.rs"
+    ],
+    "why": "the export module arrives with its test",
+    "source": "corpus/clean_baseline.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "The control: nothing is wrong here. A human scaffold, one agent session of three turns that publishes a module tree and adds a module with its test, one dependency bump done properly with its lockfile, and a person's commit that touches two unrelated surfaces. Every detector in the product is claimed to be quiet on a tidy repository, and a corpus made only of pathological cases would let a detector that fires on everything score perfectly."
+  ]
+ }
+}

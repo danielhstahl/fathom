@@ -485,7 +485,11 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// Which conventional type a subject declares, if any.
-fn conventional_type(subject: &str) -> Option<&'static str> {
+///
+/// Public because the boundary rule that uses it (ADR-003 §4.2 rung 7, TB7) has to be reusable by the
+/// measurement that scores it: spike `s2` (`reco-q6r`) evaluates alternative rule subsets, and a spike that
+/// re-implemented type parsing would be scoring its own copy rather than the shipped rule.
+pub fn conventional_type(subject: &str) -> Option<&'static str> {
     let lower = subject.trim().to_lowercase();
     let head = lower.split_once(':').map(|(head, _)| head.trim())?;
     let head = head.split('(').next().unwrap_or(head).trim_end_matches('!');

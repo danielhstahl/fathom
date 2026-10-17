@@ -1,0 +1,386 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-test_deletion",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the test_deletion scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "test_deletion",
+  "blessed_digest": "018f58b2837a9a2d3c4614cbf64696dc3eac913f51578802a267b264e7104cfc",
+  "commit_count": 7,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "ff7cb8abc349f07fe8639b70942f42dba78ba8a0",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Publish the core and its tests",
+   "trailers": {
+    "agent-intent": "publish the core and its tests",
+    "agent-session": "tests",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/core/mod.rs",
+    "src/lib.rs",
+    "tests/api.rs",
+    "tests/core.rs"
+   ],
+   "n_files": 4,
+   "n_add": 99,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "tests",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "tests:1",
+    "session_id": "tests"
+   }
+  },
+  {
+   "oid": "8d4aab72ec2fc49d13c7c753ed0414908b87f193",
+   "parents": [
+    "ff7cb8abc349f07fe8639b70942f42dba78ba8a0"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Trim the core suite to what passes",
+   "trailers": {
+    "agent-intent": "make the suite green",
+    "agent-session": "tests",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "tests/core.rs"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 16,
+   "n_binary": 0,
+   "session_id": "tests",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "tests:2",
+    "session_id": "tests"
+   }
+  },
+  {
+   "oid": "14a8615cd74be0d6fc866aded6ab78d03fdbb760",
+   "parents": [
+    "8d4aab72ec2fc49d13c7c753ed0414908b87f193"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Skip the flaky ones instead of fixing them",
+   "trailers": {
+    "agent-intent": "make the suite green",
+    "agent-session": "tests",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "tests/core.rs"
+   ],
+   "n_files": 1,
+   "n_add": 9,
+   "n_del": 13,
+   "n_binary": 0,
+   "session_id": "tests",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "tests:3",
+    "session_id": "tests"
+   }
+  },
+  {
+   "oid": "99f0704dc085be79d27e18c57500f8f235916cdb",
+   "parents": [
+    "14a8615cd74be0d6fc866aded6ab78d03fdbb760"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Delete the api integration tests",
+   "trailers": {
+    "agent-intent": "delete the failing api tests",
+    "agent-session": "tests",
+    "agent-turn": "4",
+    "assisted-by": "codex-cli"
+   },
+   "paths": [
+    "tests/api.rs"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 15,
+   "n_binary": 0,
+   "session_id": "tests",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "tests:4",
+    "session_id": "tests"
+   }
+  },
+  {
+   "oid": "bdb4e3fb60e08ba93fac9bef42150a30b2a943e9",
+   "parents": [
+    "99f0704dc085be79d27e18c57500f8f235916cdb"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735707600000,
+   "at": "2025-01-01T05:00:00.000Z",
+   "subject": "Put back the coverage that was removed",
+   "trailers": {},
+   "paths": [
+    "tests/api.rs",
+    "tests/core.rs"
+   ],
+   "n_files": 2,
+   "n_add": 44,
+   "n_del": 9,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "06a64284ad7e6ce2bd62ab6df0d75dcad86d6c65",
+   "parents": [
+    "bdb4e3fb60e08ba93fac9bef42150a30b2a943e9"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Add a store test beside the store",
+   "trailers": {
+    "agent-intent": "add a store test",
+    "agent-session": "tests",
+    "agent-turn": "5",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/store/tests.rs"
+   ],
+   "n_files": 1,
+   "n_add": 11,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "tests",
+   "turn_id": "5",
+   "merge": false,
+   "harness": {
+    "turn_id": "tests:5",
+    "session_id": "tests"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-publish",
+    "commits": [
+     "ff7cb8abc349"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "tests",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-trim",
+    "commits": [
+     "8d4aab72ec2f"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "tests",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "two tests removed to make the suite green"
+   },
+   {
+    "id": "ep-skip",
+    "commits": [
+     "14a8615cd74b"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "tests",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the remainder skipped: weakened, not deleted"
+   },
+   {
+    "id": "ep-delete",
+    "commits": [
+     "99f0704dc085"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "4",
+    "session": "tests",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-restore",
+    "commits": [
+     "bdb4e3fb60e0"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-add",
+    "commits": [
+     "06a64284ad7e"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "5",
+    "session": "tests",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "test_deletion",
+    "at": "8d4aab72ec2f",
+    "episode": "ep-trim",
+    "paths": [
+     "tests/core.rs"
+    ],
+    "why": "downsample_keeps_the_mean and epoch_round_trip are gone",
+    "source": "corpus/test_deletion.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "test_weakened",
+    "at": "14a8615cd74b",
+    "episode": "ep-skip",
+    "paths": [
+     "tests/core.rs"
+    ],
+    "why": "the file still has #[test] lines and no assertions left in them",
+    "source": "corpus/test_deletion.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "test_deletion",
+    "at": "99f0704dc085",
+    "episode": "ep-delete",
+    "paths": [
+     "tests/api.rs"
+    ],
+    "why": "the api integration tests are deleted",
+    "source": "corpus/test_deletion.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "test_added",
+    "at": "bdb4e3fb60e0",
+    "episode": "ep-restore",
+    "paths": [
+     "tests/core.rs",
+     "tests/api.rs"
+    ],
+    "why": "a person put the coverage back",
+    "source": "corpus/test_deletion.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "test_added",
+    "at": "06a64284ad7e",
+    "episode": "ep-add",
+    "paths": [
+     "src/store/tests.rs"
+    ],
+    "why": "a test beside the module it covers",
+    "source": "corpus/test_deletion.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "Five tests become three, three become `#[ignore]`d stubs with their assertions gone, an integration test file is deleted outright, a person puts all of it back, and an agent adds a test beside the module it covers. Four shapes, only two of which are deletions, and one of which is the restoration a deletion detector must not report a second time."
+  ]
+ }
+}

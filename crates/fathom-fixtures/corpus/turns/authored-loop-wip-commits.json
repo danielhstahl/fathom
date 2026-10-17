@@ -1,0 +1,777 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "authored-loop-wip-commits",
+ "provenance": "authored",
+ "authoring": {
+  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+  "annotated_on": "2026-10-17",
+  "derived_from": "a commit-per-step agent on a fast loop. Turn turnaround from this repository's own beads board: 29 claimed-and-closed agent turns, turnaround p50 0.9 min, 23 of 27 releases re-claimed inside 5 minutes; turn duration p50 81 min, max 642 min; within-turn commit gaps from the only real multi-commit turn (reco-nts: two commits 33.6 min apart) and the seconds-apart human pair (f8014fb3 → c675644e, 4 s).",
+  "shape": "an agent that commits each step of its work rather than once at the end: a turn is 1–3 commits minutes apart and the next turn starts about a minute later, which is the regime where `time-gap` has to tell a within-turn gap from a between-turn gap and cannot"
+ },
+ "source": {
+  "kind": "authored",
+  "commit_count": 21,
+  "extracted_by": "hand-authored; see authoring.derived_from"
+ },
+ "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+ "lineage": [
+  {
+   "oid": "98735d385a8998d4ae7678731aba1f8f6c638b74",
+   "parents": [],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000120000,
+   "at": "2025-10-09T08:55:20Z",
+   "subject": "reco-a11: scaffold the export module",
+   "trailers": {},
+   "paths": [
+    "src/export/mod.rs"
+   ],
+   "n_files": 1,
+   "n_add": 31,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t01",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "b48af6a0943f8fb15b8d33d6e210b394376da98e",
+   "parents": [
+    "98735d385a8998d4ae7678731aba1f8f6c638b74"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000300000,
+   "at": "2025-10-09T08:58:20Z",
+   "subject": "reco-a11: wip, the markdown writer",
+   "trailers": {},
+   "paths": [
+    "src/export/md.rs"
+   ],
+   "n_files": 1,
+   "n_add": 17,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t01",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "0c6927c4ea6ec0ce1f016570576b15acc0dd6654",
+   "parents": [
+    "b48af6a0943f8fb15b8d33d6e210b394376da98e"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000660000,
+   "at": "2025-10-09T09:04:20Z",
+   "subject": "reco-a11: markdown writer and its tests",
+   "trailers": {},
+   "paths": [
+    "src/export/md.rs",
+    "tests/export_md.rs"
+   ],
+   "n_files": 2,
+   "n_add": 52,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t01",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "0122f70a7116dc99f6d53bc79e31365b1640d0e9",
+   "parents": [
+    "0c6927c4ea6ec0ce1f016570576b15acc0dd6654"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000720000,
+   "at": "2025-10-09T09:05:20Z",
+   "subject": "reco-a12: add the html renderer",
+   "trailers": {},
+   "paths": [
+    "src/export/html.rs"
+   ],
+   "n_files": 1,
+   "n_add": 73,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t02",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "76f5a7653360f0f79c4c38e026cb6b45fe7b9957",
+   "parents": [
+    "0122f70a7116dc99f6d53bc79e31365b1640d0e9"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000840000,
+   "at": "2025-10-09T09:07:20Z",
+   "subject": "reco-a13: escape commit messages in html",
+   "trailers": {},
+   "paths": [
+    "src/export/html.rs"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t03",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "4b7b6f784a1d57b77f8e4310a6ff6a4cea9a8755",
+   "parents": [
+    "76f5a7653360f0f79c4c38e026cb6b45fe7b9957"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001080000,
+   "at": "2025-10-09T09:11:20Z",
+   "subject": "fix: html escaping missed the attributes",
+   "trailers": {},
+   "paths": [
+    "src/export/html.rs"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t03",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "1aaac7b8d03da5dde918dc3dd995c8cbd1a504c5",
+   "parents": [
+    "4b7b6f784a1d57b77f8e4310a6ff6a4cea9a8755"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001140000,
+   "at": "2025-10-09T09:12:20Z",
+   "subject": "reco-a14: json export",
+   "trailers": {},
+   "paths": [
+    "src/export/json.rs"
+   ],
+   "n_files": 1,
+   "n_add": 80,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t04",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "a4fbd6619dc2d79df856789a6ff3c9f5c9de277d",
+   "parents": [
+    "1aaac7b8d03da5dde918dc3dd995c8cbd1a504c5"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001200000,
+   "at": "2025-10-09T09:13:20Z",
+   "subject": "reco-a15: the sign-off block",
+   "trailers": {},
+   "paths": [
+    "src/export/signoff.rs"
+   ],
+   "n_files": 1,
+   "n_add": 52,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t05",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "f3050cf92d65b51e36d809c859185bb781d2ae5c",
+   "parents": [
+    "a4fbd6619dc2d79df856789a6ff3c9f5c9de277d"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001320000,
+   "at": "2025-10-09T09:15:20Z",
+   "subject": "reco-a15: typo in the sign-off label",
+   "trailers": {},
+   "paths": [
+    "src/export/signoff.rs"
+   ],
+   "n_files": 1,
+   "n_add": 31,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t05",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "675ad38698f72d2c337a838311eb673464d3a037",
+   "parents": [
+    "f3050cf92d65b51e36d809c859185bb781d2ae5c"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760003420000,
+   "at": "2025-10-09T09:50:20Z",
+   "subject": "reco-a16: byte-stable output after review",
+   "trailers": {},
+   "paths": [
+    "src/export/mod.rs"
+   ],
+   "n_files": 1,
+   "n_add": 66,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t06",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "9b7f6031da96a360d544c97fc5fd48b581424a2d",
+   "parents": [
+    "675ad38698f72d2c337a838311eb673464d3a037"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760003480000,
+   "at": "2025-10-09T09:51:20Z",
+   "subject": "reco-a17: pagination for print",
+   "trailers": {},
+   "paths": [
+    "src/export/print.rs"
+   ],
+   "n_files": 1,
+   "n_add": 66,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t07",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "55ab4c023b1281685b43db74bd36684f4f2547b1",
+   "parents": [
+    "9b7f6031da96a360d544c97fc5fd48b581424a2d"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760003540000,
+   "at": "2025-10-09T09:52:20Z",
+   "subject": "reco-a18: the export verb",
+   "trailers": {},
+   "paths": [
+    "crates/fathom-cli/src/export.rs"
+   ],
+   "n_files": 1,
+   "n_add": 31,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t08",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "0297abd8d75e3395ea464bb2dc2b8b8455882b6a",
+   "parents": [
+    "55ab4c023b1281685b43db74bd36684f4f2547b1"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760003720000,
+   "at": "2025-10-09T09:55:20Z",
+   "subject": "reco-a18: wire the range parser",
+   "trailers": {},
+   "paths": [
+    "crates/fathom-cli/src/export.rs"
+   ],
+   "n_files": 1,
+   "n_add": 73,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t08",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "8abedfb3126932305629f792e1e9105b1bc7d432",
+   "parents": [
+    "0297abd8d75e3395ea464bb2dc2b8b8455882b6a"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006180000,
+   "at": "2025-10-09T10:36:20Z",
+   "subject": "reco-a18: rebase onto main and fix what it broke",
+   "trailers": {},
+   "paths": [
+    "crates/fathom-cli/src/export.rs",
+    "src/export/mod.rs"
+   ],
+   "n_files": 2,
+   "n_add": 38,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t08",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "bbd71b48636929480eb051476b55c9c3d39d2596",
+   "parents": [
+    "8abedfb3126932305629f792e1e9105b1bc7d432"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006300000,
+   "at": "2025-10-09T10:38:20Z",
+   "subject": "reco-a19: docs for the export artefact",
+   "trailers": {},
+   "paths": [
+    "docs/concepts/export.md"
+   ],
+   "n_files": 1,
+   "n_add": 45,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t09",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "8e1306938d1a89e5b69939782360d604f78f6e05",
+   "parents": [
+    "bbd71b48636929480eb051476b55c9c3d39d2596"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006360000,
+   "at": "2025-10-09T10:39:20Z",
+   "subject": "reco-a20: fix the flaky export test",
+   "trailers": {},
+   "paths": [
+    "tests/export_md.rs"
+   ],
+   "n_files": 1,
+   "n_add": 24,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t10",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "b8800e7f37cd1d54e56bcb75977ad45c83866685",
+   "parents": [
+    "8e1306938d1a89e5b69939782360d604f78f6e05"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006480000,
+   "at": "2025-10-09T10:41:20Z",
+   "subject": "reco-a21: escape hostile subjects",
+   "trailers": {},
+   "paths": [
+    "src/export/html.rs",
+    "tests/export_html.rs"
+   ],
+   "n_files": 2,
+   "n_add": 10,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t11",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "74ec2e49b20af7ea1ffb98380a892e9efba54af4",
+   "parents": [
+    "b8800e7f37cd1d54e56bcb75977ad45c83866685"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006540000,
+   "at": "2025-10-09T10:42:20Z",
+   "subject": "reco-a22: csv export",
+   "trailers": {},
+   "paths": [
+    "src/export/csv.rs"
+   ],
+   "n_files": 1,
+   "n_add": 73,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t12",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "d06a306d6efe8b2abf008dc019e1c9e18b60d95c",
+   "parents": [
+    "74ec2e49b20af7ea1ffb98380a892e9efba54af4"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006840000,
+   "at": "2025-10-09T10:47:20Z",
+   "subject": "reco-a22: csv quoting",
+   "trailers": {},
+   "paths": [
+    "src/export/csv.rs"
+   ],
+   "n_files": 1,
+   "n_add": 80,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t12",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "1086c81c74dbb3c41757f6c798dc17533cfbfa5d",
+   "parents": [
+    "d06a306d6efe8b2abf008dc019e1c9e18b60d95c"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760006900000,
+   "at": "2025-10-09T10:48:20Z",
+   "subject": "reco-a23: the export carries the checklist",
+   "trailers": {},
+   "paths": [
+    "src/export/mod.rs",
+    "src/checklist.rs"
+   ],
+   "n_files": 2,
+   "n_add": 73,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t13",
+    "session_id": "loop-wip-commits"
+   }
+  },
+  {
+   "oid": "1fceaae2a1e77c903571cd428b668360c439478a",
+   "parents": [
+    "1086c81c74dbb3c41757f6c798dc17533cfbfa5d"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760007020000,
+   "at": "2025-10-09T10:50:20Z",
+   "subject": "reco-a24: changelog for the export slice",
+   "trailers": {},
+   "paths": [
+    "CHANGELOG.md"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "loop-wip-commits:t14",
+    "session_id": "loop-wip-commits"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "t01",
+    "commits": [
+     "98735d385a89",
+     "b48af6a0943f",
+     "0c6927c4ea6e"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t01",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t02",
+    "commits": [
+     "0122f70a7116"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t02",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t03",
+    "commits": [
+     "76f5a7653360",
+     "4b7b6f784a1d"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t03",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t04",
+    "commits": [
+     "1aaac7b8d03d"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t04",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t05",
+    "commits": [
+     "a4fbd6619dc2",
+     "f3050cf92d65"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t05",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t06",
+    "commits": [
+     "675ad38698f7"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t06",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t07",
+    "commits": [
+     "9b7f6031da96"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t07",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t08",
+    "commits": [
+     "55ab4c023b12",
+     "0297abd8d75e",
+     "8abedfb31269"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t08",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t09",
+    "commits": [
+     "bbd71b486369"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t09",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t10",
+    "commits": [
+     "8e1306938d1a"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t10",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t11",
+    "commits": [
+     "b8800e7f37cd"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t11",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t12",
+    "commits": [
+     "74ec2e49b20a",
+     "d06a306d6efe"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t12",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t13",
+    "commits": [
+     "1086c81c74db"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t13",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t14",
+    "commits": [
+     "1fceaae2a1e7"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t14",
+    "session": "loop-wip-commits",
+    "joined_by": "authored",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "same_turn_rework",
+    "at": "4b7b6f784a1d",
+    "episode": "t03",
+    "requires": [
+     "76f5a7653360"
+    ],
+    "paths": [
+     "src/export/html.rs"
+    ],
+    "why": "the escaping fix is the bug the same turn introduced two minutes earlier; on two cards the reviewer signs a renderer without being shown it was already wrong"
+   },
+   {
+    "kind": "same_turn_rework",
+    "at": "8abedfb31269",
+    "episode": "t08",
+    "requires": [
+     "55ab4c023b12",
+     "0297abd8d75e"
+    ],
+    "paths": [
+     "crates/fathom-cli/src/export.rs"
+    ],
+    "why": "41 minutes later and still the same turn: the rebase fix belongs to the verb it broke, and the clock is the only thing that disagrees"
+   }
+  ],
+  "notes": [
+   "every turn here is the real ticket shape — one ticket, one turn, 1–3 commits, next ticket claimed about a minute later."
+  ]
+ }
+}

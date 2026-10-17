@@ -15,6 +15,39 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `reconcile` — spike `s2`: do episodes segment the way a reviewer would cut them? (reco-q6r)
+
+- **The measurement ADR-003 §4.4 asked for, on a corpus that says what it is.** 204 hand-annotated turns
+  over 264 commits, carrying 74 annotated pathologies: **32 turns are real** — every commit this repository
+  has, cut into turns by the beads board's own claim/close windows — 81 carried from `e0.10`'s
+  hand-authored fixture annotations, and 91 authored to cover shapes a 34-commit history cannot contain,
+  each naming the real distribution its shape came from. The ticket asked for 200 real turns; 32 existed,
+  and the report prints the strata separately instead of pooling them into a number that hides which one
+  earned it. Harness `crates/fathom-analyze/examples/s2_spike.rs`, report
+  [benchmarks/reports/s2-segmentation-accuracy.json](benchmarks/reports/s2-segmentation-accuracy.json),
+  22 claims as data in `crates/fathom-analyze/spike/s2/thresholds.json`, each declaring before the run
+  whether it expects to pass — a gate that quietly starts passing fails the suite as hard as one that fails.
+- **What ships is precise and short of recall.** The cascade at its published constants: precision **0.938**,
+  recall **0.747**, boundary F1 **0.832** pooled and **0.897** on real history, pair co-membership F1 0.431
+  against `e1.3`'s published ≥ 0.90. The three strategies the spike named are not three candidates of
+  similar merit: time+author heuristics **0.722**, hook-driven boundaries **0.855** with harness evidence and
+  **0.338** with what ships today because not one real commit carries turn evidence, trailers plus
+  message-shape **0.092** because the trailer rung 3 reads is written by nothing. And `every commit is its
+  own episode` beats the shipped cascade on boundary F1 (0.859) while hiding **23 of the corpus's 74
+  annotated pathologies**, which is why no future tuning ticket gets to cite F1 without the hide column.
+- **`episode.time_gap_minutes` stays at 30, with the number written down**: pooled optimum 10 minutes, worth
+  +0.022 F1 and nothing else, and once a per-commit claim carries the boundary the knob is flat within
+  ±0.02 from 1 to 240 minutes. What §18 decides instead is a precedence change — a **`subject-claim`** rung
+  above the clock, keyed on the ticket token the loop already writes in the subject — worth **0.832 → 0.919**
+  pooled and **0.897 → 0.931** real, pathologies hidden 8 → 5, annotated turns absorbed 66 → 36, at the cost
+  of zero false boundaries in the corpus; plus a defect in the shipped `turn_id` transport, which is not
+  session-qualified and so reads two same-indexed turns in different sessions as one. Both are recorded for
+  the sequencing ticket to schedule; **the shipped cascade is unchanged by this ticket on purpose**, because a
+  spike that rewrites the rule set it is measuring ends up scoring its own edit.
+- Asserted by `tests/test_segmentation_spike_contract.py`; the tables in
+  [docs/concepts/episode-segmentation.md](docs/concepts/episode-segmentation.md) and ADR-003 §18 are generated
+  by `tools/gen_segment_tables.py`, and the corpus is validated by `tools/author_turn_corpus.py`.
+
 ### `e2.8` — non-code surface changes: config, env, flags, migrations and CI, rolled into an operator-action checklist (reco-bjd)
 
 - **The question is "what changed that is not code, and who has to act on it", and the artifact is a checklist.** Six surfaces — env, flag, migration, CI, infrastructure-as-code, container — produce 27 finding kinds, and every finding carries a verb, an owner, a severity and a `path:line`. `checklist.build()` merges two findings that need the same thing into one row with `from_findings = 2` (two workflows reading `secrets.SLACK_WEBHOOK` is one task), orders rows by what burns first rather than by which file was edited first, prints `… 30 more: fathom noncode checklist ep-demo --all` instead of truncating silently, and puts `requires operator action: yes (N actions)` at the top where the release decision is actually made. A `Finding` with no verb, no path, no name or no confidence raises `UnanchoredFinding` at construction, because a row nobody can act on is a row that gets skimmed.

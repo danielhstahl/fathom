@@ -1,0 +1,656 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-many_merges",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the many_merges scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "many_merges",
+  "blessed_digest": "ce8ea31c53f0b848b8d3c0e3947a40193eb7eb047489ea9a583aae90c4d18197",
+  "commit_count": 13,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "22181b0ec116e9a2ca2e13c6c539915e123fd83a",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Publish the module tree",
+   "trailers": {
+    "agent-session": "publish",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/mod.rs",
+    "src/api/routes.rs",
+    "src/core/mod.rs",
+    "src/lib.rs",
+    "src/main.rs",
+    "src/parse.rs",
+    "src/render.rs",
+    "src/store/mod.rs",
+    "tests/api.rs"
+   ],
+   "n_files": 9,
+   "n_add": 143,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "publish",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "publish:1",
+    "session_id": "publish"
+   }
+  },
+  {
+   "oid": "1692a3ed00f7ae6b5f87ba289f80ac4099705e01",
+   "parents": [
+    "22181b0ec116e9a2ca2e13c6c539915e123fd83a"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Add the retry budget to the scheduler",
+   "trailers": {
+    "agent-intent": "add the retry budget",
+    "agent-session": "feat-a",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 37,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "feat-a",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "feat-a:1",
+    "session_id": "feat-a"
+   }
+  },
+  {
+   "oid": "59624db54259cfe9d10cb3845280654a49458a39",
+   "parents": [
+    "22181b0ec116e9a2ca2e13c6c539915e123fd83a"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Give the queue a bound",
+   "trailers": {
+    "agent-intent": "bound the queue",
+    "agent-session": "feat-b",
+    "agent-turn": "1",
+    "assisted-by": "codex-cli"
+   },
+   "paths": [
+    "src/queue.rs"
+   ],
+   "n_files": 1,
+   "n_add": 39,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "feat-b",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "feat-b:1",
+    "session_id": "feat-b"
+   }
+  },
+  {
+   "oid": "35ccc4b84cfa925d1dc573b7c8f7760ee2a19622",
+   "parents": [
+    "22181b0ec116e9a2ca2e13c6c539915e123fd83a",
+    "1692a3ed00f7ae6b5f87ba289f80ac4099705e01"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Merge the retry budget",
+   "trailers": {},
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 37,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": true,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "45b1a4b3f6386b03df7e0c5a7664772f6a01ed18",
+   "parents": [
+    "35ccc4b84cfa925d1dc573b7c8f7760ee2a19622",
+    "59624db54259cfe9d10cb3845280654a49458a39"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Merge the queue bound",
+   "trailers": {},
+   "paths": [
+    "src/queue.rs"
+   ],
+   "n_files": 1,
+   "n_add": 39,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": true,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "7ca12c72ddb3689dd97eb4c848654392f89f3ab4",
+   "parents": [
+    "45b1a4b3f6386b03df7e0c5a7664772f6a01ed18"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Widen the scheduler window",
+   "trailers": {
+    "agent-intent": "widen the window",
+    "agent-session": "feat-c",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 6,
+   "n_binary": 0,
+   "session_id": "feat-c",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "feat-c:1",
+    "session_id": "feat-c"
+   }
+  },
+  {
+   "oid": "32e9226c17b67d182ab08ef54acecf15a5dcb2fc",
+   "parents": [
+    "45b1a4b3f6386b03df7e0c5a7664772f6a01ed18"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "",
+   "author_millis": 1735696800000,
+   "at": "2025-01-01T02:00:00.000Z",
+   "subject": "Change the spin behaviour at the window's edge",
+   "trailers": {
+    "agent-intent": "change the spin behaviour",
+    "agent-session": "feat-d",
+    "agent-turn": "1",
+    "assisted-by": "codex-cli"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 3,
+   "n_del": 7,
+   "n_binary": 0,
+   "session_id": "feat-d",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "feat-d:1",
+    "session_id": "feat-d"
+   }
+  },
+  {
+   "oid": "8bdbee77d187872eece58daa65518e36f337fd25",
+   "parents": [
+    "45b1a4b3f6386b03df7e0c5a7664772f6a01ed18",
+    "7ca12c72ddb3689dd97eb4c848654392f89f3ab4"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735697700000,
+   "at": "2025-01-01T02:15:00.000Z",
+   "subject": "Merge the wider window",
+   "trailers": {
+    "agent-session": "feat-c",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 6,
+   "n_binary": 0,
+   "session_id": "feat-c",
+   "turn_id": "2",
+   "merge": true,
+   "harness": {
+    "turn_id": "feat-c:2",
+    "session_id": "feat-c"
+   }
+  },
+  {
+   "oid": "34a42142d772442b27ea0f2dfcba8a9429c2f9ac",
+   "parents": [
+    "8bdbee77d187872eece58daa65518e36f337fd25",
+    "32e9226c17b67d182ab08ef54acecf15a5dcb2fc"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735698600000,
+   "at": "2025-01-01T02:30:00.000Z",
+   "subject": "Merge the spin change and resolve the conflict",
+   "trailers": {},
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 2,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": true,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "4a6c3061a2bb100527e518266893bc872461e9d3",
+   "parents": [
+    "34a42142d772442b27ea0f2dfcba8a9429c2f9ac"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735699500000,
+   "at": "2025-01-01T02:45:00.000Z",
+   "subject": "Add a page about merging",
+   "trailers": {},
+   "paths": [
+    "docs/merging.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "dea4d0a02136494f9348462294b502129cb7a741",
+   "parents": [
+    "34a42142d772442b27ea0f2dfcba8a9429c2f9ac",
+    "4a6c3061a2bb100527e518266893bc872461e9d3"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735700400000,
+   "at": "2025-01-01T03:00:00.000Z",
+   "subject": "Merge the merging page",
+   "trailers": {},
+   "paths": [
+    "docs/merging.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": true,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "85723749448ae782adb9a3ab8097a337709b99c8",
+   "parents": [
+    "dea4d0a02136494f9348462294b502129cb7a741"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735701300000,
+   "at": "2025-01-01T03:15:00.000Z",
+   "subject": "Start the export feature",
+   "trailers": {
+    "agent-intent": "start the export feature",
+    "agent-session": "feat-never",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/export.rs"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "feat-never",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "feat-never:1",
+    "session_id": "feat-never"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-publish",
+    "commits": [
+     "22181b0ec116"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "publish",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-feat-a",
+    "commits": [
+     "1692a3ed00f7"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "feat-a",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-feat-b",
+    "commits": [
+     "59624db54259"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "feat-b",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-merge-a",
+    "commits": [
+     "35ccc4b84cfa"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "a person lands an agent's branch: the merge's author is not the work's author"
+   },
+   {
+    "id": "ep-merge-b",
+    "commits": [
+     "45b1a4b3f638"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-feat-c",
+    "commits": [
+     "7ca12c72ddb3"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "feat-c",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-feat-d",
+    "commits": [
+     "32e9226c17b6"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "feat-d",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": "the same lines feat/c changed, from the same base"
+   },
+   {
+    "id": "ep-merge-c",
+    "commits": [
+     "8bdbee77d187"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "feat-c",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "an agent landing its own branch"
+   },
+   {
+    "id": "ep-merge-d",
+    "commits": [
+     "34a42142d772"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "the conflict resolution: these lines exist only here"
+   },
+   {
+    "id": "ep-feat-e",
+    "commits": [
+     "4a6c3061a2bb"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-merge-e",
+    "commits": [
+     "dea4d0a02136"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-feat-never",
+    "commits": [
+     "85723749448a"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "feat-never",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": "a tip nothing reaches, and an episode a default-branch walk would never see"
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "merge_commit",
+    "at": "35ccc4b84cfa",
+    "episode": "ep-merge-a",
+    "paths": [
+     "src/scheduler.rs"
+    ],
+    "why": "the retry budget lands",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "merge_commit",
+    "at": "45b1a4b3f638",
+    "episode": "ep-merge-b",
+    "paths": [
+     "src/queue.rs"
+    ],
+    "why": "the queue bound lands",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "merge_commit",
+    "at": "8bdbee77d187",
+    "episode": "ep-merge-c",
+    "paths": [
+     "src/scheduler.rs"
+    ],
+    "why": "the wider window lands",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "merge_commit",
+    "at": "34a42142d772",
+    "episode": "ep-merge-d",
+    "paths": [
+     "src/scheduler.rs"
+    ],
+    "why": "the spin change lands, with a conflict",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "conflict_resolution",
+    "at": "34a42142d772",
+    "episode": "ep-merge-d",
+    "paths": [
+     "src/scheduler.rs"
+    ],
+    "why": "the resolution is hand-written and appears nowhere else",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "merge_commit",
+    "at": "dea4d0a02136",
+    "episode": "ep-merge-e",
+    "paths": [
+     "docs/merging.md"
+    ],
+    "why": "the doc page lands",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "branch_never_merged",
+    "at": "85723749448a",
+    "episode": "ep-feat-never",
+    "paths": [
+     "src/export.rs"
+    ],
+    "why": "feat/never is a tip with no path to main",
+    "source": "corpus/many_merges.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "Five feature branches, five merges into `main`, one conflict resolved by hand in the merge commit, and one branch nobody ever merged. Merge commits are where an episode's author is least trustworthy: the author of a merge is whoever typed `git merge`, and two of these merges are a person landing an agent's work. The conflict resolution is the opposite case — lines a person really wrote, in a merge commit, appearing nowhere else — and `feat/never` is the history walk that silently drops a tip."
+  ]
+ }
+}

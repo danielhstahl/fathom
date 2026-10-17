@@ -1,0 +1,620 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "authored-two-agents-and-a-bot",
+ "provenance": "authored",
+ "authoring": {
+  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+  "annotated_on": "2026-10-17",
+  "derived_from": "two agents driven by one loop plus a dependency bot — ADR-003 §8's reason for the author rule. Author identities from the fixture corpus's policy table (pi-agent, codex-agent, deps-bot, plus a human); turnaround from this repository's own beads board: 29 claimed-and-closed agent turns, turnaround p50 0.9 min, 23 of 27 releases re-claimed inside 5 minutes; turn duration p50 81 min, max 642 min.",
+  "shape": "alternating agents with a bot committing between their turns: the author rule must fire on every bot commit and must not fire on the two adjacent turns by one agent"
+ },
+ "source": {
+  "kind": "authored",
+  "commit_count": 16,
+  "extracted_by": "hand-authored; see authoring.derived_from"
+ },
+ "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+ "lineage": [
+  {
+   "oid": "261714e002189c3950f678073fdde70f568aae7a",
+   "parents": [],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000060000,
+   "at": "2025-10-09T08:54:20Z",
+   "subject": "reco-b31: add the scheduler",
+   "trailers": {},
+   "paths": [
+    "src/sched.rs"
+   ],
+   "n_files": 1,
+   "n_add": 45,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t01",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "e7bdca63261602a06a026cb0ac498b2f182e22dc",
+   "parents": [
+    "261714e002189c3950f678073fdde70f568aae7a"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "codex-agent@example.invalid",
+   "author_millis": 1760000180000,
+   "at": "2025-10-09T08:56:20Z",
+   "subject": "reco-b32: add the worker pool",
+   "trailers": {},
+   "paths": [
+    "src/pool.rs"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t02",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "e827cba2ee4b9d1d312949109aa4c925476b90bd",
+   "parents": [
+    "e7bdca63261602a06a026cb0ac498b2f182e22dc"
+   ],
+   "author_name": "deps-bot",
+   "author_email": "deps-bot@example.invalid",
+   "author_millis": 1760000240000,
+   "at": "2025-10-09T08:57:20Z",
+   "subject": "chore(deps): bump serde to 1.0.219",
+   "trailers": {},
+   "paths": [
+    "Cargo.toml",
+    "Cargo.lock"
+   ],
+   "n_files": 2,
+   "n_add": 17,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t03",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "7e1a0d361155079a55b415aeb1174d8229b759ff",
+   "parents": [
+    "e827cba2ee4b9d1d312949109aa4c925476b90bd"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000360000,
+   "at": "2025-10-09T08:59:20Z",
+   "subject": "reco-b33: the scheduler takes the pool",
+   "trailers": {},
+   "paths": [
+    "src/sched.rs"
+   ],
+   "n_files": 1,
+   "n_add": 45,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t04",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "17424c1e7e5626aa59dcb76e9c30120096446463",
+   "parents": [
+    "7e1a0d361155079a55b415aeb1174d8229b759ff"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000600000,
+   "at": "2025-10-09T09:03:20Z",
+   "subject": "reco-b33: drain on shutdown",
+   "trailers": {},
+   "paths": [
+    "src/sched.rs",
+    "src/pool.rs"
+   ],
+   "n_files": 2,
+   "n_add": 45,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t04",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "bb1cdf0506a4c9356aed929d0c02def98a89866b",
+   "parents": [
+    "17424c1e7e5626aa59dcb76e9c30120096446463"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001020000,
+   "at": "2025-10-09T09:10:20Z",
+   "subject": "test: shutdown under load",
+   "trailers": {},
+   "paths": [
+    "tests/shutdown.rs"
+   ],
+   "n_files": 1,
+   "n_add": 31,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t04",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "f639ede838c2bcccd50ff6e2988d4a77b22a7273",
+   "parents": [
+    "bb1cdf0506a4c9356aed929d0c02def98a89866b"
+   ],
+   "author_name": "deps-bot",
+   "author_email": "deps-bot@example.invalid",
+   "author_millis": 1760001080000,
+   "at": "2025-10-09T09:11:20Z",
+   "subject": "chore(deps): bump tokio to 1.43",
+   "trailers": {},
+   "paths": [
+    "Cargo.toml",
+    "Cargo.lock"
+   ],
+   "n_files": 2,
+   "n_add": 73,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t05",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "129aa4690bd2455d2e77cca484c8c10f0dd030a9",
+   "parents": [
+    "f639ede838c2bcccd50ff6e2988d4a77b22a7273"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "codex-agent@example.invalid",
+   "author_millis": 1760001260000,
+   "at": "2025-10-09T09:14:20Z",
+   "subject": "reco-b34: worker metrics",
+   "trailers": {},
+   "paths": [
+    "src/metrics.rs"
+   ],
+   "n_files": 1,
+   "n_add": 24,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t06",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "40641fac2720bf5ddd76bd4081bac7cbaffb0bca",
+   "parents": [
+    "129aa4690bd2455d2e77cca484c8c10f0dd030a9"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "codex-agent@example.invalid",
+   "author_millis": 1760001380000,
+   "at": "2025-10-09T09:16:20Z",
+   "subject": "reco-b35: the metrics pane",
+   "trailers": {},
+   "paths": [
+    "src/metrics.rs",
+    "src/panes.rs"
+   ],
+   "n_files": 2,
+   "n_add": 38,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t07",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "3a6f1a3fbfcb9047658f8532a80343947d42652c",
+   "parents": [
+    "40641fac2720bf5ddd76bd4081bac7cbaffb0bca"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001500000,
+   "at": "2025-10-09T09:18:20Z",
+   "subject": "reco-b36: drop the legacy queue",
+   "trailers": {},
+   "paths": [
+    "src/queue.rs"
+   ],
+   "n_files": 1,
+   "n_add": 73,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t08",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "5c8386a7228fdd4fa5032b63bddb69cb242bbfd1",
+   "parents": [
+    "3a6f1a3fbfcb9047658f8532a80343947d42652c"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001680000,
+   "at": "2025-10-09T09:21:20Z",
+   "subject": "reco-b36: remove its callers",
+   "trailers": {},
+   "paths": [
+    "src/sched.rs",
+    "src/queue.rs"
+   ],
+   "n_files": 2,
+   "n_add": 52,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t08",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "50ac240fca8ec70c84c7e53f7e808eb684db30f6",
+   "parents": [
+    "5c8386a7228fdd4fa5032b63bddb69cb242bbfd1"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760001980000,
+   "at": "2025-10-09T09:26:20Z",
+   "subject": "reco-b36: delete its tests",
+   "trailers": {},
+   "paths": [
+    "tests/queue.rs"
+   ],
+   "n_files": 1,
+   "n_add": 38,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t08",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "b0d8f0abcb56f3b1214f910c06729d52c501cb36",
+   "parents": [
+    "50ac240fca8ec70c84c7e53f7e808eb684db30f6"
+   ],
+   "author_name": "deps-bot",
+   "author_email": "deps-bot@example.invalid",
+   "author_millis": 1760002040000,
+   "at": "2025-10-09T09:27:20Z",
+   "subject": "chore(deps): bump serde_json",
+   "trailers": {},
+   "paths": [
+    "Cargo.toml",
+    "Cargo.lock"
+   ],
+   "n_files": 2,
+   "n_add": 52,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t09",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "24cd3336db7aff47a057f02a312ce3dbdf51b3d4",
+   "parents": [
+    "b0d8f0abcb56f3b1214f910c06729d52c501cb36"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760002160000,
+   "at": "2025-10-09T09:29:20Z",
+   "subject": "reco-b37: follow-up on the queue removal",
+   "trailers": {},
+   "paths": [
+    "docs/concepts/queue.md"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t10",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "cfabe1c6a9807676d8a16bed97303b9cdc3b0fc3",
+   "parents": [
+    "24cd3336db7aff47a057f02a312ce3dbdf51b3d4"
+   ],
+   "author_name": "dana",
+   "author_email": "dana@example.invalid",
+   "author_millis": 1760002220000,
+   "at": "2025-10-09T09:30:20Z",
+   "subject": "typo: the queue is gone from the README",
+   "trailers": {},
+   "paths": [
+    "README.md"
+   ],
+   "n_files": 1,
+   "n_add": 52,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t11",
+    "session_id": "two-agents-and-a-bot"
+   }
+  },
+  {
+   "oid": "3122ae755e3207a1cd875804a1ddc0cd2c3ebf45",
+   "parents": [
+    "cfabe1c6a9807676d8a16bed97303b9cdc3b0fc3"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "codex-agent@example.invalid",
+   "author_millis": 1760002340000,
+   "at": "2025-10-09T09:32:20Z",
+   "subject": "reco-b38: dashboards link to episodes",
+   "trailers": {},
+   "paths": [
+    "src/panes.rs"
+   ],
+   "n_files": 1,
+   "n_add": 38,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "two-agents-and-a-bot:t12",
+    "session_id": "two-agents-and-a-bot"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "t01",
+    "commits": [
+     "261714e00218"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t01",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t02",
+    "commits": [
+     "e7bdca632616"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "t02",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t03",
+    "commits": [
+     "e827cba2ee4b"
+    ],
+    "author": "deps-bot",
+    "kind": "bot",
+    "turn": "t03",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t04",
+    "commits": [
+     "7e1a0d361155",
+     "17424c1e7e56",
+     "bb1cdf0506a4"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t04",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t05",
+    "commits": [
+     "f639ede838c2"
+    ],
+    "author": "deps-bot",
+    "kind": "bot",
+    "turn": "t05",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t06",
+    "commits": [
+     "129aa4690bd2"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "t06",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t07",
+    "commits": [
+     "40641fac2720"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "t07",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t08",
+    "commits": [
+     "3a6f1a3fbfcb",
+     "5c8386a7228f",
+     "50ac240fca8e"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t08",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t09",
+    "commits": [
+     "b0d8f0abcb56"
+    ],
+    "author": "deps-bot",
+    "kind": "bot",
+    "turn": "t09",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t10",
+    "commits": [
+     "24cd3336db7a"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t10",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t11",
+    "commits": [
+     "cfabe1c6a980"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": "t11",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t12",
+    "commits": [
+     "3122ae755e32"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "t12",
+    "session": "two-agents-and-a-bot",
+    "joined_by": "authored",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "churn_across_boundary",
+    "at": "50ac240fca8e",
+    "episode": "t08",
+    "requires": [
+     "3a6f1a3fbfcb",
+     "5c8386a7228f"
+    ],
+    "paths": [
+     "src/queue.rs"
+    ],
+    "why": "the test deletion is reviewable only beside the removal of the callers: cut between them and one card shows tests deleted for no reason while the other shows callers pointing at nothing"
+   },
+   {
+    "kind": "absorbed_turn",
+    "at": "cfabe1c6a980",
+    "episode": "t11",
+    "requires": [],
+    "paths": [
+     "README.md"
+    ],
+    "why": "a one-line human commit between two agent turns; absorbed into either neighbour it is a change no card claims and no reviewer owes"
+   }
+  ],
+  "notes": [
+   "t06 and t07 are two turns by one agent two minutes apart: the only place in the corpus where the author rule is useless in the keep direction and the gap rule useless in the split direction at the same time."
+  ]
+ }
+}

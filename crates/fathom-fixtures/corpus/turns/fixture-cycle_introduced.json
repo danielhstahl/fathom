@@ -1,0 +1,348 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-cycle_introduced",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the cycle_introduced scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "cycle_introduced",
+  "blessed_digest": "e1842be85ba3cee7ff9aef899c6e316d320fb6340cf8cc1b31b0cecf43dbf144",
+  "commit_count": 7,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "4b6b5c80620f23eee5dabfab1561bc4cdd096900",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Publish the core and the store",
+   "trailers": {
+    "agent-intent": "publish the core and the store",
+    "agent-session": "layers",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/core/mod.rs",
+    "src/lib.rs",
+    "src/store/mod.rs"
+   ],
+   "n_files": 3,
+   "n_add": 74,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:1",
+    "session_id": "layers"
+   }
+  },
+  {
+   "oid": "739fe2b9126348fefe08e4ac45416d0249edff53",
+   "parents": [
+    "4b6b5c80620f23eee5dabfab1561bc4cdd096900"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Expose the query surface",
+   "trailers": {
+    "agent-intent": "expose the query surface",
+    "agent-session": "layers",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/mod.rs",
+    "src/api/routes.rs"
+   ],
+   "n_files": 2,
+   "n_add": 26,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:1",
+    "session_id": "layers"
+   }
+  },
+  {
+   "oid": "0b157a8dc62617e2002d092504970a3b5fddb4ff",
+   "parents": [
+    "739fe2b9126348fefe08e4ac45416d0249edff53"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Add the scheduler and its queue",
+   "trailers": {
+    "agent-intent": "add the scheduler",
+    "agent-session": "layers",
+    "agent-turn": "2",
+    "assisted-by": "codex-cli"
+   },
+   "paths": [
+    "src/queue.rs",
+    "src/scheduler.rs"
+   ],
+   "n_files": 2,
+   "n_add": 72,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:2",
+    "session_id": "layers"
+   }
+  },
+  {
+   "oid": "a6193a7d033d83ef8d8c51c52a4130e891d93a65",
+   "parents": [
+    "0b157a8dc62617e2002d092504970a3b5fddb4ff"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Tell the api when the model moved",
+   "trailers": {
+    "agent-intent": "tell the api when the model moved",
+    "agent-session": "layers",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/core/mod.rs"
+   ],
+   "n_files": 1,
+   "n_add": 8,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:3",
+    "session_id": "layers"
+   }
+  },
+  {
+   "oid": "8a42a11a1ff6160a580bfea5edfb76c155a0eefd",
+   "parents": [
+    "a6193a7d033d83ef8d8c51c52a4130e891d93a65"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Invalidate cached answers on a notice",
+   "trailers": {
+    "agent-intent": "invalidate cached answers on a notice",
+    "agent-session": "layers",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/store/mod.rs"
+   ],
+   "n_files": 1,
+   "n_add": 11,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:3",
+    "session_id": "layers"
+   }
+  },
+  {
+   "oid": "f0b6f07da83ef56c39919d6026aed8429a83b407",
+   "parents": [
+    "8a42a11a1ff6160a580bfea5edfb76c155a0eefd"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Drop the duplicate query helpers",
+   "trailers": {
+    "agent-intent": "drop the duplicate query helpers",
+    "agent-session": "layers",
+    "agent-turn": "4",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/routes.rs"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 13,
+   "n_binary": 0,
+   "session_id": "layers",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "layers:4",
+    "session_id": "layers"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-core",
+    "commits": [
+     "4b6b5c80620f",
+     "739fe2b91263"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "layers",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-scheduler",
+    "commits": [
+     "0b157a8dc626"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "layers",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "a second agent, so the author rule has work to do"
+   },
+   {
+    "id": "ep-cycles",
+    "commits": [
+     "a6193a7d033d",
+     "8a42a11a1ff6"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "layers",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the two back edges, one per commit"
+   },
+   {
+    "id": "ep-delete",
+    "commits": [
+     "f0b6f07da83e"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "4",
+    "session": "layers",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "cycle_introduced",
+    "at": "a6193a7d033d",
+    "episode": "ep-cycles",
+    "paths": [
+     "src/core/mod.rs",
+     "src/api/mod.rs"
+    ],
+    "why": "core → api and api → core: the layering stated in the files is now a lie",
+    "source": "corpus/cycle_introduced.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "cycle_introduced",
+    "at": "8a42a11a1ff6",
+    "episode": "ep-cycles",
+    "paths": [
+     "src/store/mod.rs",
+     "src/api/mod.rs"
+    ],
+    "why": "store starts importing api too",
+    "source": "corpus/cycle_introduced.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "cycle_introduced",
+    "at": "f0b6f07da83e",
+    "episode": "ep-delete",
+    "paths": [
+     "src/api/mod.rs"
+    ],
+    "why": "the edge survives as a dangling declaration; a finder that only reads existing files will not see it",
+    "source": "corpus/cycle_introduced.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "A three-layer project (core → store → api) in which two commits each add one import that points the wrong way and closes a cycle, and a third deletes a file another module still declares. The cycles are real text: single functions whose doc comments say why they do not belong there. One of the three cycles only exists because a file is gone, which is the shape a source-only cycle finder misses."
+  ]
+ }
+}

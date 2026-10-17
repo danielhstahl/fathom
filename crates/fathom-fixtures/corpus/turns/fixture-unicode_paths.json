@@ -1,0 +1,330 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-unicode_paths",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the unicode_paths scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "unicode_paths",
+  "blessed_digest": "93cf4d7aaca33cbe57aed5848423efb4ba4668ab72a1556f6d367c0c16f5d48d",
+  "commit_count": 6,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "ed348631a4fcef116aa09b69f608a5441cd26fba",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Add the translated docs",
+   "trailers": {
+    "agent-intent": "add the translated docs",
+    "agent-session": "i18n",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/café.md",
+    "docs/日本語.md"
+   ],
+   "n_files": 2,
+   "n_add": 8,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "i18n",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "i18n:1",
+    "session_id": "i18n"
+   }
+  },
+  {
+   "oid": "106a6aabf91344ebe764dc34c72ef347cb7fe223",
+   "parents": [
+    "ed348631a4fcef116aa09b69f608a5441cd26fba"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Add the Cyrillic-named module",
+   "trailers": {
+    "agent-intent": "add the Cyrillic-named module",
+    "agent-session": "i18n",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/модуль.rs",
+    "src/lib.rs"
+   ],
+   "n_files": 2,
+   "n_add": 22,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "i18n",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "i18n:2",
+    "session_id": "i18n"
+   }
+  },
+  {
+   "oid": "8f16719e2e5c36a4e955d51c041a9997d2db249b",
+   "parents": [
+    "106a6aabf91344ebe764dc34c72ef347cb7fe223"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Rename the accented page to the decomposed form",
+   "trailers": {
+    "agent-intent": "rename the accented page",
+    "agent-session": "i18n",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/café.md"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "i18n",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "i18n:3",
+    "session_id": "i18n"
+   }
+  },
+  {
+   "oid": "cde3d95aafe160ece9cc9ffaf606fc4fa97afd13",
+   "parents": [
+    "8f16719e2e5c36a4e955d51c041a9997d2db249b"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Add the note with the en dash in its name",
+   "trailers": {},
+   "paths": [
+    "docs/naïve–notes.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "a0da9378fcbea284052cb2178c0078cabb8c3d2d",
+   "parents": [
+    "cde3d95aafe160ece9cc9ffaf606fc4fa97afd13"
+   ],
+   "author_name": "codex-agent",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Rewrite the Japanese page for the new layout",
+   "trailers": {
+    "agent-intent": "rewrite the Japanese page",
+    "agent-session": "i18n",
+    "agent-turn": "4",
+    "assisted-by": "codex-cli"
+   },
+   "paths": [
+    "docs/日本語.md"
+   ],
+   "n_files": 1,
+   "n_add": 1,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "i18n",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "i18n:4",
+    "session_id": "i18n"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-translated",
+    "commits": [
+     "ed348631a4fc"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "i18n",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-cyrillic",
+    "commits": [
+     "106a6aabf913"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "i18n",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-rename",
+    "commits": [
+     "8f16719e2e5c"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "i18n",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "composed → decomposed, content unchanged"
+   },
+   {
+    "id": "ep-notes",
+    "commits": [
+     "cde3d95aafe1"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-rewrite",
+    "commits": [
+     "a0da9378fcbe"
+    ],
+    "author": "codex-agent",
+    "kind": "agent",
+    "turn": "4",
+    "session": "i18n",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "non_ascii_path",
+    "at": "ed348631a4fc",
+    "episode": "ep-translated",
+    "paths": [
+     "docs/café.md",
+     "docs/日本語.md"
+    ],
+    "why": "two translated pages arrive",
+    "source": "corpus/unicode_paths.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "non_ascii_path",
+    "at": "106a6aabf913",
+    "episode": "ep-cyrillic",
+    "paths": [
+     "src/api/модуль.rs"
+    ],
+    "why": "a module named in Cyrillic",
+    "source": "corpus/unicode_paths.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "rename",
+    "at": "8f16719e2e5c",
+    "episode": "ep-rename",
+    "paths": [
+     "docs/café.md"
+    ],
+    "why": "on a normalising filesystem this commit changes nothing at all, which is the trap",
+    "source": "corpus/unicode_paths.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "non_ascii_path",
+    "at": "cde3d95aafe1",
+    "episode": "ep-notes",
+    "paths": [
+     "docs/naïve–notes.md"
+    ],
+    "why": "an en dash in a file name",
+    "source": "corpus/unicode_paths.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "Paths that are not ASCII, and a rename from the composed spelling of a name to its decomposed spelling. The two café pages differ by nothing a normalising filesystem can see, so they are never both in the tree at once; the Cyrillic module name and the en dash in a note are the two a Windows console and a shell quoting layer have to survive. The paths are written with escapes in the generator so that no editor or git filter gets to choose the normalisation form."
+  ]
+ }
+}

@@ -162,6 +162,14 @@ jobs:
         if: matrix.channel == 'stable'
         run: cargo test --workspace --all-features
 
+      # Spike `s2`'s report is the artifact ADR-003 §18 quotes and `tests/test_segmentation_spike_contract.py`
+      # asserts against; the harness scores its `shipped` strategy with `fathom_ingest::segment` itself and
+      # then refuses to write a report that differs from the corpus byte-for-byte. Same claim, here rather
+      # than in the contracts job, because it needs the workspace built.
+      - name: "spike s2: the committed segmentation report reproduces"
+        if: matrix.channel == 'stable'
+        run: cargo run -q -p fathom-analyze --example s2_spike -- --check
+
       # The headless CI-gate binary `e6.6` puts inside pipelines (§6.1), built on both channels: a
       # TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal.
       - name: build the headless `minimal` binary

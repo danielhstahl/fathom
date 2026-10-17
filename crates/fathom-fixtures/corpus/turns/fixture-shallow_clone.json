@@ -1,0 +1,172 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-shallow_clone",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the shallow_clone scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "shallow_clone",
+  "blessed_digest": "11a6d958a988958e8545794e5722ce9c3fcc2ca70edd377ae17e3eb30d5408f6",
+  "commit_count": 3,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "49e5f88ebe623d5f12907c6ddac993237e8a4201",
+   "parents": [
+    "8e61bd0aa19894e2c47054767806e23af6095b76"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735696800000,
+   "at": "2025-01-01T02:00:00.000Z",
+   "subject": "Upstream work round 6",
+   "trailers": {
+    "agent-intent": "do the upstream work",
+    "agent-session": "upstream",
+    "agent-turn": "r6"
+   },
+   "paths": [
+    "docs/upstream.md",
+    "upstream/mod.rs"
+   ],
+   "n_files": 2,
+   "n_add": 3,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": "upstream",
+   "turn_id": "r6",
+   "merge": false,
+   "harness": {
+    "turn_id": "upstream:r6",
+    "session_id": "upstream"
+   }
+  },
+  {
+   "oid": "e62977a953eef01d1032a3e0d1aebaa37e90ee1b",
+   "parents": [
+    "49e5f88ebe623d5f12907c6ddac993237e8a4201"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735697700000,
+   "at": "2025-01-01T02:15:00.000Z",
+   "subject": "Upstream work round 7",
+   "trailers": {
+    "agent-intent": "do the upstream work",
+    "agent-session": "upstream",
+    "agent-turn": "r7",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/upstream.md",
+    "upstream/mod.rs"
+   ],
+   "n_files": 2,
+   "n_add": 3,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": "upstream",
+   "turn_id": "r7",
+   "merge": false,
+   "harness": {
+    "turn_id": "upstream:r7",
+    "session_id": "upstream"
+   }
+  },
+  {
+   "oid": "ad23fe4c4515daf9c79f19436213b7486999abcf",
+   "parents": [
+    "e62977a953eef01d1032a3e0d1aebaa37e90ee1b"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735698600000,
+   "at": "2025-01-01T02:30:00.000Z",
+   "subject": "Upstream work round 8",
+   "trailers": {
+    "agent-intent": "do the upstream work",
+    "agent-session": "upstream",
+    "agent-turn": "r8",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/upstream.md",
+    "upstream/mod.rs"
+   ],
+   "n_files": 2,
+   "n_add": 3,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": "upstream",
+   "turn_id": "r8",
+   "merge": false,
+   "harness": {
+    "turn_id": "upstream:r8",
+    "session_id": "upstream"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-window-0",
+    "commits": [
+     "49e5f88ebe62"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": "the shallow cut: a commit with no parent because the parent was never fetched"
+   },
+   {
+    "id": "ep-window-1",
+    "commits": [
+     "e62977a953ee"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "r7",
+    "session": "upstream",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-window-2",
+    "commits": [
+     "ad23fe4c4515"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "r8",
+    "session": "upstream",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "history_truncated",
+    "at": "49e5f88ebe62",
+    "episode": "ep-window-0",
+    "paths": [],
+    "why": "the boundary commit's parent line names an object that was never fetched; the ingest must stop there and say so rather than fail",
+    "source": "corpus/shallow_clone.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "A depth-three clone of a ten-commit upstream. The three commits that came over were rewritten: the window's first commit has no parent at all, because there is nothing below the cut to point at, and `.git/shallow` names the tip. A history walker that walks to the root instead of to the shallow cut will ask for an object that is not in this repository and fail with a message nobody in the product can act on, so the corpus contains the shape and names the cut."
+  ]
+ }
+}

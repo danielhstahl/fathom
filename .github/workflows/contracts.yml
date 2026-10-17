@@ -190,6 +190,18 @@ jobs:
         # `benchmarks/reports/s1-tree-sitter-accuracy.json`. The pytest suite asserts the same thing
         # plus the corpus/threshold invariants; this step is here so the failure says what it is.
         run: python3 tools/gen_structure_tables.py check
+      - name: "spike s2: the turn corpus is coherent on its own terms"
+        # `crates/fathom-fixtures/corpus/turns/` is hand-authored truth over mechanically extracted commit
+        # facts, and the coherence rules (every commit in exactly one turn, turns contiguous, pathologies
+        # pointing at real commits, every judgement call carrying a note) are the only thing standing between
+        # a precision number and a typo. Cheap, no build: the pytest suite asserts the same thing plus the
+        # report/gate invariants.
+        run: python3 tools/author_turn_corpus.py --validate-only
+      - name: "spike s2: the segmentation tables in ADR-003 §18 and the concept document are generated"
+        # Every number in `docs/concepts/episode-segmentation.md` and ADR-003 §18 comes out of
+        # `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4 and §13.7.
+        # A hand-copied table there is a table that keeps its old numbers the day the corpus changes.
+        run: python3 tools/gen_segment_tables.py check
       - name: "e1.5 TUI: the Rust shell's parity tables are the Python ones, generated"
         # `crates/fathom-tui/tests/tables/mod.rs` is generated from `src/recommender/tui/`, because
         # a Rust copy of the keymap that was hand-copied is a second source of truth with a

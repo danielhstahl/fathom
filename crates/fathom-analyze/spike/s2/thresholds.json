@@ -1,0 +1,222 @@
+{
+ "what": "The gates spike s2 (`reco-q6r`) holds its own measurement to. ADR-003 §4.4 publishes constants it calls 'honest guesses with named prices' and §13.7 defers every one of them to this spike; a gate here is one of those prices written as a number, so that 'did the measurement clear what the document claims' is a lookup instead of a reading-comprehension test. `cargo run -p fathom-analyze --example s2_spike -- --check` re-measures and re-scores them; `tools/gen_segment_tables.py` prints this table into docs/concepts/episode-segmentation.md so the prose cannot disagree with it.",
+ "how_gates_are_set": "Each claim is stated as what ADR-003 or `e1.3` already published, or as the floor a recommendation has to clear to be worth making at all. A gate that fails is not adjusted to fit the measurement: it is reported failing, and the recommendation has to say what it costs. Two gates (`hook-evidence-*`) are photographs of a world where `e6.1`'s event ingest does not exist yet — they are written to be retired by the ticket that lands it, which is recorded in ADR-003.",
+ "scopes": "pooled | real | fixture | authored | history:<name> — `real` is Fathom's own history, the only stratum whose clock and subjects were not authored for the corpus, and the stratum a recommendation has to survive on its own.",
+ "gates": [
+  {
+   "id": "shipped-pooled-boundary-f1",
+   "claim": "the cascade ADR-003 §4.2 ships reaches 0.90 boundary F1 on the whole corpus, which is the bar `e1.3`'s acceptance criterion published",
+   "expected": "fail",
+   "strategy": "D-shipped",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "min": 0.9
+  },
+  {
+   "id": "shipped-pooled-pair-f1",
+   "claim": "the same cascade also clears 0.90 on the pair co-membership measure `crates/fathom-analyze/tests/episodes.rs` gates the corpus at",
+   "expected": "fail",
+   "strategy": "D-shipped",
+   "scope": "pooled",
+   "metric": "pair_f1",
+   "min": 0.9
+  },
+  {
+   "id": "shipped-fixture-pair-f1",
+   "claim": "…and the reason `e1.3`'s own test still passes: on the fixture stratum — the corpus that test measures — the cascade is at 0.86 pair F1, and it is the real and adversarial strata that move the pooled number",
+   "expected": "pass",
+   "strategy": "D-shipped",
+   "scope": "fixture",
+   "metric": "pair_f1",
+   "min": 0.85
+  },
+  {
+   "id": "shipped-beats-all-split-pooled",
+   "claim": "the shipped cascade is not worse than the trivial 'every commit is its own episode' partition on the pooled corpus",
+   "expected": "fail",
+   "kind": "delta",
+   "strategy_a": "D-shipped",
+   "strategy_b": "all-split",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "min": 0.0
+  },
+  {
+   "id": "shipped-beats-all-split-real",
+   "claim": "…and not worse than it on the real stratum either, which is the stratum nobody authored to be friendly",
+   "expected": "fail",
+   "kind": "delta",
+   "strategy_a": "D-shipped",
+   "strategy_b": "all-split",
+   "scope": "real",
+   "metric": "boundary_f1",
+   "min": 0.0
+  },
+  {
+   "id": "all-split-hides-pathologies",
+   "claim": "the trivial partition that beats the cascade on F1 hides at least 20 of the corpus's annotated pathologies, which is the proof that boundary F1 alone cannot choose a rule set",
+   "expected": "pass",
+   "strategy": "all-split",
+   "scope": "pooled",
+   "metric": "pathologies_hidden_total",
+   "min": 20
+  },
+  {
+   "id": "hook-evidence-never-lies",
+   "claim": "turn evidence, where it exists, is never wrong: hook-over-harness-evidence precision is 0.99 or better pooled",
+   "expected": "pass",
+   "strategy": "B-hook-harness",
+   "scope": "pooled",
+   "metric": "boundary_precision",
+   "min": 0.99
+  },
+  {
+   "id": "hook-alone-is-not-a-strategy",
+   "claim": "the hook rule alone reaches 0.95 pooled boundary F1 — ADR-003 §4.2's confidence 1.0 invites the reading that it is nearly the whole answer, and the corpus refuses it: with no evidence on either side of a boundary TB6 keeps the commits together, and 76 annotated turns get swallowed",
+   "expected": "fail",
+   "strategy": "B-hook-harness",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "min": 0.95
+  },
+  {
+   "id": "hook-evidence-absent-on-real-history",
+   "claim": "as shipped, the hook rule has essentially no evidence on real agent-driven history: with commit-carried evidence only, its recall on the real stratum is at most 0.05. This is a photograph of the world before `e6.1`, and the ticket that lands event ingest is expected to retire it rather than leave it quietly true",
+   "expected": "pass",
+   "strategy": "B-hook-commit",
+   "scope": "real",
+   "metric": "boundary_recall",
+   "max": 0.05
+  },
+  {
+   "id": "trailer-rule-with-trailer",
+   "claim": "ADR-003 rung 3 (`Fathom-Episode:` trailer, confidence 0.9) does work when somebody writes the trailer it reads: on the history authored to carry it, trailers-plus-message-shape reaches 0.90 boundary F1",
+   "expected": "pass",
+   "strategy": "C-trailer-shape",
+   "scope": "history:authored-episode-trailer-loop",
+   "metric": "boundary_f1",
+   "min": 0.9
+  },
+  {
+   "id": "trailer-rule-has-no-writers",
+   "claim": "…and everywhere else that rule is dead: on the pooled corpus the trailer-plus-message-shape strategy finds at most 10 % of the true boundaries, because the trailer it reads is written by nothing in this repository or the fixture corpus",
+   "expected": "pass",
+   "strategy": "C-trailer-shape",
+   "scope": "pooled",
+   "metric": "boundary_recall",
+   "max": 0.1
+  },
+  {
+   "id": "gap-optimum-for-time-and-author",
+   "claim": "for a time-and-author strategy the best gap on this corpus is at or below 20 minutes, so the published 30 is not the optimum the ADR guessed it was",
+   "expected": "pass",
+   "kind": "gap_argmax",
+   "gap_sweep_of": "A-time-author",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "max_gap_minutes": 20
+  },
+  {
+   "id": "gap-optimum-for-shipped",
+   "claim": "the shipped cascade's pooled optimum gap is at or below 20 minutes too (measured 10), so `episode.time_gap_minutes` is not sitting near its optimum by luck — it is not near an optimum at all, and §4.4's 30 is a value whose measured leverage is smaller than its documentation weight",
+   "expected": "pass",
+   "kind": "gap_argmax",
+   "gap_sweep_of": "D-shipped",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "max_gap_minutes": 20
+  },
+  {
+   "id": "recommendation-is-gap-insensitive",
+   "claim": "the recommended rule set reaches 0.90 pooled boundary F1 at the published 30-minute gap, which is what licenses leaving the constant alone: once a per-commit claim carries the boundary, the clock stops being the instrument",
+   "expected": "pass",
+   "strategy": "E-token-above-gap",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "min": 0.9
+  },
+  {
+   "id": "recommendation-beats-shipped-pooled",
+   "claim": "the recommended rule set (subject-claim above the clock, session-qualified turn ids) beats the shipped cascade by at least 0.05 pooled boundary F1 — a change to a documented cascade has to pay for the churn",
+   "expected": "pass",
+   "kind": "delta",
+   "strategy_a": "F-hook-qualified",
+   "strategy_b": "D-shipped",
+   "scope": "pooled",
+   "metric": "boundary_f1",
+   "min": 0.05
+  },
+  {
+   "id": "recommendation-beats-shipped-real",
+   "claim": "…and it beats it on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus",
+   "expected": "pass",
+   "kind": "delta",
+   "strategy_a": "F-hook-qualified",
+   "strategy_b": "D-shipped",
+   "scope": "real",
+   "metric": "boundary_f1",
+   "min": 0.02
+  },
+  {
+   "id": "recommendation-hides-no-more",
+   "claim": "the recommended rule set hides no more annotated pathologies than the shipped cascade does pooled",
+   "expected": "pass",
+   "kind": "delta",
+   "strategy_a": "F-hook-qualified",
+   "strategy_b": "D-shipped",
+   "scope": "pooled",
+   "metric": "pathologies_hidden_total",
+   "max": 0.0
+  },
+  {
+   "id": "shipped-real-hide-bound",
+   "claim": "the shipped cascade hides at most three annotated pathologies on the real stratum, which is where a hidden pathology is a real one",
+   "expected": "pass",
+   "strategy": "D-shipped",
+   "scope": "real",
+   "metric": "pathologies_hidden_total",
+   "max": 3
+  },
+  {
+   "id": "recommendation-real-hide-bound",
+   "claim": "the recommended rule set hides at most two on the real stratum, and both are of the kind no git signal can see",
+   "expected": "pass",
+   "strategy": "F-hook-qualified",
+   "scope": "real",
+   "metric": "pathologies_hidden_total",
+   "max": 2
+  },
+  {
+   "id": "subject-claim-makes-no-false-splits",
+   "claim": "the subject-claim signal fires on at most 2 of the 60 within-turn adjacencies in the corpus: a leading tracker token is evidence rather than a guess, and it is the only added signal that costs no false boundaries",
+   "expected": "pass",
+   "kind": "census",
+   "scope": "pooled",
+   "signal": "ticket-token",
+   "metric": "false_boundaries_fired",
+   "max": 2
+  },
+  {
+   "id": "message-shape-is-weak-as-advertised",
+   "claim": "ADR-003 §4.3's claim that a conventional-type change is the weakest splitting signal in the set is confirmed rather than assumed: message-shape finds at most 5 true boundaries in the whole corpus",
+   "expected": "pass",
+   "kind": "census",
+   "scope": "pooled",
+   "signal": "message-shape",
+   "metric": "true_boundaries_found",
+   "max": 5
+  },
+  {
+   "id": "recommendation-absorbs-fewer-turns",
+   "claim": "the recommended rule set swallows fewer annotated turns than the shipped cascade, which is the failure direction that removes work from the queue",
+   "expected": "pass",
+   "kind": "delta",
+   "strategy_a": "F-hook-qualified",
+   "strategy_b": "D-shipped",
+   "scope": "pooled",
+   "metric": "turns_absorbed",
+   "max": 0.0
+  }
+ ],
+ "expected_semantics": "Every gate declares `expected`: `pass` or `fail`. A gate that surprises us in either direction fails the contract test — a claim that starts passing has to be re-read as well as one that fails. The `fail` gates are the spike's findings, not its defects: they are the prices ADR-003 §4.4 and `e1.3` published that this measurement refuses to let stand."
+}

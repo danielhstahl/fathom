@@ -1,0 +1,409 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-rebase_rewrite",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the rebase_rewrite scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "rebase_rewrite",
+  "blessed_digest": "a7e8281385ffecc80d005da3bfabac316aa306c1167c4d69fc6faf4ab050d9c4",
+  "commit_count": 9,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "0ba1d4911dd0e0e0d9afacdacf9eb2627a0571bf",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Add the retry budget",
+   "trailers": {
+    "agent-intent": "add a retry budget",
+    "agent-session": "orig",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 37,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "orig",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "orig:1",
+    "session_id": "orig"
+   }
+  },
+  {
+   "oid": "4c064abd999dd0cebe8f0ca27cebfc5fb95f5e4d",
+   "parents": [
+    "0ba1d4911dd0e0e0d9afacdacf9eb2627a0571bf"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Add the retry policy",
+   "trailers": {
+    "agent-intent": "add a retry budget",
+    "agent-session": "orig",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 7,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "orig",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "orig:1",
+    "session_id": "orig"
+   }
+  },
+  {
+   "oid": "e8521b2be61a7760b93de681b8d2b4f5a36cb15e",
+   "parents": [
+    "4c064abd999dd0cebe8f0ca27cebfc5fb95f5e4d"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Document the retries",
+   "trailers": {
+    "agent-intent": "document the retries",
+    "agent-session": "orig",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/retries.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "orig",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "orig:2",
+    "session_id": "orig"
+   }
+  },
+  {
+   "oid": "37ec3f2d7c2967646cdb443dc62803a821d45383",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Add an architecture note",
+   "trailers": {},
+   "paths": [
+    "docs/architecture.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "c7e7dc72e27d16c7fcec1eb79ad392295d1768ed",
+   "parents": [
+    "37ec3f2d7c2967646cdb443dc62803a821d45383"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Add the retry budget",
+   "trailers": {
+    "agent-intent": "add a retry budget",
+    "agent-session": "rewrite",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 37,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rewrite",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "rewrite:3",
+    "session_id": "rewrite"
+   }
+  },
+  {
+   "oid": "b81a6d8b8ecdb380b9539cbfe6255a29cdfd5446",
+   "parents": [
+    "c7e7dc72e27d16c7fcec1eb79ad392295d1768ed"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Add the retry policy",
+   "trailers": {
+    "agent-intent": "add a retry budget",
+    "agent-session": "rewrite",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler.rs"
+   ],
+   "n_files": 1,
+   "n_add": 7,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rewrite",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "rewrite:3",
+    "session_id": "rewrite"
+   }
+  },
+  {
+   "oid": "96dfb92903f104019c42ca3762d4bf7456dd2b68",
+   "parents": [
+    "b81a6d8b8ecdb380b9539cbfe6255a29cdfd5446"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735696800000,
+   "at": "2025-01-01T02:00:00.000Z",
+   "subject": "Document the retries",
+   "trailers": {
+    "agent-intent": "document the retries",
+    "agent-session": "rewrite",
+    "agent-turn": "4",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "docs/retries.md"
+   ],
+   "n_files": 1,
+   "n_add": 4,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rewrite",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "rewrite:4",
+    "session_id": "rewrite"
+   }
+  },
+  {
+   "oid": "93874db8681972a373a1ca30fd98b1752c7c5e7e",
+   "parents": [
+    "96dfb92903f104019c42ca3762d4bf7456dd2b68",
+    "e8521b2be61a7760b93de681b8d2b4f5a36cb15e"
+   ],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735697700000,
+   "at": "2025-01-01T02:15:00.000Z",
+   "subject": "Merge the original branch after all",
+   "trailers": {},
+   "paths": [],
+   "n_files": 0,
+   "n_add": 0,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": true,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-orig-budget",
+    "commits": [
+     "0ba1d4911dd0",
+     "4c064abd999d"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "orig",
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": "the branch opens here: the author is the same, the lineage is not"
+   },
+   {
+    "id": "ep-orig-docs",
+    "commits": [
+     "e8521b2be61a"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "orig",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-arch",
+    "commits": [
+     "37ec3f2d7c29"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "branch",
+    "joined_by": "fixture",
+    "note": "back on main, by a different author; the branch rule fires first"
+   },
+   {
+    "id": "ep-rewrite-budget",
+    "commits": [
+     "c7e7dc72e27d",
+     "b81a6d8b8ecd"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "rewrite",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the same two commits, different parents"
+   },
+   {
+    "id": "ep-rewrite-docs",
+    "commits": [
+     "96dfb92903f1"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "4",
+    "session": "rewrite",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-merge",
+    "commits": [
+     "93874db86819"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "the merge of a branch whose content is already present"
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "duplicate_change",
+    "at": "c7e7dc72e27d",
+    "episode": "ep-rewrite-budget",
+    "paths": [
+     "src/scheduler.rs"
+    ],
+    "why": "same subject, same tree content, different parent and SHA: an id comparison misses it, a patch-id comparison finds it",
+    "source": "corpus/rebase_rewrite.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "duplicate_change",
+    "at": "96dfb92903f1",
+    "episode": "ep-rewrite-docs",
+    "paths": [
+     "docs/retries.md"
+    ],
+    "why": "the doc page is the same bytes on both lineages",
+    "source": "corpus/rebase_rewrite.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "The same work twice. A branch adds a retry budget, a policy and a doc page and is left where it is; the same three changes are then made again on `main` with different parents and different SHAs, and the original branch is merged anyway — which brings nothing, because `main` already has the bytes. Both lineages are reachable, which is the state a repository is really in after a force-push, and the state a history walk double-counts unless it compares content rather than ids."
+  ]
+ }
+}

@@ -1,0 +1,579 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "authored-long-and-short-clock",
+ "provenance": "authored",
+ "authoring": {
+  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+  "annotated_on": "2026-10-17",
+  "derived_from": "the clock pathologies only a real loop produces: turnaround this repository's own beads board: 29 claimed-and-closed agent turns, turnaround p50 0.9 min, 23 of 27 releases re-claimed inside 5 minutes; turn duration p50 81 min, max 642 min, the real 642-minute turn on the board, the real 33.6-minute within-turn pair, and a negative gap from the fact that a rebase re-stamps author dates and a laptop sleeps.",
+  "shape": "the gap rule's four failure shapes in one history: a turn that spans three hours, two commits in the same minute, a commit whose author date is *earlier* than its predecessor, and a weekend between two turns"
+ },
+ "source": {
+  "kind": "authored",
+  "commit_count": 15,
+  "extracted_by": "hand-authored; see authoring.derived_from"
+ },
+ "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+ "lineage": [
+  {
+   "oid": "0bab3a91574fb39d8db71479d40c04f5dc2a3a7a",
+   "parents": [],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000120000,
+   "at": "2025-10-09T08:55:20Z",
+   "subject": "reco-g71: the cache key",
+   "trailers": {},
+   "paths": [
+    "src/cache/key.rs"
+   ],
+   "n_files": 1,
+   "n_add": 17,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t01",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "595f1b04e4dd1747aa11d33b7e363876d825ef82",
+   "parents": [
+    "0bab3a91574fb39d8db71479d40c04f5dc2a3a7a"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760000240000,
+   "at": "2025-10-09T08:57:20Z",
+   "subject": "reco-g72: the long materialisation",
+   "trailers": {},
+   "paths": [
+    "src/cache/materialise.rs"
+   ],
+   "n_files": 1,
+   "n_add": 17,
+   "n_del": 4,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t02",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "29cb46130936748b43e184d9fb3027148d67af80",
+   "parents": [
+    "595f1b04e4dd1747aa11d33b7e363876d825ef82"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011040000,
+   "at": "2025-10-09T11:57:20Z",
+   "subject": "reco-g72: finished after the run finished",
+   "trailers": {},
+   "paths": [
+    "src/cache/materialise.rs"
+   ],
+   "n_files": 1,
+   "n_add": 66,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t02",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "edccf073bf6226138113ab7951baa6d1d2a682db",
+   "parents": [
+    "29cb46130936748b43e184d9fb3027148d67af80"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011100000,
+   "at": "2025-10-09T11:58:20Z",
+   "subject": "reco-g73: the cache eviction",
+   "trailers": {},
+   "paths": [
+    "src/cache/evict.rs"
+   ],
+   "n_files": 1,
+   "n_add": 52,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t03",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "fd82f8feadbad4fb2367399d0f24cc4e12a1d453",
+   "parents": [
+    "edccf073bf6226138113ab7951baa6d1d2a682db"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760010860000,
+   "at": "2025-10-09T11:54:20Z",
+   "subject": "reco-g74: rebased the branch and lost the old clock",
+   "trailers": {},
+   "paths": [
+    "src/cache/key.rs",
+    "src/cache/evict.rs"
+   ],
+   "n_files": 2,
+   "n_add": 59,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t04",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "99690bb63bf6adda63e895aeb00580cecbd2172c",
+   "parents": [
+    "fd82f8feadbad4fb2367399d0f24cc4e12a1d453"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011040000,
+   "at": "2025-10-09T11:57:20Z",
+   "subject": "reco-g74: and the follow-up it needed",
+   "trailers": {},
+   "paths": [
+    "src/cache/key.rs"
+   ],
+   "n_files": 1,
+   "n_add": 38,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t04",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "8b040bd3fb8d46d2994236b5b1c3706f5ab8b689",
+   "parents": [
+    "99690bb63bf6adda63e895aeb00580cecbd2172c"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011400000,
+   "at": "2025-10-09T12:03:20Z",
+   "subject": "reco-g75: the warm path",
+   "trailers": {},
+   "paths": [
+    "src/cache/warm.rs"
+   ],
+   "n_files": 1,
+   "n_add": 17,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t05",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "e7e6e335de30c1805a57710dd048e8d01bf1e79f",
+   "parents": [
+    "8b040bd3fb8d46d2994236b5b1c3706f5ab8b689"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011400000,
+   "at": "2025-10-09T12:03:20Z",
+   "subject": "reco-g76: two commits, one minute",
+   "trailers": {},
+   "paths": [
+    "src/cache/cold.rs"
+   ],
+   "n_files": 1,
+   "n_add": 10,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t06",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "33c79079aeb79c5923ad286bb5dfd25c3524777f",
+   "parents": [
+    "e7e6e335de30c1805a57710dd048e8d01bf1e79f"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760011400000,
+   "at": "2025-10-09T12:03:20Z",
+   "subject": "reco-g76: the second of them",
+   "trailers": {},
+   "paths": [
+    "src/cache/cold.rs"
+   ],
+   "n_files": 1,
+   "n_add": 52,
+   "n_del": 3,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t06",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "ef12e076f91577f0540f34957564922f7235090c",
+   "parents": [
+    "33c79079aeb79c5923ad286bb5dfd25c3524777f"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760033000000,
+   "at": "2025-10-09T18:03:20Z",
+   "subject": "reco-g77: monday",
+   "trailers": {},
+   "paths": [
+    "src/cache/monday.rs"
+   ],
+   "n_files": 1,
+   "n_add": 45,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t07",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "766e3de8998fd876c1dee9ffa6f827d63e2ac9ef",
+   "parents": [
+    "ef12e076f91577f0540f34957564922f7235090c"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760033180000,
+   "at": "2025-10-09T18:06:20Z",
+   "subject": "reco-g78: one agent, two turns, three minutes",
+   "trailers": {},
+   "paths": [
+    "src/cache/t08.rs"
+   ],
+   "n_files": 1,
+   "n_add": 17,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t08",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "4771fc32c782f0c888992bcf109583f4a4b3f926",
+   "parents": [
+    "766e3de8998fd876c1dee9ffa6f827d63e2ac9ef"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760035880000,
+   "at": "2025-10-09T18:51:20Z",
+   "subject": "reco-g79: the forty-five minute question",
+   "trailers": {},
+   "paths": [
+    "src/cache/t09.rs"
+   ],
+   "n_files": 1,
+   "n_add": 59,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t09",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "8118c7afe316d0549e44b42c10e0f8ff89ebfb76",
+   "parents": [
+    "4771fc32c782f0c888992bcf109583f4a4b3f926"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760035940000,
+   "at": "2025-10-09T18:52:20Z",
+   "subject": "reco-g7a: the tail of the cache slice",
+   "trailers": {},
+   "paths": [
+    "src/cache/t10.rs"
+   ],
+   "n_files": 1,
+   "n_add": 38,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t10",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "ed55d6f45e208ca3a672091700a5e20e22467e14",
+   "parents": [
+    "8118c7afe316d0549e44b42c10e0f8ff89ebfb76"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760036000000,
+   "at": "2025-10-09T18:53:20Z",
+   "subject": "reco-g7a: second",
+   "trailers": {},
+   "paths": [
+    "src/cache/t10.rs"
+   ],
+   "n_files": 1,
+   "n_add": 45,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t10",
+    "session_id": "long-and-short-clock"
+   }
+  },
+  {
+   "oid": "1ae08e6862ce0864e251c5eee2f8a18b23b3bf31",
+   "parents": [
+    "ed55d6f45e208ca3a672091700a5e20e22467e14"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "pi-agent@example.invalid",
+   "author_millis": 1760036120000,
+   "at": "2025-10-09T18:55:20Z",
+   "subject": "reco-g7a: third",
+   "trailers": {},
+   "paths": [
+    "src/cache/t10.rs"
+   ],
+   "n_files": 1,
+   "n_add": 38,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": "long-and-short-clock:t10",
+    "session_id": "long-and-short-clock"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "t01",
+    "commits": [
+     "0bab3a91574f"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t01",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t02",
+    "commits": [
+     "595f1b04e4dd",
+     "29cb46130936"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t02",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t03",
+    "commits": [
+     "edccf073bf62"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t03",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t04",
+    "commits": [
+     "fd82f8feadba",
+     "99690bb63bf6"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t04",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t05",
+    "commits": [
+     "8b040bd3fb8d"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t05",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t06",
+    "commits": [
+     "e7e6e335de30",
+     "33c79079aeb7"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t06",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t07",
+    "commits": [
+     "ef12e076f915"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t07",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t08",
+    "commits": [
+     "766e3de8998f"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t08",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t09",
+    "commits": [
+     "4771fc32c782"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t09",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   },
+   {
+    "id": "t10",
+    "commits": [
+     "8118c7afe316",
+     "ed55d6f45e20",
+     "1ae08e6862ce"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "t10",
+    "session": "long-and-short-clock",
+    "joined_by": "authored",
+    "note": null
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "same_turn_rework",
+    "at": "29cb46130936",
+    "episode": "t02",
+    "requires": [
+     "595f1b04e4dd"
+    ],
+    "paths": [
+     "src/cache/materialise.rs"
+    ],
+    "why": "one turn, three hours apart: the gap rule is a proxy for \"nobody was working\" and here everybody was. Any published default splits this"
+   },
+   {
+    "kind": "same_turn_rework",
+    "at": "99690bb63bf6",
+    "episode": "t04",
+    "requires": [
+     "fd82f8feadba"
+    ],
+    "paths": [
+     "src/cache/key.rs"
+    ],
+    "why": "the turn whose first commit is dated *before* the turn before it: the gap goes negative, which every gap comparison reads as \"definitely the same episode\""
+   },
+   {
+    "kind": "same_turn_rework",
+    "at": "33c79079aeb7",
+    "episode": "t06",
+    "requires": [
+     "e7e6e335de30"
+    ],
+    "paths": [
+     "src/cache/cold.rs"
+    ],
+    "why": "two commits in the same minute; harmless to the clock, a real test for anything that orders by date rather than by walk order (ADR-003 W1/TB9)"
+   }
+  ],
+  "notes": [
+   "t09 is the boundary the published 30-minute default was chosen for and never checked: 45 minutes after the previous turn, a different ticket, the same author. It is a true boundary that every default at or above 45 misses and every default below catches."
+  ]
+ }
+}

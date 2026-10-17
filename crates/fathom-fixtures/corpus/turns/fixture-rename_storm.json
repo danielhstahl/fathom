@@ -1,0 +1,415 @@
+{
+ "schema": "fathom.turn-ground-truth/1",
+ "history": "fixture-rename_storm",
+ "provenance": "fixture",
+ "authoring": {
+  "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
+  "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+  "annotated_on": "2026-10-16",
+  "derived_from": "the rename_storm scenario: a deterministic repository the fixture generator writes object-by-object, with the episode truth a person wrote for it"
+ },
+ "source": {
+  "kind": "fixture",
+  "scenario": "rename_storm",
+  "blessed_digest": "21bdfe64853332a470fed31dbb763061029c9bb11d3c5e9a000251d88e468468",
+  "commit_count": 8,
+  "extracted_by": "tools/author_turn_corpus.py --scenarios"
+ },
+ "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here measures the scenario author's clock, not anybody's",
+ "lineage": [
+  {
+   "oid": "77592f4955d01d8d84b37de4f65e535c0232acbc",
+   "parents": [],
+   "author_name": "sam",
+   "author_email": "",
+   "author_millis": 1735690500000,
+   "at": "2025-01-01T00:15:00.000Z",
+   "subject": "Scaffold the lumen workspace",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "rust-toolchain.toml"
+   ],
+   "n_files": 6,
+   "n_add": 50,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "7de2ca0e9be1db3ba0f317f164de038d306411eb",
+   "parents": [
+    "77592f4955d01d8d84b37de4f65e535c0232acbc"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735691400000,
+   "at": "2025-01-01T00:30:00.000Z",
+   "subject": "Publish the module tree",
+   "trailers": {
+    "agent-intent": "publish the module tree",
+    "agent-session": "rename",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/routes.rs",
+    "src/core/mod.rs",
+    "src/core/store.rs",
+    "src/lib.rs",
+    "src/queue.rs",
+    "tests/api.rs"
+   ],
+   "n_files": 6,
+   "n_add": 135,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:1",
+    "session_id": "rename"
+   }
+  },
+  {
+   "oid": "768be26eef629f5eb67e60ebe00796b2ee8628ec",
+   "parents": [
+    "7de2ca0e9be1db3ba0f317f164de038d306411eb"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735692300000,
+   "at": "2025-01-01T00:45:00.000Z",
+   "subject": "Rename the modules to what they do",
+   "trailers": {
+    "agent-intent": "rename the modules to what they do",
+    "agent-session": "rename",
+    "agent-turn": "1",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/api/handlers.rs",
+    "src/scheduler.rs",
+    "src/store/mod.rs",
+    "tests/query.rs"
+   ],
+   "n_files": 4,
+   "n_add": 0,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "1",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:1",
+    "session_id": "rename"
+   }
+  },
+  {
+   "oid": "bec8e2fb775417d5a97c603a6c1c944abdfdb0e1",
+   "parents": [
+    "768be26eef629f5eb67e60ebe00796b2ee8628ec"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735693200000,
+   "at": "2025-01-01T01:00:00.000Z",
+   "subject": "Rename the api router and fold the cache in",
+   "trailers": {
+    "agent-intent": "rename the api router",
+    "agent-session": "rename",
+    "agent-turn": "2",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/http/handlers.rs"
+   ],
+   "n_files": 1,
+   "n_add": 18,
+   "n_del": 1,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "2",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:2",
+    "session_id": "rename"
+   }
+  },
+  {
+   "oid": "db571e3f1970185d602eb01a8e9293f64e29ec8f",
+   "parents": [
+    "bec8e2fb775417d5a97c603a6c1c944abdfdb0e1"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735694100000,
+   "at": "2025-01-01T01:15:00.000Z",
+   "subject": "Point the docs and the crate root at the new names",
+   "trailers": {
+    "agent-intent": "point the docs at the new names",
+    "agent-session": "rename",
+    "agent-turn": "3",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "README.md",
+    "src/lib.rs"
+   ],
+   "n_files": 2,
+   "n_add": 2,
+   "n_del": 2,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "3",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:3",
+    "session_id": "rename"
+   }
+  },
+  {
+   "oid": "4706592efae000a5cd8dce21b9769168834c2ef9",
+   "parents": [
+    "db571e3f1970185d602eb01a8e9293f64e29ec8f"
+   ],
+   "author_name": "dana",
+   "author_email": "",
+   "author_millis": 1735695000000,
+   "at": "2025-01-01T01:30:00.000Z",
+   "subject": "Refresh the CI image",
+   "trailers": {},
+   "paths": [
+    ".github/workflows/ci.yml"
+   ],
+   "n_files": 1,
+   "n_add": 5,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": null,
+   "turn_id": null,
+   "merge": false,
+   "harness": {
+    "turn_id": null,
+    "session_id": null
+   }
+  },
+  {
+   "oid": "b251e5199f908cb2b85b401e60ca555e89e9a77e",
+   "parents": [
+    "4706592efae000a5cd8dce21b9769168834c2ef9"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735695900000,
+   "at": "2025-01-01T01:45:00.000Z",
+   "subject": "Reformat the handlers module",
+   "trailers": {
+    "agent-intent": "reformat the handlers module",
+    "agent-session": "rename",
+    "agent-turn": "4",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/http/handlers.rs"
+   ],
+   "n_files": 1,
+   "n_add": 27,
+   "n_del": 27,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:4",
+    "session_id": "rename"
+   }
+  },
+  {
+   "oid": "880e4755466e9b8741a0f5f203f0fd91531cfb1b",
+   "parents": [
+    "b251e5199f908cb2b85b401e60ca555e89e9a77e"
+   ],
+   "author_name": "pi-agent",
+   "author_email": "",
+   "author_millis": 1735696800000,
+   "at": "2025-01-01T02:00:00.000Z",
+   "subject": "Name the scheduler module after its job",
+   "trailers": {
+    "agent-intent": "name the scheduler module after its job",
+    "agent-session": "rename",
+    "agent-turn": "4",
+    "assisted-by": "pi-agent"
+   },
+   "paths": [
+    "src/scheduler/mod.rs"
+   ],
+   "n_files": 1,
+   "n_add": 0,
+   "n_del": 0,
+   "n_binary": 0,
+   "session_id": "rename",
+   "turn_id": "4",
+   "merge": false,
+   "harness": {
+    "turn_id": "rename:4",
+    "session_id": "rename"
+   }
+  }
+ ],
+ "truth": {
+  "turns": [
+   {
+    "id": "ep-scaffold",
+    "commits": [
+     "77592f4955d0"
+    ],
+    "author": "sam",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "root",
+    "joined_by": "fixture",
+    "note": "a person scaffolds; no session, no turn"
+   },
+   {
+    "id": "ep-publish",
+    "commits": [
+     "7de2ca0e9be1"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "rename",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the tree the renames will move"
+   },
+   {
+    "id": "ep-storm",
+    "commits": [
+     "768be26eef62"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "1",
+    "session": "rename",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "second commit of the same turn: one turn, two commits"
+   },
+   {
+    "id": "ep-router",
+    "commits": [
+     "bec8e2fb7754"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "2",
+    "session": "rename",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "the rename that also rewrote the file"
+   },
+   {
+    "id": "ep-docs",
+    "commits": [
+     "db571e3f1970"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "3",
+    "session": "rename",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": null
+   },
+   {
+    "id": "ep-ci",
+    "commits": [
+     "4706592efae0"
+    ],
+    "author": "dana",
+    "kind": "human",
+    "turn": null,
+    "session": null,
+    "expected_rule": "author",
+    "joined_by": "fixture",
+    "note": "a person commits between two agent turns"
+   },
+   {
+    "id": "ep-late",
+    "commits": [
+     "b251e5199f90",
+     "880e4755466e"
+    ],
+    "author": "pi-agent",
+    "kind": "agent",
+    "turn": "4",
+    "session": "rename",
+    "expected_rule": "trailer",
+    "joined_by": "fixture",
+    "note": "a reformat and a delayed rename, same turn"
+   }
+  ],
+  "pathologies": [
+   {
+    "kind": "rename",
+    "at": "768be26eef62",
+    "episode": "ep-storm",
+    "paths": [
+     "src/store/mod.rs",
+     "src/api/handlers.rs",
+     "src/scheduler.rs",
+     "tests/query.rs"
+    ],
+    "why": "four paths moved with identical bytes",
+    "source": "corpus/rename_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "rename",
+    "at": "bec8e2fb7754",
+    "episode": "ep-router",
+    "paths": [
+     "src/http/handlers.rs"
+    ],
+    "why": "the router moved and gained the cache struct",
+    "source": "corpus/rename_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "rename",
+    "at": "880e4755466e",
+    "episode": "ep-late",
+    "paths": [
+     "src/scheduler/mod.rs"
+    ],
+    "why": "the delayed move, two turns after the rest",
+    "source": "corpus/rename_storm.json findings (hand-authored by e0.10)"
+   },
+   {
+    "kind": "noise",
+    "at": "b251e5199f90",
+    "episode": "ep-late",
+    "paths": [
+     "src/http/handlers.rs"
+    ],
+    "why": "the reformat-only commit is the noise case",
+    "source": "corpus/rename_storm.json findings (hand-authored by e0.10)"
+   }
+  ],
+  "notes": [
+   "Four module paths move with unchanged bytes in one commit, a fifth moves with its content rewritten, and two later turns do a delayed rename and a reformat that is not a rename. A rename detector has to report all four moves as moves, must not report any of them as a deletion plus an addition, and must not mistake whitespace for a move."
+  ]
+ }
+}
