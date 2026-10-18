@@ -82,7 +82,13 @@ fn rows() -> Vec<Episode> {
             Some(1),
             "a schema migration that may not roll back",
         ),
-        make("e-cccc", 2 * MINUTE, 0, None, "nothing ranked this episode at all"),
+        make(
+            "e-cccc",
+            2 * MINUTE,
+            0,
+            None,
+            "nothing ranked this episode at all",
+        ),
         make(
             "e-dddd",
             MINUTE,
@@ -94,7 +100,12 @@ fn rows() -> Vec<Episode> {
 }
 
 fn loaded(rows: Vec<Episode>) -> App {
-    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "harbour · main");
+    let mut app = App::new(
+        Keymap::defaults(),
+        Model::from_facade(),
+        SIZE,
+        "harbour · main",
+    );
     app.timeline.set_now(NOW);
     app.set_view(ViewId::Queue);
     app.load_episodes(Batch::new("fixture index", rows));
@@ -224,8 +235,14 @@ fn an_unranked_index_still_draws_a_queue_and_says_what_is_missing() {
     }
     assert!(text.contains("unranked"), "the absence is stated:\n{text}");
     assert!(text.contains("e4.4"), "and names who will fill it:\n{text}");
-    assert!(!text.contains("risk 0"), "a missing score is never a zero:\n{text}");
-    assert!(text.contains("risk ?"), "and is printed as unknown:\n{text}");
+    assert!(
+        !text.contains("risk 0"),
+        "a missing score is never a zero:\n{text}"
+    );
+    assert!(
+        text.contains("risk ?"),
+        "and is printed as unknown:\n{text}"
+    );
     let pane = app
         .current()
         .panes
@@ -241,7 +258,10 @@ fn an_unranked_index_still_draws_a_queue_and_says_what_is_missing() {
 #[test]
 fn w_explains_the_selected_episode_and_esc_unexplains_it() {
     let app = &mut loaded(rows());
-    assert_eq!(app.explain, None, "nothing is explained before it is asked for");
+    assert_eq!(
+        app.explain, None,
+        "nothing is explained before it is asked for"
+    );
     let before = frame_lines(app).join("\n");
     assert!(
         before.contains("a spine cannot see"),

@@ -19,6 +19,7 @@ claim that fails is a finding only while thresholds.json says it was expected to
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -356,3 +357,65 @@ def test_the_spike_stays_out_of_shipped_builds() -> None:
     assert "pub fn conventional_type" in ingest, (
         "the spike reuses the shipped type-extraction predicate rather than re-implementing it; if it went "
         "private again the spike is guessing at a rule production owns")
+
+
+# ---------------------------------------------------------------------------
+# The quarantine: what the shipped code does not do, held visibly.
+#
+# A published expectation that fails has three fates, and two of them are lies: deleting the test (the
+# expectation disappears with no record) or leaving it red (every build is red, so nobody reads builds).
+# The third is `#[ignore]` with a reason that names the ticket and the condition for un-ignoring it, and a
+# check like this one so the list cannot grow by accident and cannot outlive its owner.
+QUARANTINE = {
+    # ADR-003 §5.2's worked example, cut in two by TB7's clock guard. §18.2 D6 names the fix; the fix is a
+    # shipped-rule change, so it lands with the re-bless of this spike's report — not before it.
+    "a_run_of_agent_commits_inside_the_gap_is_one_episode": "reco-dot",
+}
+
+
+def _ignored_tests(path: Path) -> dict[str, str]:
+    """`{test fn: ignore reason}` for every `#[ignore = "…"]` in a Rust file."""
+    out: dict[str, str] = {}
+    pending: str | None = None
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#[ignore"):
+            assert "=" in stripped, f"{path.name}: a bare `#[ignore]` has no reason and no owner"
+            pending = stripped.split('=', 1)[1].strip().strip(']').strip().strip('"')
+        elif pending and stripped.startswith("fn "):
+            out[stripped[3:].split("(")[0]] = pending
+            pending = None
+    return out
+
+
+def test_the_quarantine_is_declared_owned_and_exactly_this_size() -> None:
+    segment = ROOT / "crates" / "fathom-ingest" / "src" / "segment.rs"
+    ignored = _ignored_tests(segment)
+    assert set(ignored) == set(QUARANTINE), (
+        f"the quarantine is {sorted(ignored)}, the declared list is {sorted(QUARANTINE)}; "
+        "adding one needs a ticket in its reason and in QUARANTINE, removing one needs the fix")
+    for name, owner in QUARANTINE.items():
+        reason = ignored[name]
+        assert owner in reason, f"{name}'s ignore reason must name {owner}, the ticket that owns the fix"
+        assert "re-bless" in reason, f"{name}'s reason must name the condition for un-ignoring it"
+
+
+def test_the_identity_vector_quarantine_is_gone_because_the_bug_was_real() -> None:
+    """The fallback digest's missing NUL was a one-byte bug, not a namespace decision: it is fixed, so
+    this test must never find it ignored."""
+    segment = ROOT / "crates" / "fathom-ingest" / "src" / "segment.rs"
+    ignored = _ignored_tests(segment)
+    assert "identity_matches_the_published_golden_vector" not in ignored, (
+        "relink tier 1's key is published in ADR-003 Appendix A; ignoring its vector would re-open the "
+        "question of which of the two implementations is wrong")
+
+
+def test_no_ignored_test_anywhere_in_the_workspace_is_unreasoned() -> None:
+    """The house rule for `#[ignore]`: a reason, and for time assertions, `--release --ignored`."""
+    offenders: list[str] = []
+    for path in (ROOT / "crates").rglob("*.rs"):
+        for line in path.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#[ignore") and "=" not in stripped:
+                offenders.append(f"{path.relative_to(ROOT)}: {stripped}")
+    assert not offenders, "ignored without a reason: " + "; ".join(offenders)

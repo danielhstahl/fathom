@@ -66,13 +66,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       # The shipped code may not unwrap; tests may. Two invocations, in this order, because the strict
-      # one is what would otherwise get lost under `--all-targets` (§8.3).
+      # one is what would otherwise get lost under `--all-targets` (§8.3). The second one also stops
+      # `print_stdout` — a bench or golden test whose *output is the artefact* (`timeline_bench`,
+      # `deps_bench`, the corpus goldens) has to print, and the lint exists to keep a stray `println!`
+      # out of the shipped binary, where stdout is the user's. Silence about the tests is not what the
+      # lint promised, so the exemption is stated in the invocation rather than paid for file by file.
       - name: clippy (libs and bins: unwrap_used and expect_used are errors)
         run: >
           cargo clippy --workspace --all-features -- -D warnings
           -D clippy::unwrap_used -D clippy::expect_used
-      - name: clippy (all targets: tests may unwrap)
-        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: clippy (all targets: tests may unwrap, and tests may print)
+        run: >
+          cargo clippy --workspace --all-targets -- -D warnings
+          -A clippy::print_stdout
 
   structure-spike:
     name: spike s1 reproduces (six grammars)

@@ -848,7 +848,7 @@ family per size class — `python3 tools/gen_budgets.py check` prints the count 
 asserted by `e0.11` (`reco-pef`). Each carries the anchor it came from — a ticket's own acceptance
 criterion, or a §13 measurement.
 
-`e0.11` landed the assertion: [`benchmarks/BUDGETS.md`](../BUDGETS.md) lists every number with what
+`e0.11` landed the assertion: [`benchmarks/BUDGETS.md`](../../benchmarks/BUDGETS.md) lists every number with what
 asserts it, `tools/perf_gate.py` is the gate (`make bench`, `make bench-check`, `make bench-bless`),
 and `.github/workflows/perf.yml` runs it and publishes the trend. What it asserts on every PR: the
 `small` class over the deterministic fixture corpus — cold index, warm single-commit re-index, no-op

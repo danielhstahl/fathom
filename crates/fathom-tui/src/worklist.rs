@@ -53,7 +53,6 @@ pub fn precede(left: &Episode, right: &Episode) -> Ordering {
         .then_with(|| left.id.cmp(&right.id))
 }
 
-
 /// The queue's order: the given rows, riskiest first.
 ///
 /// The tie-breaks are part of the contract, not a detail — `e4.5`'s acceptance criterion says queue
@@ -206,7 +205,12 @@ pub fn explain_words(episode: Option<&Episode>, now: Timestamp) -> String {
     };
     match episode.risk.as_ref() {
         Some(risk) if !risk.vector.is_empty() => {
-            format!("{} — {} · {}", episode.short_id(), risk.vector, risk.place())
+            format!(
+                "{} — {} · {}",
+                episode.short_id(),
+                risk.vector,
+                risk.place()
+            )
         }
         Some(risk) => format!(
             "{} — risk {} · {}",

@@ -75,6 +75,21 @@ net-llm = ["dep:ureq"]
 [dev-dependencies]
 fathom-fixtures.workspace = true
 
+# `episodes` and `incremental_index` are the store-facing half of this crate's test surface: they import
+# `fathom_analyze::index` and `fathom_store::{spine, cache}`, every one of which is gated behind a SQLite
+# backend (§6.2). Declaring that here rather than in the CI invocation is what makes
+# `cargo build -p fathom-analyze --features langs-all --all-targets` — the spike `s1` gate, which builds the
+# harness against all six grammars — a build that works at *any* feature set instead of one that happens to
+# pass only when workspace feature unification turns SQLite on from a sibling crate. Same spelling as
+# `fathom-store`'s `budgets` bench: the target names the feature it needs.
+[[test]]
+name = "episodes"
+required-features = ["sqlite-bundled"]
+
+[[test]]
+name = "incremental_index"
+required-features = ["sqlite-bundled"]
+
 # The `s1` spike harness (`reco-alj`) lives here, not in the library: it is throwaway code that
 # has to compile against the same six grammar crates `e3.1` will ship with, and `required-features`
 # keeps it — and the C build of all six — out of every default `cargo build` and `cargo test`.

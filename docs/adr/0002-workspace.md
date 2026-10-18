@@ -696,7 +696,8 @@ toolchain, and therefore also runs in a pre-commit hook and in `fathom doctor`.
 cargo fmt --all --check
 cargo clippy --workspace --all-features -- -D warnings \
     -D clippy::unwrap_used -D clippy::expect_used          # libs+bins only: no --all-targets
-cargo clippy --workspace --all-targets -- -D warnings      # tests may unwrap; the strict set above may not
+cargo clippy --workspace --all-targets -- -D warnings \
+    -A clippy::print_stdout                          # tests may unwrap, and a bench may print: the strict set above may not
 cargo build --workspace --all-features                     # stable
 cargo build -p fathom-cli --no-default-features --features minimal   # the CI-gate binary
 cargo +MSRV build --workspace --no-default-features --features minimal

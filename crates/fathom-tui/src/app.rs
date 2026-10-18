@@ -25,7 +25,7 @@ use crate::event::FrameScheduler;
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
 use crate::layout::{Fit, FitState, fit};
 use crate::style::StyledLine;
-use crate::timeline::{Episode, Timeline, self};
+use crate::timeline::{self, Episode, Timeline};
 use crate::views::{Pane, Role, View, ViewId, view};
 use fathom_analyze::insight;
 
@@ -693,13 +693,11 @@ impl App {
         }
         match pane.name {
             "rail" => Some(self.timeline.rail_lines(width, rows)),
-            "card" => Some(
-                if self.explaining(self.timeline.selected()) {
-                    timeline::risk_lines(self.timeline.selected(), width, rows)
-                } else {
-                    self.timeline.preview_lines(width, rows)
-                },
-            ),
+            "card" => Some(if self.explaining(self.timeline.selected()) {
+                timeline::risk_lines(self.timeline.selected(), width, rows)
+            } else {
+                self.timeline.preview_lines(width, rows)
+            }),
             _ => None,
         }
     }
@@ -962,16 +960,12 @@ impl App {
     /// re-read the store); a different episode is a fresh load. With no provider installed the pane
     /// opens on its stated empty state, which is what a fixture-fed test with no store gets.
     pub fn open_diff(&mut self) {
-        let episode = self
-            .scope
-            .episode
-            .clone()
-            .or_else(|| match self.view {
-                // The queue keeps its own cursor, so `d` from the queue means the queue's row
-                // (`reco-c05`); every other view's fallback is still the rail.
-                ViewId::Queue => self.queue_selected().map(|ep| ep.id.clone()),
-                _ => self.timeline.selected().map(|ep| ep.id.clone()),
-            });
+        let episode = self.scope.episode.clone().or_else(|| match self.view {
+            // The queue keeps its own cursor, so `d` from the queue means the queue's row
+            // (`reco-c05`); every other view's fallback is still the rail.
+            ViewId::Queue => self.queue_selected().map(|ep| ep.id.clone()),
+            _ => self.timeline.selected().map(|ep| ep.id.clone()),
+        });
         let (Some(provider), Some(id)) = (self.patches.clone(), episode.as_deref()) else {
             self.set_view(ViewId::Diff);
             return;
@@ -2012,7 +2006,9 @@ impl App {
                 };
                 self.scope.episode = id;
                 if shown {
-                    self.toast(format!("{words} — the card pane explains it; `w` again to go back"));
+                    self.toast(format!(
+                        "{words} — the card pane explains it; `w` again to go back"
+                    ));
                 } else {
                     self.toast(words);
                 }

@@ -55,44 +55,64 @@ struct Shape {
     files: &'static [Op],
 }
 
-
 /// The fixture. See [`repository`].
 #[cfg(feature = "sqlite-bundled")]
 const SHAPES: &[Shape] = &[
     // Filler: the ordinary turns an agent lands in a week. None of them touches anything but source,
     // and none of them is the thing a reviewer would stop for.
-    shape("feat: narrow the booking query", &[op("src/harbour/store.py", 0, 24)]),
+    shape(
+        "feat: narrow the booking query",
+        &[op("src/harbour/store.py", 0, 24)],
+    ),
     shape(
         "feat: cache the availability calendar",
         &[op("src/harbour/avail.py", 0, 18)],
     ),
     shape("fix: trim the footer", &[op("web/src/footer.tsx", 0, 6)]),
-    shape("feat: rate-limit headers", &[op("src/harbour/api.py", 0, 30)]),
+    shape(
+        "feat: rate-limit headers",
+        &[op("src/harbour/api.py", 0, 30)],
+    ),
     // The largest single-file addition in the fixture, and the one that must not be mistaken for risk:
     // prose, written by a named human, with nothing to execute.
     human(
         "docs: a 400-line guide for the new hire",
         &[op("docs/onboarding.md", 0, 400)],
     ),
-    shape("feat: webhook validation", &[op("src/harbour/hooks.py", 0, 40)]),
+    shape(
+        "feat: webhook validation",
+        &[op("src/harbour/hooks.py", 0, 40)],
+    ),
     shape(
         "feat: pricing rounding",
         &[op("src/harbour/pricing.py", 0, 22)],
     ),
-    shape("refactor: extract the worker", &[op("src/harbour/worker.py", 0, 34)]),
+    shape(
+        "refactor: extract the worker",
+        &[op("src/harbour/worker.py", 0, 34)],
+    ),
     // The three-line workflow change. This is the row `reco-c05` exists to lift.
     shape(
         "ci: publish release artefacts with the live key",
         &[op(".github/workflows/release.yml", 0, 3)],
     ),
-    shape("feat: booking windows", &[op("src/harbour/booking.py", 0, 26)]),
+    shape(
+        "feat: booking windows",
+        &[op("src/harbour/booking.py", 0, 26)],
+    ),
     shape("chore: tidy imports", &[op("src/harbour/api.py", 18, 4)]),
     shape(
         "feat: retry notification delivery",
         &[op("src/harbour/notify.py", 0, 28)],
     ),
-    shape("fix: report timezone", &[op("src/harbour/report.py", 0, 16)]),
-    shape("feat: settlement ledger", &[op("src/harbour/ledger.py", 0, 45)]),
+    shape(
+        "fix: report timezone",
+        &[op("src/harbour/report.py", 0, 16)],
+    ),
+    shape(
+        "feat: settlement ledger",
+        &[op("src/harbour/ledger.py", 0, 45)],
+    ),
     // The suite, so that there is a test surface to remove later: 300 lines, all of them real.
     shape(
         "test: the availability suite",
@@ -315,9 +335,7 @@ fn worklist(frame: &str) -> Vec<String> {
                 .trim_end()
                 .to_owned()
         })
-        .filter(|line| {
-            !line.is_empty() && !line.starts_with('└') && !line.starts_with('─')
-        })
+        .filter(|line| !line.is_empty() && !line.starts_with('└') && !line.starts_with('─'))
         .collect()
 }
 
@@ -394,7 +412,9 @@ fn the_queue_answers_which_three_episodes_are_the_riskiest() {
     let ranks: Vec<Option<u32>> = rows.iter().map(|(rank, _, _)| *rank).collect();
     assert_eq!(
         ranks,
-        (1..=u32::try_from(SHAPES.len()).unwrap()).map(Some).collect::<Vec<_>>(),
+        (1..=u32::try_from(SHAPES.len()).unwrap())
+            .map(Some)
+            .collect::<Vec<_>>(),
         "rank 1, 2, 3 … down the pane"
     );
 
@@ -463,10 +483,7 @@ fn the_rail_prints_the_number_instead_of_the_placeholder() {
     let numbered = frame
         .lines()
         .filter(|line| line.contains("risk ") || line.contains('●'))
-        .filter(|line| {
-            line.chars()
-                .any(|c| c.is_ascii_digit())
-        })
+        .filter(|line| line.chars().any(|c| c.is_ascii_digit()))
         .count();
     assert!(
         numbered > 5,

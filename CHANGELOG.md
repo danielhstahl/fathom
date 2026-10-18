@@ -12,8 +12,46 @@ short.
 
 ## [Unreleased]
 
-Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
-No product behaviour is claimed by any entry on this page yet.
+Most of what is below is still scaffolding: the shape ADR-002 declares, compiled, tested and shipped
+through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
+to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
+
+### `reco-w74` — Epic 0's exit criteria, measured instead of assumed (`e0`)
+
+- **Four red builds at HEAD, all four fixed.** Checking the epic's "CI is green" criterion rather than
+  trusting it turned up: `cargo fmt --all --check` failing on eight files; `cargo clippy --workspace
+  --all-targets -- -D warnings` failing because the workspace denies `print_stdout` and fifteen test files
+  print the measurements that are their entire output (the exemption now lives in that invocation —
+  `-A clippy::print_stdout`, libs and bins still fail on it — and in ADR-002 §8.3, instead of being paid
+  for file by file); two `fathom-ingest` tests failing against published expectations; and
+  `tools/check_docs.py` citing tickets the registry had never heard of, plus an ADR-004 link pointing at
+  `docs/BUDGETS.md`, a file that does not exist.
+- **A one-byte identity bug, found by the golden vector and not by a user.** `fathom_ingest::identity()`
+  hashed `author\0subject` for the **fallback** digest where ADR-003 Appendix A and the reference
+  implementation in `src/recommender/segment.py` hash `author\0subject\0`. Every other field was
+  NUL-terminated; the last one was not — so the strong digest matched the published vector, `episode_id`
+  looked fine, and relink tier 1 was keying sign-offs off bytes no document had ever published. The
+  published vector is the contract, so the Rust copy was the wrong one; `identity_matches_the_published_golden_vector`
+  passes again and no §2.4 namespace bump is owed. Relink tier-1 keys change as a result: they are now the
+  published ones.
+- **ADR-003 §18.2 D6 is quarantined, not deleted.**
+  `a_run_of_agent_commits_inside_the_gap_is_one_episode` — §5.2's own worked example, still cut in two by
+  `message-shape`'s `gap ÷ 9` guard — is `#[ignore]`d with `reco-dot` and the un-ignore condition in its
+  reason, because the fix is a shipped-rule change and a shipped-rule change re-blesses this spike's report
+  in the same move. Three tests in `tests/test_segmentation_spike_contract.py` pin the quarantine to
+  exactly that one entry, every entry to a ticket, and every `#[ignore]` in the workspace to a reason.
+- **A feature-less build of `fathom-analyze`'s tests was not a build at all.** `episodes` and
+  `incremental_index` import `fathom_analyze::index` and `fathom_store::{spine, cache}` — all gated behind
+  a SQLite backend — so the spike `s1` CI gate compiled only by accident of workspace feature unification.
+  Both targets now declare `required-features = ["sqlite-bundled"]`, the spelling `fathom-store`'s bench
+  already uses.
+- **`e0.12` ran.** The sequencing checkpoint read the three landed spikes and edited the plan: `e3.1`
+  split into a core and the conditional-language tail `s1` described, `s2`'s decided cascade changes
+  became `e1.13`/`e1.14` and a re-scoped `reco-dot`, the Guardrail 3 numbers three tickets had deferred to
+  `e0.12` were set from ADR-001 §5.4 and given a calibration harness (`e4.3a`), the trailer-vocabulary
+  question §18.2 D5 deferred was decided, and the MVP cut line lost the one label that contradicted
+  milestone `m2`. The record — every recommendation, where it went, and what was deliberately not changed
+  — is [.plan/reconciliation-e0.12.md](.plan/reconciliation-e0.12.md).
 
 ### `reco-pef` — ADR-004 §11's budgets became a red build (`e0.11`)
 

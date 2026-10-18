@@ -272,11 +272,7 @@ fn push_risk(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
 /// recommendation ("rank 4 of 7 because risk 82 = 0.4·size + 0.3·test + 0.3·blast" is checkable;
 /// "recommended for you" is not).
 #[must_use]
-pub fn risk_lines(
-    episode: Option<&Episode>,
-    width: usize,
-    rows: usize,
-) -> Vec<StyledLine> {
+pub fn risk_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<StyledLine> {
     let mut body: Vec<StyledLine> = match episode {
         None => vec![StyledLine::with_face(
             "no episode selected — `j`/`k` choose one, then `w`",
@@ -322,11 +318,7 @@ pub fn risk_lines(
                             format!(
                                 "a spine cannot see {} thing{}:",
                                 risk.blind_spots.len(),
-                                if risk.blind_spots.len() == 1 {
-                                    ""
-                                } else {
-                                    "s"
-                                }
+                                if risk.blind_spots.len() == 1 { "" } else { "s" }
                             ),
                             Face::Warning,
                         ));

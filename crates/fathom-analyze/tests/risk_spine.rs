@@ -39,8 +39,13 @@ fn ranked(files: &[(&str, u64, u64)], author: &str) -> Risk {
         n_add: files.iter().map(|(_, add, _)| *add).sum(),
         n_del: files.iter().map(|(_, _, del)| *del).sum(),
         n_files: u64::try_from(files.len()).unwrap_or(u64::MAX),
-        n_binary: u64::try_from(files.iter().filter(|(path, _, _)| path.ends_with(".png")).count())
-            .unwrap_or(0),
+        n_binary: u64::try_from(
+            files
+                .iter()
+                .filter(|(path, _, _)| path.ends_with(".png"))
+                .count(),
+        )
+        .unwrap_or(0),
         n_commits: 1,
         author,
         partial_files: false,
@@ -71,10 +76,7 @@ fn candidates() -> Vec<(&'static str, Risk)> {
         ),
         (
             "dependency-bump-storm",
-            ranked(
-                &[("uv.lock", 38, 38), ("pyproject.toml", 2, 2)],
-                "agent",
-            ),
+            ranked(&[("uv.lock", 38, 38), ("pyproject.toml", 2, 2)], "agent"),
         ),
         (
             "test-deletion-behind-a-big-turn",
@@ -133,7 +135,10 @@ fn candidates() -> Vec<(&'static str, Risk)> {
         (
             "generated-churn-and-binary",
             ranked(
-                &[("src/generated/api_pb2.py", 1100, 0), ("assets/map.png", 0, 0)],
+                &[
+                    ("src/generated/api_pb2.py", 1100, 0),
+                    ("assets/map.png", 0, 0),
+                ],
                 "agent",
             ),
         ),
@@ -166,7 +171,11 @@ fn points(risk: &Risk, wanted: &str) -> u64 {
 #[test]
 fn every_component_adds_up_to_the_score() {
     for (name, risk) in candidates() {
-        let sum: u64 = risk.components.iter().map(|component| component.points).sum();
+        let sum: u64 = risk
+            .components
+            .iter()
+            .map(|component| component.points)
+            .sum();
         assert_eq!(
             u64::from(risk.score),
             sum.min(100),
@@ -190,7 +199,10 @@ fn every_component_adds_up_to_the_score() {
                 component.name
             );
         }
-        assert!(risk.score <= 100, "{name}: a score over 100 is not the scale");
+        assert!(
+            risk.score <= 100,
+            "{name}: a score over 100 is not the scale"
+        );
     }
 }
 
@@ -236,10 +248,17 @@ fn the_kind_of_file_beats_the_amount_of_file() {
         ci.score,
         docs.score
     );
-    assert_eq!(ci.badge(), "ci", "and the row has to say which surface it is");
+    assert_eq!(
+        ci.badge(),
+        "ci",
+        "and the row has to say which surface it is"
+    );
     assert_eq!(docs.badge(), "docs");
 
-    let migration = ranked(&[("db/migrations/0038_drop_email_backup.sql", 3, 0)], "agent");
+    let migration = ranked(
+        &[("db/migrations/0038_drop_email_backup.sql", 3, 0)],
+        "agent",
+    );
     assert!(
         migration.score > docs.score + 20,
         "a three-line migration ({}) against a docs change ({})",
@@ -271,7 +290,10 @@ fn a_test_surface_that_shrank_while_source_grew_is_a_reason_of_its_own() {
         .expect("the deletions component")
         .detail
         .clone();
-    assert!(detail.contains("test surface shrank"), "and says so: {detail}");
+    assert!(
+        detail.contains("test surface shrank"),
+        "and says so: {detail}"
+    );
 }
 
 #[test]
@@ -339,7 +361,10 @@ fn the_vector_prints_the_arithmetic_and_the_badge_prints_the_surfaces() {
         "agent",
     );
     let vector = risk.vector();
-    assert!(vector.starts_with(MODEL), "the ranking names itself: {vector}");
+    assert!(
+        vector.starts_with(MODEL),
+        "the ranking names itself: {vector}"
+    );
     assert!(
         vector.contains("surfaces") && vector.contains(&risk.score.to_string()),
         "and prints the sum: {vector}"
@@ -451,7 +476,10 @@ fn an_episode_with_no_files_is_answered_rather_than_crashed() {
         partial_files: false,
     };
     let risk = rank(&empty);
-    assert_eq!(risk.score, 6, "only the attribution signal fires, and it is 6");
+    assert_eq!(
+        risk.score, 6,
+        "only the attribution signal fires, and it is 6"
+    );
     assert_eq!(risk.vector(), "spine-1 6 = author 6".to_owned());
 }
 

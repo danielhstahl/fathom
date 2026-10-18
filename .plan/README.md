@@ -43,6 +43,17 @@ The four first-wave spikes gate the plan: ADR-003 needs `s2`, ADR-004 needs `s3`
 Epic 3 needs `s1`, and `e2.4` needs `s4`. `reco-vm8` (e0.12) is the checkpoint where the
 plan gets rewritten against what the spikes actually found.
 
+**That checkpoint has run.** [reconciliation-e0.12.md](reconciliation-e0.12.md) is its record:
+which spike recommendation became which ticket change, the decisions `e0.12` owned (the trailer
+vocabulary, the Guardrail 3 thresholds three tickets were waiting on), the MVP cut line as
+re-confirmed, and why Epic 3 was *not* re-prioritised.
+
+One thing that file states plainly, because the paragraph above implies a tidiness that no longer exists:
+`gen.py` is the plan **as cut** and beads is the plan **as it is**. Delivery discovered tickets — defects,
+spike follow-ups, a split — that were never added back to `gen.py`, and re-creating the graph now would
+collide with the live board. The diff between the two is registered in `keymap.json` and explained in the
+reconciliation document; it is not accidental and it is not growing silently.
+
 ## Conventions
 
 - **Types**: `decision` = ADR (write it before the code it constrains),

@@ -131,6 +131,4 @@ pub fn episodes(_window: PageWindow) -> Result<DeltaRows, Error> {
 //
 // `views_ready` stays false and this does not change it: a ranking built from the spine is not the
 // delta model, and a surface that reads these numbers is not being told `e2.11` landed.
-pub use crate::risk::{
-    BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank,
-};
+pub use crate::risk::{BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank};

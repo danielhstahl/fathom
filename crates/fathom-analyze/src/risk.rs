@@ -590,9 +590,10 @@ impl Risk {
     /// The caveat to print under the reasons when the file list was capped.
     #[must_use]
     pub fn caveat(&self) -> Option<&'static str> {
-        self.partial_files
-            .then_some("the file list this ranking read was truncated by the store's read cap — the \
-                       surfaces listed are the ones it reached")
+        self.partial_files.then_some(
+            "the file list this ranking read was truncated by the store's read cap — the \
+                       surfaces listed are the ones it reached",
+        )
     }
 
     /// The score as the surfaces print it.
@@ -713,8 +714,11 @@ pub fn rank(signals: &Signals<'_>) -> Risk {
                     detail.push_str(" · an operator must act on it");
                 }
                 if surfaces.len() > 1 {
-                    let others: Vec<&str> =
-                        surfaces.iter().skip(1).map(|surface| surface.as_str()).collect();
+                    let others: Vec<&str> = surfaces
+                        .iter()
+                        .skip(1)
+                        .map(|surface| surface.as_str())
+                        .collect();
                     detail.push_str(&format!(" · also touched: {}", others.join(", ")));
                 }
                 detail
@@ -797,8 +801,14 @@ pub fn rank(signals: &Signals<'_>) -> Risk {
 
     // --- author ------------------------------------------------------------------
     let (author_points, author_words) = match signals.author.trim().to_ascii_lowercase().as_str() {
-        "agent" => (8, "written by an agent — the reason this tool exists (ADR-001 §7.3)"),
-        "unknown" => (6, "nobody is credited, which is its own risk (ADR-001 §7.7)"),
+        "agent" => (
+            8,
+            "written by an agent — the reason this tool exists (ADR-001 §7.3)",
+        ),
+        "unknown" => (
+            6,
+            "nobody is credited, which is its own risk (ADR-001 §7.7)",
+        ),
         "human" => (0, "written by a person"),
         _ => (4, "attribution is not recorded"),
     };
@@ -870,8 +880,10 @@ pub fn components() -> Vec<(String, u64, String)> {
         .iter()
         .map(|(name, cap)| {
             let what = match *name {
-                "size" => "churn on a log scale, discounted for generated, lockfile, vendored and \
-                          binary files",
+                "size" => {
+                    "churn on a log scale, discounted for generated, lockfile, vendored and \
+                          binary files"
+                }
                 "surfaces" => {
                     "the most consequential kind of file touched, plus 2 per extra operator-action \
                      surface"
