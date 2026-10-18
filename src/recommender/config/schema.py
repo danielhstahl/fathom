@@ -249,7 +249,14 @@ SECTIONS: dict[str, dict] = {
     "detectors": {"title": "Detectors", "owner": "e2.7",
                   "doc": "Which finding detectors run."},
     "blast": {"title": "Blast radius", "owner": "e2.10",
-              "doc": "How far the blast-radius walk goes before it declares a partial."},
+              "doc": "How far the blast-radius walk goes before it declares a partial, the "
+                     "confidence attached to each basis, and the path-heuristic weights that "
+                     "decide what counts as reached."},
+    "card": {"title": "Episode summary card", "owner": "e2.10 (`reco-4ey`)",
+             "doc": "The one-screen answer per episode. Row caps, how loud a finding has to be "
+                    "to earn an attention row, and one switch per section - because a "
+                    "repository narrowing its own card is a different thing from a card "
+                    "quietly losing a question, and the card prints which happened."},
     "rename": {"title": "Rename detection and pairing", "owner": "e1.6 / e2.4 (`reco-a0v`)",
                "doc": "Two questions with two bars. `rename.threshold` is what the diff pane "
                       "prints as a rename; the `fact_bar`/`guess_floor` pair decides what the "
@@ -1004,9 +1011,118 @@ KEY_LIST: list[Key] = [
        default=["test_deletion", "untested_new_logic", "debug_leftover"],
        doc="Detectors that run. Unknown detector ids are a warning naming a valid id.",
        analyzer="findings.detect", ticket="e2.7"),
-    _k(path="blast.hops", kind="integer", default=1, minimum=1, maximum=4, units="hops",
-       doc="Blast-radius walk depth; exceeding it is a stated partial, not a hang.",
+    _k(path="blast.hops", kind="integer", default=1, minimum=0, maximum=4, units="hops",
+       doc="Rings counted *beyond* the direct one: the direct ring is always counted, so the "
+           "default of 1 answers 'direct + one hop' and 0 answers 'direct only'. Anything "
+           "further out is a stated partial, never a silent stop. `e2.10`.",
        analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.confidence.graph", kind="number", default=0.9, minimum=0.0, maximum=1.0,
+       units="0-1",
+       doc="Confidence attached to a blast answer that came from a module graph. Not 1.0: a "
+           "graph is built by an extractor, and spike `s1` measured declarations a program wrote "
+           "(Rust macros, Python decorators) that no extractor can enumerate. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.confidence.heuristic", kind="number", default=0.4, minimum=0.0,
+       maximum=1.0, units="0-1",
+       doc="Confidence attached to a blast answer built from path heuristics instead of a "
+           "graph. The plan asks for the reduced confidence to be *stated*; this is the number "
+           "it states. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.confidence.narrow_census", kind="number", default=0.7, minimum=0.0,
+       maximum=1.0, units="multiplier",
+       doc="Multiplier applied to a heuristic blast answer when the caller lent no file "
+           "inventory, so the only paths the heuristics could see were the episode's own. A "
+           "reach computed from a world of twelve files may not claim the confidence of one "
+           "computed from four thousand. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.heuristic.same_directory", kind="number", default=0.6, minimum=0.0,
+       maximum=1.0, units="score",
+       doc="Heuristic weight: a candidate in the changed file's own directory - the strongest "
+           "path signal there is, because same folder means same imports in every layout that "
+           "has folders. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.heuristic.test_pair", kind="number", default=0.5, minimum=0.0, maximum=1.0,
+       units="score",
+       doc="Heuristic weight: the test file that covers a changed source file, or the source a "
+           "changed test covers, matched by naming convention only. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.heuristic.sibling_directory", kind="number", default=0.3, minimum=0.0,
+       maximum=1.0, units="score",
+       doc="Heuristic weight: the files in the changed file's parent directory. Weaker than "
+           "same-directory on purpose - a parent's own files are neighbours, not dependents. "
+           "`e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.heuristic.package_prefix", kind="number", default=0.15, minimum=0.0,
+       maximum=1.0, units="score",
+       doc="Heuristic weight: everything under the changed file's top-level package (two "
+           "directory levels). Cheap and wide, which is why it normally sits under "
+           "`blast.heuristic.min_score` and only counts when nothing stronger fired. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.heuristic.min_score", kind="number", default=0.3, minimum=0.0, maximum=1.0,
+       units="score",
+       doc="Heuristic score a candidate must reach to be counted as reached. This floor is what "
+           "stops 'it is in the same repository' being a blast radius. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.max_rows", kind="integer", default=10, minimum=1, units="rows",
+       doc="Blast rows printed per ring before the remainder is counted and named. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    _k(path="blast.max_candidates", kind="integer", default=5000, minimum=1, units="candidates",
+       doc="Candidate paths examined before the heuristic walk stops. Stopping is a stated "
+           "partial naming how many paths were not looked at, so the cost guard shows up in the "
+           "answer instead of being a silent truncation. `e2.10`.",
+       analyzer="blast_radius", ticket="e2.10"),
+    # --- episode summary card (e2.10) -----------------------------------------
+    _k(path="card.max_figures", kind="integer", default=6, minimum=1, units="rows",
+       doc="Figure rows printed per section before the remainder is counted and named. A cap "
+           "that names its remainder, never a truncation without a trace: the audit fails a "
+           "card that trimmed a figure in silence. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.max_findings", kind="integer", default=8, minimum=1, units="rows",
+       doc="Attention rows before the rest are counted rather than cut. Ordering is severity, "
+           "then source section, then name, so the same rows come out twice. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.max_evidence", kind="integer", default=3, minimum=1, units="lines",
+       doc="Evidence lines printed under a figure. Everything behind the link is in `--json` "
+           "and in the view the link names, whether or not the card had room for it. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.attention.severity", kind="string", default="notable",
+       enum=("high", "notable", "note"),
+       doc="Lightest severity that earns an attention row. Findings below it are still counted "
+           "and the count is printed, because 'nothing here' and 'nothing loud' are different "
+           "claims. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.state.digits", kind="integer", default=3, minimum=0, maximum=6, units="digits",
+       doc="Decimal places on every ratio, share and confidence the card prints. One code path "
+           "formats them, so `0.615` cannot be `0.62` in two sections of one card. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.what", kind="boolean", default=True,
+       doc="Print the what-changed section: semantic counts after `e2.2` folds reformat, "
+           "generated and lockfile churn, plus the path-class mix. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.where", kind="boolean", default=True,
+       doc="Print the where-it-landed section: directories touched, lines and files that "
+           "moved, the structural story and the churn band, with the census basis. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.dependencies", kind="boolean", default=True,
+       doc="Print the dependency section from `e2.6`'s delta. Switching it off is a stated "
+           "omission on the card, not a section that vanishes. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.surface", kind="boolean", default=True,
+       doc="Print the non-code surface section: env, flags, migrations, CI, IaC and container "
+           "findings with the operator actions they require. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.tests", kind="boolean", default=True,
+       doc="Print the test-surface section: test versus production lines with their absolutes, "
+           "named cases, and the coverage findings. Never a coverage percentage. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.blast", kind="boolean", default=True,
+       doc="Print the blast-radius section: direct dependents plus a one-hop estimate, with the "
+           "basis and the confidence beside the count. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
+    _k(path="card.sections.attention", kind="boolean", default=True,
+       doc="Print the attention roll-up: the findings the other sections raised, in severity "
+           "order, each with the evidence that put it there. `e2.10`.",
+       analyzer="card.compose", ticket="e2.10"),
     _k(path="rename.threshold", kind="integer", default=60, minimum=0, maximum=100,
        units="percent", doc="Similarity needed to call two paths the same file.",
        analyzer="diff.rename_detect", ticket="e1.6"),

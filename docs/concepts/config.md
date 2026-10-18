@@ -357,7 +357,8 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `deps` | e2.5 (`reco-j83`) | Which ecosystems' manifests and lockfiles are parsed. Also the switchboard for the advisory lookup's *subject*, not its consent. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
-| `blast` | e2.10 | How far the blast-radius walk goes before it declares a partial. |
+| `blast` | e2.10 | How far the blast-radius walk goes before it declares a partial, the confidence attached to each basis, and the path-heuristic weights that decide what counts as reached. |
+| `card` | e2.10 (`reco-4ey`) | The one-screen answer per episode. Row caps, how loud a finding has to be to earn an attention row, and one switch per section - because a repository narrowing its own card is a different thing from a card quietly losing a question, and the card prints which happened. |
 | `rename` | e1.6 / e2.4 (`reco-a0v`) | Two questions with two bars. `rename.threshold` is what the diff pane prints as a rename; the `fact_bar`/`guess_floor` pair decides what the pairing engine asserts, what it labels a guess, and what it costs. |
 | `diff` | e1.6 | Per-file diff knobs. |
 | `episode` | ADR-003 / e1.3 | Boundary sources in priority order, and the idle gap that ends an episode when nothing better is available. |
@@ -507,6 +508,28 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `risk.tau` | `integer` | `70` | `replace` | `any` | score | risk.score | `e2.10` |
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
 | `blast.hops` | `integer` | `1` | `replace` | `any` | hops | blast_radius | `e2.10` |
+| `blast.confidence.graph` | `number` | `0.9` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |
+| `blast.confidence.heuristic` | `number` | `0.4` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |
+| `blast.confidence.narrow_census` | `number` | `0.7` | `replace` | `any` | multiplier | blast_radius | `e2.10` |
+| `blast.heuristic.same_directory` | `number` | `0.6` | `replace` | `any` | score | blast_radius | `e2.10` |
+| `blast.heuristic.test_pair` | `number` | `0.5` | `replace` | `any` | score | blast_radius | `e2.10` |
+| `blast.heuristic.sibling_directory` | `number` | `0.3` | `replace` | `any` | score | blast_radius | `e2.10` |
+| `blast.heuristic.package_prefix` | `number` | `0.15` | `replace` | `any` | score | blast_radius | `e2.10` |
+| `blast.heuristic.min_score` | `number` | `0.3` | `replace` | `any` | score | blast_radius | `e2.10` |
+| `blast.max_rows` | `integer` | `10` | `replace` | `any` | rows | blast_radius | `e2.10` |
+| `blast.max_candidates` | `integer` | `5000` | `replace` | `any` | candidates | blast_radius | `e2.10` |
+| `card.max_figures` | `integer` | `6` | `replace` | `any` | rows | card.compose | `e2.10` |
+| `card.max_findings` | `integer` | `8` | `replace` | `any` | rows | card.compose | `e2.10` |
+| `card.max_evidence` | `integer` | `3` | `replace` | `any` | lines | card.compose | `e2.10` |
+| `card.attention.severity` | `string` | `notable` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.state.digits` | `integer` | `3` | `replace` | `any` | digits | card.compose | `e2.10` |
+| `card.sections.what` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.where` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.dependencies` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.surface` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.tests` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.blast` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
+| `card.sections.attention` | `boolean` | `True` | `replace` | `any` | — | card.compose | `e2.10` |
 | `rename.threshold` | `integer` | `60` | `replace` | `any` | percent | diff.rename_detect | `e1.6` |
 | `rename.fact_bar` | `number` | `0.75` | `replace` | `any` | similarity | diff.rename_detect | `e2.4` |
 | `rename.fact.allow_content` | `boolean` | `False` | `replace` | `any` | — | diff.rename_detect | `e2.4` |

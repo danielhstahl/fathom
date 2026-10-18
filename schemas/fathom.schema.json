@@ -6,19 +6,151 @@
   "properties": {
     "blast": {
       "additionalProperties": false,
-      "description": "How far the blast-radius walk goes before it declares a partial.",
+      "description": "How far the blast-radius walk goes before it declares a partial, the confidence attached to each basis, and the path-heuristic weights that decide what counts as reached.",
       "properties": {
+        "confidence": {
+          "additionalProperties": false,
+          "description": "Confidence attached to a blast answer that came from a module graph. Not 1.0: a graph is built by an extractor, and spike `s1` measured declarations a program wrote (Rust macros, Python decorators) that no extractor can enumerate. `e2.10`.",
+          "properties": {
+            "graph": {
+              "default": 0.9,
+              "description": "Confidence attached to a blast answer that came from a module graph. Not 1.0: a graph is built by an extractor, and spike `s1` measured declarations a program wrote (Rust macros, Python decorators) that no extractor can enumerate. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "0-1"
+            },
+            "heuristic": {
+              "default": 0.4,
+              "description": "Confidence attached to a blast answer built from path heuristics instead of a graph. The plan asks for the reduced confidence to be *stated*; this is the number it states. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "0-1"
+            },
+            "narrow_census": {
+              "default": 0.7,
+              "description": "Multiplier applied to a heuristic blast answer when the caller lent no file inventory, so the only paths the heuristics could see were the episode's own. A reach computed from a world of twelve files may not claim the confidence of one computed from four thousand. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "multiplier"
+            }
+          },
+          "type": "object"
+        },
+        "heuristic": {
+          "additionalProperties": false,
+          "description": "Heuristic weight: a candidate in the changed file's own directory - the strongest path signal there is, because same folder means same imports in every layout that has folders. `e2.10`.",
+          "properties": {
+            "min_score": {
+              "default": 0.3,
+              "description": "Heuristic score a candidate must reach to be counted as reached. This floor is what stops 'it is in the same repository' being a blast radius. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "score"
+            },
+            "package_prefix": {
+              "default": 0.15,
+              "description": "Heuristic weight: everything under the changed file's top-level package (two directory levels). Cheap and wide, which is why it normally sits under `blast.heuristic.min_score` and only counts when nothing stronger fired. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "score"
+            },
+            "same_directory": {
+              "default": 0.6,
+              "description": "Heuristic weight: a candidate in the changed file's own directory - the strongest path signal there is, because same folder means same imports in every layout that has folders. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "score"
+            },
+            "sibling_directory": {
+              "default": 0.3,
+              "description": "Heuristic weight: the files in the changed file's parent directory. Weaker than same-directory on purpose - a parent's own files are neighbours, not dependents. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "score"
+            },
+            "test_pair": {
+              "default": 0.5,
+              "description": "Heuristic weight: the test file that covers a changed source file, or the source a changed test covers, matched by naming convention only. `e2.10`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "blast_radius",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "score"
+            }
+          },
+          "type": "object"
+        },
         "hops": {
           "default": 1,
-          "description": "Blast-radius walk depth; exceeding it is a stated partial, not a hang.",
+          "description": "Rings counted *beyond* the direct one: the direct ring is always counted, so the default of 1 answers 'direct + one hop' and 0 answers 'direct only'. Anything further out is a stated partial, never a silent stop. `e2.10`.",
           "maximum": 4,
-          "minimum": 1,
+          "minimum": 0,
           "type": "integer",
           "x-fathom-analyzer": "blast_radius",
           "x-fathom-merge": "replace",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e2.10",
           "x-fathom-units": "hops"
+        },
+        "max_candidates": {
+          "default": 5000,
+          "description": "Candidate paths examined before the heuristic walk stops. Stopping is a stated partial naming how many paths were not looked at, so the cost guard shows up in the answer instead of being a silent truncation. `e2.10`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "blast_radius",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "candidates"
+        },
+        "max_rows": {
+          "default": 10,
+          "description": "Blast rows printed per ring before the remainder is counted and named. `e2.10`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "blast_radius",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "rows"
         }
       },
       "type": "object",
@@ -52,6 +184,158 @@
       "type": "object",
       "x-fathom-owner": "ADR-004 \u00a711",
       "x-fathom-section-title": "Cache caps"
+    },
+    "card": {
+      "additionalProperties": false,
+      "description": "The one-screen answer per episode. Row caps, how loud a finding has to be to earn an attention row, and one switch per section - because a repository narrowing its own card is a different thing from a card quietly losing a question, and the card prints which happened.",
+      "properties": {
+        "attention": {
+          "additionalProperties": false,
+          "description": "Lightest severity that earns an attention row. Findings below it are still counted and the count is printed, because 'nothing here' and 'nothing loud' are different claims. `e2.10`.",
+          "properties": {
+            "severity": {
+              "default": "notable",
+              "description": "Lightest severity that earns an attention row. Findings below it are still counted and the count is printed, because 'nothing here' and 'nothing loud' are different claims. `e2.10`.",
+              "enum": [
+                "high",
+                "notable",
+                "note"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            }
+          },
+          "type": "object"
+        },
+        "max_evidence": {
+          "default": 3,
+          "description": "Evidence lines printed under a figure. Everything behind the link is in `--json` and in the view the link names, whether or not the card had room for it. `e2.10`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "card.compose",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "lines"
+        },
+        "max_figures": {
+          "default": 6,
+          "description": "Figure rows printed per section before the remainder is counted and named. A cap that names its remainder, never a truncation without a trace: the audit fails a card that trimmed a figure in silence. `e2.10`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "card.compose",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "rows"
+        },
+        "max_findings": {
+          "default": 8,
+          "description": "Attention rows before the rest are counted rather than cut. Ordering is severity, then source section, then name, so the same rows come out twice. `e2.10`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "card.compose",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.10",
+          "x-fathom-units": "rows"
+        },
+        "sections": {
+          "additionalProperties": false,
+          "description": "Print the what-changed section: semantic counts after `e2.2` folds reformat, generated and lockfile churn, plus the path-class mix. `e2.10`.",
+          "properties": {
+            "attention": {
+              "default": true,
+              "description": "Print the attention roll-up: the findings the other sections raised, in severity order, each with the evidence that put it there. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "blast": {
+              "default": true,
+              "description": "Print the blast-radius section: direct dependents plus a one-hop estimate, with the basis and the confidence beside the count. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "dependencies": {
+              "default": true,
+              "description": "Print the dependency section from `e2.6`'s delta. Switching it off is a stated omission on the card, not a section that vanishes. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "surface": {
+              "default": true,
+              "description": "Print the non-code surface section: env, flags, migrations, CI, IaC and container findings with the operator actions they require. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "tests": {
+              "default": true,
+              "description": "Print the test-surface section: test versus production lines with their absolutes, named cases, and the coverage findings. Never a coverage percentage. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "what": {
+              "default": true,
+              "description": "Print the what-changed section: semantic counts after `e2.2` folds reformat, generated and lockfile churn, plus the path-class mix. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            },
+            "where": {
+              "default": true,
+              "description": "Print the where-it-landed section: directories touched, lines and files that moved, the structural story and the churn band, with the census basis. `e2.10`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10"
+            }
+          },
+          "type": "object"
+        },
+        "state": {
+          "additionalProperties": false,
+          "description": "Decimal places on every ratio, share and confidence the card prints. One code path formats them, so `0.615` cannot be `0.62` in two sections of one card. `e2.10`.",
+          "properties": {
+            "digits": {
+              "default": 3,
+              "description": "Decimal places on every ratio, share and confidence the card prints. One code path formats them, so `0.615` cannot be `0.62` in two sections of one card. `e2.10`.",
+              "maximum": 6,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "card.compose",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.10",
+              "x-fathom-units": "digits"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.10 (`reco-4ey`)",
+      "x-fathom-section-title": "Episode summary card"
     },
     "deps": {
       "additionalProperties": false,
@@ -2700,6 +2984,10 @@
       "cache": {
         "owner": "ADR-004 \u00a711",
         "title": "Cache caps"
+      },
+      "card": {
+        "owner": "e2.10 (`reco-4ey`)",
+        "title": "Episode summary card"
       },
       "deps": {
         "owner": "e2.5 (`reco-j83`)",
