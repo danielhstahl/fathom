@@ -16,6 +16,25 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-quk.1` — the analyzer version absorbs the compiled-in feature set (`e1.15`), and Epic 1 closes
+
+- **A cargo feature was a fact the cache did not know.** `lang-rust`, `lang-python` and the rest gate the
+  tree-sitter extractors the graph and structure analyzers are built from, so `graph.build`'s answer in a
+  build compiled without `lang-rust` is a *different answer* — and a row written by the `langs-all` build
+  would happily answer a lookup made by the language-free binary the release matrix ships. ADR-002 §10.2
+  put the feature set **into the analyzer version** rather than into a tenth `ck1` key field, because a
+  framing change makes every stored row in every store unreachable and a feature flag is not a framing
+  change: `graph.*` and `structure.*` now version themselves `1+<short digest of the enabled lang-* set>`,
+  which reaches key field 3 and the §5.4 dependency digest alike, so one derived bump cascades the way a
+  hand-typed one always did. The git-shaped analyzers deliberately do not carry the tag — a rebuild is not
+  an invalidation event for normalisation. `fathom_analyze::build` computes the digest, because features are
+  facts about the crate that declares them and `fathom-store` cannot see them; a build that never says what
+  it was compiled with is stamped `build-features-unspecified` rather than guessed for.
+- **Epic 1 is closed with it.** `reco-quk.2`, `reco-quk.3`, `reco-dot` and this were its last four children;
+  `bd list -l defect` is empty. The caveat `reco-glv` recorded travels with the close: the rail carries 500
+  real episodes, and the ranked, delta-carrying frame the walkthrough asked for is `e2.11`'s and `e4.4`'s
+  work in Epic 2. Epic 1 closes as *the spine is real and reviewable*, not as *the frame is finished*.
+
 ### `reco-dot` — TB7's clock guard is derived now, and §5.2's worked example is one episode again
 
 - **`gap ÷ 9` was the worst point on the whole curve.** ADR-003 §4.4 published a 3-minute-20-second guard on
