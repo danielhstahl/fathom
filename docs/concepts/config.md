@@ -351,6 +351,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `taxonomy` | e0.9 (`reco-5vz`) | Assert what a set of paths IS, relative to the built-in table: one open map keyed by class. The engine and the built-ins are `reco-5vz`'s; only the overrides live here. |
 | `test` | e2.9 (`reco-6pl`) | What counts as a test, which test-surface findings fire, and the numbers that define 'new public logic, no new test'. The finding policy is here rather than in `[detectors]` because these findings are one definition with knobs, not a detector registry. |
 | `non_code` | e2.8 (`reco-bjd`) | Config, env, flags, migrations and CI — the surfaces a reviewer must be told about even though they are not code. |
+| `structure` | e2.3 (`reco-5fn`) | Where an episode's code landed. The thresholds that decide when a set of pairings is a moved directory, a split or a flattening, the weights behind the structure-churn score, and one switch per finding kind. `fathom structure definition` prints these numbers as sentences. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
 | `deps` | e2.5 (`reco-j83`) | Which ecosystems' manifests and lockfiles are parsed. Also the switchboard for the advisory lookup's *subject*, not its consent. |
@@ -462,6 +463,43 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `non_code.iac.widened_patterns` | `string_list` | `"*", "arn:aws:iam::aws:policy/AdministratorAccess", "0.0.0.0/0", ::/0, "Principal": "*", associate_public_ip_address = true, cidr_blocks = ["0.0.0.0/0"], Action = ["*"], --privileged` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.container.require_digest_pin` | `boolean` | `True` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.card.max_actions` | `integer` | `12` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `structure.code_classes` | `string_list` | `source, test` | `extend` | `any` | path class | — | `e2.3` |
+| `structure.metrics.top_dirs` | `integer` | `3` | `replace` | `any` | directories | — | `e2.3` |
+| `structure.move.min_files` | `integer` | `3` | `replace` | `any` | files | — | `e2.3` |
+| `structure.move.min_share` | `number` | `0.6` | `replace` | `any` | share | — | `e2.3` |
+| `structure.move.require_emptied` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.move.infer_content` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.move.min_similarity` | `number` | `0.5` | `replace` | `any` | 0-1 | — | `e2.3` |
+| `structure.move.fact_bar` | `number` | `0.75` | `replace` | `any` | 0-1 | — | `e2.3` |
+| `structure.split.min_destinations` | `integer` | `2` | `replace` | `any` | dirs | — | `e2.3` |
+| `structure.split.min_files_per_destination` | `integer` | `2` | `replace` | `any` | files | — | `e2.3` |
+| `structure.flatten.min_levels` | `integer` | `1` | `replace` | `any` | levels | — | `e2.3` |
+| `structure.churn.weight.moved_files` | `number` | `0.25` | `replace` | `any` | weight | — | `e2.3` |
+| `structure.churn.weight.moved_lines` | `number` | `0.25` | `replace` | `any` | weight | — | `e2.3` |
+| `structure.churn.weight.directory_churn` | `number` | `0.2` | `replace` | `any` | weight | — | `e2.3` |
+| `structure.churn.weight.stories` | `number` | `0.2` | `replace` | `any` | weight | — | `e2.3` |
+| `structure.churn.weight.shape_shift` | `number` | `0.1` | `replace` | `any` | weight | — | `e2.3` |
+| `structure.churn.story_ceiling` | `number` | `2` | `replace` | `any` | stories | — | `e2.3` |
+| `structure.churn.depth_scale` | `number` | `4` | `replace` | `any` | levels | — | `e2.3` |
+| `structure.churn.band.local` | `number` | `0.15` | `replace` | `any` | score | — | `e2.3` |
+| `structure.churn.band.structural` | `number` | `0.35` | `replace` | `any` | score | — | `e2.3` |
+| `structure.depth.mean_delta` | `number` | `0.5` | `replace` | `any` | levels | — | `e2.3` |
+| `structure.depth.max_delta` | `integer` | `2` | `replace` | `any` | levels | — | `e2.3` |
+| `structure.concentration.delta` | `number` | `0.15` | `replace` | `any` | share | — | `e2.3` |
+| `structure.card.max_dirs` | `integer` | `12` | `replace` | `any` | rows | — | `e2.3` |
+| `structure.card.max_stories` | `integer` | `6` | `replace` | `any` | rows | — | `e2.3` |
+| `structure.card.max_evidence` | `integer` | `4` | `replace` | `any` | lines | — | `e2.3` |
+| `structure.findings.subtree_moved` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.churn_high` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.package_renamed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.module_split` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.directory_flattened` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.directory_removed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.nesting_deepened` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.concentration_up` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.files_moved` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.directory_added` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
+| `structure.findings.move_unconfirmed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |

@@ -229,6 +229,12 @@ SECTIONS: dict[str, dict] = {
     "non_code": {"title": "Non-code surface", "owner": "e2.8 (`reco-bjd`)",
                  "doc": "Config, env, flags, migrations and CI — the surfaces a reviewer "
                         "must be told about even though they are not code."},
+    "structure": {"title": "Folder structure delta", "owner": "e2.3 (`reco-5fn`)",
+                  "doc": "Where an episode's code landed. The thresholds that decide when a "
+                         "set of pairings is a moved directory, a split or a flattening, the "
+                         "weights behind the structure-churn score, and one switch per "
+                         "finding kind. `fathom structure definition` prints these numbers as "
+                         "sentences."},
     "graph": {"title": "Graph inputs", "owner": "e3.2 (`reco-8s4`)",
               "doc": "Directories excluded from the dependency and structure graph."},
     "layers": {"title": "Layering rules", "owner": "ADR-004 §5.1 / e3.1",
@@ -704,6 +710,270 @@ KEY_LIST: list[Key] = [
        doc="Action rows a card prints before it says how many more there are and which verb lists "
            "them. A cap that names its remainder, never a truncation without a trace.",
        analyzer="non_code.surface", ticket="e2.8"),
+    # --- folder structure (e2.3) ------------------------------------------------
+    # `fathom structure` answers `where did this land`: a per-directory table that sums
+    # exactly to the episode totals, the structural stories the pairings add up to
+    # (package renamed, subtree moved, module split, directory flattened), tree-shape
+    # metrics, and a structure-churn score. The ticket standard is that a shape is
+    # defined by numbers a repository can move rather than by a judgement call, and
+    # `fathom structure definition` prints these values as sentences so a card and a
+    # config file cannot drift from each other. Every default here is also
+    # `recommender/structure/policy.py`'s, and a contract test fails if the two differ.
+    _k(path="structure.code_classes", kind="string_list", default=['source', 'test'],
+       merge="extend", units="path class",
+       doc="Which taxonomy classes (`e0.9`, `e2.1`) count as code when the card measures "
+           "where the code lives. `docs`, `config` and `generated` are out: a folder of "
+           "markdown moving house is real, but it is not the same concentration claim as 4 "
+           "000 lines of source changing home.",
+       ticket="e2.3"),
+
+    _k(path="structure.metrics.top_dirs", kind="integer", default=3,
+       minimum=1, maximum=10, units="directories",
+       doc="The N in `share of code in the top-N directories`. Three because that is the "
+           "width the review question is asked with: top-1 measures one folder, top-10 "
+           "measures the whole tree and separates nothing.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.min_files", kind="integer", default=3,
+       minimum=1, units="files",
+       doc="Pairings a whole-directory story (`package-renamed`, `subtree-move`, `module- "
+           "split`, `directory-flattened`) has to be built from. Below this, two files "
+           "changing folder is a `files-moved` row, not a reorganisation of the tree - and "
+           "a card that called every two-file move a reorganisation would be noisier than "
+           "the file list it replaced.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.min_share", kind="number", default=0.6,
+       minimum=0.0, maximum=1.0, units="share",
+       doc="Share of a directory's files that must have moved for the directory itself to "
+           "be called moved. 1.0 demands a perfect sweep and loses every move with one "
+           "straggler file; 0.0 calls any relocation a whole-directory move. 0.6 is `most "
+           "of it`, which is what a reviewer means by `they moved the package`.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.require_emptied", kind="boolean", default=True,
+       doc="Additionally require that the source directory holds no files afterwards. On, a "
+           "move is a move. Off, a directory that shipped most of its files and kept three "
+           "still reads as moved, which is true of the files and misleading about the "
+           "directory.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.infer_content", kind="boolean", default=True,
+       doc="When the caller supplies no pairings, infer them from bytes (same basename, "
+           "similarity at or above `structure.move.min_similarity`). Turning this off makes "
+           "the answer strictly narrower - no inferred moves, and the card says so - which "
+           "is the right setting for a reviewer who will only act on what git asserted.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.min_similarity", kind="number", default=0.5,
+       minimum=0.0, maximum=1.0, units="0-1",
+       doc="Line similarity required to accept an inferred pairing, computed exactly rather "
+           "than sketched. Used only to accept or refuse a pairing, never printed as a "
+           "similarity verdict of its own. Half the lines shared is where `the same file, "
+           "edited` stops being a guess.",
+       ticket="e2.3"),
+
+    _k(path="structure.move.fact_bar", kind="number", default=0.75,
+       minimum=0.0, maximum=1.0, units="0-1",
+       doc="Confidence at or above which a caller-supplied pairing counts as a fact rather "
+           "than a guess. Deliberately the same number as `rename.fact_bar`, which spike s4 "
+           "measured on real histories: at git's shipped 0.50 the pairing engine asserts a "
+           "named decoy, at 0.75 it ships nothing false. A structure card that trusted "
+           "pairings git would not is a card that lies about where code landed.",
+       ticket="e2.3"),
+
+    _k(path="structure.split.min_destinations", kind="integer", default=2,
+       minimum=2, units="dirs",
+       doc="Destinations a module split needs. One destination is a move, and calling a "
+           "move a split tells the reviewer responsibility was divided when nothing of the "
+           "sort happened.",
+       ticket="e2.3"),
+
+    _k(path="structure.split.min_files_per_destination", kind="integer", default=2,
+       minimum=1, units="files",
+       doc="Files a destination needs to count as one arm of a split. One is the natural "
+           "floor and the wrong one: a directory of 17 files with a single stray in a new "
+           "folder is a move of 16 plus a `files-moved` row, not a two-arm split of the "
+           "module.",
+       ticket="e2.3"),
+
+    _k(path="structure.flatten.min_levels", kind="integer", default=1,
+       minimum=1, units="levels",
+       doc="How many directory levels a move has to climb for the shape to be flattening "
+           "rather than an ordinary move sideways. One is `went up at least one level, and "
+           "the folder behind it is gone`, which is the shape.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.weight.moved_files", kind="number", default=0.25,
+       minimum=0.0, maximum=1.0, units="weight",
+       doc="Churn weight: share of the episode's files that changed directory. The five "
+           "weights are normalised, so what matters is their ratio; this and `moved_lines` "
+           "together make half the score, because `most of this episode was a move` is the "
+           "claim the score exists to make.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.weight.moved_lines", kind="number", default=0.25,
+       minimum=0.0, maximum=1.0, units="weight",
+       doc="Churn weight: share of the episode's lines that travelled with a move. File "
+           "counts alone let a one-line edit to a thousand files look like a "
+           "reorganisation; line counts alone let one 5 000-line generated file moving look "
+           "like one. Both are in, at equal weight.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.weight.directory_churn", kind="number", default=0.2,
+       minimum=0.0, maximum=1.0, units="weight",
+       doc="Churn weight: directories added and removed over directories the episode "
+           "touched. Weighed below the mobility terms because a rename creates and deletes "
+           "folders as a side effect of what already counted as a move.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.weight.stories", kind="number", default=0.2,
+       minimum=0.0, maximum=1.0, units="weight",
+       doc="Churn weight: the structural stories found, saturating at "
+           "`structure.churn.story_ceiling`. A story is a counted claim with evidence "
+           "attached, not a feeling, so it is worth a fifth of the score on its own.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.weight.shape_shift", kind="number", default=0.1,
+       minimum=0.0, maximum=1.0, units="weight",
+       doc="Churn weight: how far the tree's own shape metrics (mean and maximum depth, "
+           "top-N concentration) moved. The smallest weight, because depth can change a lot "
+           "in an episode that moved nothing; this is the tie-breaker, not the headline.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.story_ceiling", kind="number", default=2,
+       minimum=1, units="stories",
+       doc="Stories at which the story component saturates. A third story is not 50% worse "
+           "than a second - it is the same story about a third folder - so a linear term "
+           "would let a wide rename out-score a deep one.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.depth_scale", kind="number", default=4,
+       minimum=1, units="levels",
+       doc="Mean-depth change at which the shape component saturates. Four levels is where "
+           "`the tree got deeper` has stopped being an incidental effect of where this "
+           "episode's files landed and has become the change itself.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.band.local", kind="number", default=0.15,
+       minimum=0.0, maximum=1.0, units="score",
+       doc="Below this churn score the episode is `local`: it changed contents where they "
+           "already were. Set from the 20-file local-change fixture, which scores 0.000; "
+           "the band exists so the card can say `local` instead of making the reviewer read "
+           "five components.",
+       ticket="e2.3"),
+
+    _k(path="structure.churn.band.structural", kind="number", default=0.35,
+       minimum=0.0, maximum=1.0, units="score",
+       doc="At or above this the episode is `structural`: the tree itself moved. The "
+           "20-file cross-tree reshuffle fixture scores 0.900 and the 20-file local-change "
+           "fixture 0.000, so the bar sits far from both rather than between two close "
+           "calls. Between the two bands is `transitional`, and the card says that rather "
+           "than rounding to a verdict.",
+       ticket="e2.3"),
+
+    _k(path="structure.depth.mean_delta", kind="number", default=0.5,
+       minimum=0.0, units="levels",
+       doc="Mean directory-depth growth that is worth a `nesting-deepened` row. Half a "
+           "level over one episode is where a tree has stopped being shallow by accident.",
+       ticket="e2.3"),
+
+    _k(path="structure.depth.max_delta", kind="integer", default=2,
+       minimum=1, units="levels",
+       doc="Maximum-depth growth that earns the same row on its own, because one branch "
+           "pushed two levels deeper is a review problem even when the mean barely moved.",
+       ticket="e2.3"),
+
+    _k(path="structure.concentration.delta", kind="number", default=0.15,
+       minimum=0.0, maximum=1.0, units="share",
+       doc="Growth in the top-N code share that is worth a `concentration-up` row. Smaller "
+           "moves are what ordinary growth does to a tree; fifteen points is the tree "
+           "getting one big folder.",
+       ticket="e2.3"),
+
+    _k(path="structure.card.max_dirs", kind="integer", default=12,
+       minimum=1, units="rows",
+       doc="Directory rows a card prints before it says how many more there are and which "
+           "verb lists them. A cap that names its remainder, never a truncation without a "
+           "trace.",
+       ticket="e2.3"),
+
+    _k(path="structure.card.max_stories", kind="integer", default=6,
+       minimum=1, units="rows",
+       doc="Structural stories a card prints before counting the rest. Six is more stories "
+           "than an honest episode produces; a seventh usually means one directory was "
+           "renamed in six places, which is one story, told six times.",
+       ticket="e2.3"),
+
+    _k(path="structure.card.max_evidence", kind="integer", default=4,
+       minimum=1, units="lines",
+       doc="Evidence lines printed per finding, with the remainder counted and named rather "
+           "than dropped. Every line is always in `--json` and in `fathom structure "
+           "findings`.",
+       ticket="e2.3"),
+
+    # --- structure findings (e2.3): one switch per kind ---------------------------
+    _k(path="structure.findings.subtree_moved", kind="boolean", default=True,
+       doc="A whole directory - its files and its inner folders - now lives under a "
+           "different parent. Nothing inside it changed, so the reviewable content of the "
+           "episode is the move itself. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.churn_high", kind="boolean", default=True,
+       doc="The structure-churn score reached `structure.churn.band.structural`: the agent "
+           "reorganised the tree. The card prints the score with all five components beside "
+           "it, so this row is a number and not a vibe. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.package_renamed", kind="boolean", default=True,
+       doc="A directory changed name in place with its contents intact, so every import of "
+           "it moved and none of its logic did. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.module_split", kind="boolean", default=True,
+       doc="One directory's files now live in two or more destinations. A split is where "
+           "responsibility moved, which is the reviewable question, and the destinations "
+           "are named. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.directory_flattened", kind="boolean", default=True,
+       doc="A directory moved its files up into an ancestor and vanished, so the tree is "
+           "one level shallower where it used to be. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.directory_removed", kind="boolean", default=True,
+       doc="A directory that held files holds none. Reported even when its files were moved "
+           "rather than deleted, because a removed directory is also a removed namespace "
+           "and a stale import path. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.nesting_deepened", kind="boolean", default=True,
+       doc="Average (or maximum) directory depth grew by the configured delta. Deep trees "
+           "are how a review starts hiding things from itself. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.concentration_up", kind="boolean", default=True,
+       doc="The share of code living in the top-N directories grew by the configured delta: "
+           "the tree is getting one big folder. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.files_moved", kind="boolean", default=True,
+       doc="Files changed directory without forming one of the four named shapes - a "
+           "partial move, a move with a rename on the way, or a move out of a directory "
+           "that still has files in it. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.directory_added", kind="boolean", default=True,
+       doc="A new directory now holds files. Loud enough to notice, quiet enough not to "
+           "compete with the move that explains it. `e2.3`.",
+       ticket="e2.3"),
+
+    _k(path="structure.findings.move_unconfirmed", kind="boolean", default=True,
+       doc="Some pairing behind this answer was inferred from bytes, or handed over below "
+           "`structure.move.fact_bar`, rather than asserted by git - so the directory rows "
+           "built on it inherit that uncertainty and are listed instead of silently "
+           "believed. `e2.3`.",
+       ticket="e2.3"),
     _k(path="graph.ignored_dirs", kind="string_list", merge="extend",
        default=["node_modules"],
        doc="Directory names excluded from the structure/dependency graph entirely.",

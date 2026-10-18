@@ -178,6 +178,53 @@ jobs:
           PYTHONPATH=src python3 -m recommender.noncode demo | tail -2
           PYTHONPATH=src python3 -m recommender.noncode demo --capped | grep -q "more: fathom noncode checklist"
           PYTHONPATH=src python3 -m recommender.noncode bench --repeat 2 | tail -1
+      - name: "e2.3 folder structure: the labelled corpus clears its bars, printed (AC 1-4)"
+        # Five absolute bars and one floor. Shape accuracy and summary accuracy are both 1.0
+        # because the one-sentence answer is the deliverable: a fixture whose sentence changed is
+        # an answer that changed, and the diff names the clause. Precision is 1.0 over eight traps,
+        # because a false "the agent reorganised the tree" costs the same reviewer trust as a
+        # missed one. Reconciliation is 1.0 over every fixture *plus* 400 generated episodes, which
+        # is AC 2 as a property rather than as a spot check. The one floor, `--min-separation`, is
+        # AC 3: the same twenty files, changed in place (0.000) versus reshuffled across the tree
+        # (0.900), required to stay in different bands. Labels are hand-written in `corpus.py`
+        # against the built-in policy, so this never reads this repo's fathom.toml.
+        run: |
+          PYTHONPATH=src python3 -m recommender.structure score --min-shapes 1.0 \
+            --min-summaries 1.0 --min-precision 1.0 --min-episodes 1.0 --min-reconcile 1.0 \
+            --min-separation 0.3 --min-shapes-covered 4
+      - name: "e2.3 folder structure: the verb surface is the same engine, and the card audits clean"
+        # The ticket's four criteria are grepped out of real output here: the four shape sentences,
+        # the reconciliation line, the two churn bands for the same twenty files, and a card that
+        # `render.audit` has checked (the CLI runs the audit on its own output and exits non-zero).
+        # `property` is AC 2 on generated episodes; a row that fails to sum exits non-zero.
+        run: |
+          mkdir -p /tmp/st/before/pkg/util /tmp/st/before/pkg/other /tmp/st/after/internal/pkg/util
+          printf 'a()\nb()\nc()\nd()\n' > /tmp/st/before/pkg/util/a.py
+          printf 'e()\nf()\ng()\n' > /tmp/st/before/pkg/util/b.py
+          printf 'h()\ni()\n' > /tmp/st/before/pkg/util/c.py
+          printf 'x()\n' > /tmp/st/before/pkg/other/x.py
+          mkdir -p /tmp/st/after/pkg/other
+          printf 'a()\nb()\nc()\nd()\n' > /tmp/st/after/internal/pkg/util/a.py
+          printf 'e()\nf()\ng()\n' > /tmp/st/after/internal/pkg/util/b.py
+          printf 'h()\ni()\n' > /tmp/st/after/internal/pkg/util/c.py
+          printf 'x()\n' > /tmp/st/after/pkg/other/x.py
+          PYTHONPATH=src python3 -m recommender.structure card --old-repo /tmp/st/before --repo /tmp/st/after | grep -q "moved to \`internal/pkg/util\`"
+          PYTHONPATH=src python3 -m recommender.structure summary --old-repo /tmp/st/before --repo /tmp/st/after
+          PYTHONPATH=src python3 -m recommender.structure card --fixture module_split | grep -q "was split into"
+          PYTHONPATH=src python3 -m recommender.structure summary --fixture directory_flatten | grep -q "was flattened into"
+          PYTHONPATH=src python3 -m recommender.structure summary --fixture package_rename | grep -q "was renamed to"
+          PYTHONPATH=src python3 -m recommender.structure summary --fixture subtree_move | grep -q "directory shape preserved"
+          PYTHONPATH=src python3 -m recommender.structure card --fixture cross_tree_reshuffle | grep -q "table reconciles to the episode totals"
+          PYTHONPATH=src python3 -m recommender.structure separation | grep -q "gap 0.900"
+          PYTHONPATH=src python3 -m recommender.structure dirs --fixture subtree_move --json | head -1
+          PYTHONPATH=src python3 -m recommender.structure stories --fixture package_rename | head -2
+          PYTHONPATH=src python3 -m recommender.structure findings --fixture cross_tree_reshuffle | head -3
+          PYTHONPATH=src python3 -m recommender.structure explain --fixture module_split | head -3
+          PYTHONPATH=src python3 -m recommender.structure shapes | head -3
+          PYTHONPATH=src python3 -m recommender.structure policy | tail -3
+          PYTHONPATH=src python3 -m recommender.structure definition | head -3
+          PYTHONPATH=src python3 -m recommender.structure property --seeds 20 | tail -1
+          PYTHONPATH=src python3 -m recommender.structure demo | tail -2
       - name: "e0.6 ADR-006: the keymap, layouts and ladder in the document are the shipped ones"
         # ADR-006 §0: the table in the document is the source of the help overlay (e1.5), the
         # palette labels (e5.4) and the cheatsheet (e7.5). Three hand-copied copies of a keymap

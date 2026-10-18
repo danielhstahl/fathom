@@ -1858,6 +1858,454 @@
       "x-fathom-owner": "ADR-004 \u00a77, \u00a711",
       "x-fathom-section-title": "Store caps"
     },
+    "structure": {
+      "additionalProperties": false,
+      "description": "Where an episode's code landed. The thresholds that decide when a set of pairings is a moved directory, a split or a flattening, the weights behind the structure-churn score, and one switch per finding kind. `fathom structure definition` prints these numbers as sentences.",
+      "properties": {
+        "card": {
+          "additionalProperties": false,
+          "description": "Directory rows a card prints before it says how many more there are and which verb lists them. A cap that names its remainder, never a truncation without a trace.",
+          "properties": {
+            "max_dirs": {
+              "default": 12,
+              "description": "Directory rows a card prints before it says how many more there are and which verb lists them. A cap that names its remainder, never a truncation without a trace.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "rows"
+            },
+            "max_evidence": {
+              "default": 4,
+              "description": "Evidence lines printed per finding, with the remainder counted and named rather than dropped. Every line is always in `--json` and in `fathom structure findings`.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "lines"
+            },
+            "max_stories": {
+              "default": 6,
+              "description": "Structural stories a card prints before counting the rest. Six is more stories than an honest episode produces; a seventh usually means one directory was renamed in six places, which is one story, told six times.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "rows"
+            }
+          },
+          "type": "object"
+        },
+        "churn": {
+          "additionalProperties": false,
+          "description": "Churn weight: share of the episode's files that changed directory. The five weights are normalised, so what matters is their ratio; this and `moved_lines` together make half the score, because `most of this episode was a move` is the claim the score exists to make.",
+          "properties": {
+            "band": {
+              "additionalProperties": false,
+              "description": "Below this churn score the episode is `local`: it changed contents where they already were. Set from the 20-file local-change fixture, which scores 0.000; the band exists so the card can say `local` instead of making the reviewer read five components.",
+              "properties": {
+                "local": {
+                  "default": 0.15,
+                  "description": "Below this churn score the episode is `local`: it changed contents where they already were. Set from the 20-file local-change fixture, which scores 0.000; the band exists so the card can say `local` instead of making the reviewer read five components.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "score"
+                },
+                "structural": {
+                  "default": 0.35,
+                  "description": "At or above this the episode is `structural`: the tree itself moved. The 20-file cross-tree reshuffle fixture scores 0.900 and the 20-file local-change fixture 0.000, so the bar sits far from both rather than between two close calls. Between the two bands is `transitional`, and the card says that rather than rounding to a verdict.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "score"
+                }
+              },
+              "type": "object"
+            },
+            "depth_scale": {
+              "default": 4,
+              "description": "Mean-depth change at which the shape component saturates. Four levels is where `the tree got deeper` has stopped being an incidental effect of where this episode's files landed and has become the change itself.",
+              "minimum": 1,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "levels"
+            },
+            "story_ceiling": {
+              "default": 2,
+              "description": "Stories at which the story component saturates. A third story is not 50% worse than a second - it is the same story about a third folder - so a linear term would let a wide rename out-score a deep one.",
+              "minimum": 1,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "stories"
+            },
+            "weight": {
+              "additionalProperties": false,
+              "description": "Churn weight: share of the episode's files that changed directory. The five weights are normalised, so what matters is their ratio; this and `moved_lines` together make half the score, because `most of this episode was a move` is the claim the score exists to make.",
+              "properties": {
+                "directory_churn": {
+                  "default": 0.2,
+                  "description": "Churn weight: directories added and removed over directories the episode touched. Weighed below the mobility terms because a rename creates and deletes folders as a side effect of what already counted as a move.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "weight"
+                },
+                "moved_files": {
+                  "default": 0.25,
+                  "description": "Churn weight: share of the episode's files that changed directory. The five weights are normalised, so what matters is their ratio; this and `moved_lines` together make half the score, because `most of this episode was a move` is the claim the score exists to make.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "weight"
+                },
+                "moved_lines": {
+                  "default": 0.25,
+                  "description": "Churn weight: share of the episode's lines that travelled with a move. File counts alone let a one-line edit to a thousand files look like a reorganisation; line counts alone let one 5 000-line generated file moving look like one. Both are in, at equal weight.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "weight"
+                },
+                "shape_shift": {
+                  "default": 0.1,
+                  "description": "Churn weight: how far the tree's own shape metrics (mean and maximum depth, top-N concentration) moved. The smallest weight, because depth can change a lot in an episode that moved nothing; this is the tie-breaker, not the headline.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "weight"
+                },
+                "stories": {
+                  "default": 0.2,
+                  "description": "Churn weight: the structural stories found, saturating at `structure.churn.story_ceiling`. A story is a counted claim with evidence attached, not a feeling, so it is worth a fifth of the score on its own.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.3",
+                  "x-fathom-units": "weight"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "code_classes": {
+          "default": [
+            "source",
+            "test"
+          ],
+          "description": "Which taxonomy classes (`e0.9`, `e2.1`) count as code when the card measures where the code lives. `docs`, `config` and `generated` are out: a folder of markdown moving house is real, but it is not the same concentration claim as 4 000 lines of source changing home.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.3",
+          "x-fathom-units": "path class"
+        },
+        "concentration": {
+          "additionalProperties": false,
+          "description": "Growth in the top-N code share that is worth a `concentration-up` row. Smaller moves are what ordinary growth does to a tree; fifteen points is the tree getting one big folder.",
+          "properties": {
+            "delta": {
+              "default": 0.15,
+              "description": "Growth in the top-N code share that is worth a `concentration-up` row. Smaller moves are what ordinary growth does to a tree; fifteen points is the tree getting one big folder.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "share"
+            }
+          },
+          "type": "object"
+        },
+        "depth": {
+          "additionalProperties": false,
+          "description": "Mean directory-depth growth that is worth a `nesting-deepened` row. Half a level over one episode is where a tree has stopped being shallow by accident.",
+          "properties": {
+            "max_delta": {
+              "default": 2,
+              "description": "Maximum-depth growth that earns the same row on its own, because one branch pushed two levels deeper is a review problem even when the mean barely moved.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "levels"
+            },
+            "mean_delta": {
+              "default": 0.5,
+              "description": "Mean directory-depth growth that is worth a `nesting-deepened` row. Half a level over one episode is where a tree has stopped being shallow by accident.",
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "levels"
+            }
+          },
+          "type": "object"
+        },
+        "findings": {
+          "additionalProperties": false,
+          "description": "A whole directory - its files and its inner folders - now lives under a different parent. Nothing inside it changed, so the reviewable content of the episode is the move itself. `e2.3`.",
+          "properties": {
+            "churn_high": {
+              "default": true,
+              "description": "The structure-churn score reached `structure.churn.band.structural`: the agent reorganised the tree. The card prints the score with all five components beside it, so this row is a number and not a vibe. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "concentration_up": {
+              "default": true,
+              "description": "The share of code living in the top-N directories grew by the configured delta: the tree is getting one big folder. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "directory_added": {
+              "default": true,
+              "description": "A new directory now holds files. Loud enough to notice, quiet enough not to compete with the move that explains it. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "directory_flattened": {
+              "default": true,
+              "description": "A directory moved its files up into an ancestor and vanished, so the tree is one level shallower where it used to be. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "directory_removed": {
+              "default": true,
+              "description": "A directory that held files holds none. Reported even when its files were moved rather than deleted, because a removed directory is also a removed namespace and a stale import path. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "files_moved": {
+              "default": true,
+              "description": "Files changed directory without forming one of the four named shapes - a partial move, a move with a rename on the way, or a move out of a directory that still has files in it. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "module_split": {
+              "default": true,
+              "description": "One directory's files now live in two or more destinations. A split is where responsibility moved, which is the reviewable question, and the destinations are named. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "move_unconfirmed": {
+              "default": true,
+              "description": "Some pairing behind this answer was inferred from bytes, or handed over below `structure.move.fact_bar`, rather than asserted by git - so the directory rows built on it inherit that uncertainty and are listed instead of silently believed. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "nesting_deepened": {
+              "default": true,
+              "description": "Average (or maximum) directory depth grew by the configured delta. Deep trees are how a review starts hiding things from itself. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "package_renamed": {
+              "default": true,
+              "description": "A directory changed name in place with its contents intact, so every import of it moved and none of its logic did. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "subtree_moved": {
+              "default": true,
+              "description": "A whole directory - its files and its inner folders - now lives under a different parent. Nothing inside it changed, so the reviewable content of the episode is the move itself. `e2.3`.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            }
+          },
+          "type": "object"
+        },
+        "flatten": {
+          "additionalProperties": false,
+          "description": "How many directory levels a move has to climb for the shape to be flattening rather than an ordinary move sideways. One is `went up at least one level, and the folder behind it is gone`, which is the shape.",
+          "properties": {
+            "min_levels": {
+              "default": 1,
+              "description": "How many directory levels a move has to climb for the shape to be flattening rather than an ordinary move sideways. One is `went up at least one level, and the folder behind it is gone`, which is the shape.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "levels"
+            }
+          },
+          "type": "object"
+        },
+        "metrics": {
+          "additionalProperties": false,
+          "description": "The N in `share of code in the top-N directories`. Three because that is the width the review question is asked with: top-1 measures one folder, top-10 measures the whole tree and separates nothing.",
+          "properties": {
+            "top_dirs": {
+              "default": 3,
+              "description": "The N in `share of code in the top-N directories`. Three because that is the width the review question is asked with: top-1 measures one folder, top-10 measures the whole tree and separates nothing.",
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "directories"
+            }
+          },
+          "type": "object"
+        },
+        "move": {
+          "additionalProperties": false,
+          "description": "Pairings a whole-directory story (`package-renamed`, `subtree-move`, `module- split`, `directory-flattened`) has to be built from. Below this, two files changing folder is a `files-moved` row, not a reorganisation of the tree - and a card that called every two-file move a reorganisation would be noisier than the file list it replaced.",
+          "properties": {
+            "fact_bar": {
+              "default": 0.75,
+              "description": "Confidence at or above which a caller-supplied pairing counts as a fact rather than a guess. Deliberately the same number as `rename.fact_bar`, which spike s4 measured on real histories: at git's shipped 0.50 the pairing engine asserts a named decoy, at 0.75 it ships nothing false. A structure card that trusted pairings git would not is a card that lies about where code landed.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "0-1"
+            },
+            "infer_content": {
+              "default": true,
+              "description": "When the caller supplies no pairings, infer them from bytes (same basename, similarity at or above `structure.move.min_similarity`). Turning this off makes the answer strictly narrower - no inferred moves, and the card says so - which is the right setting for a reviewer who will only act on what git asserted.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            },
+            "min_files": {
+              "default": 3,
+              "description": "Pairings a whole-directory story (`package-renamed`, `subtree-move`, `module- split`, `directory-flattened`) has to be built from. Below this, two files changing folder is a `files-moved` row, not a reorganisation of the tree - and a card that called every two-file move a reorganisation would be noisier than the file list it replaced.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "files"
+            },
+            "min_share": {
+              "default": 0.6,
+              "description": "Share of a directory's files that must have moved for the directory itself to be called moved. 1.0 demands a perfect sweep and loses every move with one straggler file; 0.0 calls any relocation a whole-directory move. 0.6 is `most of it`, which is what a reviewer means by `they moved the package`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "share"
+            },
+            "min_similarity": {
+              "default": 0.5,
+              "description": "Line similarity required to accept an inferred pairing, computed exactly rather than sketched. Used only to accept or refuse a pairing, never printed as a similarity verdict of its own. Half the lines shared is where `the same file, edited` stops being a guess.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "0-1"
+            },
+            "require_emptied": {
+              "default": true,
+              "description": "Additionally require that the source directory holds no files afterwards. On, a move is a move. Off, a directory that shipped most of its files and kept three still reads as moved, which is true of the files and misleading about the directory.",
+              "type": "boolean",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3"
+            }
+          },
+          "type": "object"
+        },
+        "split": {
+          "additionalProperties": false,
+          "description": "Destinations a module split needs. One destination is a move, and calling a move a split tells the reviewer responsibility was divided when nothing of the sort happened.",
+          "properties": {
+            "min_destinations": {
+              "default": 2,
+              "description": "Destinations a module split needs. One destination is a move, and calling a move a split tells the reviewer responsibility was divided when nothing of the sort happened.",
+              "minimum": 2,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "dirs"
+            },
+            "min_files_per_destination": {
+              "default": 2,
+              "description": "Files a destination needs to count as one arm of a split. One is the natural floor and the wrong one: a directory of 17 files with a single stray in a new folder is a move of 16 plus a `files-moved` row, not a two-arm split of the module.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.3",
+              "x-fathom-units": "files"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e2.3 (`reco-5fn`)",
+      "x-fathom-section-title": "Folder structure delta"
+    },
     "taxonomy": {
       "additionalProperties": false,
       "description": "Assert what a set of paths IS, relative to the built-in table: one open map keyed by class. The engine and the built-ins are `reco-5vz`'s; only the overrides live here.",
@@ -2352,6 +2800,10 @@
       "store": {
         "owner": "ADR-004 \u00a77, \u00a711",
         "title": "Store caps"
+      },
+      "structure": {
+        "owner": "e2.3 (`reco-5fn`)",
+        "title": "Folder structure delta"
       },
       "taxonomy": {
         "owner": "e0.9 (`reco-5vz`)",

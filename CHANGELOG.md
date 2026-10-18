@@ -16,6 +16,41 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-5fn` — folder structure delta: where did this episode land? (`e2.3`)
+
+- **`e2.3` shipped, and "the agent reorganised the tree" is now a number a reviewer can argue
+  with.** `src/recommender/structure/` answers *where did this land* per episode: a directory
+  table of added / removed / **moved** lines and files created / deleted / moved, the structural
+  stories the pairings add up to (`package-rename`, `subtree-move`, `module-split`,
+  `directory-flatten`), tree metrics before and after (depth, fanout, files per directory, share
+  of code in the top-3 directories), a bounded structure-churn score with its five components
+  printed beside it, and one deterministic sentence per episode with evidence behind every
+  clause. The two fixtures AC 3 names score **0.000 (local)** and **0.900 (structural)** — the
+  same twenty files, one changed in place, one reshuffled across four folders — a gap the CI
+  gate requires to stay at or above 0.3.
+- **The table sums, and says so either way.** Totals come from the file facts and row sums from
+  the directory rows, two independent paths, checked column by column including both moved
+  columns (a rename is credited to the directory it left *and* the one it entered). The property
+  holds on every fixture and on **416** reconciliation cases, 400 of them generated episodes built
+  from the same operation vocabulary the shapes are written in.
+- **A shape is a rule, not a vibe, and a guess is labelled a guess.** The four shapes are defined
+  by 26 knobs — `structure.move.min_files` (3), `structure.move.min_share` (0.6),
+  `structure.move.require_emptied`, `structure.split.min_files_per_destination` (2) — and every
+  refusal names the knob that refused it. Pairings come from the change list, from `e2.4`, or from
+  a labelled guess; a caller's pairing is a fact only if it clears `structure.move.fact_bar` (0.75,
+  deliberately `rename.fact_bar` from s4's measurement), and what this package infers is a guess at
+  similarity 1.00, because identical bytes are not git's word. Eight trap fixtures hold the line:
+  a rename inside one directory, a two-file move, a 16-file move with one straggler, four
+  deletions beside four unrelated creations, and a caller with no bytes at all each keep the
+  structural findings silent.
+- **Scored in CI, asserted in 287 tests.** `fathom structure score` bars shape accuracy,
+  summary accuracy (the sentence, byte for byte), precision over traps, episode accuracy and
+  reconciliation all at **1.0** over 7 shape / 8 trap / 12 episode fixtures, requires all five
+  shapes to have a fixture, and prices the local-versus-reshuffle gap; the card audits its own
+  rendered bytes and the CLI exits non-zero when they lose a fact. 37 keys declared in `e0.8`'s
+  schema, digest taken over all of them per ADR-004 §5.5, and ADR-002 §4.5 purity asserted by an
+  AST walk: `cli.py` is the only file in the package that reads the world.
+
 ### `reco-a0v` — rename and copy pairing: what the card asserts, and what it only guesses (`e2.4`)
 
 - **`e2.4` shipped, and the fact tier means what the spike said it had to mean.** `src/recommender/rename/`

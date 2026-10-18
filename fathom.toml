@@ -86,6 +86,16 @@ patterns = [".github/workflows/**", "benchmarks/budgets.json", "schemas/**", ".p
 # how this file stays honest about running none of them: a key that is set here would show up
 # in `policy` as `repo fathom.toml` rather than `built-in default`.
 
+# `e2.3`'s structure keys (`structure.move.*`, `structure.split.*`, `structure.churn.*`,
+# `structure.findings.*`, `structure.metrics.top_dirs`, `structure.code_classes`) are keys too,
+# and this repository runs all 37 at the built-in default for the same reason `[test]` and
+# `[non_code]` do: the built-ins are what `tests/test_structure_delta_contract.py` scores, and a
+# repo config that moved `structure.move.min_files` or a churn band would be tuning the tool to
+# pass its own corpus. `python3 -m recommender.structure definition` prints those numbers as
+# sentences and `... policy` prints which layer each came from — which is also how this file
+# stays honest about running none of them: a key set here would show up in `policy` as
+# `repo fathom.toml` rather than `built-in default`.
+
 [graph]
 ignored_dirs = ["node_modules", "__pycache__"]
 
