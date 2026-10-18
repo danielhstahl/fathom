@@ -156,12 +156,20 @@ def test_the_failing_gates_are_exactly_the_findings(report: dict, thresholds: di
     findings = {row["id"] for row in thresholds["gates"] if row["expected"] == "fail"}
     failing = {row["id"] for row in report["gates"] if not row["pass"]}
     assert findings == failing
+    # Two kinds of failing gate, and the difference matters. Three are findings about the cascade as it
+    # now ships: pair co-membership still misses a quarter of the pairs a reviewer would group
+    # (`shipped-pooled-pair-f1`), the split-everything baseline still wins the *real* stratum
+    # (`shipped-beats-all-split-real`), and confidence 1.0 on `hook` is still not a strategy on its own.
+    # Two are receipts: `recommendation-beats-shipped-*` measures the gap between the shipped cascade and
+    # the rule set spike `s2` recommended, and that gap is zero because `e1.13` and `e1.14` landed it.
+    # A landed recommendation turns its own comparison gate red; re-declaring it with the reason written
+    # out is what keeps the table a measurement instead of a story.
     assert findings == {
-        "shipped-pooled-boundary-f1",
         "shipped-pooled-pair-f1",
-        "shipped-beats-all-split-pooled",
         "shipped-beats-all-split-real",
         "hook-alone-is-not-a-strategy",
+        "recommendation-beats-shipped-pooled",
+        "recommendation-beats-shipped-real",
     }, "the findings are a named set; changing one means rewriting §18.1 and the concept document, not here"
 
 
@@ -169,7 +177,11 @@ def test_the_adr_and_the_concept_document_carry_the_findings_in_words(report: di
     """A gate that fails and is never mentioned in prose is a finding nobody will ever read."""
     adr, concept = ADR.read_text(), CONCEPT.read_text()
     assert "## 18." in adr and "spike `s2`" in adr
-    assert "0.832" in concept and "0.935" in concept, "the two numbers the whole spike turns on"
+    # The two numbers the whole spike turns on, and the number that says the recommendation landed:
+    # 0.832 was the shipped cascade when `s2` measured it, 0.935 is what it measures now.
+    assert "0.832" in concept and "0.935" in concept, (
+        "the before-and-after pair is the deliverable; if either disappeared the story got tidied")
+    assert "0.832" in adr, "§18 has to keep the number the spike reported, not only the re-measured one"
     for gate_id in ("shipped-pooled-boundary-f1", "shipped-pooled-pair-f1"):
         assert gate_id in concept, f"{gate_id} fails and is not named where the finding is written"
     assert "200" in concept and "Thirty-two" in concept, (
@@ -190,26 +202,38 @@ def test_all_three_named_strategies_are_scored_separately(report: dict) -> None:
             assert scope in row["results"], f"{sid} does not report the {scope} stratum"
 
 
-def test_the_published_0_90_bar_does_not_hold_and_nobody_may_quietly_move_it(report: dict) -> None:
-    """`e1.3`'s acceptance criterion is ≥ 0.90 pair F1 on *its* corpus; on the turn corpus it is 0.43."""
+def test_the_published_0_90_bar_is_not_moved_and_half_of_it_still_does_not_hold(report: dict) -> None:
+    """`e1.3`'s bar is ≥ 0.90; boundary F1 cleared it by landing recommendations, pair F1 still has not."""
     shipped = measure(report, "D-shipped")
-    assert shipped["boundary_f1"] < 0.90 and shipped["pair_f1"] < 0.90, (
-        "the cascade cleared the bar on the turn corpus, which means either the corpus changed or the bar "
-        "was met after all; either way §18.1 and the `expected: fail` gates must be rewritten, not passed "
-        "in silence")
+    # The bar is the bar: nobody gets to move it because it became inconvenient. What changed, and was
+    # re-declared in the same change that moved the cascade (`e1.13`), is that boundary F1 now clears it
+    # — because §18.2's two recommendations became rung 6 and the qualified turn comparison, not because
+    # the corpus or the threshold moved.
+    assert shipped["boundary_f1"] >= 0.90, (
+        "the shipped cascade stopped clearing the 0.90 boundary bar it now claims to: either a rung went "
+        "missing or §18.3's `shipped-pooled-boundary-f1` gate was re-declared in the wrong direction")
+    assert shipped["pair_f1"] < 0.90, (
+        "pair co-membership cleared 0.90 on the turn corpus, which `e1.3` never claimed and §18.1 never "
+        "argued; if it is really met, the finding and the gate both get rewritten, not passed in silence")
     assert measure(report, "D-shipped", "fixture")["pair_f1"] >= 0.85, (
         "the reason e1.3's own test still passes is that it measures the fixture stratum; if that stops "
         "being the explanation, the explanation in the gate list is wrong")
 
 
-def test_the_trivial_partition_beats_the_cascade_and_that_is_the_point(report: dict) -> None:
-    """Boundary F1 alone picks `git log --oneline`; this is the test that stops anyone citing it alone."""
+def test_the_trivial_partition_still_loses_and_that_is_the_point(report: dict) -> None:
+    """Boundary F1 alone used to pick `git log --oneline`; it no longer does, and the baseline still hides."""
     split, shipped = measure(report, "all-split"), measure(report, "D-shipped")
-    assert split["boundary_f1"] > shipped["boundary_f1"], (
-        "the split-everything baseline stopped beating the cascade; the headline finding needs re-arguing")
+    assert shipped["boundary_f1"] > split["boundary_f1"], (
+        "the split-everything baseline won the pooled headline again; either a rung was lost or the "
+        "argument in §18.1 reading 2 has to be re-made rather than re-used")
     assert split["pathologies_hidden_total"] >= 20, (
         "the baseline is supposed to hide a fifth of the corpus's annotated pathologies; if it does not "
         "any more, the hide measure has stopped discriminating")
+    # And the half of the finding that survived the recommendations: on the stratum nobody authored to be
+    # friendly, splitting every commit still edges the cascade out on the headline number while hiding
+    # five times as much. `shipped-beats-all-split-real` is the gate that says so.
+    assert measure(report, "all-split", "real")["boundary_f1"] >= \
+        measure(report, "D-shipped", "real")["boundary_f1"] - 0.05
 
 
 def test_hook_evidence_never_lies_and_is_not_a_strategy_on_its_own(report: dict) -> None:
@@ -263,13 +287,20 @@ def test_the_decision_to_leave_the_default_alone_is_true_of_the_shipped_surface(
     assert "30" in json.dumps(schema["properties"]["episode"]["properties"]["time_gap_minutes"])
 
 
-def test_the_recommendation_beats_the_cascade_where_it_matters(report: dict) -> None:
-    """Pooled *and* real: a recommendation that only works on authored histories is a corpus artefact."""
+def test_the_recommendation_is_now_the_shipped_cascade_and_scores_like_it(report: dict) -> None:
+    """What `e1.13`/`e1.14` owed `s2`: the recommendation became production, to the last decimal.
+
+    The gap used to be the argument (+0.103 pooled, +0.035 real). It is zero now, and this test is what
+    keeps that honest: the two strategies must score identically on every stratum, because `D-shipped` is
+    production and any drift between production and what the spike recommends shows up here as a
+    difference rather than as a paragraph.
+    """
     shipped, recommended = measure(report, "D-shipped"), measure(report, "F-hook-qualified")
-    assert recommended["boundary_f1"] - shipped["boundary_f1"] >= 0.05
-    assert (measure(report, "F-hook-qualified", "real")["boundary_f1"]
-            - measure(report, "D-shipped", "real")["boundary_f1"] >= 0.02)
-    assert recommended["pathologies_hidden_total"] <= shipped["pathologies_hidden_total"]
+    for scope in ("pooled", "real", "fixture", "authored"):
+        mine, theirs = measure(report, "D-shipped", scope), measure(report, "F-hook-qualified", scope)
+        assert mine == theirs, f"{scope}: the shipped cascade drifted from the recommendation it absorbed"
+    # The numbers the recommendation was bought with, still true of what ships.
+    assert shipped["boundary_f1"] >= 0.93 and shipped["pathologies_hidden_total"] <= 5
     assert recommended["turns_absorbed"] <= shipped["turns_absorbed"]
 
 

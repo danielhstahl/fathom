@@ -154,6 +154,11 @@ def episode_id(fingerprint: str, ordinal: int = 1) -> str:
 # fact about the commit graph, and `heuristic` for a guess Fathom is making on the
 # reviewer's behalf. The order *is* the tie-breaker (TB1): first opinion wins, no voting,
 # no score blending.
+#
+# This tuple is ADR-003 Appendix B's *closed vocabulary* — the eight values `episode.boundary_rule`
+# may hold, which is what both schema CHECK constraints and `fathom.toml`'s enum are diffed
+# against. The cascade has nine rungs over those eight values (see :data:`BOUNDARY_RUNGS`);
+# a rung that stores a name another rung already stores is a rung here and not a value here.
 BOUNDARY_RULES: Tuple[Tuple[int, str, str, float, str], ...] = (
     (1, "override", "human", 1.0,
      "fathom.toml forces a split before, or a merge with, this commit"),
@@ -175,10 +180,98 @@ BOUNDARY_RULES: Tuple[Tuple[int, str, str, float, str], ...] = (
      "nothing above fired and there is no previous commit on the lineage"),
 )
 
+#: The nine rungs of ADR-003 §4.2's cascade, in order, with the `boundary_rule` value each
+#: one *stores*. Nine rungs, eight stored names (ADR-003 §18.2 **D1**): the `subject-claim`
+#: rung reads the subject line the way `message-shape` does, so it stores `message-shape`
+#: and the two are told apart by the confidence beside them — 0.70 is a claim the author
+#: made, 0.40 is Fathom guessing from a convention. Minting a ninth `boundary_rule` value
+#: would have moved Appendix B, both schema copies and `fathom.toml` for a distinction the
+#: confidence already carries, which is the drift D1 refused.
+BOUNDARY_RUNGS: Tuple[Tuple[int, str, str, float, str, str], ...] = (
+    (1, "override", "human", 1.0,
+     "fathom.toml forces a split before, or a merge with, this commit", "override"),
+    (2, "hook", "evidence", 1.0,
+     "this commit and the previous one name harness turns, and they differ", "hook"),
+    (3, "trailer", "evidence", 0.9,
+     "an `Agent-Turn:` trailer (or the reserved `Fathom-Episode:`) names a different turn "
+     "than the previous commit's", "trailer"),
+    (4, "branch", "graph", 0.8,
+     "this commit or the previous one is a merge", "branch"),
+    (5, "author", "heuristic", 0.75,
+     "the author identity changed", "author"),
+    (6, "subject-claim", "heuristic", 0.7,
+     "both neighbours lead with a ticket token: equal keeps, different splits, one-sided is "
+     "no opinion", "message-shape"),
+    (7, "time-gap", "heuristic", 0.6,
+     "the gap since the previous commit exceeds `episode.time_gap_minutes`", "time-gap"),
+    (8, "message-shape", "heuristic", 0.4,
+     "the subject is a continuation (keeps) or a new conventional type elsewhere in the "
+     "tree after a short clock move (splits)", "message-shape"),
+    (9, "root", "heuristic", 0.5,
+     "nothing above fired and there is no previous commit on the lineage", "root"),
+)
+
+
 #: Which rule names may appear in `episode.boundaries`. `override` is excluded because it
 #: is a human act rather than a source, and `root` because it is the absence of a boundary.
 BOUNDARY_SOURCE_VOCABULARY = ("hook", "trailer", "author", "branch", "time-gap",
                               "message-shape")
+
+
+def _looks_like_tracker_id(candidate: str) -> bool:
+    """The shape test :func:`subject_claim` applies (ADR-003 §4.2 rung 6).
+
+    A tracker id is a *short prefix with a separator*, which is what makes a false positive rare enough to
+    trust the token as evidence: `reco-nts`, `ADR-005`, `JIRA-1234`, `#412` yes; `chore`, `contracts.yml`
+    and a subject that merely contains a hyphen no.
+    """
+    text = (candidate or "").strip()
+    if not text or len(text) > 24 or " " in text:
+        return False
+    if text.startswith("#"):
+        return text[1:].isdigit()
+    head, sep, tail = text.partition("-")
+    if not sep or not tail:
+        return False
+    return (2 <= len(head) <= 10 and head.isalpha() and head.isascii()
+            and len(tail) <= 12 and tail.isalnum() and tail.isascii())
+
+
+def subject_claim(subject: str) -> "str | None":
+    """The ticket a subject claims, if it claims one (ADR-003 §4.2 rung 6, §18.2 **D1**).
+
+    The mirror of `segment::subject_claim` in the Rust cascade, and the contract test runs the two over the
+    same table. A *leading* token only: a token found in prose about another ticket is not a claim about
+    this commit, which is the whole reason the rung is evidence rather than a guess.
+    """
+    text = (subject or "").strip()
+    for prefix in ("fixup! ", "squash! ", "amend! "):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+    if text.startswith("["):
+        candidate = text[1:].split("]")[0]
+    elif text.startswith("#"):
+        candidate = ""
+        for ch in text:
+            if not (ch.isalnum() or ch == "#"):
+                break
+            candidate += ch
+    else:
+        candidate = text.split(":")[0].strip()
+    return candidate.lower() if _looks_like_tracker_id(candidate) else None
+
+
+def claim_opinion(previous: str, commit: str) -> "bool | None":
+    """The rung's opinion about the boundary before `commit`; ``None`` is *no opinion* (TB6).
+
+    A token on one side only is a claim about that side, not a disagreement between the two — the corpus's
+    60 within-turn adjacencies are what that restraint buys (ADR-003 §18.2 **D1**: zero false splits).
+    """
+    mine, theirs = subject_claim(commit), subject_claim(previous)
+    if mine is None or theirs is None:
+        return None
+    return mine != theirs
+
 
 # Relink (ADR-003 §6): tried in this order, each tier consulted only for episodes the
 # stronger tiers did not already place. `method` is the value written to

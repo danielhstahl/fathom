@@ -9,7 +9,9 @@ Harness: `crates/fathom-analyze/examples/s2_spike.rs`. Report:
 Segmentation is the load-bearing assumption of the product: ADR-001 §4.1's episode, every finding's
 address, three of the five metric denominators. ADR-003 §4 published a cascade of eight boundary rules and
 four constants, called them "honest guesses with named prices", and handed the checking of them to this
-spike (§4.4, §13.7). The spike is done. Here is what the prices turned out to be.
+spike (§4.4, §13.7). The spike is done. Here is what the prices turned out to be — and note that two of its
+recommendations have since become the shipped cascade, so the cascade today has **nine rungs over eight
+stored `boundary_rule` values**, and the tables below are re-measured against it.
 
 **The short answer: the cascade's precision is fine and its recall is not, and the reason is that the git
 history of an agent loop almost never says where a turn started.** Every signal the ADR ranks below
@@ -22,11 +24,14 @@ heuristics alone reach 0.72 boundary F1, hook-driven boundaries reach 0.86 *if t
 and 0.34 with what ships today*, and trailers-plus-message-shape reach 0.09** because the trailer rung 3
 reads is written by nothing. The strongest single change is not one of the three: it is a fourth signal the
 corpus forced out of the data — **the ticket token in the subject line**, which a loop writes on every
-commit of a turn and changes between turns. Putting it above the clock moves the cascade from 0.832 to
-0.919 pooled boundary F1, from 0.897 to 0.931 on the real stratum, and cuts annotated pathologies hidden
-from 8 to 5, at the cost of zero false boundaries anywhere in the corpus. And the constant `s2` was
-supposed to move? **Leave it.** Its measured leverage is smaller than its documentation weight, and once a
-per-commit claim carries the boundary the clock stops being the instrument.
+commit of a turn and changes between turns. Putting it above the clock moved the cascade from 0.832 to
+0.919 pooled boundary F1, from 0.897 to 0.931 on the real stratum, and cut annotated pathologies hidden
+from 8 to 5, at the cost of zero false boundaries anywhere in the corpus — and that is no longer a
+hypothetical: the rung is §4.2's rung 6 and the shipped cascade measures **0.935** here, because
+`e1.13` (`reco-quk.2`) and `e1.14` (`reco-quk.3`) landed the token rung and the session-qualified turn id.
+And the constant `s2` was supposed to move? **Leave it.** Its measured leverage is smaller than its
+documentation weight, and once a per-commit claim carries the boundary the clock stops being the
+instrument.
 
 ## 1. The corpus, because a precision number without its strata is a mood
 
@@ -96,11 +101,11 @@ history).
 | `B-hook-then-git` | hook(commit) › branch › author › time-gap | 0.971 | 0.742 | 0.841 | 0.877 | 0.376 | 4/204 | 66/204 | 8/74 |
 | `C-trailer-shape` | trailer(Fathom-Episode) › message-shape | 0.643 | 0.050 | 0.092 | 0.063 | 0.084 | 5/204 | 195/204 | 4/74 |
 | `C-agent-trailer-shape` | trailer(Agent-Turn) › message-shape | 0.927 | 0.352 | 0.510 | 0.063 | 0.111 | 5/204 | 142/204 | 5/74 |
-| **`D-shipped`** | hook(commit,session-qualified) › trailer(Fathom-Episode) › branch › author › time-gap › message-shape | 0.940 | 0.775 | **0.849** | 0.897 | 0.445 | 9/204 | 57/204 | 8/74 |
-| `E-token-in-shape` | hook(commit) › trailer(Fathom-Episode) › branch › author › time-gap › ticket-token › message-shape | 0.947 | 0.879 | 0.912 | 0.915 | 0.688 | 9/204 | 36/204 | 8/74 |
-| `E-token-above-gap` | hook(commit) › trailer(Fathom-Episode) › branch › author › ticket-token › time-gap › message-shape | 0.964 | 0.879 | 0.919 | 0.931 | 0.714 | 6/204 | 36/204 | 5/74 |
-| `G-no-tb7` | hook(commit) › trailer(Fathom-Episode) › branch › author › ticket-token › time-gap › message-shape(keep-only) | 0.994 | 0.874 | 0.930 | 0.912 | 0.609 | 1/204 | 36/204 | 5/74 |
-| **`F-hook-qualified`** | hook(commit,session-qualified) › trailer(Fathom-Episode) › branch › author › ticket-token › time-gap › message-shape | 0.965 | 0.907 | **0.935** | 0.931 | 0.749 | 6/204 | 27/204 | 5/74 |
+| **`D-shipped`** | hook(commit,session-qualified) › trailer(Fathom-Episode) › branch › author › subject-claim › time-gap › message-shape | 0.965 | 0.907 | **0.935** | 0.931 | 0.749 | 6/204 | 27/204 | 5/74 |
+| `E-token-in-shape` | hook(commit) › trailer(Fathom-Episode) › branch › author › time-gap › subject-claim › message-shape | 0.947 | 0.879 | 0.912 | 0.915 | 0.688 | 9/204 | 36/204 | 8/74 |
+| `E-token-above-gap` | hook(commit) › trailer(Fathom-Episode) › branch › author › subject-claim › time-gap › message-shape | 0.964 | 0.879 | 0.919 | 0.931 | 0.714 | 6/204 | 36/204 | 5/74 |
+| `G-no-tb7` | hook(commit) › trailer(Fathom-Episode) › branch › author › subject-claim › time-gap › message-shape(keep-only) | 0.994 | 0.874 | 0.930 | 0.912 | 0.609 | 1/204 | 36/204 | 5/74 |
+| **`F-hook-qualified`** | hook(commit,session-qualified) › trailer(Fathom-Episode) › branch › author › subject-claim › time-gap › message-shape | 0.965 | 0.907 | **0.935** | 0.931 | 0.749 | 6/204 | 27/204 | 5/74 |
 
 `D-shipped` is ADR-003 §4.2 as built (`e1.3`); `F-hook-qualified` is the recommendation. Pooled is the whole corpus; `real F1` is Fathom's own git history alone; `pair F1` is co-membership, the measure `e1.3` gates the corpus at. Harness-identity check against `fathom_ingest::segment::segment()`: **True** on all 22 histories (0 mismatched).
 <!-- END GENERATED: s2_strategies -->
@@ -170,19 +175,23 @@ first candidate for removal, and the variant that deletes its split direction is
 histories stamp the unit of work into the subject (`reco-q6r: …`, `[JIRA-123] …`, `#412 …`). Two
 neighbouring commits whose tokens differ are almost always two turns; two whose tokens match are almost
 always one. ADR-003 TB6's discipline applies unchanged: a token on one side only is no opinion. Placed
-above the clock it is the best value per line of code in this whole spike: 0.919 pooled / 0.931 real, pathologies
-hidden 8 → 5, turns absorbed 66 → 36, and it fires on **zero** of the corpus's 60 within-turn adjacencies.
-Placed inside message-shape (below the clock) it is worth 0.912 — the whole value is in the precedence, because
-the boundaries it fixes are precisely the ones the clock currently gets wrong.
+above the clock it was the best value per line of code in this whole spike: 0.919 pooled / 0.931 real,
+pathologies hidden 8 → 5, turns absorbed 66 → 36, and it fires on **zero** of the corpus's 60 within-turn
+adjacencies. Placed inside message-shape (below the clock) it is worth 0.912 — the whole value is in the
+precedence, because the boundaries it fixes are precisely the ones the clock was getting wrong. **Landed**
+as `e1.13` (`reco-quk.2`): §4.2 rung 6, `segment::subject_claim` + `segment::claim_opinion`, stored as
+`message-shape` rather than as a ninth `boundary_rule` value, priced 0.7.
 
-**The recommendation, F-hook-qualified: 0.935 pooled / 0.931 real / 5 hidden**, i.e. the shipped cascade,
-plus the ticket token above the clock, plus turn ids compared session-qualified as ADR-005 §3.3 defines them.
+**The recommendation, F-hook-qualified: 0.935 pooled / 0.931 real / 5 hidden** — and since `e1.13` and
+`e1.14` that sentence has to be read in the past tense, because the recommendation *is* the shipped cascade
+(`D-shipped` scores the identical numbers, deliberately left as two rows so the identity stays checkable):
+the ticket token above the clock, plus turn ids compared session-qualified as ADR-005 §3.3 defines them.
 The last part is a defect fix, not a policy, and it has **landed** (`e1.14`, `reco-quk.3`): the trailer
 transport used to build `turn_id` without the session, so two turns in different sessions with the same
 index looked like one turn, and the corpus contains that collision (`s1:3` beside `s2:3`) rather than
 imagining it. `segment::qualify_turn` now qualifies what either transport hands over before any rule
-compares it, `D-shipped` in the harness measures the qualified comparison, and the remaining gap between
-`D-shipped` and this row is R1 alone.
+compares it, `D-shipped` in the harness measures the qualified comparison, and R1 was the last thing
+separating the two rows.
 
 ## 4. What a segmentation mistake hides, and what no segmentation can hide
 
@@ -210,7 +219,7 @@ operator's `force_split`, and the ADR should say so where it lists its own costs
 <!-- BEGIN GENERATED: s2_hides -->
 | strategy | hidden by split | hidden by merge | inherent to the definition | beyond segmentation | the hidden ones |
 | --- | --- | --- | --- | --- | --- |
-| `D-shipped` | 6 | 2 | 1 | 2 | `authored-human-interleave/t05` (silent_revert, split); `authored-human-interleave/t10` (same_turn_rework, split); `authored-long-and-short-clock/t02` (same_turn_rework, split); `authored-loop-wip-commits/t08` (same_turn_rework, split); `authored-review-cycle-resume/t08` (same_turn_rework, split); `fathom-self/t20` (same_turn_rework, split); … |
+| `D-shipped` | 3 | 2 | 1 | 2 | `authored-human-interleave/t05` (silent_revert, split); `authored-human-interleave/t10` (same_turn_rework, split); `authored-review-cycle-resume/t08` (same_turn_rework, split); `fathom-self/t14` (absorbed_turn, merge); `fathom-self/t31` (absorbed_turn, merge) |
 | `E-token-above-gap` | 3 | 2 | 1 | 2 | `authored-human-interleave/t05` (silent_revert, split); `authored-human-interleave/t10` (same_turn_rework, split); `authored-review-cycle-resume/t08` (same_turn_rework, split); `fathom-self/t14` (absorbed_turn, merge); `fathom-self/t31` (absorbed_turn, merge) |
 | `F-hook-qualified` | 3 | 2 | 1 | 2 | `authored-human-interleave/t05` (silent_revert, split); `authored-human-interleave/t10` (same_turn_rework, split); `authored-review-cycle-resume/t08` (same_turn_rework, split); `fathom-self/t14` (absorbed_turn, merge); `fathom-self/t31` (absorbed_turn, merge) |
 
@@ -224,20 +233,20 @@ This is the number `s2` existed to move. It should not move, and the reason is t
 <!-- BEGIN GENERATED: s2_gap_sweep -->
 | gap (min) | A: time+author pooled F1 | D-shipped pooled F1 | D-shipped real F1 | D-shipped pathologies hidden | D-shipped turns split | E (recommended) pooled F1 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 0.768 | 0.861 | 0.984 | 14 | 24 | 0.923 |
-| 2 | 0.722 | 0.834 | 0.968 | 15 | 22 | 0.918 |
-| 5 | 0.764 | 0.870 | 0.968 | 9 | 13 | **0.938** |
-| 10 | **0.786** | **0.871** | 0.951 | 8 | 10 | 0.938 |
-| 15 | 0.730 | 0.871 | 0.951 | 8 | 10 | 0.938 |
-| 20 | 0.730 | 0.856 | 0.933 | 8 | 9 | 0.926 |
-| 30 **← published default** | 0.722 | 0.849 | 0.897 | 8 | 9 | 0.919 |
-| 45 | 0.713 | 0.849 | 0.912 | 6 | 5 | 0.922 |
-| 60 | 0.704 | 0.842 | 0.873 | 6 | 5 | 0.922 |
-| 90 | 0.669 | 0.818 | 0.681 | 5 | 3 | 0.924 |
-| 120 | 0.644 | 0.799 | 0.524 | 5 | 3 | 0.924 |
-| 240 | 0.626 | 0.787 | 0.324 | 4 | 0 | 0.923 |
+| 1 | 0.768 | 0.938 | 1.000 | 7 | 12 | 0.923 |
+| 2 | 0.722 | 0.932 | 0.984 | 8 | 12 | 0.918 |
+| 5 | 0.764 | **0.953** | 0.984 | 5 | 7 | **0.938** |
+| 10 | **0.786** | 0.953 | 0.967 | 5 | 6 | 0.938 |
+| 15 | 0.730 | 0.953 | 0.967 | 5 | 6 | 0.938 |
+| 20 | 0.730 | 0.941 | 0.967 | 5 | 6 | 0.926 |
+| 30 **← published default** | 0.722 | 0.935 | 0.931 | 5 | 6 | 0.919 |
+| 45 | 0.713 | 0.937 | 0.931 | 5 | 4 | 0.922 |
+| 60 | 0.704 | 0.937 | 0.931 | 5 | 4 | 0.922 |
+| 90 | 0.669 | 0.940 | 0.912 | 4 | 2 | 0.924 |
+| 120 | 0.644 | 0.940 | 0.912 | 4 | 2 | 0.924 |
+| 240 | 0.626 | 0.939 | 0.873 | 4 | 0 | 0.923 |
 
-Bolded: each strategy's own pooled argmax — A at 10 min, the shipped cascade at 10 min, the recommendation at 5 min. The published default is 30.
+Bolded: each strategy's own pooled argmax — A at 10 min, the shipped cascade at 5 min, the recommendation at 5 min. The published default is 30.
 <!-- END GENERATED: s2_gap_sweep -->
 
 Four things fall out of the sweep. **(1)** The pooled optimum is **10 minutes** for both the time/author
@@ -294,7 +303,7 @@ product.
 
 | # | Decision or finding | Evidence | Owner |
 | --- | --- | --- | --- |
-| **R1** | **Add a `subject-claim` rung to the cascade, above `time-gap`**: neighbouring commits both carrying a ticket-shaped leading token, equal → keep, different → split; one-sided is no opinion (TB6). Fold it into `message-shape`'s stored rule name rather than minting a ninth `boundary_rule` value, so no schema enum moves | 0.832 → 0.919 pooled F1, 0.897 → 0.931 real, 8 → 5 hidden, 66 → 36 turns absorbed, 0 false boundaries | ADR-003 §18.2 D1 decided it; scheduled by `e0.12` as `e1.13` (`reco-quk.2`), which carries these numbers as its acceptance criteria |
+| **R1** | **Add a `subject-claim` rung to the cascade, above `time-gap`**: neighbouring commits both carrying a ticket-shaped leading token, equal → keep, different → split; one-sided is no opinion (TB6). Fold it into `message-shape`'s stored rule name rather than minting a ninth `boundary_rule` value, so no schema enum moves | 0.832 → 0.919 pooled F1, 0.897 → 0.931 real, 8 → 5 hidden, 66 → 36 turns absorbed, 0 false boundaries | **Landed** as `e1.13` (`reco-quk.2`): §4.2 rung 6, measured at 0.935 pooled / 0.931 real / 5 hidden / 27 turns absorbed — every number this row asked for, and better on two of them |
 | **R2** | **Do not move `episode.time_gap_minutes`.** 30 minutes stays the published default | measured pooled optimum 10 min, worth +0.022 F1 with no change in hidden pathologies; pushing on to 1 min buys no F1 and doubles them (8 → 14); with R1 the knob is flat within ±0.02 across 1–240 min | ADR-003 §4.4, §13.7 closed by this spike |
 | **R3** | **`hook` keeps rung 2 and is not sufficient alone**; the shipped cascade stays as its fallback, and `e6.1`'s event ingest is the highest-value segmentation work in the plan | hook precision 1.000 everywhere, recall 0.000 on real history as shipped, 0.747 with harness evidence; hook-only swallows 76 annotated turns via TB6 | `reco-q6r` states it; `reco-afh` (`e6.1`) owns the ingest, and `e0.12` raised it to **P1** on the strength of these numbers |
 | **R4** | **`turn_id` was not session-qualified in the shipped transport**, so two turns in different sessions with the same index read as one — ADR-003 §9.1 says a `turn_id` *is* `<session_id>:<turn_index>` | `F-hook-qualified` is +0.015 pooled F1 over `E-token-above-gap` and +0.031 on the fixture stratum, and the collision is a real history (`s1:3` beside `s2:3`) | **Landed** as `e1.14` (`reco-quk.3`): `segment::qualify_turn`, the join, sits below both rungs that compare a turn rather than in `episodes.rs` alone; writer side is `e6.1` |
@@ -344,11 +353,11 @@ the contract test. Five gates fail as claimed; those five are the spike's findin
 <!-- BEGIN GENERATED: s2_gates -->
 | gate | claim | measured | verdict |
 | --- | --- | --- | --- |
-| `shipped-pooled-boundary-f1` | the cascade ADR-003 §4.2 ships reaches 0.90 boundary F1 on the whole corpus, which is the bar `e1.3`'s acceptance criterion published | 0.849 | ❌ as claimed |
-| `shipped-pooled-pair-f1` | the same cascade also clears 0.90 on the pair co-membership measure `crates/fathom-analyze/tests/episodes.rs` gates the corpus at | 0.445 | ❌ as claimed |
-| `shipped-fixture-pair-f1` | …and the reason `e1.3`'s own test still passes: on the fixture stratum — the corpus that test measures — the cascade is at 0.86 pair F1, and it is the real and adversarial strata that move the pooled number | 0.981 | ✅ |
-| `shipped-beats-all-split-pooled` | the shipped cascade is not worse than the trivial 'every commit is its own episode' partition on the pooled corpus | -0.009 | ❌ as claimed |
-| `shipped-beats-all-split-real` | …and not worse than it on the real stratum either, which is the stratum nobody authored to be friendly | -0.072 | ❌ as claimed |
+| `shipped-pooled-boundary-f1` | the cascade ADR-003 §4.2 ships reaches 0.90 boundary F1 on the whole corpus, which is the bar `e1.3`'s acceptance criterion published. It was a *finding* (`expected: fail`, measured 0.832) until §18.2 D1 and D4 landed as §4.2 rungs 6 and the qualified comparison; re-declared `pass` by `e1.13` in the same change that moved the cascade, because a claim that starts passing has to be re-declared, not un-noticed | 0.935 | ✅ |
+| `shipped-pooled-pair-f1` | the same cascade also clears 0.90 on the pair co-membership measure `crates/fathom-analyze/tests/episodes.rs` gates the corpus at | 0.749 | ❌ as claimed |
+| `shipped-fixture-pair-f1` | …and the reason `e1.3`'s own test still passes: on the fixture stratum — the corpus that test measures — the cascade is above 0.85 pair F1, and it is the real and adversarial strata that move the pooled number. (`e1.13` re-declared the sentence rather than the number: the claim is about which stratum moves the pooled figure, and the ticket that landed the subject-claim rung re-measured this one at 0.98) | 0.981 | ✅ |
+| `shipped-beats-all-split-pooled` | the shipped cascade is not worse than the trivial 'every commit is its own episode' partition on the pooled corpus. This was finding `expected: fail` (-0.027): the trivial partition used to win the headline metric by eating the boundaries the clock missed. With a per-commit claim carrying the boundary the cascade now wins it, and the sentence below — that F1 alone cannot choose a rule set — is what survives of the finding | 0.076 | ✅ |
+| `shipped-beats-all-split-real` | …and not worse than it on the real stratum either, which is the stratum nobody authored to be friendly | -0.038 | ❌ as claimed |
 | `all-split-hides-pathologies` | the trivial partition that beats the cascade on F1 hides at least 20 of the corpus's annotated pathologies, which is the proof that boundary F1 alone cannot choose a rule set | 23 | ✅ |
 | `hook-evidence-never-lies` | turn evidence, where it exists, is never wrong: hook-over-harness-evidence precision is 0.99 or better pooled | 1.000 | ✅ |
 | `hook-alone-is-not-a-strategy` | the hook rule alone reaches 0.95 pooled boundary F1 — ADR-003 §4.2's confidence 1.0 invites the reading that it is nearly the whole answer, and the corpus refuses it: with no evidence on either side of a boundary TB6 keeps the commits together, and 76 annotated turns get swallowed | 0.855 | ❌ as claimed |
@@ -356,16 +365,16 @@ the contract test. Five gates fail as claimed; those five are the spike's findin
 | `trailer-rule-with-trailer` | ADR-003 rung 3 (`Fathom-Episode:` trailer, confidence 0.9) does work when somebody writes the trailer it reads: on the history authored to carry it, trailers-plus-message-shape reaches 0.90 boundary F1 | 1.000 | ✅ |
 | `trailer-rule-has-no-writers` | …and everywhere else that rule is dead: on the pooled corpus the trailer-plus-message-shape strategy finds at most 10 % of the true boundaries, because the trailer it reads is written by nothing in this repository or the fixture corpus | 0.050 | ✅ |
 | `gap-optimum-for-time-and-author` | for a time-and-author strategy the best gap on this corpus is at or below 20 minutes, so the published 30 is not the optimum the ADR guessed it was | 10 min (peak 0.786) | ✅ |
-| `gap-optimum-for-shipped` | the shipped cascade's pooled optimum gap is at or below 20 minutes too (measured 10), so `episode.time_gap_minutes` is not sitting near its optimum by luck — it is not near an optimum at all, and §4.4's 30 is a value whose measured leverage is smaller than its documentation weight | 10 min (peak 0.871) | ✅ |
+| `gap-optimum-for-shipped` | the shipped cascade's pooled optimum gap is at or below 20 minutes too, so `episode.time_gap_minutes` is not sitting near its optimum by luck — it is not near an optimum at all, and §4.4's 30 is a value whose measured leverage is smaller than its documentation weight. `e1.13` re-measured this after the subject-claim rung landed: the peak moved to 5 minutes and *up* to 0.953, which is §18.1 reading 3's finding with the instrument fixed — a stronger cascade is more sensitive to the clock, not less | 5 min (peak 0.953) | ✅ |
 | `recommendation-is-gap-insensitive` | the recommended rule set reaches 0.90 pooled boundary F1 at the published 30-minute gap, which is what licenses leaving the constant alone: once a per-commit claim carries the boundary, the clock stops being the instrument | 0.919 | ✅ |
-| `recommendation-beats-shipped-pooled` | the recommended rule set (subject-claim above the clock, session-qualified turn ids) beats the shipped cascade by at least 0.05 pooled boundary F1 — a change to a documented cascade has to pay for the churn | 0.085 | ✅ |
-| `recommendation-beats-shipped-real` | …and it beats it on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus | 0.035 | ✅ |
-| `recommendation-hides-no-more` | the recommended rule set hides no more annotated pathologies than the shipped cascade does pooled | -3 | ✅ |
-| `shipped-real-hide-bound` | the shipped cascade hides at most three annotated pathologies on the real stratum, which is where a hidden pathology is a real one | 3 | ✅ |
+| `recommendation-beats-shipped-pooled` | the recommended rule set (subject-claim above the clock, session-qualified turn ids) beats the shipped cascade by at least 0.05 pooled boundary F1. (A change to a documented cascade has to pay for the churn, and it did: +0.103 pooled. `e1.13` (`reco-quk.2`) landed the recommendation, so `D-shipped` *is* the strategy this gate compares against and the gap is zero by construction. Re-declared `expected: fail` as the receipt that it landed, and kept, with its 0.05 floor intact, as the price the *next* recommendation has to clear: this goes back to `pass` the day somebody finds a further change worth making, and it must not be deleted to make the table look clean) | 0.000 | ❌ as claimed |
+| `recommendation-beats-shipped-real` | …and it beats it on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus. (…and on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus. Zero now for the same reason and with the same meaning as `recommendation-beats-shipped-pooled`: the shipped cascade holds 0.931 on the real stratum, which is where the recommendation used to hold 0.931) | 0.000 | ❌ as claimed |
+| `recommendation-hides-no-more` | the recommended rule set hides no more annotated pathologies than the shipped cascade does pooled | 0 | ✅ |
+| `shipped-real-hide-bound` | the shipped cascade hides at most three annotated pathologies on the real stratum, which is where a hidden pathology is a real one | 2 | ✅ |
 | `recommendation-real-hide-bound` | the recommended rule set hides at most two on the real stratum, and both are of the kind no git signal can see | 2 | ✅ |
 | `subject-claim-makes-no-false-splits` | the subject-claim signal fires on at most 2 of the 60 within-turn adjacencies in the corpus: a leading tracker token is evidence rather than a guess, and it is the only added signal that costs no false boundaries | 0 | ✅ |
 | `message-shape-is-weak-as-advertised` | ADR-003 §4.3's claim that a conventional-type change is the weakest splitting signal in the set is confirmed rather than assumed: message-shape finds at most 5 true boundaries in the whole corpus | 1 | ✅ |
-| `recommendation-absorbs-fewer-turns` | the recommended rule set swallows fewer annotated turns than the shipped cascade, which is the failure direction that removes work from the queue | -30 | ✅ |
+| `recommendation-absorbs-fewer-turns` | the recommended rule set swallows fewer annotated turns than the shipped cascade, which is the failure direction that removes work from the queue | 0 | ✅ |
 
-5 of 22 gates fail, each declared `expected: fail` before the run: `shipped-pooled-boundary-f1`, `shipped-pooled-pair-f1`, `shipped-beats-all-split-pooled`, `shipped-beats-all-split-real`, `hook-alone-is-not-a-strategy`. Every gate came out as claimed (`gates_all_as_expected: true`).
+5 of 22 gates fail, each declared `expected: fail` before the run: `shipped-pooled-pair-f1`, `shipped-beats-all-split-real`, `hook-alone-is-not-a-strategy`, `recommendation-beats-shipped-pooled`, `recommendation-beats-shipped-real`. Every gate came out as claimed (`gates_all_as_expected: true`).
 <!-- END GENERATED: s2_gates -->

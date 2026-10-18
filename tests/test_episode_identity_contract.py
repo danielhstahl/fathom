@@ -50,6 +50,9 @@ RUST_VARIANT = {
     "trailer": "Trailer",
     "branch": "Branch",
     "author": "Author",
+    # ADR-003 18.2 D1: the `subject-claim` rung is a rung, not a vocabulary value — `Rule::SubjectClaim`
+    # stores the string `message-shape`, so the cascade has nine rungs over eight stored names.
+    "subject-claim": "SubjectClaim",
     "time-gap": "TimeGap",
     "message-shape": "MessageShape",
     "root": "Root",
@@ -271,10 +274,11 @@ def test_the_twin_rule_disambiguates_without_merging(adr):
 # 3. the boundary cascade: ADR table == Python table == Rust cascade == config
 # ---------------------------------------------------------------------------
 def test_the_boundary_table_is_the_cascade_is_the_config_vocabulary(adr):
+    """§4.2's table, §4.2's rungs, the Rust `decide()`, and the module doc: one cascade, four spellings."""
     table = adr_boundary_table()
-    assert [r["rule"] for r in table] == [r[1] for r in S.BOUNDARY_RULES], (
-        "ADR-003 §4.2 and `recommender.segment.BOUNDARY_RULES` disagree about the order")
-    assert [(r["conf"], r["class"]) for r in table] == [(r[3], r[2]) for r in S.BOUNDARY_RULES], (
+    assert [r["rule"] for r in table] == [r[1] for r in S.BOUNDARY_RUNGS], (
+        "ADR-003 §4.2 and `recommender.segment.BOUNDARY_RUNGS` disagree about the order")
+    assert [(r["conf"], r["class"]) for r in table] == [(r[3], r[2]) for r in S.BOUNDARY_RUNGS], (
         "the confidences or classes disagree")
 
     rust = _text(RUST_SEGMENT)
@@ -291,6 +295,27 @@ def test_the_boundary_table_is_the_cascade_is_the_config_vocabulary(adr):
         "decided the cascade wins, so fix the doc")
     assert [(r[1].strip("`"), r[2], float(r[4])) for r in doc_table] == [
         (r["rule"], r["class"], r["conf"]) for r in table]
+
+
+def test_the_cascade_has_nine_rungs_over_eight_stored_names(adr):
+    """ADR-003 §18.2 **D1**: the `subject-claim` rung folds into `message-shape` and mints nothing.
+
+    The fold is the whole point, so it is asserted as a fold: exactly one rung stores a name another rung
+    already stores, the name it stores is `message-shape`, the set of stored names is still Appendix B's
+    eight, and the Rust `as_str()` is where the fold lives rather than being scattered through the caller.
+    """
+    stored = [r[5] for r in S.BOUNDARY_RUNGS]
+    folded = [(r[1], r[5]) for r in S.BOUNDARY_RUNGS if r[5] != r[1]]
+    assert folded == [("subject-claim", "message-shape")], (
+        "a second folded rung, or a renamed one, means Appendix B moved and both schema copies move with it")
+    assert sorted(set(stored)) == sorted(r[1] for r in S.BOUNDARY_RULES), (
+        "the rungs store a vocabulary Appendix B does not publish")
+    assert len(S.BOUNDARY_RUNGS) == len(S.BOUNDARY_RULES) + 1
+    assert "Rule::SubjectClaim => \"message-shape\"" in _text(RUST_SEGMENT), (
+        "the fold has to be in `Rule::as_str()`, where every writer of `boundary_rule` reads it")
+    assert "subject-claim" in adr and "stored as `message-shape`" in adr.lower().replace(
+        "**stored as `message-shape`**", "stored as `message-shape`"), (
+        "§4.2's table must say out loud that rung 6 stores someone else's name")
 
 
 def test_the_boundary_order_is_not_configurable_but_is_one_vocabulary(adr):
@@ -317,6 +342,43 @@ def test_the_boundary_order_is_not_configurable_but_is_one_vocabulary(adr):
     cli = _text(ROOT / "crates" / "fathom-cli" / "src" / "segment.rs")
     assert "ADR-003" in cli and "not applied" in cli, (
         "the notice that refuses a reordered cascade no longer names where the decision lives")
+
+
+# The §4.2 rung-6 table, in one place. `segment::subject_claim` asserts it as a Rust test and
+# `recommender.segment.subject_claim` asserts it here; the presence check below is what stops the two
+# tables drifting apart, which is how `turn_id` came to mean two things once already.
+SUBJECT_CLAIM_CASES = [
+    ("reco-nts: a boundary a human draws is configuration", "reco-nts"),
+    ("ADR-005: harness integration contract", "adr-005"),
+    ("fixup! reco-a11: wip, the markdown writer", "reco-a11"),
+    ("[JIRA-1234] the export verb", "jira-1234"),
+    ("#412 add the thing", "#412"),
+    ("chore: keep tmp.txt untracked", None),
+    ("contracts.yml: grep the keyprobe's real machine keys", None),
+    ("docs: ADR-001 product thesis (reco-982)", None),
+    ("Round 1: settle the window and the spin", None),
+    ("Add the scheduler and the queue", None),
+    ("chore(deps): bump serde to 1.0.219", None),
+    ('revert "feat: the export footer"', None),
+]
+
+
+def test_the_subject_claim_rule_is_one_rule_in_two_languages():
+    """ADR-003 §18.2 **D1**: the rung is the same rule in Rust and in the reference, not two opinions."""
+    for subject, expected in SUBJECT_CLAIM_CASES:
+        assert S.subject_claim(subject) == expected, subject
+    assert S.claim_opinion("reco-a: x", "reco-a: y") is False
+    assert S.claim_opinion("reco-a: x", "reco-b: y") is True
+    assert S.claim_opinion("reco-a: x", "no token here") is None, "TB6: one side is no opinion"
+    rust = _text(RUST_SEGMENT)
+    assert "pub fn subject_claim(subject: &str)" in rust and "pub fn claim_opinion(" in rust
+    for subject, _ in SUBJECT_CLAIM_CASES:
+        needle = subject.replace('"', '\\"')
+        assert needle in rust, (
+            "the Rust cascade no longer asserts %r, so the two implementations are asserting two tables"
+            % subject)
+    # And the fold is one fold: `subject-claim` is rung 6 of §4.2 and stores rung 8's name.
+    assert S.BOUNDARY_RUNGS[5][1] == "subject-claim" and S.BOUNDARY_RUNGS[5][3] == 0.7
 
 
 def test_the_gap_default_is_one_number_in_every_place_that_prints_it():

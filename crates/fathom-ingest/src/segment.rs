@@ -21,13 +21,19 @@
 //! | 3 | `trailer` | evidence | An `Agent-Turn:` trailer (or the reserved `Fathom-Episode:`) names a different turn than the previous commit's | 0.9 |
 //! | 4 | `branch` | graph | The commit is a merge (or the previous one was): a branch boundary is a reviewable unit | 0.8 |
 //! | 5 | `author` | heuristic | The author identity changed | 0.75 |
-//! | 6 | `time-gap` | heuristic | The gap since the previous commit exceeds [`Rules::gap_millis`] | 0.6 |
-//! | 7 | `message-shape` | heuristic | The subject is a *continuation* (`wip`, `fixup!`, "address review") or a new conventional type | 0.4 |
-//! | 8 | `root` | heuristic | Nothing above fired and there is no previous commit | 0.5 |
+//! | 6 | `subject-claim` | heuristic | Both neighbours lead with a ticket token: equal keeps, different splits, one-sided is no opinion | 0.7 |
+//! | 7 | `time-gap` | heuristic | The gap since the previous commit exceeds [`Rules::gap_millis`] | 0.6 |
+//! | 8 | `message-shape` | heuristic | The subject is a *continuation* (`wip`, `fixup!`, "address review") or a new conventional type | 0.4 |
+//! | 9 | `root` | heuristic | Nothing above fired and there is no previous commit | 0.5 |
 //!
 //! Rules 1–3 are what someone *stated* (a config line, an event, a trailer); 4 is a fact about the graph;
-//! 5–7 are guesses. Confidence is what that distinction prices: an episode whose boundary says
+//! 5–8 are guesses. Confidence is what that distinction prices: an episode whose boundary says
 //! `message-shape 0.40` is one the reviewer may want to re-cut, and the card says so (ADR-003 §4.7).
+//!
+//! Nine rungs, eight stored rule names: rung 6 is read out of the subject line like rung 8 is, so it
+//! *stores* `message-shape` and the two are told apart by the confidence beside them — 0.70 is a claim the
+//! author made, 0.40 is Fathom guessing from a convention. Appendix B's vocabulary stayed closed on
+//! purpose ([`Rule::SubjectClaim`], ADR-003 §18.2 **D1**).
 //!
 //! # Identity, and why a rebase does not orphan a review
 //!
@@ -129,6 +135,12 @@ pub enum Rule {
     Branch,
     /// The author changed.
     Author,
+    /// Both neighbours' subjects claim a ticket: the same one they keep, different ones split.
+    ///
+    /// Stored as `message-shape`, not as a ninth `boundary_rule` value: this is a fact read out of the
+    /// subject line, which is the class of evidence rung 8 already names, and ADR-003 Appendix B is closed
+    /// (§18.2 **D1**). The confidence is what distinguishes them — 0.7 for a claim, 0.4 for a guess.
+    SubjectClaim,
     /// The gap since the previous commit exceeded the threshold.
     TimeGap,
     /// The subject line's shape: a continuation, or a new conventional type.
@@ -147,6 +159,7 @@ impl Rule {
             Rule::Override => "override",
             Rule::Branch => "branch",
             Rule::Author => "author",
+            Rule::SubjectClaim => "message-shape",
             Rule::TimeGap => "time-gap",
             Rule::MessageShape => "message-shape",
             Rule::Root => "root",
@@ -572,6 +585,81 @@ pub fn is_continuation(subject: &str, rules: &Rules) -> bool {
     })
 }
 
+/// The ticket a subject claims, if it claims one (ADR-003 §4.2 rung 6, §18.2 **D1**).
+///
+/// This is the one signal the corpus forced out of the data rather than one the ADR thought of first: a
+/// loop-driven history writes the ticket it is working on at the front of every commit of the turn and
+/// changes it between turns, which makes a leading tracker token a *claim the author made about this
+/// commit* (ADR-001 §4.3 counts a commit message as a claim about work) rather than a pattern Fathom
+/// guessed. That is what licenses pricing it at 0.7 — above every clock, below every declared rung.
+///
+/// Deliberately narrow: a *leading* token, not a substring anywhere, because a token found in prose about a
+/// different ticket is not a claim about this commit. `reco-q6r: …`, `[JIRA-123] …`, `#412 …` qualify;
+/// `chore`, `contracts.yml` and a subject that merely contains a hyphen do not.
+#[must_use]
+pub fn subject_claim(subject: &str) -> Option<String> {
+    let text = subject.trim();
+    let cleaned = text
+        .trim_start_matches("fixup! ")
+        .trim_start_matches("squash! ")
+        .trim_start_matches("amend! ");
+    let candidate = if let Some(rest) = cleaned.strip_prefix('[') {
+        rest.split(']').next().unwrap_or_default().to_owned()
+    } else if cleaned.starts_with('#') {
+        cleaned
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '#')
+            .collect::<String>()
+    } else {
+        cleaned
+            .split(':')
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .to_owned()
+    };
+    if looks_like_tracker_id(&candidate) {
+        Some(candidate.to_lowercase())
+    } else {
+        None
+    }
+}
+
+/// The shape test [`subject_claim`] applies: a short prefix with a separator, which is what makes a false
+/// positive rare enough to trust the token as evidence at all.
+#[must_use]
+fn looks_like_tracker_id(candidate: &str) -> bool {
+    let text = candidate.trim();
+    if text.is_empty() || text.len() > 24 || text.contains(' ') {
+        return false;
+    }
+    if let Some(rest) = text.strip_prefix('#') {
+        return !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit());
+    }
+    let mut parts = text.splitn(2, '-');
+    let head = parts.next().unwrap_or_default();
+    let tail = parts.next().unwrap_or_default();
+    if tail.is_empty() {
+        return false;
+    }
+    head.len() >= 2
+        && head.len() <= 10
+        && head.chars().all(|c| c.is_ascii_alphabetic())
+        && tail.len() <= 12
+        && tail.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+/// The subject-claim rung's opinion about the boundary before `commit`: `None` is "no opinion", which is
+/// TB6 read honestly — a token on one side only is a claim about that side, not a disagreement between
+/// the two, and the corpus's 60 within-turn adjacencies are what that restraint buys.
+#[must_use]
+pub fn claim_opinion(previous: &str, commit: &str) -> Option<bool> {
+    match (subject_claim(commit), subject_claim(previous)) {
+        (Some(mine), Some(theirs)) => Some(mine != theirs),
+        _ => None,
+    }
+}
+
 /// Do two commits touch at least one path in common?
 #[must_use]
 pub fn shares_path(previous: &CommitFacts, commit: &CommitFacts) -> bool {
@@ -825,11 +913,19 @@ pub fn decide(previous: &CommitFacts, commit: &CommitFacts, rules: &Rules) -> (b
     if commit.author_identity() != previous.author_identity() {
         return (true, Rule::Author, 0.75);
     }
-    // 6. A gap in time.
+    // 6. What the author of both commits *said* they were working on. Two loop-driven commits that each
+    //    lead with a ticket token are one turn when they name the same ticket and two when they do not;
+    //    a token on one side alone is no opinion at all (TB6). Above the clock on purpose — a claim the
+    //    author made outranks a proxy for "a new decision", which is all the gap is (ADR-003 §4.3, §18.2
+    //    **D1**). It stores `message-shape`: a subject-line claim is not a ninth vocabulary value.
+    if let Some(splits) = claim_opinion(&previous.subject, &commit.subject) {
+        return (splits, Rule::SubjectClaim, 0.7);
+    }
+    // 7. A gap in time.
     if commit.author_utc - previous.author_utc > rules.gap_millis {
         return (true, Rule::TimeGap, 0.6);
     }
-    // 7. Message shape: a continuation keeps, a change of conventional type splits.
+    // 8. Message shape: a continuation keeps, a change of conventional type splits.
     if is_continuation(&commit.subject, rules) {
         return (false, Rule::MessageShape, 0.4);
     }
@@ -1078,6 +1174,109 @@ mod tests {
             !keeps,
             "the same session's turn 3 is the same turn whatever it touched"
         );
+    }
+
+    #[test]
+    fn two_commits_claiming_one_ticket_are_one_episode() {
+        // ADR-003 §4.2 rung 6, §18.2 **D1** (`reco-quk.2`). A loop's history: every commit leads with the
+        // ticket it is working on. Two commits naming one ticket are one turn however few files they share;
+        // the next ticket is the next episode, minutes later and without the clock ever being consulted.
+        let claim = |oid: &str, minute: i64, subject: &str, paths: &[&str]| CommitFacts {
+            oid: oid.to_owned(),
+            author_name: "pi-agent".to_owned(),
+            author_email: "pi-agent@example.invalid".to_owned(),
+            author_utc: minute * 60_000,
+            subject: subject.to_owned(),
+            paths: paths.iter().map(|p| (*p).to_owned()).collect(),
+            n_files: paths.len() as i64,
+            ..CommitFacts::default()
+        };
+        let commits = vec![
+            claim("c1", 0, "reco-e61: the reader", &["src/reader.rs"]),
+            claim(
+                "c2",
+                4,
+                "reco-e61: (part 2) the reader",
+                &["src/reader_cache.rs"],
+            ),
+            claim("c3", 8, "reco-e62: the writer", &["src/writer.rs"]),
+        ];
+        let episodes = segment(&commits, &Rules::default());
+        assert_eq!(
+            episodes.len(),
+            2,
+            "one ticket, one episode; the next ticket, the next one: {episodes:?}"
+        );
+        assert_eq!(episodes[0].n_commits(), 2);
+        let second = &episodes[1];
+        assert_eq!(second.rule, Rule::SubjectClaim);
+        assert!(
+            (second.confidence - 0.7).abs() < f64::EPSILON,
+            "a claim is priced 0.7 — above the clock, below every declared rung"
+        );
+        assert_eq!(
+            second.rule.as_str(),
+            "message-shape",
+            "and it *stores* message-shape"
+        );
+    }
+
+    #[test]
+    fn a_token_on_one_side_only_is_no_opinion() {
+        // TB6, and the reason the rung costs nothing on the corpus's 60 within-turn adjacencies: a claim
+        // about one commit is not a disagreement between two.
+        let plain = CommitFacts {
+            oid: "c1".to_owned(),
+            author_name: "pi-agent".to_owned(),
+            author_email: "pi-agent@example.invalid".to_owned(),
+            author_utc: 0,
+            subject: "the reader".to_owned(),
+            paths: vec!["src/reader.rs".to_owned()],
+            ..CommitFacts::default()
+        };
+        let claimed = CommitFacts {
+            subject: "reco-e61: the reader".to_owned(),
+            ..plain.clone()
+        };
+        assert_eq!(claim_opinion(&plain.subject, &claimed.subject), None);
+        assert_eq!(claim_opinion(&claimed.subject, &plain.subject), None);
+        assert_eq!(claim_opinion("reco-a: x", "reco-b: y"), Some(true));
+        assert_eq!(claim_opinion("reco-a: x", "reco-a: y"), Some(false));
+    }
+
+    #[test]
+    fn subject_claim_reads_a_leading_token_and_nothing_else() {
+        // The table ADR-003 §18.2 D1 measured, and the one `src/recommender/segment.py::subject_claim`
+        // is run against by `test_the_subject_claim_rule_is_one_rule_in_two_languages`. The false-positive
+        // half is the load-bearing half: a rung that reads `chore:` or `contracts.yml` as a ticket would
+        // split one turn's commits, which is the direction that hides work rather than showing it.
+        let cases: &[(&str, Option<&str>)] = &[
+            (
+                "reco-nts: a boundary a human draws is configuration",
+                Some("reco-nts"),
+            ),
+            ("ADR-005: harness integration contract", Some("adr-005")),
+            (
+                "fixup! reco-a11: wip, the markdown writer",
+                Some("reco-a11"),
+            ),
+            ("[JIRA-1234] the export verb", Some("jira-1234")),
+            ("#412 add the thing", Some("#412")),
+            ("chore: keep tmp.txt untracked", None),
+            ("contracts.yml: grep the keyprobe's real machine keys", None),
+            ("docs: ADR-001 product thesis (reco-982)", None),
+            ("Round 1: settle the window and the spin", None),
+            ("Add the scheduler and the queue", None),
+            ("chore(deps): bump serde to 1.0.219", None),
+            ("revert \"feat: the export footer\"", None),
+        ];
+        for (subject, expected) in cases {
+            assert_eq!(
+                subject_claim(subject).as_deref(),
+                *expected,
+                "subject_claim({subject:?})"
+            );
+        }
     }
 
     #[test]

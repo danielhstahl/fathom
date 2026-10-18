@@ -16,6 +16,29 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-quk.2` — a `subject-claim` rung: two commits claiming one ticket are one episode (`e1.13`)
+
+- **The strongest signal spike `s2` found is now a shipped rule.** Two neighbouring commits that both lead
+  with a tracker token (`reco-q6r: …`, `[JIRA-123] …`, `#412 …`) are one episode when the token matches and
+  two when it differs; a token on one side only is no opinion at all (TB6). ADR-003 §18.2 **D1** decided it
+  from 204 hand-annotated turns; `e1.13` landed it as §4.2 rung 6 at confidence 0.7, above every clock and
+  below every declared rung, because a claim the author made about the commit outranks a proxy for "a new
+  decision".
+- **The shipped cascade is what `s2` recommended.** Pooled boundary F1 **0.849 → 0.935**, real-stratum
+  **0.897 → 0.931**, annotated turns swallowed **57 → 27**, annotated pathologies hidden **8 → 5**, false
+  boundaries **0** — and the spike's `D-shipped` strategy became `F-hook-qualified` to the last decimal,
+  which `test_the_recommendation_is_now_the_shipped_cascade_and_scores_like_it` holds in place. The spike's
+  own token parser was deleted in favour of calling production's, so nothing scores a copy of the rule.
+- **Nine rungs, eight stored names.** Rung 6 stores `message-shape`, so ADR-003 Appendix B, both schema
+  copies, `schemas/fathom.schema.json` and `fathom.toml` all stayed where they were; the confidence is what
+  tells a 0.70 claim from a 0.40 guess. `test_the_cascade_has_nine_rungs_over_eight_stored_names` asserts
+  the fold itself, so a second folded rung cannot slip in unnoticed.
+- **Four spike gates re-declared in the same change, in both directions.** Two failing claims started
+  passing (`shipped-pooled-boundary-f1`, `shipped-beats-all-split-pooled`) and two passing ones started
+  failing (`recommendation-beats-shipped-*`, now measuring a gap of zero because the recommendation landed).
+  A gate that changes verdict quietly is how a measurement becomes a story, so each was re-declared with the
+  reason written into the claim.
+
 ### `reco-quk.3` — a turn id is `<session_id>:<turn_index>`, on both transports (`e1.14`)
 
 - **Two sessions' turn 3 are two turns.** `fathom_ingest::segment::qualify_turn` qualifies whatever a

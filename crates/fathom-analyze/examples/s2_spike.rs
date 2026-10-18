@@ -378,81 +378,27 @@ impl Strategy {
                 Rung::TimeGap => "time-gap",
                 Rung::MessageShape => "message-shape",
                 Rung::MessageShapeKeep => "message-shape(keep-only)",
-                Rung::TokenInShape => "ticket-token",
-                Rung::TokenAboveGap => "ticket-token",
+                Rung::TokenInShape => "subject-claim",
+                Rung::TokenAboveGap => "subject-claim",
             })
             .collect::<Vec<_>>()
             .join(" › ")
     }
 }
 
-/// The ticket a subject claims, if it claims one: the leading tracker token (`reco-q6r:`, `[JIRA-123]`,
-/// `#412 `) that a loop-driven history puts on every commit of a turn and changes between turns.
+/// The ticket a subject claims — **production's**, not the spike's.
 ///
-/// Deliberately narrow — a leading token, not a substring anywhere — because the value of this signal is
-/// that it is a *claim the author made about this commit*, and a token found in prose about another ticket
-/// is not that.
+/// The spike's rule about itself is that it measures the shipped cascade rather than an idea of it (see the
+/// production-equality check in `main`), and a second copy of the token parser would have been scoring the
+/// copy. ADR-003 §18.2 **D1** decided the rung; `segment::subject_claim` is the rung.
 fn ticket_token(subject: &str) -> Option<String> {
-    let text = subject.trim();
-    let cleaned = text
-        .trim_start_matches("fixup! ")
-        .trim_start_matches("squash! ")
-        .trim_start_matches("amend! ");
-    let candidate = if let Some(rest) = cleaned.strip_prefix('[') {
-        rest.split(']').next().unwrap_or_default().to_owned()
-    } else if cleaned.starts_with('#') {
-        cleaned
-            .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || *c == '#')
-            .collect::<String>()
-    } else {
-        cleaned
-            .split(':')
-            .next()
-            .unwrap_or_default()
-            .trim()
-            .to_owned()
-    };
-    let looks_like_tracker_id = looks_like_tracker_id(&candidate);
-    if looks_like_tracker_id {
-        Some(candidate.to_lowercase())
-    } else {
-        None
-    }
-}
-
-/// The shape test `ticket_token` applies: `reco-nts`, `ADR-005`, `JIRA-1234`, `#412`, and not `chore`,
-/// `contracts.yml` or a subject that merely happens to contain a hyphen. A tracker id is a *short prefix
-/// with a separator*, which is what makes a false positive rare enough to trust as evidence.
-fn looks_like_tracker_id(candidate: &str) -> bool {
-    let text = candidate.trim();
-    if text.is_empty() || text.len() > 24 || text.contains(' ') {
-        return false;
-    }
-    if let Some(rest) = text.strip_prefix('#') {
-        return !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit());
-    }
-    let mut parts = text.splitn(2, '-');
-    let head = parts.next().unwrap_or_default();
-    let tail = parts.next().unwrap_or_default();
-    if tail.is_empty() {
-        return false;
-    }
-    head.len() >= 2
-        && head.len() <= 10
-        && head.chars().all(|c| c.is_ascii_alphabetic())
-        && tail.len() <= 12
-        && tail.chars().all(|c| c.is_ascii_alphanumeric())
+    segment::subject_claim(subject)
 }
 
 /// Does this subject carry the shape of a ticket token at all (used to say "no evidence" honestly: a token
 /// that is absent is not a token that disagrees — ADR-003 TB6).
 fn token_opinion(previous: &str, commit: &str) -> Option<bool> {
-    let (mine, theirs) = (ticket_token(commit), ticket_token(previous));
-    match (mine, theirs) {
-        (Some(mine), Some(theirs)) => Some(mine != theirs),
-        _ => None,
-    }
+    segment::claim_opinion(previous, commit)
 }
 
 /// The turn id two commits name, session-qualified when a session is known (ADR-003 §9.1's
@@ -938,6 +884,7 @@ const SHIPPED: &[Rung] = &[
     Rung::TrailerFathom,
     Rung::Branch,
     Rung::Author,
+    Rung::TokenAboveGap,
     Rung::TimeGap,
     Rung::MessageShape,
 ];
@@ -1010,7 +957,7 @@ fn strategies() -> Vec<Strategy> {
         Strategy {
             id: "D-shipped",
             title: "the cascade ADR-003 §4.2 ships, at its published constants",
-            rationale: "the incumbent: hook(session-qualified) › trailer › branch › author › time-gap(30) › message-shape.",
+            rationale: "the incumbent: hook(session-qualified) › trailer › branch › author › subject-claim › time-gap(30) › message-shape.",
             rungs: SHIPPED,
             gap_minutes: 30,
         },

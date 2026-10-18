@@ -1,12 +1,12 @@
 {
- "what": "The gates spike s2 (`reco-q6r`) holds its own measurement to. ADR-003 §4.4 publishes constants it calls 'honest guesses with named prices' and §13.7 defers every one of them to this spike; a gate here is one of those prices written as a number, so that 'did the measurement clear what the document claims' is a lookup instead of a reading-comprehension test. `cargo run -p fathom-analyze --example s2_spike -- --check` re-measures and re-scores them; `tools/gen_segment_tables.py` prints this table into docs/concepts/episode-segmentation.md so the prose cannot disagree with it.",
- "how_gates_are_set": "Each claim is stated as what ADR-003 or `e1.3` already published, or as the floor a recommendation has to clear to be worth making at all. A gate that fails is not adjusted to fit the measurement: it is reported failing, and the recommendation has to say what it costs. Two gates (`hook-evidence-*`) are photographs of a world where `e6.1`'s event ingest does not exist yet — they are written to be retired by the ticket that lands it, which is recorded in ADR-003.",
- "scopes": "pooled | real | fixture | authored | history:<name> — `real` is Fathom's own history, the only stratum whose clock and subjects were not authored for the corpus, and the stratum a recommendation has to survive on its own.",
+ "what": "The gates spike s2 (`reco-q6r`) holds its own measurement to. ADR-003 \u00a74.4 publishes constants it calls 'honest guesses with named prices' and \u00a713.7 defers every one of them to this spike; a gate here is one of those prices written as a number, so that 'did the measurement clear what the document claims' is a lookup instead of a reading-comprehension test. `cargo run -p fathom-analyze --example s2_spike -- --check` re-measures and re-scores them; `tools/gen_segment_tables.py` prints this table into docs/concepts/episode-segmentation.md so the prose cannot disagree with it.",
+ "how_gates_are_set": "Each claim is stated as what ADR-003 or `e1.3` already published, or as the floor a recommendation has to clear to be worth making at all. A gate that fails is not adjusted to fit the measurement: it is reported failing, and the recommendation has to say what it costs. Two gates (`hook-evidence-*`) are photographs of a world where `e6.1`'s event ingest does not exist yet \u2014 they are written to be retired by the ticket that lands it, which is recorded in ADR-003.",
+ "scopes": "pooled | real | fixture | authored | history:<name> \u2014 `real` is Fathom's own history, the only stratum whose clock and subjects were not authored for the corpus, and the stratum a recommendation has to survive on its own.",
  "gates": [
   {
    "id": "shipped-pooled-boundary-f1",
-   "claim": "the cascade ADR-003 §4.2 ships reaches 0.90 boundary F1 on the whole corpus, which is the bar `e1.3`'s acceptance criterion published",
-   "expected": "fail",
+   "claim": "the cascade ADR-003 \u00a74.2 ships reaches 0.90 boundary F1 on the whole corpus, which is the bar `e1.3`'s acceptance criterion published. It was a *finding* (`expected: fail`, measured 0.832) until \u00a718.2 D1 and D4 landed as \u00a74.2 rungs 6 and the qualified comparison; re-declared `pass` by `e1.13` in the same change that moved the cascade, because a claim that starts passing has to be re-declared, not un-noticed",
+   "expected": "pass",
    "strategy": "D-shipped",
    "scope": "pooled",
    "metric": "boundary_f1",
@@ -23,7 +23,7 @@
   },
   {
    "id": "shipped-fixture-pair-f1",
-   "claim": "…and the reason `e1.3`'s own test still passes: on the fixture stratum — the corpus that test measures — the cascade is at 0.86 pair F1, and it is the real and adversarial strata that move the pooled number",
+   "claim": "\u2026and the reason `e1.3`'s own test still passes: on the fixture stratum \u2014 the corpus that test measures \u2014 the cascade is above 0.85 pair F1, and it is the real and adversarial strata that move the pooled number. (`e1.13` re-declared the sentence rather than the number: the claim is about which stratum moves the pooled figure, and the ticket that landed the subject-claim rung re-measured this one at 0.98)",
    "expected": "pass",
    "strategy": "D-shipped",
    "scope": "fixture",
@@ -32,8 +32,8 @@
   },
   {
    "id": "shipped-beats-all-split-pooled",
-   "claim": "the shipped cascade is not worse than the trivial 'every commit is its own episode' partition on the pooled corpus",
-   "expected": "fail",
+   "claim": "the shipped cascade is not worse than the trivial 'every commit is its own episode' partition on the pooled corpus. This was finding `expected: fail` (-0.027): the trivial partition used to win the headline metric by eating the boundaries the clock missed. With a per-commit claim carrying the boundary the cascade now wins it, and the sentence below \u2014 that F1 alone cannot choose a rule set \u2014 is what survives of the finding",
+   "expected": "pass",
    "kind": "delta",
    "strategy_a": "D-shipped",
    "strategy_b": "all-split",
@@ -43,7 +43,7 @@
   },
   {
    "id": "shipped-beats-all-split-real",
-   "claim": "…and not worse than it on the real stratum either, which is the stratum nobody authored to be friendly",
+   "claim": "\u2026and not worse than it on the real stratum either, which is the stratum nobody authored to be friendly",
    "expected": "fail",
    "kind": "delta",
    "strategy_a": "D-shipped",
@@ -72,7 +72,7 @@
   },
   {
    "id": "hook-alone-is-not-a-strategy",
-   "claim": "the hook rule alone reaches 0.95 pooled boundary F1 — ADR-003 §4.2's confidence 1.0 invites the reading that it is nearly the whole answer, and the corpus refuses it: with no evidence on either side of a boundary TB6 keeps the commits together, and 76 annotated turns get swallowed",
+   "claim": "the hook rule alone reaches 0.95 pooled boundary F1 \u2014 ADR-003 \u00a74.2's confidence 1.0 invites the reading that it is nearly the whole answer, and the corpus refuses it: with no evidence on either side of a boundary TB6 keeps the commits together, and 76 annotated turns get swallowed",
    "expected": "fail",
    "strategy": "B-hook-harness",
    "scope": "pooled",
@@ -99,7 +99,7 @@
   },
   {
    "id": "trailer-rule-has-no-writers",
-   "claim": "…and everywhere else that rule is dead: on the pooled corpus the trailer-plus-message-shape strategy finds at most 10 % of the true boundaries, because the trailer it reads is written by nothing in this repository or the fixture corpus",
+   "claim": "\u2026and everywhere else that rule is dead: on the pooled corpus the trailer-plus-message-shape strategy finds at most 10 % of the true boundaries, because the trailer it reads is written by nothing in this repository or the fixture corpus",
    "expected": "pass",
    "strategy": "C-trailer-shape",
    "scope": "pooled",
@@ -118,7 +118,7 @@
   },
   {
    "id": "gap-optimum-for-shipped",
-   "claim": "the shipped cascade's pooled optimum gap is at or below 20 minutes too (measured 10), so `episode.time_gap_minutes` is not sitting near its optimum by luck — it is not near an optimum at all, and §4.4's 30 is a value whose measured leverage is smaller than its documentation weight",
+   "claim": "the shipped cascade's pooled optimum gap is at or below 20 minutes too, so `episode.time_gap_minutes` is not sitting near its optimum by luck \u2014 it is not near an optimum at all, and \u00a74.4's 30 is a value whose measured leverage is smaller than its documentation weight. `e1.13` re-measured this after the subject-claim rung landed: the peak moved to 5 minutes and *up* to 0.953, which is \u00a718.1 reading 3's finding with the instrument fixed \u2014 a stronger cascade is more sensitive to the clock, not less",
    "expected": "pass",
    "kind": "gap_argmax",
    "gap_sweep_of": "D-shipped",
@@ -137,8 +137,8 @@
   },
   {
    "id": "recommendation-beats-shipped-pooled",
-   "claim": "the recommended rule set (subject-claim above the clock, session-qualified turn ids) beats the shipped cascade by at least 0.05 pooled boundary F1 — a change to a documented cascade has to pay for the churn",
-   "expected": "pass",
+   "claim": "the recommended rule set (subject-claim above the clock, session-qualified turn ids) beats the shipped cascade by at least 0.05 pooled boundary F1. (A change to a documented cascade has to pay for the churn, and it did: +0.103 pooled. `e1.13` (`reco-quk.2`) landed the recommendation, so `D-shipped` *is* the strategy this gate compares against and the gap is zero by construction. Re-declared `expected: fail` as the receipt that it landed, and kept, with its 0.05 floor intact, as the price the *next* recommendation has to clear: this goes back to `pass` the day somebody finds a further change worth making, and it must not be deleted to make the table look clean)",
+   "expected": "fail",
    "kind": "delta",
    "strategy_a": "F-hook-qualified",
    "strategy_b": "D-shipped",
@@ -148,8 +148,8 @@
   },
   {
    "id": "recommendation-beats-shipped-real",
-   "claim": "…and it beats it on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus",
-   "expected": "pass",
+   "claim": "\u2026and it beats it on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus. (\u2026and on the real stratum by at least 0.02, because a recommendation that only works on authored histories is a recommendation about the corpus. Zero now for the same reason and with the same meaning as `recommendation-beats-shipped-pooled`: the shipped cascade holds 0.931 on the real stratum, which is where the recommendation used to hold 0.931)",
+   "expected": "fail",
    "kind": "delta",
    "strategy_a": "F-hook-qualified",
    "strategy_b": "D-shipped",
@@ -198,7 +198,7 @@
   },
   {
    "id": "message-shape-is-weak-as-advertised",
-   "claim": "ADR-003 §4.3's claim that a conventional-type change is the weakest splitting signal in the set is confirmed rather than assumed: message-shape finds at most 5 true boundaries in the whole corpus",
+   "claim": "ADR-003 \u00a74.3's claim that a conventional-type change is the weakest splitting signal in the set is confirmed rather than assumed: message-shape finds at most 5 true boundaries in the whole corpus",
    "expected": "pass",
    "kind": "census",
    "scope": "pooled",
@@ -218,5 +218,5 @@
    "max": 0.0
   }
  ],
- "expected_semantics": "Every gate declares `expected`: `pass` or `fail`. A gate that surprises us in either direction fails the contract test — a claim that starts passing has to be re-read as well as one that fails. The `fail` gates are the spike's findings, not its defects: they are the prices ADR-003 §4.4 and `e1.3` published that this measurement refuses to let stand."
+ "expected_semantics": "Every gate declares `expected`: `pass` or `fail`. A gate that surprises us in either direction fails the contract test \u2014 a claim that starts passing has to be re-read as well as one that fails. The `fail` gates are the spike's findings, not its defects: they are the prices ADR-003 \u00a74.4 and `e1.3` published that this measurement refuses to let stand."
 }
