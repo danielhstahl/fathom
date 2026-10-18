@@ -73,6 +73,8 @@ pub enum Verb {
     Mcp(McpArgs),
     /// Watch the repository and index as it changes
     Watch(WatchArgs),
+    /// Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
+    Hooks(HooksArgs),
     /// Print the terminal UI's keymap, or open the UI itself
     Tui(TuiArgs),
 }
@@ -206,6 +208,50 @@ pub struct WatchArgs {
     pub quiet: bool,
 }
 
+/// `fathom hooks`
+///
+/// The stream is the harness's, and this verb only reads it (or rebuilds its own offset): nothing here
+/// writes to `events.jsonl`, which is append-only by contract (ADR-005 §3.6). The actions are exclusive and
+/// `--check` is the default, because the question asked most often is "is the stream healthy", and answering
+/// it must not consume anything.
+#[derive(Args, Debug)]
+pub struct HooksArgs {
+    /// The repository whose `.fathom/events.jsonl` to read.
+    #[arg(default_value = ".")]
+    pub root: String,
+    /// Read this events file instead of the configured one (ADR-005 §3.1's first choice).
+    #[arg(long)]
+    pub events: Option<String>,
+    /// Report the stream and change nothing. This is the default; the flag exists so a script can say what
+    /// it means.
+    #[arg(long, conflicts_with_all = ["replay", "tail", "trailer"])]
+    pub check: bool,
+    /// Rebuild everything from byte 0 and rewrite the offset: what an index rebuild does first.
+    ///
+    /// Replay is deterministic by contract — the same file yields the same turns and the same commit
+    /// linkage — which is what makes it safe to key a review to a turn id across a rebuild.
+    #[arg(long)]
+    pub replay: bool,
+    /// Read forward from the durable offset, advancing it, and print what arrived.
+    #[arg(long)]
+    pub tail: bool,
+    /// With `--tail`: print at most this many records.
+    #[arg(long, requires = "tail")]
+    pub max: Option<usize>,
+    /// Print the `Agent-Session:` / `Agent-Turn:` trailer pair for `<session>:<turn-index>`.
+    ///
+    /// The turn id is session-qualified on the way out, which is what keeps two sessions' turn 3 from
+    /// reading as one turn (ADR-003 §9.1, §18.2 **D4**).
+    #[arg(long, value_name = "SESSION:TURN")]
+    pub trailer: Option<String>,
+    /// Print the same report as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Exit 7 when the stream is not healthy — the form a CI gate wants.
+    #[arg(long)]
+    pub strict: bool,
+}
+
 /// `fathom export`
 #[derive(Args, Debug)]
 pub struct ExportArgs {
@@ -277,6 +323,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Export(args)) => export(args),
         Some(Verb::Mcp(args)) => mcp(args),
         Some(Verb::Watch(args)) => watch(args),
+        Some(Verb::Hooks(args)) => crate::harness::run(args),
         Some(Verb::Tui(args)) => tui(args, globals),
     }
 }
@@ -659,7 +706,7 @@ fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
 /// silently-empty artefact).
 fn export(args: &ExportArgs) -> eyre::Result<ExitCode> {
     // The format list is the facade's, so `--format` in the CLI, the TUI's export key and the MCP tool
-    // cannot drift apart (§5.3), and its error reaches the right exit code through `Diagnosable`.
+    // cannot drift apart (§5.1), and its error reaches the right exit code through `Diagnosable`.
     let format = fathom_analyze::export::Format::parse(&args.format).map_err(failed)?;
     let artefact = format.file_name(&args.out);
     let scope = export_scope(&args.root, &args.episodes);

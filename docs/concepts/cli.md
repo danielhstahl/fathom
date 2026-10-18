@@ -18,6 +18,7 @@ what a machine reads.
 | `fathom stats [ROOT] [--json]` | repo scale, index state, cache hit rate | [`stats.schema.json`](../../schemas/stats.schema.json) |
 | `fathom doctor [--root R] [--privacy] [--deep] [--strict] [--json]` | the build, the environment, the repository and the index — each finding with a remedy | [`doctor.schema.json`](../../schemas/doctor.schema.json) |
 | `fathom export [--format md\|html\|json] [--out STEM] [--episodes RANGE] [--json]` | the review artefact — **skeleton**: scope and format are validated, the rendering is `e5.7` | [`export.schema.json`](../../schemas/export.schema.json) |
+| `fathom hooks [ROOT] [--check] [--replay] [--tail] [--max N] [--trailer S:T] [--strict] [--json]` | the harness event stream: lag, durable offset, counts by type, why each refused line was refused, and a deterministic replay | [`hooks.schema.json`](../../schemas/hooks.schema.json) |
 
 `fathom show` takes a revision or an object id — anything
 [`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves: `HEAD`, `HEAD~3`, `HEAD^2`,
@@ -30,6 +31,17 @@ half-rebuilt epoch, and until the daemon (`e6.3`) and the TUI (`e1.5`) read the 
 there is no concurrent reader. An interrupted rebuild leaves the old epoch's rows on disk and marked dead,
 which is recoverable by definition — and `fathom stats` reports a parked epoch as `building`, with the
 remedy.
+
+`fathom hooks` reads the ADR-005 stream and writes only its own state under `.fathom/hooks/`. The four
+actions are exclusive, and `--check` is the default: it scans the unread region on a **copy** of the cursor,
+so a monitoring loop can poll it without consuming the stream or pushing real records out of the quarantine
+sidecar with its own re-recorded duplicates. `--replay` is the determinism proof — it rebuilds from byte 0
+and prints the turn ledger's digest, which is equal across rebuilds of the same bytes and is what a review
+keyed to a turn id survives. `--trailer sess-7:4` prints the `Agent-Session:` / `Agent-Turn:` pair
+(ADR-003 §9.1, §18.2 **D5**); the turn id is session-qualified, so two sessions' turn 3 are `sess-7:3` and
+`ci-build:3` rather than two things called `3`. Without `--strict` a stream full of refused lines still exits 0
+with `ok: false` — a diagnostic that exits non-zero in a script is a script that stops reporting (ADR-005
+§11.1 rules its own status payload the same way).
 
 `fathom index --watch` is `fathom watch` after an index pass: one command for a script that wants "index,
 then keep this fresh". A binary built without the `watch` feature says so with `FEATURE_ABSENT` rather than

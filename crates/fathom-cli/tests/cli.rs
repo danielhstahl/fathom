@@ -47,7 +47,7 @@ fn help_works_and_lists_the_verbs() {
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let text = stdout(&out);
     for verb in [
-        "index", "show", "stats", "check", "doctor", "export", "mcp", "watch",
+        "index", "show", "stats", "check", "doctor", "export", "mcp", "watch", "hooks",
     ] {
         assert!(
             text.contains(&format!("\n  {verb}")),

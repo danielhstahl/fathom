@@ -160,7 +160,8 @@ BOUNDARY_RULES: Tuple[Tuple[int, str, str, float, str], ...] = (
     (2, "hook", "evidence", 1.0,
      "this commit and the previous one name harness turns, and they differ"),
     (3, "trailer", "evidence", 0.9,
-     "a `Fathom-Episode:` trailer names this commit as the start of an episode"),
+     "an `Agent-Turn:` trailer (or the reserved `Fathom-Episode:`) names a different turn "
+     "than the previous commit's"),
     (4, "branch", "graph", 0.8,
      "this commit or the previous one is a merge"),
     (5, "author", "heuristic", 0.75,

@@ -1,0 +1,966 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fathom.dev/schemas/hooks.schema.json",
+  "title": "fathom hooks (ADR-005 §11.1; e6.1 / reco-afh)",
+  "description": "The harness event stream's health report: lag, durable offset, counts by type and harness, why each refused line was refused, and the deterministic replay's turn-ledger digest. Its field names are ADR-005 §11.1's — `bad_lines`, `record_rejections`-style reason histograms, `unprojectable`, `sessions_quarantined`, `unknowns`, `ok` — because a second stream report with an invented vocabulary is a second dashboard nobody reads. `--check` is the default action and changes nothing on disk. Registered like every other verb's: the `--json` schema column of docs/concepts/cli.md, VERB_SCHEMAS in tests/test_cli_contract.py, and the file list in crates/fathom-cli/tests/schemas.rs. Every sub-shape is written inline rather than through a local `$ref` on purpose: the validator the repo's own schema tests use (crates/fathom-cli/tests/schemas.rs) resolves `$ref`s against a process-global set of loaded documents, so a schema that leans on `#/$defs/...` validates differently depending on which test ran first — and a contract test whose verdict depends on test order is not a contract test.",
+  "x-fathom-verb": "hooks",
+  "x-fathom-contract": "fathom.cli.hooks/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the report was produced — including a report whose `ok` is false: a diagnostic that exits non-zero in a script is a script that stops reporting (ADR-005 §11.1)"
+    },
+    {
+      "code": 1,
+      "name": "ERROR",
+      "when": "the events file or the state directory could not be read or written, or `--trailer` named no session or turn 0"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line, e.g. `--max` without `--tail`"
+    },
+    {
+      "code": 7,
+      "name": "CHECK_VIOLATIONS",
+      "when": "`--strict` was passed and the stream is not healthy (ADR-002 §7.3 code 7)"
+    }
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "verb",
+    "action",
+    "notices",
+    "read",
+    "stream",
+    "trailer"
+  ],
+  "properties": {
+    "contract": {
+      "const": "fathom.cli.hooks/1"
+    },
+    "verb": {
+      "const": "fathom hooks"
+    },
+    "action": {
+      "enum": [
+        "check",
+        "replay",
+        "tail",
+        "trailer"
+      ]
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Degraded-mode admissions: where the events path came from, a config key that could not be honoured, a cursor that was rejected and rebuilt."
+    },
+    "read": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "description": "What a read that *did* advance the offset produced. Null for `--check`, which reads nothing forward.",
+          "required": [
+            "accepted",
+            "bytes",
+            "events",
+            "lines",
+            "refusals",
+            "rejected",
+            "torn_bytes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "One accepted event. The payload is deliberately absent: echoing vendor payloads onto a terminal unsolicited is what ADR-005 §4.3 exists to prevent.",
+                "required": [
+                  "event_id",
+                  "fathom_event",
+                  "harness",
+                  "offset",
+                  "path",
+                  "seq",
+                  "session_id",
+                  "source",
+                  "ts",
+                  "turn_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "event_id": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "The vendor's name for the event, verbatim (ADR-005 §5.1)."
+                  },
+                  "harness": {
+                    "type": "string"
+                  },
+                  "fathom_event": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "session_start",
+                      "session_end",
+                      "turn_start",
+                      "turn_end",
+                      "tool_call",
+                      "tool_result",
+                      "file_edit",
+                      "test_run",
+                      "approval",
+                      "error",
+                      "subagent_start",
+                      "subagent_end",
+                      null
+                    ],
+                    "description": "null when the source is not projected (ADR-005 §11.1) — the event is kept and counted either way."
+                  },
+                  "session_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "turn_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Session-qualified (`<session_id>:<n>`), allocated at ingest (ADR-005 §3.3)."
+                  },
+                  "ts": {
+                    "type": "string"
+                  },
+                  "cwd": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "The session's working directory, redacted to the repository the report is about (ADR-002 §11.1) — present only when an event carried one, since `cwd` is envelope data and not every vendor sends it on every record."
+                  },
+                  "path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Repository-relative, and already containment-checked against the session's working directory (ADR-005 §6 rule 1)."
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The line's byte offset: which line, not merely which event (ADR-005 §11.1)."
+                  }
+                }
+              }
+            },
+            "lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "refusals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "One refused line, with enough to find it again. ADR-005 §3.6.",
+                "required": [
+                  "detail",
+                  "line_bytes",
+                  "offset",
+                  "preview",
+                  "reason",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The byte offset the refused line started at."
+                  },
+                  "seq": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "The claimed `seq` when the line carried one, null when it did not: the difference between 'no seq' and 'bad seq'."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "blank",
+                      "undecodable",
+                      "not_an_object",
+                      "missing_seq",
+                      "schema_version",
+                      "missing_field",
+                      "field_type",
+                      "missing_type",
+                      "missing_session_id",
+                      "path_escape",
+                      "oversized",
+                      "sequence_duplicate",
+                      "sequence_gap",
+                      "over_quota",
+                      "session_quarantined"
+                    ],
+                    "description": "The refuse vocabulary: `fathom_ingest::hooks::RejectReason::as_str`, whose members are the reasons ADR-005 §11.1's `record_rejections` names plus the ones a reader needs to say out loud (`sequence_duplicate`, `session_quarantined`). Stable strings: a stream report a dashboard cannot diff against last week's is not a health report."
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "line_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "The refused line exactly as read, including a torn tail — the handle a repair is verified against (ADR-005 §3.6)."
+                  },
+                  "preview": {
+                    "type": "string",
+                    "description": "A redacted prefix. The whole line lives in the quarantine sidecar, never here."
+                  }
+                }
+              },
+              "description": "Each refused record with the reason it was refused (ADR-005 §3.6), truncated at 16 like every other list the stream report returns."
+            },
+            "torn_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "Bytes after the last newline: a writer mid-append. Reported, never damage (ADR-005 §3.6)."
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Events this read accepted. Present whenever `read` is, including a `--tail` that did not ask for the events themselves: how many records a read took is the first question about a read, not a detail behind a flag."
+            },
+            "rejected": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Records this read refused — the length of `refusals`, present so a caller can compare the two without counting."
+            }
+          }
+        }
+      ]
+    },
+    "stream": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "description": "The stream report: lag, offset, counts, damage and verdict.",
+          "required": [
+            "action",
+            "age_seconds",
+            "bad_lines",
+            "by_event",
+            "by_harness",
+            "counts",
+            "cursor_file",
+            "event_schema",
+            "events_file",
+            "exists",
+            "exit_code",
+            "exit_name",
+            "lag_bytes",
+            "lag_lines",
+            "last_event_ts",
+            "last_seq_in_file",
+            "last_seq_read",
+            "notices",
+            "offset",
+            "ok",
+            "probe",
+            "protocol",
+            "quarantine",
+            "quarantine_file",
+            "reads",
+            "reasons",
+            "rejections",
+            "replay",
+            "rotations",
+            "sequence_gap_records",
+            "sessions",
+            "size_bytes",
+            "strict",
+            "torn_bytes",
+            "turns",
+            "unknowns",
+            "unprojectable",
+            "warnings"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "protocol": {
+              "const": "fathom-hooks/1"
+            },
+            "event_schema": {
+              "const": 1
+            },
+            "action": {
+              "enum": [
+                "check",
+                "replay",
+                "tail"
+              ]
+            },
+            "events_file": {
+              "type": "string",
+              "description": "Repository-relative where it can be (ADR-002 §11.1). A missing file is the normal first run, not an error."
+            },
+            "cursor_file": {
+              "type": "string"
+            },
+            "quarantine_file": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "The durable offset. `--check` never moves it."
+            },
+            "lag_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "lag_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "torn_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bad_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_seq_read": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_seq_in_file": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sequence_gap_records": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_event_ts": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "age_seconds": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "null when there is nothing to age — an unknown, not a zero."
+            },
+            "reads": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Read passes that produced this cursor."
+            },
+            "rotations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "counts": {
+              "type": "object",
+              "description": "Everything the reader counts, in the shape `fathom_ingest::hooks::Counters::to_json` writes. Rotations are a cursor fact, not a counter, so they are on the stream section — a schema written from the counter's struct rather than its `to_json` is a schema that fails on the first payload.",
+              "required": [
+                "accepted",
+                "bad_lines",
+                "blank_lines",
+                "by_event",
+                "by_harness",
+                "by_source",
+                "oversized",
+                "redacted",
+                "rejected_total",
+                "rejections",
+                "sequence_duplicates",
+                "sequence_gap_records",
+                "sequence_gaps",
+                "sessions_quarantined",
+                "torn_tails",
+                "unprojectable_by_source",
+                "unprojectable_total"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "accepted": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "bad_lines": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Lines that were not one JSON object, or not an object."
+                },
+                "blank_lines": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "oversized": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Refused whole, never truncated (ADR-005 §3.6)."
+                },
+                "rejected_total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rejections": {
+                  "type": "object",
+                  "description": "Refusals by reason.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "unprojectable_total": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Valid events whose `source` this schema does not project (ADR-005 §5.1) — counted, never dropped."
+                },
+                "unprojectable_by_source": {
+                  "type": "object",
+                  "description": "A histogram.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "sequence_duplicates": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "`seq` not ahead of the last one read: refused, because a duplicate would double-count its evidence."
+                },
+                "sequence_gaps": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Jumps in `seq`. Counted against every seq *seen*, accepted or refused, so a refused line is not mistaken for a lost one."
+                },
+                "sequence_gap_records": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "torn_tails": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Times a mid-write tail was found and left unread (ADR-005 §3.6)."
+                },
+                "sessions_quarantined": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Sessions over their byte budget (ADR-005 §6 rule 3)."
+                },
+                "redacted": {
+                  "type": "object",
+                  "description": "Redaction rules that fired, and how often (ADR-005 §6 rule 4).",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "by_event": {
+                  "type": "object",
+                  "description": "A histogram.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "by_harness": {
+                  "type": "object",
+                  "description": "A histogram.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "by_source": {
+                  "type": "object",
+                  "description": "A histogram.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "test_run": {
+                  "type": "object",
+                  "description": "Recognised test runs by outcome (ADR-005 §2.2's amendment): `pass`, `fail`, `none`. A **separate** histogram from `by_event`, keyed by outcome rather than by `detected_by`, and covering exactly the events `by_event` counts as `test_run`.",
+                  "propertyNames": {
+                    "enum": [
+                      "pass",
+                      "fail",
+                      "none"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "unrecognised_commands": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Shell commands that ran and were not recognised as a test runner — ADR-005 §2.2's `detected_by: none` case, made countable so a detector that misses test runs cannot print the same report as one that does not."
+                }
+              }
+            },
+            "by_event": {
+              "type": "object",
+              "description": "A histogram.",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "by_harness": {
+              "type": "object",
+              "description": "A histogram.",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "rejections": {
+              "type": "object",
+              "description": "A histogram.",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "unprojectable": {
+              "type": "object",
+              "required": [
+                "by_source",
+                "total"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "by_source": {
+                  "type": "object",
+                  "description": "A histogram.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "turns": {
+              "type": "object",
+              "description": "Turn allocation state, session-qualified throughout.",
+              "required": [
+                "all_session_qualified",
+                "carried",
+                "closed_by_next",
+                "digest",
+                "inferred",
+                "open",
+                "opened",
+                "trimmed"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "opened": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "carried": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns the cursor still carries — a bounded window, not the file's whole history."
+                },
+                "inferred": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns inferred from a turn-scoped event with no `turn_start` (ADR-005 §3.3)."
+                },
+                "closed_by_next": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "open": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Still open: the session is running, or died without `session_end`."
+                },
+                "trimmed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]{64}$",
+                  "description": "The turn ledger's digest. Equal across two reads of an unchanged file and across a `--replay` of the same bytes — the reader's half of 'replay is deterministic'."
+                },
+                "all_session_qualified": {
+                  "type": "boolean",
+                  "description": "Every carried turn id parses as `<session_id>:<n>` against its own session (ADR-003 §9.1, §18.2 **D4**). False is not an error; every consumer downstream assumes true, which is why it is on the report."
+                }
+              }
+            },
+            "sessions": {
+              "type": "object",
+              "required": [
+                "count",
+                "detail",
+                "quarantined"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "quarantined": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "detail": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "bytes",
+                      "events",
+                      "quarantined",
+                      "session_id",
+                      "turns"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "session_id": {
+                        "type": "string"
+                      },
+                      "events": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "turns": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Turns allocated in this session so far."
+                      },
+                      "quarantined": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "Why the session is quarantined, or null."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "quarantine": {
+              "type": "object",
+              "required": [
+                "file",
+                "records"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "records": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "probe": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "description": "What a read of the unread region *would* produce, computed on a copy of the cursor so that `--check` can answer 'what is in this file' without consuming it or re-recording damage in the quarantine. Null for actions that read for real.",
+                  "required": [
+                    "bytes",
+                    "events",
+                    "lines",
+                    "refusals",
+                    "refused_total",
+                    "torn_bytes",
+                    "turns_open",
+                    "turns_opened"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "lines": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "events": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "refusals": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "refused_total": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "torn_bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "turns_opened": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "turns_open": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              ]
+            },
+            "notices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "A degraded-mode admission. ADR-005 §3.6: the file never says `corrupt`, so neither does this.",
+                "required": [
+                  "detail",
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "rotated",
+                      "torn-tail",
+                      "cursor-reset",
+                      "replay",
+                      "sequence-gap",
+                      "quarantine-trimmed"
+                    ]
+                  },
+                  "detail": {
+                    "type": "string",
+                    "description": "One sentence carrying the numbers. Never a copy of a payload."
+                  }
+                }
+              }
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "What makes it not healthy, one sentence each."
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "What this report cannot say, said out loud."
+            },
+            "strict": {
+              "type": "boolean"
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "exit_name": {
+              "type": "string"
+            },
+            "replay": {
+              "type": "object",
+              "required": [
+                "all_session_qualified",
+                "from_offset",
+                "ledger_digest",
+                "linkage",
+                "performed",
+                "turns"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "performed": {
+                  "type": "boolean"
+                },
+                "from_offset": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "turns": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "ledger_digest": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]{64}$"
+                },
+                "all_session_qualified": {
+                  "type": "boolean"
+                },
+                "linkage": {
+                  "type": "string",
+                  "description": "A pointer, not a value: the commit↔turn linkage digest needs commits, and this verb reads only the stream."
+                }
+              }
+            },
+            "test_run": {
+              "type": "object",
+              "description": "Recognised test runs by outcome (ADR-005 §2.2's amendment): `pass`, `fail`, `none`. A **separate** histogram from `by_event`, keyed by outcome rather than by `detected_by`, and covering exactly the events `by_event` counts as `test_run`.",
+              "propertyNames": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "none"
+                ]
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "unrecognised_commands": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Shell commands that ran and were not recognised as a test runner — ADR-005 §2.2's `detected_by: none` case, made countable so a detector that misses test runs cannot print the same report as one that does not."
+            }
+          }
+        }
+      ]
+    },
+    "trailer": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "description": "`--trailer <session>:<turn>`: the writer's half of ADR-003 §18.2 **D5**.",
+          "required": [
+            "block",
+            "keys",
+            "session_id",
+            "turn_id",
+            "turn_index"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "session_id": {
+              "type": "string"
+            },
+            "turn_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "turn_id": {
+              "type": "string",
+              "pattern": "^.+:[1-9][0-9]*$",
+              "description": "Session-qualified: `s7:4`, never a bare `4` (ADR-003 §18.2 **D4**)."
+            },
+            "block": {
+              "type": "string",
+              "description": "The two trailer lines, ready to append to a commit message body."
+            },
+            "keys": {
+              "type": "object",
+              "description": "The keys, printed beside the block so a reviewer can check from the payload alone that the writer and `fathom_ingest::segment`'s rung 3 speak the same key (ADR-003 §18.2 **D5**).",
+              "required": [
+                "session",
+                "turn"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "session": {
+                  "const": "Agent-Session"
+                },
+                "turn": {
+                  "const": "Agent-Turn"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

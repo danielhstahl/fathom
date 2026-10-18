@@ -290,7 +290,7 @@ episode with the confidence in the last column.
 |---|---|---|---|---|
 | 1 | `override` | human | `fathom.toml` forces a split before this commit, or forbids one | 1.0 |
 | 2 | `hook` | evidence | this commit and the previous one both name a harness turn, and the turn ids differ | 1.0 |
-| 3 | `trailer` | evidence | a `Fathom-Episode:` trailer names this commit as the start of an episode | 0.9 |
+| 3 | `trailer` | evidence | an `Agent-Turn:` trailer (or the reserved `Fathom-Episode:`) names a turn different from the previous commit's | 0.9 |
 | 4 | `branch` | graph | this commit is a merge, or the previous one was | 0.8 |
 | 5 | `author` | heuristic | the author identity changed | 0.75 |
 | 6 | `time-gap` | heuristic | the gap since the previous commit exceeds `episode.time_gap_minutes` | 0.6 |
@@ -302,6 +302,16 @@ event, a trailer, or a config file), `graph` is a fact about the commit graph, a
 Fathom is making on the reviewer's behalf. **Evidence outranks heuristic** is the shape of the cascade;
 the ordering *within* each class is argued below, because "why is a merge above an author change" is a
 question a reviewer is entitled to ask.
+
+**Amended by `e6.1` (`reco-afh`), per §18.2 D5.** Rung 3's *key* moved from `Fathom-Episode:` to
+`Agent-Turn:`, because that is the spelling the corpus, `src/recommender/store/git.py` and §9.1's `hook`
+transport already use, and `e6.1` is the writer: `fathom_ingest::hooks::trailer_block` emits
+`Agent-Session:` and a session-qualified `Agent-Turn:`; the keys themselves are defined once in
+`fathom_ingest::segment` (`TRAILER_TURN_KEY` / `TRAILER_TURN`) and re-exported by `fathom_ingest::hooks`, so
+writer and rung 3 cannot drift — which is exactly what D5 was afraid of.
+`Fathom-Episode:` stays **reserved**: it is the day Fathom itself declares an episode start, it is still
+read, and nothing writes it. The `boundary_rule` vocabulary in Appendix B did not move, which is the whole
+point of D5 — `trailer` names a class of evidence, not a key.
 
 > **Read with §18.** Spike `s2` measured this cascade against 204 hand-annotated turns. The table above is
 > still exactly what `crates/fathom-ingest/src/segment.rs` does — §18 changed no code — but §18.2 decides
@@ -654,6 +664,13 @@ Evidence can reach `CommitFacts.turn_id` by two transports, and they are deliber
 (`hook`): an event stream mapping edits to commits, or an `Agent-Turn:` / `Agent-Session:` trailer written
 by the harness at commit time. The rule names the class of evidence, not the cable it arrived on.
 
+Both transports are implemented as of `e6.1` (`reco-afh`): `fathom_ingest::hooks` reads the ADR-005 stream,
+allocates `turn_index` per session in `seq` order (never from a writer's counter), maps commits onto turns
+([`hooks::attribute`], whose digest is what "replay reproduced the linkage" means), and writes the
+session-qualified id into `CommitFacts::turn_id` for rung 2; `hooks::trailer_block` is the writer of the
+trailer spelling. **The qualification is not cosmetic** — §18.2 **D4** is the defect an unqualified `3`
+causes, and it is closed by the ids emitted here, not by a downstream repair.
+
 ### 9.2 Degradation, which is the part that has to be true
 
 | Situation | Behaviour |
@@ -671,7 +688,7 @@ same question as "what drew its left edge":
 
 | `created_source` | Confidence | Meaning | Written today? |
 |---|---|---|---|
-| `hook` | 1.0 | an ADR-005 event opened the episode | not yet — `e6.1`'s event ingest is the writer |
+| `hook` | 1.0 | an ADR-005 event opened the episode | not yet — `e6.1`'s `fathom_ingest::hooks` now produces the turns and the commit↔turn linkage, but nothing stamps `hook` in the store until the index pass consumes the reader |
 | `commit` | 0.7 | a trailer on the commit named the turn/episode | the Python reference writer uses it; the Rust index pass does not |
 | `index` | 0.3 | found by walking git with no harness evidence at all | **yes** — every episode today |
 

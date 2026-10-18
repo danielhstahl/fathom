@@ -42,6 +42,7 @@ pub fn doctor(
     let config = config_section(&redactor);
     let layout = fathom_layout(&redactor);
     let watch = watch_section(root_path);
+    let hooks_stream = crate::harness::doctor_json(root_path);
     let consent = consent_section();
     let code = snapshot.worst_code();
 
@@ -60,6 +61,7 @@ pub fn doctor(
             "config": config,
             "fathom_dir": layout,
             "watch": watch,
+            "hooks": hooks_stream,
             "network_features": consent,
             "privacy": privacy,
             "strict": strict,
@@ -93,6 +95,9 @@ pub fn doctor(
         output::line(format_args!("{line}"));
     }
     for line in crate::verbs::watch_lines(root_path) {
+        output::line(format_args!("{line}"));
+    }
+    for line in crate::harness::doctor_lines(root_path) {
         output::line(format_args!("{line}"));
     }
     tracing::debug!(features = ?features::compiled(), "build report");

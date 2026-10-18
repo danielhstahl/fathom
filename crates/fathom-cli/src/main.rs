@@ -22,6 +22,7 @@ mod diagnose;
 #[cfg(feature = "tui")]
 mod episodes;
 mod features;
+mod harness;
 mod hooks;
 mod output;
 // The diff pane's byte source (`reco-0kw`): the episode's patch, materialised from the store and

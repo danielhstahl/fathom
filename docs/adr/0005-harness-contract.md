@@ -115,8 +115,8 @@ a coverage gap you know about and one you discover in a customer's incident.
 | `session_end` | Claude `SessionEnd` (`reason`); Codex `session-end` | `reason` |
 | `turn_start` | Claude `UserPromptSubmit`; Codex `prompt.submit`; OpenCode `message.part.updated` (role=user) | `prompt_sha256`, `prompt_chars`, `turn_id` |
 | `turn_end` | Claude `Stop`, `StopFailure`; Codex `turn.stop` | `last_assistant_message_sha256`, `stop_reason` |
-| `tool_call` | Claude `PreToolUse`; Codex `tool.start`; OpenCode `tool.execute.before` | `tool`, `tool_use_id`, `tool_input_sha256`, `tool_input` (redacted, truncated), `mcp_context_injected` |
-| `tool_result` | Claude `PostToolUse`, `PostToolUseFailure`; Codex `tool.end` | `ok`, `is_error`, `exit_code`, `duration_ms`, `output_sha256`, `cwd_after` |
+| `tool_call` | Claude `PreToolUse`; Codex `tool.start`; OpenCode `tool.execute.before` (**amended by `e6.1`**, which reads the name: it was already the intent of the row, and a wire origin the reader meets and the table omits is a coverage gap that hides in the table) | `tool`, `tool_use_id`, `tool_input_sha256`, `tool_input` (redacted, truncated), `mcp_context_injected` |
+| `tool_result` | Claude `PostToolUse`, `PostToolUseFailure`; Codex `tool.end`; OpenCode `tool.execute.after` (amended by `e6.1`, as the row above) | `ok`, `is_error`, `exit_code`, `duration_ms`, `output_sha256`, `cwd_after` |
 | `file_edit` | Claude `PostToolUse` on a path-bearing tool, or `PermissionRequest` on `Edit`/`Write`; Codex `file.change`; OpenCode `file.edited` | `path`, `change` (`add`/`delete`/`update`), `lines_added`, `lines_removed`, `content_sha256_before`, `content_sha256_after`, `diff_sha256`, `diff_available`, `patch_sha256` |
 | `test_run` | **Derived**, §2.2 | `command`, `exit_code`, `duration_ms`, `cwd` |
 | `approval` | Claude `PermissionRequest`, `PermissionDenied`; Codex `permission.request` | `decision` (`allow`/`deny`), `tool`, `pattern`, `rule_source`, `user_overrode_recommendation`, `denial_reason` |
@@ -130,6 +130,23 @@ a coverage gap you know about and one you discover in a customer's incident.
 runner is recognisable, because an unrecognised test command produces no `test_run` at all. A
 detection that silently missed half the test runs would make the feedback loop look better than it
 is: an unrecognised command must surface as `test_run` with `detected_by: "none"` rather than vanish.
+
+**Amended by `e6.1` (`reco-afh`), which had to count these.** Two things this paragraph left open, and
+which the reader now fixes rather than guesses at:
+
+- `detected_by` is spelled **`name`** (first word is a known runner), **`pattern`** (a known test target
+  named later: `cargo test`, `make test`), **`heuristic`** (recognisable without either), and **`none`**.
+  These are published values of a published field, so both implementations print these words and neither
+  invents its own.
+- **`detected_by: "none"` does not make a `test_run` for counting purposes.** "Surfaces rather than
+  vanishing" means the command is *classified and reported* — it appears in the turn's `test_runs` map and
+  in `unrecognised_commands`, so a missed detection is visible. It does **not** mean every shell call is a
+  test run: if it did, the test-run count would be a re-statement of the tool-result count, and the loop
+  metric built on it ("how many tests did the agent run") would silently become "how many commands did it
+  run". So in `fathom hooks`'s report: `by_event` counts a recognised test run as `test_run` and an
+  unrecognised one as `tool_result` and sums to `accepted`; `test_run` is a separate `pass`/`fail`/`none`
+  view of exactly the recognised ones; and `unrecognised_commands` carries the count of the `none` case.
+  The shapes are `schemas/hooks.schema.json`, which is where `fathom hooks`' payload is decided (§13).
 
 ## 3. Decision — §2: the file
 

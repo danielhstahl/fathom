@@ -135,6 +135,12 @@ fixture stratum — 0.598 against the cascade's 0.962 — because a hook that is
 turns nothing labelled. The value of the evidence is not the hook rule alone; it is that the same evidence
 makes the git cascade above it behave correctly, which is what the recommendation measures.
 
+> **Superseded above, in one line, by `e6.1` (`reco-afh`).** The tables in this page are measurements of the
+> cascade *as it was when the spike ran*, and they stay. What changed is rung 3's key: ADR-003 §4.2 rung 3 now
+> reads `Agent-Turn:` (the reserved `Fathom-Episode:` is still read too), because the corpus said so — the row
+> below is the corpus saying it — and `e6.1` is the writer. See
+> [ADR-003 §4.2's amendment note](../adr/0003-episodes.md) and `fathom_ingest::segment`'s module doc.
+
 **Strategy C — trailers plus message-shape: 0.092 pooled.** The trailer half of this is dead code. ADR-003
 rung 3 reads a `Fathom-Episode:` trailer at confidence 0.9; nothing in Fathom, nothing in the fixture
 corpus, and no agent harness in the wild writes one, so across 182 true boundaries the rule sees 8 — all of

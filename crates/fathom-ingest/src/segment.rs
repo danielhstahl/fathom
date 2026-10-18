@@ -18,7 +18,7 @@
 //! |---|---|---|---|---|
 //! | 1 | `override` | human | `fathom.toml` forces a split before, or a merge with, this commit | 1.0 |
 //! | 2 | `hook` | evidence | The commit names a harness turn that differs from the previous commit's | 1.0 |
-//! | 3 | `trailer` | evidence | An explicit `Fathom-Episode:` trailer names this commit as a start | 0.9 |
+//! | 3 | `trailer` | evidence | An `Agent-Turn:` trailer (or the reserved `Fathom-Episode:`) names a different turn than the previous commit's | 0.9 |
 //! | 4 | `branch` | graph | The commit is a merge (or the previous one was): a branch boundary is a reviewable unit | 0.8 |
 //! | 5 | `author` | heuristic | The author identity changed | 0.75 |
 //! | 6 | `time-gap` | heuristic | The gap since the previous commit exceeds [`Rules::gap_millis`] | 0.6 |
@@ -40,8 +40,18 @@
 //! # What is deliberately not here
 //!
 //! Harness *events* (the JSONL stream of ADR-005) are a segmentation input, not a git fact, so they
-//! arrive as [`CommitFacts::turn_id`] filled by whoever read them; this module never opens a file. No
-//! clock is read either: gaps are differences between commit dates given in (ADR-002 §4.4).
+//! arrive as [`CommitFacts::turn_id`] filled by whoever read them; this module never opens a file.
+//!
+//! # The trailer keys, and who writes them
+//!
+//! [`TRAILER_TURN`] is the key rung 3 reads, and it is the key [`crate::hooks::trailer_block`] writes —
+//! one constant on each side, not two copies of a string. ADR-003 §18.2 **D5** decided this pairing (the
+//! rule's *value* names a class of evidence, so minting a ninth `boundary_rule` would have been the drift;
+//! what moved was the key), and [`TRAILER_EPISODE`] is **reserved** for the day Fathom itself declares an
+//! episode start: nothing writes it, and reading it costs nothing.
+//!
+//! Like the rest of this module, no clock is read here: gaps are differences between commit dates given
+//! in (ADR-002 §4.4).
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -50,6 +60,26 @@ use sha2::{Digest as _, Sha256};
 
 /// The namespace of the identity digest, so a rule change cannot collide with an old id.
 pub const IDENTITY_SCHEMA: &str = "fathom-episode/1";
+
+/// The trailer key that carries the harness turn, lower-cased the way [`crate::record::Trailers`] stores
+/// keys. This is the key rung 3 reads *and* the key [`crate::hooks`] writes (ADR-003 §18.2 **D5**).
+pub const TRAILER_TURN_KEY: &str = "agent-turn";
+
+/// [`TRAILER_TURN_KEY`] as it is spelled in a commit message.
+pub const TRAILER_TURN: &str = "Agent-Turn";
+
+/// The trailer key that carries the harness session.
+pub const TRAILER_SESSION_KEY: &str = "agent-session";
+
+/// [`TRAILER_SESSION_KEY`] as it is spelled in a commit message.
+pub const TRAILER_SESSION: &str = "Agent-Session";
+
+/// The reserved trailer key naming an episode start Fathom itself declared. Nothing writes it today, and
+/// an additional trailer spelling is an amendment to ADR-003 §4.2, not a new enum value.
+pub const TRAILER_EPISODE_KEY: &str = "fathom-episode";
+
+/// [`TRAILER_EPISODE_KEY`] as it is spelled in a commit message.
+pub const TRAILER_EPISODE: &str = "Fathom-Episode";
 
 /// How the author of a commit is classified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -642,12 +672,12 @@ fn new_episode(
         session_id: commit
             .session_id
             .clone()
-            .or_else(|| trailer(&commit.trailers, "agent-session"))
+            .or_else(|| trailer(&commit.trailers, TRAILER_SESSION_KEY))
             .or_else(|| trailer(&commit.trailers, "session")),
         turn_id: commit
             .turn_id
             .clone()
-            .or_else(|| trailer(&commit.trailers, "agent-turn"))
+            .or_else(|| named_turn(&commit.trailers))
             .or_else(|| trailer(&commit.trailers, "turn")),
         members: vec![commit.oid.clone()],
         first_oid: commit.oid.clone(),
@@ -683,6 +713,12 @@ fn trailer(trailers: &BTreeMap<String, String>, key: &str) -> Option<String> {
     trailers.get(key).cloned().filter(|value| !value.is_empty())
 }
 
+/// The turn or episode a trailer names for this commit: the contract key first, the reserved one second.
+#[must_use]
+fn named_turn(trailers: &BTreeMap<String, String>) -> Option<String> {
+    trailer(trailers, TRAILER_TURN_KEY).or_else(|| trailer(trailers, TRAILER_EPISODE_KEY))
+}
+
 /// Decide whether `commit` opens an episode after `previous`, and name the rule that decided.
 ///
 /// Returns `(starts, rule, confidence)`. The rules are tried in the order the module doc lists; the first
@@ -701,9 +737,14 @@ pub fn decide(previous: &CommitFacts, commit: &CommitFacts, rules: &Rules) -> (b
     if let (Some(mine), Some(theirs)) = (&commit.turn_id, &previous.turn_id) {
         return (mine != theirs, Rule::Hook, 1.0);
     }
-    // 2. An explicit trailer naming this commit's episode.
-    if let Some(id) = trailer(&commit.trailers, "fathom-episode") {
-        let same = trailer(&previous.trailers, "fathom-episode").is_some_and(|other| other == id);
+    // 3. A trailer naming this commit's turn. `Agent-Turn:` is the key the writer emits
+    //    (`crate::hooks::trailer_block`, ADR-003 §18.2 D5); `Fathom-Episode:` is the reserved spelling for
+    //    a start Fathom declares itself, read here so the day it is written nothing has to change. A
+    //    trailer is a statement, so a *different* turn on the two sides is a boundary, and a turn named on
+    //    one side alone is still a statement about that side (unlike one-sided *event* evidence, which
+    //    TB6 refuses to read as a boundary).
+    if let Some(id) = named_turn(&commit.trailers) {
+        let same = named_turn(&previous.trailers).is_some_and(|other| other == id);
         return (!same, Rule::Trailer, 0.9);
     }
     // 4. A merge is its own unit: reviewing "the merge of branch X" beside the commits on branch X is two

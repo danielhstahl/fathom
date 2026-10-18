@@ -70,7 +70,7 @@
     },
     "sqlite": {
       "additionalProperties": true,
-      "description": "Version, compile options and ADR-004 \u00a74.0's capability probe.",
+      "description": "Version, compile options and ADR-004 §4.0's capability probe.",
       "type": "object"
     },
     "strict": {
@@ -86,6 +86,63 @@
       "additionalProperties": true,
       "description": "`e1.9`'s watcher report: the backend chosen and any running heartbeat.",
       "type": "object"
+    },
+    "hooks": {
+      "type": "object",
+      "description": "The harness event stream's health, so a bug report about the stream is a bug report that already answers 'how far behind is it'. ADR-005 §3.1 requires `fathom doctor` to name every file it reads or writes, and this is the section that names the events file; the full report is `fathom hooks --json` (schemas/hooks.schema.json). Absent-key false is not possible: the section is always produced, and a stream that could not be read says so in `error`.",
+      "required": [
+        "events_file",
+        "offset",
+        "size_bytes",
+        "lag_bytes",
+        "accepted",
+        "rejections",
+        "ok",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "events_file": {
+          "type": "string",
+          "description": "Repository-relative where it can be (ADR-002 §11.1)."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lag_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejections": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error": {
+          "type": "string",
+          "description": "Present instead of the counters when the stream could not be read at all."
+        }
+      }
     }
   },
   "required": [
@@ -107,7 +164,8 @@
     "strict",
     "exit_code",
     "exit_name",
-    "findings"
+    "findings",
+    "hooks"
   ],
   "title": "fathom doctor --json",
   "type": "object",

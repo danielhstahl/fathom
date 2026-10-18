@@ -27,6 +27,7 @@ VERB_SCHEMAS = {
     "stats": "stats.schema.json",
     "doctor": "doctor.schema.json",
     "export": "export.schema.json",
+    "hooks": "hooks.schema.json",
 }
 
 

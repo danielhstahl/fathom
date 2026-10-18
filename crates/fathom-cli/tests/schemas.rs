@@ -423,6 +423,82 @@ fn export_json_conforms_to_its_schema() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// `fathom hooks --json` against `schemas/hooks.schema.json`, with a payload that must fail.
+///
+/// The fixture stream is damaged on purpose — a torn tail, a refused line, a path that escapes — because the
+/// refused-line diagnostics are the part of the payload most likely to be hand-rolled and least likely to be
+/// exercised by a happy-path fixture.
+#[test]
+fn hooks_json_conforms_to_its_schema() {
+    let dir = fixture::repository("hooks");
+    let events = dir.join(".fathom");
+    std::fs::create_dir_all(&events).expect("create .fathom");
+    std::fs::write(
+        events.join("events.jsonl"),
+        concat!(
+            r#"{"harness":"pi_json","schema_version":1,"seq":1,"session_id":"s7","source":"turn_start","ts":"2026-01-01T00:00:00.000Z"}"#,
+            "\n",
+            r#"{"harness":"pi_json","payload":{"path":"../escape"},"schema_version":1,"seq":2,"session_id":"s7","source":"file.edited","ts":"2026-01-01T00:00:01.000Z"}"#,
+            "\n",
+            "half a line, no newline",
+        ),
+    )
+    .expect("write the events file");
+    let root = dir.to_str().unwrap();
+
+    for action in [vec!["--check"], vec!["--tail"], vec!["--replay"]] {
+        let mut args = vec!["hooks", root];
+        args.extend(action.iter().copied());
+        args.push("--json");
+        let out = fixture::fathom(&args, &dir);
+        assert_eq!(fixture::code(&out), 0, "{}", fixture::stderr(&out));
+        let report = round_trip("hooks.schema.json", &out);
+        assert_eq!(report["contract"], "fathom.cli.hooks/1");
+        assert_eq!(report["stream"]["protocol"], "fathom-hooks/1");
+        assert_eq!(
+            report["stream"]["turns"]["all_session_qualified"], true,
+            "every turn id this build emits is session-qualified (ADR-003 §18.2 D4)"
+        );
+    }
+
+    let trailer = fixture::fathom(&["hooks", root, "--trailer", "s7:3", "--json"], &dir);
+    assert_eq!(fixture::code(&trailer), 0, "{}", fixture::stderr(&trailer));
+    let report = round_trip("hooks.schema.json", &trailer);
+    assert_eq!(report["action"], "trailer");
+    assert_eq!(report["trailer"]["turn_id"], "s7:3");
+    assert!(report["stream"].is_null());
+
+    // The junk value that must fail, as every schema test must have: a stream report with its subject
+    // removed, and a payload key the schema never declared.
+    let mut hollow = fixture::stdout(&fixture::fathom(
+        &["hooks", root, "--check", "--json"],
+        &dir,
+    ))
+    .trim()
+    .to_owned();
+    let mut value: Value = serde_json::from_str(&hollow).expect("the payload is JSON");
+    value.as_object_mut().expect("an object").remove("stream");
+    hollow = serde_json::to_string(&value).unwrap();
+    let schema = Schema::load("hooks.schema.json");
+    let problems = validate(&schema.document, &value, "$");
+    assert!(
+        !problems.is_empty(),
+        "a stream report with no `stream` validated clean:\n{problems:#?}\n{hollow}"
+    );
+    let mut extra = fixture::fathom(&["hooks", root, "--check", "--json"], &dir);
+    let text = fixture::stdout(&extra).trim().to_owned();
+    let mut value: Value = serde_json::from_str(&text).unwrap();
+    value["not_a_field"] = serde_json::json!(1);
+    let problems = validate(&schema.document, &value, "$");
+    assert!(
+        !problems.is_empty(),
+        "an undeclared key validated clean against hooks.schema.json"
+    );
+    let _ = round_trip;
+    let _ = &mut extra;
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 #[test]
 fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
     let known: Vec<i32> = fathom_core::exit::ExitCode::ALL
@@ -436,6 +512,7 @@ fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
         "stats.schema.json",
         "doctor.schema.json",
         "export.schema.json",
+        "hooks.schema.json",
     ] {
         let schema = Schema::load(name);
         let document = &schema.document;
@@ -530,6 +607,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
             "common.schema.json",
             "doctor.schema.json",
             "export.schema.json",
+            "hooks.schema.json",
             "index.schema.json",
             "show.schema.json",
             "stats.schema.json",
