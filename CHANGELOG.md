@@ -16,6 +16,20 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-quk.3` — a turn id is `<session_id>:<turn_index>`, on both transports (`e1.14`)
+
+- **Two sessions' turn 3 are two turns.** `fathom_ingest::segment::qualify_turn` qualifies whatever a
+  transport handed over before the `hook` or `trailer` rung compares it, so a trailer written without the
+  session — which is what the shipped trailer transport wrote — can no longer read two agent turns as one
+  episode. ADR-003 §18.2 **D4** is the defect; the corpus pair `s1:3` beside `s2:3` is the proof it is
+  real, and `two_sessions_that_reuse_a_turn_index_are_two_episodes` is the test.
+- **`fathom show --json` prints `turn_index` beside `turn_id`**, derived from the id rather than stored
+  beside it, and `null` when there is no turn or the transport carried something that is not a number.
+- **The measurement moved with the rule.** Spike `s2`'s `D-shipped` strategy is production, not an idea of
+  it, so the harness measures the qualified comparison now: pooled boundary F1 **0.832 → 0.849**, annotated
+  turns absorbed **66 → 57**, and the report, ADR-003 §18's tables and the concept document's tables were
+  re-blessed in the same change.
+
 ### `reco-5fn` — folder structure delta: where did this episode land? (`e2.3`)
 
 - **`e2.3` shipped, and "the agent reorganised the tree" is now a number a reviewer can argue

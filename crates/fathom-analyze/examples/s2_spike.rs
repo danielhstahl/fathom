@@ -928,8 +928,13 @@ fn hidden_pathologies(history: &History, labels: &[usize]) -> Vec<Value> {
 
 /// The cascade ADR-003 §4.2 ships, in its published order, minus `override` (no forced boundaries in the
 /// corpus) and `root` (the absence of a boundary, handled by every strategy the same way).
+///
+/// `hook` is compared **session-qualified**: ADR-003 §9.1 always said a `turn_id` is
+/// `<session_id>:<turn_index>`, §18.2 **D4** found the shipped transport carrying the bare index, and
+/// `reco-quk.3` landed the qualification — so this list is production again, which is the only reason the
+/// harness's production-equality check below passes.
 const SHIPPED: &[Rung] = &[
-    Rung::HookCommit,
+    Rung::HookCommitQ,
     Rung::TrailerFathom,
     Rung::Branch,
     Rung::Author,
@@ -1005,7 +1010,7 @@ fn strategies() -> Vec<Strategy> {
         Strategy {
             id: "D-shipped",
             title: "the cascade ADR-003 §4.2 ships, at its published constants",
-            rationale: "the incumbent: hook › trailer › branch › author › time-gap(30) › message-shape.",
+            rationale: "the incumbent: hook(session-qualified) › trailer › branch › author › time-gap(30) › message-shape.",
             rungs: SHIPPED,
             gap_minutes: 30,
         },

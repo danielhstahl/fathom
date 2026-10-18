@@ -216,7 +216,16 @@ def test_turn_ids_are_session_qualified_and_the_trailer_pair_matches_the_adr():
     segment_text = _text(SEGMENT)
     assert 'pub const TRAILER_TURN_KEY: &str = "agent-turn";' in segment_text
     assert 'pub const TRAILER_TURN: &str = "Agent-Turn";' in segment_text
-    assert "named_turn(&commit.trailers)" in segment_text, "rung 3 must read the qualified key"
+    assert "named_trailer_turn(commit)" in segment_text, "rung 3 must read the trailer pair"
+    assert "pub fn qualify_turn(" in segment_text, (
+        "the qualification lives in one function both transports run through; a second copy of the join "
+        "is how `turn_id` came to mean two things in the first place"
+    )
+    assert "fn named_turn(commit: &CommitFacts)" in segment_text, (
+        "rung 2 must compare qualified ids (ADR-003 \u00a79.1, \u00a718.2 **D4**)")
+    assert "fn named_trailer_turn(commit: &CommitFacts)" in segment_text, (
+        "rung 3 must compare qualified ids too \u2014 the trailer transport is the one that carried the "
+        "bare index")
     # The ADR's own §4.2 row now describes the key rung 3 reads, so the doc and the rule cannot part.
     row = next(line for line in _text(ADR_EPISODES).splitlines()
                if line.startswith("| 3 | `trailer` |"))

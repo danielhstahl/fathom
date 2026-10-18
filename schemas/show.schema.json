@@ -190,9 +190,16 @@
               ]
             },
             "turn_id": {
-              "description": "Harness turn the episode answers, when known.",
+              "description": "Harness turn the episode answers, when known. Session-qualified (`<session_id>:<turn_index>`) whenever a session is known: ADR-003 §9.1 defines the id, and ADR-003 §18.2 D4 is the defect that had the trailer transport carrying the bare index.",
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "turn_index": {
+              "description": "The turn number inside turn_id, derived rather than stored: null when there is no turn, and null when the id carries something that is not a number.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -206,6 +213,7 @@
             "author_confidence",
             "session_id",
             "turn_id",
+            "turn_index",
             "overridden",
             "live",
             "lineage_ref",

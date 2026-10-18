@@ -95,11 +95,19 @@ impl Repo {
     ) -> String {
         self.write(files);
         git(&self.dir, &["add", "-A"], &[]);
-        let message = trailers
+        // One paragraph, git's rule: the trailer block is the *last paragraph* of the message, so a blank
+        // line between two trailer lines makes the first of them prose (`Trailers::parse`,
+        // `crates/fathom-ingest/src/record.rs`). A fixture that spaced them wrote one trailer and read one.
+        let block = trailers
             .iter()
-            .fold(subject.to_owned(), |body, (key, value)| {
-                format!("{body}\n\n{key}: {value}")
-            });
+            .map(|(key, value)| format!("{key}: {value}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let message = if block.is_empty() {
+            subject.to_owned()
+        } else {
+            format!("{subject}\n\n{block}")
+        };
         git(
             &self.dir,
             &["commit", "-q", "-m", &message],
@@ -420,9 +428,67 @@ fn a_turn_named_by_the_harness_beats_every_heuristic() {
     );
     assert_eq!(
         with_summary(&episodes, "part of t-1").turn_id.as_deref(),
-        Some("t-1")
+        Some("s-1:t-1"),
+        "the stored id is the qualified one ADR-003 §9.1 defines, not the bare index the transport carried"
     );
-    assert_eq!(second.turn_id.as_deref(), Some("t-2"));
+    assert_eq!(second.turn_id.as_deref(), Some("s-1:t-2"));
+}
+
+#[test]
+fn two_sessions_that_reuse_a_turn_index_are_two_episodes() {
+    // ADR-003 §18.2 **D4** (`reco-quk.3`). Two harness sessions that both reach turn 3, minutes apart, one
+    // author: read raw, the trailer pair says "turn 3" twice, the hook rung declines to cut, and two agent
+    // turns become one episode. The collision is not invented — it is `s1:3` beside `s2:3` in the turn
+    // corpus's `authored-trailer-carrying-loop` history (annotated turns t03 and t04), which is where `s2`
+    // found it and priced the fix at +0.015 pooled boundary F1.
+    let repo = Repo::new("session-collision");
+    repo.init();
+    for (session, minute, area) in [("s1", 60_i64, "src/reader.rs"), ("s2", 61, "src/writer.rs")] {
+        repo.commit(
+            "pi-agent",
+            minute,
+            &format!("feat: the {session} slice"),
+            &[(area, "// one turn\n")],
+            &[("Agent-Session", session), ("Agent-Turn", "3")],
+        );
+    }
+    index(&repo);
+
+    let episodes = live(&repo);
+    assert_eq!(
+        episodes.len(),
+        3,
+        "the root, then one episode per session — both named turn 3, and turn 3 is not an id on its own: {episodes:?}"
+    );
+    let first = with_summary(&episodes, "the s1 slice");
+    let second = with_summary(&episodes, "the s2 slice");
+    assert_eq!(
+        (first.session_id.as_deref(), first.turn_id.as_deref()),
+        (Some("s1"), Some("s1:3"))
+    );
+    assert_eq!(
+        (second.session_id.as_deref(), second.turn_id.as_deref()),
+        (Some("s2"), Some("s2:3"))
+    );
+    assert_eq!(
+        first.boundary_rule, "trailer",
+        "the first turn-carrying commit has one-sided evidence: a trailer naming a turn is a statement about that side"
+    );
+    assert_eq!(
+        second.boundary_rule, "hook",
+        "the collision adjacency itself is decided by the turn evidence, which is the rung the defect silenced"
+    );
+    assert!(
+        (second.boundary_confidence - 1.0).abs() < f64::EPSILON,
+        "and it is priced as evidence, not as a guess"
+    );
+    // The bare index is still recoverable, which is what `fathom show --json` prints beside the id.
+    assert_eq!(
+        fathom_ingest::segment::turn_index(first.turn_id.as_deref()),
+        Some(3)
+    );
+    assert_eq!(fathom_ingest::segment::turn_index(Some("s2:r6")), None);
+    assert_eq!(fathom_ingest::segment::turn_index(Some("3")), None);
 }
 
 #[test]

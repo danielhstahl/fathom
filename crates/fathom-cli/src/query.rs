@@ -232,6 +232,11 @@ fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_j
         "author_confidence": author_confidence,
         "session_id": session_id,
         "turn_id": turn_id,
+        // ADR-003 §9.1 / §18.2 D4: the id is `<session_id>:<turn_index>`, and the number is printed as
+        // well so a consumer does not re-split a string it has no business parsing. `null` when there is
+        // no turn, or when the transport carried something that is not an index — `r6` is a ref, not a
+        // turn number, and pretending otherwise would be inventing a fact.
+        "turn_index": fathom_ingest::segment::turn_index(turn_id.as_deref()),
         "overridden": overridden,
         "live": live,
         "lineage_ref": lineage_ref,

@@ -197,8 +197,8 @@ def gap_sweep(report: dict) -> str:
 def census(report: dict) -> str:
     order = [
         ("hook(harness)", "harness states turn membership (the `e6.1` counterfactual)"),
-        ("hook(commit)", "**`hook` as shipped** — raw `turn_id` compared unqualified, both sides required"),
-        ("hook(commit,session-qualified)", "`hook` with ids qualified as `session:turn` (§9.1, D4's fix), both sides required"),
+        ("hook(commit)", "`hook` compared **unqualified** — the spelling the trailer transport carried before `reco-quk.3` landed it, both sides required"),
+        ("hook(commit,session-qualified)", "**`hook` as shipped** — ids qualified as `session:turn` (§9.1, D4's fix), both sides required"),
         ("trailer(Agent-Turn)", "`Agent-Turn:` trailer as §9.1's transport spells it: qualified, **and a trailer on one side alone reads as a boundary**"),
         ("trailer(Fathom-Episode)", "`Fathom-Episode:` trailer — §4.2 rung 3"),
         ("branch", "`branch` — §4.2 rung 4"),

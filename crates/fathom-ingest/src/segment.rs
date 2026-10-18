@@ -50,6 +50,12 @@
 //! what moved was the key), and [`TRAILER_EPISODE`] is **reserved** for the day Fathom itself declares an
 //! episode start: nothing writes it, and reading it costs nothing.
 //!
+//! The *value* a turn id carries is qualified by [`qualify_turn`] before any rule compares it, on both
+//! transports. The writer side qualifies at the source (ADR-003 §18.2 **D4**), but a trailer written before
+//! that writer existed — or by a harness that counts turns per session and stops at the session — carries
+//! a bare index, and a bare index read as an id reads two sessions' turn 3 as one turn. Rung 2 and rung 3
+//! both compare qualified ids, so the defect cannot come back through the transport that is quieter about it.
+//!
 //! Like the rest of this module, no clock is read here: gaps are differences between commit dates given
 //! in (ADR-002 §4.4).
 
@@ -333,7 +339,8 @@ pub struct Episode {
     pub author_email: String,
     /// The harness session/turn, when either was named.
     pub session_id: Option<String>,
-    /// See [`Episode::session_id`].
+    /// See [`Episode::session_id`]. Session-qualified (`<session_id>:<turn_index>`) whenever a session is
+    /// known, because a bare index is not an id (ADR-003 §9.1, §18.2 **D4**).
     pub turn_id: Option<String>,
     /// The members, oldest first.
     pub members: Vec<String>,
@@ -364,6 +371,15 @@ impl Episode {
     #[must_use]
     pub fn n_commits(&self) -> usize {
         self.members.len()
+    }
+
+    /// The turn number inside [`Episode::session_id`], when the id carries one: `Some(3)` for `s1:3`.
+    ///
+    /// Derived, never stored: a second copy of the number is a second thing to disagree with the id.
+    /// `fathom show --json` prints it beside `turn_id` (ADR-003 §9.1).
+    #[must_use]
+    pub fn turn_index(&self) -> Option<u64> {
+        turn_index(self.turn_id.as_deref())
     }
 }
 
@@ -669,16 +685,8 @@ fn new_episode(
         author_confidence: kind_confidence,
         author_name: commit.author_name.clone(),
         author_email: commit.author_email.clone(),
-        session_id: commit
-            .session_id
-            .clone()
-            .or_else(|| trailer(&commit.trailers, TRAILER_SESSION_KEY))
-            .or_else(|| trailer(&commit.trailers, "session")),
-        turn_id: commit
-            .turn_id
-            .clone()
-            .or_else(|| named_turn(&commit.trailers))
-            .or_else(|| trailer(&commit.trailers, "turn")),
+        session_id: named_session(commit),
+        turn_id: named_turn(commit).or_else(|| named_trailer_turn(commit)),
         members: vec![commit.oid.clone()],
         first_oid: commit.oid.clone(),
         last_oid: commit.oid.clone(),
@@ -702,10 +710,10 @@ fn extend(episode: &mut Episode, commit: &CommitFacts) {
     episode.n_del += commit.n_del;
     episode.n_binary += commit.n_binary;
     if episode.turn_id.is_none() {
-        episode.turn_id = commit.turn_id.clone();
+        episode.turn_id = named_turn(commit).or_else(|| named_trailer_turn(commit));
     }
     if episode.session_id.is_none() {
-        episode.session_id = commit.session_id.clone();
+        episode.session_id = named_session(commit);
     }
 }
 
@@ -713,10 +721,68 @@ fn trailer(trailers: &BTreeMap<String, String>, key: &str) -> Option<String> {
     trailers.get(key).cloned().filter(|value| !value.is_empty())
 }
 
-/// The turn or episode a trailer names for this commit: the contract key first, the reserved one second.
+fn non_empty(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(str::to_owned)
+}
+
+/// The session this commit's turn evidence belongs to (ADR-005 §3.3).
+///
+/// An ingested event's session outranks a trailer, which outranks the bare `Session:` spelling a
+/// hand-written message still uses.
 #[must_use]
-fn named_turn(trailers: &BTreeMap<String, String>) -> Option<String> {
-    trailer(trailers, TRAILER_TURN_KEY).or_else(|| trailer(trailers, TRAILER_EPISODE_KEY))
+pub fn named_session(commit: &CommitFacts) -> Option<String> {
+    non_empty(commit.session_id.as_deref())
+        .or_else(|| trailer(&commit.trailers, TRAILER_SESSION_KEY))
+        .or_else(|| trailer(&commit.trailers, "session"))
+}
+
+/// Put a turn id into the shape ADR-003 §9.1 and ADR-005 §3.3 define: `<session_id>:<turn_index>`.
+///
+/// The qualification is not decoration and this function is the only place it happens. A bare `3` makes
+/// two sessions' turn 3 one turn, the `hook` rung declines to cut between them, and two agent turns
+/// become one episode — ADR-003 §18.2 **D4**, which is a defect with a number on it (+0.015 pooled
+/// boundary F1, +0.031 on the fixture stratum) rather than a tidiness preference. A turn id that already
+/// carries a session is passed through untouched (the trailer writer [`crate::hooks::trailer_block`
+/// qualifies at the source], and so does an ingested event), and a turn with no session anywhere stays
+/// bare, because inventing a session would be inventing evidence.
+#[must_use]
+pub fn qualify_turn(session_id: Option<&str>, turn_id: Option<&str>) -> Option<String> {
+    let turn = non_empty(turn_id)?;
+    if turn.contains(':') {
+        return Some(turn);
+    }
+    match non_empty(session_id) {
+        Some(session) => Some(format!("{session}:{turn}")),
+        None => Some(turn),
+    }
+}
+
+/// The [`Episode::turn_index`] that goes with a qualified id: `Some(3)` for `s1:3`, `None` for a bare
+/// `3`, a non-numeric index, or no turn at all. `fathom show --json` prints this next to `turn_id` so a
+/// consumer does not have to re-derive the split (ADR-003 §9.1).
+#[must_use]
+pub fn turn_index(turn_id: Option<&str>) -> Option<u64> {
+    let (_, index) = turn_id?.rsplit_once(':')?;
+    index.parse().ok()
+}
+
+/// The session this commit names, qualified: what rung 2 compares (ADR-003 §9.1, §18.2 **D4**).
+#[must_use]
+pub fn named_turn(commit: &CommitFacts) -> Option<String> {
+    qualify_turn(named_session(commit).as_deref(), commit.turn_id.as_deref())
+}
+
+/// The turn or episode a *trailer* names for this commit, qualified the same way: the contract key first,
+/// the reserved one second.
+#[must_use]
+fn named_trailer_turn(commit: &CommitFacts) -> Option<String> {
+    let trailers = &commit.trailers;
+    let bare =
+        trailer(trailers, TRAILER_TURN_KEY).or_else(|| trailer(trailers, TRAILER_EPISODE_KEY));
+    qualify_turn(named_session(commit).as_deref(), bare.as_deref())
 }
 
 /// Decide whether `commit` opens an episode after `previous`, and name the rule that decided.
@@ -733,8 +799,10 @@ pub fn decide(previous: &CommitFacts, commit: &CommitFacts, rules: &Rules) -> (b
         return (false, Rule::Override, 1.0);
     }
     // 1. Harness evidence outranks everything the git history has to say. Both commits name a turn: equal
-    //    turns are one episode, different turns are two, and nothing else gets a vote.
-    if let (Some(mine), Some(theirs)) = (&commit.turn_id, &previous.turn_id) {
+    //    turns are one episode, different turns are two, and nothing else gets a vote. Compared
+    //    session-qualified (ADR-003 §9.1, §18.2 D4): the trailer transport hands this rung a bare index,
+    //    and `s1`'s turn 3 beside `s2`'s turn 3 is two turns, not one.
+    if let (Some(mine), Some(theirs)) = (named_turn(commit), named_turn(previous)) {
         return (mine != theirs, Rule::Hook, 1.0);
     }
     // 3. A trailer naming this commit's turn. `Agent-Turn:` is the key the writer emits
@@ -743,8 +811,8 @@ pub fn decide(previous: &CommitFacts, commit: &CommitFacts, rules: &Rules) -> (b
     //    trailer is a statement, so a *different* turn on the two sides is a boundary, and a turn named on
     //    one side alone is still a statement about that side (unlike one-sided *event* evidence, which
     //    TB6 refuses to read as a boundary).
-    if let Some(id) = named_turn(&commit.trailers) {
-        let same = named_turn(&previous.trailers).is_some_and(|other| other == id);
+    if let Some(id) = named_trailer_turn(commit) {
+        let same = named_trailer_turn(previous).is_some_and(|other| other == id);
         return (!same, Rule::Trailer, 0.9);
     }
     // 4. A merge is its own unit: reviewing "the merge of branch X" beside the commits on branch X is two
@@ -948,6 +1016,68 @@ mod tests {
         assert_eq!(episodes.len(), 2);
         assert_eq!(episodes[1].rule, Rule::TimeGap);
         assert!((episodes[1].confidence - 0.6).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn a_turn_id_is_qualified_before_any_rule_compares_it() {
+        // ADR-003 §18.2 **D4**. Two transports hand rung 2 and rung 3 a bare index; both have to be
+        // qualified in the same place, or the defect comes back through whichever one nobody fixed.
+        assert_eq!(
+            qualify_turn(Some("s1"), Some("3")),
+            Some("s1:3".to_owned()),
+            "the trailer transport's `Agent-Turn: 3` with `Agent-Session: s1`"
+        );
+        assert_eq!(
+            qualify_turn(Some("s1"), Some("s2:3")),
+            Some("s2:3".to_owned()),
+            "an id that already carries a session is left alone — the writer qualifies at the source"
+        );
+        assert_eq!(
+            qualify_turn(None, Some("3")),
+            Some("3".to_owned()),
+            "no session anywhere means no qualification: inventing one would be inventing evidence"
+        );
+        assert_eq!(qualify_turn(Some("s1"), None), None);
+        assert_eq!(qualify_turn(Some("s1"), Some("  ")), None);
+
+        // The event transport's allocator and this join must not grow two opinions of the same id.
+        assert_eq!(
+            qualify_turn(Some("s1"), Some("3")),
+            Some(crate::hooks::qualify_turn_id("s1", 3))
+        );
+
+        // The trailer path: same author, same minute, both claiming turn 3 of a different session.
+        let with = |session: &str, paths: &[&str]| CommitFacts {
+            oid: format!("c-{session}"),
+            author_name: "pi-agent".to_owned(),
+            author_email: "pi-agent@example.invalid".to_owned(),
+            author_utc: 0,
+            subject: "feat: a turn".to_owned(),
+            trailers: BTreeMap::from([
+                (TRAILER_SESSION_KEY.to_owned(), session.to_owned()),
+                (TRAILER_TURN_KEY.to_owned(), "3".to_owned()),
+            ]),
+            paths: paths.iter().map(|p| (*p).to_owned()).collect(),
+            n_files: paths.len() as i64,
+            ..CommitFacts::default()
+        };
+        let (starts, rule, confidence) = decide(
+            &with("s1", &["src/a.rs"]),
+            &with("s2", &["src/b.rs"]),
+            &Rules::default(),
+        );
+        assert!(starts, "two sessions' turn 3 are two turns");
+        assert_eq!(rule, Rule::Trailer);
+        assert!((confidence - 0.9).abs() < f64::EPSILON);
+        let (keeps, _, _) = decide(
+            &with("s1", &["src/a.rs"]),
+            &with("s1", &["src/b.rs"]),
+            &Rules::default(),
+        );
+        assert!(
+            !keeps,
+            "the same session's turn 3 is the same turn whatever it touched"
+        );
     }
 
     #[test]
