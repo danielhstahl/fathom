@@ -244,8 +244,10 @@ SECTIONS: dict[str, dict] = {
                   "doc": "Which finding detectors run."},
     "blast": {"title": "Blast radius", "owner": "e2.10",
               "doc": "How far the blast-radius walk goes before it declares a partial."},
-    "rename": {"title": "Rename detection", "owner": "e1.6",
-               "doc": "Similarity threshold for calling two paths the same file."},
+    "rename": {"title": "Rename detection and pairing", "owner": "e1.6 / e2.4 (`reco-a0v`)",
+               "doc": "Two questions with two bars. `rename.threshold` is what the diff pane "
+                      "prints as a rename; the `fact_bar`/`guess_floor` pair decides what the "
+                      "pairing engine asserts, what it labels a guess, and what it costs."},
     "diff": {"title": "Diff rendering", "owner": "e1.6",
              "doc": "Per-file diff knobs."},
     "episode": {"title": "Episode segmentation", "owner": "ADR-003 / e1.3",
@@ -738,6 +740,83 @@ KEY_LIST: list[Key] = [
     _k(path="rename.threshold", kind="integer", default=60, minimum=0, maximum=100,
        units="percent", doc="Similarity needed to call two paths the same file.",
        analyzer="diff.rename_detect", ticket="e1.6"),
+    # --- rename pairing (e2.4). `rename.threshold` above is what the *diff pane* prints as a
+    # rename; these keys decide what the pairing engine will assert, and spike s4 measured two of
+    # them. The pairing engine asks git at the lower of the fact bar and the guess floor, so it can
+    # put git's own number on a guess, and `rename.threshold` no longer caps what a pairing can say.
+    _k(path="rename.fact_bar", kind="number", default=0.75, minimum=0.0, maximum=1.0,
+       units="similarity",
+       doc="git's similarity index needed before a pairing is a FACT a reviewer is asked to act "
+           "on. Measured on s4's corpus: at git's shipped 0.50 the engine asserts a named decoy and "
+           "still misses every rewrite below R050; at 0.75 it ships nothing false. Every pairing "
+           "below this bar is a labelled guess, because no threshold separates the corpus's decoy "
+           "from its true rewrites.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.fact.allow_content", kind="boolean", default=False,
+       doc="Let the content matcher's own similarity assert a FACT at or above the fact bar. Off: "
+           "a fact should be re-checkable with `git log --follow`, and s4 measured git's percentage "
+           "as badly calibrated (ECE 0.182) once the engine pairs anything — worse for a number a "
+           "reviewer cannot reproduce at all. On, and the row says the number is ours.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.guess_floor", kind="number", default=0.15, minimum=0.0, maximum=1.0,
+       units="similarity",
+       doc="The lowest-scoring guess the card prints. Not a correctness bar — no threshold removes "
+           "the decoy — a display budget. 0.15 is the measured knee: every claimable pair the engine "
+           "can find is found, and 0.10 buys two more (both above the claimable line) for three more "
+           "rows and no fewer lies.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.candidates.top_k", kind="integer", default=3, minimum=1, maximum=10,
+       units="pairs",
+       doc="A source may claim its k best destinations and a destination its k best sources; a pair "
+           "survives if either side wants it. This is what lets a 1-to-3 split be emitted at all — a "
+           "1:1 assignment cannot name three destinations at any threshold.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.candidates.budget", kind="integer", default=4000, minimum=1,
+       units="pairs",
+       doc="Scored pairs per window before the candidate list is truncated to the best. Over budget "
+           "is printed as a stated partial with the number dropped, never a silent short recall.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.candidates.copies_harder", kind="boolean", default=False,
+       doc="Widen copy sources to every path in the base tree — the only way to see a copy of a "
+           "file nobody touched in this window. It is O(repo files), which `e2.4`'s own cost "
+           "criterion rules out, and s4 priced what it buys: both real copies and fabricated "
+           "pairings on a window where nothing moved. When on, every card prints the cost.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.copies", kind="boolean", default=True,
+       doc="Let a file this window modified be a copy source. Still O(changed files), and the only "
+           "copy a window-local method can ever see: a copy's source is never deleted, so a "
+           "deletions-only source set is copy-blind by construction.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.folds", kind="boolean", default=True,
+       doc="Let a file this window modified be a merge destination. Without it a fold into an "
+           "existing module is invisible — the destination never appears among the additions, which "
+           "is why git reports zero folds at any threshold.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.content.shingle_lines", kind="integer", default=3, minimum=1, maximum=12,
+       units="lines",
+       doc="Lines per shingle. One line is a bag of lines, which scores every file sharing an import "
+           "header as similar — that is the decoy failure; three needs a run of context. Wider, and "
+           "a moved-and-edited file stops matching at all.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.content.normalise", kind="string", default="lines", enum=("lines", "tokens"),
+       units="mode",
+       doc="`lines` folds whitespace only, so a moved-and-reformatted file is still found. `tokens` "
+           "runs e2.2's token normaliser first, which makes a pure reformat invisible between the "
+           "two blobs — and also erases the difference between two files that differ only in "
+           "formatting, which a reviewer may want reported.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.content.min_shared_shingles", kind="integer", default=4, minimum=0,
+       units="shingles",
+       doc="How many shingles two files must actually share before a similarity is a pairing. A "
+           "four-line file sharing one shingle has a Jaccard of 1.00 and shares nothing worth "
+           "calling provenance; without this floor every four-line config file is a candidate copy "
+           "of every other.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
+    _k(path="rename.card.rows", kind="integer", default=12, minimum=1, units="rows",
+       doc="Rows per tier before the card names the remainder and the verb that lists it. A cap is "
+           "not a truncation as long as the count survives — the auditor fails a card that loses "
+           "rows silently.",
+       analyzer="diff.rename_detect", ticket="e2.4"),
     _k(path="diff.context_lines", kind="integer", default=3, minimum=0, maximum=20,
        units="lines", doc="Context lines per diff hunk.", analyzer="diff.per_file",
        ticket="e1.6"),

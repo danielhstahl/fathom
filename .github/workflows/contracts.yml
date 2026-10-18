@@ -213,6 +213,23 @@ jobs:
         # Every number in `docs/concepts/rename-detection.md` — the fact/guess recommendation `e2.4` will
         # be written from — is rendered from the report by the same generator the doc cites.
         run: python3 tools/gen_rename_tables.py check
+      - name: "e2.4 rename pairing: the shipped detector re-measures to the committed report"
+        # `benchmarks/reports/e2-4-rename-pairing.json` is the acceptance criteria of `reco-a0v` turned
+        # into numbers: the fact tier asserting nothing untrue, recall stated per representation class so a
+        # split cannot hide inside a rename average, the accept/reject/re-open rules actually working, and
+        # the cost curve flat against repository size while the refused O(repo) mode is not. Built from
+        # real `git` histories on the runner (~10 min), and a gate that drifted is a claim that changed.
+        run: PYTHONPATH=src python3 -m recommender.rename score --check
+      - name: "e2.4 rename pairing: the concept document's numbers are the report's, generated"
+        run: python3 tools/gen_rename_pairing_tables.py check
+      - name: "e2.4 rename pairing: the card audits itself, and the verbs work on a real repository"
+        # The auditor is only worth having if something runs it: this renders a real card from a real
+        # repository and fails if the card stopped telling the truth about its own tiers.
+        run: |
+          PYTHONPATH=src python3 -m recommender.rename demo --audit | tail -1
+          PYTHONPATH=src python3 -m recommender.rename policy | head -3
+          PYTHONPATH=src python3 -m recommender.rename explain | head -3
+          PYTHONPATH=src python3 -m recommender.rename score --json --only clean_moves | head -1
       - name: "e1.5 TUI: the Rust shell's parity tables are the Python ones, generated"
         # `crates/fathom-tui/tests/tables/mod.rs` is generated from `src/recommender/tui/`, because
         # a Rust copy of the keymap that was hand-copied is a second source of truth with a

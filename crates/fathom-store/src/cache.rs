@@ -152,10 +152,27 @@ pub const ANALYZERS: &[Analyzer] = &[
     },
     Analyzer {
         id: "diff.rename_detect",
-        version: 1,
+        // Version 2: `e2.4` (`reco-a0v`) made pairing a tiered engine whose answer depends on twelve
+        // more config keys, so §5.5's invalidation has to cover all of them — a pairing cached under a
+        // 0.50 fact bar must not survive the move to the s4-measured 0.75.
+        version: 2,
         schema_version: 1,
         scope_kind: "commit_pair",
-        config_keys: &["rename.threshold"],
+        config_keys: &[
+            "rename.threshold",
+            "rename.fact_bar",
+            "rename.fact.allow_content",
+            "rename.guess_floor",
+            "rename.candidates.top_k",
+            "rename.candidates.budget",
+            "rename.candidates.copies_harder",
+            "rename.copies",
+            "rename.folds",
+            "rename.content.shingle_lines",
+            "rename.content.normalise",
+            "rename.content.min_shared_shingles",
+            "rename.card.rows",
+        ],
         depends_on: &["diff.per_file"],
         source_paths: &["crates/fathom-analyze/src/rename/**"],
         est_cost_ms: 3,

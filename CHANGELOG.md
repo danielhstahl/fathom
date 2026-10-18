@@ -16,6 +16,57 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-a0v` — rename and copy pairing: what the card asserts, and what it only guesses (`e2.4`)
+
+- **`e2.4` shipped, and the fact tier means what the spike said it had to mean.** `src/recommender/rename/`
+  pairs one review window's deleted and added bytes into **pairings** — a rename, a split, a fold, a copy
+  or a tangle, with the shape kept as a field — and a pairing is a **fact** only when git's own rewriter
+  reports it at or above `rename.fact_bar`, which ships at the measured **0.75** instead of git's default
+  50 %. A reviewer who distrusts a fact runs `git log --follow` on it; that is the whole test of the word.
+  Measured on 17 fixtures built by real `git` (37 windows, 67 hand-authored pairings, 62 of them
+  claimable): the fact tier emits **40 pairings, 0 untrue**, precision **1.0**, recall **0.6452** of
+  claimable; pooled, **precision 0.9836, recall 0.9677**, **2.7 untrue pairings per 100 windows**.
+  The two fixtures `e2.4` names are paired in full — `rename_storm` **7/7**, `rename_rewrite` **3/3**,
+  **0 untrue** in either — and the nine windows in which nothing moved emitted **nothing**.
+- **Splits, folds and copies are groupings, not renames with a label.** A 1→3 split is one pairing with
+  three destinations — three rows would let a reviewer accept two thirds of a split — and its confidence
+  is its **weakest** edge. Because git asserts pairs and not shapes, **no grouping is ever a fact**: a
+  split whose every edge reads R100 is still our inference, and arrives labelled. Recall by class,
+  because pooling hides it: rename **48/48**, split **9/9**, fold **3/3**, and a pair found under the
+  wrong shape anywhere in the corpus counts as a failure (**0** such cases).
+- **The copy row is a stated blindness with a price list, not an oversight.** A copy whose source the
+  window never touched needs a source outside the change set, which is `O(repo files)` — so shipped mode
+  reports the copies it can see (**0 of 2** of the fixture's) and prints the note saying what it cannot
+  see. `rename.candidates.copies_harder` buys them back (**2/2**) at measured cost, and is off by default
+  because that is what a cost criterion means.
+- **A guess can be accepted or rejected, and the decision is bound to bytes.** `fathom rename accept|reject`
+  writes to `.fathom/rename-review.json` with a reviewer and a note; rejecting hides a pairing and keeps
+  it counted, accepting shows it as asserted *and names who said so*, and a decision whose blobs have since
+  changed is **re-opened** instead of inherited — lookup by paths and shape, binding over the bytes, so a
+  rebased branch is recognised as the same claim about different content. A ledger that does not parse is
+  reported and never overwritten.
+- **The card is audited, and the auditor is given broken cards in the tests.** `--audit` re-reads the
+  rendered card and fails it for a fact badge on a guess, a suppression with no suppression line, a cap
+  with no count, a group row that lost its shape, a bare percentage with no method, or an unprinted limit.
+  Every row carries its receipt — `content J0.34 agrees (50 shared of 99/99 3-line shingles)`, not a bare
+  number — and `fathom rename explain --path P` says why the grouping is a guess and which command checks
+  it.
+- **The cost bound is measured as flat against the tree, and the mode that is not is priced.** Repository
+  200 → 4 000 paths with the change set held at 6 moved files: **2.69× shipped** against a gate of 3.0,
+  **15.56× widened**, with blob counts beside the milliseconds (6 read versus 4 000). Change set 1 → 48
+  pairs costs **2.77×** — quadratic in what changed, which is the honest statement, pruned by
+  `top_k`/`budget` and saying so when the budget bites. Nine quiet windows emit nothing at the shipped
+  floor; the same window at floor 0.04 is where `s4` counted 84 fabrications, and gate `S2`/`A2f` keep
+  that trade visible.
+- **Two prohibitions became gates instead of opinions.** Path and file-name similarity is never part of a
+  pairing score (`P4`: same basename, disjoint content, nothing emitted) though it is still printed and
+  used to order rows, because `s4` measured a 0.15 name weight taking wrong pairings from **1 to 36**.
+  And no content score is an approximation: exact Jaccard over hashed line shingles, with `P3` recomputing
+  every printed number exactly. 13 config keys declared in `e0.8`'s schema, `diff.rename_detect`
+  bumped to version 2 so a change to any of them invalidates cached pairings, the analysis half IO-free
+  per ADR-002 §4.5, and `benchmarks/reports/e2-4-rename-pairing.json` re-measured in CI with **30 gates**
+  and **60 contract tests** in `tests/test_rename_pairing_contract.py`.
+
 ### `reco-gj6` — spike `s4`: when a rename pairing is a fact, and when it is a guess (`s4`)
 
 - **`e2.4`'s guessed bar now has a measurement under it.** `reco-a0v` promised "≥ 90 % pair precision and

@@ -161,7 +161,7 @@ def git_detect(window: Window, *, threshold: int = 50, copies: bool = False,
 
 # -- 2. the shingle/minhash matcher --------------------------------------------------------------
 
-def _name_similarity(src: str, dst: str) -> float:
+def name_similarity(src: str, dst: str) -> float:
     """1 − normalised Levenshtein over the two paths. The name is evidence: a move usually keeps the
     basename, and `e2.4`'s own fixture story (`store.rs` → `store/mod.rs`) is a basename-only move."""
     if src == dst:
@@ -245,7 +245,7 @@ def similarity_detect(window: Window, *, threshold: float = 0.5, width: int = DE
             src_sketch = src_sketches[src]
             est = SH.estimate(src_sketch, dst_sketch)
             exact = SH.exact_jaccard(src_sketch.shingles, dst_sketch.shingles)
-            name = _name_similarity(src, dst)
+            name = name_similarity(src, dst)
             basis = exact if exact_only else est
             score = basis if name_weight <= 0 else (1 - name_weight) * basis + name_weight * name
             scored.append((src, dst, score, est, exact))
@@ -266,7 +266,7 @@ def similarity_detect(window: Window, *, threshold: float = 0.5, width: int = DE
             continue
         out.append(Prediction(src, dst, "rename", min(score, 1.0), "similarity",
                               {"jaccard_estimate": est, "jaccard_exact": exact,
-                               "name_similarity": _name_similarity(src, dst)}))
+                               "name_similarity": name_similarity(src, dst)}))
     return out
 
 
@@ -330,7 +330,7 @@ def name_detect(window: Window, *, threshold: float = 0.75) -> list[Prediction]:
     out: list[Prediction] = []
     for src in sources:
         for dst in destinations:
-            score = _name_similarity(src, dst)
+            score = name_similarity(src, dst)
             if score >= threshold:
                 out.append(Prediction(src, dst, "rename", score, "name-only",
                                       {"name_similarity": score}))

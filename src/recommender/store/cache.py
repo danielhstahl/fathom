@@ -134,7 +134,17 @@ ANALYZERS: tuple[Analyzer, ...] = (
              source_paths=("src/analyze/taxonomy/**",)),
     Analyzer("diff.per_file", 1, "path_pair", config_keys=("diff.context_lines",),
              depends_on=("taxonomy.path",), source_paths=("src/analyze/diff/**",)),
-    Analyzer("diff.rename_detect", 1, "commit_pair", config_keys=("rename.threshold",),
+    # Version 2: e2.4 (reco-a0v) moved rename pairing from "one threshold, git decides" to a tiered
+    # engine whose output depends on twelve more keys. A change to any of them changes what a pairing
+    # says, so §5.5's invalidation has to cover all of them — a cached fact under a 0.50 bar must not
+    # survive a move to the measured 0.75.
+    Analyzer("diff.rename_detect", 2, "commit_pair",
+             config_keys=("rename.threshold", "rename.fact_bar", "rename.fact.allow_content",
+                          "rename.guess_floor", "rename.candidates.top_k",
+                          "rename.candidates.budget", "rename.candidates.copies_harder",
+                          "rename.copies", "rename.folds", "rename.content.shingle_lines",
+                          "rename.content.normalise", "rename.content.min_shared_shingles",
+                          "rename.card.rows"),
              depends_on=("diff.per_file",), source_paths=("src/analyze/rename/**",)),
     Analyzer("episode.segment", 1, "commit_pair",
              config_keys=("episode.boundaries", "episode.time_gap_minutes"),

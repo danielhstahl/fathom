@@ -36,6 +36,24 @@ globs = ["tests/**", "**/test_*.py"]
 # `python3 -m recommender.testsurface definition` prints those numbers as sentences, and
 # `... policy` prints which layer each one came from.
 
+[rename]
+# `e2.4` (reco-a0v) pairs paths across a review window and separates what git asserts from what the
+# content matcher only guesses. The two bars below are the ones spike s4 and this ticket measured, so
+# they are written down rather than left at a guessed default:
+#   fact_bar 0.75   git's own similarity needed before a pairing is shown as a fact. At git's shipped
+#                   0.50 it asserts a pairing the corpus names as not-a-move and still misses every
+#                   rewrite below R050; at 0.75 it asserts nothing untrue (precision 1.00 on the
+#                   corpus, 0 wrong) — see benchmarks/reports/s4-rename-detection.json.
+#   guess_floor 0.15 the lowest-scoring guess the card prints. No threshold separates the corpus's
+#                   decoy from its true rewrites, so this is a display budget, and 0.15 is where the
+#                   measured trade stops buying true pairings per lie.
+# The rest (`rename.candidates.*`, `rename.content.*`, `rename.card.rows`) stays at the built-in
+# default for the same reason `[test]` leaves its knobs alone: the defaults are what
+# `tests/test_rename_pairing_contract.py` scores, and moving them here would tune the tool to pass its
+# own tests. `python3 -m recommender.rename policy` prints every one and the layer that won.
+fact_bar = 0.75
+guess_floor = 0.15
+
 [taxonomy.classes]
 # `e0.9`'s built-in table already knows this repository's shapes, so only what it *cannot* see
 # from a path alone belongs here, and each line says why. A line that merely repeats a built-in

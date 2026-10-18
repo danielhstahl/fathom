@@ -39,7 +39,19 @@ EPOCH0 = 1_760_000_000  # fixed: wall clocks are never an input (ADR-001 §7.4)
 DEFAULT_CONFIG = {
     "noise": {"globs": ["**/dist/**", "**/*.snap"], "builtins_version": 1},
     "diff": {"context_lines": 3},
-    "rename": {"threshold": 60},
+    "rename": {"threshold": 60,
+               # The keys `e2.4`'s pairing engine declares (`diff.rename_detect`, v2). Modelled here for
+               # the same reason `diff.context_lines` is: §5.5's digest parity needs the store's fixture
+               # to know every key an analyzer declares, or the analyzer drops out of the comparison.
+               "fact_bar": 0.75,
+               "fact": {"allow_content": False},
+               "guess_floor": 0.15,
+               "candidates": {"top_k": 3, "budget": 4000, "copies_harder": False},
+               "copies": True,
+               "folds": True,
+               "content": {"shingle_lines": 3, "normalise": "lines",
+                           "min_shared_shingles": 4},
+               "card": {"rows": 12}},
     "episode": {"boundaries": ["hook", "trailer", "author"], "time_gap_minutes": 30},
     "layers": {"ui": ["src/ui"], "core": ["src/core"], "store": ["src/store"]},
     "deps": {"ecosystems": ["python", "node", "rust"]},

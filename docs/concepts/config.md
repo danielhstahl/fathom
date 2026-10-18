@@ -357,7 +357,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
 | `blast` | e2.10 | How far the blast-radius walk goes before it declares a partial. |
-| `rename` | e1.6 | Similarity threshold for calling two paths the same file. |
+| `rename` | e1.6 / e2.4 (`reco-a0v`) | Two questions with two bars. `rename.threshold` is what the diff pane prints as a rename; the `fact_bar`/`guess_floor` pair decides what the pairing engine asserts, what it labels a guess, and what it costs. |
 | `diff` | e1.6 | Per-file diff knobs. |
 | `episode` | ADR-003 / e1.3 | Boundary sources in priority order, and the idle gap that ends an episode when nothing better is available. |
 | `ingest` | e1.2 | The size cap: a bigger blob is recorded as oversized, never slurped. |
@@ -470,6 +470,18 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
 | `blast.hops` | `integer` | `1` | `replace` | `any` | hops | blast_radius | `e2.10` |
 | `rename.threshold` | `integer` | `60` | `replace` | `any` | percent | diff.rename_detect | `e1.6` |
+| `rename.fact_bar` | `number` | `0.75` | `replace` | `any` | similarity | diff.rename_detect | `e2.4` |
+| `rename.fact.allow_content` | `boolean` | `False` | `replace` | `any` | — | diff.rename_detect | `e2.4` |
+| `rename.guess_floor` | `number` | `0.15` | `replace` | `any` | similarity | diff.rename_detect | `e2.4` |
+| `rename.candidates.top_k` | `integer` | `3` | `replace` | `any` | pairs | diff.rename_detect | `e2.4` |
+| `rename.candidates.budget` | `integer` | `4000` | `replace` | `any` | pairs | diff.rename_detect | `e2.4` |
+| `rename.candidates.copies_harder` | `boolean` | `False` | `replace` | `any` | — | diff.rename_detect | `e2.4` |
+| `rename.copies` | `boolean` | `True` | `replace` | `any` | — | diff.rename_detect | `e2.4` |
+| `rename.folds` | `boolean` | `True` | `replace` | `any` | — | diff.rename_detect | `e2.4` |
+| `rename.content.shingle_lines` | `integer` | `3` | `replace` | `any` | lines | diff.rename_detect | `e2.4` |
+| `rename.content.normalise` | `string` | `lines` | `replace` | `any` | mode | diff.rename_detect | `e2.4` |
+| `rename.content.min_shared_shingles` | `integer` | `4` | `replace` | `any` | shingles | diff.rename_detect | `e2.4` |
+| `rename.card.rows` | `integer` | `12` | `replace` | `any` | rows | diff.rename_detect | `e2.4` |
 | `diff.context_lines` | `integer` | `3` | `replace` | `any` | lines | diff.per_file | `e1.6` |
 | `episode.boundaries` | `string_list` | `hook, trailer, author` | `replace` | `any` | — | episode.segment | `e1.3` |
 | `episode.time_gap_minutes` | `integer` | `30` | `replace` | `any` | minutes | episode.segment | `e1.3` |

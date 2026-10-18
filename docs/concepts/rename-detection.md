@@ -276,6 +276,10 @@ print (git pairs each deletion with at most one addition and drops the rest).
 
 ## The recommendation
 
+What `e2.4` (`reco-a0v`) did with this is [the shipped pairing document](rename-pairing.md): the fact and
+guess rule running in production, the groupings that a pair shape cannot express, the accept-or-reject
+ledger bound to bytes, and thirty gates that re-measure the whole thing in CI.
+
 <!-- BEGIN GENERATED: rename_spike_recommendation -->
 The rule, executed:
 

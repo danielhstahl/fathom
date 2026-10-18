@@ -1402,8 +1402,167 @@
     },
     "rename": {
       "additionalProperties": false,
-      "description": "Similarity threshold for calling two paths the same file.",
+      "description": "Two questions with two bars. `rename.threshold` is what the diff pane prints as a rename; the `fact_bar`/`guess_floor` pair decides what the pairing engine asserts, what it labels a guess, and what it costs.",
       "properties": {
+        "candidates": {
+          "additionalProperties": false,
+          "description": "A source may claim its k best destinations and a destination its k best sources; a pair survives if either side wants it. This is what lets a 1-to-3 split be emitted at all \u2014 a 1:1 assignment cannot name three destinations at any threshold.",
+          "properties": {
+            "budget": {
+              "default": 4000,
+              "description": "Scored pairs per window before the candidate list is truncated to the best. Over budget is printed as a stated partial with the number dropped, never a silent short recall.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "pairs"
+            },
+            "copies_harder": {
+              "default": false,
+              "description": "Widen copy sources to every path in the base tree \u2014 the only way to see a copy of a file nobody touched in this window. It is O(repo files), which `e2.4`'s own cost criterion rules out, and s4 priced what it buys: both real copies and fabricated pairings on a window where nothing moved. When on, every card prints the cost.",
+              "type": "boolean",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4"
+            },
+            "top_k": {
+              "default": 3,
+              "description": "A source may claim its k best destinations and a destination its k best sources; a pair survives if either side wants it. This is what lets a 1-to-3 split be emitted at all \u2014 a 1:1 assignment cannot name three destinations at any threshold.",
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "pairs"
+            }
+          },
+          "type": "object"
+        },
+        "card": {
+          "additionalProperties": false,
+          "description": "Rows per tier before the card names the remainder and the verb that lists it. A cap is not a truncation as long as the count survives \u2014 the auditor fails a card that loses rows silently.",
+          "properties": {
+            "rows": {
+              "default": 12,
+              "description": "Rows per tier before the card names the remainder and the verb that lists it. A cap is not a truncation as long as the count survives \u2014 the auditor fails a card that loses rows silently.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "rows"
+            }
+          },
+          "type": "object"
+        },
+        "content": {
+          "additionalProperties": false,
+          "description": "Lines per shingle. One line is a bag of lines, which scores every file sharing an import header as similar \u2014 that is the decoy failure; three needs a run of context. Wider, and a moved-and-edited file stops matching at all.",
+          "properties": {
+            "min_shared_shingles": {
+              "default": 4,
+              "description": "How many shingles two files must actually share before a similarity is a pairing. A four-line file sharing one shingle has a Jaccard of 1.00 and shares nothing worth calling provenance; without this floor every four-line config file is a candidate copy of every other.",
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "shingles"
+            },
+            "normalise": {
+              "default": "lines",
+              "description": "`lines` folds whitespace only, so a moved-and-reformatted file is still found. `tokens` runs e2.2's token normaliser first, which makes a pure reformat invisible between the two blobs \u2014 and also erases the difference between two files that differ only in formatting, which a reviewer may want reported.",
+              "enum": [
+                "lines",
+                "tokens"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "mode"
+            },
+            "shingle_lines": {
+              "default": 3,
+              "description": "Lines per shingle. One line is a bag of lines, which scores every file sharing an import header as similar \u2014 that is the decoy failure; three needs a run of context. Wider, and a moved-and-edited file stops matching at all.",
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4",
+              "x-fathom-units": "lines"
+            }
+          },
+          "type": "object"
+        },
+        "copies": {
+          "default": true,
+          "description": "Let a file this window modified be a copy source. Still O(changed files), and the only copy a window-local method can ever see: a copy's source is never deleted, so a deletions-only source set is copy-blind by construction.",
+          "type": "boolean",
+          "x-fathom-analyzer": "diff.rename_detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.4"
+        },
+        "fact": {
+          "additionalProperties": false,
+          "description": "Let the content matcher's own similarity assert a FACT at or above the fact bar. Off: a fact should be re-checkable with `git log --follow`, and s4 measured git's percentage as badly calibrated (ECE 0.182) once the engine pairs anything \u2014 worse for a number a reviewer cannot reproduce at all. On, and the row says the number is ours.",
+          "properties": {
+            "allow_content": {
+              "default": false,
+              "description": "Let the content matcher's own similarity assert a FACT at or above the fact bar. Off: a fact should be re-checkable with `git log --follow`, and s4 measured git's percentage as badly calibrated (ECE 0.182) once the engine pairs anything \u2014 worse for a number a reviewer cannot reproduce at all. On, and the row says the number is ours.",
+              "type": "boolean",
+              "x-fathom-analyzer": "diff.rename_detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.4"
+            }
+          },
+          "type": "object"
+        },
+        "fact_bar": {
+          "default": 0.75,
+          "description": "git's similarity index needed before a pairing is a FACT a reviewer is asked to act on. Measured on s4's corpus: at git's shipped 0.50 the engine asserts a named decoy and still misses every rewrite below R050; at 0.75 it ships nothing false. Every pairing below this bar is a labelled guess, because no threshold separates the corpus's decoy from its true rewrites.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number",
+          "x-fathom-analyzer": "diff.rename_detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.4",
+          "x-fathom-units": "similarity"
+        },
+        "folds": {
+          "default": true,
+          "description": "Let a file this window modified be a merge destination. Without it a fold into an existing module is invisible \u2014 the destination never appears among the additions, which is why git reports zero folds at any threshold.",
+          "type": "boolean",
+          "x-fathom-analyzer": "diff.rename_detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.4"
+        },
+        "guess_floor": {
+          "default": 0.15,
+          "description": "The lowest-scoring guess the card prints. Not a correctness bar \u2014 no threshold removes the decoy \u2014 a display budget. 0.15 is the measured knee: every claimable pair the engine can find is found, and 0.10 buys two more (both above the claimable line) for three more rows and no fewer lies.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number",
+          "x-fathom-analyzer": "diff.rename_detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e2.4",
+          "x-fathom-units": "similarity"
+        },
         "threshold": {
           "default": 60,
           "description": "Similarity needed to call two paths the same file.",
@@ -1418,8 +1577,8 @@
         }
       },
       "type": "object",
-      "x-fathom-owner": "e1.6",
-      "x-fathom-section-title": "Rename detection"
+      "x-fathom-owner": "e1.6 / e2.4 (`reco-a0v`)",
+      "x-fathom-section-title": "Rename detection and pairing"
     },
     "repo": {
       "additionalProperties": false,
@@ -2171,8 +2330,8 @@
         "title": "Rebuild safety"
       },
       "rename": {
-        "owner": "e1.6",
-        "title": "Rename detection"
+        "owner": "e1.6 / e2.4 (`reco-a0v`)",
+        "title": "Rename detection and pairing"
       },
       "repo": {
         "owner": "ADR-004 \u00a711.1",
