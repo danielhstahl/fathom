@@ -1,0 +1,136 @@
+{
+  "announcement": {
+    "force_latest": false,
+    "is_prerelease": true,
+    "publish_prereleases": false,
+    "tag": "v0.1.0-alpha.1"
+  },
+  "app": {
+    "binary": "fathom",
+    "package": "fathom-cli",
+    "version": "0.1.0-alpha.1"
+  },
+  "cargo_dist_version": "0.33.0",
+  "global_artifacts": [
+    {
+      "name": "source.tar.gz",
+      "what": "the source tree a distro or an auditor builds from, with its own `.sha256`"
+    },
+    {
+      "name": "fathom-cli-installer.sh",
+      "what": "the `curl \u2026 | sh` script for Linux and macOS; picks the target from the machine"
+    },
+    {
+      "name": "fathom-cli-installer.ps1",
+      "what": "the `irm \u2026 | iex` script for Windows, so a Windows user is not told to use bash"
+    },
+    {
+      "name": "sha256.sum",
+      "what": "one digest per artefact, so a download can be checked without trusting the transport"
+    }
+  ],
+  "hosting": {
+    "artifact_base_url": "https://github.com",
+    "artifact_download_path": "/danielstahl/fathom/releases/download/v0.1.0-alpha.1",
+    "owner": "danielstahl",
+    "repo": "fathom"
+  },
+  "installer_env": [
+    {
+      "name": "FATHOM_CLI_DISABLE_UPDATE",
+      "what": "skip the self-update path entirely"
+    },
+    {
+      "name": "FATHOM_CLI_DOWNLOAD_URL",
+      "what": "point the installer at a mirror instead of a public release (used in this repository's own end-to-end installer test)"
+    },
+    {
+      "name": "FATHOM_CLI_INSTALLER_GHE_BASE_URL",
+      "what": "GitHub Enterprise base URL, second spelling"
+    },
+    {
+      "name": "FATHOM_CLI_INSTALLER_GITHUB_BASE_URL",
+      "what": "GitHub Enterprise instead of github.com"
+    },
+    {
+      "name": "FATHOM_CLI_GITHUB_TOKEN",
+      "what": "a token for a private release, so an alpha can be gated without an object store"
+    },
+    {
+      "name": "FATHOM_CLI_INSTALL_DIR",
+      "what": "install somewhere other than `~/.local/bin`"
+    },
+    {
+      "name": "FATHOM_CLI_NO_MODIFY_PATH",
+      "what": "leave `PATH` (and the shell rc files) alone"
+    },
+    {
+      "name": "FATHOM_CLI_PRINT_QUIET",
+      "what": "less output"
+    },
+    {
+      "name": "FATHOM_CLI_PRINT_VERBOSE",
+      "what": "more output when the install is going wrong"
+    },
+    {
+      "name": "FATHOM_CLI_UNMANAGED_INSTALL",
+      "what": "the unmanaged-install directory"
+    }
+  ],
+  "installers": [
+    "powershell",
+    "shell"
+  ],
+  "pr_run_mode": "upload",
+  "targets": [
+    {
+      "archive": "fathom-cli-aarch64-apple-darwin.tar.xz",
+      "checksum": "fathom-cli-aarch64-apple-darwin.tar.xz.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "fathom"
+      ],
+      "dist_args": "--artifacts=local --target=aarch64-apple-darwin",
+      "runner": "macos-14",
+      "triple": "aarch64-apple-darwin"
+    },
+    {
+      "archive": "fathom-cli-x86_64-apple-darwin.tar.xz",
+      "checksum": "fathom-cli-x86_64-apple-darwin.tar.xz.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "fathom"
+      ],
+      "dist_args": "--artifacts=local --target=x86_64-apple-darwin",
+      "runner": "macos-15-intel",
+      "triple": "x86_64-apple-darwin"
+    },
+    {
+      "archive": "fathom-cli-x86_64-pc-windows-msvc.zip",
+      "checksum": "fathom-cli-x86_64-pc-windows-msvc.zip.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "fathom"
+      ],
+      "dist_args": "--artifacts=local --target=x86_64-pc-windows-msvc",
+      "runner": "windows-2022",
+      "triple": "x86_64-pc-windows-msvc"
+    },
+    {
+      "archive": "fathom-cli-x86_64-unknown-linux-gnu.tar.xz",
+      "checksum": "fathom-cli-x86_64-unknown-linux-gnu.tar.xz.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "fathom"
+      ],
+      "dist_args": "--artifacts=local --target=x86_64-unknown-linux-gnu",
+      "runner": "ubuntu-22.04",
+      "triple": "x86_64-unknown-linux-gnu"
+    }
+  ],
+  "what": "What `cargo dist plan` actually said about this repository's release path, measured on a real tree. Refresh: `dist plan --output-format=json | python3 tools/check_release.py capture`. Checked by `python3 tools/check_release.py` (R10), rendered into docs/concepts/release.md by `... write`."
+}

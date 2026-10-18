@@ -14,6 +14,39 @@ Everything in this repository is subordinate to that document.
 
 ## Quickstart
 
+Two ways in. **Install the alpha** if you want to use the thing; **build from source** if you want to
+change it.
+
+### Install the alpha
+
+One line per operating system, from the `0.1.0-alpha.1` prerelease. Linux and macOS:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.ps1 | iex
+```
+
+Then `fathom --version` (prints the version and the compiled-in feature set), `fathom doctor --json` (the
+one-object report that is safe to attach to a bug report, including what your machine actually has), and
+`fathom index` followed by `fathom tui` in a repository with commits in it.
+
+Two honest caveats, because an alpha should have none hidden: the URL above is built out of
+`package.repository`, which is still the placeholder remote ADR-002 §10.3 records — until the public
+remote exists at that address there is nothing behind it, and `python3 tools/check_release.py --tag
+v0.1.0-alpha.1` is the pre-flight that says so before anyone pushes a tag. And this is an **alpha**: the
+git spine (index, episodes, timeline, diff, queue, session) is usable for a daily review; the ranked
+delta-carrying review frame is Epic 2's, the architecture graph is Epic 3's, and there is no export yet.
+[docs/concepts/release.md](docs/concepts/release.md) is the release document — what an artefact set is,
+how to cut the next alpha, and what adoption looks like without telemetry.
+
+### Build from source
+
 Five lines, from a clean clone, on Linux, macOS or Windows:
 
 ```bash
@@ -27,13 +60,16 @@ cargo test --workspace                        # 5. the contract tests, boundary 
 `cargo build --workspace` and `cargo test --workspace` are expected to succeed on a clean clone with
 nothing installed but a Rust toolchain (the pinned one is in `rust-toolchain.toml`); that promise is
 `e0.7`'s acceptance criterion and CI runs it on three operating systems. The binary answers today;
-almost none of its verbs are implemented yet, and each one tells you which ticket owns it.
+not every verb is implemented yet, and each unimplemented one says which ticket owns it.
 
 ## Status
 
-The product is pre-implementation — no released `fathom` binary yet — but the thing it will be built in
-exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fathom --version`,
-`fathom --help` and `fathom doctor` are real. The plan and the ADRs were written first, on purpose.
+**Alpha.** The product is no longer pre-implementation: `0.1.0-alpha.1` is the version `fathom --version`
+prints, the git spine is built and reviewed against a 500-commit agent-driven repository, and the release
+path that would publish it is gated by `tools/check_release.py`. What is not done is the publishing and
+the people: no tag has been pushed, so no artefact exists on any operating system yet, and nobody outside
+the core team is using it weekly. `m0` (`reco-n1j`) is the milestone, and its close reason is the record
+of which half is code and which half is not.
 
 | Area | Where | State |
 |---|---|---|
@@ -70,7 +106,7 @@ exists: `crates/` is the ADR-002 workspace, it compiles, its tests pass, and `fa
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted |
 | The cargo workspace itself: eight compiling stub crates, shared lint config, three-OS CI, `cargo-dist` release skeleton | `Cargo.toml`, `crates/`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`dist-workspace.toml`](dist-workspace.toml), [`.github/workflows/release.yml`](.github/workflows/release.yml) | `e0.7` (`reco-e77`) built: `cargo build/test --workspace` green on linux/macOS/windows, `fmt` + `clippy -D warnings` + `cargo deny` are hard gates, every PR builds a `fathom` binary per platform |
-| Release artefacts (install scripts, per-platform archives) | `dist-workspace.toml`, [`.github/workflows/release.yml`](.github/workflows/release.yml) | skeleton only. `cargo dist generate --check` runs in CI; artefacts per PR are workflow artefacts (login needed to download), the auth-free artefact is the GitHub release a tag creates; `aarch64-linux`/`aarch64-windows`/musl targets are `e7.4`'s |
+| Release artefacts (install scripts, per-platform archives), and the alpha cut | [docs/concepts/release.md](docs/concepts/release.md), `dist-workspace.toml`, [`.github/workflows/release.yml`](.github/workflows/release.yml), `tools/check_release.py`, [benchmarks/reports/dist-release-plan.json](benchmarks/reports/dist-release-plan.json) | `e0.7` (`reco-e77`) built the skeleton; `m0` (`reco-n1j`) cut `0.1.0-alpha.1` and put the path behind a gate: `cargo dist generate --check` plus `tools/check_release.py` (12 rules — three operating systems still covered, both installers present, one releasable crate, one version, the changelog section that *is* the release body, README quoting the URL the installers bake, prerelease-never-latest), all of it re-measured into `dist-release-plan.json` and rendered into the release document. Per-PR artefacts are workflow artefacts (login needed to download), the auth-free artefact is the GitHub release a tag creates; `aarch64-linux`/`aarch64-windows`/musl targets are `e7.4`'s |
 
 ## What it does, in five lines
 

@@ -10,11 +10,73 @@ This file is also the release-notes source `cargo-dist` reads when it builds a G
 an unreleased section that describes nothing is a release body that says nothing. Keep it true, keep it
 short.
 
+Rules of the road, now that there are versions: work lands under `[Unreleased]`; cutting a release renames
+that heading to `## [<version>] - YYYY-MM-DD` and starts a new empty one. `python3 tools/check_release.py`
+fails CI if the version in `Cargo.toml` has no dated section here, because the section *is* the release
+body — see [docs/concepts/release.md](docs/concepts/release.md).
+
 ## [Unreleased]
 
-Most of what is below is still scaffolding: the shape ADR-002 declares, compiled, tested and shipped
-through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
-to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
+Nothing since the alpha. Everything below this line and above the next heading belongs to whoever cuts
+`0.1.0-alpha.2`; the alpha itself is cut in the section below.
+
+## [0.1.0-alpha.1] - 2026-10-18
+
+The first build anyone outside this repository can install: one `fathom` binary, four targets (Linux
+x86_64, macOS x86_64 and aarch64, Windows MSVC), a `curl … | sh` installer, a PowerShell one, a source
+tarball and a `sha256.sum`. **An alpha, not a beta**: the git spine is real and reviewable — index a
+500-commit agent-driven repository, fly the timeline, read the diffs, rank the queue, keep a session
+across restarts — and everything downstream of the spine is still Epic 2 and later: no ranked
+delta-carrying review frame, no architecture graph, no attribution, no export. Milestone `m0`
+(`reco-n1j`) records which of its four gates this satisfies and which two are a public remote and three
+human beings rather than code.
+
+Most of what is below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through
+CI. The first entry is not — it changes bytes an index already stored — and the line below it used to
+claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
+
+### `m0` — the alpha cut, the release gate, and the two things a commit cannot do
+
+- **The version became a prerelease.** `0.1.0` → `0.1.0-alpha.1`, in one place (`[workspace.package]
+  version`) and therefore in every crate, in `fathom --version`, and — because `cargo-dist` bakes the
+  release tag into the installer scripts it generates and refuses a tag whose version the package does
+  not carry — in the URL a user will `curl`. Prerelease on purpose: `cargo-dist` then marks the GitHub
+  release a prerelease, so an alpha cannot become "latest" and a stranger's default install, and an
+  alpha that takes feedback can be re-cut as `alpha.2` instead of pretending to be a final. The store
+  does not care — ADR-004's cache keys come from the derived analyzer versions, not from this string —
+  so no index on any machine is invalidated by a version bump.
+- **`tools/check_release.py` is the release path's gate, and it needs no network, no `dist` and no
+  credentials.** `e0.7`'s `dist generate --check` proves the generated workflow and its config agree;
+  twelve rules cover the things that check cannot see: a target set that quietly loses an OS (`R02`), a
+  missing installer for one OS family (`R03`), `pr-run-mode` dropped from `upload` so PRs stop building
+  the artefacts (`R04`), a half-done version bump that resolves on nobody's machine but the author's
+  (`R05`), a second crate becoming releasable (`R06`), a workflow pinning a different `dist` than the
+  config (`R07`), a version with no dated changelog section, which announces nothing (`R08`), a README
+  quoting a tag the installers do not bake (`R09`), captured evidence gone stale against the config
+  (`R10`), a document dropping a generated block (`R11`), and a prerelease set to publish itself as
+  latest (`R12`). `--self-test` lands with it: twelve ways to be red, every one of them detected, on
+  throwaway copies rather than the real tree.
+- **The release plan is now measured evidence in the tree.**
+  `benchmarks/reports/dist-release-plan.json` is a projection of what `cargo dist plan` actually said
+  about this workspace — the four triples, the four runner labels GitHub gave them (`ubuntu-22.04`,
+  `windows-2022`, `macos-14`, `macos-15-intel`, which is what `dist-workspace.toml`'s comment had been
+  *claiming* without anything checking it), the artefact names, the installer environment variables.
+  `docs/concepts/release.md` renders its tables from that file and CI diffs them, so the documentation
+  cannot keep describing a pipeline that stopped existing the day someone edited a target list.
+- **The install path was exercised end to end, on the one machine available here.** `dist build` in the
+  release profile, archive plus checksum, installer run against a local mirror through
+  `FATHOM_CLI_DOWNLOAD_URL`, the installed `fathom` reporting `fathom 0.1.0 features: tui mcp watch
+  sqlite-bundled langs-all deps-all` and a working `fathom doctor --json`. That is the mechanics proven
+  — the release profile compiles, the archive layout is what the installer expects, the checksum
+  verifies, the installed binary runs — and it is not the Windows or macOS artefact, and says so. The
+  recipe is §4 of the release document, including the caveat.
+- **Two gates stay open, and are not code.** Publishing needs a public remote (the `package.repository`
+  placeholder of ADR-002 §10.3 is still the value in the manifest: a wrong one is a broken install, not
+  a cosmetic bug, which is why `R09` exists) and someone to push `v0.1.0-alpha.1`. Adoption needs
+  people, and the only counting method this project is willing to use is an opt-in `fathom doctor
+  --json` they choose to send and a ledger row written by whoever reads it — telemetry is out, per
+  ADR-001 §8 and `e6.8`'s posture, so the count under-counts on purpose. Both halves have tickets; the
+  milestone's close reason says exactly what was verified and what is outstanding.
 
 ### `reco-quk.1` — the analyzer version absorbs the compiled-in feature set (`e1.15`), and Epic 1 closes
 

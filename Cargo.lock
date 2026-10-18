@@ -841,7 +841,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fathom-analyze"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fathom-core",
  "fathom-fixtures",
@@ -869,7 +869,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-cli"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
  "clap_complete",
@@ -890,7 +890,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-core"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "schemars",
  "serde",
@@ -900,7 +900,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-fixtures"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fathom-core",
  "fathom-ingest",
@@ -912,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-ingest"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fathom-core",
  "fathom-store",
@@ -928,7 +928,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-mcp"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fathom-analyze",
  "fathom-core",
@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-store"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "criterion",
  "fallible-iterator",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "fathom-tui"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "crossterm",
  "fathom-analyze",

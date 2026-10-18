@@ -15,7 +15,20 @@ edition = "2024"
 rust-version = "1.97.0"          # ADR-002 §2: latest stable minor minus two, measured. One number,
                                  # inherited by every crate (`rust-version.workspace = true`); a crate
                                  # that restates it fails lint T01.
-version = "0.1.0"
+# `m0` (`reco-n1j`) cut the alpha, and this is the version that cut names: `fathom --version` prints it,
+# every crate shares it, and — because `cargo-dist` refuses a tag whose version the package does not
+# carry — it is the version the alpha tag has to spell (`v0.1.0-alpha.1`). A prerelease rather than a
+# plain `0.1.0`, for two reasons. cargo-dist marks a prerelease-style version as a *prerelease* on the
+# GitHub release, so an alpha cannot become "latest" and somebody's default install — the same objection
+# `dist-workspace.toml` writes about marking a release latest. And an alpha that collects feedback gets
+# re-cut (`alpha.2`, `alpha.3`), so the series has to exist rather than be invented under pressure.
+# The store is unaffected: ADR-004's cache keys are built from the derived *analyzer* versions
+# (`Versions::default`, one integer per analyzer, plus `e1.15`'s feature digest), not from this string,
+# so cutting an alpha invalidates no stored row. `version = "0.1.0"` was what `e0.7` shipped.
+# R05 in `tools/check_release.py` is what keeps the seven path-dep requirements below from drifting away
+# from this line: a path dep whose requirement is `0.1.0` does not resolve against a `0.1.0-alpha.1`
+# crate, so a half-done bump is a build failure rather than a shrug — but only if every line moves.
+version = "0.1.0-alpha.1"
 license = "MIT OR Apache-2.0"    # ADR-002 §10.1: a governance call, shipped at the documented default
                                  # so `e0.7` was not blocked by an open question. `cargo deny check
                                  # licenses` is what makes replacing it expensive in the good way.
@@ -40,13 +53,15 @@ publish = false                  # ADR-002 §10.1: no published crates in v1 —
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
 # --- workspace members: path-only, so there is exactly one version in the tree -------------------
-fathom-core = { path = "crates/fathom-core", version = "0.1.0" }
-fathom-store = { path = "crates/fathom-store", version = "0.1.0" }
-fathom-ingest = { path = "crates/fathom-ingest", version = "0.1.0" }
-fathom-analyze = { path = "crates/fathom-analyze", version = "0.1.0" }
-fathom-tui = { path = "crates/fathom-tui", version = "0.1.0" }
-fathom-mcp = { path = "crates/fathom-mcp", version = "0.1.0" }
-fathom-fixtures = { path = "crates/fathom-fixtures", version = "0.1.0" }
+# Every `version` below must equal `[workspace.package] version` — `tools/check_release.py` R05 asserts
+# it, and the note there says why the number is `0.1.0-alpha.1`.
+fathom-core = { path = "crates/fathom-core", version = "0.1.0-alpha.1" }
+fathom-store = { path = "crates/fathom-store", version = "0.1.0-alpha.1" }
+fathom-ingest = { path = "crates/fathom-ingest", version = "0.1.0-alpha.1" }
+fathom-analyze = { path = "crates/fathom-analyze", version = "0.1.0-alpha.1" }
+fathom-tui = { path = "crates/fathom-tui", version = "0.1.0-alpha.1" }
+fathom-mcp = { path = "crates/fathom-mcp", version = "0.1.0-alpha.1" }
+fathom-fixtures = { path = "crates/fathom-fixtures", version = "0.1.0-alpha.1" }
 
 # --- L0/L1: vocabulary and durable state ---------------------------------------------------------
 serde = { version = "1", features = ["derive"] }   # `derive` everywhere: every cross-crate shape is

@@ -118,7 +118,12 @@ jobs:
 
   # The release skeleton is generated from `dist-workspace.toml`; this job is what stops the generated
   # workflow and the config it came from from drifting apart, which is the same argument §8.4 makes about
-  # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables.
+  # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables. The second
+  # step is the rest of the release path (`m0`/`reco-n1j`): the three operating systems still being
+  # covered, both installers still existing, one version in one place, the changelog section that *is*
+  # the release body, README quoting the URL the installers bake, and the captured plan still describing
+  # the config. `dist generate --check` compares a workflow to its config; `check_release.py` compares
+  # the release to what its users are told, and needs neither `dist` nor a network.
   release-skeleton:
     name: release skeleton matches dist-workspace.toml
     runs-on: ubuntu-latest
@@ -128,6 +133,11 @@ jobs:
         with:
           command: generate
           arguments: --check
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The release path (R01-R12)
+        run: python3 tools/check_release.py
 
   # ---------------------------------------------------------------------------
   # The matrix: three operating systems × {stable, MSRV}, per §8.3.
