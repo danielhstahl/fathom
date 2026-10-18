@@ -133,7 +133,7 @@ impl Default for Options {
         Options {
             ingest: IngestOptions::default(),
             config: Config::empty(),
-            versions: Versions::current(),
+            versions: crate::build::manifest_versions(),
             scope: Scope::default(),
             refresh: false,
             worktree: Worktree::default(),

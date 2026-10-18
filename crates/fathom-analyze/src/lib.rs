@@ -17,6 +17,10 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+/// What this build was compiled with, as far as the cache is concerned (ADR-002 §6.4, §10.2). Gated with
+/// the store's cache module, because the thing it derives is a cache version.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod build;
 pub mod cancel;
 pub mod deps;
 pub mod error;

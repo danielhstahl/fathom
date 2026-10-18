@@ -799,7 +799,10 @@ field for the build's feature set. The cheapest correct fix does not touch the k
 off can never answer a lookup made with it on. **Filed** as a child of Epic 1 (`reco-quk`, dependant on
 `reco-f28`/`e1.4`, which owns the manifest) — *Analyzer manifest version must absorb the compiled-in
 feature set* — and `reco-pef` (`e0.11`) owns the gate that checks version bumps. The requirement is
-normative here the moment this ADR is accepted; the ticket only implements it.
+normative here the moment this ADR is accepted; the ticket only implements it. **Implemented by `e1.15`
+(`reco-quk.1`)**: `fathom_analyze::build::feature_digest` is the digest, `Versions::effective_version` puts
+it into the version and therefore into key field 3 and the `dep_digest`, and ADR-004 §5.1 states the rule
+where the manifest is stated.
 
 ### 10.3 What `e0.7` decided when the shape was compiled
 

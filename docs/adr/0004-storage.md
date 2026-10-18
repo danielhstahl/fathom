@@ -350,6 +350,27 @@ implement it). `analyzer` is that table; `ANALYZERS` in `cache.py` is the v1 man
 | `risk.score` | episode | `risk.weights`, `risk.tau` | `findings.detect`, `blast_radius` |
 | `delta.compose` | episode | — | all of the above; it *is* `EpisodeDelta` (`e2.11`) |
 
+**A `version` is not always a number a developer typed.** A compiled-in cargo feature can change what an
+analyzer produces — the `lang-*` features gate the tree-sitter extractors the graph and structure family are
+built from — and a row computed by a build with `lang-rust` on must never answer a lookup made by a build
+without it. §5.2's key gains **no field** for this (a tenth field would make every stored row in every store
+unreachable, which is not what a feature flag means); instead, for the analyzers whose output is
+language-gated — `graph.*` and `structure.*` — the manifest version is *derived*:
+
+```text
+version := "<code bump>" + "+" + short_digest(enabled lang-* features)   # e.g. 1+9f3c0a2b71
+```
+
+`fathom_analyze::build::feature_digest` computes the digest (sorted feature names, so the set is what hashes
+and not the order the `cfg!`s were written in, and `langs-all` is never read directly — requesting the six
+together is the same build as requesting them one by one); `Versions::effective_version` is where it joins
+the bump, and it feeds both key field 3 and the §5.4 dependency digest, so one bump cascades to
+`graph.delta` and everything downstream exactly as a hand-typed bump would. A build that never said what it
+was compiled with stamps `build-features-unspecified` rather than guessing: "we were not told" and "we were
+told the empty set" are different claims, and the empty set is a real build that ships. This is ADR-002
+§10.2's amendment, implemented by `e1.15` (`reco-quk.1`); the e0.11 version-bump gate is unaffected because
+the derived suffix *is* the version, not a new field beside it.
+
 ### 5.2 The key
 
 ```

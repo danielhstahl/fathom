@@ -331,6 +331,31 @@ pub struct Versions {
     pub analyzer: BTreeMap<String, u32>,
     /// The store schema version (key field 9). Defaults to [`crate::spine::SCHEMA_VERSION`].
     pub store_schema: Option<i64>,
+    /// The compiled-in feature set this build was made with, as a short digest (ADR-002 §10.2, ADR-004 §5.1).
+    ///
+    /// `None` means the caller never said, and the graph/structure analyzers then stamp their version with
+    /// [`UNSPECIFIED_FEATURE_TAG`] rather than pretending a feature set they did not measure. The crate that
+    /// knows the build's features (`fathom-analyze`) supplies it at every real call site; a store-level test
+    /// or a bump experiment can override it deliberately.
+    pub feature_tag: Option<String>,
+}
+
+/// What a feature-sensitive analyzer's version says when the build never declared its feature set. Spelled
+/// out rather than left blank, because "we were not told" and "we were told the empty set" have to be
+/// distinguishable in a cache key.
+pub const UNSPECIFIED_FEATURE_TAG: &str = "build-features-unspecified";
+
+/// Which analyzers' output can change with the compiled-in feature set (ADR-002 §6.4, §10.2).
+///
+/// The graph and structure family, because those are the analyzers whose extractors are gated per language
+/// (`lang-rust`, `lang-python`, …): a build with `lang-rust` off produces a *different* module graph from
+/// one with it on, and a cached row must not cross that boundary in either direction. Everything else in the
+/// manifest — normalisation, taxonomy, diffs, episodes — reads git and text, which no cargo feature turns
+/// on or off.
+#[must_use]
+pub fn feature_sensitive(id: &str) -> bool {
+    // One place decides, so no caller gets to improvise which analyzers are language-gated.
+    id.starts_with("graph.") || id.starts_with("structure.")
 }
 
 impl Versions {
@@ -352,6 +377,39 @@ impl Versions {
     pub fn with_store_schema(mut self, schema: i64) -> Self {
         self.store_schema = Some(schema);
         self
+    }
+
+    /// Say what this build was compiled with (ADR-002 §10.2). `fathom-analyze` calls this on every real
+    /// `Versions`, because it is the crate that carries the `lang-*` features; the store cannot see them.
+    #[must_use]
+    pub fn with_feature_tag(mut self, tag: impl Into<String>) -> Self {
+        self.feature_tag = Some(tag.into());
+        self
+    }
+
+    /// The feature-set digest in force, or the explicit "nobody said" tag.
+    #[must_use]
+    pub fn feature_tag(&self) -> &str {
+        self.feature_tag
+            .as_deref()
+            .unwrap_or(UNSPECIFIED_FEATURE_TAG)
+    }
+
+    /// The version as the key and the manifest print it (ADR-004 §5.1).
+    ///
+    /// `semver` for everything, plus `+<feature digest>` for the analyzers whose output a compiled-in
+    /// feature can change. This is the whole of ADR-002 §10.2's amendment: the key framing gains **no new
+    /// field** — field 3 just carries a more honest value — so a row written by a `lang-rust` build can
+    /// never answer a lookup made by one without it, and the difference shows up as a version bump that
+    /// cascades through `dep_digest` (§5.4) rather than as a stale hit.
+    #[must_use]
+    pub fn effective_version(&self, id: &str) -> String {
+        let version = self.version_of(id);
+        if feature_sensitive(id) {
+            format!("{version}+{}", self.feature_tag())
+        } else {
+            version.to_string()
+        }
     }
 
     /// The version in force for `id`: the override if there is one, else the manifest.
@@ -471,7 +529,7 @@ pub fn dependency_closure(id: &str) -> Result<Vec<&'static str>, Error> {
 pub fn dep_digest(id: &str, versions: &Versions) -> Result<String, Error> {
     let parts: Vec<String> = dependency_closure(id)?
         .into_iter()
-        .map(|dep| format!("{dep}:{}", versions.version_of(dep)))
+        .map(|dep| format!("{dep}:{}", versions.effective_version(dep)))
         .collect();
     let framed: Vec<&[u8]> = parts.iter().map(String::as_bytes).collect();
     Ok(sha256_hex(&frame(&framed)))
@@ -546,7 +604,7 @@ pub fn derive_key(
     let fields: Vec<String> = vec![
         KEY_SCHEMA.to_owned(),
         entry.id.to_owned(),
-        versions.version_of(entry.id).to_string(),
+        versions.effective_version(entry.id),
         dep.clone(),
         config.clone(),
         entry.schema_version.to_string(),

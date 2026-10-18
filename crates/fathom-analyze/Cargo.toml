@@ -23,6 +23,7 @@ smallvec.workspace = true
 fathom-core.workspace = true
 fathom-store.workspace = true
 fathom-ingest.workspace = true
+sha2.workspace = true                       # the build's own feature digest (ADR-002 §10.2, `build.rs`)
 tree-sitter = { workspace = true, optional = true }
 tree-sitter-rust = { workspace = true, optional = true }
 tree-sitter-python = { workspace = true, optional = true }

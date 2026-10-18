@@ -255,10 +255,50 @@ def dep_digest(analyzer_id: str, versions: dict[str, int], analyzers=ANALYZERS) 
     This is the whole cascade mechanism: bump `taxonomy.path` and every analyzer that
     (transitively) depends on it derives a new key, without one line of invalidation
     code and without knowing the bump happened.
+
+    For the language-gated family the "version" is the derived one — bump plus feature
+    digest (ADR-002 §10.2, ADR-004 §5.1) — so a feature change cascades here exactly as a
+    hand-typed bump does.
     """
-    pairs = [f"{aid}:{versions.get(aid, ANALYZER_INDEX[aid].version)}"
+    pairs = [f"{aid}:{effective_version(aid, versions, analyzers)}"
              for aid in dependency_closure(analyzer_id, analyzers)]
     return _sha(pairs)
+
+
+# ---------------------------------------------------------------------------
+# §5.1/§5.2 — the version, and the part of it that comes from the build
+# ---------------------------------------------------------------------------
+
+#: The store's name for "the build never said what it was compiled with". Spelled out rather
+#: than blank so that "not told" and "told: no languages" are different keys.
+UNSPECIFIED_FEATURE_TAG = "build-features-unspecified"
+
+#: The analyzers whose output a compiled-in `lang-*` feature can change (ADR-002 §6.4, §10.2).
+#: The graph and structure family: their extractors are the gated ones. Everything else reads
+#: git and text, which no cargo feature turns on or off.
+FEATURE_SENSITIVE_PREFIXES = ("graph.", "structure.")
+
+
+def feature_sensitive(analyzer_id: str) -> bool:
+    """Does a compiled-in `lang-*` feature change what this analyzer produces?"""
+    return analyzer_id.startswith(FEATURE_SENSITIVE_PREFIXES)
+
+
+def effective_version(analyzer_id: str, versions: dict, analyzers=ANALYZERS) -> str:
+    """The version as the key and the manifest print it (ADR-004 §5.1).
+
+    `semver` for everything, plus `+<feature digest>` for the language-gated family — put in
+    the version rather than into a tenth key field, because a framing change would make every
+    stored row unreachable and a feature flag is not a framing change.
+
+    `versions` may carry a string under `__feature_tag__` (the same slot convention as the
+    integer `__store_schema__` override); an analyzer absent from the manifest takes version 0.
+    """
+    index = {a.id: a for a in analyzers}
+    version = versions.get(analyzer_id, getattr(index.get(analyzer_id), "version", 0))
+    if feature_sensitive(analyzer_id):
+        return f"{version}+{versions.get('__feature_tag__', UNSPECIFIED_FEATURE_TAG)}"
+    return str(version)
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +348,7 @@ def derive_key(*, analyzer_id: str, input_hash: str, input_kind: str | None = No
     parts = [
         KEY_SCHEMA,
         analyzer_id,
-        str(versions.get(analyzer_id, a.version)),
+        effective_version(analyzer_id, versions, analyzers),
         dep_digest(analyzer_id, versions, analyzers),
         derive_config_digest(config or {}, list(a.config_keys)),
         str(a.schema_version),

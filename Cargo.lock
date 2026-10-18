@@ -852,6 +852,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "similar",
  "smallvec",
  "thiserror 2.0.21",
