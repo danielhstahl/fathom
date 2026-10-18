@@ -1,0 +1,73 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "clean_moves",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "Moves with unchanged bytes: the case every detector must get exactly right.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/core/store.py",
+     "dst": "src/store/mod.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/api/routes.py",
+     "dst": "src/http/handlers.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/queue/sched.py",
+     "dst": "src/queue/scheduler.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "tests/test_api.py",
+     "dst": "tests/test_store.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [
+    "src/core/cache.py"
+   ],
+   "note": "four byte-identical moves in one turn"
+  },
+  {
+   "id": "c2",
+   "base": "c1",
+   "head": "c2",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/http/handlers.py",
+     "dst": "src/http/api.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "one move plus an unrelated edit to a file that stays put"
+  }
+ ],
+ "notes": [
+  "src/core/cache.py is a genuine arrival: pairing it with anything at all is a wrong pairing.",
+  "src/queue/worker.py is edited in place in the second window and is not a move candidate."
+ ]
+}

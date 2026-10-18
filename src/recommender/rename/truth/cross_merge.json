@@ -1,0 +1,49 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "cross_merge",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A clean move on a topic branch, arriving through a merge commit.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/core/engine.py",
+     "dst": "src/engine/core.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the branch's own commit"
+  },
+  {
+   "id": "m1",
+   "base": "c1",
+   "head": "m1",
+   "granularity": "commit_pair",
+   "policy": "first_parent",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/core/engine.py",
+     "dst": "src/engine/core.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the merge against its first parent; a walk that skips merges never forms this window"
+  }
+ ],
+ "notes": [
+  "One pair, two windows, and the choice between them is `e1.2`'s merge policy rather than any matcher's business. Under `MergePolicy::Skip` the merge contributes no file rows and a reviewer reading main sees no move at all."
+ ]
+}

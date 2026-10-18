@@ -1,0 +1,49 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "rebase_rewrites",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "The same move read before and after a rebase onto a main that touched other files.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/api/handlers.py",
+     "dst": "src/http/handlers.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "before the rebase"
+  },
+  {
+   "id": "r1",
+   "base": "c1",
+   "head": "r1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/api/handlers.py",
+     "dst": "src/http/handlers.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "after the rebase: a different SHA, the same answer"
+  }
+ ],
+ "notes": [
+  "Both windows must give the same pairing. A pairing that changes when the branch is rewritten makes a review ledger lie about a review that already happened."
+ ]
+}

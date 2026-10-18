@@ -1,0 +1,77 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "split_one_to_many",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "One module becomes three, twice over.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/report.py",
+     "dst": "src/report/text.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/report.py",
+     "dst": "src/report/json.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/report.py",
+     "dst": "src/report/csv.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": []
+  },
+  {
+   "id": "c2",
+   "base": "c1",
+   "head": "c2",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/legacy/feeds.py",
+     "dst": "src/feeds/rss.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/legacy/feeds.py",
+     "dst": "src/feeds/atom.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/legacy/feeds.py",
+     "dst": "src/feeds/jsonfeed.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the rss part also carries a function that was never in the source"
+  }
+ ],
+ "notes": [
+  "Three pairs are true at once. A 1:1 assignment can report one and must drop two, so this fixture scores representation rather than tuning.",
+  "Each destination is a third of the source, so every split pair is a *low* similarity by construction: the same reason a split needs a different threshold from a rename."
+ ]
+}

@@ -1,0 +1,55 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "scaffold_decoys",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "One real move with weak evidence, next to scaffold twins with strong-looking evidence.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/handlers/invoices.py",
+     "dst": "src/handlers/billing.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "weak",
+     "note": "the only true pair in the window, and it was rewritten on the way"
+    },
+    {
+     "src": "src/handlers/orders.py",
+     "dst": "src/handlers/quotes.py",
+     "kind": "rename",
+     "truth": "false",
+     "evidence": "strong",
+     "note": "decoy: two scaffolded handlers, both genuinely new-or-deleted here, sharing a template and nothing else"
+    },
+    {
+     "src": "src/handlers/orders.py",
+     "dst": "src/handlers/billing.py",
+     "kind": "rename",
+     "truth": "false",
+     "evidence": "moderate",
+     "note": "decoy: the deleted orders handler is scaffolded like the added billing handler"
+    },
+    {
+     "src": "src/handlers/invoices.py",
+     "dst": "src/handlers/quotes.py",
+     "kind": "rename",
+     "truth": "false",
+     "evidence": "moderate",
+     "note": "decoy: the mirror of the pair above"
+    }
+   ],
+   "arrivals": [],
+   "note": "two deletions, two additions, one true pair"
+  }
+ ],
+ "notes": [
+  "This fixture is the ticket's question in one window: a content matcher scores the scaffold overlap highly and the true rewritten pair lowly, so its ranking is inverted and its top-scoring pair is a lie. That is a different failure from a missing pair, and the report prices them separately."
+ ]
+}

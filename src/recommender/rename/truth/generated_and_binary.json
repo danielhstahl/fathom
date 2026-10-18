@@ -1,0 +1,46 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "generated_and_binary",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A lockfile swap, a byte-identical binary move, and a regenerated module.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "assets/logo.bin",
+     "dst": "assets/brand/logo.bin",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong",
+     "note": "identical bytes: hash-level evidence, the one case hashing alone solves"
+    },
+    {
+     "src": "Cargo.lock",
+     "dst": "pnpm-lock.yaml",
+     "kind": "rename",
+     "truth": "false",
+     "evidence": "none",
+     "note": "decoy: a package-manager migration, not a move. Path-shape similarity is the only signal and it is the one that misleads here"
+    },
+    {
+     "src": "gen/models.py",
+     "dst": "gen/entities.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "none",
+     "note": "regenerated code at a new path: a real move by authorship with no evidence left"
+    }
+   ],
+   "arrivals": []
+  }
+ ],
+ "notes": [
+  "Three rows, three different honest answers: report it, refuse it, and stay silent about it. A single precision number over all three would hide that the third is unearnable and the second is a trap the matcher should walk into only once."
+ ]
+}

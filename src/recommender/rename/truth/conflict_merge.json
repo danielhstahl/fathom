@@ -1,0 +1,49 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "conflict_merge",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A rename on one side, a rewrite on the other, resolved by hand into a third thing.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/engine.py",
+     "dst": "src/engine/v2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "R100 on the branch"
+  },
+  {
+   "id": "m1",
+   "base": "c1",
+   "head": "m1",
+   "granularity": "commit_pair",
+   "policy": "first_parent",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/engine.py",
+     "dst": "src/engine/v2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "weak",
+     "note": "the resolution is neither parent's bytes, so the pair's own evidence collapsed on the way in"
+    }
+   ],
+   "arrivals": []
+  }
+ ],
+ "notes": [
+  "The same true pair is trivial on one window and nearly hopeless on the next. Any single global threshold is wrong about one of these two, which is the argument for shipping a confidence instead of a verdict."
+ ]
+}

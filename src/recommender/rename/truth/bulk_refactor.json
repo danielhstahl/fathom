@@ -1,0 +1,194 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "bulk_refactor",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A 60-file reorganisation in one turn: twelve clean moves, four rewritten moves, a split, four new modules and four reformats.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/alpha/m0.py",
+     "dst": "src/alpha/archived_m0.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/alpha/m1.py",
+     "dst": "src/alpha/archived_m1.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/alpha/m2.py",
+     "dst": "src/alpha/archived_m2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/alpha/m3.py",
+     "dst": "src/alpha/archived_m3.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/beta/m0.py",
+     "dst": "src/beta/archived_m0.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/beta/m1.py",
+     "dst": "src/beta/archived_m1.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/beta/m2.py",
+     "dst": "src/beta/archived_m2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/beta/m3.py",
+     "dst": "src/beta/archived_m3.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/gamma/m0.py",
+     "dst": "src/gamma/archived_m0.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/gamma/m1.py",
+     "dst": "src/gamma/archived_m1.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/gamma/m2.py",
+     "dst": "src/gamma/archived_m2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/gamma/m3.py",
+     "dst": "src/gamma/archived_m3.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/delta/m0.py",
+     "dst": "src/delta/archived_m0.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/delta/m1.py",
+     "dst": "src/delta/archived_m1.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/delta/m2.py",
+     "dst": "src/delta/archived_m2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/delta/m3.py",
+     "dst": "src/delta/archived_m3.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    },
+    {
+     "src": "src/alpha/m4.py",
+     "dst": "src/alpha/archive/m4.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "moderate",
+     "note": "moved and rewritten on the way"
+    },
+    {
+     "src": "src/beta/m4.py",
+     "dst": "src/beta/archive/m4.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "moderate",
+     "note": "moved and rewritten on the way"
+    },
+    {
+     "src": "src/gamma/m4.py",
+     "dst": "src/gamma/archive/m4.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "moderate",
+     "note": "moved and rewritten on the way"
+    },
+    {
+     "src": "src/delta/m4.py",
+     "dst": "src/delta/archive/m4.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "moderate",
+     "note": "moved and rewritten on the way"
+    },
+    {
+     "src": "src/alpha/m9.py",
+     "dst": "src/split/a.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "moderate"
+    },
+    {
+     "src": "src/alpha/m9.py",
+     "dst": "src/split/b.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "moderate"
+    },
+    {
+     "src": "src/alpha/m9.py",
+     "dst": "src/split/c.py",
+     "kind": "split",
+     "truth": "true",
+     "evidence": "moderate"
+    }
+   ],
+   "arrivals": [
+    "src/new/service0.py",
+    "src/new/service1.py",
+    "src/new/service2.py",
+    "src/new/service3.py"
+   ],
+   "note": "one turn: 21 true pairs among 21 removed and 26 added paths"
+  }
+ ],
+ "notes": [
+  "The four src/new/service*.py modules are genuinely new; pairing one with a deleted module is a wrong pairing of exactly the kind a reviewer acts on.",
+  "The four reformatted m11 files stay in place and are not move candidates at all."
+ ]
+}

@@ -1,0 +1,44 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "merge_many_to_one",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "Three modules folded into an existing module.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/legacy/clock.py",
+     "dst": "src/util/time.py",
+     "kind": "merge",
+     "truth": "true",
+     "evidence": "moderate"
+    },
+    {
+     "src": "src/legacy/calendar.py",
+     "dst": "src/util/time.py",
+     "kind": "merge",
+     "truth": "true",
+     "evidence": "moderate"
+    },
+    {
+     "src": "src/legacy/filesystem.py",
+     "dst": "src/util/time.py",
+     "kind": "merge",
+     "truth": "true",
+     "evidence": "moderate"
+    }
+   ],
+   "arrivals": [],
+   "note": "the destination is a modification, never an addition"
+  }
+ ],
+ "notes": [
+  "The destination never appears in the additions, so an additions-only candidate set cannot express any of these three pairs at any threshold. git -M has the same blind spot, for the same reason: it pairs deletions with additions and nothing else."
+ ]
+}

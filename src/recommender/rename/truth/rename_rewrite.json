@@ -1,0 +1,64 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "rename_rewrite",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "Five moves graded by how much of the file survived the move.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "note": "all five are moves by authorship; what differs is whether the two blobs support the claim",
+   "pairs": [
+    {
+     "src": "src/mod0.py",
+     "dst": "src/moved/mod0.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong",
+     "note": "light edit: a reviewer sees the same file"
+    },
+    {
+     "src": "src/mod1.py",
+     "dst": "src/moved/mod1.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong",
+     "note": "nearly half the blocks touched"
+    },
+    {
+     "src": "src/mod2.py",
+     "dst": "src/moved/mod2.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "moderate",
+     "note": "most blocks touched, but the lines are still there"
+    },
+    {
+     "src": "src/mod3.py",
+     "dst": "src/moved/mod3.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "none",
+     "note": "moved and rewritten: a header and one block survive"
+    },
+    {
+     "src": "src/mod4.py",
+     "dst": "src/moved/mod4.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "none",
+     "note": "nothing survives but the shared header"
+    }
+   ],
+   "arrivals": []
+  }
+ ],
+ "notes": [
+  "The two evidence=none pairs are the point of the fixture. They are true, so they belong in recall; they are also indistinguishable from an unrelated new file by anyone holding only the two blobs, so a detector that reports them at a fact-grade confidence will report the scaffold twin in scaffold_decoys just as confidently. The recommendation section prices that.",
+  "Every moved file was deleted from its old path in the same commit, so all five pairs are visible to every window policy."
+ ]
+}

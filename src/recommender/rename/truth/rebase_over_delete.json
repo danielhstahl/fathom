@@ -1,0 +1,49 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "rebase_over_delete",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A move rebased onto a history in which the source file had been deleted.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/legacy/queue.py",
+     "dst": "src/queue/legacy.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "before: a clean move"
+  },
+  {
+   "id": "r1",
+   "base": "c1",
+   "head": "r1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/legacy/queue.py",
+     "dst": "src/queue/legacy.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "none",
+     "note": "the rebased commit is an addition with no deletion: the source is not in the window, so no window-local method can recover this and silence is the only right answer"
+    }
+   ],
+   "arrivals": []
+  }
+ ],
+ "notes": [
+  "This fixture bounds the recall number. Scoring every true pair as reachable would be measuring the fixtures rather than the methods, and a 100 % bar nobody can reach is a bar that gets quietly dropped later."
+ ]
+}

@@ -202,6 +202,17 @@ jobs:
         # `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4 and §13.7.
         # A hand-copied table there is a table that keeps its old numbers the day the corpus changes.
         run: python3 tools/gen_segment_tables.py check
+      - name: "spike s4: rename and copy detection re-measures to the committed report"
+        # `benchmarks/reports/s4-rename-detection.json` is what replaces the guessed 90 % bar in `e2.4`
+        # (`reco-a0v`), and its 51 gates are claims about hand-authored git histories. The fixture
+        # repositories are built by real `git` on the runner, from scripts that fix every date, identity
+        # and config input, so this re-runs the whole measurement (~40 s) and fails if any count, gate,
+        # threshold or chosen fact bar moved. A spike that cannot be re-measured is an anecdote.
+        run: PYTHONPATH=src python3 -m recommender.rename.spike --report benchmarks/reports/s4-rename-detection.json --check
+      - name: "spike s4: the rename-detection document's numbers are the report's, generated"
+        # Every number in `docs/concepts/rename-detection.md` — the fact/guess recommendation `e2.4` will
+        # be written from — is rendered from the report by the same generator the doc cites.
+        run: python3 tools/gen_rename_tables.py check
       - name: "e1.5 TUI: the Rust shell's parity tables are the Python ones, generated"
         # `crates/fathom-tui/tests/tables/mod.rs` is generated from `src/recommender/tui/`, because
         # a Rust copy of the keymap that was hand-copied is a second source of truth with a

@@ -1,0 +1,52 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "split_episode_move",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "The deletion and the addition of one turn's move land in two different commits.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [],
+   "arrivals": [],
+   "note": "the old path dies here; the new one does not exist yet"
+  },
+  {
+   "id": "t2",
+   "base": "t1",
+   "head": "t2",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [],
+   "arrivals": [],
+   "note": "the new path is born here; the old one is already gone"
+  },
+  {
+   "id": "episode",
+   "base": "c0",
+   "head": "t2",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/legacy/importer.py",
+     "dst": "src/ingest/importer.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the turn as a reviewer reads it"
+  }
+ ],
+ "notes": [
+  "No commit-pair window contains both halves, so per-commit detection cannot produce this pair at any threshold with any algorithm. The unit of detection has a recall price attached, and this fixture is that price."
+ ]
+}

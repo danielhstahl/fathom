@@ -1,0 +1,41 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "evil_merge",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A merge that reorganises the tree inside the merge commit.",
+ "windows": [
+  {
+   "id": "m_plain",
+   "base": "c1",
+   "head": "m_plain",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [],
+   "arrivals": [],
+   "note": "a clean merge of a content edit: nothing moved"
+  },
+  {
+   "id": "m_evil",
+   "base": "c2",
+   "head": "m_evil",
+   "granularity": "commit_pair",
+   "policy": "first_parent",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/pkg/service.py",
+     "dst": "src/services/service.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the destination exists only in the merge commit"
+  }
+ ],
+ "notes": [
+  "A conflict resolution that turns into a reorganisation is a move that exists in exactly one window, and the shipped default policy drops that window. This is the merge finding at its sharpest: the pairing is easy and the visibility is the problem."
+ ]
+}

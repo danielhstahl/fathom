@@ -1,0 +1,41 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "reformat_then_delayed",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A formatter-only turn, then a turn that moves a file and makes noise elsewhere.",
+ "windows": [
+  {
+   "id": "c1",
+   "base": "c0",
+   "head": "c1",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [],
+   "arrivals": [],
+   "note": "reformat only: two files modified in place, nothing moved"
+  },
+  {
+   "id": "c2",
+   "base": "c1",
+   "head": "c2",
+   "granularity": "episode",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/core/store.py",
+     "dst": "src/store/mod.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "a delayed move alongside a reformat of a different file"
+  }
+ ],
+ "notes": [
+  "Any pair asserted on the first window is fabricated out of whitespace: both files are modified in place and appear in no candidate set at all \u2014 which is itself the finding about candidate sets, not about similarity scores."
+ ]
+}

@@ -1,0 +1,60 @@
+{
+ "schema": "fathom.spike.s4.rename-truth/1",
+ "scenario": "rebase_squash",
+ "authored_by": "looprs, by hand, for reco-gj6",
+ "purpose": "A squash rebase fuses a clean move with a later rewrite of the moved file.",
+ "windows": [
+  {
+   "id": "t1",
+   "base": "c0",
+   "head": "t1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/report.py",
+     "dst": "src/output/report.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "strong"
+    }
+   ],
+   "arrivals": [],
+   "note": "the move on its own: R100"
+  },
+  {
+   "id": "t2",
+   "base": "t1",
+   "head": "t2",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [],
+   "arrivals": [],
+   "note": "the edit, on the already-moved path: no move here to find"
+  },
+  {
+   "id": "r1",
+   "base": "c1",
+   "head": "r1",
+   "granularity": "commit_pair",
+   "policy": "any",
+   "review": true,
+   "pairs": [
+    {
+     "src": "src/report.py",
+     "dst": "src/output/report.py",
+     "kind": "rename",
+     "truth": "true",
+     "evidence": "none",
+     "note": "one squashed commit: the move and the rewrite arrive together, and almost nothing of the source survived the trip"
+    }
+   ],
+   "arrivals": []
+  }
+ ],
+ "notes": [
+  "Pre-squash the pair is obvious at git's default bar; post-squash the same true pair sits at R012. A force-push changed the answer without anything about the change itself changing, and a ledger that had recorded a fact now holds a guess."
+ ]
+}
