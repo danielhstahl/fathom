@@ -357,11 +357,26 @@ struct Strategy {
     rationale: &'static str,
     rungs: &'static [Rung],
     gap_minutes: i64,
+    /// TB7's clock guard, expressed as a divisor of the gap (ADR-003 §4.2 rung 8's split direction only
+    /// cuts when the clock moved by more than `gap_millis / tb7_divisor`). `0` disables the split
+    /// direction entirely, which is what `G-no-tb7` measures. The published value is
+    /// [`TB7_SHIPPED_DIVISOR`]; the `tb7_sweep` in `main` is what derives it.
+    tb7_divisor: i64,
 }
 
 impl Strategy {
     fn gap_millis(&self) -> i64 {
         self.gap_minutes * 60 * 1000
+    }
+    /// TB7's clock guard in millis: a divisor of the published gap, never a second free-standing constant.
+    /// The guard answers "how long after a commit is a changed conventional type still the same decision",
+    /// so it has to move with the gap the operator set. `0` means the split direction is disabled.
+    fn tb7_guard_millis(&self) -> i64 {
+        if self.tb7_divisor == 0 {
+            i64::MAX
+        } else {
+            self.gap_millis() / self.tb7_divisor
+        }
     }
     fn render(&self) -> String {
         self.rungs
@@ -484,7 +499,7 @@ fn rung_opinion(
             if mine.is_some()
                 && mine != theirs
                 && !segment::shares_path(previous, commit)
-                && commit.author_utc - previous.author_utc > strategy.gap_millis() / 9
+                && commit.author_utc - previous.author_utc > strategy.tb7_guard_millis()
             {
                 return Some(true);
             }
@@ -794,6 +809,7 @@ fn census(
         rationale: "",
         rungs: &[],
         gap_minutes,
+        tb7_divisor: TB7_SHIPPED_DIVISOR,
     };
     for index in 1..history.facts.len() {
         let truth = history.turn_of[index] != history.turn_of[index - 1];
@@ -872,6 +888,12 @@ fn hidden_pathologies(history: &History, labels: &[usize]) -> Vec<Value> {
 // the strategy table
 // ---------------------------------------------------------------------------------------------
 
+/// TB7's shipped clock guard: `gap ÷ TB7_SHIPPED_DIVISOR`, re-derived from the turn corpus by this
+/// spike's `tb7_sweep` (ADR-003 §18.2 **D6**, `reco-dot`) rather than kept at the number §4.4 first
+/// guessed. Must stay equal to `fathom_ingest::segment::TB7_CLOCK_GUARD_DIVISOR`; the contract test
+/// `test_the_tb7_guard_is_the_value_the_corpus_argmaxed` is what fails if the two drift.
+pub const TB7_SHIPPED_DIVISOR: i64 = 5;
+
 /// The cascade ADR-003 §4.2 ships, in its published order, minus `override` (no forced boundaries in the
 /// corpus) and `root` (the absence of a boundary, handled by every strategy the same way).
 ///
@@ -897,6 +919,7 @@ fn strategies() -> Vec<Strategy> {
             rationale: "the floor. A strategy that cannot beat it is not detecting boundaries at all.",
             rungs: &[],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "all-split",
@@ -905,6 +928,7 @@ fn strategies() -> Vec<Strategy> {
                         strong: most turns are one commit.",
             rungs: &[Rung::Always],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "A-time-author",
@@ -913,6 +937,7 @@ fn strategies() -> Vec<Strategy> {
                         evidence of any kind.",
             rungs: &[Rung::Author, Rung::TimeGap],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "B-hook-commit",
@@ -921,6 +946,7 @@ fn strategies() -> Vec<Strategy> {
                         means a trailer, and a trailer means `e6.1` wired the harness.",
             rungs: &[Rung::HookCommit],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "B-hook-harness",
@@ -929,6 +955,7 @@ fn strategies() -> Vec<Strategy> {
                         the ceiling of the hook strategy once `e6.1` lands.",
             rungs: &[Rung::HookHarness],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "B-hook-then-git",
@@ -937,6 +964,7 @@ fn strategies() -> Vec<Strategy> {
                         harness, and the honest answer to \"what would we ship if hooks arrived tomorrow\".",
             rungs: &[Rung::HookCommit, Rung::Branch, Rung::Author, Rung::TimeGap],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "C-trailer-shape",
@@ -946,6 +974,7 @@ fn strategies() -> Vec<Strategy> {
                         authored to carry it.",
             rungs: &[Rung::TrailerFathom, Rung::MessageShape],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "C-agent-trailer-shape",
@@ -953,6 +982,7 @@ fn strategies() -> Vec<Strategy> {
             rationale: "the same strategy spelled as the world writes it: `Agent-Turn:`/`Agent-Session:`.",
             rungs: &[Rung::TrailerAgent, Rung::MessageShape],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "D-shipped",
@@ -960,6 +990,7 @@ fn strategies() -> Vec<Strategy> {
             rationale: "the incumbent: hook(session-qualified) › trailer › branch › author › subject-claim › time-gap(30) › message-shape.",
             rungs: SHIPPED,
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "E-token-in-shape",
@@ -976,6 +1007,7 @@ fn strategies() -> Vec<Strategy> {
                 Rung::MessageShape,
             ],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "E-token-above-gap",
@@ -992,6 +1024,7 @@ fn strategies() -> Vec<Strategy> {
                 Rung::MessageShape,
             ],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "G-no-tb7",
@@ -1007,6 +1040,7 @@ fn strategies() -> Vec<Strategy> {
                 Rung::MessageShapeKeep,
             ],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
         Strategy {
             id: "F-hook-qualified",
@@ -1023,6 +1057,7 @@ fn strategies() -> Vec<Strategy> {
                 Rung::MessageShape,
             ],
             gap_minutes: 30,
+            tb7_divisor: TB7_SHIPPED_DIVISOR,
         },
     ];
     out
@@ -1229,6 +1264,7 @@ fn main() {
                 rationale: "",
                 rungs,
                 gap_minutes: gap,
+                tb7_divisor: TB7_SHIPPED_DIVISOR,
             };
             let mut totals: BTreeMap<String, Measure> = scopes
                 .iter()
@@ -1257,6 +1293,51 @@ fn main() {
                 "authored": totals["authored"].json(),
             }));
         }
+    }
+
+    // TB7's clock-guard sweep (`reco-dot`, ADR-003 §18.2 **D6**): §4.4 published `gap ÷ 9` as a guess, and
+    // §5.2's own worked example — `feat:` then `fix: review feedback` three minutes later then `test:` four
+    // minutes after that — is cut by it, because 30 ÷ 9 (3.33 min) is a *shorter* interval than the "the
+    // review came back" pattern TB7 exists to tolerate. This is the derivation the defect asked for: the
+    // guard scored across the whole corpus, so the shipped divisor is the corpus's argmax rather than a
+    // number chosen to make one test pass. `0` is "no split direction at all", i.e. TB7 deleted.
+    let mut tb7_sweep: Vec<Value> = Vec::new();
+    for divisor in [1i64, 2, 3, 4, 5, 6, 7, 9, 15, 30, 0] {
+        let strategy = Strategy {
+            id: "D-shipped",
+            title: "",
+            rationale: "",
+            rungs: SHIPPED,
+            gap_minutes: published_gap_minutes,
+            tb7_divisor: divisor,
+        };
+        let mut totals: BTreeMap<String, Measure> = scopes
+            .iter()
+            .map(|scope| ((*scope).to_owned(), Measure::default()))
+            .collect();
+        for history in &histories {
+            let (labels, _) = partition(history, &strategy, &rules);
+            let measured = measure(history, &labels);
+            totals
+                .get_mut("pooled")
+                .unwrap_or_else(|| panic!("scope `pooled` is built above and must exist"))
+                .absorb(&measured);
+            let scope = history.provenance.as_str();
+            totals
+                .get_mut(scope)
+                .unwrap_or_else(|| panic!("scope {scope:?} is built above and must exist"))
+                .absorb(&measured);
+        }
+        tb7_sweep.push(json!({
+            "divisor": divisor,
+            "guard_minutes": if divisor == 0 { Value::Null } else { json!(f64::from(published_gap_minutes as i32) / f64::from(divisor as i32)) },
+            "published": divisor == TB7_SHIPPED_DIVISOR,
+            "tb7_split_direction": if divisor == 0 { "removed" } else { "kept" },
+            "pooled": totals["pooled"].json(),
+            "real": totals["real"].json(),
+            "fixture": totals["fixture"].json(),
+            "authored": totals["authored"].json(),
+        }));
     }
 
     // The signal census at the published gap.
@@ -1378,6 +1459,7 @@ fn main() {
         "signal_census": census_totals,
         "strategies": per_strategy,
         "gap_sweep": gap_sweep,
+        "tb7_guard_sweep": tb7_sweep,
         "gates": gates,
         "gates_all_as_expected": gates_as_expected,
     });

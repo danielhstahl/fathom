@@ -16,6 +16,25 @@ Most of what is below is still scaffolding: the shape ADR-002 declares, compiled
 through CI. The first entry is not — it changes bytes an index already stored — and the line below it used
 to claim no product behaviour appeared on this page at all, which stopped being true at `e1.1`.
 
+### `reco-dot` — TB7's clock guard is derived now, and §5.2's worked example is one episode again
+
+- **`gap ÷ 9` was the worst point on the whole curve.** ADR-003 §4.4 published a 3-minute-20-second guard on
+  `message-shape`'s split direction, which is shorter than the "the review came back" interval the guard
+  exists to tolerate — so §5.2's own example (`feat:` … `fix: review feedback` three minutes later … `test:`
+  four minutes after that) was being cut in two. The guard is now **gap ÷ 5** (6 minutes), and it is
+  derived: spike `s2` grew a `tb7_guard_sweep`, the corpus has five within-turn conventional-type
+  adjacencies and four of them are 3 or 4 minutes apart, so the guard has to clear 4 minutes. The pooled-F1
+  argmax is a 1-minute guard worth +0.010 and it was **declined** — it cuts all five of those adjacencies,
+  which is the failure the guard is for — and the cost of that choice is written down rather than hidden.
+- **The quarantined test is a passing test again.** `segment::tests::a_run_of_agent_commits_inside_the_gap_is_one_episode`
+  was `#[ignore]`d with the defect named, not deleted; it came back in the same change that re-blessed the
+  spike's report, in the order ADR-003 §18.2 **D6** demanded. The quarantine list is now empty, and the
+  contract test that guards it says why being empty is the design.
+- **Cascade numbers moved, all in the good direction**: pooled boundary F1 **0.935 → 0.940**, message-shape's
+  false fires **5 → 3**, annotated turns split open **6 → 4**. §4.3's "weakest splitting signal" claim is
+  re-argued with the curve attached: the rule is worth about nothing whichever way its split direction is
+  set, and the guard was worth 0.010 of pooled F1.
+
 ### `reco-quk.2` — a `subject-claim` rung: two commits claiming one ticket are one episode (`e1.13`)
 
 - **The strongest signal spike `s2` found is now a shipped rule.** Two neighbouring commits that both lead

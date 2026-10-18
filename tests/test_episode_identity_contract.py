@@ -399,7 +399,12 @@ def test_the_gap_default_is_one_number_in_every_place_that_prints_it():
 def test_type_change_and_continuation_rules_are_the_ones_documented():
     """TB7 and TB8, whose exact shape is the difference between one turn and three."""
     rust = _text(RUST_SEGMENT)
-    assert "rules.gap_millis / 9" in rust, "TB7's clock guard moved (gap ÷ 9)"
+    guard = re.search(r"pub const TB7_CLOCK_GUARD_DIVISOR: i64 = (\d+);", rust)
+    assert guard, "TB7's clock guard is no longer a named, derived constant (ADR-003 §4.4, §18.2 D6)"
+    assert "rules.gap_millis / TB7_CLOCK_GUARD_DIVISOR" in rust, (
+        "TB7's split no longer uses the named guard, so the number the ADR publishes is decoration")
+    assert "gap ÷ %s" % guard.group(1) in _text(ADR), (
+        "§4.4 publishes a different divisor than `segment.rs` compiles")
     assert "shares_path(previous, commit)" in rust, "TB7's shared-path condition moved"
     assert "normalized.starts_with(marker.as_str())" in rust, (
         "TB8: single-word markers must be a prefix test")

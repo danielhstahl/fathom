@@ -397,11 +397,12 @@ def test_the_spike_stays_out_of_shipped_builds() -> None:
 # expectation disappears with no record) or leaving it red (every build is red, so nobody reads builds).
 # The third is `#[ignore]` with a reason that names the ticket and the condition for un-ignoring it, and a
 # check like this one so the list cannot grow by accident and cannot outlive its owner.
-QUARANTINE = {
-    # ADR-003 §5.2's worked example, cut in two by TB7's clock guard. §18.2 D6 names the fix; the fix is a
-    # shipped-rule change, so it lands with the re-bless of this spike's report — not before it.
-    "a_run_of_agent_commits_inside_the_gap_is_one_episode": "reco-dot",
-}
+# The empty set is the point: this is the list of shipped-rule tests that are quarantined rather than
+# deleted, and `reco-dot` emptied it — §5.2's example was the last entry, and it came back as a passing
+# test in the same change that re-derived TB7's guard and re-blessed this report, in that order (§18.2 D6).
+# Adding an entry needs a `#[ignore]` reason that names the ticket and the un-ignore condition, and an entry
+# here; the test below fails both ways so the list cannot grow by accident or outlive its owner.
+QUARANTINE: dict[str, str] = {}
 
 
 def _ignored_tests(path: Path) -> dict[str, str]:
@@ -429,6 +430,37 @@ def test_the_quarantine_is_declared_owned_and_exactly_this_size() -> None:
         reason = ignored[name]
         assert owner in reason, f"{name}'s ignore reason must name {owner}, the ticket that owns the fix"
         assert "re-bless" in reason, f"{name}'s reason must name the condition for un-ignoring it"
+
+
+def test_the_tb7_guard_is_the_value_the_corpus_derived(report: dict) -> None:
+    """`reco-dot`: TB7's clock guard is the corpus's answer, not the number that makes §5.2 pass.
+
+    Three things have to hold together, which is what makes this a derivation instead of a retune:
+    the shipped divisor is present in the sweep, it clears every within-turn conventional-type gap the
+    corpus annotates (the review-came-back pattern: `feat:` … `fix: review feedback` … `test:`), and the
+    split direction it leaves is not the thing the corpus would rather delete — i.e. the shipped guard is
+    at least as good as the published one it replaced, and the sweep is published so the argmax that was
+    declined is visible rather than hidden.
+    """
+    sweep = report["tb7_guard_sweep"]
+    shipped = [row for row in sweep if row["published"]]
+    assert len(shipped) == 1, "exactly one row of the sweep is the shipped cascade"
+    shipped = shipped[0]
+    assert shipped["tb7_split_direction"] == "kept", "§18.2 D6 keeps TB7; the split direction is not deleted"
+    assert shipped["guard_minutes"] > 4.0, (
+        "the guard no longer clears the corpus's 4-minute review-come-back gaps, so §5.2's example is "
+        "cut in two again")
+    published = [row for row in sweep if row["divisor"] == 9]
+    assert published, "the sweep no longer scores the divisor §4.4 used to publish, so the before-number "
+    assert shipped["pooled"]["boundary_f1"] >= published[0]["pooled"]["boundary_f1"], (
+        "the re-derived guard is worse than gap ÷ 9 was; the defect was that it was the worst point on "
+        "the curve, and a fix has to beat the number it replaces")
+    argmax = max(sweep, key=lambda row: row["pooled"]["boundary_f1"])
+    assert argmax["divisor"] != shipped["divisor"], (
+        "the shipped divisor is the pooled argmax, which means the guard was read off the headline "
+        "number instead of off the within-turn gap distribution it exists to respect")
+    assert argmax["guard_minutes"] < shipped["guard_minutes"], (
+        "the declined argmax should be the aggressive end: a tighter guard cuts more within-turn adjacencies")
 
 
 def test_the_identity_vector_quarantine_is_gone_because_the_bug_was_real() -> None:

@@ -550,6 +550,23 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
+/// TB7's clock guard: a changed conventional type splits only when the clock moved by more than
+/// `gap_millis / TB7_CLOCK_GUARD_DIVISOR`.
+///
+/// §4.4 published `gap ÷ 9` — 3 minutes 20 seconds at the published gap — as a guess, and ADR-003 §18.2
+/// **D6** found it was a defect: 3.33 min is a *shorter* interval than the "the review came back" pattern
+/// TB7 exists to tolerate, so §5.2's own worked example (`feat:` … `fix: review feedback` three minutes
+/// later … `test:` four minutes after that) was being cut into three episodes by the rule meant to keep it
+/// in one. The divisor is now derived rather than guessed. The turn corpus has five within-turn adjacencies
+/// where the conventional type changed; four of them are 3 or 4 minutes apart and are annotated as one
+/// turn, and the guard has to clear them, so the guard must exceed 4 minutes. The corpus's pooled-F1
+/// argmax is a 1-minute guard (+0.010 over this one) and it is declined on purpose: a 1-minute guard cuts
+/// all five of those adjacencies, which is the exact failure the guard is for, and the whole curve from 4
+/// to 30 minutes is flat within 0.005. Five buys margin over the measured 4 and sits on that flat part.
+/// Measured by `tb7_guard_sweep` in spike `s2`'s harness, asserted against this number by
+/// `test_the_tb7_guard_is_the_value_the_corpus_derived`, and argued in ADR-003 §4.3.
+pub const TB7_CLOCK_GUARD_DIVISOR: i64 = 5;
+
 /// Which conventional type a subject declares, if any.
 ///
 /// Public because the boundary rule that uses it (ADR-003 §4.2 rung 7, TB7) has to be reusable by the
@@ -938,7 +955,7 @@ pub fn decide(previous: &CommitFacts, commit: &CommitFacts, rules: &Rules) -> (b
     if mine.is_some()
         && mine != theirs
         && !shares_path(previous, commit)
-        && commit.author_utc - previous.author_utc > rules.gap_millis / 9
+        && commit.author_utc - previous.author_utc > rules.gap_millis / TB7_CLOCK_GUARD_DIVISOR
     {
         return (true, Rule::MessageShape, 0.4);
     }
@@ -1049,16 +1066,16 @@ mod tests {
         }
     }
 
-    /// Quarantined, not deleted: this is ADR-003 §5.2's worked example, and the shipped cascade cuts it
-    /// in two. ADR-003 §18.2 **D6** named the cause (`message-shape`'s clock guard is `gap ÷ 9`, a shorter
-    /// interval than the "the review came back" pattern TB7 exists to tolerate) and named the fix
-    /// (re-derive the guard). The fix is a change to a shipped boundary rule, so it has to land together
-    /// with the re-bless of `benchmarks/reports/s2-segmentation-accuracy.json` — the spike's report and its
-    /// five declared-failing gates are measurements *of this cascade*, and re-scoring them from an unrelated
-    /// ticket is how a measurement silently becomes an opinion. Owned by `reco-dot`; un-ignore in the change
-    /// that re-blesses, in that order.
+    /// ADR-003 §5.2's worked example, and the reason TB7's clock guard is `gap ÷ 5`.
+    ///
+    /// This was `#[ignore]`d — quarantined rather than deleted, with the defect named — from the moment the
+    /// failure was found (`reco-dot`) until the guard was re-derived from the turn corpus and spike `s2`'s
+    /// report re-blessed **in the same change**. §18.2 **D6** ordered it in that sequence deliberately: a
+    /// shipped boundary rule and the measurement of that rule move together, or the measurement quietly
+    /// becomes an opinion. `gap ÷ 9` (3 min 20 s) was a shorter interval than the "the review came back"
+    /// pattern TB7 exists to tolerate, so the rule meant to hold this run of commits in one episode was
+    /// cutting it in two.
     #[test]
-    #[ignore = "known defect reco-dot: TB7's gap/9 guard splits ADR-003 §5.2's own example; fix the guard and re-bless the s2 report in the same change"]
     fn a_run_of_agent_commits_inside_the_gap_is_one_episode() {
         let commits = vec![
             commit(
