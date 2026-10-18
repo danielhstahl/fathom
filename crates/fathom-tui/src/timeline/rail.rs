@@ -454,7 +454,7 @@ impl Rail {
         let on_screen: Vec<usize> = self.slots.iter().filter_map(Slot::index).collect();
         self.risked = on_screen
             .iter()
-            .filter(|index| self.episodes[**index].risk.is_some())
+            .filter(|index| self.episodes[**index].risk().is_some())
             .count();
         self.unread = on_screen
             .iter()

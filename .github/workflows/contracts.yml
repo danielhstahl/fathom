@@ -35,6 +35,17 @@ jobs:
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)
         run: python3 tools/check_workspace.py lint
+      - name: "e2.11 delta model: the version policy refuses a breaking change with no version bump"
+        # `reco-tt4`'s acceptance criterion 4, as a step. `schemas/episode-delta.schema.json` is the one
+        # document the TUI, the CLI, the export and an MCP tool result all read, so "additive keeps the
+        # version, breaking bumps it" has to be a machine decision. The baseline it compares against is
+        # checked in, so the diff that blesses a breaking change is a reviewed diff.
+        run: python3 tools/check_delta_compat.py check
+      - name: "e2.11 delta model: that gate is awake (breaking edits refused on a temp copy)"
+        # A gate nobody has watched fail is decoration. This mutates a copy of the schema in a temporary
+        # tree — required key added, property renamed, type narrowed, enum shrunk — and fails if any of
+        # those passes at the same version, or if a genuinely additive edit is refused.
+        run: python3 tools/check_delta_compat.py self-test
       - name: "e0.8 config: schemas/fathom.schema.json is what the key spec generates"
         # ADR-002 §6.1: "CI regenerates and diffs the checked-in file". A hand-edited schema is
         # worse than none: the editor becomes the confident party and it is wrong.

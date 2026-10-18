@@ -16,12 +16,12 @@
 │  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     │members  e8f1:0 e8f1:1 e8f1:2 +1   │
 │ Sun 14 Sep · session 1 (pi) ── 1 episode │         more                      │
 │  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   │                                   │
-│ Sat 13 Sep ── 1 episode                  │delta    shape/deps/tests/findings:│
-│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │         not in this build (e2.11's│
-│ Thu 11 Sep · session 1 (pi) ── 1 episode │         model, e4.3's detectors) —│
-│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │         `fathom analyze           │
-│                                          │         <episode>``               │
-│                                          │… 5 more rows — `<C-w>o` gives thi…│
+│ Sat 13 Sep ── 1 episode                  │delta    no document was handed to │
+│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │         this card — fathom analyze│
+│ Thu 11 Sep · session 1 (pi) ── 1 episode │         <episode> --json is the   │
+│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │         one source                │
+│                                          │risk     unknown — nothing has     │
+│                                          │… 4 more rows — `<C-w>o` gives thi…│
 │filter: area=any state=any group=day (F e…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
@@ -57,8 +57,8 @@ session  session 4 · turn 12
 members  e8f1:0 e8f1:1 e8f1:2 +1   
          more                      
                                    
-delta    shape/deps/tests/findings:
-… 9 more rows — `<C-w>o` gives thi…
+delta    no document was handed to 
+… 8 more rows — `<C-w>o` gives thi…
 
 ## card strip
 

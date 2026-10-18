@@ -61,6 +61,8 @@ pub enum Verb {
     Index(IndexArgs),
     /// Show one episode in full
     Show(ShowArgs),
+    /// Print one episode's delta document — the model the TUI, the export and an agent all read
+    Analyze(AnalyzeArgs),
     /// Report repo scale, index state and cache hit rate
     Stats(StatsArgs),
     /// Run the checks CI cares about; findings above the threshold exit 7
@@ -126,6 +128,29 @@ pub struct ShowArgs {
     /// Print the episode as JSON on stdout, and nothing else there.
     #[arg(long)]
     pub json: bool,
+}
+
+/// `fathom analyze`
+#[derive(Args, Debug)]
+pub struct AnalyzeArgs {
+    /// The episode to analyse: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid
+    /// prefix. Omitted with `--schema`, which prints the contract instead of an answer.
+    pub episode: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the delta document as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Print `schemas/episode-delta.schema.json`, the JSON Schema for the document, and stop.
+    #[arg(long)]
+    pub schema: bool,
+    /// Check the checked-in schema against what this build generates; the CI form of `--schema`.
+    #[arg(long, requires = "schema")]
+    pub check: bool,
+    /// Write the generated schema to `schemas/`, replacing the checked-in copy.
+    #[arg(long, requires = "schema", conflicts_with = "check")]
+    pub write: bool,
 }
 
 /// `fathom stats`
@@ -315,6 +340,14 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         None => open_terminal(globals),
         Some(Verb::Index(args)) => index(args),
         Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
+        Some(Verb::Analyze(args)) => crate::analyze::analyze(
+            &args.root,
+            args.episode.as_deref(),
+            args.json,
+            args.schema,
+            args.check,
+            args.write,
+        ),
         Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
         Some(Verb::Check) => Err(not_implemented("fathom check", "e6.6")),
         Some(Verb::Doctor(args)) => {
@@ -772,13 +805,101 @@ fn export_scope(root: &str, episodes: &str) -> serde_json::Value {
             let same = from.is_some() && from == to;
             json!({
                 "asked": episodes,
-                "from": from.map(|oid| oid.chars().take(7).collect::<String>()),
-                "to": to.map(|oid| oid.chars().take(7).collect::<String>()),
+                "from": short_sha(from.as_deref()),
+                "to": short_sha(to.as_deref()),
                 "commits": if same { 1 } else { 0 },
                 "resolved": same,
+                // The artefact will be written from the delta model, and says which one it read. This is
+                // the half of `e5.7` that can be checked before the rendering exists: an export that
+                // quietly invented its own section list is the second reality ADR-001 §7.10 forbids, so
+                // the scope names the contract, the version and every section's state instead.
+                "delta": delta_scope(resolved, to.as_deref()),
             })
         }
         Err(_) => json!({"asked": episodes, "resolved": false}),
+    }
+}
+
+/// Seven characters, because a scope line is not a place to print an oid.
+fn short_sha(oid: Option<&str>) -> Option<String> {
+    oid.map(|value| value.chars().take(7).collect::<String>())
+}
+
+/// The delta model an export of this range would be written from.
+///
+/// `fathom analyze <episode> --json` is the source; this is that same document, reduced to what an
+/// artefact's preamble has room for: the contract, the version, and the state of each of the seven
+/// sections with the owner of every gap. When there is no index the answer is a stated absence with the
+/// remedy, not an empty section list — an export that printed nothing about a section and nothing about
+/// the gap would be reporting zero where nobody looked.
+fn delta_scope(root: &std::path::Path, oid: Option<&str>) -> serde_json::Value {
+    #[cfg(not(feature = "sqlite-bundled"))]
+    {
+        let _ = (root, oid);
+        return serde_json::json!({
+            "available": false,
+            "contract": fathom_analyze::insight::CONTRACT,
+            "why": "this binary was built without a SQLite feature, so no index can be read",
+        });
+    }
+
+    #[cfg(feature = "sqlite-bundled")]
+    {
+        use fathom_analyze::index::default_store_path;
+        use fathom_store::spine::Store;
+        let Some(oid) = oid else {
+            return serde_json::json!({"available": false, "why": "the range resolved to no commit"});
+        };
+        let store_path = default_store_path(root);
+        if !store_path.exists() {
+            return serde_json::json!({
+                "available": false,
+                "contract": fathom_analyze::insight::CONTRACT,
+                "why": format!("no index at {} yet", store_path.display()),
+                "remedy": "fathom index",
+            });
+        }
+        let Ok(store) = Store::open(&store_path) else {
+            return serde_json::json!({
+                "available": false,
+                "contract": fathom_analyze::insight::CONTRACT,
+                "why": "the store would not open",
+                "remedy": "fathom doctor",
+            });
+        };
+        match fathom_analyze::insight::for_commit(&store, oid) {
+            Ok(Some(delta)) => serde_json::json!({
+                "available": true,
+                "contract": delta.contract,
+                "schema_version": delta.schema_version,
+                "episode": fathom_analyze::insight::short_id(&delta.episode.id),
+                "sections": delta
+                    .sections
+                    .iter()
+                    .map(|section| {
+                        serde_json::json!({
+                            "id": section.id,
+                            "state": section.state,
+                            "gap_owner": section.gap.as_ref().map(|gap| gap.owner.clone()),
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+                "gaps": delta.gaps.len(),
+                "verified": delta.integrity.verified,
+            }),
+            Ok(None) => serde_json::json!({
+                "available": false,
+                "contract": fathom_analyze::insight::CONTRACT,
+                "why": "this commit has no episode row in the index",
+                "remedy": "fathom index",
+            }),
+            Err(err) => serde_json::json!({
+                "available": false,
+                "contract": fathom_analyze::insight::CONTRACT,
+                "why": format!("reading the delta failed: {err}"),
+                "remedy": "fathom index --rebuild",
+            }),
+        }
     }
 }
 

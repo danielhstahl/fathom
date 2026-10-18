@@ -356,7 +356,7 @@ That is lint `W1` on `fathom-core`, `fathom-analyze`, `fathom-tui` and `fathom-m
 | # | Rule | Enforced by |
 |---|---|---|
 | **R1** | Crate edges follow `cli -> {tui,mcp} -> analyze -> ingest -> store -> core`; an `uphill` import fails CI. | `lint` → `E01`, `E02`, `E03`, `E04` |
-| **R2** | `fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`. | `lint` → `M02` |
+| **R2** | `fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`, and only *read* what those hand back: a surface that composes, ranks or classifies is a second analysis (`M03`). | `lint` → `M02`, `M03` |
 | **R3** | `fathom-core` has zero IO, zero `unsafe`, no wall clock and no default features. | `lint` → `W1`, `W2`, `P02`, `F02` |
 | **R4** | `unsafe` appears only in `fathom-store/src/raw/` and only under `cfg(feature = "mmap")`. | `lint` → `P02`, `P03`, `P04` |
 | **R5** | Library crates declare `default = []`. Only `fathom-cli` has default features, and they are the shipped product. | `lint` → `F02`, `F03`, `H01` |

@@ -306,11 +306,17 @@ fn the_rail_lists_the_episodes_the_index_holds() {
         );
     }
 
-    // The risk column is still `?`, because the store has no risk and `e4.4` owns the score. The data
-    // path is not a claim that `e2.11` landed, and the card says so in the same pane.
+    // And the delta half of the card is no longer a stated absence: `reco-tt4` made every rail row carry
+    // an `EpisodeDelta`, so the card prints the model's seven sections and signs the contract it read.
+    // That is the assertion a reviewer can audit: a frame that claims `fathom-delta/1` is a frame whose
+    // numbers came from the one model, and the self-check beside it says the document agreed with itself.
     assert!(
-        frame.contains("not in this build (e2.11's model"),
-        "the delta rows are still stated as missing, next to the rows that are not:\n{frame}"
+        frame.contains("fathom-delta/1") && frame.contains("self-check"),
+        "the card names the contract it rendered and the model's own verdict on itself:\n{frame}"
+    );
+    assert!(
+        !frame.contains("not in this build"),
+        "the scaffolded refusal is gone now that the model exists:\n{frame}"
     );
     std::fs::remove_dir_all(&dir).expect("clean up the fixture");
 }

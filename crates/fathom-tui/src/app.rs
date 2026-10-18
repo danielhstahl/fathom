@@ -220,21 +220,15 @@ impl Model {
             notes: Vec::new(),
         };
         if status.views_ready {
-            match insight::episodes(
-                crate::frame::FrameContext::headless(fathom_core::time::Timestamp::UNIX_EPOCH)
-                    .page(),
-            ) {
-                Ok(rows) => {
-                    model.notes.push(format!(
-                        "the façade answered {} row(s)",
-                        format_thousands(rows.len() as u64)
-                    ));
-                }
-                Err(err) => {
-                    model.unavailable = Some(err.to_string());
-                }
-            }
+            // `e2.11` landed the model, so the façade has nothing left to refuse — and nothing to say.
+            // Silence is the correct output here: an empty note list is what "the analysis is answering"
+            // looks like on this pane, and a startup note about it would be noise that every other notice
+            // has to be filtered around. Which contract the frame is rendering is printed where it belongs:
+            // in the card's own footer, beside the self-check (`timeline::card`).
+            let _ = status.contract;
         } else {
+            // The path a `minimal` build with no delta model would take, kept honest: it says what is
+            // missing and who owns it, which is the refusal ADR-001 §7.2 requires of an unbuilt contract.
             model.unavailable = Some(format!(
                 "the delta model is not in this build (schema v{}, owned by e2.11) — every pane \
                  prints `unknown` until it is",
@@ -850,7 +844,7 @@ impl App {
             &crate::worklist::model_name(&first),
             first
                 .first()
-                .and_then(|episode| episode.risk.as_ref())
+                .and_then(|episode| episode.risk())
                 .map_or(0, |risk| risk.blind_spots.len()),
         ))
     }

@@ -17,8 +17,42 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
-Nothing since the alpha. Everything below this line and above the next heading belongs to whoever cuts
-`0.1.0-alpha.2`; the alpha itself is cut in the section below.
+### `e2.11` — one versioned delta model, and the version policy that keeps it one (`reco-tt4`)
+
+- **`EpisodeDelta` is now the only analysis model.** Seven sections (`what`, `where`, `dependencies`,
+  `surface`, `tests`, `blast`, `attention`), always all seven, each `measured`, `partial` or
+  `unavailable`; every figure carries evidence (a JSON pointer into the document, a command to run, or
+  the plan key that owns the answer), every gap carries a one-line short form and names the ticket that
+  will fill it, and the document **checks itself** — `verify` resolves every evidence pointer,
+  reconciles the derived totals against the file rows, refuses a section that claims a measurement it
+  cannot show, and prints the list of what it checked. Nothing about a delta is inferred by whoever
+  displays it.
+- **New verb: `fathom analyze <episode> [--json]`.** The headless form of the model — one JSON line on
+  stdout and nothing else there, or the model's own rendered sections for a human. It is the input to
+  the export and to an MCP tool result, and the same `render`/`brief` the TUI card calls.
+  `--schema` prints the published JSON Schema, `--schema --check` diffs the checked-in copy,
+  `--schema --write` regenerates it.
+- **Published schema, generated not written.**
+  [`schemas/episode-delta.schema.json`](schemas/episode-delta.schema.json) is the output of a generator
+  inside the crate that owns the types; a test fails if the checked-in file is not byte-identical to it.
+  `schemas/episode-delta.baseline.json` archives the shape projection CI compares against.
+- **The compatibility policy is a gate.** Additive changes keep the version; breaking changes bump it; a
+  breaking change without a bump fails CI — `python3 tools/check_delta_compat.py check`, with
+  `self-test` beside it in `.github/workflows/contracts.yml` mutating a copy of the schema (required
+  key added, property renamed, type narrowed, enum shrunk) to prove the gate is awake. Both run in the
+  docs/contracts job, which needs no Rust toolchain.
+- **The TUI computes nothing.** The card renders `insight::brief` and the model's own sentences —
+  including the ranking's ceiling, which the model words (`RiskView::blind_spot_note`) so no surface can
+  print a bare score and call it an all-clear. `fathom-tui`'s duplicated `Risk` type is gone; risk
+  travels inside the delta. Beyond `M02`'s façade rule, new lint rule **`M03`** fails the build if a
+  surface calls `compose`/`rank`/`classify` or the store bridges through the façade.
+- **Two schemas and one validator, not two validators.** The CLI's `--json` round-trip validator moved to
+  `crates/fathom-cli/tests/validator.rs` and is shared by the new
+  `crates/fathom-cli/tests/delta_schema.rs`, which validates every shape the model can emit — and the
+  real binary's output — against the published schema.
+
+Nothing since the alpha besides the above. Everything below this line and above the next heading belongs
+to whoever cuts `0.1.0-alpha.2`; the alpha itself is cut in the section below.
 
 ## [0.1.0-alpha.1] - 2026-10-18
 

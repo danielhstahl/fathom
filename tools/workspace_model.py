@@ -553,6 +553,20 @@ SOURCE_RULES: tuple[SourceRule, ...] = (
                r"\b(todo!|unimplemented!)\s*\(",
                "an unbuilt path returns `Err(Error::NotImplemented)`; a panic in a TUI that owns the "
                "terminal loses the user's screen (§7)"),
+    # R2's second half, and the one `M02` cannot see: `M02` allows `fathom_analyze::insight`, and
+    # `insight` exports the constructors as well as the renderers. A surface that can compose a delta,
+    # rank an episode or classify a path will eventually do it inline, and then the TUI and the export
+    # have two analyses again — the exact failure ADR-001 §7.10 and `reco-tt4` exist to prevent. Naming
+    # the *types* is allowed (a card must hold an `EpisodeDelta` to draw one); calling the analysis is not.
+    SourceRule("M03", ("fathom-tui", "fathom-mcp"),
+               r"insight::(?:compose|rank|classify|for_rows|for_commit|for_episode)\s*\(|"
+               r"insight::[A-Za-z_ ]*\{[^}]*(?:compose|rank|classify|for_rows|for_commit|"
+               r"for_episode)\b|EpisodeDelta::sparse\s*\(|RiskView::of\s*\(|"
+               r"insight::(Signals|Input|Supplied)\s*::",
+               "a surface renders `fathom_analyze::insight`'s document; it does not compute one. "
+               "Calling the analysis through the façade — composing a delta, ranking an episode, "
+               "classifying a path — is the second analysis ADR-001 §7.10 and `reco-tt4` exist to "
+               "remove (R2)"),
 )
 
 #: Per-crate `#![...]` attributes the lint requires at the top of `lib.rs` / `main.rs`.
@@ -831,7 +845,9 @@ def rules_rows() -> list[tuple[str, str]]:
     return [
         ("R1", "Crate edges follow `cli -> {tui,mcp} -> analyze -> ingest -> store -> core`; an "
                "`uphill` import fails CI."),
-        ("R2", "`fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`."),
+        ("R2", "`fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`, "
+               "and only *read* what those hand back: a surface that composes, ranks or classifies is a "
+               "second analysis (`M03`)."),
         ("R3", "`fathom-core` has zero IO, zero `unsafe`, no wall clock and no default features."),
         ("R4", "`unsafe` appears only in `fathom-store/src/raw/` and only under `cfg(feature = \"mmap\")`."),
         ("R5", "Library crates declare `default = []`. Only `fathom-cli` has default features, and they "

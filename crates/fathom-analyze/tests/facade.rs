@@ -1,7 +1,9 @@
-//! The façade's own contract: one version, one page rule, one refusal (ADR-002 §5.3).
+//! The façade's own contract: one version, one page rule, one answer (ADR-002 §5.3).
 //!
 //! This is the test that makes "the façade owns pagination" true before there is anything to paginate:
-//! a view that clamps its own limit is about to disagree with a test written here.
+//! a view that clamps its own limit is about to disagree with a test written here. It is also where the
+//! version story is pinned: `reco-tt4` made the façade's output a published contract, and a contract
+//! whose version can drift silently is worse than no contract.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use fathom_analyze::error::Error;
@@ -35,15 +37,26 @@ fn a_hostile_offset_cannot_wrap_past_the_end() {
 }
 
 #[test]
-fn the_delta_model_refuses_by_name_and_ticket() {
-    let err = insight::episodes(PageWindow::new(None, None))
-        .err()
-        .unwrap_or_else(|| panic!("the scaffolded facade must refuse rather than invent a delta"));
-    assert!(err.to_string().contains("e2.11"), "{err}");
+fn the_delta_model_is_the_answer_and_names_its_version() {
+    // `e2.11` used to be a refusal that named itself; `reco-tt4` replaced it with the model, and the
+    // refusal test went with it. What replaced it is the claim that actually matters now: the façade
+    // answers, and it says which version of the answer it is giving.
+    let status = insight::status();
+    assert!(
+        status.views_ready,
+        "the delta model is published, so the façade has no refusal left — and a surface that asks          `views_ready` still has to be told the truth"
+    );
+    assert_eq!(status.schema_version, insight::SCHEMA_VERSION);
+    assert_eq!(status.contract, insight::CONTRACT);
     assert_eq!(
-        err.hint(),
-        Some("e2.11"),
-        "the refusal is a pointer, not a dead end"
+        insight::CONTRACT,
+        format!("fathom-delta/{}", insight::SCHEMA_VERSION),
+        "the contract id carries the version, so a payload cannot claim v2 under a v1 name"
+    );
+    assert_eq!(
+        insight::SCHEMA_FILE,
+        "schemas/episode-delta.schema.json",
+        "the published schema's path is part of the contract a consumer pins"
     );
 }
 

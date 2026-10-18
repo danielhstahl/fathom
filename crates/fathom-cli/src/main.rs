@@ -14,6 +14,7 @@
 // The clock is read once, here, and only by the verbs that need an instant (ADR-002 §4.4). Every verb
 // that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,
 // so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
+mod analyze;
 mod clock;
 mod diagnose;
 // The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not

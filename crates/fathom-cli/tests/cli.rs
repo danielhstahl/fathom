@@ -135,7 +135,14 @@ fn doctor_json_is_json_and_says_the_same_thing() {
     let parsed: serde_json::Value =
         serde_json::from_str(&stdout(&out)).expect("doctor --json prints one JSON value");
     assert_eq!(parsed["version"].as_str(), Some(env!("CARGO_PKG_VERSION")));
-    assert_eq!(parsed["views_ready"].as_bool(), Some(false));
+    // `reco-tt4` landed the delta model, so the façade is no longer allowed to report itself unavailable;
+    // `doctor` is where a bug report names the contract, hence the version travels beside the flag.
+    assert_eq!(parsed["views_ready"].as_bool(), Some(true));
+    assert_eq!(
+        parsed["schema_version"].as_u64(),
+        Some(1),
+        "doctor is where a bug report names the review model it was built against"
+    );
     let features = parsed["features"].as_array().expect("a feature array");
     // §6.4's promise is that the list is the *resolved* set, so it has to be read against whichever
     // configuration this test binary was built in: the default set under `cargo test --workspace`,

@@ -1,0 +1,807 @@
+{
+  "_comment": "The archived breaking projection of schemas/episode-delta.schema.json, as blessed by `python3 tools/check_delta_compat.py bless`. CI compares the live schema against this; a difference in the breaking projection at the same version is a breaking change without a version bump, and this file is the diff that says it was intentional.",
+  "additive_digest": "45ae19adc97cc828f8977b970f8d7523aae54160dca4e21506b62a46e421ef96",
+  "breaking": {
+    "": {
+      "closed": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".contract": {
+      "const": "fathom-delta/1",
+      "required": true
+    },
+    ".episode": {
+      "closed": true,
+      "ref": "#/$defs/episode",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.author_confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": false,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.author_email": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.author_kind": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.author_name": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.boundary_confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": false,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.boundary_rule": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.fallback_fingerprint": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.fingerprint": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.first_utc": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.id": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.last_utc": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.lineage_ref": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.lineage_seq": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.live": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".episode.member_remainder": {
+      "minimum": 0,
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.members": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.members[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.n_commits": {
+      "minimum": 0,
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.review": {
+      "enum": [
+        "unread",
+        "read",
+        "accepted",
+        "flagged",
+        "dismissed",
+        "snoozed"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.session": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.shape_fingerprint": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.summary": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.turn": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".files": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".files[]": {
+      "closed": true,
+      "ref": "#/$defs/file",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".files[].add": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".files[].basis": {
+      "enum": [
+        "full",
+        "rollup"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].binary": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".files[].change": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "mode-only",
+        "unrecorded"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].commits": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".files[].del": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".files[].noise_class": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].old_path": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].path": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].path_class": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".files[].surface": {
+      "enum": [
+        "migration",
+        "ci",
+        "infra",
+        "container",
+        "dependency",
+        "schema",
+        "env",
+        "source",
+        "test",
+        "docs",
+        "generated",
+        "vendored",
+        "asset",
+        "binary",
+        "other"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".gaps": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".gaps[]": {
+      "closed": true,
+      "ref": "#/$defs/gap",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".gaps[].owner": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".gaps[].reason": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".gaps[].remedy": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".gaps[].section": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".gaps[].short": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".integrity": {
+      "closed": true,
+      "ref": "#/$defs/integrity",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".integrity.checks": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".integrity.checks[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".integrity.problems": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".integrity.problems[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".integrity.verified": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".provenance": {
+      "closed": true,
+      "ref": "#/$defs/provenance",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".provenance.asked": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".provenance.epoch": {
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".provenance.files_detail": {
+      "enum": [
+        "full",
+        "rollup"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".provenance.models": {
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".provenance.models{}": {
+      "types": [
+        "string"
+      ]
+    },
+    ".provenance.produced_by": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".provenance.source": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".provenance.store": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk": {
+      "closed": true,
+      "ref": "#/$defs/risk",
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".risk.blind_spots": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".risk.blind_spots[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.caveat": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.components": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".risk.components[]": {
+      "closed": true,
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".risk.components[].cap": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".risk.components[].detail": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.components[].name": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.components[].points": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".risk.model": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.rank": {
+      "minimum": 1,
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".risk.ranked": {
+      "minimum": 0,
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".risk.score": {
+      "maximum": 100,
+      "minimum": 0,
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".risk.surfaces": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".risk.surfaces[]": {
+      "enum": [
+        "migration",
+        "ci",
+        "infra",
+        "container",
+        "dependency",
+        "schema",
+        "env",
+        "source",
+        "test",
+        "docs",
+        "generated",
+        "vendored",
+        "asset",
+        "binary",
+        "other"
+      ],
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".risk.vector": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".schema_version": {
+      "const": 1,
+      "required": true
+    },
+    ".sections": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".sections[]": {
+      "closed": true,
+      "ref": "#/$defs/section",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".sections[].figures": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".sections[].figures[]": {
+      "closed": true,
+      "ref": "#/$defs/figure",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".sections[].figures[].confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": false,
+      "types": [
+        "number"
+      ]
+    },
+    ".sections[].figures[].evidence": {
+      "closed": true,
+      "ref": "#/$defs/evidence",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".sections[].figures[].evidence.owner": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].figures[].evidence.pointer": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].figures[].evidence.run": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].figures[].known": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".sections[].figures[].label": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].figures[].raw": {
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".sections[].figures[].raw{}": {
+      "types": [
+        "integer"
+      ]
+    },
+    ".sections[].figures[].reason": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].figures[].value": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].gap": {
+      "closed": true,
+      "ref": "#/$defs/gap",
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".sections[].gap.owner": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].gap.reason": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].gap.remedy": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].gap.section": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].gap.short": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].id": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].owner": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].question": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].remainder": {
+      "minimum": 0,
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".sections[].state": {
+      "enum": [
+        "measured",
+        "partial",
+        "unavailable"
+      ],
+      "ref": "#/$defs/sectionState",
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".sections[].title": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".totals": {
+      "closed": true,
+      "ref": "#/$defs/totals",
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".totals.churn": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.discounted_churn": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.files_read": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.files_truncated": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".totals.n_add": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.n_binary": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.n_del": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.n_files": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".totals.reconciles": {
+      "required": false,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".totals.reviewable_churn": {
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    }
+  },
+  "contract": "fathom-delta/1",
+  "digest": "d4a6565af04354eb6b204649ef5a525625fd94b707eeb1a81b7eb36dcfb5cd67",
+  "note": "v1: the model as shipped by reco-tt4",
+  "schema": "episode-delta.schema.json",
+  "version": 1
+}

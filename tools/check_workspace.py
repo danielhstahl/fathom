@@ -149,7 +149,7 @@ def render_rules() -> str:
 
 ENFORCED_BY = {
     "R1": "`lint` → `E01`, `E02`, `E03`, `E04`",
-    "R2": "`lint` → `M02`",
+    "R2": "`lint` → `M02`, `M03`",
     "R3": "`lint` → `W1`, `W2`, `P02`, `F02`",
     "R4": "`lint` → `P02`, `P03`, `P04`",
     "R5": "`lint` → `F02`, `F03`, `H01`",

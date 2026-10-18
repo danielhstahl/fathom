@@ -32,6 +32,7 @@
     },
     "scope": {
       "additionalProperties": true,
+      "description": "The resolved range: what was asked, the endpoints as short oids, how many commits, and the delta model the artefact would be written from (`delta`: the contract, its version, and each of the seven sections' state with the owner of every gap — or a stated absence with the remedy). `e5.7` renders it.",
       "type": "object"
     },
     "status": {

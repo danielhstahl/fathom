@@ -158,14 +158,16 @@ fn read(store: &Store, page: &PageWindow) -> Result<Raw, StoreError> {
 ///
 /// The two unit conversions worth naming: the store keeps millis and the rail takes [`Timestamp`]
 /// microseconds (the same conversion `e1.11` uses for session stamps), and the review-state enum is
-/// spelled identically in both crates on purpose, so the conversion is the shared spelling rather than
-/// a match that can drift.
+/// spelled identically in both crates on purpose, so the conversion is the shared spelling rather than a
+/// match that can drift.
 ///
-/// The `risk` field is the one thing here that is not a copy of a column: it is the spine-only ranking
-/// (`fathom_analyze::risk`) applied to the row plus that episode's per-file change, computed once per
-/// page in the composition root — the shell may not score an episode any more than it may query a
-/// store (ADR-002 §5.2, §5.3). `stats` is `None` when the file read did not reach the episode, and
-/// then there is no ranking to print rather than a ranking of nothing.
+/// The `delta` field is the one that is not a copy of a column: it is [`fathom_analyze::insight`]'s
+/// versioned model, composed from the row and the per-file rows this page already read — no extra query,
+/// which is the only reason a rail is allowed to carry a model at all. The card renders that document and
+/// nothing else, the risk column reads the ranking inside it, and `fathom analyze <episode>` prints the
+/// same structure for the same episode. The composition root no longer formats a single analysis figure
+/// of its own; `e2.10`'s card and `reco-c05`'s reasons moved into the façade with `e2.11`, and that is the
+/// whole content of this function's diff (ADR-001 §7.10, ADR-002 §5.3).
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 fn into_episode(
     row: EpisodeRow,
@@ -176,7 +178,19 @@ fn into_episode(
 ) -> Episode {
     let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
     let micros = |millis: i64| Timestamp::from_unix_micros(millis.saturating_mul(1_000));
-    let risk = stats.map(|stats| risk_of(&row, stats, partial));
+    let delta = fathom_analyze::insight::for_rows(
+        &row,
+        stats.unwrap_or_default(),
+        match state {
+            StoredState::Unread => fathom_store::episode::ReviewState::Unread,
+            StoredState::Read => fathom_store::episode::ReviewState::Read,
+            StoredState::Accepted => fathom_store::episode::ReviewState::Accepted,
+            StoredState::Flagged => fathom_store::episode::ReviewState::Flagged,
+            StoredState::Dismissed => fathom_store::episode::ReviewState::Dismissed,
+            StoredState::Snoozed => fathom_store::episode::ReviewState::Snoozed,
+        },
+        partial,
+    );
     Episode {
         id: row.id,
         fingerprint: row.fingerprint,
@@ -185,9 +199,9 @@ fn into_episode(
         members: row.members,
         created: micros(row.created_utc),
         last: micros(row.last_utc),
-        author: AuthorKind::parse(&row.author_kind),
-        author_name: row.author_name,
-        author_confidence: Some(row.author_confidence),
+        author: AuthorKind::parse(&delta.episode.author_kind),
+        author_name: delta.episode.author_name.clone(),
+        author_confidence: delta.episode.author_confidence,
         summary: row.summary,
         paths,
         n_files: scale(row.n_files),
@@ -197,73 +211,13 @@ fn into_episode(
         state: ReviewState::parse(state.as_str()),
         session: row.session_id,
         turn: row.turn_id,
-        boundary_rule: (!row.boundary_rule.is_empty()).then_some(row.boundary_rule),
-        boundary_confidence: Some(row.boundary_confidence),
-        // Rank 1..=N is filled in by [`rank_page`] once every row of the page exists; a score is
-        // meaningless among its peers until there are peers to compare it with.
-        risk,
+        boundary_rule: (!delta.episode.boundary_rule.is_empty())
+            .then(|| delta.episode.boundary_rule.clone()),
+        boundary_confidence: delta.episode.boundary_confidence,
+        // The ranking lives inside the delta. Ranks 1..=N are filled by [`rank_page`] once every row of
+        // the page exists; a score is meaningless among its peers until there are peers to compare it with.
+        delta: Some(delta),
         live: row.live,
-    }
-}
-
-/// Score one episode from its own row and its own file rows.
-///
-/// The reasons are assembled here rather than in the analysis crate so that each one names what the
-/// reviewer can go and check — a path, a line count, a surface — which is the difference between an
-/// explanation and an assertion (ADR-001 §7.9).
-#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
-fn risk_of(
-    row: &EpisodeRow,
-    stats: &[fathom_store::episode::EpisodeFile],
-    partial: bool,
-) -> fathom_tui::timeline::Risk {
-    use fathom_analyze::risk::{BLIND_SPOTS, FileChange, Signals, rank};
-
-    let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
-    let files: Vec<FileChange<'_>> = stats
-        .iter()
-        .map(|file| FileChange {
-            path: file.path.as_str(),
-            add: scale(file.add),
-            del: scale(file.del),
-            binary: file.binary,
-            path_class: file.path_class.as_str(),
-            noise_class: file.noise_class.as_str(),
-        })
-        .collect();
-    let signals = Signals {
-        files: &files,
-        n_add: scale(row.n_add),
-        n_del: scale(row.n_del),
-        n_files: scale(row.n_files),
-        n_binary: scale(row.n_binary),
-        n_commits: scale(row.n_commits()),
-        author: &row.author_kind,
-        partial_files: partial,
-    };
-    let scored = rank(&signals);
-    let mut reasons: Vec<String> = scored
-        .components
-        .iter()
-        .map(|component| {
-            format!(
-                "{} {}/{} — {}",
-                component.name, component.points, component.cap, component.detail
-            )
-        })
-        .collect();
-    if let Some(caveat) = scored.caveat() {
-        reasons.push(format!("caveat — {caveat}"));
-    }
-    fathom_tui::timeline::Risk {
-        model: fathom_analyze::risk::MODEL.to_owned(),
-        score: scored.value(),
-        vector: scored.vector(),
-        reasons,
-        badge: scored.badge(),
-        rank: None,
-        ranked: None,
-        blind_spots: BLIND_SPOTS.iter().map(|spot| (*spot).to_owned()).collect(),
     }
 }
 
@@ -278,15 +232,10 @@ fn rank_page(episodes: &mut [Episode]) {
     let mut places: Vec<usize> = episodes
         .iter()
         .enumerate()
-        .filter(|(_, episode)| episode.risk.is_some())
+        .filter(|(_, episode)| episode.risk().is_some())
         .map(|(index, _)| index)
         .collect();
-    let score = |episode: &Episode| {
-        episode
-            .risk
-            .as_ref()
-            .map_or(0, |risk| i64::try_from(risk.score).unwrap_or(i64::MAX))
-    };
+    let score = |episode: &Episode| episode.risk().map_or(0, |risk| risk.score);
     places.sort_by(|a, b| {
         let (left, right) = (&episodes[*a], &episodes[*b]);
         score(right)
@@ -295,11 +244,15 @@ fn rank_page(episodes: &mut [Episode]) {
             .then_with(|| right.created.cmp(&left.created))
             .then_with(|| left.id.cmp(&right.id))
     });
-    let ranked = u64::try_from(places.len()).unwrap_or(u64::MAX);
+    let ranked = places.len();
     for (place, index) in places.into_iter().enumerate() {
-        if let Some(risk) = episodes[index].risk.as_mut() {
-            risk.rank = u64::try_from(place + 1).ok();
-            risk.ranked = Some(ranked);
+        if let Some(risk) = episodes[index]
+            .delta
+            .as_mut()
+            .and_then(|delta| delta.risk.as_mut())
+        {
+            risk.rank = i64::try_from(place + 1).ok();
+            risk.ranked = Some(i64::try_from(ranked).unwrap_or(i64::MAX));
         }
     }
 }

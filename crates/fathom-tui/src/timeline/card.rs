@@ -10,6 +10,7 @@
 //! Width matters here: the card is the pane the layout sells first, and at its documented minimum
 //! (26 columns) a long path list has to wrap rather than clip a fact away.
 
+use fathom_analyze::insight::{self, brief};
 use fathom_core::time::Timestamp;
 
 use crate::style::{Face, StyledLine};
@@ -191,29 +192,77 @@ fn detailed(episode: &Episode, now: Timestamp, origin: &str, width: usize) -> Ve
         },
     );
     out.push(StyledLine::plain(""));
-    // The not-here block: what the full card will carry that this build cannot cite, named with the
-    // ticket that owns it and the verb that answers today. One field, not five, because the honest
-    // statement is that the *model* is missing, and five rows of `not in this build` would push the
-    // facts that are here off a 35-column pane.
-    push_field(
-        &mut out,
-        width,
-        "delta",
-        "shape/deps/tests/findings: not in this build (e2.11's model, e4.3's detectors) — \
-`fathom analyze <episode>``",
-    );
+    push_delta(&mut out, width, episode);
     push_risk(&mut out, width, episode);
     out
+}
+
+/// The seven sections, as the delta model words them (`e2.11`, ADR-001 §7.9).
+///
+/// This is the whole of the card's analysis surface, and it is a *render*, not a computation: every
+/// string on these rows came out of [`EpisodeDelta`] — a figure's value, a gap's short form, the owner
+/// plan key that has to fix it. The card decides nothing about what an episode means: it has no
+/// threshold, no classifier, no arithmetic on the counters above. That is what makes the same seven
+/// sections appear in `fathom analyze --json`, in the export and in an agent's tool result without any
+/// of them agreeing by convention.
+///
+/// With no delta the card says so and names the verb that produces one, in one row: a card that printed
+/// nothing here would look like an episode with nothing to report, which is a different and much more
+/// dangerous claim.
+fn push_delta(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
+    let Some(delta) = episode.delta.as_ref() else {
+        push_field(
+            out,
+            width,
+            "delta",
+            &format!(
+                "no document was handed to this card — {} is the one source",
+                insight::UNDELIVERED_VERB
+            ),
+        );
+        return;
+    };
+    for row in brief(delta) {
+        push_field(out, width, &row.label(), &row.value);
+    }
+    // The ranking's ceiling on its own row, so the pane's word-wrap cannot cut the phrase in half and
+    // leave a bare number that reads as an all-clear — the failure ADR-001 §7.9 is written against. The
+    // sentence is the model's (`RiskView::blind_spot_note`), so no surface words the ceiling differently.
+    if let Some(risk) = delta.risk.as_ref()
+        && let Some(note) = risk.blind_spot_note()
+    {
+        push_field(out, width, "blind", &note);
+    }
+    // The stamp the card is answered under, so a screenshot says which contract it was drawn from.
+    push_field(
+        out,
+        width,
+        "model",
+        &format!(
+            "{contract} v{version} · self-check {check}",
+            contract = delta.contract,
+            version = delta.schema_version,
+            check = if delta.integrity.verified {
+                "clean"
+            } else {
+                "FAILED — the rows above are not trustworthy"
+            },
+        ),
+    );
 }
 
 /// The `risk` field, and the reasons behind it.
 ///
 /// Three depths, because the pane is small and the question has three sizes. With no ranking the row
-/// says so and names the ticket; with a bare score it prints the score; with a full [`Risk`] it prints
-/// the score, its place in the ranking, the arithmetic, and one line per component that contributed —
-/// which is what `w` opens and what makes the number an argument rather than an assertion.
+/// says so and names the ticket; with a bare score it prints the score; with a full [`RiskView`] it
+/// prints the score, its place in the ranking, the arithmetic, and one line per component that
+/// contributed — which is what `w` opens and what makes the number an argument rather than an assertion.
+///
+/// The number is read out of the delta document, which is the only place it lives: the card has no
+/// ranking of its own to fall back on, and an episode whose delta carries no ranking is an episode that
+/// has not been ranked.
 fn push_risk(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
-    let Some(risk) = episode.risk.as_ref() else {
+    let Some(risk) = episode.risk() else {
         push_field(
             out,
             width,
@@ -238,14 +287,15 @@ fn push_risk(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
         }
     );
     push_field(out, width, "risk", &head);
-    if !risk.badge.is_empty() {
-        push_field(out, width, "surfaces", &risk.badge);
+    let badge = risk.badge();
+    if !badge.is_empty() {
+        push_field(out, width, "surfaces", &badge);
     }
     if !risk.vector.is_empty() {
         push_field(out, width, "vector", &risk.vector);
     }
-    for reason in &risk.reasons {
-        push_field(out, width, "why", reason);
+    for reason in risk.reasons() {
+        push_field(out, width, "why", &reason);
     }
     if let Some(first) = risk.blind_spots.first() {
         push_field(
@@ -284,7 +334,7 @@ pub fn risk_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<S
                 format!("{} — {}", episode.short_id(), episode.summary),
                 Face::Emphasis,
             ));
-            match episode.risk.as_ref() {
+            match episode.risk() {
                 None => out.push(StyledLine::with_face(
                     "nothing has ranked this episode, so there is nothing to explain (reco-c05 \
                      ranks the spine; e4.4 ranks findings)",
@@ -300,15 +350,16 @@ pub fn risk_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<S
                         },
                         risk.place()
                     )));
-                    if !risk.badge.is_empty() {
+                    let badge = risk.badge();
+                    if !badge.is_empty() {
                         out.push(StyledLine::with_face(
-                            format!("surfaces {badge}", badge = risk.badge),
+                            format!("surfaces {badge}"),
                             Face::Muted,
                         ));
                     }
                     out.push(StyledLine::plain(""));
-                    for reason in &risk.reasons {
-                        for chunk in wrap(reason, width.saturating_sub(2).max(8)) {
+                    for reason in risk.reasons() {
+                        for chunk in wrap(&reason, width.saturating_sub(2).max(8)) {
                             out.push(StyledLine::with_face(format!("· {chunk}"), Face::Text));
                         }
                     }

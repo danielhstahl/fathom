@@ -30,12 +30,13 @@
 
 use std::path::{Path, PathBuf};
 
+use fathom_analyze::insight::{EpisodeDelta, RiskView};
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model, Overlay};
 use fathom_tui::index::Facts;
 use fathom_tui::keymap::Keymap;
 use fathom_tui::render::frame_lines;
-use fathom_tui::timeline::{self, Batch, Filter, GroupBy, Risk};
+use fathom_tui::timeline::{self, Batch, Filter, GroupBy};
 use fathom_tui::views::{self, ViewId};
 
 #[path = "timeline_corpus/mod.rs"]
@@ -364,9 +365,13 @@ fn ladder_golden() -> String {
                   date, author, risk number, and the state glyph last of all.\n\n",
     );
     let mut rows = mock();
-    // A risk number, so the rung that drops it has something to drop. `Risk::new` is the bare form:
+    // A risk number, so the rung that drops it has something to drop. A bare ranked delta is the bare form:
     // the number alone, which is what the ladder's risk rung is a rung *of*.
-    rows[0].risk = Some(Risk::new(82));
+    rows[0].delta = Some(EpisodeDelta::sparse(
+        &rows[0].id,
+        &rows[0].summary,
+        Some(RiskView::scored(82)),
+    ));
     let mut rail = timeline::Rail::new(NOW);
     rail.load(Batch::new("fixture index", rows));
     for width in [42, 40, 38, 34, 32, 30, 27, 24, 22, 18] {

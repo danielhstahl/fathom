@@ -205,7 +205,7 @@ pub fn episode_line(
     if columns < Columns::NoSparkline {
         cells.push((face::SPARK, format!(" {}", scale.spark(episode)), 4));
     }
-    match episode.risk.as_ref() {
+    match episode.risk() {
         Some(risk) if columns < Columns::NoRisk => {
             cells.push((face::RISK, format!(" {}", risk.score), 6));
         }

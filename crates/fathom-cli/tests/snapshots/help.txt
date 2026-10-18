@@ -4,17 +4,18 @@ Review an agent-driven repository before it merges.
 Usage: fathom [OPTIONS] [COMMAND]
 
 Commands:
-  index   Index the repository so every other verb has something to read
-  show    Show one episode in full
-  stats   Report repo scale, index state and cache hit rate
-  check   Run the checks CI cares about; findings above the threshold exit 7
-  doctor  Describe this build, its environment and its index, with a remedy per finding
-  export  Write a review artefact for a pull request or an audit
-  mcp     Speak MCP to a coding agent
-  watch   Watch the repository and index as it changes
-  hooks   Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
-  tui     Print the terminal UI's keymap, or open the UI itself
-  help    Print this message or the help of the given subcommand(s)
+  index    Index the repository so every other verb has something to read
+  show     Show one episode in full
+  analyze  Print one episode's delta document — the model the TUI, the export and an agent all read
+  stats    Report repo scale, index state and cache hit rate
+  check    Run the checks CI cares about; findings above the threshold exit 7
+  doctor   Describe this build, its environment and its index, with a remedy per finding
+  export   Write a review artefact for a pull request or an audit
+  mcp      Speak MCP to a coding agent
+  watch    Watch the repository and index as it changes
+  hooks    Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
+  tui      Print the terminal UI's keymap, or open the UI itself
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
       --plain

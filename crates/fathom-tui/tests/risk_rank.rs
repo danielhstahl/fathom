@@ -16,11 +16,12 @@
 
 use std::time::Instant;
 
+use fathom_analyze::insight::{EpisodeDelta, RiskComponent, RiskView};
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model};
 use fathom_tui::keymap::Keymap;
 use fathom_tui::render::frame_lines;
-use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState, Risk};
+use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
 
 /// Fixed clock, as every timeline fixture uses: a fixture that reads the clock is a fixture with a
@@ -29,18 +30,24 @@ const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
 const MINUTE: i64 = 60_000_000;
 const SIZE: (u16, u16) = (110, 34);
 
-/// A risk in the shape the composition root hands over: the model that made it, its arithmetic, its
-/// reasons and its ceiling. `rank`/`ranked` are the caller's — a place in a set is not a fact about
-/// one episode — so a fixture that wants the printed rank has to say what set it came from.
-fn risk(score: u64, rank: Option<u64>, ranked: u64, why: &str) -> Risk {
-    Risk {
+/// A risk in the shape the model carries it: the ranking that made it, its arithmetic, its reasons and
+/// its ceiling. `rank`/`ranked` are the caller's — a place in a set is not a fact about one episode — so a
+/// fixture that wants the printed rank has to say what set it came from.
+fn risk(score: u64, rank: Option<u64>, ranked: u64, why: &str) -> RiskView {
+    RiskView {
         model: "spine-1".to_owned(),
-        score,
+        score: i64::try_from(score).unwrap_or(0),
         vector: format!("spine-1 {score} = surfaces {score}"),
-        reasons: vec![format!("surfaces {score}/50 — {why}")],
-        badge: "migration".to_owned(),
-        rank,
-        ranked: Some(ranked),
+        components: vec![RiskComponent {
+            name: "surfaces".to_owned(),
+            points: i64::try_from(score).unwrap_or(0),
+            cap: 50,
+            detail: why.to_owned(),
+        }],
+        surfaces: vec!["migration".to_owned()],
+        rank: rank.map(|rank| i64::try_from(rank).unwrap_or(0)),
+        ranked: Some(i64::try_from(ranked).unwrap_or(0)),
+        caveat: None,
         blind_spots: vec![
             "whether a schema migration can be rolled back".to_owned(),
             "whether a new environment variable is ever read by the program".to_owned(),
@@ -64,7 +71,9 @@ fn rows() -> Vec<Episode> {
         episode.n_files = 3;
         episode.paths = vec![format!("db/migrations/{id}.sql")];
         episode.state = ReviewState::Unread;
-        episode.risk = (score > 0).then(|| risk(score, rank, 3, why));
+        let ranking = (score > 0).then(|| risk(score, rank, 3, why));
+        episode.delta = ranking
+            .map(|ranking| EpisodeDelta::sparse(&episode.id, &episode.summary, Some(ranking)));
         episode
     };
     vec![
@@ -223,7 +232,7 @@ fn an_unranked_index_still_draws_a_queue_and_says_what_is_missing() {
     // worklist, and must never print a missing score as zero (ADR-001 §7.7).
     let mut rows = rows();
     for episode in &mut rows {
-        episode.risk = None;
+        episode.delta = None;
     }
     let app = &mut loaded(rows);
     let text = worklist(app).join("\n");
