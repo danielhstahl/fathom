@@ -39,3 +39,24 @@ default = []
 sqlite-bundled = ["dep:rusqlite", "dep:libsqlite3-sys"]
 sqlite-system = ["dep:rusqlite"]
 mmap = []
+
+# The only dev-dependency in this crate, and it is here for one file: `benches/budgets.rs`, the
+# criterion half of `e0.11`'s budget harness. Criterion is the right tool for the budgets whose unit is
+# microseconds and whose honest statistic is a percentile with a confidence interval — it is also the
+# only thing in the tree that does outlier detection and regression analysis on a sample, which is what
+# makes "more than a 15 % slower" a defensible sentence rather than a shrug. It is a
+# `[dev-dependencies]` entry, so it is absent from every build that ships (ADR-002 §3), and
+# `cargo deny`'s licence gate sees it in the lock but no shipped artefact ever links it.
+[dev-dependencies]
+criterion = { workspace = true }
+
+# The store's budgets only exist once a SQLite backend is compiled in, so the bench does too: without
+# either `sqlite-*` feature the crate has no `Store` to measure (see the comment on `[features]`).
+# `harness = false` is criterion's requirement, and `test = false` is this ticket's: without it
+# `cargo test --workspace --all-features` runs every bench to completion, which turns a 40-second
+# budget gate into a ten-minute one and makes the cheap suite expensive.
+[[bench]]
+name = "budgets"
+harness = false
+test = false
+required-features = ["sqlite-bundled"]

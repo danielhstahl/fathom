@@ -1,0 +1,217 @@
+{
+ "blessed_commit": "89f7198",
+ "blessed_environment": {
+  "binary": "target/release/fathom",
+  "commit": "89f7198",
+  "cpu_count": 8,
+  "git": "git version 2.47.3",
+  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Sun Sep 20 16:14:09 UTC 2026",
+  "profile": "release",
+  "python": "3.14.5",
+  "ram_mib": 7934
+ },
+ "blessed_utc": "2026-10-17T23:55:04Z",
+ "calibration": {
+  "bench": "calibrate: 100k-row batched insert + 10k FTS queries",
+  "passes_ms": [
+   425.6,
+   424.94,
+   428.09
+  ],
+  "reference_ms": 425.6
+ },
+ "corpus": {
+  "commits": 500,
+  "shape": "the `e0.10`/`e1.12` deterministic 500-commit agent fixture",
+  "size_class": "small"
+ },
+ "known_breaches": {
+  "warm.reindex.noop.ms.small": {
+   "budget": 10,
+   "ceiling": 70,
+   "owner": "reco-7tc",
+   "tolerance": 1.15,
+   "why": "a re-index that finds nothing new re-walks the history instead of skipping it, so the noop path costs a whole walk. ADR-004 \u00a711 budgets it at 10 ms p95 \u2014 `ctrl-r` twice must not feel like work. `e1.12` measured 49.2 ms and filed reco-7tc; this gate measures 46\u201360 ms on the same fixture, run to run. Recorded rather than smoothed over: 70 ms is the ceiling it may not grow past (80.5 ms with the run-to-run tolerance), and this entry is deleted by hand the day reco-7tc closes, which is when the 10 ms budget starts gating again."
+  }
+ },
+ "measurements": {
+  "calibrate: 100k-row batched insert + 10k FTS queries": {
+   "budget": null,
+   "higher_is_better": false,
+   "how": "ADR-004 \u00a711.8's runner characterisation; not a budget",
+   "scaled": true,
+   "unit": "ms",
+   "value": 425.6
+  },
+  "cold.index.ms.small": {
+   "budget": "cold.index.ms.small",
+   "higher_is_better": false,
+   "how": "`fathom index` into a deleted store; p95 of the samples",
+   "scaled": true,
+   "unit": "ms",
+   "value": 411.3
+  },
+  "cold.queue_visible.ms.small": {
+   "budget": "cold.queue_visible.ms.small",
+   "higher_is_better": false,
+   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 26.6
+  },
+  "query.card.ms.cli.small": {
+   "budget": "query.card.ms.small",
+   "higher_is_better": false,
+   "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end",
+   "scaled": true,
+   "unit": "ms",
+   "value": 18.5
+  },
+  "query.card.ms/episode_and_files/1000 commits": {
+   "budget": "query.card.ms.small",
+   "higher_is_better": false,
+   "how": "criterion: query.card.ms/episode_and_files/1000 commits (20 samples, p95 of per-iteration times)",
+   "scaled": true,
+   "unit": "ms",
+   "value": 0.0568
+  },
+  "query.diff_first_hunk.ms.small": {
+   "budget": "query.diff_first_hunk.ms.small",
+   "higher_is_better": false,
+   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 6.4
+  },
+  "query.diff_open.ms.small": {
+   "budget": "query.diff_open.ms.small",
+   "higher_is_better": false,
+   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 4.7
+  },
+  "query.frame_store_budget.ms/count_episodes/1000 commits": {
+   "budget": "query.frame_store_budget.ms.small",
+   "higher_is_better": false,
+   "how": "criterion: query.frame_store_budget.ms/count_episodes/1000 commits (20 samples, p95 of per-iteration times)",
+   "scaled": true,
+   "unit": "ms",
+   "value": 0.0115
+  },
+  "query.frame_store_budget.ms/episode_paths/1000 commits": {
+   "budget": "query.frame_store_budget.ms.small",
+   "higher_is_better": false,
+   "how": "criterion: query.frame_store_budget.ms/episode_paths/1000 commits (20 samples, p95 of per-iteration times)",
+   "scaled": true,
+   "unit": "ms",
+   "value": 0.9864
+  },
+  "query.metrics.ms.small": {
+   "budget": "query.metrics.ms.small",
+   "higher_is_better": false,
+   "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names",
+   "scaled": true,
+   "unit": "ms",
+   "value": 17.9
+  },
+  "query.queue.ms.small": {
+   "budget": "query.queue.ms.small",
+   "higher_is_better": false,
+   "how": "`j` written to the grid changed: the rail's ordering read (median of 3 pty probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 1.5
+  },
+  "query.queue.ms.visible.small": {
+   "budget": null,
+   "higher_is_better": false,
+   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 2.1
+  },
+  "query.timeline.ms.small": {
+   "budget": "query.timeline.ms.small",
+   "higher_is_better": false,
+   "how": "`t` written to the grid changed: one page of the rail (median of 3 pty probe(s))",
+   "scaled": true,
+   "unit": "ms",
+   "value": 0.8
+  },
+  "query.timeline.ms/rail_page/1000 commits": {
+   "budget": "query.timeline.ms.small",
+   "higher_is_better": false,
+   "how": "criterion: query.timeline.ms/rail_page/1000 commits (20 samples, p95 of per-iteration times)",
+   "scaled": true,
+   "unit": "ms",
+   "value": 0.6857
+  },
+  "rss.cold_index.peak_mib.small": {
+   "budget": "rss.cold_index.peak_mib.small",
+   "higher_is_better": false,
+   "how": "VmHWM of the index child, sampled while it ran",
+   "scaled": false,
+   "unit": "MiB",
+   "value": 20.4
+  },
+  "rss.tui.mib.small": {
+   "budget": "rss.tui.mib.small",
+   "higher_is_better": false,
+   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+   "scaled": false,
+   "unit": "MiB",
+   "value": 10.87
+  },
+  "rss.warm_reindex.peak_mib.small": {
+   "budget": null,
+   "higher_is_better": false,
+   "how": "VmHWM of the warm index child (trend: no RSS budget names the warm path alone)",
+   "scaled": false,
+   "unit": "MiB",
+   "value": 12.1
+  },
+  "store.bytes_per_commit_spine.small": {
+   "budget": "store.bytes_per_commit_spine.small",
+   "higher_is_better": false,
+   "how": "1,679,360 spine bytes over 503 commits, `dbstat` pages; 688,128 more bytes of cache and session rows are not charged here",
+   "scaled": false,
+   "unit": "bytes",
+   "value": 3338
+  },
+  "store.size.mib.small": {
+   "budget": "store.size.mib.small",
+   "higher_is_better": false,
+   "how": "the whole `.fathom/index.sqlite3`",
+   "scaled": false,
+   "unit": "MiB",
+   "value": 2.258
+  },
+  "warm.reindex.ms.small": {
+   "budget": "warm.reindex.ms.small",
+   "higher_is_better": false,
+   "how": "one new commit with unique content, then `fathom index`",
+   "scaled": true,
+   "unit": "ms",
+   "value": 49.7
+  },
+  "warm.reindex.noop.ms.small": {
+   "budget": "warm.reindex.noop.ms.small",
+   "higher_is_better": false,
+   "how": "`fathom index` with nothing new: `ctrl-r` twice must not feel like work",
+   "scaled": true,
+   "unit": "ms",
+   "value": 48.3
+  },
+  "write.batch_rows/one_batch_at_the_cap": {
+   "budget": null,
+   "higher_is_better": true,
+   "how": "criterion: one batched transaction at the `write.batch_rows` cap",
+   "scaled": true,
+   "unit": "rows/s",
+   "value": 237096.9
+  }
+ },
+ "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-machine units (runner factor 1.0); a time budget gets the factor as headroom at gate time and an RSS budget never does (ADR-004 \u00a711.8).",
+ "schema": 1
+}

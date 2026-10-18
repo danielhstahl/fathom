@@ -119,7 +119,7 @@ anchors rather than inventing new ones, and the test suite fails if the restatem
 | D11 | **Recovery is rebuild-first**: WAL replay → epoch rebuild → quarantine and re-mirror | Determinism (§10.2) makes a rebuild equivalent to repair at a fraction of the code cost of repairing in place | §9 |
 | D12 | **Migrations never migrate derived data**; they bump the epoch, re-derive class R and re-mirror class M from its committed files | A data migration is untested once per user, on their machine, at 09:00, on their only copy | §9.5 |
 | D13 | **`v_review_state` / `v_queue` / `v_lineage_window` are views** | ADR-001 §5.5 demands one computation site; a view cannot drift, a helper function can | §4.7 |
-| D14 | **Budgets are machine-readable** (`benchmarks/budgets.json`), rendered into this document, asserted by `e0.11` | 156 numbers cannot be hand-maintained in two places; a budget that exists only in prose is a wish | §11 |
+| D14 | **Budgets are machine-readable** (`benchmarks/budgets.json`), rendered into this document, asserted by `e0.11` | that many numbers cannot be hand-maintained in two places; a budget that exists only in prose is a wish | §11 |
 | D15 | **The graph-snapshot policy is deferred to `s3`, but the schema holds all three candidate strategies** | Deferring a policy that forces a migration is a prediction of failure; deferring it with storage shaped for each option is just honesty | §4.6, §14.1 |
 | D16 | **Upsert, never `INSERT OR REPLACE`, on a table with `ON DELETE CASCADE` children** | Measured: a full re-index that `REPLACE`d episodes silently destroyed their deltas, findings and evidence while `cache` still reported them fresh — the store loses findings and says nothing. §10.2's identity test caught it; `doctor` now asks the question directly | §4.0, §9.6, §13.6 |
 | D17 | **Retention is a window on the live epoch, and the class-M guard is code, not policy** | "Keep the last N epochs" computed from the epochs that *happen to be present* keeps a store stale forever after an epoch jump; and a prune that can reach a blob a decision points at has one failure mode and it is unrecoverable | §8.2, §8.7 |
@@ -843,9 +843,19 @@ caught three times.
 
 ## 11. Perf budgets
 
-Budgets are per **size class**, machine-readable in `benchmarks/budgets.json` (156 numbers), and
+Budgets are per **size class**, machine-readable in `benchmarks/budgets.json` (one number per budget
+family per size class — `python3 tools/gen_budgets.py check` prints the count and fails on drift), and
 asserted by `e0.11` (`reco-pef`). Each carries the anchor it came from — a ticket's own acceptance
 criterion, or a §13 measurement.
+
+`e0.11` landed the assertion: [`benchmarks/BUDGETS.md`](../BUDGETS.md) lists every number with what
+asserts it, `tools/perf_gate.py` is the gate (`make bench`, `make bench-check`, `make bench-bless`),
+and `.github/workflows/perf.yml` runs it and publishes the trend. What it asserts on every PR: the
+`small` class over the deterministic fixture corpus — cold index, warm single-commit re-index, no-op
+re-index, diff-viewer open time, the query p95s, peak RSS from the outside of the process, store bytes
+per commit — plus criterion benches for the store-side primitives at §11's microsecond scale, each
+checked against its budget *and* against the blessed baseline in
+`benchmarks/baselines/perf-gate.json`.
 
 ### 11.1 Size classes
 

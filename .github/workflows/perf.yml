@@ -1,0 +1,103 @@
+# The perf budget gate (`e0.11`, `reco-pef`): ADR-004 §11's budgets, asserted on every PR.
+#
+# Why a workflow of its own rather than a step in `ci.yml`: this one needs a release binary *and* a
+# Python interpreter *and* a pty, it is the slowest thing in the build that is still a gate, and its
+# artefact (the trend) is the reason anybody reads the result. Keeping it separate also means a perf
+# failure says "perf" in the check name instead of hiding inside `build+test (linux · stable)`.
+#
+# What the ADR says this job is for (ADR-004 §11.8, D14):
+#
+#   * assert the `small` class on the deterministic fixture corpus, because identical OIDs across OSes
+#     is the precondition for calling a timing a regression at all;
+#   * fail past `regression_fail_pct` (15 %) against `benchmarks/baselines/perf-gate.json`, in either
+#     direction — a baseline that is not re-blessed when things got faster is a budget nobody tightened;
+#   * scale time budgets by the runner factor the calibration bench measures, and never scale RSS;
+#   * publish the trend as a job artefact, so growth is visible before it is accidental.
+#
+# The first step is the gate's own self-test: it needs no build and proves the gate is capable of
+# failing. That is the acceptance criterion "a deliberate regression turns CI red", checked on every
+# runner in milliseconds rather than assumed from a one-off experiment nobody can re-run.
+
+name: perf
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  budgets:
+    name: perf budgets (small class)
+    runs-on: ubuntu-latest
+    # The harness's own promise is that the numbers reproduce in under five minutes; the timeout is
+    # that promise plus a release build, and a job that hangs forever is not a gate either.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: "the gate can fail: self-test (no build, no fixture)"
+        # Synthetic numbers, every rule: budget breach, regression, improvement-past-the-baseline, RSS
+        # never scaled, wall clocks scaled, and a throughput drop read as a regression. Exits non-zero
+        # if the gate has been neutered, which is the failure this step exists to catch.
+        run: python3 tools/perf_gate.py --self-test
+
+      - name: "budgets.json, BUDGETS.md and the ADR table agree (generated, not hand-copied)"
+        run: |
+          python3 tools/gen_budgets.py check
+          python3 tools/gen_adr_tables.py check
+
+      - name: build the release binary the budgets are charged against
+        run: cargo build --release --locked -p fathom-cli
+
+      - name: "the budgets, the baseline, and the trend (local spelling: \`make bench-check\`)"
+        # The gate itself: cold index, warm single-commit re-index, no-op re-index, diff-viewer open
+        # time, query p95s, store bytes per commit, peak RSS (VmHWM, sampled from outside the child),
+        # the criterion benches, and the runner calibration. Exit 11 (`BUDGET_EXCEEDED`) on a breach or
+        # a regression; the failure lines name the budget and the rule it tripped. CI invokes the tool
+        # rather than the make target, so the gate does not depend on `make` being present on the
+        # runner; `make bench-check` in the Makefile runs this exact command.
+        run: python3 tools/perf_gate.py --check
+
+      - name: "the gate's contract suite (including: a deliberate regression turns it red)"
+        run: |
+          python -m pip install --disable-pip-version-check pytest
+          python3 -m pytest -q tests/test_perf_budget_contract.py
+
+      - name: the trend, for the run summary
+        # `if: always()` everywhere below: the trend is most interesting on the run that went red, and
+        # a gate that hides its numbers when it fails is a gate people learn to ignore.
+        if: always()
+        run: |
+          if [ -f benchmarks/trend/trend.md ]; then
+            {
+              echo "## Perf budget gate — \`reco-pef\`"
+              echo
+              tail -n +2 benchmarks/trend/trend.md | tail -n +2
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: publish the trend as a job artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fathom-perf-trend
+          path: |
+            benchmarks/trend/latest.json
+            benchmarks/trend/trend.jsonl
+            benchmarks/trend/trend.md
+            benchmarks/trend/latest-summary.txt
+          if-no-files-found: warn
+          retention-days: 30

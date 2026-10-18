@@ -16,3 +16,10 @@ tmp.txt
 dist/
 # --- end Rust ------------------------------------------------------------------------------------
 .transcripts/
+
+# --- Perf budget gate (ADR-004 §11, `e0.11` / reco-pef) -----------------------------------------
+# The trend is a CI job artefact, not a committed file: a committed timing file is a merge conflict on
+# every PR, and a merge conflict on every PR is how a trend file stops being updated. The committed
+# number is `benchmarks/baselines/perf-gate.json`, and `make bench-bless` is the only thing that
+# rewrites it.
+benchmarks/trend/

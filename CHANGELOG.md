@@ -15,6 +15,63 @@ short.
 Everything below is scaffolding: the shape ADR-002 declares, compiled, tested and shipped through CI.
 No product behaviour is claimed by any entry on this page yet.
 
+### `reco-pef` — ADR-004 §11's budgets became a red build (`e0.11`)
+
+- **172 numbers became a gate.** `benchmarks/budgets.json` carried the budgets and a `gates` block of
+  rules (15 % regression, a named calibration bench, RSS never scaled, skips must be reported) with
+  nothing reading either. Now `tools/perf_gate.py` reads them, `make bench` reproduces every number in
+  under 30 s locally, and `.github/workflows/perf.yml` fails the build on a breach. Every budget is
+  checked **twice**: against its budget (a wall clock gets the runner factor as headroom, a resident set
+  and a store byte count get nothing because a slow machine does not get to be wider) and against the
+  blessed baseline in `benchmarks/baselines/perf-gate.json` — in either direction, because
+  `improvement_baseline_commit_required` is true and a baseline nobody re-blesses is a budget nobody
+  tightened. `make bench-bless` is the ratchet, and it refuses to bless a `--quick` or injected run.
+- **The measurement is a process, so RSS is a number and not an adjective.** The scripted run drives the
+  shipped binary over the deterministic 500-commit fixture: cold index into a deleted store, warm
+  single-commit re-index, no-op re-index, `fathom stats --json` and `fathom show --json` for the query
+  families that have verbs, and the keystroke path (`t`, `j`, `q`, `d`, first `@@`) through the same pty
+  `e1.12`'s walkthrough drives. Peak RSS comes from `VmHWM` sampled *while the child runs*, because a
+  peak read from a corpse is zero and zero passes every budget. `crates/fathom-store/benches/budgets.rs`
+  adds the criterion half for the microsecond-scale store reads — a rail page (679 µs against an 8 ms
+  budget), a card read, the two reads behind `query.frame_store_budget.ms`, and one 5 000-row
+  transaction at §7.3's cap — and criterion is a `[dev-dependencies]` entry, so nothing that ships links
+  it. The gate parses criterion's own `sample.json` for a real p95 rather than reading its mean.
+- **A runner is not a laptop, and said so.** §11.8's named calibration bench (100 k-row batched insert
+  plus 10 k FTS queries, same WAL + `synchronous=NORMAL` pragmas the product uses) runs at gate time;
+  its ratio to the blessed reference, clamped to `runner_calibration_factor_range`, scales every wall
+  clock, and a machine outside the window says so in the output instead of handing out a pass. Store
+  bytes and resident sets are marked unscaled at the measurement, not filtered by unit at the gate,
+  so "is this machine-dependent?" is stated where the number is made.
+- **A gate that has never been seen fail is decoration, so failing is now testable.**
+  `python3 tools/perf_gate.py --check --inject-ms 400` puts a real `sleep` in front of every measured
+  process and the build goes red with exit 11 (`BUDGET_EXCEEDED`, the same number `fathom-core` prints)
+  naming each blown budget; `--self-test` proves the same arithmetic — budget breach, regression,
+  un-blessed improvement, RSS unscaled, wall clocks scaled, a throughput *drop* read as a regression —
+  with no build, no fixture and no terminal, in milliseconds, on every runner. Both are asserted by
+  `tests/test_perf_budget_contract.py` (21 checks), so a future neutering of the gate is a failed test
+  rather than a quiet pass. `tests/test_perf_budget_contract.py` also checks that
+  `benchmarks/BUDGETS.md` carries all 172 thresholds, since the acceptance criterion is that the page
+  exists *and* that it is complete.
+- **One budget currently fails, and it is written down rather than waived.** A no-op re-index costs
+  46–60 ms against `warm.reindex.noop.ms.small = 10` — `e1.12` measured the same thing, filed
+  `reco-7tc`, and the gate now carries it on a **breach register**: owner, rationale, and a 70 ms ceiling
+  it may not grow past (with a stated noise tolerance), rendered into `benchmarks/BUDGETS.md` and
+  deleted by hand the day the defect closes. CI stays green for a reason a reviewer can read, and the
+  known failure cannot get worse. The same honesty is in the coverage table: 28 budget families have no
+  measurement yet — the graph lane, search, retention, the daemon — and each names the ticket that owns
+  the missing measurement instead of pretending the budget is asserted.
+- **The trend is an artefact, not a file in the diff.** `benchmarks/trend/` (`trend.jsonl`,
+  `trend.md`, `latest.json`) is gitignored and uploaded by the perf job even on a red run, and
+  `trend.md` goes into the job summary: growth is visible before it is accidental without every PR
+  carrying a merge conflict over a timing file. The committed number is the baseline, and one command
+  rewrites it.
+- Also: `benchmarks/BUDGETS.md` is now generated alongside `benchmarks/budgets.json` (one source,
+  `tools/gen_budgets.py write`, `check` mode diffs both); the two stale "156 numbers" claims in ADR-004
+  became a pointer to the count the generator prints; `warm.reindex.git.share_pct`,
+  `store.wal_cap.mib` and the rest of the unmeasurable-for-now list carry the ticket that will make them
+  measurable; and this ticket's fixture corpus, sample counts and every threshold come from the same
+  generator, so no number in this entry is a hand-copied one.
+
 ### `reco-wzt` — the TUI got a data path: the rail now lists the episodes the index holds
 
 - **No pane ever received an episode.** `fathom-cli` built every frame with `episodes: None`

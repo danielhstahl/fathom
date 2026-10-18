@@ -120,6 +120,14 @@ clap = { version = "4", features = ["derive"] }    # default features on: this i
 clap_complete = { version = "4" }
 eyre = { version = "0.6" }                                       # only `fathom-cli` may name this crate (lint W5)
 color-eyre = { version = "0.6" }
+
+# --- dev-only: never linked into anything that ships ---------------------------------------------
+# criterion is the benchmark harness `e0.11`'s budget gate drives (`crates/fathom-store/benches/`).
+# Default features are off because the default set pulls the HTML report writer and its plot stack, and
+# a CI gate reads the machine-readable samples rather than a chart nobody opens; `cargo_bench_support`
+# is the one that makes `--save-baseline` write the `bench.json` files the gate parses. Licences are
+# MIT OR Apache-2.0, so `cargo deny check licenses` needs no new allowance.
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3" }
 
