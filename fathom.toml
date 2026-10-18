@@ -16,6 +16,30 @@ meta.config_version = 1
 # stale entry is a cache key that moves for no reason.
 ecosystems = ["python", "rust"]
 
+[deps.advisories]
+# Deliberately left at the built-in `mode = "cache"`: this file decides what Fathom may *read*,
+# and it cannot decide that it may call out. Fetching needs `mode = "refresh"` here *and*
+# `privacy.advisories = true` in the user's own config, because consent that a cloned repository
+# can grant is not consent (ADR-001 §7.5). `fathom deprisk consent` prints all three gates.
+# mode = "refresh"
+max_age_hours = 24
+stale_limit_hours = 168
+cache = ".fathom/advisories.json"
+
+[deps.license]
+# The layer question this repository can answer and no scanner can: which of *our* folders are
+# library code, meaning other people link them and inherit whatever we linked. Everything below
+# the surfaces does — `l0_vocabulary` through `l3_analysis`, exactly as `[layers]` above names
+# them. With that said, a GPL dependency arriving in `crates/fathom-analyze` is a refusal
+# (`strong_copyleft_in_library = "deny"`, the built-in) rather than a note in a card nobody reads.
+library_layers = ["l0_vocabulary", "l1_durable_state", "l2_outside_door", "l3_analysis"]
+
+[deps.provenance]
+# An `Agent-Intent:` trailer on the commit is the intent path that works today; hooks v1 stores a
+# prompt *digest*, which is printed as a partial and never as the reason (ADR-005 §2.2).
+require_intent = true
+search_previous_episodes = true
+
 [noise]
 # Change that carries no reviewable information. `extend`, so these add to the built-ins
 # instead of replacing them, and a `!` line re-promotes a path a broader glob swallowed.

@@ -189,6 +189,66 @@ jobs:
           PYTHONPATH=src python3 -m recommender.noncode demo | tail -2
           PYTHONPATH=src python3 -m recommender.noncode demo --capped | grep -q "more: fathom noncode checklist"
           PYTHONPATH=src python3 -m recommender.noncode bench --repeat 2 | tail -1
+      - name: "e2.7 dependency risk: the corpus clears its bars, printed (AC 1-4)"
+        # Four absolute bars, each because a softer one would hide a specific lie: provenance
+        # and intent accuracy 1.0 (the ticket's criterion is the *difference* between
+        # `intent: "…"` and `intent: not recorded`, so half-right is wrong), licence precision
+        # *and* recall 1.0 (precision is the trap half — a checker that fires on every copyleft
+        # row, including the dual-licensed and the development-only ones, would pass a
+        # recall-only gate), advisory recall 1.0 including the unseverity advisory, freshness
+        # accuracy 1.0 across five cache states, and reconciliation 1.0 on 28 authored cases and
+        # 72 generated episodes. Expectations are hand-authored in `corpus.py` against the
+        # built-in policy, so this never reads this repo's fathom.toml.
+        run: |
+          PYTHONPATH=src python3 -m recommender.deprisk score --min-cases 28
+      - name: "e2.7 dependency risk: zero network calls, provenance printed, freshness stated (AC 1-4)"
+        # The ticket's four criteria grepped out of real output. AC 1 is the loud one: `consent`
+        # prints the three gates and states "0 network call(s)", `advisories --refresh` exits 8
+        # at the gate (not at the socket) without user-scoped `privacy.advisories`, and `--plan`
+        # shows every request a refresh would make without making one. AC 2 is checked in both
+        # directions — the answer when the intent exists and `not recorded` plus its remedy when
+        # it does not, including the prompt-digest case hooks v1 actually leaves behind. AC 3 is
+        # the tense change: an expired cache must say `not checked recently` and never
+        # `no advisories`. AC 4 is the edge path on the licence finding. `demo` and `card --check`
+        # run `render.audit` on the CLI's own output and exit non-zero if a fact went missing.
+        run: |
+          PYTHONPATH=src python3 -c "import pathlib; p=pathlib.Path('/tmp/deprisk'); p.mkdir(exist_ok=True); import sys; sys.path.insert(0, 'src'); from recommender.deprisk import corpus as C, osv as O; (p/'fresh.json').write_text(O.serialize(C.cache_for('fresh', now=C.NOW), now=C.NOW)); (p/'old.json').write_text(O.serialize(C.cache_for('stale', now=C.NOW), now=C.NOW))"
+          PYTHONPATH=src python3 -m recommender.deprisk consent | grep -q "default config makes 0 network call(s)"
+          PYTHONPATH=src python3 -m recommender.deprisk consent --json | head -1
+          PYTHONPATH=src python3 -m recommender.deprisk advisories --fixture advisory_hot --plan | grep -q "fetch allowed: no"
+          # The refusal is an exit code, not a traceback: `set +e` around it so the step checks
+          # the number rather than the shell deciding the step failed early.
+          set +e
+          PYTHONPATH=src python3 -m recommender.deprisk advisories --fixture advisory_hot --refresh
+          REFRESH_STATUS=$?
+          set -e
+          if [ "$REFRESH_STATUS" -ne 8 ]; then
+            echo "expected exit 8 (NETWORK_CONSENT_REQUIRED) without consent, got $REFRESH_STATUS" >&2
+            exit 1
+          fi
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture intent_recorded | grep -q 'introduced by: episode ep-41'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture intent_missing | grep -q 'intent: not recorded'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture prompt_digest_only | grep -q 'prompt digest only'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture introduced_earlier | grep -q 'introduced by: episode ep-11'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture advisory_hot --cache /tmp/deprisk/fresh.json --now 1760000000 | grep -q 'GHSA-7jvh-c3cj-qqh6'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture advisory_hot --cache /tmp/deprisk/old.json --now 1760000000 | grep -q 'not checked recently'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture advisory_no_cache --cache /tmp/deprisk/absent.json | grep -q 'no advisory cache to read'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture copyleft_in_library | grep -q 'offending edge path'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture licence_drift | grep -q 'was MIT before'
+          PYTHONPATH=src python3 -m recommender.deprisk card --fixture advisory_hot --check | tail -2
+          PYTHONPATH=src python3 -m recommender.deprisk license --fixture copyleft_in_library --violations | grep -q 'strong-copyleft'
+          PYTHONPATH=src python3 -m recommender.deprisk findings --fixture advisory_hot --severity critical --cache /tmp/deprisk/fresh.json --now 1760000000 | grep -q 'GHSA-7jvh-c3cj-qqh6'
+          PYTHONPATH=src python3 -m recommender.deprisk provenance --fixture intent_recorded | tail -3
+          PYTHONPATH=src python3 -m recommender.deprisk advisories --fixture advisory_hot --cache /tmp/deprisk/fresh.json --now 1760000000 | grep -q 'freshness:'
+          PYTHONPATH=src python3 -m recommender.deprisk cache --cache /tmp/deprisk/fresh.json | head -2
+          PYTHONPATH=src python3 -m recommender.deprisk summary --fixture bump_storm
+          PYTHONPATH=src python3 -m recommender.deprisk policy | tail -3
+          PYTHONPATH=src python3 -m recommender.deprisk matrix | head -3
+          PYTHONPATH=src python3 -m recommender.deprisk rules | head -3
+          PYTHONPATH=src python3 -m recommender.deprisk definition | head -3
+          PYTHONPATH=src python3 -m recommender.deprisk explain consent | tail -2
+          PYTHONPATH=src python3 -m recommender.deprisk demo --now 1760000000 | grep -q 'who asked for this'
+          PYTHONPATH=src python3 -m recommender.deprisk property --seeds 3 | tail -1
       - name: "e2.3 folder structure: the labelled corpus clears its bars, printed (AC 1-4)"
         # Five absolute bars and one floor. Shape accuracy and summary accuracy are both 1.0
         # because the one-sentence answer is the deliverable: a fixture whose sentence changed is

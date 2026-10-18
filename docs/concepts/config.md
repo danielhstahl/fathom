@@ -354,7 +354,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `structure` | e2.3 (`reco-5fn`) | Where an episode's code landed. The thresholds that decide when a set of pairings is a moved directory, a split or a flattening, the weights behind the structure-churn score, and one switch per finding kind. `fathom structure definition` prints these numbers as sentences. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
-| `deps` | e2.5 (`reco-j83`) | Which ecosystems' manifests and lockfiles are parsed. Also the switchboard for the advisory lookup's *subject*, not its consent. |
+| `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
 | `blast` | e2.10 | How far the blast-radius walk goes before it declares a partial, the confidence attached to each basis, and the path-heuristic weights that decide what counts as reached. |
@@ -362,6 +362,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `rename` | e1.6 / e2.4 (`reco-a0v`) | Two questions with two bars. `rename.threshold` is what the diff pane prints as a rename; the `fact_bar`/`guess_floor` pair decides what the pairing engine asserts, what it labels a guess, and what it costs. |
 | `diff` | e1.6 | Per-file diff knobs. |
 | `episode` | ADR-003 / e1.3 | Boundary sources in priority order, and the idle gap that ends an episode when nothing better is available. |
+| `attribution` | ADR-003 §8 / e4.1 (`reco-w7q`) | Who wrote a commit: the registry of known agents, the marker table, and the confidence bar below which Fathom prints `?` instead of guessing. Every value here is handed to the classifier as data — no crate below the CLI opens this file. |
 | `ingest` | e1.2 | The size cap: a bigger blob is recorded as oversized, never slurped. |
 | `cache` | ADR-004 §11 | The class-R budget. Defaults come from the size class, not from a magic number. |
 | `store` | ADR-004 §7, §11 | WAL ceiling and the soft store-size ceiling `doctor` warns at. |
@@ -504,6 +505,55 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
+| `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |
+| `deps.advisories.mode` | `string` | `cache` | `replace` | `any` | — | deps.advisories | `e2.7` |
+| `deps.advisories.cache` | `path` | `.fathom/advisories.json` | `replace` | `any` | — | deps.advisories | `e2.7` |
+| `deps.advisories.max_age_hours` | `integer` | `24` | `replace` | `any` | hours | deps.advisories | `e2.7` |
+| `deps.advisories.stale_limit_hours` | `integer` | `168` | `replace` | `any` | hours | deps.advisories | `e2.7` |
+| `deps.advisories.max_packages` | `integer` | `200` | `replace` | `any` | packages | deps.advisories | `e2.7` |
+| `deps.advisories.timeout_ms` | `integer` | `1500` | `replace` | `any` | milliseconds | deps.advisories | `e2.7` |
+| `deps.advisories.ecosystems` | `string_list` | `crates.io, PyPI, npm, Go, RubyGems, Maven, NuGet, Hex` | `extend` | `any` | — | deps.advisories | `e2.7` |
+| `deps.license.deny` | `string_list` | `AGPL-3.0, AGPL-3.0-only, AGPL-3.0-later, SSPL-1.0` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.permissive` | `string_list` | `MIT, MIT-0, Apache-2.0, Apache-1.1, BSD-2-Clause, BSD-3-Clause, BSD-3-Clause-Clear, ISC, Zlib, 0BSD, Python-2.0, PSF-2.0, Unlicense, BSL-1.0, PostgreSQL, SQLite, curl, WTFPL, Beerware, Unicode-3.0, CC0-1.0, MIT-open-group` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.weak_copyleft` | `string_list` | `MPL-2.0, MPL-1.1, LGPL-2.0-only, LGPL-2.0-or-later, LGPL-2.1-only, LGPL-2.1-or-later, LGPL-3.0-only, LGPL-3.0-or-later, CDDL-1.0, CDDL-1.1, EPL-1.0, EPL-2.0, GPL-2.0-only WITH Classpath-exception-2.0, GPL-2.0-or-later WITH Classpath-exception-2.0, GPL-2.0-with-classpath-exception, Universal-FOSS-Exception-1.0` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.strong_copyleft` | `string_list` | `GPL-1.0-only, GPL-1.0-or-later, GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, GFDL-1.1-only, GFDL-1.1-or-later, GFDL-1.3-only, GFDL-1.3-or-later, Sleepycat, Ruby, QPL-1.0, Sendmail` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.network_copyleft` | `string_list` | `AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, AGPL-3.0, SSPL-1.0, OSL-3.0, EUPL-1.1, EUPL-1.2, CPAL-1.0, CECILL-2.1` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.library_layers` | `string_list` | `library, lib, core, sdk, api` | `extend` | `any` | — | deps.license | `e2.7` |
+| `deps.license.strong_copyleft_in_library` | `string` | `deny` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.strong_copyleft_elsewhere` | `string` | `warn` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.weak_copyleft_in_library` | `string` | `warn` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.weak_copyleft_elsewhere` | `string` | `allow` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.network_copyleft_in_library` | `string` | `deny` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.network_copyleft_elsewhere` | `string` | `deny` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.unknown_layer_policy` | `string` | `strict` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.ignore_dev` | `boolean` | `False` | `replace` | `any` | — | deps.license | `e2.7` |
+| `deps.license.card.max_rows` | `integer` | `12` | `replace` | `any` | rows | deps.license | `e2.7` |
+| `deps.provenance.require_intent` | `boolean` | `True` | `replace` | `any` | — | deps.provenance | `e2.7` |
+| `deps.provenance.intent_sources` | `string_list` | `agent-intent-trailer, plan-item, review-note, manual-note` | `extend` | `any` | — | deps.provenance | `e2.7` |
+| `deps.provenance.min_confidence` | `number` | `0.5` | `replace` | `any` | 0-1 | deps.provenance | `e2.7` |
+| `deps.provenance.agent_counts_as_intent` | `boolean` | `False` | `replace` | `any` | — | deps.provenance | `e2.7` |
+| `deps.provenance.search_previous_episodes` | `boolean` | `True` | `replace` | `any` | — | deps.provenance | `e2.7` |
+| `deps.provenance.card.max_rows` | `integer` | `12` | `replace` | `any` | rows | deps.provenance | `e2.7` |
+| `deps.card.max_findings` | `integer` | `20` | `replace` | `any` | findings | deps.card | `e2.7` |
+| `deps.card.max_evidence` | `integer` | `4` | `replace` | `any` | lines | deps.card | `e2.7` |
+| `deps.findings.new_direct_dependency` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.provenance_unknown` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.intent_not_captured` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.vcs_source` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.new_source` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_critical` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_high` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_moderate` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_low` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_fix_available` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_unchecked` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_cache_stale` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.advisory_cache_missing` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.license_denied` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.license_flagged` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.license_unknown` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.license_drift` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
+| `deps.findings.license_added_to_set` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
 | `risk.weights.<weight>` | `number` | `blast=0.3, size=0.4, test_ratio=0.3` | `deep` | `any` | — | findings.detect | `e2.9` |
 | `risk.tau` | `integer` | `70` | `replace` | `any` | score | risk.score | `e2.10` |
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
@@ -548,6 +598,10 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `episode.time_gap_minutes` | `integer` | `30` | `replace` | `any` | minutes | episode.segment | `e1.3` |
 | `episode.force_split` | `string_list` | `—` | `extend` | `any` | — | episode.segment | `e1.3` |
 | `episode.force_merge` | `string_list` | `—` | `extend` | `any` | — | episode.segment | `e1.3` |
+| `attribution.agents.<agent-id>` | `string_list` | `—` | `extend` | `any` | — | episode.attribute | `e4.1` |
+| `attribution.markers` | `string_list` | `—` | `extend` | `any` | — | episode.attribute | `e4.1` |
+| `attribution.trust_committer` | `boolean` | `True` | `replace` | `any` | — | episode.attribute | `e4.1` |
+| `attribution.ambiguous_below` | `number` | `0.5` | `replace` | `any` | confidence | episode.attribute | `e4.1` |
 | `ingest.size_cap_mib` | `integer` | `8` | `replace` | `any` | MiB | ingest.normalize | `e1.2` |
 | `cache.budget.mib` | `integer` | `512` | `replace` | `any` | MiB | — | `e1.4` |
 | `store.wal_cap.mib` | `integer` | `64` | `replace` | `any` | MiB | — | `e1.1` |

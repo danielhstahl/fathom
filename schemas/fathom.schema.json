@@ -404,8 +404,148 @@
     },
     "deps": {
       "additionalProperties": false,
-      "description": "Which ecosystems' manifests and lockfiles are parsed. Also the switchboard for the advisory lookup's *subject*, not its consent.",
+      "description": "Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it.",
       "properties": {
+        "advisories": {
+          "additionalProperties": false,
+          "description": "Whether the dependency-risk card answers advisories at all. Off, the card still renders and says advisories were switched off \u2014 an enrichment that vanishes silently is a worse answer than one with a line in it. `e2.7`.",
+          "properties": {
+            "cache": {
+              "default": ".fathom/advisories.json",
+              "description": "Where cached OSV responses live, relative to the repository root. A missing file is an answer with a stated partial in it, never an error. `e2.7`.",
+              "type": "string",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "ecosystems": {
+              "default": [
+                "crates.io",
+                "PyPI",
+                "npm",
+                "Go",
+                "RubyGems",
+                "Maven",
+                "NuGet",
+                "Hex"
+              ],
+              "description": "Ecosystem names, in OSV's spelling, that advisories are asked about. `extend`, so a repository naming its vendored registry does not drop the eight everyone else gets. A package in an ecosystem not listed is reported as not checked, never as clean. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "enabled": {
+              "default": true,
+              "description": "Whether the dependency-risk card answers advisories at all. Off, the card still renders and says advisories were switched off \u2014 an enrichment that vanishes silently is a worse answer than one with a line in it. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "max_age_hours": {
+              "default": 24,
+              "description": "Age past which a cached entry is `stale`: still used, and labelled as used. A clean answer with no age on it is a claim with no date. `e2.7`.",
+              "maximum": 8760,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "hours"
+            },
+            "max_packages": {
+              "default": 200,
+              "description": "How many packages one episode's refresh will look up, with the remainder printed as 'not checked (cap reached)' rather than silently dropped. Bounds the refresh that a lockfile rewrite turned into four hundred requests. `e2.7`.",
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "packages"
+            },
+            "mode": {
+              "default": "cache",
+              "description": "`cache` reads the local cache and never fetches; `refresh` may fetch, but only with `privacy.advisories` consent as well; `offline` does not read the cache either and says so on the card. Default `cache`, because 'zero network calls by default' is a default *mode*, not a default flag. `e2.7`.",
+              "enum": [
+                "cache",
+                "refresh",
+                "offline"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "stale_limit_hours": {
+              "default": 168,
+              "description": "Age past which the answer stops claiming 'no advisories found' and says 'not checked recently' instead \u2014 the tense change is the whole point, because a seven-week-old clean result is not a clean result. Must be at or above `max_age_hours`; the schema cannot say that across two keys, so the analyzer refuses the pair. `e2.7`.",
+              "maximum": 8760,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "hours"
+            },
+            "timeout_ms": {
+              "default": 1500,
+              "description": "Per-request budget for a consented refresh \u2014 a bound on blocking, which exists because a lookup that can hang is a lookup that blocks episode rendering, and `e2.7` forbids that. `e2.7`.",
+              "maximum": 60000,
+              "minimum": 100,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.advisories",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "milliseconds"
+            }
+          },
+          "type": "object"
+        },
+        "card": {
+          "additionalProperties": false,
+          "description": "Findings printed on the card. Past the cap they are counted in the summary line rather than hidden: a card that quietly omits the eleventh violation is worse than a long one. `e2.7`.",
+          "properties": {
+            "max_evidence": {
+              "default": 4,
+              "description": "Evidence lines printed per finding on the card. `0` prints kinds only, for a reviewer who wants the census first and the evidence on demand. `e2.7`.",
+              "maximum": 20,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.card",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "lines"
+            },
+            "max_findings": {
+              "default": 20,
+              "description": "Findings printed on the card. Past the cap they are counted in the summary line rather than hidden: a card that quietly omits the eleventh violation is worse than a long one. `e2.7`.",
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "deps.card",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "findings"
+            }
+          },
+          "type": "object"
+        },
         "ecosystems": {
           "default": [
             "python",
@@ -431,10 +571,550 @@
           "x-fathom-merge": "extend",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e2.5"
+        },
+        "findings": {
+          "additionalProperties": false,
+          "description": "The repository now asks for a package by name that it did not ask for before: the row that carries the answer, and the reason this card exists. `e2.7`.",
+          "properties": {
+            "advisory_cache_missing": {
+              "default": true,
+              "description": "There was no cache to read. The card renders anyway: advisories are an enrichment, never a precondition of the answer. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_cache_stale": {
+              "default": true,
+              "description": "The cache is older than `max_age_hours`, or past `stale_limit_hours`. A stale cache is still a usable cache; this finding says which one it is looking at. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_critical": {
+              "default": true,
+              "description": "Cached OSV data reports a critical advisory for this package at this version. Off, this card could not raise a critical finding at all, which is why it is on and why the switch is stated rather than assumed. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_fix_available": {
+              "default": true,
+              "description": "An advisory names a fixed version at or after the installed one, so the action is a bump rather than an argument, and the row names the version. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_high": {
+              "default": true,
+              "description": "Cached OSV data reports a high-severity advisory for this package at this version. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_low": {
+              "default": true,
+              "description": "Cached OSV data reports a low-severity advisory. Loud enough to see, not loud enough to compete with the one that has a fix. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_moderate": {
+              "default": true,
+              "description": "Cached OSV data reports a moderate advisory \u2014 including the ones upstream left unseverity, which are printed as unseverity and never as nothing. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "advisory_unchecked": {
+              "default": true,
+              "description": "Packages this answer did not check, grouped by reason \u2014 no cached entry, ecosystem not asked about, cap reached. 'No advisories found' is only honest next to this line. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "intent_not_captured": {
+              "default": true,
+              "description": "The introducing episode is known and its intent is not, or only a prompt digest is. A digest proves a request happened; it does not say what it was. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "license_added_to_set": {
+              "default": true,
+              "description": "A licence id is newly present in what this repository ships, violation or not: the id, and the package that brought it. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "license_denied": {
+              "default": true,
+              "description": "The licence is one this repository's policy refuses for the layer that now asks for it. The finding names the edge path, because 'who asked' is the half a reviewer can act on. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "license_drift": {
+              "default": true,
+              "description": "An existing package's declared licence moved between the two revisions \u2014 same name, different permission. Nobody reviewed a relicence unless this row says so. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "license_flagged": {
+              "default": true,
+              "description": "The licence is allowed but its matrix cell is `warn`: permitted, and still a decision nobody has made out loud. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "license_unknown": {
+              "default": true,
+              "description": "Nothing declared a licence, so policy cannot be evaluated. A stated partial, never a pass. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "new_direct_dependency": {
+              "default": true,
+              "description": "The repository now asks for a package by name that it did not ask for before: the row that carries the answer, and the reason this card exists. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "new_source": {
+              "default": true,
+              "description": "A registry, git URL or vendored tree this repository had never resolved from. The package may be innocent; the origin is what is new, and origins are where supply chains are actually attacked. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "provenance_unknown": {
+              "default": true,
+              "description": "Nothing readable names the episode that introduced a new direct dependency. Printed as the answer \u2014 'not recorded', plus what would fill it \u2014 because a blank line reads as 'nothing to see'. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "vcs_source": {
+              "default": true,
+              "description": "Resolved from git/svn/hg instead of a registry: no immutable version, no registry signature, and a commit as the reviewable unit \u2014 a different question than the one a registry version answers. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.delta",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            }
+          },
+          "type": "object"
+        },
+        "license": {
+          "additionalProperties": false,
+          "description": "Licence ids refused wherever they appear, matrix included \u2014 a named refusal outranks a class. `extend`, so adding SSPL cannot be done by rewriting the built-in list and losing AGPL on the way. `e2.7`.",
+          "properties": {
+            "card": {
+              "additionalProperties": false,
+              "description": "Licence rows printed on the card before the remainder is counted and the verb that lists them is named. A cap on rows is not a deletion: the render audit fails the card if a violation goes missing rather than going to the 'N more' line. `e2.7`.",
+              "properties": {
+                "max_rows": {
+                  "default": 12,
+                  "description": "Licence rows printed on the card before the remainder is counted and the verb that lists them is named. A cap on rows is not a deletion: the render audit fails the card if a violation goes missing rather than going to the 'N more' line. `e2.7`.",
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "integer",
+                  "x-fathom-analyzer": "deps.license",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.7",
+                  "x-fathom-units": "rows"
+                }
+              },
+              "type": "object"
+            },
+            "deny": {
+              "default": [
+                "AGPL-3.0",
+                "AGPL-3.0-only",
+                "AGPL-3.0-later",
+                "SSPL-1.0"
+              ],
+              "description": "Licence ids refused wherever they appear, matrix included \u2014 a named refusal outranks a class. `extend`, so adding SSPL cannot be done by rewriting the built-in list and losing AGPL on the way. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "ignore_dev": {
+              "default": false,
+              "description": "Skip development-only dependencies when evaluating licence policy. Off by default: a copyleft test fixture that ships in the wheel is still shipped, and the finding nobody expected is still the finding. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "library_layers": {
+              "default": [
+                "library",
+                "lib",
+                "core",
+                "sdk",
+                "api"
+              ],
+              "description": "Which declared layers count as the library layer: the layer whose licences propagate to whoever links it, and therefore the layer the matrix is strict about. Read against `layers.*`. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "network_copyleft": {
+              "default": [
+                "AGPL-1.0-only",
+                "AGPL-1.0-or-later",
+                "AGPL-3.0-only",
+                "AGPL-3.0-or-later",
+                "AGPL-3.0",
+                "SSPL-1.0",
+                "OSL-3.0",
+                "EUPL-1.1",
+                "EUPL-1.2",
+                "CPAL-1.0",
+                "CECILL-2.1"
+              ],
+              "description": "Copyleft whose trigger includes offering the code as a service, so 'we only run it' does not escape it. Denied in every layer by default; a repository that has taken advice can move a cell to `warn`. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "network_copyleft_elsewhere": {
+              "default": "deny",
+              "description": "What network copyleft may do outside the library layer. See the row above: both cells are `deny` because the class is the reason, not the layer. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "network_copyleft_in_library": {
+              "default": "deny",
+              "description": "What network copyleft may do in the library layer. Both network-copyleft cells default to `deny`, because the trigger is how software is *offered*, which no layering decision changes. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "permissive": {
+              "default": [
+                "MIT",
+                "MIT-0",
+                "Apache-2.0",
+                "Apache-1.1",
+                "BSD-2-Clause",
+                "BSD-3-Clause",
+                "BSD-3-Clause-Clear",
+                "ISC",
+                "Zlib",
+                "0BSD",
+                "Python-2.0",
+                "PSF-2.0",
+                "Unlicense",
+                "BSL-1.0",
+                "PostgreSQL",
+                "SQLite",
+                "curl",
+                "WTFPL",
+                "Beerware",
+                "Unicode-3.0",
+                "CC0-1.0",
+                "MIT-open-group"
+              ],
+              "description": "Ids treated as permissive: allowed everywhere, and still counted when one is newly present in what the repository ships. Taught by table rather than baked in, so an unusual-but-fine id is a config edit and not a fork. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "strong_copyleft": {
+              "default": [
+                "GPL-1.0-only",
+                "GPL-1.0-or-later",
+                "GPL-2.0-only",
+                "GPL-2.0-or-later",
+                "GPL-3.0-only",
+                "GPL-3.0-or-later",
+                "GFDL-1.1-only",
+                "GFDL-1.1-or-later",
+                "GFDL-1.3-only",
+                "GFDL-1.3-or-later",
+                "Sleepycat",
+                "Ruby",
+                "QPL-1.0",
+                "Sendmail"
+              ],
+              "description": "Whole-work copyleft. Whether that is fatal depends on whether the distributor is the library or an application built from it \u2014 which is why this is a class with a matrix row and not a deny list. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "strong_copyleft_elsewhere": {
+              "default": "warn",
+              "description": "What strong copyleft may do outside the library layer \u2014 `warn`, because a GPL CLI in the composition layer is usually a decision someone made on purpose, and the finding is there to have it confirmed. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "strong_copyleft_in_library": {
+              "default": "deny",
+              "description": "What strong copyleft may do in the library layer. `deny` by default: linking it from a library hands the obligation to every downstream, which is not a decision a dependency bump gets to make silently. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "unknown_layer_policy": {
+              "default": "strict",
+              "description": "How to treat a licence id nobody's table knows. `strict`: an unknown obligation is reported as a stated partial and never as a pass \u2014 'no violation found' about a licence nobody read is the worst thing this tool can say. `e2.7`.",
+              "enum": [
+                "strict",
+                "forgiving"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "weak_copyleft": {
+              "default": [
+                "MPL-2.0",
+                "MPL-1.1",
+                "LGPL-2.0-only",
+                "LGPL-2.0-or-later",
+                "LGPL-2.1-only",
+                "LGPL-2.1-or-later",
+                "LGPL-3.0-only",
+                "LGPL-3.0-or-later",
+                "CDDL-1.0",
+                "CDDL-1.1",
+                "EPL-1.0",
+                "EPL-2.0",
+                "GPL-2.0-only WITH Classpath-exception-2.0",
+                "GPL-2.0-or-later WITH Classpath-exception-2.0",
+                "GPL-2.0-with-classpath-exception",
+                "Universal-FOSS-Exception-1.0"
+              ],
+              "description": "File-level copyleft: the obligation attaches to the file that carries it, so a library may ship these and an application usually only has to say so. That is a matrix cell, not a fact about MPL. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "weak_copyleft_elsewhere": {
+              "default": "allow",
+              "description": "What file-level copyleft may do outside the library layer. `allow`: quiet enough not to compete with the finding that matters. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "weak_copyleft_in_library": {
+              "default": "warn",
+              "description": "What file-level copyleft may do in the library layer: allowed, and printed, because MPL-in-a-library is fine right up until someone ships a modification. `e2.7`.",
+              "enum": [
+                "deny",
+                "warn",
+                "allow"
+              ],
+              "type": "string",
+              "x-fathom-analyzer": "deps.license",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            }
+          },
+          "type": "object"
+        },
+        "provenance": {
+          "additionalProperties": false,
+          "description": "Report an unknown intent as the finding `intent-not-captured` when the introducing episode is known and its reason is not. `e2.7`.",
+          "properties": {
+            "agent_counts_as_intent": {
+              "default": false,
+              "description": "Let attribution ('agent codex') stand in for intent. Off, and it should stay off: who executed the change is not who asked for it, and turning this on makes `intent: not recorded` impossible to ever see. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.provenance",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "card": {
+              "additionalProperties": false,
+              "description": "Provenance rows printed on the card before the remainder is counted and named. `e2.7`.",
+              "properties": {
+                "max_rows": {
+                  "default": 12,
+                  "description": "Provenance rows printed on the card before the remainder is counted and named. `e2.7`.",
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "integer",
+                  "x-fathom-analyzer": "deps.provenance",
+                  "x-fathom-merge": "replace",
+                  "x-fathom-scope": "any",
+                  "x-fathom-ticket": "e2.7",
+                  "x-fathom-units": "rows"
+                }
+              },
+              "type": "object"
+            },
+            "intent_sources": {
+              "default": [
+                "agent-intent-trailer",
+                "plan-item",
+                "review-note",
+                "manual-note"
+              ],
+              "description": "Which recorded intent sources may be printed as the answer. Evidence from a source listed here is quoted with its source and its confidence; evidence from one not listed is reported as existing-but-not-allowed, because unreviewed text silently used as an explanation is the failure this list exists to prevent. `e2.7`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "deps.provenance",
+              "x-fathom-merge": "extend",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "min_confidence": {
+              "default": 0.5,
+              "description": "Minimum confidence for an intent to be printed as the answer rather than as a guess \u2014 and a guess is still printed, labelled, rather than dropped. Inferred evidence carries low confidence, so raising this mostly produces more guesses. `e2.7`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "deps.provenance",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7",
+              "x-fathom-units": "0-1"
+            },
+            "require_intent": {
+              "default": true,
+              "description": "Report an unknown intent as the finding `intent-not-captured` when the introducing episode is known and its reason is not. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.provenance",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            },
+            "search_previous_episodes": {
+              "default": true,
+              "description": "Look through recorded introductions from earlier episodes when the episode under review did not add the package. The question is usually asked weeks after the answer was written. `e2.7`.",
+              "type": "boolean",
+              "x-fathom-analyzer": "deps.provenance",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e2.7"
+            }
+          },
+          "type": "object"
         }
       },
       "type": "object",
-      "x-fathom-owner": "e2.5 (`reco-j83`)",
+      "x-fathom-owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
       "x-fathom-section-title": "Dependencies"
     },
     "detectors": {
@@ -3059,7 +3739,7 @@
         "title": "Episode summary card"
       },
       "deps": {
-        "owner": "e2.5 (`reco-j83`)",
+        "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
         "title": "Dependencies"
       },
       "detectors": {

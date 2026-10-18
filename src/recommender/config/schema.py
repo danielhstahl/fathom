@@ -243,9 +243,13 @@ SECTIONS: dict[str, dict] = {
     "layers": {"title": "Layering rules", "owner": "ADR-004 §5.1 / e3.1",
                "doc": "The declared intended architecture: named layers, each a list of "
                       "path prefixes. An open map, keyed by layer name."},
-    "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`)",
-             "doc": "Which ecosystems' manifests and lockfiles are parsed. Also the "
-                    "switchboard for the advisory lookup's *subject*, not its consent."},
+    "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
+             "doc": "Which ecosystems' manifests and lockfiles are parsed, and what the "
+                    "dependency-risk answer does with them: the advisory cache and its "
+                    "freshness bars, the licence matrix, and how hard provenance looks for "
+                    "the episode that asked for a package. Consent to reach the network is "
+                    "not here - it is `privacy.advisories`, because a cloned repository must "
+                    "not be able to grant it."},
     "risk": {"title": "Risk weights and threshold", "owner": "e2.9 / e2.10",
              "doc": "The ranking knobs. Changing these changes `risk.score` and "
                     "`delta.compose` and nothing else (ADR-004 §6)."},
@@ -1006,6 +1010,300 @@ KEY_LIST: list[Key] = [
        doc="Ecosystems whose manifests and lockfiles are parsed (the parser set is "
            "`e2.5`). Enabling one here never enables a network call.",
        analyzer="deps.resolve", ticket="e2.5"),
+
+    # --- deps: dependency risk (e2.7 / reco-yxi) -----------------------------
+    #
+    # Every key below is a knob on an *answer*, not a switch on a program: none of them can
+    # make the tool fetch. The one key that plausibly could have — "the OSV base URL" — was
+    # deliberately not written: an endpoint read out of a cloned file is an endpoint an
+    # attacker chose, and the no-network-by-default claim would then only have been true of
+    # the default config. `fathom deprisk consent` prints the gates and their verdict.
+    _k(path="deps.advisories.enabled", kind="boolean", default=True,
+       doc="Whether the dependency-risk card answers advisories at all. Off, the card still "
+           "renders and says advisories were switched off — an enrichment that vanishes "
+           "silently is a worse answer than one with a line in it. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.mode", kind="string", default="cache",
+       enum=("cache", "refresh", "offline"),
+       doc="`cache` reads the local cache and never fetches; `refresh` may fetch, but only "
+           "with `privacy.advisories` consent as well; `offline` does not read the cache "
+           "either and says so on the card. Default `cache`, because 'zero network calls by "
+           "default' is a default *mode*, not a default flag. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.cache", kind="path", default=".fathom/advisories.json",
+       doc="Where cached OSV responses live, relative to the repository root. A missing file "
+           "is an answer with a stated partial in it, never an error. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.max_age_hours", kind="integer", default=24, minimum=1,
+       maximum=8760, units="hours",
+       doc="Age past which a cached entry is `stale`: still used, and labelled as used. A "
+           "clean answer with no age on it is a claim with no date. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.stale_limit_hours", kind="integer", default=168, minimum=1,
+       maximum=8760, units="hours",
+       doc="Age past which the answer stops claiming 'no advisories found' and says 'not "
+           "checked recently' instead — the tense change is the whole point, because a "
+           "seven-week-old clean result is not a clean result. Must be at or above "
+           "`max_age_hours`; the schema cannot say that across two keys, so the analyzer "
+           "refuses the pair. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.max_packages", kind="integer", default=200, minimum=1,
+       maximum=10000, units="packages",
+       doc="How many packages one episode's refresh will look up, with the remainder printed "
+           "as 'not checked (cap reached)' rather than silently dropped. Bounds the refresh "
+           "that a lockfile rewrite turned into four hundred requests. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.timeout_ms", kind="integer", default=1500, minimum=100,
+       maximum=60000, units="milliseconds",
+       doc="Per-request budget for a consented refresh — a bound on blocking, which exists "
+           "because a lookup that can hang is a lookup that blocks episode rendering, and "
+           "`e2.7` forbids that. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+    _k(path="deps.advisories.ecosystems", kind="string_list", merge="extend",
+       default=["crates.io", "PyPI", "npm", "Go", "RubyGems", "Maven", "NuGet", "Hex"],
+       doc="Ecosystem names, in OSV's spelling, that advisories are asked about. `extend`, so "
+           "a repository naming its vendored registry does not drop the eight everyone else "
+           "gets. A package in an ecosystem not listed is reported as not checked, never as "
+           "clean. `e2.7`.",
+       analyzer="deps.advisories", ticket="e2.7"),
+
+    # Two halves of one policy: the lists teach which SPDX ids are in which copyleft class
+    # (a policy that hard-codes its own vocabulary cannot be argued with), and the matrix says
+    # what a class may do in the library layer versus anywhere else. `fathom deprisk matrix`
+    # prints the resolved matrix; `fathom deprisk policy` prints every key with its layer.
+    _k(path="deps.license.deny", kind="string_list", merge="extend",
+       default=["AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-later", "SSPL-1.0"],
+       doc="Licence ids refused wherever they appear, matrix included — a named refusal "
+           "outranks a class. `extend`, so adding SSPL cannot be done by rewriting the "
+           "built-in list and losing AGPL on the way. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.permissive", kind="string_list", merge="extend",
+       default=["MIT", "MIT-0", "Apache-2.0", "Apache-1.1", "BSD-2-Clause", "BSD-3-Clause",
+                "BSD-3-Clause-Clear", "ISC", "Zlib", "0BSD", "Python-2.0", "PSF-2.0",
+                "Unlicense", "BSL-1.0", "PostgreSQL", "SQLite", "curl", "WTFPL", "Beerware",
+                "Unicode-3.0", "CC0-1.0", "MIT-open-group"],
+       doc="Ids treated as permissive: allowed everywhere, and still counted when one is "
+           "newly present in what the repository ships. Taught by table rather than baked in, "
+           "so an unusual-but-fine id is a config edit and not a fork. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.weak_copyleft", kind="string_list", merge="extend",
+       default=["MPL-2.0", "MPL-1.1", "LGPL-2.0-only", "LGPL-2.0-or-later", "LGPL-2.1-only",
+                "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later", "CDDL-1.0",
+                "CDDL-1.1", "EPL-1.0", "EPL-2.0",
+                "GPL-2.0-only WITH Classpath-exception-2.0",
+                "GPL-2.0-or-later WITH Classpath-exception-2.0",
+                "GPL-2.0-with-classpath-exception", "Universal-FOSS-Exception-1.0"],
+       doc="File-level copyleft: the obligation attaches to the file that carries it, so a "
+           "library may ship these and an application usually only has to say so. That is a "
+           "matrix cell, not a fact about MPL. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.strong_copyleft", kind="string_list", merge="extend",
+       default=["GPL-1.0-only", "GPL-1.0-or-later", "GPL-2.0-only", "GPL-2.0-or-later",
+                "GPL-3.0-only", "GPL-3.0-or-later", "GFDL-1.1-only", "GFDL-1.1-or-later",
+                "GFDL-1.3-only", "GFDL-1.3-or-later", "Sleepycat", "Ruby", "QPL-1.0",
+                "Sendmail"],
+       doc="Whole-work copyleft. Whether that is fatal depends on whether the distributor is "
+           "the library or an application built from it — which is why this is a class with a "
+           "matrix row and not a deny list. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.network_copyleft", kind="string_list", merge="extend",
+       default=["AGPL-1.0-only", "AGPL-1.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later",
+                "AGPL-3.0", "SSPL-1.0", "OSL-3.0", "EUPL-1.1", "EUPL-1.2", "CPAL-1.0",
+                "CECILL-2.1"],
+       doc="Copyleft whose trigger includes offering the code as a service, so 'we only run "
+           "it' does not escape it. Denied in every layer by default; a repository that has "
+           "taken advice can move a cell to `warn`. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.library_layers", kind="string_list", merge="extend",
+       default=["library", "lib", "core", "sdk", "api"],
+       doc="Which declared layers count as the library layer: the layer whose licences "
+           "propagate to whoever links it, and therefore the layer the matrix is strict "
+           "about. Read against `layers.*`. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.strong_copyleft_in_library", kind="string", default="deny",
+       enum=("deny", "warn", "allow"),
+       doc="What strong copyleft may do in the library layer. `deny` by default: linking it "
+           "from a library hands the obligation to every downstream, which is not a decision "
+           "a dependency bump gets to make silently. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.strong_copyleft_elsewhere", kind="string", default="warn",
+       enum=("deny", "warn", "allow"),
+       doc="What strong copyleft may do outside the library layer — `warn`, because a GPL CLI "
+           "in the composition layer is usually a decision someone made on purpose, and the "
+           "finding is there to have it confirmed. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.weak_copyleft_in_library", kind="string", default="warn",
+       enum=("deny", "warn", "allow"),
+       doc="What file-level copyleft may do in the library layer: allowed, and printed, "
+           "because MPL-in-a-library is fine right up until someone ships a modification. "
+           "`e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.weak_copyleft_elsewhere", kind="string", default="allow",
+       enum=("deny", "warn", "allow"),
+       doc="What file-level copyleft may do outside the library layer. `allow`: quiet enough "
+           "not to compete with the finding that matters. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.network_copyleft_in_library", kind="string", default="deny",
+       enum=("deny", "warn", "allow"),
+       doc="What network copyleft may do in the library layer. Both network-copyleft cells "
+           "default to `deny`, because the trigger is how software is *offered*, which no "
+           "layering decision changes. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.network_copyleft_elsewhere", kind="string", default="deny",
+       enum=("deny", "warn", "allow"),
+       doc="What network copyleft may do outside the library layer. See the row above: both "
+           "cells are `deny` because the class is the reason, not the layer. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.unknown_layer_policy", kind="string", default="strict",
+       enum=("strict", "forgiving"),
+       doc="How to treat a licence id nobody's table knows. `strict`: an unknown obligation is "
+           "reported as a stated partial and never as a pass — 'no violation found' about a "
+           "licence nobody read is the worst thing this tool can say. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.ignore_dev", kind="boolean", default=False,
+       doc="Skip development-only dependencies when evaluating licence policy. Off by default: "
+           "a copyleft test fixture that ships in the wheel is still shipped, and the finding "
+           "nobody expected is still the finding. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+    _k(path="deps.license.card.max_rows", kind="integer", default=12, minimum=1, maximum=1000,
+       units="rows",
+       doc="Licence rows printed on the card before the remainder is counted and the verb that "
+           "lists them is named. A cap on rows is not a deletion: the render audit fails the "
+           "card if a violation goes missing rather than going to the 'N more' line. `e2.7`.",
+       analyzer="deps.license", ticket="e2.7"),
+
+    # 'Who asked for this' is answered from what Fathom actually stores, which for intent is: a
+    # commit trailer, a plan item, a review note, a manual note, or nothing. Hooks v1 stores
+    # `prompt_sha256` and `prompt_chars` and not the prompt (ADR-005 §2.2), so a digest is
+    # reported as a stated partial and never as an answer.
+    _k(path="deps.provenance.require_intent", kind="boolean", default=True,
+       doc="Report an unknown intent as the finding `intent-not-captured` when the introducing "
+           "episode is known and its reason is not. `e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.provenance.intent_sources", kind="string_list", merge="extend",
+       default=["agent-intent-trailer", "plan-item", "review-note", "manual-note"],
+       doc="Which recorded intent sources may be printed as the answer. Evidence from a source "
+           "listed here is quoted with its source and its confidence; evidence from one not "
+           "listed is reported as existing-but-not-allowed, because unreviewed text silently "
+           "used as an explanation is the failure this list exists to prevent. `e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.provenance.min_confidence", kind="number", default=0.5, minimum=0.0,
+       maximum=1.0, units="0-1",
+       doc="Minimum confidence for an intent to be printed as the answer rather than as a "
+           "guess — and a guess is still printed, labelled, rather than dropped. Inferred "
+           "evidence carries low confidence, so raising this mostly produces more guesses. "
+           "`e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.provenance.agent_counts_as_intent", kind="boolean", default=False,
+       doc="Let attribution ('agent codex') stand in for intent. Off, and it should stay off: "
+           "who executed the change is not who asked for it, and turning this on makes "
+           "`intent: not recorded` impossible to ever see. `e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.provenance.search_previous_episodes", kind="boolean", default=True,
+       doc="Look through recorded introductions from earlier episodes when the episode under "
+           "review did not add the package. The question is usually asked weeks after the "
+           "answer was written. `e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.provenance.card.max_rows", kind="integer", default=12, minimum=1,
+       maximum=1000, units="rows",
+       doc="Provenance rows printed on the card before the remainder is counted and named. "
+           "`e2.7`.",
+       analyzer="deps.provenance", ticket="e2.7"),
+    _k(path="deps.card.max_findings", kind="integer", default=20, minimum=1, maximum=1000,
+       units="findings",
+       doc="Findings printed on the card. Past the cap they are counted in the summary line "
+           "rather than hidden: a card that quietly omits the eleventh violation is worse than "
+           "a long one. `e2.7`.",
+       analyzer="deps.card", ticket="e2.7"),
+    _k(path="deps.card.max_evidence", kind="integer", default=4, minimum=0, maximum=20,
+       units="lines",
+       doc="Evidence lines printed per finding on the card. `0` prints kinds only, for a "
+           "reviewer who wants the census first and the evidence on demand. `e2.7`.",
+       analyzer="deps.card", ticket="e2.7"),
+
+    # One switch per finding kind, because 'should I be worried' is a question about which of
+    # these eighteen signals a reviewer has agreed to be told about. Every switch defaults on;
+    # a finding that is switched off is counted in the card's suppressed line, never deleted.
+    _k(path="deps.findings.new_direct_dependency", kind="boolean", default=True,
+       doc="The repository now asks for a package by name that it did not ask for before: the "
+           "row that carries the answer, and the reason this card exists. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.provenance_unknown", kind="boolean", default=True,
+       doc="Nothing readable names the episode that introduced a new direct dependency. "
+           "Printed as the answer — 'not recorded', plus what would fill it — because a blank "
+           "line reads as 'nothing to see'. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.intent_not_captured", kind="boolean", default=True,
+       doc="The introducing episode is known and its intent is not, or only a prompt digest "
+           "is. A digest proves a request happened; it does not say what it was. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.vcs_source", kind="boolean", default=True,
+       doc="Resolved from git/svn/hg instead of a registry: no immutable version, no registry "
+           "signature, and a commit as the reviewable unit — a different question than the one "
+           "a registry version answers. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.new_source", kind="boolean", default=True,
+       doc="A registry, git URL or vendored tree this repository had never resolved from. The "
+           "package may be innocent; the origin is what is new, and origins are where supply "
+           "chains are actually attacked. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_critical", kind="boolean", default=True,
+       doc="Cached OSV data reports a critical advisory for this package at this version. Off, "
+           "this card could not raise a critical finding at all, which is why it is on and why "
+           "the switch is stated rather than assumed. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_high", kind="boolean", default=True,
+       doc="Cached OSV data reports a high-severity advisory for this package at this "
+           "version. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_moderate", kind="boolean", default=True,
+       doc="Cached OSV data reports a moderate advisory — including the ones upstream left "
+           "unseverity, which are printed as unseverity and never as nothing. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_low", kind="boolean", default=True,
+       doc="Cached OSV data reports a low-severity advisory. Loud enough to see, not loud "
+           "enough to compete with the one that has a fix. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_fix_available", kind="boolean", default=True,
+       doc="An advisory names a fixed version at or after the installed one, so the action is "
+           "a bump rather than an argument, and the row names the version. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_unchecked", kind="boolean", default=True,
+       doc="Packages this answer did not check, grouped by reason — no cached entry, ecosystem "
+           "not asked about, cap reached. 'No advisories found' is only honest next to this "
+           "line. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_cache_stale", kind="boolean", default=True,
+       doc="The cache is older than `max_age_hours`, or past `stale_limit_hours`. A stale "
+           "cache is still a usable cache; this finding says which one it is looking at. "
+           "`e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.advisory_cache_missing", kind="boolean", default=True,
+       doc="There was no cache to read. The card renders anyway: advisories are an enrichment, "
+           "never a precondition of the answer. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.license_denied", kind="boolean", default=True,
+       doc="The licence is one this repository's policy refuses for the layer that now asks "
+           "for it. The finding names the edge path, because 'who asked' is the half a "
+           "reviewer can act on. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.license_flagged", kind="boolean", default=True,
+       doc="The licence is allowed but its matrix cell is `warn`: permitted, and still a "
+           "decision nobody has made out loud. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.license_unknown", kind="boolean", default=True,
+       doc="Nothing declared a licence, so policy cannot be evaluated. A stated partial, never "
+           "a pass. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.license_drift", kind="boolean", default=True,
+       doc="An existing package's declared licence moved between the two revisions — same "
+           "name, different permission. Nobody reviewed a relicence unless this row says so. "
+           "`e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
+    _k(path="deps.findings.license_added_to_set", kind="boolean", default=True,
+       doc="A licence id is newly present in what this repository ships, violation or not: the "
+           "id, and the package that brought it. `e2.7`.",
+       analyzer="deps.delta", ticket="e2.7"),
     # --- risk / detectors ---------------------------------------------------
     _k(path="risk.weights.<weight>", kind="number", merge="deep",
        default={"size": 0.4, "test_ratio": 0.3, "blast": 0.3}, minimum=0.0, maximum=1.0,

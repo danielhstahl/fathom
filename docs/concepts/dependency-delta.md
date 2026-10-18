@@ -9,6 +9,11 @@ projection — what this revision declares and resolves; the delta is what the e
 previous half (`e2.5`) built the before-and-after `Delta` of dependency files; this half reads those two
 revisions as graphs and compares them.
 
+This document answers *what moved and what proves it*. It deliberately does not answer the two questions a
+reviewer of the same table asks next — *who asked for this dependency*, and *should I be worried* — which
+are [`e2.7`'s](dependency-risk.md): provenance, advisories and licence policy read this delta's rows and
+own those answers.
+
 ## Model
 
 ```rust,ignore

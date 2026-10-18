@@ -17,6 +17,66 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e2.7` — dependency risk: who asked for this, and should I be worried (`reco-yxi`)
+
+- **New module: [`recommender.deprisk`](src/recommender/deprisk/).** Two questions per episode, and
+  the second is worthless without the first. `e2.6` answers what moved in a dependency set; this
+  answers what a reviewer actually asks looking at `+ fastparse 2.2.0` — who asked for it, and
+  whether to be worried — and treats *silence* as the failure mode in both halves: a blank
+  provenance line reads as "nobody asked", and "no advisories found" about a seven-week-old cache
+  is the most dangerous sentence this tool could print.
+- **Provenance is a ladder that refuses to invent a rung.** This episode's own additions, else a
+  recorded earlier introduction (matched by name, and saying so when the record's version differs),
+  else `not recorded` plus the two things that would fill it. The intent half is a separate verdict,
+  because knowing the episode is not knowing the reason: an `Agent-Intent:` trailer is the answer,
+  a harness-turn *digest* is `not captured — prompt digest only` (hooks v1 stores `prompt_sha256`
+  and `prompt_chars` and no text, ADR-005 §2.2), evidence from a source outside
+  `deps.provenance.intent_sources` is printed as refused with the key named, a low-confidence intent
+  is printed as a labelled guess rather than dropped, and attribution is never intent by default
+  (`deps.provenance.agent_counts_as_intent = false`) because who executed a change is not who asked
+  for it.
+- **Zero network calls by default, and no key that changes that.** Advisory lookup needs all three
+  of `deps.advisories.enabled`, `deps.advisories.mode = "refresh"` and **user-scoped**
+  `privacy.advisories` — a cloned `fathom.toml` cannot grant consent (ADR-001 §7.5) — to the OSV
+  endpoint fixed in code, because a `deps.advisories.endpoint` key would be a redirect a clone could
+  install. `fathom deprisk consent` prints the three gates and `0 network call(s)`;
+  `advisories --refresh` refuses at the gate with exit 8, not at the socket; `advisories --plan`
+  prints every request a refresh would make without making one. The claim is asserted by tests that
+  replace `socket.socket` with a trap and then run every verb, and the analysis half is checked by
+  AST for no `socket`, `urllib`, `os`, `pathlib`, `time` or `datetime` (ADR-002 §4.5).
+- **Freshness is an answer, not a footnote.** Five cache states (`fresh`, `stale`, `expired`,
+  `missing`, `offline`), each with what it may claim: past `stale_limit_hours` the tense changes to
+  *not checked recently* and the card stops saying `no advisories found`; a package with no cached
+  entry, an ecosystem not asked about, a cap overrun or a **failed query** is listed as unchecked and
+  never counted clean; an advisory with no upstream severity prints as `unseverity` instead of
+  nothing. The cache at `deps.advisories.cache` round-trips through its own serialisation, a corrupt
+  file is a stated problem rather than a crash, and `cache --import-from` fills it offline from
+  recorded OSV responses — which is how CI and this document's examples get their data.
+- **A licence matrix in config, with the edge path attached.** Four class tables (`permissive`,
+  `weak_copyleft`, `strong_copyleft`, `network_copyleft`) plus `deps.license.deny` as a veto, and six
+  matrix cells saying what each class may do in the library layer versus anywhere else — strong
+  copyleft denied in a library and warned about in a composition layer, network copyleft denied
+  everywhere, an unrecognised id never allowed. `AND` is cumulative, `OR` is resolved to the least
+  restrictive option and the options *not* taken are printed. Drift is caught when the version did
+  not move, a removed package is never a policy question, an undeclared licence is a stated partial
+  and not a pass, and every violation names the offending edge path (`fathom-analyze → jwt 2.1.0 →
+  ring 0.16.8`) because "who asked" is the half a reviewer can act on. This repository dogfoods
+  `deps.license.library_layers`: `[layers]` already names which crates are library code.
+- **49 config keys, regenerated not hand-edited.** `deps.advisories.*`, `deps.license.*`,
+  `deps.provenance.*`, `deps.card.*` and one switch per finding kind under `deps.findings.*` are
+  declared in `e0.8`'s schema, so `schemas/fathom.schema.json`, `docs/concepts/config.md` and
+  `fathom deprisk policy` all agree with the policy object — a cross-key impossibility
+  (`stale_limit_hours` below `max_age_hours`) is refused with a sentence instead of rendered as a
+  self-contradicting card, and switching a finding off counts it as suppressed rather than deleting
+  it.
+- **Fixture set:** 28 hand-authored cases in `src/recommender/deprisk/corpus.py` with recorded OSV
+  payloads (no network, no fake server), scored in CI with provenance, intent, licence precision,
+  licence recall, advisory recall, freshness, finding-table and reconciliation accuracy all barred at
+  1.0 — precision included so a checker that fires on every copyleft row, including the
+  dual-licensed and development-only traps, cannot pass. 200 generated episodes reconcile, every card
+  passes `render.audit`, and `tests/test_deprisk_contract.py` maps the ticket's four acceptance
+  criteria one section each.
+
 ### `e4.1` — attribution: who wrote this commit, with the evidence that says so (`reco-w7q`)
 
 - **New module: [`fathom_ingest::attribute`](crates/fathom-ingest/src/attribute.rs).** Authorship is
