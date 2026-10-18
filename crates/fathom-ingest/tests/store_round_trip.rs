@@ -34,6 +34,10 @@ const GIT_COMMIT_COLUMNS: &[&str] = &[
     "oversized",
     "ingested_utc",
     "run_id",
+    // `e4.1` adds the committer identity through `ADDED_COLUMNS`, so these come after every ADR column:
+    // `ALTER TABLE ADD COLUMN` appends, and `PRAGMA table_info` reports declaration order.
+    "committer_name",
+    "committer_email",
 ];
 
 const GIT_COMMIT_FILE_COLUMNS: &[&str] = &[

@@ -61,6 +61,8 @@ pub enum Verb {
     Index(IndexArgs),
     /// Show one episode in full
     Show(ShowArgs),
+    /// Report or correct who Fathom thinks wrote a commit (`e4.1`)
+    Attribution(AttributionArgs),
     /// Print one episode's delta document — the model the TUI, the export and an agent all read
     Analyze(AnalyzeArgs),
     /// Report repo scale, index state and cache hit rate
@@ -115,6 +117,77 @@ pub struct IndexArgs {
     /// Do not analyse uncommitted paths (ADR-004 §6.4).
     #[arg(long = "committed-only")]
     pub committed_only: bool,
+}
+
+/// `fathom attribution`: the authorship label, and the way to overrule it.
+///
+/// A correction is keyed on an identity, not on an episode: episode ids are derived from content and move
+/// when a lineage is rewritten, and the identity is what the user meant (`e4.1`).
+#[derive(Args, Debug)]
+pub struct AttributionArgs {
+    /// What to do.
+    #[command(subcommand)]
+    pub action: AttributionAction,
+}
+
+/// The `fathom attribution` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum AttributionAction {
+    /// Store a correction: these identities were written by an agent / by a person
+    Correct(AttributionCorrectArgs),
+    /// List the stored corrections, which are the keys the classifier honours
+    List(AttributionListArgs),
+    /// Forget one stored correction
+    Forget(AttributionForgetArgs),
+}
+
+/// `fathom attribution correct`
+#[derive(Args, Debug)]
+pub struct AttributionCorrectArgs {
+    /// The commit whose identities are being corrected: a rev, an oid prefix, or `-` for nothing.
+    pub target: Option<String>,
+    /// The repository to write to.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// `agent`, `human` or `unknown`.
+    #[arg(long)]
+    pub kind: String,
+    /// Which agent the identity is, when `--kind agent`.
+    #[arg(long)]
+    pub agent: Option<String>,
+    /// Why the label was overruled, for whoever reads it next.
+    #[arg(long)]
+    pub note: Option<String>,
+    /// Correct one identity key directly (`identity:<address>`), instead of deriving them from a commit.
+    #[arg(long)]
+    pub identity: Option<String>,
+    /// Print the result as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `fathom attribution list`
+#[derive(Args, Debug)]
+pub struct AttributionListArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the corrections as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `fathom attribution forget`
+#[derive(Args, Debug)]
+pub struct AttributionForgetArgs {
+    /// The identity key to forget, as `fathom attribution list` prints it.
+    pub identity: String,
+    /// The repository to write to.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the result as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// `fathom show`
@@ -340,6 +413,36 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         None => open_terminal(globals),
         Some(Verb::Index(args)) => index(args),
         Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
+        Some(Verb::Attribution(args)) => match &args.action {
+            AttributionAction::Correct(args) => {
+                let Some(target) = args.target.as_deref().or(args.identity.as_deref()) else {
+                    return Err(crate::verbs::Pending::new(
+                        ExitCode::Usage,
+                        "`fathom attribution correct` needs a commit or an --identity key"
+                            .to_owned(),
+                        Some("fathom attribution correct HEAD --kind human --root .".to_owned()),
+                    )
+                    .into());
+                };
+                crate::attribution::correct(
+                    std::path::Path::new(&args.root),
+                    target,
+                    &args.kind,
+                    args.agent.as_deref(),
+                    args.note.as_deref(),
+                    args.identity.as_deref(),
+                    args.json,
+                )
+            }
+            AttributionAction::List(args) => {
+                crate::attribution::list(std::path::Path::new(&args.root), args.json)
+            }
+            AttributionAction::Forget(args) => crate::attribution::forget(
+                std::path::Path::new(&args.root),
+                &args.identity,
+                args.json,
+            ),
+        },
         Some(Verb::Analyze(args)) => crate::analyze::analyze(
             &args.root,
             args.episode.as_deref(),

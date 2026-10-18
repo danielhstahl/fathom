@@ -28,10 +28,10 @@ mod schema;
 use crate::error::Error;
 
 pub use delta::{
-    BriefRow, EpisodeDelta, EpisodeRef, Evidence, Figure, FileDelta, Finding, Gap, Input,
-    Integrity, Provenance, RiskComponent, RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL,
-    STATE_UNAVAILABLE, Section, SectionId, Supplied, SuppliedBlock, Totals, brief, compose,
-    glyph_of, render, short_id,
+    AttributionEvidence, AttributionRef, BriefRow, EpisodeDelta, EpisodeRef, Evidence, Figure,
+    FileDelta, Finding, Gap, Input, Integrity, Provenance, RiskComponent, RiskView, STATE_ALL,
+    STATE_MEASURED, STATE_PARTIAL, STATE_UNAVAILABLE, Section, SectionId, Supplied, SuppliedBlock,
+    Totals, brief, compose, glyph_of, render, short_id,
 };
 pub use schema::{
     SCHEMA_FILE, describe as schema_describe, document as schema_document, limits as schema_limits,

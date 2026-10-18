@@ -136,6 +136,9 @@ PLACEHOLDERS: dict[str, dict] = {
                                  "vendored|lockfile|asset|binary|other)$",
                      "doc": "a path-taxonomy class (`reco-5vz`); `other` is refused because "
                             "asserting it is indistinguishable from matching nothing"},
+    "<agent-id>": {"pattern": r"^[a-z][a-z0-9_-]*$",
+                   "doc": "a known-agent id from the attribution registry (`e4.1`): the "
+                          "name the label prints as the agent"},
 }
 
 
@@ -266,6 +269,11 @@ SECTIONS: dict[str, dict] = {
     "episode": {"title": "Episode segmentation", "owner": "ADR-003 / e1.3",
                 "doc": "Boundary sources in priority order, and the idle gap that ends an "
                        "episode when nothing better is available."},
+    "attribution": {"title": "Authorship attribution", "owner": "ADR-003 §8 / e4.1 (`reco-w7q`)",
+                    "doc": "Who wrote a commit: the registry of known agents, the marker "
+                           "table, and the confidence bar below which Fathom prints `?` "
+                           "instead of guessing. Every value here is handed to the "
+                           "classifier as data — no crate below the CLI opens this file."},
     "ingest": {"title": "Ingest limits", "owner": "e1.2",
                "doc": "The size cap: a bigger blob is recorded as oversized, never slurped."},
     "cache": {"title": "Cache caps", "owner": "ADR-004 §11",
@@ -1232,6 +1240,33 @@ KEY_LIST: list[Key] = [
            "before every other rule, including a turn event: when the human has said "
            "two commits are one change, the harness does not overrule them.",
        analyzer="episode.segment", ticket="e1.3"),
+    # --- attribution (e4.1: who wrote this commit, and with what evidence) ----
+    _k(path="attribution.agents.<agent-id>", kind="string_list", merge="extend", default=[],
+       doc="The registry of known agents: one entry per agent id, holding lower-cased "
+           "substrings of an author, committer or trailer identity. Entries are added to "
+           "the built-in registry (codex, copilot, claude, devin, aider, \u2026), because a "
+           "registry that silently dropped an entry would relabel that agent's commits as "
+           "human work. An entry whose patterns match decides the agent the label names.",
+       analyzer="episode.attribute", ticket="e4.1"),
+    _k(path="attribution.markers", kind="string_list", merge="extend", default=[],
+       doc="Substrings that make an identity look agent-shaped (`jane@copilot.example`), "
+           "added to the built-in table. A marker that matches only inside an address's "
+           "*domain* is read as ambiguity, not as an agent, because `jane@assistant.fr` is "
+           "a person at a hosting name.",
+       analyzer="episode.attribute", ticket="e4.1"),
+    _k(path="attribution.trust_committer", kind="boolean", default=True,
+       doc="Whether the committer counts as evidence when the author does not: a bot that "
+           "applies a human's change moves the committer and leaves the author alone. A "
+           "repository whose CI commits everything should turn this off rather than read "
+           "every episode as `agent`.",
+       analyzer="episode.attribute", ticket="e4.1"),
+    _k(path="attribution.ambiguous_below", kind="number", default=0.5, minimum=0.0,
+       maximum=1.0, units="confidence",
+       doc="Below this confidence the verdict is `unknown` with the reason printed, rather "
+           "than the weak label the evidence would have supported. The built-in 0.50 prices "
+           "the weakest rung (`identity`) exactly at the bar, so nothing is demoted until a "
+           "repository asks for it.",
+       analyzer="episode.attribute", ticket="e4.1"),
     # --- ingest / store / memory caps (defaults come from the budget table) --
     _k(path="ingest.size_cap_mib", kind="integer", default=8, fallback=8,
        budget="ingest.file_size_cap.mib", units="MiB", minimum=1,

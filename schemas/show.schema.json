@@ -111,6 +111,53 @@
               "description": "Added lines across every commit in the episode, not just this one.",
               "type": "integer"
             },
+            "attribution": {
+              "additionalProperties": false,
+              "description": "The case behind `author_kind` (`e4.1`): the rung that decided, the agent it named, the evidence list, and the reason a label was refused. Null when the row was written before migration 4, which stored the label and nothing else.",
+              "properties": {
+                "agent": {
+                  "description": "The agent the evidence named, when it named exactly one.",
+                  "type": ["string", "null"]
+                },
+                "confidence": {
+                  "description": "Confidence in `kind`; 0.0 means nothing was known, not that nothing matters.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                "evidence": {
+                  "description": "Every rung that fired, strongest first.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "confidence": {"type": "number"},
+                      "detail": {
+                        "description": "The literal, in the commit's own spelling.",
+                        "type": "string"
+                      },
+                      "source": {"type": "string"}
+                    },
+                    "required": ["confidence", "detail", "source"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "kind": {
+                  "description": "`agent`, `human` or `unknown` - the same vocabulary as `author_kind`.",
+                  "type": "string"
+                },
+                "reason": {
+                  "description": "Why the verdict is `unknown`, or why a label was refused rather than guessed.",
+                  "type": ["string", "null"]
+                },
+                "source": {
+                  "description": "The rung that decided: `correction`, `harness`, `trailer`, `declared`, `author`, `committer`, `message`, `identity`, `absent`.",
+                  "type": "string"
+                }
+              },
+              "required": ["confidence", "evidence", "kind", "source"],
+              "type": ["object", "null"]
+            },
             "author_confidence": {
               "description": "`author_kind`'s confidence: a signature is certain, a heuristic is a prior.",
               "type": "number"

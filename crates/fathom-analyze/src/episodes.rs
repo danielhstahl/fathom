@@ -16,6 +16,7 @@
 //! path, the fix is a boundary-stamp cache keyed like every other analyzer's, not a smarter incremental
 //! rule invented under pressure.
 
+use fathom_ingest::attribute::Correction;
 use fathom_ingest::segment::{self, CommitFacts, Rules};
 use fathom_store::episode::EpisodeRow;
 use fathom_store::spine::Store;
@@ -48,10 +49,15 @@ pub struct Report {
 /// [`Error::Store`] if the store cannot be read or written; the write is one transaction, so a failure
 /// leaves the previous episode set intact rather than half-replaced.
 pub fn rebuild(store: &mut Store, rules: &Rules, now: i64) -> Result<Report, Error> {
+    // Corrections are store data, not configuration: whatever the human said last is the first rung of the
+    // next run (`e4.1`). They overwrite whatever the caller's policy carried, because the store is the
+    // only place a correction can be *stored*, and a run that ignored it would relabel the commit back.
+    let mut rules = rules.clone();
+    rules.attribution.corrections = corrections(store)?;
     let inputs = store.episode_inputs()?;
     let lineage = store.primary_lineage()?;
     let facts: Vec<CommitFacts> = inputs.iter().map(to_facts).collect();
-    let episodes = segment::segment(&facts, rules);
+    let episodes = segment::segment(&facts, &rules);
     let rows: Vec<EpisodeRow> = episodes
         .iter()
         .zip(inputs.iter())
@@ -69,12 +75,31 @@ pub fn rebuild(store: &mut Store, rules: &Rules, now: i64) -> Result<Report, Err
     })
 }
 
+/// The store's correction rows, in the shape the classifier reads.
+///
+/// A kind the classifier does not know is dropped rather than guessed at: a row written by a newer build is
+/// evidence of nothing, and silently reading it as `unknown` would move a label nobody asked to move.
+fn corrections(store: &Store) -> Result<Vec<Correction>, Error> {
+    Ok(store
+        .attribution_corrections()?
+        .iter()
+        .filter_map(|row| {
+            fathom_ingest::attribute::AuthorKind::parse(&row.kind).map(|kind| Correction {
+                identity: row.identity.clone(),
+                kind,
+                agent: (!row.agent.is_empty()).then(|| row.agent.clone()),
+            })
+        })
+        .collect())
+}
+
 /// The store's row shape → the segmentation's row shape.
 ///
 /// The session and turn are read from trailers here (ADR-005's hook events carry the same keys, and the
 /// ingest side maps them onto the same two fields, so a trailer and an event cannot disagree by
 /// construction).
-fn to_facts(input: &fathom_store::episode::EpisodeInput) -> CommitFacts {
+#[must_use]
+pub fn to_facts(input: &fathom_store::episode::EpisodeInput) -> CommitFacts {
     let trailers = input.trailers.clone();
     let session_id = trailer(&trailers, "agent-session").or_else(|| trailer(&trailers, "session"));
     let turn_id = trailer(&trailers, "agent-turn").or_else(|| trailer(&trailers, "turn"));
@@ -83,6 +108,8 @@ fn to_facts(input: &fathom_store::episode::EpisodeInput) -> CommitFacts {
         parents: input.parents.clone(),
         author_name: input.author_name.clone(),
         author_email: input.author_email.clone(),
+        committer_name: input.committer_name.clone(),
+        committer_email: input.committer_email.clone(),
         author_utc: input.author_utc,
         subject: input.subject.clone(),
         trailers,
@@ -125,8 +152,19 @@ fn to_row(episode: &segment::Episode, lineage: &str) -> EpisodeRow {
         turn_id: episode.turn_id.clone(),
         boundary_rule: episode.rule.as_str().to_owned(),
         boundary_confidence: episode.confidence,
-        author_kind: episode.author_kind.as_str().to_owned(),
-        author_confidence: episode.author_confidence,
+        author_kind: episode.attribution.kind.as_str().to_owned(),
+        author_confidence: episode.attribution.confidence,
+        // The rung that decided is the strongest item of the evidence list, which is why the list is kept
+        // in the store at all: the label alone cannot be argued with (`e4.1`).
+        attribution_source: episode
+            .attribution
+            .evidence
+            .first()
+            .map(|item| item.source.to_string())
+            .unwrap_or_default(),
+        attribution_agent: episode.attribution.agent.clone().unwrap_or_default(),
+        attribution_evidence: episode.attribution.evidence_json(),
+        attribution_reason: episode.attribution.reason.clone().unwrap_or_default(),
         noise_share: 0.0,
         epoch: 0,
         first_oid: episode.first_oid.clone(),

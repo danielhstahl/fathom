@@ -4,6 +4,71 @@
   "additionalProperties": false,
   "description": "Configuration for Fathom, the terminal UI that keeps a human's mental model of a codebase a coding agent is writing. Values are layered: command-line flags > environment variables (FATHOM_*, segments joined by __) > repo fathom.toml > user config > built-in defaults, and every effective value is explainable with `fathom config explain`. GENERATED from src/recommender/config/schema.py by `python3 -m recommender.config schema --write`; do not edit by hand.",
   "properties": {
+    "attribution": {
+      "additionalProperties": false,
+      "description": "Who wrote a commit: the registry of known agents, the marker table, and the confidence bar below which Fathom prints `?` instead of guessing. Every value here is handed to the classifier as data \u2014 no crate below the CLI opens this file.",
+      "properties": {
+        "agents": {
+          "additionalProperties": false,
+          "description": "The registry of known agents: one entry per agent id, holding lower-cased substrings of an author, committer or trailer identity. Entries are added to the built-in registry (codex, copilot, claude, devin, aider, \u2026), because a registry that silently dropped an entry would relabel that agent's commits as human work. An entry whose patterns match decides the agent the label names.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "description": "The registry of known agents: one entry per agent id, holding lower-cased substrings of an author, committer or trailer identity. Entries are added to the built-in registry (codex, copilot, claude, devin, aider, \u2026), because a registry that silently dropped an entry would relabel that agent's commits as human work. An entry whose patterns match decides the agent the label names.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true,
+              "x-fathom-analyzer": "episode.attribute",
+              "x-fathom-merge": "extend",
+              "x-fathom-open": [
+                "a known-agent id from the attribution registry (`e4.1`): the name the label prints as the agent"
+              ],
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.1"
+            }
+          },
+          "type": "object"
+        },
+        "ambiguous_below": {
+          "default": 0.5,
+          "description": "Below this confidence the verdict is `unknown` with the reason printed, rather than the weak label the evidence would have supported. The built-in 0.50 prices the weakest rung (`identity`) exactly at the bar, so nothing is demoted until a repository asks for it.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number",
+          "x-fathom-analyzer": "episode.attribute",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.1",
+          "x-fathom-units": "confidence"
+        },
+        "markers": {
+          "default": [],
+          "description": "Substrings that make an identity look agent-shaped (`jane@copilot.example`), added to the built-in table. A marker that matches only inside an address's *domain* is read as ambiguity, not as an agent, because `jane@assistant.fr` is a person at a hosting name.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "episode.attribute",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.1"
+        },
+        "trust_committer": {
+          "default": true,
+          "description": "Whether the committer counts as evidence when the author does not: a bot that applies a human's change moves the committer and leaves the author alone. A repository whose CI commits everything should turn this off rather than read every episode as `agent`.",
+          "type": "boolean",
+          "x-fathom-analyzer": "episode.attribute",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.1"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-003 \u00a78 / e4.1 (`reco-w7q`)",
+      "x-fathom-section-title": "Authorship attribution"
+    },
     "blast": {
       "additionalProperties": false,
       "description": "How far the blast-radius walk goes before it declares a partial, the confidence attached to each basis, and the path-heuristic weights that decide what counts as reached.",
@@ -2977,6 +3042,10 @@
     ],
     "precedence": "flag > env > repo > user > defaults",
     "sections": {
+      "attribution": {
+        "owner": "ADR-003 \u00a78 / e4.1 (`reco-w7q`)",
+        "title": "Authorship attribution"
+      },
       "blast": {
         "owner": "e2.10",
         "title": "Blast radius"

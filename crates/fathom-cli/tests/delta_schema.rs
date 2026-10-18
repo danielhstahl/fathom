@@ -257,15 +257,24 @@ fn collect_declared(value: &Value, out: &mut BTreeMap<String, Vec<String>>) {
         Value::Object(map) => {
             if let Some(properties) = map.get("properties").and_then(Value::as_object) {
                 for (key, child) in properties {
-                    let types = child.get("type").map_or_else(Vec::new, |t| match t {
-                        Value::String(one) => vec![one.clone()],
-                        Value::Array(many) => many
-                            .iter()
-                            .filter_map(Value::as_str)
-                            .map(str::to_owned)
-                            .collect(),
-                        other => vec![other.to_string()],
-                    });
+                    // A property declared without a `type` — a `$defs` placeholder, an untyped object —
+                    // declares *shape* but not *kind*, so it accepts whatever the model writes there.
+                    // Recorded as `any` rather than skipped: one untyped declaration of a name must not be
+                    // silenced by a second, typed declaration of the same leaf name somewhere else in the
+                    // document (`evidence` is a figure's evidence object and an attribution's evidence
+                    // array at once, and both are correct where they live).
+                    let types = child.get("type").map_or_else(
+                        || vec!["any".to_owned()],
+                        |t| match t {
+                            Value::String(one) => vec![one.clone()],
+                            Value::Array(many) => many
+                                .iter()
+                                .filter_map(Value::as_str)
+                                .map(str::to_owned)
+                                .collect(),
+                            other => vec![other.to_string()],
+                        },
+                    );
                     out.entry(key.clone()).or_default().extend(types);
                 }
             }
@@ -379,7 +388,7 @@ fn every_key_a_document_writes_is_declared_by_the_schema() {
         let key = path.rsplit('.').next().unwrap_or(path);
         match declared.get(key) {
             None => missing.push(format!("{path} ({kind}) is written and never declared")),
-            Some(types) if !types.is_empty() && types.iter().any(|t| t == kind) => {}
+            Some(types) if types.iter().any(|t| t == kind || t == "any") => {}
             // A property declared with no `type` (a `$defs` placeholder, say) is a declaration the
             // test cannot check the type of, and saying so is better than pretending it matched.
             Some(types) if types.is_empty() => {}

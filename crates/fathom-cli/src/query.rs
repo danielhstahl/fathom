@@ -230,6 +230,7 @@ fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_j
         "boundary_confidence": boundary_confidence,
         "author_kind": author_kind,
         "author_confidence": author_confidence,
+        "attribution": attribution_json(episode),
         "session_id": session_id,
         "turn_id": turn_id,
         // ADR-003 §9.1 / §18.2 D4: the id is `<session_id>:<turn_index>`, and the number is printed as
@@ -333,6 +334,41 @@ fn show_text(
     out
 }
 
+/// The attribution block for `--json` (`e4.1`, `reco-w7q`): the case behind `author_kind`.
+///
+/// `null` when the row carries no attribution detail — a store written before migration 4, which stored
+/// the label and nothing else. That is a different statement from an empty evidence list, in the same way
+/// [`identity_json`]'s `null` is a different statement from a weak boundary.
+#[cfg(feature = "sqlite-bundled")]
+fn attribution_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_json::Value {
+    use fathom_store::episode::EpisodeRow;
+    let Some(EpisodeRow {
+        author_kind,
+        author_confidence,
+        attribution_source,
+        attribution_agent,
+        attribution_evidence,
+        attribution_reason,
+        ..
+    }) = episode
+    else {
+        return serde_json::Value::Null;
+    };
+    let evidence: Vec<fathom_analyze::insight::AttributionEvidence> =
+        serde_json::from_str(attribution_evidence).unwrap_or_default();
+    if attribution_source.is_empty() && evidence.is_empty() {
+        return serde_json::Value::Null;
+    }
+    json!({
+        "kind": author_kind,
+        "source": attribution_source,
+        "agent": (!attribution_agent.is_empty()).then_some(attribution_agent.as_str()),
+        "confidence": author_confidence,
+        "reason": (!attribution_reason.is_empty()).then_some(attribution_reason.as_str()),
+        "evidence": evidence,
+    })
+}
+
 /// The identity lines of the card, in the order a reviewer reads them: what is this unit, what says so,
 /// how much do we trust it. Empty when the store has no episode for the commit, with one line saying so —
 /// an absent block is a blank, and a blank is what this surface is not allowed to print.
@@ -362,6 +398,38 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
         boundary_confidence,
         author_confidence
     )];
+    // The attribution block (`e4.1`, `reco-w7q`): the rung that decided, the agent it named, and — when the
+    // label was refused — the reason for refusing it. A card that printed `?` with no reason is the silent
+    // bucket the ticket forbids, and a card that printed `agent` with no evidence could not be argued with.
+    let evidence: Vec<fathom_analyze::insight::AttributionEvidence> =
+        serde_json::from_str(&row.attribution_evidence).unwrap_or_default();
+    if !row.attribution_source.is_empty() || !evidence.is_empty() {
+        let agent = if row.attribution_agent.is_empty() {
+            "—"
+        } else {
+            row.attribution_agent.as_str()
+        };
+        out.push(format!(
+            "  attribution  {author_kind} · {agent} · {author_confidence:.2} via {}",
+            if row.attribution_source.is_empty() {
+                "(rung not recorded)"
+            } else {
+                &row.attribution_source
+            }
+        ));
+        for item in evidence.iter().take(3) {
+            out.push(format!(
+                "  evidence    {} {:.2} · {}",
+                item.source, item.confidence, item.detail
+            ));
+        }
+        if !row.attribution_reason.is_empty() {
+            out.push(format!("  why         {}", row.attribution_reason));
+            out.push(
+                "  correct     fathom attribution correct <identity> --kind agent|human — `fathom attribution list` prints the keys stored so far".to_owned(),
+            );
+        }
+    }
     if *overridden {
         out.push(
             "  provenance  this boundary was forced from fathom.toml, not derived from the history"

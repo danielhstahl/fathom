@@ -43,7 +43,7 @@ use sha2::Digest as _;
 /// never migrates derived data" (§9.5) a mechanism instead of an intention: bump this number and every
 /// stored analysis becomes unreachable, so the rebuild path is the same code path a fresh clone takes —
 /// the *tested* one.
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -90,6 +90,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (1, MIGRATION_1),
     (2, MIGRATION_2),
     (3, crate::episode::MIGRATION_3),
+    (4, crate::episode::MIGRATION_4),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.
@@ -226,6 +227,11 @@ pub struct CommitRow {
     pub author_utc: i64,
     /// The committer's date, unix millis.
     pub committer_utc: i64,
+    /// The committer's name, as committed — an attribution input (`e4.1`): a rebase and a bot-applied
+    /// change both move the committer and leave the author alone.
+    pub committer_name: String,
+    /// See [`CommitRow::committer_name`].
+    pub committer_email: String,
     /// First line of the message, byte-capped.
     pub message_head: String,
     /// sha256 of the whole message, hex.
@@ -482,6 +488,30 @@ impl Store {
                 version = *target;
             }
         }
+        // The column additions §9.5 keeps out of the migration strings, applied by a probe: reading the
+        // table's own columns first is what makes re-running the step a no-op, which is the same property
+        // `CREATE TABLE IF NOT EXISTS` gives the migration strings, and for the same reason — a store that
+        // already has a column must not fail because it was asked for again (`e4.1`).
+        for (table, column, definition) in crate::episode::ADDED_COLUMNS {
+            let mut probe = self
+                .conn
+                .prepare(&format!("PRAGMA table_info({table})"))
+                .map_err(|err| corrupt("probing a table's columns", &err))?;
+            let names = probe
+                .query_map([], |row| row.get::<_, String>(1))
+                .map_err(|err| corrupt("reading a table's columns", &err))?
+                .collect::<Result<Vec<String>, _>>()
+                .map_err(|err| corrupt("reading a table's columns", &err))?;
+            drop(probe);
+            if !names.iter().any(|name| name == column) {
+                self.conn
+                    .execute_batch(&format!(
+                        "ALTER TABLE {table} ADD COLUMN {column} {definition};"
+                    ))
+                    .map_err(|err| corrupt(format!("adding {table}.{column}"), &err))?;
+            }
+        }
+
         // §9.1: the two version stamps must agree, and the second one is only meaningful once a store
         // exists at all, so it is written here rather than by a separate init step.
         let declared = self.meta("schema_version")?;
@@ -746,8 +776,9 @@ impl Store {
                 .prepare(
                     "INSERT INTO git_commit(oid, tree_oid, parent_oids, author_name, author_email,
                         author_utc, committer_utc, message_head, message_hash, trailers,
-                        n_files, n_add, n_del, n_binary, oversized, ingested_utc, run_id)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
+                        n_files, n_add, n_del, n_binary, oversized, ingested_utc, run_id,
+                        committer_name, committer_email)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
                      ON CONFLICT(oid) DO NOTHING",
                 )
                 .map_err(|err| corrupt("writing commit rows", &err))?;
@@ -782,7 +813,9 @@ impl Store {
                         row.n_binary,
                         i64::from(row.oversized),
                         now,
-                        run
+                        run,
+                        row.committer_name,
+                        row.committer_email
                     ])
                     .map_err(|err| corrupt("writing commit rows", &err))?;
                 written += 1;
@@ -980,7 +1013,7 @@ impl Store {
             .query_row(
                 "SELECT oid, tree_oid, parent_oids, author_name, author_email, author_utc,
                         committer_utc, message_head, message_hash, trailers, n_files, n_add, n_del,
-                        n_binary, oversized, run_id
+                        n_binary, oversized, run_id, committer_name, committer_email
                  FROM git_commit WHERE oid = ?1",
                 params![oid],
                 |row| {
@@ -1001,6 +1034,8 @@ impl Store {
                         row.get::<_, i64>(13)?,
                         row.get::<_, i64>(14)?,
                         row.get::<_, i64>(15)?,
+                        row.get::<_, String>(16)?,
+                        row.get::<_, String>(17)?,
                     ))
                 },
             )
@@ -1022,6 +1057,8 @@ impl Store {
             n_binary,
             oversized,
             _run_id,
+            committer_name,
+            committer_email,
         ) = row;
         let files = self.read_files(&oid)?;
         Ok(CommitRow {
@@ -1041,6 +1078,8 @@ impl Store {
             n_del,
             n_binary,
             oversized: oversized != 0,
+            committer_name,
+            committer_email,
             files,
         })
     }
@@ -1463,6 +1502,8 @@ mod tests {
             author_email: "ada@example.invalid".into(),
             author_utc: 1_700_000_000_000,
             committer_utc: 1_700_000_000_000,
+            committer_name: "t".to_owned(),
+            committer_email: "t@example.invalid".to_owned(),
             message_head: "Add the thing".into(),
             message_hash: "c".repeat(64),
             trailers: BTreeMap::from([("agent-session".to_owned(), "s-1".to_owned())]),

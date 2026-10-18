@@ -138,6 +138,27 @@ time_gap_minutes = 30
 # force_split = ["subject:address review", "oid:1a2b3c"]
 # force_merge = ["subject:typo"]
 
+[attribution]
+# Who wrote a commit (`e4.1`, reco-w7q). Like `[episode]`, the *order* of the ladder is not configurable:
+# it is an argument about which class of evidence is trustworthy, and a ladder a user reordered is an
+# authorship nobody can explain. What is configurable is what the ladder is allowed to recognise.
+# trust_committer = false     # a bot that applies a human's change moves the committer and leaves the
+                               # author alone; a repository whose CI commits everything should say so
+                               # rather than read every episode as `agent`.
+# ambiguous_below = 0.6       # raise it and Fathom prints `?` with the reason instead of the weak label
+                               # the evidence would have supported. The built-in 0.50 prices the weakest
+                               # rung exactly at the bar, so nothing is demoted until a repo asks for it.
+# markers = ["worktree-bot"]  # added to the built-in agent-shaped markers, never replacing them — a
+                               # marker table that replaced the built-ins would relabel Copilot's commits
+                               # as human work. A marker that matches only inside an address's *domain*
+                               # is read as ambiguity, not as an agent.
+
+# The registry: the id is what the label prints as the agent's name, the patterns are lower-cased
+# substrings of an author, committer or trailer identity. Also added to the built-ins (codex, copilot,
+# claude, devin, aider, renovate, …) for the same reason.
+[attribution.agents]
+# fathom-fixtures = ["fathom-fixtures"]
+
 [retention]
 # ADR-004 §8.2's windows, restated here only to widen the store-growth history: the CI budget
 # gate (`e0.11`) wants two quarters of `usage_snapshot` rows to call a trend a trend.

@@ -474,6 +474,43 @@ impl FileDelta {
     }
 }
 
+/// The attribution an episode carries, as the delta document prints it (`e4.1`, `reco-w7q`).
+///
+/// This is the label *plus the case for it*: which class of evidence decided, which agent it named, the
+/// whole evidence list, and the reason when the answer is `unknown`. The ticket's rule is that an ambiguous
+/// commit is never silently bucketed, and a reviewer who cannot see why a commit reads `agent` cannot
+/// disagree with it — the same argument ADR-003 §4 makes about boundary rules, applied to authorship.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttributionRef {
+    /// `agent`, `human` or `unknown` — the same vocabulary as [`EpisodeRef::author_kind`].
+    pub kind: String,
+    /// The rung that decided: `correction`, `harness`, `trailer`, `declared`, `author`, `committer`,
+    /// `message`, `identity`, `absent`.
+    pub source: String,
+    /// The agent the evidence named, when it named exactly one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    /// Confidence in `kind`; `0.0` means nothing was known, not that nothing matters.
+    pub confidence: f64,
+    /// Why this is `unknown`, or why a label was refused. Absent when the answer was simply the answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    /// Everything that fired, strongest first. Empty on a row that stored no evidence list.
+    #[serde(default)]
+    pub evidence: Vec<AttributionEvidence>,
+}
+
+/// One line of the evidence list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttributionEvidence {
+    /// Which class of evidence this is, in the same vocabulary as [`AttributionRef::source`].
+    pub source: String,
+    /// The literal, in the commit's own spelling.
+    pub detail: String,
+    /// What this item alone would have priced the verdict at.
+    pub confidence: f64,
+}
+
 /// The episode's own identity, carried verbatim from the spine.
 ///
 /// The digests are here so that a consumer of `--json` can relink after a rebase without asking the store
@@ -506,6 +543,10 @@ pub struct EpisodeRef {
     /// How far to trust the attribution; `None` prints `?`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author_confidence: Option<f64>,
+    /// The attribution behind [`EpisodeRef::author_kind`], with the evidence that produced it (`e4.1`).
+    /// `None` on a row written before migration 4, which recorded the label and nothing else.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<AttributionRef>,
     /// Which boundary rule opened the episode, as the store recorded it; how far to trust it is
     /// [`EpisodeRef::boundary_confidence`] (`ADR-003 §4.7`).
     pub boundary_rule: String,
@@ -2035,6 +2076,26 @@ pub fn render(delta: &EpisodeDelta) -> Vec<String> {
         episode.review,
         if episode.live { "" } else { " · gone" }
     ));
+    // The attribution line, shown whenever there is a case to show (`e4.1`): the rung, the agent, and the
+    // reason when the label was refused rather than earned.
+    if let Some(attribution) = &episode.attribution {
+        let agent = attribution.agent.as_deref().unwrap_or("—");
+        let mut line = format!(
+            "attribution {} · {agent} · {:.2} via {}",
+            attribution.kind, attribution.confidence, attribution.source
+        );
+        if let Some(reason) = &attribution.reason {
+            line.push_str(" · ");
+            line.push_str(reason);
+        }
+        out.push(line);
+        if let Some(first) = attribution.evidence.first() {
+            out.push(format!(
+                "evidence  {} {:.2} — {}",
+                first.source, first.confidence, first.detail
+            ));
+        }
+    }
     for section in &delta.sections {
         out.push(format!(
             "{} [{}] {}",
@@ -2204,8 +2265,8 @@ mod store_bridge {
     use fathom_store::spine::Store;
 
     use super::{
-        EpisodeDelta, EpisodeRef, FileDelta, Input, MEMBER_CAP, Provenance, RiskView, Totals,
-        compose,
+        AttributionEvidence, AttributionRef, EpisodeDelta, EpisodeRef, FileDelta, Input,
+        MEMBER_CAP, Provenance, RiskView, Totals, compose,
     };
     use crate::error::Error;
     use crate::risk::{self, FileChange};
@@ -2237,6 +2298,27 @@ mod store_bridge {
     }
 
     /// One episode, fully read.
+    /// The store row's attribution columns → the delta's attribution block (`e4.1`).
+    ///
+    /// An empty `attribution_source` **and** an empty evidence list mean the row was written before
+    /// migration 4, or by a build that stored the label without the case for it. The label is still true
+    /// in `author_kind`, so this returns `None` rather than inventing evidence to go with it.
+    fn attribution_ref(row: &fathom_store::episode::EpisodeRow) -> Option<AttributionRef> {
+        if row.attribution_source.is_empty() && row.attribution_evidence.is_empty() {
+            return None;
+        }
+        let evidence: Vec<AttributionEvidence> =
+            serde_json::from_str(&row.attribution_evidence).unwrap_or_default();
+        Some(AttributionRef {
+            kind: row.author_kind.clone(),
+            source: row.attribution_source.clone(),
+            agent: (!row.attribution_agent.is_empty()).then(|| row.attribution_agent.clone()),
+            confidence: row.author_confidence,
+            reason: (!row.attribution_reason.is_empty()).then(|| row.attribution_reason.clone()),
+            evidence,
+        })
+    }
+
     fn build_one(store: &Store, row: &EpisodeRow) -> Result<EpisodeDelta, Error> {
         let members = store.episode_members(&row.id)?;
         let mut files: BTreeMap<String, Aggregated> = BTreeMap::new();
@@ -2330,6 +2412,7 @@ mod store_bridge {
                 author_name: row.author_name.clone(),
                 author_email: row.author_email.clone(),
                 author_confidence: Some(row.author_confidence),
+                attribution: attribution_ref(row),
                 boundary_rule: row.boundary_rule.clone(),
                 boundary_confidence: Some(row.boundary_confidence),
                 session: row.session_id.clone(),
@@ -2486,6 +2569,7 @@ impl EpisodeRef {
             author_name: String::new(),
             author_email: String::new(),
             author_confidence: None,
+            attribution: None,
             boundary_rule: String::new(),
             boundary_confidence: None,
             session: None,

@@ -42,6 +42,8 @@ fn commit(
         author_email: format!("{author}@example.invalid"),
         author_utc: T0 + at * 1_000,
         committer_utc: T0 + at * 1_000,
+        committer_name: author.to_owned(),
+        committer_email: format!("{author}@example.invalid"),
         message_head: subject.to_owned(),
         message_hash: format!("{:064x}", n),
         trailers: BTreeMap::new(),

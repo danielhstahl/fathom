@@ -1195,6 +1195,8 @@ pub fn projection(record: &CommitRecord) -> CommitRow {
         // The schema's `*_utc` columns are unix milliseconds, the unit the reference implementation writes.
         author_utc: record.author.when.as_unix_micros() / 1_000,
         committer_utc: record.committer.when.as_unix_micros() / 1_000,
+        committer_name: record.committer.name.clone(),
+        committer_email: record.committer.email.clone(),
         message_head: record.message.head.clone(),
         message_hash: record.message.hash.clone(),
         trailers: record.trailers.to_map(),

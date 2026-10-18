@@ -86,6 +86,8 @@ fn commit(n: usize) -> CommitRow {
         author_email: format!("agent-{}@example.invalid", n % 4),
         author_utc: T0 + (n as i64) * 60_000,
         committer_utc: T0 + (n as i64) * 60_000,
+        committer_name: format!("agent-{}", n % 4),
+        committer_email: format!("agent-{}@example.invalid", n % 4),
         message_head: format!("feat: step {n}"),
         message_hash: format!("{:064x}", n),
         trailers: BTreeMap::new(),

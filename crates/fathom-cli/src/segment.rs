@@ -23,6 +23,7 @@
 
 use std::path::Path;
 
+use fathom_ingest::attribute::Agent;
 use fathom_ingest::segment::{Override, Rules};
 
 /// What the configuration said about segmentation, and what could not be honoured.
@@ -60,6 +61,98 @@ pub fn from_repository(root: &Path) -> Resolved {
     }
 }
 
+/// Read `[attribution]` into the policy (`e4.1`, `reco-w7q`).
+///
+/// Four keys, each one a value the classifier is handed rather than a file it opens:
+///
+/// * `agents` — the registry: `id = [patterns]`, a table because the id is the thing a user wants to name
+///   on the label. Entries are *added* to the built-ins; a repository that wants the built-ins gone removes
+///   them by not shipping this key at all, because a registry that silently dropped `copilot` would relabel
+///   Copilot's commits as human work.
+/// * `markers` — substrings that make an identity look agent-shaped, added to the built-in table for the
+///   same reason.
+/// * `trust_committer` — turn the committer rung off if this repository's CI commits everything.
+/// * `ambiguous_below` — raise it and Fathom prints `?` more often; that is the deliberate direction to
+///   lean, so a value above the bar is a notice rather than a surprise on the card.
+fn read_attribution(table: &toml_edit::Table, out: &mut Resolved) {
+    if let Some(markers) = table.get("markers").and_then(toml_edit::Item::as_array) {
+        for entry in markers.iter() {
+            let Some(marker) = entry.as_str() else {
+                out.notices.push(format!(
+                    "attribution.markers holds a non-string entry: {entry}"
+                ));
+                continue;
+            };
+            let marker = marker.trim().to_ascii_lowercase();
+            if marker.is_empty() {
+                out.notices.push(
+                    "attribution.markers holds an empty marker, which matches everything"
+                        .to_owned(),
+                );
+                continue;
+            }
+            out.rules.attribution.markers.push(marker);
+        }
+    }
+
+    if let Some(value) = table
+        .get("trust_committer")
+        .and_then(toml_edit::Item::as_value)
+        .and_then(toml_edit::Value::as_bool)
+    {
+        out.rules.attribution.trust_committer = value;
+    }
+
+    if let Some(value) = table.get("ambiguous_below") {
+        let number = value
+            .as_value()
+            .and_then(|v| v.as_float().or_else(|| v.as_integer().map(|i| i as f64)));
+        match number {
+            Some(bar) if (0.0..=1.0).contains(&bar) => out.rules.attribution.ambiguous_below = bar,
+            Some(bar) => out.notices.push(format!(
+                "attribution.ambiguous_below = {bar} is not a confidence between 0 and 1; the default {} was used",
+                Rules::default().attribution.ambiguous_below
+            )),
+            None => out.notices.push(
+                "attribution.ambiguous_below must be a number between 0 and 1".to_owned(),
+            ),
+        }
+    }
+
+    let Some(agents) = table.get("agents").and_then(toml_edit::Item::as_table) else {
+        return;
+    };
+    for (id, patterns) in agents.iter() {
+        let Some(list) = patterns.as_array() else {
+            out.notices.push(format!(
+                "attribution.agents.{id} is not a list of patterns, so the entry was not registered"
+            ));
+            continue;
+        };
+        let patterns: Vec<String> = list
+            .iter()
+            .filter_map(|value| value.as_str())
+            .map(|pattern| pattern.trim().to_ascii_lowercase())
+            .filter(|pattern| !pattern.is_empty())
+            .collect();
+        if patterns.len() != list.iter().count() {
+            out.notices.push(format!(
+                "attribution.agents.{id} holds an entry that is not a non-empty string; the rest were kept"
+            ));
+        }
+        if patterns.is_empty() {
+            out.notices.push(format!(
+                "attribution.agents.{id} has no patterns, so it could never match; not registered"
+            ));
+            continue;
+        }
+        out.rules.attribution.agents.push(Agent {
+            id: id.to_string(),
+            patterns,
+        });
+    }
+}
+
 /// Parse the `[episode]` table out of `fathom.toml` text.
 ///
 /// # Errors
@@ -77,6 +170,13 @@ pub fn rules_from_toml(text: &str) -> Resolved {
             return out;
         }
     };
+    if let Some(attribution) = document
+        .get("attribution")
+        .and_then(toml_edit::Item::as_table)
+    {
+        read_attribution(attribution, &mut out);
+    }
+
     let Some(episode) = document.get("episode").and_then(toml_edit::Item::as_table) else {
         return out;
     };
@@ -263,6 +363,68 @@ mod tests {
             reordered.notices
         );
         assert!(reordered.notices[0].contains("ADR-003"));
+    }
+
+    #[test]
+    fn the_attribution_registry_is_read_as_the_values_the_classifier_uses() {
+        // `[attribution]` is the registry the ticket asks for, and the test that matters about a config
+        // parser is the one that follows the value into the thing that reads it (`e4.1`).
+        let resolved = rules_from_toml(
+            r#"
+            [attribution]
+            markers = ["worktree-bot"]
+            trust_committer = false
+            ambiguous_below = 0.7
+
+            [attribution.agents]
+            worktree-bot = ["worktree-bot", "wt-bot"]
+            "#,
+        );
+        assert!(resolved.notices.is_empty(), "{:?}", resolved.notices);
+        let policy = resolved.rules.attribution;
+        assert!(
+            !policy.trust_committer,
+            "a repository may turn the committer rung off"
+        );
+        assert!((policy.ambiguous_below - 0.7).abs() < 1e-9);
+        assert!(
+            policy.has_marker("worktree-bot"),
+            "the marker table is extended"
+        );
+        assert!(policy.has_marker("bot"), "and never replaces the built-ins");
+        assert_eq!(
+            policy
+                .registry_match("wt-bot@example.invalid")
+                .map(str::to_owned),
+            Some("worktree-bot".to_owned()),
+            "the registry entry decides the name the label prints"
+        );
+    }
+
+    #[test]
+    fn an_unusable_attribution_value_is_a_notice_and_not_a_quiet_default() {
+        let resolved = rules_from_toml(
+            r#"
+            [attribution]
+            ambiguous_below = 4
+            markers = ["", "ok"]
+
+            [attribution.agents]
+            broken = "not a list"
+            "#,
+        );
+        let notices = resolved.notices.join("\n");
+        assert!(notices.contains("ambiguous_below"), "{notices}");
+        assert!(notices.contains("empty marker"), "{notices}");
+        assert!(notices.contains("agents.broken"), "{notices}");
+        assert!(
+            resolved.rules.attribution.has_marker("ok"),
+            "the parts that parsed are still used"
+        );
+        assert!(
+            (resolved.rules.attribution.ambiguous_below - 0.5).abs() < 1e-9,
+            "a refused value leaves the default in place"
+        );
     }
 
     #[test]

@@ -229,6 +229,12 @@ fn git(cwd: &Path, args: &[&str], extra: &[(&str, &str)]) -> String {
         .iter()
         .find(|(key, _)| *key == "AUTHOR")
         .map_or("pi-agent", |(_, value)| *value);
+    let email = extra
+        .iter()
+        .find(|(key, _)| *key == "EMAIL")
+        .map_or(format!("{author}@example.invalid"), |(_, value)| {
+            (*value).to_owned()
+        });
     let minute: i64 = extra
         .iter()
         .find(|(key, _)| *key == "MINUTE")
@@ -247,9 +253,9 @@ fn git(cwd: &Path, args: &[&str], extra: &[(&str, &str)]) -> String {
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_AUTHOR_NAME", author)
-        .env("GIT_AUTHOR_EMAIL", format!("{author}@example.invalid"))
+        .env("GIT_AUTHOR_EMAIL", &email)
         .env("GIT_COMMITTER_NAME", author)
-        .env("GIT_COMMITTER_EMAIL", format!("{author}@example.invalid"))
+        .env("GIT_COMMITTER_EMAIL", &email)
         .env("GIT_AUTHOR_DATE", &date)
         .env("GIT_COMMITTER_DATE", &date)
         .env("LC_ALL", "C")
@@ -862,4 +868,216 @@ fn score_against_truth(episodes: &[EpisodeRow], truth: &BTreeMap<String, usize>)
         true_positive as f64 / theirs.len() as f64
     };
     (precision, recall)
+}
+
+// ------------------------------------------------------------------------------------
+// e4.1 (`reco-w7q`): attribution. The segmentation decides *where a turn ends*; the
+// attribution ladder decides *who wrote it*, and the store now keeps the case for the
+// verdict — the rung that decided, the agent it named, the evidence list, and the reason
+// when an answer was refused. These three tests are the ticket's last two acceptance
+// criteria: the label reaches the card with its evidence, and a human correction persists
+// and applies to the next commit carrying the same identity.
+// ------------------------------------------------------------------------------------
+
+#[test]
+fn an_episode_carries_its_attribution_with_the_evidence_that_says_so() {
+    let repo = Repo::new("attrib-evidence");
+    repo.init();
+    // A human's identity, and two statements in messages. One names a *registered* agent, so it is
+    // the registry that speaks (`declared`); the other uses git's own `[bot]` convention for a name
+    // no registry knows, so the trailer itself is the evidence (`trailer`). Both are statements, and
+    // both outrank any shape Fathom could read off an identity.
+    repo.commit(
+        "daniel",
+        60,
+        "feat: the store seam",
+        &[("src/store.rs", "// store\n")],
+        &[("Generated-by", "claude-code")],
+    );
+    repo.commit(
+        "daniel",
+        200,
+        "chore: bump the pipeline",
+        &[("tools/bump.sh", "#!/bin/sh\n")],
+        &[(
+            "Co-authored-by",
+            "build-pipeline[bot] <build-pipeline@ci.example.invalid>",
+        )],
+    );
+    index(&repo);
+
+    let rows = live(&repo);
+    let episode = with_summary(&rows, "the store seam");
+    assert_eq!(episode.author_kind, "agent");
+    assert_eq!(
+        episode.attribution_source, "declared",
+        "a trailer naming a registered agent is the registry speaking"
+    );
+    assert_eq!(
+        episode.attribution_agent, "claude",
+        "and it names which agent"
+    );
+    assert!(
+        episode.attribution_evidence.contains("generated-by"),
+        "the evidence list is stored, not recomputed at render time: {}",
+        episode.attribution_evidence
+    );
+    let bot = with_summary(&rows, "bump the pipeline");
+    assert_eq!(bot.author_kind, "agent");
+    assert_eq!(
+        bot.attribution_source, "trailer",
+        "a `[bot]` no registry knows is the trailer's own evidence: {:?}",
+        bot.attribution_evidence
+    );
+    assert!(
+        episode.attribution_reason.is_empty(),
+        "nothing was refused here, so there is no reason to print: {:?}",
+        episode.attribution_reason
+    );
+
+    // The delta document is what the card draws and `--json` prints, so the attribution has to
+    // be *in it* — a card that could not show its evidence could not be argued with either.
+    let delta = fathom_analyze::insight::for_rows(episode, &[], ReviewState::Unread, false);
+    let attribution = delta
+        .episode
+        .attribution
+        .clone()
+        .expect("the delta carries the case");
+    assert!(
+        attribution.evidence[0].detail.contains("generated-by"),
+        "the stored evidence keeps the commit's own spelling: {:?}",
+        attribution.evidence
+    );
+    assert_eq!(attribution.source, "declared");
+    assert_eq!(attribution.agent.as_deref(), Some("claude"));
+    assert_eq!(attribution.kind, "agent");
+    assert!(
+        !attribution.evidence.is_empty(),
+        "the evidence list survives the store round trip"
+    );
+    let rendered = fathom_analyze::insight::render(&delta);
+    assert!(
+        rendered
+            .iter()
+            .any(|line| line.starts_with("attribution agent")),
+        "the rendered card names the rung: {rendered:?}"
+    );
+}
+
+#[test]
+fn a_refused_label_prints_why_instead_of_picking_a_bucket() {
+    let repo = Repo::new("attrib-unknown");
+    repo.init();
+    // The only agent-shaped thing here is a marker that matched inside the address's *domain*, and
+    // `jane@assistant.fr` is a person at a hosting name, not an assistant. The ladder refuses rather
+    // than choosing, and says which two readings it could not choose between.
+    repo.write(&[("src/ambiguous.rs", "// whose is this\n")]);
+    git(repo.path(), &["add", "-A"], &[]);
+    git(
+        repo.path(),
+        &["commit", "-q", "-m", "feat: whose work is this anyway"],
+        &[
+            ("AUTHOR", "Jane"),
+            ("EMAIL", "jane@assistant.fr"),
+            ("MINUTE", "60"),
+        ],
+    );
+    index(&repo);
+
+    let rows = live(&repo);
+    let episode = with_summary(&rows, "whose work is this");
+    assert_eq!(
+        episode.author_kind,
+        "unknown",
+        "a domain match is not an agent: {:?}",
+        (episode.author_kind.as_str(), &episode.attribution_reason)
+    );
+    assert!(
+        !episode.attribution_reason.is_empty(),
+        "`unknown` is a verdict, and a verdict comes with its reason"
+    );
+    assert!(
+        episode.author_confidence < 0.5,
+        "a refused label is not trusted: {}",
+        episode.author_confidence
+    );
+}
+
+#[test]
+fn a_correction_persists_and_relabels_every_later_commit_with_that_identity() {
+    let repo = Repo::new("attrib-correct");
+    repo.init();
+    repo.commit(
+        "claude",
+        60,
+        "feat: written by a machine, allegedly",
+        &[("src/a.rs", "// a\n")],
+        &[("Co-authored-by", "Claude <noreply@anthropic.com>")],
+    );
+    index(&repo);
+    let rows = live(&repo);
+    let before = with_summary(&rows, "written by a machine");
+    assert_eq!(before.author_kind, "agent");
+
+    // The human overrules it, once, for the identity — not for one episode id.
+    let mut first = store(&repo);
+    first
+        .set_attribution_correction(
+            &fathom_store::episode::AttributionCorrection {
+                identity: "identity:claude@example.invalid".to_owned(),
+                kind: "human".to_owned(),
+                agent: String::new(),
+                note: "that was me driving".to_owned(),
+                created_utc: NOW,
+            },
+            NOW,
+        )
+        .expect("storing the correction");
+    drop(first);
+
+    // A commit the correction was never shown to, indexed afterwards, is labelled as corrected.
+    repo.commit(
+        "claude",
+        120,
+        "feat: the next one",
+        &[("src/b.rs", "// b\n")],
+        &[],
+    );
+    reindex(&repo);
+    let rows = live(&repo);
+    let after = with_summary(&rows, "the next one");
+    assert_eq!(
+        after.author_kind, "human",
+        "the correction applied to a commit nobody showed it to"
+    );
+    assert_eq!(after.attribution_source, "correction");
+    assert_eq!(
+        after.author_confidence, 1.0,
+        "a human's word is the strongest evidence there is"
+    );
+
+    // And it is *stored*, not remembered: a fresh connection still honours it.
+    let corrections = store(&repo)
+        .attribution_corrections()
+        .expect("reading corrections");
+    assert_eq!(corrections.len(), 1);
+    assert_eq!(corrections[0].identity, "identity:claude@example.invalid");
+    assert_eq!(corrections[0].kind, "human");
+    assert_eq!(corrections[0].note, "that was me driving");
+
+    // Forgetting it puts the label back, which is the proof the correction was doing the work.
+    let mut again = store(&repo);
+    assert!(
+        again
+            .forget_attribution_correction("identity:claude@example.invalid")
+            .expect("forgetting")
+    );
+    drop(again);
+    reindex(&repo);
+    let rows = live(&repo);
+    assert_eq!(
+        with_summary(&rows, "the next one").author_kind,
+        "agent",
+        "without the correction the trailer says agent again"
+    );
 }

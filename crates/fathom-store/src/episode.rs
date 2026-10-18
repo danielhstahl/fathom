@@ -132,6 +132,74 @@ CREATE TABLE IF NOT EXISTS session_state (
 ) STRICT;
 ";
 
+/// The attribution DDL, as migration 4 (`e4.1`, `reco-w7q`).
+///
+/// Three groups, one migration, because they are one decision: an episode now carries *why* it is labelled
+/// the way it is, a commit now carries the committer identity the committer rung reads, and a human
+/// correction is stored so it applies to the next commit with the same signature rather than being typed
+/// again.
+///
+/// Only the new table lives here. SQLite has no `ADD COLUMN IF NOT EXISTS`, and §9.5 requires every
+/// migration in [`crate::spine::MIGRATIONS`] to be re-runnable against a store that already has it — so the
+/// six column additions are [`ADDED_COLUMNS`], applied by a probe-then-add step that is idempotent for
+/// exactly the reason a `CREATE TABLE IF NOT EXISTS` is.
+///
+/// `author_kind` / `author_confidence` stay exactly as they are: they are ADR-003's columns and the
+/// segmentation still writes them from the same verdict. The `attribution_*` columns are the extra detail
+/// the card shows — the agent's name, the evidence list as JSON, the rung that decided, and the reason an
+/// answer was refused. Like the other derived columns, they are rewritten on every index run.
+pub const MIGRATION_4: &str = "
+CREATE TABLE IF NOT EXISTS attribution_correction (
+  identity    TEXT PRIMARY KEY,           -- 'identity:<address>' or 'identity:<name>' (attribute::identity_key)
+  kind        TEXT NOT NULL CHECK (kind IN ('agent','human','unknown')),
+  agent       TEXT NOT NULL DEFAULT '',   -- named agent, when kind is 'agent'
+  note        TEXT NOT NULL DEFAULT '',   -- why the human overrode it, for the next reader
+  created_utc INTEGER NOT NULL
+) WITHOUT ROWID, STRICT;
+";
+
+/// Column additions made to tables that already exist, as `(table, column, definition)` (`e4.1`).
+///
+/// A migration string cannot hold these without breaking §9.5's rule that a migration may be applied to a
+/// store that already has it, so they are data, and the step that applies them reads `PRAGMA table_info`
+/// first — which makes applying it twice the no-op it has to be.
+pub const ADDED_COLUMNS: &[(&str, &str, &str)] = &[
+    // The committer identity, which the committer rung of attribution reads.
+    ("git_commit", "committer_name", "TEXT NOT NULL DEFAULT ''"),
+    ("git_commit", "committer_email", "TEXT NOT NULL DEFAULT ''"),
+    // The case behind the label, so the card can show its work.
+    ("episode", "attribution_source", "TEXT NOT NULL DEFAULT ''"),
+    ("episode", "attribution_agent", "TEXT NOT NULL DEFAULT ''"),
+    (
+        "episode",
+        "attribution_evidence",
+        "TEXT NOT NULL DEFAULT '[]'",
+    ),
+    ("episode", "attribution_reason", "TEXT NOT NULL DEFAULT ''"),
+];
+
+/// One stored human correction (`e4.1`, `reco-w7q`): "whoever answers to this identity is an agent / a
+/// person", learned once and applied to every later commit carrying that signature.
+///
+/// `identity` is an `attribute::identity_key` string (`identity:<address>`, or `identity:<name>` when
+/// there is no address). The store keeps it, and the kind, as opaque text so it does not depend on the
+/// analysis crates — exactly as it keeps `author_kind` as text rather than as an enum. The CHECK on the
+/// column is what stops a typo being stored, and `fathom_ingest::attribute::AuthorKind::parse` is what
+/// reads it back.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttributionCorrection {
+    /// The identity key the user corrected.
+    pub identity: String,
+    /// `agent`, `human` or `unknown`.
+    pub kind: String,
+    /// The agent to name, when `kind` is `agent`. Empty otherwise.
+    pub agent: String,
+    /// Why the human overrode the classifier, for the next reader.
+    pub note: String,
+    /// When it was stored, unix millis.
+    pub created_utc: i64,
+}
+
 /// What a human's review marker can be.
 ///
 /// `Unread` is the default and is stored, not inferred from absence: "this row is missing" and "nobody has
@@ -229,6 +297,16 @@ pub struct EpisodeRow {
     pub author_kind: String,
     /// See [`EpisodeRow::author_kind`].
     pub author_confidence: f64,
+    /// Which class of evidence decided (`e4.1`): `correction`, `harness`, `trailer`, `declared`,
+    /// `author`, `committer`, `message`, `identity`, `absent`, or empty on a row stored before
+    /// migration 4.
+    pub attribution_source: String,
+    /// The agent the evidence named, when it named exactly one.
+    pub attribution_agent: String,
+    /// The evidence list as a JSON array of `{source, detail, confidence}`, strongest first.
+    pub attribution_evidence: String,
+    /// Why the verdict is `unknown`, or why a label was refused. Empty when the answer was the answer.
+    pub attribution_reason: String,
     /// The author as committed.
     pub author_name: String,
     /// The author's address as committed.
@@ -404,14 +482,21 @@ impl Store {
                                 noise_share, epoch, fallback_fingerprint, shape_fingerprint,
                                 first_oid, last_oid,
                                 n_commits, n_files, n_add, n_del, n_binary, first_utc, last_utc,
-                                author_name, author_email, summary, overridden, live, seen_utc)
+                                author_name, author_email, summary, overridden, live, seen_utc,
+                                attribution_source, attribution_agent, attribution_evidence,
+                                attribution_reason)
                          VALUES (?1,'committed',?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,0,?14,
-                                 ?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,1,?30)
+                                 ?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,1,?30,
+                                 ?31,?32,?33,?34)
                          ON CONFLICT(id) DO UPDATE SET
                             boundary_rule=excluded.boundary_rule,
                             boundary_confidence=excluded.boundary_confidence,
                             author_kind=excluded.author_kind,
                             author_confidence=excluded.author_confidence,
+                            attribution_source=excluded.attribution_source,
+                            attribution_agent=excluded.attribution_agent,
+                            attribution_evidence=excluded.attribution_evidence,
+                            attribution_reason=excluded.attribution_reason,
                             session_id=excluded.session_id,
                             turn_id=excluded.turn_id,
                             lineage_ref=excluded.lineage_ref,
@@ -463,7 +548,11 @@ impl Store {
                             row.author_email,
                             row.summary,
                             i64::from(row.overridden),
-                            now
+                            now,
+                            row.attribution_source,
+                            row.attribution_agent,
+                            row.attribution_evidence,
+                            row.attribution_reason
                         ],
                     )
                     .map_err(|err| corrupt("writing episode rows", &err))?;
@@ -844,6 +933,84 @@ impl Store {
         Ok(out)
     }
 
+    /// Store a correction, replacing any correction already held for that identity (`e4.1`, `reco-w7q`).
+    ///
+    /// This is what `fathom attribution correct` writes, and what the next index run reads back into
+    /// `fathom_ingest::attribute::Policy::corrections` so the label moves for the commits that match it.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn set_attribution_correction(
+        &mut self,
+        correction: &AttributionCorrection,
+        now: i64,
+    ) -> Result<(), Error> {
+        self.conn_mut()
+            .execute(
+                "INSERT INTO attribution_correction(identity, kind, agent, note, created_utc)
+                 VALUES (?1,?2,?3,?4,?5)
+                 ON CONFLICT(identity) DO UPDATE SET kind=excluded.kind, agent=excluded.agent,
+                        note=excluded.note, created_utc=excluded.created_utc",
+                params![
+                    correction.identity,
+                    correction.kind,
+                    correction.agent,
+                    correction.note,
+                    now
+                ],
+            )
+            .map_err(|err| corrupt("writing an attribution correction", &err))?;
+        Ok(())
+    }
+
+    /// Every stored correction, ordered by identity so a run's policy is reproducible.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn attribution_corrections(&self) -> Result<Vec<AttributionCorrection>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT identity, kind, agent, note, created_utc FROM attribution_correction
+                 ORDER BY identity",
+            )
+            .map_err(|err| corrupt("reading attribution corrections", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok(AttributionCorrection {
+                    identity: row.get(0)?,
+                    kind: row.get(1)?,
+                    agent: row.get(2)?,
+                    note: row.get(3)?,
+                    created_utc: row.get(4)?,
+                })
+            })
+            .map_err(|err| corrupt("reading attribution corrections", &err))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|err| corrupt("reading attribution corrections", &err))?);
+        }
+        Ok(out)
+    }
+
+    /// Drop a correction. Returns whether one was there.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn forget_attribution_correction(&mut self, identity: &str) -> Result<bool, Error> {
+        let removed = self
+            .conn_mut()
+            .execute(
+                "DELETE FROM attribution_correction WHERE identity = ?1",
+                params![identity],
+            )
+            .map_err(|err| corrupt("forgetting an attribution correction", &err))?;
+        Ok(removed > 0)
+    }
+
     /// Stamp a human's review marker on an episode.
     ///
     /// # Errors
@@ -1048,6 +1215,11 @@ pub struct EpisodeInput {
     pub author_email: String,
     /// The author date, unix millis.
     pub author_utc: i64,
+    /// The committer name as committed — an attribution input (`e4.1`), empty on rows stored before
+    /// migration 4.
+    pub committer_name: String,
+    /// See [`EpisodeInput::committer_name`].
+    pub committer_email: String,
     /// The first line of the message.
     pub subject: String,
     /// The trailer block, lower-cased keys.
@@ -1086,7 +1258,7 @@ impl Store {
     pub fn episode_inputs(&self) -> Result<Vec<EpisodeInput>, Error> {
         let mut statement = self.connection().prepare(
             "SELECT oid, parent_oids, author_name, author_email, author_utc, message_head, trailers,
-                    n_files, n_add, n_del, n_binary FROM git_commit
+                    n_files, n_add, n_del, n_binary, committer_name, committer_email FROM git_commit
              ORDER BY author_utc, oid",
         ).map_err(|err| corrupt("reading episode inputs", &err))?;
         let rows = statement
@@ -1103,6 +1275,8 @@ impl Store {
                     row.get::<_, i64>(8)?,
                     row.get::<_, i64>(9)?,
                     row.get::<_, i64>(10)?,
+                    row.get::<_, String>(11)?,
+                    row.get::<_, String>(12)?,
                 ))
             })
             .map_err(|err| corrupt("reading episode inputs", &err))?;
@@ -1120,6 +1294,8 @@ impl Store {
                 n_add,
                 n_del,
                 n_binary,
+                committer_name,
+                committer_email,
             ) = row.map_err(|err| corrupt("reading episode inputs", &err))?;
             inputs.push(EpisodeInput {
                 oid,
@@ -1127,6 +1303,8 @@ impl Store {
                 author_name,
                 author_email,
                 author_utc,
+                committer_name,
+                committer_email,
                 subject,
                 trailers: serde_json::from_str(&trailers).unwrap_or_default(),
                 paths: Vec::new(),
@@ -1322,7 +1500,7 @@ const EPISODE_COLUMNS: &str = "id, fingerprint, lineage_ref, lineage_seq, create
      session_id, turn_id, boundary_rule, boundary_confidence, author_kind, author_confidence, \
      fallback_fingerprint, shape_fingerprint, first_oid, last_oid, n_files, n_add, n_del, n_binary, first_utc, last_utc, \
      author_name, author_email, summary, overridden, live, noise_share, kind,
-     created_confidence";
+     created_confidence, attribution_source, attribution_agent, attribution_evidence, attribution_reason";
 
 fn episode_sql_for_id() -> String {
     format!("SELECT {EPISODE_COLUMNS} FROM episode WHERE id = ?1")
@@ -1432,6 +1610,10 @@ fn row_to_episode(row: &rusqlite::Row<'_>) -> rusqlite::Result<EpisodeRow> {
         created_confidence: row.get(29)?,
         members: Vec::new(),
         epoch: 0,
+        attribution_source: row.get(30)?,
+        attribution_agent: row.get(31)?,
+        attribution_evidence: row.get(32)?,
+        attribution_reason: row.get(33)?,
     })
 }
 

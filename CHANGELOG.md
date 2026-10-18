@@ -17,6 +17,42 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.1` — attribution: who wrote this commit, with the evidence that says so (`reco-w7q`)
+
+- **New module: [`fathom_ingest::attribute`](crates/fathom-ingest/src/attribute.rs).** Authorship is
+  decided by a ladder in the same shape as the boundary cascade — a stored correction, then a harness
+  turn, then a claim trailer (`Co-authored-by`, `Generated-by`, `Generated-with`, `Assisted-by`,
+  `Agent`, …), then the registry of known agents, then an agent-shaped author, then the committer, then
+  a message that says so, then "a real identity and nothing else" — and the first rung with an opinion
+  decides. Nothing is blended. ADR-003 §8 **H4**'s published confidences are used as published
+  (0.95 stated, 0.85 shaped, 0.50 nothing-but-an-identity, 0.00 no identity at all).
+- **`unknown` is a verdict with a reason.** Four cases refuse to guess — no identity anywhere, two
+  stored corrections that disagree, a marker that matched only inside an address's *domain*
+  (`jane@assistant.fr` is a person at a hosting name), and a repo that raised
+  `attribution.ambiguous_below` above the strongest evidence — and each prints which reading it could
+  not choose between. Two agents both claiming one commit is deliberately *not* ambiguous: the kind is
+  not in doubt, only which agent, so the kind stands and the agent is left unset with a note naming both.
+- **The evidence is stored, not recomputed.** Migration 4 adds `committer_name`/`committer_email` to
+  `git_commit`, `attribution_source`/`attribution_agent`/`attribution_evidence`/`attribution_reason` to
+  `episode`, and the `attribution_correction` table. `CommitFacts` gained the committer identity, and
+  `segment::Rules::agent_markers` became `Rules::attribution: attribute::Policy`, so the marker table,
+  the registry and the corrections all arrive as values (`ADR-002 §4.5`). No episode id moves: ADR-003
+  owns the *author boundary rung*, and nothing here touches `CommitFacts::author_identity`.
+- **The card and the CLI show it.** The delta document gained `episode.attribution` (kind, source rung,
+  agent, confidence, evidence list, reason), the rendered card prints `attribution agent · claude ·
+  0.95 via trailer` plus the evidence lines, and `fathom show --json` carries the same object.
+  The episode schema and `schemas/fathom.schema.json` were regenerated, not hand-edited.
+- **A correction is learned, not retyped.** `fathom attribution correct <rev> --kind human`,
+  `list` and `forget` write `attribution_correction`, keyed on the *identity* (`identity:<address>`)
+  rather than on an episode id that a rebase would move; the next `fathom index` loads them into the
+  policy, so every later commit with that signature reads as corrected — at confidence 1.0, because a
+  human said so — until the correction is forgotten. `[attribution]` in `fathom.toml` (agents, markers,
+  `trust_committer`, `ambiguous_below`) is the registry the ticket asked for, and the config schema is
+  its source of truth.
+- **Fixture set:** 30+ real-world trailer conventions (`crates/fathom-ingest/tests/attribution_corpus.rs`)
+  classified at 100% per convention, the ambiguity rules tested as verdicts, and the ladder's prices
+  pinned to ADR-003 §8 H4 so a re-price is a diff and not a drift.
+
 ### `e2.11` — one versioned delta model, and the version policy that keeps it one (`reco-tt4`)
 
 - **`EpisodeDelta` is now the only analysis model.** Seven sections (`what`, `where`, `dependencies`,

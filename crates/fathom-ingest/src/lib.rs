@@ -49,6 +49,7 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod attribute;
 pub mod backend;
 pub mod diff;
 pub mod error;

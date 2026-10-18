@@ -66,7 +66,6 @@
 //! in (ADR-002 §4.4).
 
 use std::collections::BTreeMap;
-use std::fmt;
 
 use sha2::{Digest as _, Sha256};
 
@@ -93,34 +92,10 @@ pub const TRAILER_EPISODE_KEY: &str = "fathom-episode";
 /// [`TRAILER_EPISODE_KEY`] as it is spelled in a commit message.
 pub const TRAILER_EPISODE: &str = "Fathom-Episode";
 
-/// How the author of a commit is classified.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AuthorKind {
-    /// Written by a coding agent.
-    Agent,
-    /// Written by a person.
-    Human,
-    /// No usable identity at all — ADR-001 §7.7's `unknown`, printed as `?`, never guessed at.
-    Unknown,
-}
-
-impl AuthorKind {
-    /// The store's spelling.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            AuthorKind::Agent => "agent",
-            AuthorKind::Human => "human",
-            AuthorKind::Unknown => "unknown",
-        }
-    }
-}
-
-impl fmt::Display for AuthorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
+/// The author vocabulary lives in [`crate::attribute`] (`e4.1`), which is where the ladder that prices it
+/// lives too. It is re-exported here because the segmentation is what hands it to the store, and because
+/// every reader of `segment` already reaches past the boundary rules for it.
+pub use crate::attribute::{Attribution, AuthorKind, Policy as AttributionPolicy};
 
 /// Which rule opened an episode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,6 +157,11 @@ pub struct CommitFacts {
     pub author_name: String,
     /// The author address as committed.
     pub author_email: String,
+    /// The committer name as committed — an attribution input (`e4.1`), because a rebase and a
+    /// bot-applied change both move the committer and leave the author alone.
+    pub committer_name: String,
+    /// See [`CommitFacts::committer_name`].
+    pub committer_email: String,
     /// The author date, unix millis.
     pub author_utc: i64,
     /// The first line of the message.
@@ -254,8 +234,10 @@ impl Override {
 pub struct Rules {
     /// The gap that starts a new episode, in milliseconds.
     pub gap_millis: i64,
-    /// Substrings that mark an author as an agent.
-    pub agent_markers: Vec<String>,
+    /// The attribution rule values: the marker table, the registry of known agents, and the corrections a
+    /// user stored ([`crate::attribute::Policy`]). One value, one cache key, one place a repository can
+    /// disagree with the classifier.
+    pub attribution: crate::attribute::Policy,
     /// Substrings in a subject that mean "still the same turn".
     pub continuation_markers: Vec<String>,
     /// Conventional-commit types: a change of type between neighbours is a new unit.
@@ -275,24 +257,7 @@ impl Default for Rules {
             // together, short enough that a lunch break is not one episode. `s2` (reco-q6r) is the ticket
             // that gets to move it, with measurements (ADR-003 §13.7).
             gap_millis: 30 * 60 * 1000,
-            agent_markers: [
-                "bot",
-                "agent",
-                "codex",
-                "copilot",
-                "claude",
-                "llm",
-                "assistant",
-                "cursor",
-                "devin",
-                "aider",
-                "openhands",
-                "swe-agent",
-                "autofix",
-            ]
-            .iter()
-            .map(|s| (*s).to_owned())
-            .collect(),
+            attribution: crate::attribute::Policy::default(),
             continuation_markers: [
                 "wip",
                 "fixup!",
@@ -342,10 +307,9 @@ pub struct Episode {
     pub confidence: f64,
     /// Whether a forced boundary moved this episode's start.
     pub overridden: bool,
-    /// The author classification and its confidence.
-    pub author_kind: AuthorKind,
-    /// See [`Episode::author_kind`].
-    pub author_confidence: f64,
+    /// Who wrote it, with the evidence: kind, agent, confidence, the list, and the reason when the answer
+    /// is `unknown` (`e4.1`, [`crate::attribute`]).
+    pub attribution: Attribution,
     /// The author as committed on the first member.
     pub author_name: String,
     /// See [`Episode::author_name`].
@@ -688,38 +652,15 @@ pub fn shares_path(previous: &CommitFacts, commit: &CommitFacts) -> bool {
 }
 
 /// Classify an author as agent or human, with the confidence the evidence supports.
+///
+/// Deprecated seam: the real classifier is [`crate::attribute::attribute`], which takes the whole episode
+/// and returns the evidence list as well as the label. This stays as the one-commit convenience for
+/// callers that only want the pair, and it is the reason the ladder's prices are constants rather than
+/// literals scattered through the callers.
 #[must_use]
 pub fn author_kind(facts: &CommitFacts, rules: &Rules) -> (AuthorKind, f64) {
-    // A trailer is a statement, not a guess: `Co-authored-by: Claude <noreply@anthropic.com>` and
-    // `Assisted-by: claude-code` are the two spellings that exist in the wild today.
-    let trailer_text: String = facts
-        .trailers
-        .iter()
-        .filter(|(key, _)| {
-            key.contains("co-authored-by")
-                || key.contains("assisted-by")
-                || key.contains("generated-with")
-                || key.contains("agent")
-                || key.contains("session")
-        })
-        .map(|(_, value)| format!(" {value}"))
-        .collect();
-    for marker in &rules.agent_markers {
-        let needle = marker.to_lowercase();
-        if trailer_text.to_lowercase().contains(&needle) {
-            return (AuthorKind::Agent, 0.95);
-        }
-        let identity = format!("{} {}", facts.author_name, facts.author_email).to_lowercase();
-        if identity.contains(&needle) {
-            return (AuthorKind::Agent, 0.85);
-        }
-    }
-    if facts.author_identity().is_empty() {
-        return (AuthorKind::Unknown, 0.0);
-    }
-    // No agent evidence and a real identity: "human" is the honest default, but the claim is weak, and
-    // the card prints the weakness.
-    (AuthorKind::Human, 0.5)
+    let attribution = crate::attribute::attribute_one(facts, &rules.attribution);
+    (attribution.kind, attribution.confidence)
 }
 
 /// Segment a walk of commits into episodes.
@@ -742,7 +683,7 @@ pub fn segment(commits: &[CommitFacts], rules: &Rules) -> Vec<Episode> {
             .chain(rules.force_merge.iter())
             .any(|force| force.matches(commit));
         if episodes.is_empty() || (starts && index > 0) {
-            let mut episode = new_episode(commit, rule, confidence, overridden, rules);
+            let mut episode = new_episode(commit, rule, confidence, overridden);
             let base = episode_id(&episode.fingerprint);
             let count = used_ids.entry(base.clone()).or_insert(0);
             *count += 1;
@@ -762,22 +703,23 @@ pub fn segment(commits: &[CommitFacts], rules: &Rules) -> Vec<Episode> {
     for (ordinal, episode) in episodes.iter_mut().enumerate() {
         episode.lineage_seq = i64::try_from(ordinal).unwrap_or(i64::MAX);
     }
+    // Attribution is an episode-level question (`e4.1`): a turn whose third commit says
+    // `Co-authored-by: Claude` is an agent turn, and reading only the head commit would call it human.
+    // One pass over the members, one verdict, and the evidence list says which members carried it.
+    for episode in &mut episodes {
+        let members: Vec<CommitFacts> = episode
+            .members
+            .iter()
+            .filter_map(|oid| commits.iter().find(|commit| commit.oid == *oid))
+            .cloned()
+            .collect();
+        episode.attribution = crate::attribute::attribute(&members, &rules.attribution);
+    }
     episodes
 }
 
-fn new_episode(
-    commit: &CommitFacts,
-    rule: Rule,
-    confidence: f64,
-    overridden: bool,
-    rules: &Rules,
-) -> Episode {
+fn new_episode(commit: &CommitFacts, rule: Rule, confidence: f64, overridden: bool) -> Episode {
     let identity = identity(&commit.author_identity(), &commit.subject, &commit.paths);
-    // ADR-003 §8 H4: the marker table is a rule value like every other tunable, so the attribution used
-    // here is the caller's rather than a second compiled-in copy of it. Reading `Rules::default()` here
-    // would hand a repository that extends the marker list one attribution for the boundary and another
-    // for the card.
-    let (kind, kind_confidence) = author_kind(commit, rules);
     Episode {
         id: String::new(),
         fingerprint: identity.fingerprint,
@@ -786,8 +728,15 @@ fn new_episode(
         rule,
         confidence,
         overridden,
-        author_kind: kind,
-        author_confidence: kind_confidence,
+        // Filled by [`segment`]'s attribution pass, which is the only place the whole member set is
+        // together. `unknown` at zero is the honest placeholder: no member has been read yet.
+        attribution: Attribution {
+            kind: AuthorKind::Unknown,
+            agent: None,
+            confidence: 0.0,
+            evidence: Vec::new(),
+            reason: None,
+        },
         author_name: commit.author_name.clone(),
         author_email: commit.author_email.clone(),
         session_id: named_session(commit),
@@ -1103,7 +1052,7 @@ mod tests {
         let episodes = segment(&commits, &Rules::default());
         assert_eq!(episodes.len(), 1, "one turn is one episode: {episodes:?}");
         assert_eq!(episodes[0].n_commits(), 3);
-        assert_eq!(episodes[0].author_kind, AuthorKind::Agent);
+        assert_eq!(episodes[0].attribution.kind, AuthorKind::Agent);
     }
 
     #[test]
@@ -1115,7 +1064,7 @@ mod tests {
         ];
         let episodes = segment(&commits, &Rules::default());
         assert_eq!(episodes.len(), 3);
-        assert_eq!(episodes[1].author_kind, AuthorKind::Human);
+        assert_eq!(episodes[1].attribution.kind, AuthorKind::Human);
         assert_eq!(episodes[1].rule, Rule::Author);
     }
 

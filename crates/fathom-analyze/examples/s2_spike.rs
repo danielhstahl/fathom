@@ -178,6 +178,10 @@ fn load(path: &Path) -> History {
             },
             author_name: c.author_name.clone(),
             author_email: c.author_email.clone(),
+            // The spike corpus records the author only. Empty committer fields mean the committer rung
+            // never fires, which is what `s2` measured: it scored the *author* rung and nothing else.
+            committer_name: String::new(),
+            committer_email: String::new(),
             author_utc: c.author_millis,
             subject: c.subject.clone(),
             trailers: c.trailers.clone(),

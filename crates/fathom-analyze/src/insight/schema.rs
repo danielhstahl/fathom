@@ -164,6 +164,20 @@ pub fn document() -> Value {
             "additionalProperties": true,
             "description": "The episode's identity, carried from the spine so a payload can be relinked after a rewrite without asking the store again.",
             "properties": {
+                "attribution": {
+                    "additionalProperties": true,
+                    "description": "The attribution behind `author_kind`, with the evidence that produced it (`e4.1`). Absent on a row written before migration 4, which stored the label and nothing else.",
+                    "properties": {
+                        "agent": {"description": "The agent the evidence named, when it named exactly one.", "type": "string"},
+                        "confidence": {"description": "Confidence in `kind`; 0.0 means nothing was known, not that nothing matters.", "maximum": 1.0, "minimum": 0.0, "type": "number"},
+                        "evidence": {"description": "Every rung that fired, strongest first.", "items": {"additionalProperties": true, "properties": {"confidence": {"type": "number"}, "detail": {"description": "The literal, in the commit's own spelling.", "type": "string"}, "source": {"type": "string"}}, "required": ["confidence", "detail", "source"], "type": "object"}, "type": "array"},
+                        "kind": {"description": "`agent`, `human` or `unknown` — the same vocabulary as `author_kind`.", "type": "string"},
+                        "reason": {"description": "Why the verdict is `unknown`, or why a label was refused rather than guessed.", "type": "string"},
+                        "source": {"description": "The rung that decided: `correction`, `harness`, `trailer`, `declared`, `author`, `committer`, `message`, `identity`, `absent`.", "type": "string"}
+                    },
+                    "required": ["confidence", "evidence", "kind", "source"],
+                    "type": "object"
+                },
                 "author_confidence": {"maximum": 1.0, "minimum": 0.0, "type": "number"},
                 "author_email": {"type": "string"},
                 "author_kind": {"description": "`agent`, `human` or `unknown` — `unknown` is a value, never a guess.", "type": "string"},

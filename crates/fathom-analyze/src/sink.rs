@@ -138,6 +138,10 @@ pub fn commit_row(record: &CommitRecord) -> CommitRow {
         // `gix` speaks microseconds, so the division happens here and nowhere else.
         author_utc: record.author.when.as_unix_micros() / 1_000,
         committer_utc: record.committer.when.as_unix_micros() / 1_000,
+        // The committer identity is an attribution input (`e4.1`): a bot that applies a human's change
+        // moves the committer and leaves the author alone, and that difference is the whole rung.
+        committer_name: record.committer.name.clone(),
+        committer_email: record.committer.email.clone(),
         message_head: record.message.head.clone(),
         message_hash: record.message.hash.clone(),
         trailers: record.trailers.to_map(),

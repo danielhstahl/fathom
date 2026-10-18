@@ -15,6 +15,9 @@
 // that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,
 // so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
 mod analyze;
+// Who wrote it, and how to tell Fathom it got it wrong (`e4.1`): the write path for a correction, which
+// needs the store, so it lives above the classifier and below the verb table (ADR-002 §4.3).
+mod attribution;
 mod clock;
 mod diagnose;
 // The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not
