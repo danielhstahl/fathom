@@ -168,6 +168,14 @@ pub struct Options {
     /// The probe is read by `fathom-cli`, because this crate does not read variables (ADR-002 §3);
     /// what arrives here is what the help overlay reports and what the notices are written from.
     pub term: crate::terminal::Probe,
+    /// The theme to paint the frame with (`e5.6`), already resolved by `fathom-cli` from the flag, the
+    /// environment and the user config — in that order, and that order is the ticket's `--theme` flag.
+    ///
+    /// The default in `Options::default()` is the built-in `dark`; a caller that resolved a theme itself
+    /// (the CLI, a test, an embedder) hands it over here and the shell paints exactly that, because the
+    /// shell has no opinion about colour and none is its to have. Folding to what the terminal answered
+    /// happens at draw time, not here.
+    pub theme: crate::theme::Theme,
 }
 
 impl Default for Options {
@@ -188,6 +196,7 @@ impl Default for Options {
             mouse: false,
             lines: false,
             term: crate::terminal::Probe::unknown(),
+            theme: crate::theme::Theme::default_theme(),
         }
     }
 }
@@ -343,10 +352,13 @@ impl<B: Backend> FrameSink for TerminalSink<B> {
         let lines = crate::render::frame_styled(app);
         // The terminal answered a question about colour when it was asked (`e5.5`), and the answer is
         // applied here rather than in the renderer: the layout, the glyphs and the shapes are the same
-        // frame either way, and only the colour goes away.
-        let colour = app.term.color();
+        // frame either way, and only the colour goes away. The theme is folded to that answer —
+        // `NO_COLOR` and `TERM=dumb` take every ink off and leave every shape, a 256-colour terminal gets
+        // the nearest palette entry, a truecolour terminal gets the ink as written — and the blit itself
+        // has no idea which of those it is (`e5.6`).
+        let theme = app.theme.resolve(app.term.color());
         self.terminal
-            .draw(|frame| crate::render::blit_in_colour(frame.buffer_mut(), &lines, colour))
+            .draw(|frame| crate::render::blit_themed(frame.buffer_mut(), &lines, &theme))
             .map_err(|err| Error::Terminal {
                 why: format!("{err}"),
             })?;
@@ -581,6 +593,7 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     );
     app.notices = options.notices.clone();
     app.term = options.term.clone();
+    app.theme = options.theme.clone();
     app.install_handoff_env(options.handoff_env.clone());
     // The party that can produce patch bytes, installed before `prime` so a session that resumes
     // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).

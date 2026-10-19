@@ -584,6 +584,14 @@ fn help(grid: &mut Grid, app: &App) {
         panel.push(String::new());
     }
     panel.push(format!("terminal \u{00b7} {}", app.term.label()));
+    // The theme, and how much colour the terminal was allowed to be given: "my theme did not arrive" is
+    // the same question in two halves — which theme did Fathom pick, and what did the terminal say it
+    // could carry — and neither is something the reviewer can read off the frame. ADR-006 §6.7.
+    panel.push(format!(
+        "theme \u{00b7} {} \u{00b7} {}",
+        app.theme.name,
+        app.term.color().label()
+    ));
     panel.push(String::new());
     panel.extend(app.keymap.help_lines(inner));
     let hidden = panel.len().saturating_sub(room);
@@ -791,7 +799,7 @@ fn truncate(text: &str, cells: usize) -> String {
 /// Write the frame into a ratatui buffer — one `set_string` per styled run, because the text is
 /// already clipped to the frame and the buffer must never see a line that could wrap.
 pub fn blit(buffer: &mut Buffer, lines: &[StyledLine]) {
-    blit_in_colour(buffer, lines, crate::terminal::ColorDepth::TrueColor);
+    blit_themed(buffer, lines, &crate::theme::dark());
 }
 
 /// [`blit`] with the terminal's own colour answer applied.
@@ -799,23 +807,33 @@ pub fn blit(buffer: &mut Buffer, lines: &[StyledLine]) {
 /// `NO_COLOR` and `TERM=dumb` are instructions, not decorations: the frame is laid out and drawn by
 /// exactly the same code, and the only thing that changes is that no cell is given a colour. Shapes
 /// stay, because ADR-006 §10.2 promised they would be enough.
+///
+/// This is the `e5.5` entry point, and it is now one line of the theme: `depth` is folded into the
+/// default dark theme by [`Theme::resolve`](crate::theme::Theme::resolve), which is the same code path
+/// a user's theme takes. A caller that has chosen a theme calls [`blit_themed`] instead.
 pub fn blit_in_colour(
     buffer: &mut Buffer,
     lines: &[StyledLine],
     colour: crate::terminal::ColorDepth,
 ) {
+    blit_themed(buffer, lines, &crate::theme::dark().resolve(colour));
+}
+
+/// [`blit`] painted by a theme.
+///
+/// The theme arrives already resolved for the terminal it is going to
+/// ([`Probe::color`](crate::terminal::Probe::color) → [`Theme::resolve`](crate::theme::Theme::resolve)),
+/// so this function has no idea whether the reviewer pressed `NO_COLOR`, has sixteen colours, or is
+/// reading the frame in somebody else's palette — and it does not need to. That is the whole point of
+/// `e5.6`: the frame is built once, and colour is one lookup on the way out.
+pub fn blit_themed(buffer: &mut Buffer, lines: &[StyledLine], theme: &crate::theme::Theme) {
     for (y, line) in lines.iter().enumerate() {
         let Ok(row) = u16::try_from(y) else {
             break;
         };
-        for (text, column, style) in line.segments() {
+        for (text, column, style) in line.segments_in(theme) {
             let Ok(x) = u16::try_from(column) else {
                 continue;
-            };
-            let style = if colour == crate::terminal::ColorDepth::None {
-                crate::style::strip_colour(style)
-            } else {
-                style
             };
             buffer.set_string(x, row, text, style);
         }

@@ -9,9 +9,10 @@
 //! Two rules:
 //!
 //! * **A face is a meaning, never a colour.** `Face::Added` is "this line was added"; `Face::Keyword`
-//!   is "this token is a keyword". [`Face::style`] is the only function in the crate that names a
-//!   [`ratatui::style::Color`], which is what makes `e5.6`'s theming a swap of one `match` instead of
-//!   a hunt through every view — and what makes "is this colour wrong?" answerable by reading one file.
+//!   is "this token is a keyword". Nothing below [`crate::theme`] names a colour: a face is looked up
+//!   in the [`Theme`](crate::theme::Theme) in force, which is what makes theming (`e5.6`) a swap of one
+//!   table rather than a hunt through every view — and what makes "is this colour wrong?" answerable by
+//!   reading one file, or by printing `fathom tui --show-theme`.
 //! * **Spans are normalized on construction.** Ranges are byte offsets into the line's own text, they
 //!   never overlap, and a `Face::Text` span is not stored at all — the default style *is* text. That is
 //!   what lets [`StyledLine::override_face`] layer syntax over a diff colour and word-diff over the
@@ -19,7 +20,19 @@
 
 use std::ops::Range;
 
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::Style;
+
+/// The default theme, built once.
+///
+/// [`Face::style`] and [`StyledLine::segments`] run once per styled run per frame — thousands of times
+/// a second on a busy scroll — and a theme is a twenty-four-row table with two strings in it. Building
+/// it per call would be correct and wasteful, so it is built the first time and shared after that.
+static DEFAULT_THEME: std::sync::OnceLock<crate::theme::Theme> = std::sync::OnceLock::new();
+
+/// The shared `dark` theme.
+fn default_theme() -> &'static crate::theme::Theme {
+    DEFAULT_THEME.get_or_init(crate::theme::dark)
+}
 
 /// `style` with every colour taken off and every shape left.
 ///
@@ -134,39 +147,51 @@ impl Face {
         }
     }
 
-    /// The only place a colour is chosen. `e5.6` replaces this table with the theme; nothing else
-    /// may name a colour, and `tests/style.rs` is what keeps that sentence true.
+    /// The slot this face occupies in [`Theme::paints`](crate::theme::Theme::paints) — the order of
+    /// [`Face::ALL`]. Constant time, and `tests/theming.rs` fails if the two ever disagree.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        match self {
+            Face::Text => 0,
+            Face::Muted => 1,
+            Face::Faint => 2,
+            Face::Emphasis => 3,
+            Face::Meta => 4,
+            Face::Marker => 5,
+            Face::Path => 6,
+            Face::Dir => 7,
+            Face::Added => 8,
+            Face::Removed => 9,
+            Face::HunkHeader => 10,
+            Face::Keyword => 11,
+            Face::Type => 12,
+            Face::Literal => 13,
+            Face::Number => 14,
+            Face::Comment => 15,
+            Face::Preproc => 16,
+            Face::Function => 17,
+            Face::WordOld => 18,
+            Face::WordNew => 19,
+            Face::Whitespace => 20,
+            Face::Warning => 21,
+            Face::Failure => 22,
+            Face::Success => 23,
+        }
+    }
+
+    /// This face in the built-in `dark` theme.
+    ///
+    /// The colour itself is not chosen here: it is one row of [`crate::theme::dark`], because
+    /// a colour that only exists in a `match` cannot be overridden, listed, audited or quantized to
+    /// sixteen colours, which is what `e5.6` needed. This stays the *only* function outside
+    /// [`crate::theme`] that returns a [`Style`] with a colour in it, and
+    /// `crates/fathom-tui/tests/theming.rs` greps for anything that breaks that rule.
     ///
     /// Every face also has a *shape* or an intensity so it survives `NO_COLOR` and a monochrome
     /// terminal (ADR-006 §10.2): added/removed differ by sign in the text as well as by hue.
     #[must_use]
     pub fn style(self) -> Style {
-        match self {
-            Face::Text => Style::default(),
-            Face::Muted => Style::default().fg(Color::DarkGray),
-            Face::Faint => Style::default().add_modifier(Modifier::DIM),
-            Face::Emphasis => Style::default().add_modifier(Modifier::BOLD),
-            Face::Meta => Style::default().fg(Color::DarkGray).italic(),
-            Face::Marker => Style::default().fg(Color::Yellow),
-            Face::Path => Style::default().fg(Color::Blue),
-            Face::Dir => Style::default().fg(Color::Cyan),
-            Face::Added => Style::default().fg(Color::Green),
-            Face::Removed => Style::default().fg(Color::Red),
-            Face::HunkHeader => Style::default().fg(Color::Cyan).bold(),
-            Face::Keyword => Style::default().fg(Color::Magenta),
-            Face::Type => Style::default().fg(Color::Yellow),
-            Face::Literal => Style::default().fg(Color::Green).italic(),
-            Face::Number => Style::default().fg(Color::LightBlue),
-            Face::Comment => Style::default().fg(Color::DarkGray).italic(),
-            Face::Preproc => Style::default().fg(Color::LightMagenta),
-            Face::Function => Style::default().fg(Color::Blue).bold(),
-            Face::WordOld => Style::default().fg(Color::Red).bg(Color::DarkGray).bold(),
-            Face::WordNew => Style::default().fg(Color::Green).bg(Color::DarkGray).bold(),
-            Face::Whitespace => Style::default().fg(Color::DarkGray).reversed(),
-            Face::Warning => Style::default().fg(Color::Yellow).bold(),
-            Face::Failure => Style::default().fg(Color::Red).bold(),
-            Face::Success => Style::default().fg(Color::Green).bold(),
-        }
+        default_theme().style(self)
     }
 
     /// Every face, in the order a theme listing prints them.
@@ -433,8 +458,21 @@ impl StyledLine {
     /// The runs cover the whole line: a gap between spans is emitted in the default style rather
     /// than left for the row behind it to show through, which is what makes a styled row and an
     /// unstyled one say the same thing.
+    /// The line as `(text, column, style)` runs in the built-in `dark` theme.
     #[must_use]
     pub fn segments(&self) -> Vec<(String, usize, Style)> {
+        self.segments_in(default_theme())
+    }
+
+    /// The line as `(text, column, style)` runs, painted by `theme`.
+    ///
+    /// This is the seam a theme is applied at: the text, the runs, the columns and the clip are the
+    /// ones built above, and the only thing the theme changes is the [`Style`] each run is given.
+    /// The terminal's own colour answer is folded into the theme before it gets here
+    /// ([`Theme::resolve`](crate::theme::Theme::resolve)), so a `NO_COLOR` run arrives with the shapes
+    /// already stripped of colour rather than being post-processed on the way to the screen.
+    #[must_use]
+    pub fn segments_in(&self, theme: &crate::theme::Theme) -> Vec<(String, usize, Style)> {
         // One face per byte, so that "who wins where" is decided once, here, instead of at draw time.
         let mut faces = vec![Face::Text; self.text.len()];
         for span in &self.spans {
@@ -455,7 +493,7 @@ impl StyledLine {
                 out.push((
                     self.text[run_start..offset].to_owned(),
                     column,
-                    run_face.style(),
+                    theme.style(run_face),
                 ));
                 column += crate::text::width(&self.text[run_start..offset]);
                 run_start = offset;
@@ -464,7 +502,11 @@ impl StyledLine {
             let _ = ch;
         }
         if run_start < self.text.len() || out.is_empty() {
-            out.push((self.text[run_start..].to_owned(), column, run_face.style()));
+            out.push((
+                self.text[run_start..].to_owned(),
+                column,
+                theme.style(run_face),
+            ));
         }
         out
     }

@@ -50,13 +50,26 @@ pub struct Cli {
     /// a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
     #[arg(long, global = true)]
     pub lines: bool,
+    /// Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
+    ///
+    /// `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the
+    /// background they paint, and for how far the added / removed / violation pairs stay apart when
+    /// protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or
+    /// `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are
+    /// the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all,
+    /// because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal
+    /// that has none — the theme is not applied and every state keeps its shape and its word.
+    /// `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with
+    /// its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+    #[arg(long, global = true, value_name = "NAME|PATH")]
+    pub theme: Option<String>,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
 }
 
 /// The flags that are not a verb: how the process is to meet the terminal (ADR-006 §6.7).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Globals {
     /// Render the frame as text and write nothing else.
     pub plain: bool,
@@ -68,6 +81,11 @@ pub struct Globals {
     pub mouse: bool,
     /// Print the plain frame in reading order rather than as a grid (`e5.5`).
     pub lines: bool,
+    /// The theme the reviewer chose, if any (`e5.6`): a built-in name, a theme-directory name, or a path.
+    ///
+    /// Resolved to a palette by `crate::theme`, which is also where the precedence over the environment
+    /// and the user config lives; nothing downstream of that reads a name.
+    pub theme: Option<String>,
 }
 
 /// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;
@@ -417,6 +435,21 @@ pub struct TuiArgs {
     /// With `--show-session`: the rows as JSON on stdout, and nothing else there.
     #[arg(long, requires = "show_session")]
     pub json: bool,
+    /// Print the theme this run would paint with, and exit, taking no terminal (`e5.6`).
+    ///
+    /// The face table, the measured contrast of every face against the background the theme paints, and
+    /// how far the added/removed/violation pairs stay apart when protanopia and deuteranopia are
+    /// simulated. `--audit` makes a failed floor an error exit, so a palette can be gated the way a
+    /// codebase is.
+    #[arg(long)]
+    pub show_theme: bool,
+    /// With `--show-theme`: treat a failed contrast or separation floor as an error exit (exit 7).
+    #[arg(long, requires = "show_theme")]
+    pub audit: bool,
+    /// Print every theme Fathom can see — the built-ins and the files in your theme directories — and
+    /// exit, taking no terminal (`e5.6`).
+    #[arg(long)]
+    pub list_themes: bool,
 }
 
 /// Run one verb. The return type is the process contract, not a `Result` a caller forgets to check.
@@ -490,6 +523,17 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
 fn tui(args: &TuiArgs, globals: &Globals) -> eyre::Result<ExitCode> {
     if args.show_keys {
         return crate::tui::show_keys();
+    }
+    // `--list-themes` and `--show-theme` take no terminal for the same reason `--show-keys` takes none:
+    // the question is answerable from the theme table and the environment, and a reviewer asking it is
+    // often doing so precisely because taking a terminal is the thing that went wrong.
+    if args.list_themes {
+        return Ok(crate::theme::list());
+    }
+    if args.show_theme {
+        let mut probe = fathom_tui::terminal::Probe::from_env_with(|key| std::env::var(key).ok());
+        probe.tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
+        return crate::theme::show(globals, &probe, args.audit);
     }
     if args.show_session {
         return crate::session::show(&std::path::PathBuf::from("."), args.json);

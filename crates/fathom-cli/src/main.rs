@@ -53,6 +53,10 @@ mod handoff;
 mod session;
 #[cfg(feature = "tui")]
 mod tui;
+// Which palette a run is painted with (`e5.6`). Gated with the shell because the only thing it resolves
+// is the shell's theme — and because the printers read the same terminal facts the shell is handed.
+#[cfg(feature = "tui")]
+mod theme;
 mod verbs;
 #[cfg(feature = "watch")]
 mod watch;
@@ -84,6 +88,7 @@ fn run() -> ExitCode {
         fresh: cli.fresh,
         mouse: cli.mouse,
         lines: cli.lines,
+        theme: cli.theme,
     };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching

@@ -16,6 +16,9 @@ crossterm.workspace = true
 unicode-width.workspace = true
 signal-hook.workspace = true
 unicode-segmentation.workspace = true
+# `e5.6`: a theme file is TOML, and the parser is the one the CLI already reads `fathom.toml` with.
+# Parse only: `fathom-tui` is handed the text, it never opens the file (ADR-002 §5).
+toml_edit.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true

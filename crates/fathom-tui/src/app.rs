@@ -356,6 +356,15 @@ pub struct App {
     /// What the terminal said it is (`e5.5`): printed in the help overlay's environment section,
     /// never assumed. `fathom-cli` reads the environment and hands this over.
     pub term: crate::terminal::Probe,
+    /// The theme in force (`e5.6`): the face-to-colour table the frame is painted from.
+    ///
+    /// Given, never read — `fathom-cli` resolves the flag, the environment and the user config into one
+    /// theme and hands it over with the rest of the world this crate is not allowed to look at
+    /// (ADR-002 §5). It is the theme as chosen; the sink folds in the terminal's own colour answer at
+    /// draw time ([`Probe::color`](crate::terminal::Probe::color)), so a `NO_COLOR` run and a
+    /// sixteen-colour run are the same frame with a smaller lookup table, and the help overlay can
+    /// print both halves of the answer.
+    pub theme: crate::theme::Theme,
     /// The last press and when it landed, for the double-click the terminal did not report:
     /// `(column, row, instant)`, 1-based cells.
     pub click: Option<(u16, u16, Instant)>,
@@ -454,6 +463,7 @@ impl App {
             fit: fit(ViewId::Queue, size.0, size.1),
             mouse: false,
             term: crate::terminal::Probe::unknown(),
+            theme: crate::theme::Theme::default_theme(),
             click: None,
             repo_label: repo_label.into(),
             quit: None,

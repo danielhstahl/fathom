@@ -40,6 +40,12 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     let mut probe = Probe::from_env_with(|key| std::env::var(key).ok());
     probe.tty = std::io::stdout().is_terminal();
     notices.extend(probe.notices());
+    // The palette the frame is painted with (`e5.6`): flag, then `$FATHOM_THEME`, then the user's own
+    // config, then the built-in `dark` — resolved here because the shell may not read any of those, and
+    // folded to the depth this terminal answered for. A name that meant nothing is a notice below, not a
+    // silent fallback: a reviewer who asked for a theme and did not get one is owed the difference.
+    let (theme, theme_notices) = crate::theme::resolve(globals, &probe);
+    notices.extend(theme_notices);
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
     let index = index_facts(&root);
@@ -131,6 +137,7 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         mouse,
         lines: globals.lines,
         term: probe,
+        theme,
     };
     if plain {
         for notice in &notices {

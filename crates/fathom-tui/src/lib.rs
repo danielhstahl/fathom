@@ -25,6 +25,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod app;
+pub mod colour;
 pub mod diff;
 pub mod error;
 pub mod event;
@@ -38,6 +39,7 @@ pub mod session;
 pub mod style;
 pub mod terminal;
 pub mod text;
+pub mod theme;
 pub mod timeline;
 pub mod views;
 /// The Queue view's ranked worklist (`reco-c05`): a list, not a scorer.
