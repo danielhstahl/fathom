@@ -1,0 +1,259 @@
+{
+  "labelled_by": "hand-authored for e4.4 (reco-884): the shapes a reviewer said they would stop for, drawn from the e1.12 acceptance fixture and the e4.3 detector catalogue; one reviewer, dispositions written before any weight was set",
+  "units": {
+    "findings": "severity-points (high 3, medium 2, low 1); 8 fills the axis",
+    "surface": "the top surface weight from risk::Surface (migration 50, ci/infra 46, dependency 36, source 10, docs 3)",
+    "migration": "exposure 0-1 (a migration file is 0.55, a destructive statement in the added lines is 1.0)",
+    "blast": "dependent paths; 40 fills the axis. Absent here: nothing in this build can measure it",
+    "test_ratio": "coverage share of the additions, 0-1 (the model risks on its complement)",
+    "size": "reviewable lines of churn (the log ruler tops out at 20 000)",
+    "dependency": "exposure 0-1 (a lockfile is 0.55, a manifest 0.35, a supplied direct add 0.8, a major move 1.0)",
+    "deletions": "removal shape 0-1 (three-fifths removal is 0.6, a shrunken test surface floors it at 0.75)",
+    "noise": "share of churn that is generated, locked, vendored or binary, 0-1",
+    "breadth": "spread 0-1 (0.15 per surface past the first, 0.2 past 12 files, 0.4 past 30)",
+    "attribution": "the attribution confidence, 0-1 (the model risks on its complement)",
+    "authorship": "agent 0.7, uncredited 1.0, human 0"
+  },
+  "cases": [
+    {
+      "id": "cal-01",
+      "summary": "0038_drop_email_backup.sql: drops a column and the table behind it, with no reversal file in the episode",
+      "label": true,
+      "features": { "findings": 0, "surface": 50, "migration": 1.0, "size": 340, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-02",
+      "summary": "release.yml: three lines, publishes artefacts with the live signing key and adds a push trigger on main",
+      "label": true,
+      "features": { "findings": 3, "surface": 46, "size": 3, "noise": 0.0, "breadth": 0.0, "deletions": 0.0, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-03",
+      "summary": "rewrites the pricing module: +520 source, and the 380-line pricing suite is deleted in the same turn",
+      "label": true,
+      "features": { "findings": 2, "surface": 10, "size": 900, "test_ratio": 0.0, "deletions": 0.75, "noise": 0.0, "breadth": 0.3, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-04",
+      "summary": "adds POST /v2/booking with no validation and no test: 120 new lines of public surface",
+      "label": true,
+      "features": { "findings": 3, "surface": 10, "size": 120, "test_ratio": 0.0, "deletions": 0.0, "noise": 0.0, "breadth": 0.15, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-05",
+      "summary": "jwt 1.x to 3.0 in Cargo.toml and Cargo.lock: a major move in the auth path, two transitive adds",
+      "label": true,
+      "features": { "findings": 0, "surface": 36, "dependency": 1.0, "size": 800, "noise": 0.92, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-06",
+      "summary": "main.tf: passes a database password through as a variable with the real value committed as the default",
+      "label": true,
+      "features": { "findings": 3, "surface": 46, "size": 40, "noise": 0.0, "breadth": 0.3, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-07",
+      "summary": "an uncredited author touches six files in three modules and removes a handler other services call",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 260, "test_ratio": 0.2, "deletions": 0.6, "noise": 0.0, "breadth": 0.45, "attribution": 0.2, "authorship": 1.0 }
+    },
+    {
+      "id": "cal-08",
+      "summary": "a 400-line onboarding guide, written by a named person, with nothing to execute",
+      "label": false,
+      "features": { "findings": 0, "surface": 3, "size": 400, "noise": 0.0, "breadth": 0.0, "deletions": 0.02, "attribution": 0.99, "authorship": 0.0 }
+    },
+    {
+      "id": "cal-09",
+      "summary": "regenerates uv.lock after a routine patch bump: 4 100 lines of churn, one transitive version",
+      "label": false,
+      "features": { "findings": 0, "surface": 36, "dependency": 0.55, "size": 4100, "noise": 1.0, "breadth": 0.0, "deletions": 0.45, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-10",
+      "summary": "the availability suite: 300 new tests over code that already worked, no source touched",
+      "label": false,
+      "features": { "findings": 0, "surface": 8, "size": 300, "test_ratio": 1.0, "noise": 0.0, "breadth": 0.0, "deletions": 0.0, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-11",
+      "summary": "extracts the worker into its own module: 340 moved lines, the tests moved with it",
+      "label": false,
+      "features": { "findings": 1, "surface": 10, "size": 680, "test_ratio": 0.45, "deletions": 0.5, "noise": 0.0, "breadth": 0.3, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-12",
+      "summary": "trims the footer: six lines of markup, one string",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 6, "test_ratio": 0.0, "noise": 0.0, "breadth": 0.0, "deletions": 0.4, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-13",
+      "summary": "adds rate-limit headers to the API: 30 lines, one test, no new surface",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 30, "test_ratio": 0.3, "noise": 0.0, "breadth": 0.0, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-14",
+      "summary": "regenerates the protobuf bindings after an upstream change nobody typed",
+      "label": false,
+      "features": { "findings": 0, "surface": 6, "size": 2200, "noise": 1.0, "breadth": 0.15, "deletions": 0.4, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-15",
+      "summary": "a debug print left in the parser, plus the one-line fix for the timezone report",
+      "label": false,
+      "features": { "findings": 1, "surface": 10, "size": 16, "test_ratio": 0.0, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-16",
+      "summary": "pricing rounding: 22 lines behind a flag, with a table-driven test",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 44, "test_ratio": 0.5, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-17",
+      "summary": "adds a feature flag stanza to flags.yaml and reads it in one place",
+      "label": false,
+      "features": { "findings": 0, "surface": 30, "size": 28, "test_ratio": 0.2, "noise": 0.0, "breadth": 0.3, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-18",
+      "summary": "a new additive migration adds a nullable column and an index; the reversal file is in the episode",
+      "label": false,
+      "features": { "findings": 0, "surface": 50, "migration": 0.55, "size": 90, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-19",
+      "summary": "tidies imports across eleven files: no behaviour, no new lines of logic",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 140, "noise": 0.0, "breadth": 0.2, "deletions": 0.55, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-20",
+      "summary": "webhook validation: 40 new lines, 20 new tests, one signature check",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 60, "test_ratio": 0.33, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-21",
+      "summary": "sets CI to run the suite on Windows as well: two workflow files, no permissions change",
+      "label": false,
+      "features": { "findings": 0, "surface": 46, "size": 70, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-22",
+      "summary": "retries notification delivery: 28 lines, a backoff, and a test for each branch",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 66, "test_ratio": 0.5, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-23",
+      "summary": "vendor: pulls in a vendored copy of a small C library, 6 000 lines, nobody's code",
+      "label": false,
+      "features": { "findings": 0, "surface": 6, "size": 6000, "noise": 1.0, "breadth": 0.2, "deletions": 0.02, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-24",
+      "summary": "a settlement ledger: 45 new lines of accounting logic with one test over the happy path",
+      "label": false,
+      "features": { "findings": 1, "surface": 10, "size": 60, "test_ratio": 0.15, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-25",
+      "summary": "edits a generated file by hand to fix a comment, and the generator says DO NOT EDIT",
+      "label": false,
+      "features": { "findings": 2, "surface": 6, "size": 4, "noise": 1.0, "breadth": 0.0, "deletions": 0.2, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-26",
+      "summary": "an environment variable added to .env.example and read in one settings module",
+      "label": false,
+      "features": { "findings": 0, "surface": 30, "size": 18, "test_ratio": 0.0, "noise": 0.0, "breadth": 0.3, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-27",
+      "summary": "changes an OpenAPI contract: one field renamed, and the callers are in another repository",
+      "label": false,
+      "features": { "findings": 0, "surface": 30, "size": 22, "noise": 0.0, "breadth": 0.15, "deletions": 0.2, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-28",
+      "summary": "a 2 500-line data migration script for a backfill, run once by an operator, reviewed twice",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 2500, "test_ratio": 0.05, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-29",
+      "summary": "disables a flaky lint for one module to unblock the build, with the reason in the directive",
+      "label": false,
+      "features": { "findings": 2, "surface": 10, "size": 5, "noise": 0.0, "breadth": 0.0, "deletions": 0.0, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-30",
+      "summary": "snapshot tests regenerated after a copy change: 900 lines of derived text",
+      "label": false,
+      "features": { "findings": 0, "surface": 6, "size": 900, "noise": 1.0, "breadth": 0.0, "deletions": 0.5, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-31",
+      "summary": "a TODO left on a half-finished exporter, plus the three lines that finish it",
+      "label": false,
+      "features": { "findings": 2, "surface": 10, "size": 20, "test_ratio": 0.0, "noise": 0.0, "breadth": 0.15, "deletions": 0.1, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-32",
+      "summary": "the booking window: 26 lines, one test, one config key already shipped",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 40, "test_ratio": 0.35, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-33",
+      "summary": "a Dockerfile base image bump to the patched digest, with the changelog quoted in the message",
+      "label": false,
+      "features": { "findings": 0, "surface": 40, "size": 4, "noise": 0.0, "breadth": 0.0, "deletions": 0.3, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-34",
+      "summary": "a copied block of validation logic into a second handler: twelve new lines that match the first",
+      "label": false,
+      "features": { "findings": 2, "surface": 10, "size": 24, "test_ratio": 0.0, "noise": 0.0, "breadth": 0.15, "deletions": 0.0, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-35",
+      "summary": "documentation for the release: the changelog, the version bump in two places, one badge",
+      "label": false,
+      "features": { "findings": 0, "surface": 3, "size": 60, "noise": 0.0, "breadth": 0.3, "deletions": 0.15, "attribution": 0.99, "authorship": 0.0 }
+    },
+    {
+      "id": "cal-36",
+      "summary": "a human fixes a typo in an error string, with a test asserting the new wording",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 8, "test_ratio": 0.5, "noise": 0.0, "breadth": 0.15, "deletions": 0.3, "attribution": 0.99, "authorship": 0.0 }
+    },
+    {
+      "id": "cal-37",
+      "summary": "an agent reworks the same hunk of the lexer for the third episode running, converging this time",
+      "label": false,
+      "features": { "findings": 2, "surface": 10, "size": 180, "test_ratio": 0.2, "noise": 0.0, "breadth": 0.0, "deletions": 0.5, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-38",
+      "summary": "adds a GraphQL query to the public schema: two fields, both nullable",
+      "label": false,
+      "features": { "findings": 0, "surface": 30, "size": 30, "test_ratio": 0.3, "noise": 0.0, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-39",
+      "summary": "a 90-line CSV fixture added for the import tests, plus the loader that reads it",
+      "label": false,
+      "features": { "findings": 0, "surface": 10, "size": 100, "test_ratio": 0.6, "noise": 0.4, "breadth": 0.15, "deletions": 0.05, "attribution": 0.95, "authorship": 0.7 }
+    },
+    {
+      "id": "cal-40",
+      "summary": "removes a dead feature flag and its three branches after the rollout finished",
+      "label": false,
+      "features": { "findings": 0, "surface": 30, "size": 120, "test_ratio": 0.0, "deletions": 0.7, "noise": 0.0, "breadth": 0.3, "attribution": 0.95, "authorship": 0.7 }
+    }
+  ]
+}

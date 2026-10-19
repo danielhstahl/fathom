@@ -1,0 +1,535 @@
+{
+  "after": {
+    "cases": 40,
+    "f1": 0.8,
+    "false_positive": 0,
+    "flagged": 4,
+    "flagged_ids": [
+      "cal-06",
+      "cal-02",
+      "cal-01",
+      "cal-04"
+    ],
+    "mean_positive_rank": 3.5,
+    "missed": 2,
+    "missed_ids": [
+      "cal-03",
+      "cal-05"
+    ],
+    "positives": 6,
+    "precision": 1.0,
+    "recall": 0.6666666666666666,
+    "scores": [
+      [
+        "cal-06",
+        47,
+        true
+      ],
+      [
+        "cal-02",
+        45,
+        true
+      ],
+      [
+        "cal-01",
+        41,
+        true
+      ],
+      [
+        "cal-04",
+        38,
+        true
+      ],
+      [
+        "cal-03",
+        36,
+        true
+      ],
+      [
+        "cal-05",
+        36,
+        true
+      ],
+      [
+        "cal-40",
+        35,
+        false
+      ],
+      [
+        "cal-18",
+        34,
+        false
+      ],
+      [
+        "cal-31",
+        33,
+        false
+      ],
+      [
+        "cal-34",
+        33,
+        false
+      ],
+      [
+        "cal-07",
+        33,
+        false
+      ],
+      [
+        "cal-26",
+        33,
+        false
+      ],
+      [
+        "cal-09",
+        32,
+        false
+      ],
+      [
+        "cal-37",
+        31,
+        false
+      ],
+      [
+        "cal-17",
+        30,
+        false
+      ],
+      [
+        "cal-21",
+        29,
+        false
+      ],
+      [
+        "cal-15",
+        29,
+        false
+      ],
+      [
+        "cal-38",
+        28,
+        false
+      ],
+      [
+        "cal-24",
+        27,
+        false
+      ],
+      [
+        "cal-33",
+        26,
+        false
+      ],
+      [
+        "cal-11",
+        25,
+        false
+      ],
+      [
+        "cal-25",
+        25,
+        false
+      ],
+      [
+        "cal-12",
+        24,
+        false
+      ],
+      [
+        "cal-28",
+        23,
+        false
+      ],
+      [
+        "cal-29",
+        23,
+        false
+      ],
+      [
+        "cal-27",
+        22,
+        false
+      ],
+      [
+        "cal-20",
+        19,
+        false
+      ],
+      [
+        "cal-32",
+        19,
+        false
+      ],
+      [
+        "cal-13",
+        19,
+        false
+      ],
+      [
+        "cal-16",
+        17,
+        false
+      ],
+      [
+        "cal-22",
+        17,
+        false
+      ],
+      [
+        "cal-39",
+        17,
+        false
+      ],
+      [
+        "cal-14",
+        16,
+        false
+      ],
+      [
+        "cal-30",
+        15,
+        false
+      ],
+      [
+        "cal-19",
+        15,
+        false
+      ],
+      [
+        "cal-23",
+        15,
+        false
+      ],
+      [
+        "cal-36",
+        12,
+        false
+      ],
+      [
+        "cal-10",
+        9,
+        false
+      ],
+      [
+        "cal-35",
+        4,
+        false
+      ],
+      [
+        "cal-08",
+        2,
+        false
+      ]
+    ],
+    "spurious_ids": [],
+    "true_positive": 4
+  },
+  "before": {
+    "cases": 40,
+    "f1": 0.6,
+    "false_positive": 1,
+    "flagged": 4,
+    "flagged_ids": [
+      "cal-05",
+      "cal-09",
+      "cal-01",
+      "cal-03"
+    ],
+    "mean_positive_rank": 5.333333333333333,
+    "missed": 3,
+    "missed_ids": [
+      "cal-06",
+      "cal-02",
+      "cal-04"
+    ],
+    "positives": 6,
+    "precision": 0.75,
+    "recall": 0.5,
+    "scores": [
+      [
+        "cal-05",
+        45,
+        true
+      ],
+      [
+        "cal-09",
+        45,
+        false
+      ],
+      [
+        "cal-01",
+        41,
+        true
+      ],
+      [
+        "cal-03",
+        41,
+        true
+      ],
+      [
+        "cal-06",
+        40,
+        true
+      ],
+      [
+        "cal-40",
+        40,
+        false
+      ],
+      [
+        "cal-07",
+        39,
+        false
+      ],
+      [
+        "cal-18",
+        35,
+        false
+      ],
+      [
+        "cal-02",
+        34,
+        true
+      ],
+      [
+        "cal-04",
+        33,
+        true
+      ],
+      [
+        "cal-14",
+        32,
+        false
+      ],
+      [
+        "cal-26",
+        32,
+        false
+      ],
+      [
+        "cal-37",
+        32,
+        false
+      ],
+      [
+        "cal-30",
+        31,
+        false
+      ],
+      [
+        "cal-11",
+        31,
+        false
+      ],
+      [
+        "cal-21",
+        31,
+        false
+      ],
+      [
+        "cal-17",
+        30,
+        false
+      ],
+      [
+        "cal-23",
+        30,
+        false
+      ],
+      [
+        "cal-31",
+        30,
+        false
+      ],
+      [
+        "cal-34",
+        29,
+        false
+      ],
+      [
+        "cal-28",
+        28,
+        false
+      ],
+      [
+        "cal-25",
+        28,
+        false
+      ],
+      [
+        "cal-38",
+        28,
+        false
+      ],
+      [
+        "cal-15",
+        27,
+        false
+      ],
+      [
+        "cal-24",
+        26,
+        false
+      ],
+      [
+        "cal-33",
+        26,
+        false
+      ],
+      [
+        "cal-12",
+        25,
+        false
+      ],
+      [
+        "cal-27",
+        24,
+        false
+      ],
+      [
+        "cal-39",
+        23,
+        false
+      ],
+      [
+        "cal-19",
+        23,
+        false
+      ],
+      [
+        "cal-20",
+        21,
+        false
+      ],
+      [
+        "cal-32",
+        21,
+        false
+      ],
+      [
+        "cal-22",
+        20,
+        false
+      ],
+      [
+        "cal-16",
+        20,
+        false
+      ],
+      [
+        "cal-13",
+        20,
+        false
+      ],
+      [
+        "cal-29",
+        17,
+        false
+      ],
+      [
+        "cal-36",
+        15,
+        false
+      ],
+      [
+        "cal-10",
+        13,
+        false
+      ],
+      [
+        "cal-35",
+        10,
+        false
+      ],
+      [
+        "cal-08",
+        8,
+        false
+      ]
+    ],
+    "spurious_ids": [
+      "cal-09"
+    ],
+    "true_positive": 3
+  },
+  "fraction": 0.1,
+  "labelled_by": "hand-authored for e4.4 (reco-884): the shapes a reviewer said they would stop for, drawn from the e1.12 acceptance fixture and the e4.3 detector catalogue; one reviewer, dispositions written before any weight was set",
+  "moves": [
+    "findings 0.16 → 0.25",
+    "size 0.07 → 0.00",
+    "deletions 0.07 → 0.02",
+    "noise 0.07 → 0.02",
+    "breadth 0.07 → 0.04"
+  ],
+  "notices": [],
+  "proposal": {
+    "notices": [],
+    "tau": 36,
+    "weights": [
+      {
+        "feature": "findings",
+        "origin": "repo",
+        "value": 0.25
+      },
+      {
+        "feature": "surface",
+        "origin": "default",
+        "value": 0.13
+      },
+      {
+        "feature": "migration",
+        "origin": "default",
+        "value": 0.09
+      },
+      {
+        "feature": "blast",
+        "origin": "default",
+        "value": 0.09
+      },
+      {
+        "feature": "test_ratio",
+        "origin": "default",
+        "value": 0.08
+      },
+      {
+        "feature": "size",
+        "origin": "repo",
+        "value": 0.0
+      },
+      {
+        "feature": "dependency",
+        "origin": "default",
+        "value": 0.07
+      },
+      {
+        "feature": "deletions",
+        "origin": "repo",
+        "value": 0.02
+      },
+      {
+        "feature": "noise",
+        "origin": "repo",
+        "value": 0.02
+      },
+      {
+        "feature": "breadth",
+        "origin": "repo",
+        "value": 0.04
+      },
+      {
+        "feature": "attribution",
+        "origin": "default",
+        "value": 0.05
+      },
+      {
+        "feature": "authorship",
+        "origin": "default",
+        "value": 0.05
+      }
+    ]
+  },
+  "tau_proposed": 36,
+  "tau_proposed_flags": 6,
+  "tau_shipped": 70,
+  "tau_shipped_flags": 0
+}

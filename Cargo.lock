@@ -868,6 +868,7 @@ dependencies = [
  "fathom-ingest",
  "fathom-store",
  "globset",
+ "proptest",
  "rayon",
  "regex",
  "serde",

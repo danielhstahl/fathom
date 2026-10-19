@@ -143,6 +143,8 @@ pub enum Verb {
     Attribution(AttributionArgs),
     /// Print one episode's delta document — the model the TUI, the export and an agent all read
     Analyze(AnalyzeArgs),
+    /// Print one episode's risk score with every feature, its weight and its contribution (`e4.4`)
+    Why(WhyArgs),
     /// Report repo scale, index state and cache hit rate
     Stats(StatsArgs),
     /// Run the checks CI cares about; findings above the threshold exit 7
@@ -309,6 +311,38 @@ pub struct AnalyzeArgs {
     /// Write the generated schema to `schemas/`, replacing the checked-in copy.
     #[arg(long, requires = "schema", conflicts_with = "check")]
     pub write: bool,
+}
+
+/// `fathom why`
+#[derive(Args, Debug)]
+pub struct WhyArgs {
+    /// The episode to score: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid
+    /// prefix. Omitted with `--calibrate`, which reports on the weights instead of on an episode.
+    pub episode: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the same answer as JSON, for a machine.
+    #[arg(long)]
+    pub json: bool,
+    /// Print the calibration report — precision and recall at the top of the queue, as shipped and as
+    /// retuned — instead of a score. With a path, that JSON set is measured; without one, the set shipped
+    /// with the binary.
+    #[arg(long, num_args = 0..=1, default_missing_value = "", value_name = "SET")]
+    pub calibrate: Option<String>,
+    /// Override one weight for this run only: `--weight findings=0.25`. Repeatable. Nothing is written to
+    /// `fathom.toml`; the score says which weights were overridden.
+    #[arg(long = "weight", value_name = "NAME=VALUE")]
+    pub weight: Vec<String>,
+    /// Override the flag line for this run only, 0 to 100.
+    #[arg(long)]
+    pub tau: Option<u8>,
+    /// How deep the queue is, as a fraction, for `--calibrate`. Defaults to 0.1 — the top ten percent.
+    #[arg(long, value_name = "FRACTION")]
+    pub cut: Option<f64>,
+    /// Print the feature names this build can score, and stop.
+    #[arg(long)]
+    pub weights: bool,
 }
 
 /// `fathom stats`
@@ -557,6 +591,21 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
             args.check,
             args.write,
         ),
+        Some(Verb::Why(args)) => {
+            if args.weights {
+                return crate::why::print_weights(args.json);
+            }
+            let set = args.calibrate.as_deref().filter(|set| !set.is_empty());
+            crate::why::why(
+                &args.root,
+                args.episode.as_deref(),
+                args.json,
+                args.calibrate.as_ref().map(|_| set),
+                &args.weight,
+                args.tau,
+                args.cut,
+            )
+        }
         Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
         Some(Verb::Check) => Err(not_implemented("fathom check", "e6.6")),
         Some(Verb::Doctor(args)) => {

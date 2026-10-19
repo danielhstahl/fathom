@@ -50,11 +50,37 @@
 //! # Determinism
 //!
 //! No clock, no input outside the arguments, no accumulation order that depends on HashMap iteration:
-//! the same index yields the same numbers, per ADR-001 §7.4. The weights are compile-time constants
-//! printed by [`components`], not configuration — `[risk.weights]` in `fathom.toml` belongs to
-//! `e4.4`'s scorer, and a knob that moves these numbers has to be the knob that names them.
+//! the same index yields the same numbers, per ADR-001 §7.4. The weights here are compile-time
+//! constants printed by [`components`], not configuration — which is the difference between this file
+//! and [`score`]: `spine-1` is an ordering that cannot be tuned, and `features-1` is one that can, with
+//! `[risk.weights]` in `fathom.toml` as the knob and [`calibrate`] as the way to measure a turn of it.
+//!
+//! # What landed with `e4.4`
+//!
+//! The modules below are the explainable score the epic asked for, and `spine-1` above is the ordering
+//! the rail and the queue still print. They coexist on purpose:
+//!
+//! | module | owns | read it for |
+//! |---|---|---|
+//! | [`feature`] | the twelve measurements, their rulers, their default weights | what a feature claims and how far it can go |
+//! | [`weights`] | `[risk.weights]`, `risk.tau`, clamping, provenance, refusals | why a weight is what it is |
+//! | [`score`] | the arithmetic, the ordered reasons, the printed lines | how 82 was arrived at |
+//! | `collect` | reading a vector out of an index | where each number came from, and what is missing |
+//! | [`calibrate`] | the labelled set, the cut, the retune | whether a weight change helped |
+//!
+//! `fathom why <episode>` (`crates/fathom-cli/src/why.rs`) is the surface: it prints the vector, the
+//! weights and every contribution, which is the acceptance criterion, and `fathom why --calibrate`
+//! prints the calibration report. The queue switches from `spine-1` to `features-1` in `e4.5`
+//! (`reco-wsj`), which is the ticket that owns the ordering function.
 
 #![deny(missing_docs)]
+
+pub mod calibrate;
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod collect;
+pub mod feature;
+pub mod score;
+pub mod weights;
 
 use std::collections::BTreeMap;
 
@@ -904,4 +930,28 @@ pub fn components() -> Vec<(String, u64, String)> {
             ((*name).to_owned(), *cap, what.to_owned())
         })
         .collect()
+}
+
+/// What `features-1` cannot see, in the words `fathom why` prints under every score.
+///
+/// The spine's [`BLIND_SPOTS`] list is what a spine-only ordering admits; this one is shorter, because
+/// `e4.3`'s findings close four of those holes (a destructive migration, a committed secret-shaped
+/// string, a test surface weakened, an untested new public surface) and one — the module graph — is
+/// deliberately left open with its ticket named rather than papered over with a proxy. What remains is
+/// the set of things a *reviewer* still has to bring to a score: judgement, and the two kinds of fact
+/// this build cannot read.
+#[must_use]
+pub fn ceiling() -> Vec<&'static str> {
+    vec![
+        "what depends on the touched code — the module graph is `e3.1`'s and the graph delta is `e3.2`'s, \
+         so `blast` is absent from the arithmetic until they land",
+        "whether a finding a detector raised is already known and accepted: dismissals are `e4.6`'s, so a \
+         score counts every finding it can see",
+        "whether the tests that arrived assert anything: coverage shape is measurable, coverage quality is \
+         not, and this model does not pretend otherwise",
+        "whether a dependency is stale or vulnerable: advisory age is `e2.7`'s, behind `net-advisories` \
+         and a consent flag, and a score that moved with the network would not be reproducible",
+        "whether the human reviewing this has already read it: review state is a queue's business \
+         (`e4.5`), not a feature's",
+    ]
 }

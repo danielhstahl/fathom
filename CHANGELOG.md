@@ -17,6 +17,34 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.4` — the risk score became a feature vector with its arithmetic printed (`reco-884`)
+
+- **`features-1`: twelve documented axes, one sum.** Findings and severities, surface, migration
+  exposure, blast radius, test ratio, size, dependency exposure, deletions, noise share, breadth,
+  attribution confidence and authorship - each with a named unit, a stated ruler that turns the unit into
+  `0..=1`, a source row, and the ticket that owns it. `fathom why <episode>` prints all twelve whether or
+  not they measured: raw value, weight, contribution, the sentence behind it, and - for what could not be
+  measured - the ticket that owns the missing input. An absent axis leaves the **denominator** rather than
+  posing as a zero, because a `0` on a review queue reads as "safe".
+- **Weights are a knob with a range, a provenance and a refusal.** `[risk.weights]` and `risk.tau` in
+  `fathom.toml`, clamped to `0.0..=1.0` with the clamp printed, unknown keys refused in a notice rather
+  than defaulted, every weight carrying whether it came from the build, the file, the environment or
+  `--weight`. Monotone in the precise sense, and tested that way with `proptest`: a heavier weight never
+  shrinks its own contribution, never shrinks the gap it favours, and never lets a dominating episode
+  fall behind - and the test says out loud which stronger claim is *not* true.
+- **A calibration set, so a weight change is evaluated rather than felt.** 40 hand-labelled cases,
+  precision/recall at the top decile, and a deterministic coordinate-ascent retune:
+  **0.750/0.500 (F1 0.600) as shipped, 1.000/0.667 (F1 0.800) retuned**, mean labelled rank 5.3 to 3.5.
+  The report also caught the shipped threshold: nothing in `features-1`'s range reaches `risk.tau = 70`,
+  so `--calibrate` now proposes its own decile floor beside the `[risk.weights]` block.
+  `fathom why --calibrate <file>` measures a repository's own dispositions instead.
+- Reproducible by construction: no clock, no path, no network in the arithmetic; two runs of the same
+  episode print identical bytes, asserted against the built binary, and the printed terms add to the
+  printed total in integer hundredths. [`docs/concepts/risk-scoring.md`](docs/concepts/risk-scoring.md)
+  is the document; `crates/fathom-analyze/tests/risk_score.rs` and `crates/fathom-cli/tests/cli_why.rs`
+  are the proof. The TUI's `w` still prints `spine-1` until `e4.5` rewires the queue around this vector.
+
+
 ### `s5` — the LLM narrative polish question is measured and closed: ship the template, ship no LLM path (`reco-6p8`, deciding `e4.7`)
 
 - **Three arms, one evidence set, twenty real episodes.** Every arm composed a narrative from the

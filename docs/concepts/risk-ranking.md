@@ -1,9 +1,11 @@
 # Episode risk ranking: the order the queue reads in, and the ceiling printed beside it
 
-- **Status**: Accepted, and implemented — the spine-only half. `reco-884` (`e4.4`) replaces its
-  *inputs* with features and `reco-wsj` (`e4.5`) replaces its *ordering function* with
-  risk × staleness × blast radius; neither changes the shape described here, which is the shape the
-  queue, the rail and `w` print.
+- **Status**: Accepted, and implemented — the spine-only half. `reco-884` (`e4.4`) has now replaced its
+  *inputs* with a documented feature vector and a calibration set, in
+  [risk-scoring.md](risk-scoring.md) (`features-1`), and `reco-wsj` (`e4.5`) replaces its *ordering
+  function* with risk × staleness × blast radius; neither changes the shape described here, which is the
+  shape the queue, the rail and `w` print. This document stays the contract for **that** ranking —
+  `spine-1` is what the shipped queue computes until `e4.5` rewires it.
 - **Ticket / plan key**: `reco-wsj` (`e4.5`) owns the queue. This ranking was pulled forward out of
   `e4.5` because `reco-glv`'s (`e1.12`) walkthrough could not be completed at all without some
   defensible answer to "which three episodes are the riskiest" — see

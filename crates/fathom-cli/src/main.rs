@@ -64,6 +64,7 @@ mod theme;
 mod verbs;
 #[cfg(feature = "watch")]
 mod watch;
+mod why;
 
 use clap::{CommandFactory, FromArgMatches};
 use fathom_core::exit::ExitCode;

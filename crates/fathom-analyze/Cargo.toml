@@ -75,6 +75,12 @@ net-llm = ["dep:ureq"]
 
 [dev-dependencies]
 fathom-fixtures.workspace = true
+# `e4.4`'s acceptance criterion is that weight changes have a "deterministic, monotonic effect on
+# ranking", and a monotonicity claim over twelve continuous inputs is not a set of hand-written cases —
+# it is a property. `proptest` is already in the workspace through `fathom-tui` (`e5.5`), it is a
+# dev-dependency so it never reaches the shipped binary, and its `std`-only feature set is what the
+# workspace pins.
+proptest.workspace = true
 
 # `episodes` and `incremental_index` are the store-facing half of this crate's test surface: they import
 # `fathom_analyze::index` and `fathom_store::{spine, cache}`, every one of which is gated behind a SQLite

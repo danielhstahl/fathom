@@ -589,6 +589,7 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["index", "--help"],
         vec!["show", "--help"],
         vec!["stats", "--help"],
+        vec!["why", "--help"],
         vec!["check", "--help"],
         vec!["doctor", "--help"],
         vec!["export", "--help"],
