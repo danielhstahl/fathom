@@ -1,0 +1,57 @@
+{
+  "detector": "copy_paste_growth",
+  "episode": {
+    "id": "ep-fix-copy-paste",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**"
+    ],
+    "files": [
+      {
+        "path": "src/billing/ledger.rs",
+        "change": "modified",
+        "add": 24,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,28 @@",
+            "added": [
+              "let charge_0 = ledger.post(amount_0, currency);",
+              "let charge_1 = ledger.post(amount_1, currency);",
+              "let charge_2 = ledger.post(amount_2, currency);",
+              "let charge_3 = ledger.post(amount_3, currency);",
+              "let charge_4 = ledger.post(amount_4, currency);",
+              "let charge_5 = ledger.post(amount_5, currency);",
+              "let charge_6 = ledger.post(amount_6, currency);",
+              "let charge_7 = ledger.post(amount_7, currency);",
+              "let charge_8 = ledger.post(amount_8, currency);",
+              "let charge_9 = ledger.post(amount_9, currency);",
+              "let charge_10 = ledger.post(amount_10, currency);",
+              "let charge_11 = ledger.post(amount_11, currency);",
+              "let charge_0 = ledger.post(amount_0, currency);",
+              "let charge_1 = ledger.post(amount_1, currency);",
+              "let charge_2 = ledger.post(amount_2, currency);",
+              "let charge_3 = ledger.post(amount_3, currency);",
+              "let charge_4 = ledger.post(amount_4, currency);",
+              "let charge_5 = ledger.post(amount_5, currency);",
+              "let charge_6 = ledger.post(amount_6, currency);",
+              "let charge_7 = ledger.post(amount_7, currency);",
+              "let charge_8 = ledger.post(amount_8, currency);",
+              "let charge_9 = ledger.post(amount_9, currency);",
+              "let charge_10 = ledger.post(amount_10, currency);",
+              "let charge_11 = ledger.post(amount_11, currency);"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

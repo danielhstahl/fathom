@@ -1,0 +1,30 @@
+[
+  {
+    "detector_id": "churn_loop",
+    "subject": "src/parse/item.rs",
+    "message": "src/parse/item.rs · fn parse_item( has been edited by 3 episodes (ep-churn-1, ep-churn-2, ep-churn-3) without converging: ep-churn-3 puts back 100% of the lines ep-churn-1 removed there",
+    "severity": "medium",
+    "confidence": 0.5,
+    "jump_view": "diff",
+    "jump_target": "ep-churn-3#src/parse/item.rs",
+    "suppression_key": "churn_loop:src/parse/item.rs",
+    "evidence": [
+      "inferred path src/parse/item.rs :: 3 episodes touched this region within the last 12: ep-churn-1, ep-churn-2, ep-churn-3",
+      "observed episode ep-churn-1 :: its lines removed here reappear in ep-churn-3's added lines"
+    ]
+  },
+  {
+    "detector_id": "rework_loop",
+    "subject": "src/parse/item.rs",
+    "message": "src/parse/item.rs puts ep-churn-2 back: it re-adds 100% of what it removed from this path and re-removes 100% of what it added there",
+    "severity": "medium",
+    "confidence": 0.75,
+    "jump_view": "diff",
+    "jump_target": "ep-churn-3#src/parse/item.rs",
+    "suppression_key": "rework_loop:src/parse/item.rs",
+    "evidence": [
+      "observed episode ep-churn-2 :: its removals on src/parse/item.rs reappear here",
+      "inferred path src/parse/item.rs :: both directions of the overlap clear the 60% bar (1 line(s) added here, 1 removed)"
+    ]
+  }
+]

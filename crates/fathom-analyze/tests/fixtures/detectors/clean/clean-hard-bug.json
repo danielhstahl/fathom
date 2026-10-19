@@ -1,0 +1,96 @@
+{
+  "detector": "*",
+  "episode": {
+    "id": "ep-clean-3",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770010800000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 3,
+    "n_commits": 1,
+    "declared_scope": [],
+    "files": [
+      {
+        "path": "src/parse/item.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 1,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,4 @@",
+            "added": [
+              "        let price = self.consume_item(); // the fix"
+            ],
+            "removed": [
+              "        let price = self.peek();"
+            ]
+          }
+        ]
+      }
+    ],
+    "content": "full",
+    "prior": [
+      {
+        "id": "ep-clean-3-a",
+        "summary": "invoice-api: agent turn",
+        "author_kind": "agent",
+        "when_utc": 1770003600000,
+        "lineage_ref": "refs/heads/main",
+        "lineage_seq": 1,
+        "n_commits": 1,
+        "declared_scope": [],
+        "files": [
+          {
+            "path": "src/parse/lexer.rs",
+            "change": "modified",
+            "add": 1,
+            "del": 1,
+            "hunks": [
+              {
+                "header": "@@ -1,4 +1,4 @@",
+                "added": [
+                  "        self.skip_whitespace();"
+                ],
+                "removed": [
+                  "        self.skip_spaces();"
+                ]
+              }
+            ]
+          }
+        ],
+        "content": "full"
+      },
+      {
+        "id": "ep-clean-3-b",
+        "summary": "invoice-api: agent turn",
+        "author_kind": "agent",
+        "when_utc": 1770007200000,
+        "lineage_ref": "refs/heads/main",
+        "lineage_seq": 2,
+        "n_commits": 1,
+        "declared_scope": [],
+        "files": [
+          {
+            "path": "src/parse/item.rs",
+            "change": "modified",
+            "add": 1,
+            "del": 1,
+            "hunks": [
+              {
+                "header": "@@ -1,4 +1,4 @@",
+                "added": [
+                  "        let qty = self.consume_qty();"
+                ],
+                "removed": [
+                  "        let qty = self.peek_qty();"
+                ]
+              }
+            ]
+          }
+        ],
+        "content": "full"
+      }
+    ]
+  },
+  "prior": []
+}

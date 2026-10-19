@@ -1121,6 +1121,44 @@
       "additionalProperties": false,
       "description": "Which finding detectors run.",
       "properties": {
+        "churn": {
+          "additionalProperties": false,
+          "description": "Episodes that must have edited one region before `churn_loop` calls it a loop, and how far back it looks (four times this). Two episodes touching a function is a hard bug; four is a story. Ships disabled until `e4.3a` measures it. `e4.3`.",
+          "properties": {
+            "min_episodes": {
+              "default": 3,
+              "description": "Episodes that must have edited one region before `churn_loop` calls it a loop, and how far back it looks (four times this). Two episodes touching a function is a hard bug; four is a story. Ships disabled until `e4.3a` measures it. `e4.3`.",
+              "maximum": 10,
+              "minimum": 2,
+              "type": "integer",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "episodes"
+            }
+          },
+          "type": "object"
+        },
+        "copy": {
+          "additionalProperties": false,
+          "description": "Consecutive new lines that have to match elsewhere for `copy_paste_growth` to call it a copied block. Ships disabled; this is the knob `e4.3a` tunes first, because a table-driven test and a duplicated idea are the same twelve lines. `e4.3`.",
+          "properties": {
+            "min_block_lines": {
+              "default": 12,
+              "description": "Consecutive new lines that have to match elsewhere for `copy_paste_growth` to call it a copied block. Ships disabled; this is the knob `e4.3a` tunes first, because a table-driven test and a duplicated idea are the same twelve lines. `e4.3`.",
+              "maximum": 200,
+              "minimum": 2,
+              "type": "integer",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "lines"
+            }
+          },
+          "type": "object"
+        },
         "enabled": {
           "default": [
             "test_deletion",
@@ -1137,6 +1175,107 @@
           "x-fathom-merge": "extend",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e2.7"
+        },
+        "max_findings": {
+          "default": 12,
+          "description": "Findings kept per detector per episode. What the cap hides is counted in the report, never dropped silently. `e4.3`.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "findings.detect",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.3",
+          "x-fathom-units": "rows"
+        },
+        "rework": {
+          "additionalProperties": false,
+          "description": "Line-set overlap (Jaccard, both directions) that makes an episode a revert of an earlier one. Ships disabled: a rebase and a rework are the same bytes. `e4.3`.",
+          "properties": {
+            "min_overlap": {
+              "default": 0.6,
+              "description": "Line-set overlap (Jaccard, both directions) that makes an episode a revert of an earlier one. Ships disabled: a rebase and a rework are the same bytes. `e4.3`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "0-1"
+            }
+          },
+          "type": "object"
+        },
+        "shotgun": {
+          "additionalProperties": false,
+          "description": "Directory clusters (the first two path segments of each hand-written file) one episode may touch before `shotgun_edit` calls it spread. Ships disabled, and `e3.1`'s module graph is what will make it a real detector. `e4.3`.",
+          "properties": {
+            "min_clusters": {
+              "default": 4,
+              "description": "Directory clusters (the first two path segments of each hand-written file) one episode may touch before `shotgun_edit` calls it spread. Ships disabled, and `e3.1`'s module graph is what will make it a real detector. `e4.3`.",
+              "maximum": 12,
+              "minimum": 2,
+              "type": "integer",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "clusters"
+            }
+          },
+          "type": "object"
+        },
+        "suppress": {
+          "default": [],
+          "description": "The off switch: a detector id, an exact suppression key, or a glob over keys. Keys are `detector:subject`, printed by every finding, and contain no episode id and no timestamp so a rebase cannot invalidate one. `e4.3`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "findings.detect",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.3"
+        },
+        "todo": {
+          "additionalProperties": false,
+          "description": "New `TODO`/`FIXME`/`todo!()` markers before `todo_debt` speaks. `0` is a real threshold \u2014 report the episode that removed one \u2014 so unlike a count, zero is not refused. `e4.3`.",
+          "properties": {
+            "min_new": {
+              "default": 1,
+              "description": "New `TODO`/`FIXME`/`todo!()` markers before `todo_debt` speaks. `0` is a real threshold \u2014 report the episode that removed one \u2014 so unlike a count, zero is not refused. `e4.3`.",
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "markers"
+            }
+          },
+          "type": "object"
+        },
+        "untested": {
+          "additionalProperties": false,
+          "description": "How big a new public surface has to be before `untested_new_logic` says it owes a test. Below it, a three-line accessor demanding a test is noise the reviewer mutes wholesale. `e4.3`.",
+          "properties": {
+            "min_added_lines": {
+              "default": 20,
+              "description": "How big a new public surface has to be before `untested_new_logic` says it owes a test. Below it, a three-line accessor demanding a test is noise the reviewer mutes wholesale. `e4.3`.",
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-analyzer": "findings.detect",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e4.3",
+              "x-fathom-units": "lines"
+            }
+          },
+          "type": "object"
         }
       },
       "type": "object",

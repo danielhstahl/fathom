@@ -1,0 +1,135 @@
+{
+  "detectors": [
+    {
+      "asks": "did every touched path fall inside the scope somebody declared?",
+      "default_on": true,
+      "id": "scope_creep",
+      "needs": "rows",
+      "reenable": "",
+      "title": "change outside the declared scope",
+      "version": 1
+    },
+    {
+      "asks": "is there new logic here that nothing in this episode runs?",
+      "default_on": true,
+      "id": "untested_new_logic",
+      "needs": "content",
+      "reenable": "",
+      "title": "new logic with no test surface",
+      "version": 1
+    },
+    {
+      "asks": "did the test surface get smaller, softer, or narrower in this episode?",
+      "default_on": true,
+      "id": "test_weakening",
+      "needs": "content",
+      "reenable": "",
+      "title": "assertions or tests removed, skipped or focused",
+      "version": 1
+    },
+    {
+      "asks": "did something written to look at the program survive into the commit?",
+      "default_on": true,
+      "id": "debug_leftover",
+      "needs": "content",
+      "reenable": "",
+      "title": "debug output committed",
+      "version": 1
+    },
+    {
+      "asks": "how much explicitly unfinished work did this episode add?",
+      "default_on": true,
+      "id": "todo_debt",
+      "needs": "content",
+      "reenable": "",
+      "title": "new TODO/FIXME debt",
+      "version": 1
+    },
+    {
+      "asks": "is a file a program owns being edited by hand?",
+      "default_on": true,
+      "id": "generated_edit",
+      "needs": "content",
+      "reenable": "",
+      "title": "hand-edit to a generated file",
+      "version": 1
+    },
+    {
+      "asks": "does a committed string have the shape of a credential?",
+      "default_on": true,
+      "id": "secret_string",
+      "needs": "content",
+      "reenable": "",
+      "title": "secret-shaped string",
+      "version": 1
+    },
+    {
+      "asks": "was a check switched off here, and which one?",
+      "default_on": true,
+      "id": "lint_escape",
+      "needs": "content",
+      "reenable": "",
+      "title": "disabled lint or type check",
+      "version": 1
+    },
+    {
+      "asks": "has this region been edited across N episodes and put back again?",
+      "default_on": false,
+      "id": "churn_loop",
+      "needs": "history",
+      "reenable": "e4.3a (reco-mkl.1) must show G3 ≤ 0.30 with miss_rate ≤ 0.20 on the three pinned OSS repositories; the threshold is ADR-001 §5.4's and the harness is not built yet",
+      "title": "churn loop: the same region without converging",
+      "version": 1
+    },
+    {
+      "asks": "is this episode undoing, or re-landing, something that already happened?",
+      "default_on": false,
+      "id": "rework_loop",
+      "needs": "history",
+      "reenable": "e4.3a (reco-mkl.1): a rebase, a squash-merge and a legitimate re-entry are all indistinguishable from a rework at line level, and only the three-repository disposition set says how often",
+      "title": "rework loop: revert or repeated hunk",
+      "version": 1
+    },
+    {
+      "asks": "does one episode reach into several places that have nothing to do with each other?",
+      "default_on": false,
+      "id": "shotgun_edit",
+      "needs": "rows",
+      "reenable": "e4.3a (reco-mkl.1) for the false-positive rate, and `e3.1`/`e3.2`'s module graph to replace directory clusters with real coupling — until then this is a path heuristic with a 0.45 ceiling",
+      "title": "shotgun edit across unrelated clusters",
+      "version": 1
+    },
+    {
+      "asks": "did new text arrive as a copy of other new text?",
+      "default_on": false,
+      "id": "copy_paste_growth",
+      "needs": "content",
+      "reenable": "e4.3a (reco-mkl.1): tables, generated tests and parallel implementations of one interface all read as copied; the block-length knob is what the measurement tunes",
+      "title": "copy-paste growth",
+      "version": 1
+    }
+  ],
+  "knobs": {
+    "detectors.churn.min_episodes": "3",
+    "detectors.copy.min_block_lines": "12",
+    "detectors.enabled": "debug_leftover,generated_edit,lint_escape,scope_creep,secret_string,test_weakening,todo_debt,untested_new_logic",
+    "detectors.max_findings": "12",
+    "detectors.rework.min_overlap": "0.60",
+    "detectors.shotgun.min_clusters": "4",
+    "detectors.suppress": "",
+    "detectors.todo.min_new": "1",
+    "detectors.untested.min_added_lines": "20"
+  },
+  "severities": [
+    "high",
+    "medium",
+    "low"
+  ],
+  "views": [
+    "queue",
+    "timeline",
+    "diff",
+    "structure",
+    "graph"
+  ]
+}

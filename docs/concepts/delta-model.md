@@ -85,7 +85,8 @@ blast radius, `e2.8`'s non-code surfaces, `e2.3`'s shape sentence or `e4.3`'s fi
 as `SuppliedBlock`s — headline, basis, figures, confidence, owner — and the corresponding section becomes
 `measured` (or `partial`, with the missing keys named) instead of `unavailable`. Nothing about the
 sections, the schema or the card changes when that happens, which is the whole design goal: **the
-analyses arrive through a hand-over, not through a version bump.**
+analyses arrive through a hand-over, not through a version bump.** `e4.3`'s findings arrive exactly this
+way, and what they are is specified in [pathology detectors](pathology-detectors.md).
 
 ## 5. Why the TUI is not allowed to compute
 

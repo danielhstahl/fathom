@@ -1,0 +1,15 @@
+[
+  {
+    "detector_id": "generated_edit",
+    "subject": "src/generated/api_client.rs",
+    "message": "src/generated/api_client.rs is a generated file (the index classes it generated), and 1 hand-written line(s) were added to it",
+    "severity": "medium",
+    "confidence": 0.65,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-generated-edit#src/generated/api_client.rs",
+    "suppression_key": "generated_edit:src/generated/api_client.rs",
+    "evidence": [
+      "asserted path src/generated/api_client.rs :: stored taxonomy: path_class=generated, noise_class=generated"
+    ]
+  }
+]

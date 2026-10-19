@@ -23,6 +23,10 @@
 pub mod build;
 pub mod cancel;
 pub mod deps;
+/// The agent pathology detectors (`e4.3`): pure functions over the episode-shaped delta model, one
+/// catalogue, one suppression key per finding. Named `detectors` and not `findings` because that is the
+/// spelling `fathom-store`'s cache id `findings.detect` and the config keys `detectors.*` already use.
+pub mod detectors;
 pub mod error;
 pub mod export;
 pub mod insight;

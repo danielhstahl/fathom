@@ -1,0 +1,36 @@
+{
+  "detector": "debug_leftover",
+  "episode": {
+    "id": "ep-fix-debug-leftover",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**"
+    ],
+    "files": [
+      {
+        "path": "src/parse/lexer.rs",
+        "change": "modified",
+        "add": 3,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,7 @@",
+            "added": [
+              "let token = self.next();",
+              "dbg!(&token);",
+              "self.position += 1;"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

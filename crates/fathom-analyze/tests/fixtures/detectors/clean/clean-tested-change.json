@@ -1,0 +1,53 @@
+{
+  "detector": "*",
+  "episode": {
+    "id": "ep-clean-1",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**",
+      "tests/**"
+    ],
+    "files": [
+      {
+        "path": "src/api/orders.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "pub fn total(&self) -> Money { self.lines.total() }"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "tests/api/orders.rs",
+        "change": "added",
+        "add": 4,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,8 @@",
+            "added": [
+              "#[test]",
+              "fn totals_the_order() {",
+              "    assert_eq!(order.total(), Money::from(12));",
+              "}"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

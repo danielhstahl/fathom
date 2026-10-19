@@ -1,0 +1,15 @@
+[
+  {
+    "detector_id": "copy_paste_growth",
+    "subject": "src/billing/ledger.rs",
+    "message": "src/billing/ledger.rs: 24 of its 24 new line(s) sit in 1 repeated run of ≥12 consecutive lines (longest 24); the same text appears again in this file",
+    "severity": "low",
+    "confidence": 0.5,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-copy-paste#src/billing/ledger.rs",
+    "suppression_key": "copy_paste_growth:src/billing/ledger.rs",
+    "evidence": [
+      "observed hunk src/billing/ledger.rs @@ -1,4 +1,28 @@ :: let charge_0 = ledger.post(amount_0, currency); ⏎ let charge_1 = ledger.post(amount_1, currency);"
+    ]
+  }
+]

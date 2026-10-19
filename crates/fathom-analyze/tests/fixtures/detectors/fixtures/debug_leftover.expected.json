@@ -1,0 +1,15 @@
+[
+  {
+    "detector_id": "debug_leftover",
+    "subject": "src/parse/lexer.rs",
+    "message": "src/parse/lexer.rs added 1 debug output line(s) that read as left behind: dbg!(&token);",
+    "severity": "medium",
+    "confidence": 0.8,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-debug-leftover#src/parse/lexer.rs",
+    "suppression_key": "debug_leftover:src/parse/lexer.rs",
+    "evidence": [
+      "observed hunk src/parse/lexer.rs @@ -1,4 +1,7 @@ :: dbg!(&token);"
+    ]
+  }
+]

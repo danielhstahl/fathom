@@ -437,6 +437,11 @@ fn table_match(lower: &str, name: &str, table: &[Pattern]) -> Option<Surface> {
 }
 
 /// The test conventions: a directory named for tests, or a filename that says so.
+///
+/// The directory list is matched both *inside* a path and *at its head*, because `tests/api.rs` at the
+/// repository root is the single most common test layout there is (Rust's integration tests, pytest's
+/// default, Go's `_test.go` tree) and an unanchored `"/tests/"` reads it as source — which made an
+/// episode that added nothing but tests look like an episode that added nothing but logic.
 fn is_test_path(lower: &str, name: &str) -> bool {
     [
         "/test/",
@@ -448,7 +453,7 @@ fn is_test_path(lower: &str, name: &str) -> bool {
         "/features/",
     ]
     .iter()
-    .any(|dir| lower.contains(dir))
+    .any(|dir| lower.contains(dir) || lower.starts_with(dir.trim_start_matches('/')))
         || name.starts_with("test_")
         || name.starts_with("test.")
         || name.starts_with("bench_")

@@ -558,6 +558,14 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `risk.weights.<weight>` | `number` | `blast=0.3, size=0.4, test_ratio=0.3` | `deep` | `any` | — | findings.detect | `e2.9` |
 | `risk.tau` | `integer` | `70` | `replace` | `any` | score | risk.score | `e2.10` |
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
+| `detectors.suppress` | `string_list` | `—` | `extend` | `any` | — | findings.detect | `e4.3` |
+| `detectors.max_findings` | `integer` | `12` | `replace` | `any` | rows | findings.detect | `e4.3` |
+| `detectors.untested.min_added_lines` | `integer` | `20` | `replace` | `any` | lines | findings.detect | `e4.3` |
+| `detectors.todo.min_new` | `integer` | `1` | `replace` | `any` | markers | findings.detect | `e4.3` |
+| `detectors.churn.min_episodes` | `integer` | `3` | `replace` | `any` | episodes | findings.detect | `e4.3` |
+| `detectors.rework.min_overlap` | `number` | `0.6` | `replace` | `any` | 0-1 | findings.detect | `e4.3` |
+| `detectors.shotgun.min_clusters` | `integer` | `4` | `replace` | `any` | clusters | findings.detect | `e4.3` |
+| `detectors.copy.min_block_lines` | `integer` | `12` | `replace` | `any` | lines | findings.detect | `e4.3` |
 | `blast.hops` | `integer` | `1` | `replace` | `any` | hops | blast_radius | `e2.10` |
 | `blast.confidence.graph` | `number` | `0.9` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |
 | `blast.confidence.heuristic` | `number` | `0.4` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |

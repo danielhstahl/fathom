@@ -1,0 +1,95 @@
+{
+  "detector": "churn_loop",
+  "episode": {
+    "id": "ep-churn-3",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770010800000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 3,
+    "n_commits": 1,
+    "declared_scope": [],
+    "files": [
+      {
+        "path": "src/parse/item.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 1,
+        "hunks": [
+          {
+            "header": "@@ -10,3 +10,3 @@ fn parse_item(",
+            "added": [
+              "        let price = self.consume();"
+            ],
+            "removed": [
+              "        let price = self.peek();"
+            ]
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": [
+    {
+      "id": "ep-churn-1",
+      "summary": "invoice-api: agent turn",
+      "author_kind": "agent",
+      "when_utc": 1770003600000,
+      "lineage_ref": "refs/heads/main",
+      "lineage_seq": 1,
+      "n_commits": 1,
+      "declared_scope": [],
+      "files": [
+        {
+          "path": "src/parse/item.rs",
+          "change": "modified",
+          "add": 1,
+          "del": 1,
+          "hunks": [
+            {
+              "header": "@@ -10,3 +10,3 @@ fn parse_item(",
+              "added": [
+                "        let price = self.consume();"
+              ],
+              "removed": [
+                "        let price = self.peek();"
+              ]
+            }
+          ]
+        }
+      ],
+      "content": "full"
+    },
+    {
+      "id": "ep-churn-2",
+      "summary": "invoice-api: agent turn",
+      "author_kind": "agent",
+      "when_utc": 1770007200000,
+      "lineage_ref": "refs/heads/main",
+      "lineage_seq": 2,
+      "n_commits": 1,
+      "declared_scope": [],
+      "files": [
+        {
+          "path": "src/parse/item.rs",
+          "change": "modified",
+          "add": 1,
+          "del": 1,
+          "hunks": [
+            {
+              "header": "@@ -10,3 +10,3 @@ fn parse_item(",
+              "added": [
+                "        let price = self.peek();"
+              ],
+              "removed": [
+                "        let price = self.consume();"
+              ]
+            }
+          ]
+        }
+      ],
+      "content": "full"
+    }
+  ]
+}

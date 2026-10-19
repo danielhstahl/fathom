@@ -1,0 +1,16 @@
+[
+  {
+    "detector_id": "untested_new_logic",
+    "subject": "src/parser/grammar.rs",
+    "message": "src/parser/grammar.rs added 25 new line(s) including 5 public declaration(s) — pub fn parse_grammar(input: &str) -> Grammar {, pub struct Grammar {, pub fn walk(&self, visit: &mut dyn FnMut(&Item)) { (and 2 more) — and the episode touched no test file at all (0 test paths, 0 of them named for `grammar`)",
+    "severity": "medium",
+    "confidence": 0.7,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-untested#src/parser/grammar.rs",
+    "suppression_key": "untested_new_logic:src/parser/grammar.rs",
+    "evidence": [
+      "observed hunk src/parser/grammar.rs @@ -1,4 +1,29 @@ :: pub fn parse_grammar(input: &str) -> Grammar { ⏎ pub struct Grammar { ⏎ pub fn walk(&self, visit: &mut dyn FnMut(&Item)) { ⏎ pub fn compile(&self) -> Program { …",
+      "inferred range episode:ep-fix-untested#files :: 1 file rows, test surface touched: false"
+    ]
+  }
+]

@@ -1,0 +1,37 @@
+{
+  "detector": "todo_debt",
+  "episode": {
+    "id": "ep-fix-todo-debt",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**"
+    ],
+    "files": [
+      {
+        "path": "src/api/retry.rs",
+        "change": "modified",
+        "add": 4,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,8 @@",
+            "added": [
+              "// TODO: back off exponentially, not flat",
+              "fn retry(&self) -> Result<()> {",
+              "    todo!()",
+              "}"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

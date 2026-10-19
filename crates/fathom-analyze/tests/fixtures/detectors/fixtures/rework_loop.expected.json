@@ -1,0 +1,16 @@
+[
+  {
+    "detector_id": "rework_loop",
+    "subject": "src/api/validate.rs",
+    "message": "src/api/validate.rs puts ep-rework-1 back: it removes every one of the 10 line(s) ep-rework-1 added to this path (100% of them gone again)",
+    "severity": "medium",
+    "confidence": 0.75,
+    "jump_view": "diff",
+    "jump_target": "ep-rework-2#src/api/validate.rs",
+    "suppression_key": "rework_loop:src/api/validate.rs",
+    "evidence": [
+      "observed episode ep-rework-1 :: its removals on src/api/validate.rs reappear here",
+      "inferred path src/api/validate.rs :: both directions of the overlap clear the 60% bar (0 line(s) added here, 10 removed)"
+    ]
+  }
+]

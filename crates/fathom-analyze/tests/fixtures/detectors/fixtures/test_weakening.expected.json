@@ -1,0 +1,16 @@
+[
+  {
+    "detector_id": "test_weakening",
+    "subject": "tests/api.rs",
+    "message": "tests/api.rs was weakened: 12 assertion line(s) removed and 1 added; the episode's own test totals were 0 cases and -11 assertion lines, so the loss did not move elsewhere in it",
+    "severity": "medium",
+    "confidence": 0.7,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-test-weakening#tests/api.rs",
+    "suppression_key": "test_weakening:tests/api.rs",
+    "evidence": [
+      "observed hunk tests/api.rs @@ -1,4 +1,-7 @@ :: assert_eq!(order.total(), 0); ⏎ assert_eq!(order.total(), 1); ⏎ assert_eq!(order.total(), 2); ⏎ assert_eq!(order.total(), 3); …",
+      "inferred range episode#test_surface :: episode test totals: cases +0, assertion lines -11 (0 in / 0 out, 1 in / 12 out)"
+    ]
+  }
+]

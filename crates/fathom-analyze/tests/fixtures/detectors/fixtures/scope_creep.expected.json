@@ -1,0 +1,30 @@
+[
+  {
+    "detector_id": "scope_creep",
+    "subject": "db/migrations/0007_add_charge_column.sql",
+    "message": "db/migrations/0007_add_charge_column.sql is outside the declared scope (src/api/**), and the file is new in this episode",
+    "severity": "high",
+    "confidence": 0.9,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-scope-creep#db/migrations/0007_add_charge_column.sql",
+    "suppression_key": "scope_creep:db/migrations/0007_add_charge_column.sql",
+    "evidence": [
+      "asserted range episode:ep-fix-scope-creep#declared_scope :: declared scope: src/api/**",
+      "inferred path db/migrations/0007_add_charge_column.sql :: touched by this episode as Migration"
+    ]
+  },
+  {
+    "detector_id": "scope_creep",
+    "subject": "src/billing/charge.rs",
+    "message": "src/billing/charge.rs is outside the declared scope (src/api/**), and it was modified here",
+    "severity": "medium",
+    "confidence": 0.9,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-scope-creep#src/billing/charge.rs",
+    "suppression_key": "scope_creep:src/billing/charge.rs",
+    "evidence": [
+      "asserted range episode:ep-fix-scope-creep#declared_scope :: declared scope: src/api/**",
+      "inferred path src/billing/charge.rs :: touched by this episode as Source"
+    ]
+  }
+]

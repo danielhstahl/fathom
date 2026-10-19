@@ -1,0 +1,15 @@
+[
+  {
+    "detector_id": "todo_debt",
+    "subject": "src/api/retry.rs",
+    "message": "src/api/retry.rs added 2 unfinished-work marker(s) (rust): // TODO: back off exponentially, not flat, todo!()",
+    "severity": "low",
+    "confidence": 0.85,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-todo-debt#src/api/retry.rs",
+    "suppression_key": "todo_debt:src/api/retry.rs",
+    "evidence": [
+      "observed hunk src/api/retry.rs @@ -1,4 +1,8 @@ :: // TODO: back off exponentially, not flat ⏎ todo!()"
+    ]
+  }
+]

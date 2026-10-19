@@ -1324,6 +1324,50 @@ KEY_LIST: list[Key] = [
        default=["test_deletion", "untested_new_logic", "debug_leftover"],
        doc="Detectors that run. Unknown detector ids are a warning naming a valid id.",
        analyzer="findings.detect", ticket="e2.7"),
+    _k(path="detectors.suppress", kind="string_list", merge="extend", default=[],
+       doc="The off switch: a detector id, an exact suppression key, or a glob over keys. Keys are "
+           "`detector:subject`, printed by every finding, and contain no episode id and no timestamp so "
+           "a rebase cannot invalidate one. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.max_findings", kind="integer", default=12, minimum=1, maximum=100,
+       units="rows",
+       doc="Findings kept per detector per episode. What the cap hides is counted in the report, never "
+           "dropped silently. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.untested.min_added_lines", kind="integer", default=20, minimum=0,
+       maximum=1000, units="lines",
+       doc="How big a new public surface has to be before `untested_new_logic` says it owes a test. "
+           "Below it, a three-line accessor demanding a test is noise the reviewer mutes wholesale. "
+           "`e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.todo.min_new", kind="integer", default=1, minimum=0, maximum=100,
+       units="markers",
+       doc="New `TODO`/`FIXME`/`todo!()` markers before `todo_debt` speaks. `0` is a real threshold "
+           "— report the episode that removed one — so unlike a count, zero is not refused. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.churn.min_episodes", kind="integer", default=3, minimum=2, maximum=10,
+       units="episodes",
+       doc="Episodes that must have edited one region before `churn_loop` calls it a loop, and how far "
+           "back it looks (four times this). Two episodes touching a function is a hard bug; four is a "
+           "story. Ships disabled until `e4.3a` measures it. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.rework.min_overlap", kind="number", default=0.60, minimum=0.0, maximum=1.0,
+       units="0-1",
+       doc="Line-set overlap (Jaccard, both directions) that makes an episode a revert of an earlier "
+           "one. Ships disabled: a rebase and a rework are the same bytes. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.shotgun.min_clusters", kind="integer", default=4, minimum=2, maximum=12,
+       units="clusters",
+       doc="Directory clusters (the first two path segments of each hand-written file) one episode may "
+           "touch before `shotgun_edit` calls it spread. Ships disabled, and `e3.1`'s module graph is "
+           "what will make it a real detector. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
+    _k(path="detectors.copy.min_block_lines", kind="integer", default=12, minimum=2, maximum=200,
+       units="lines",
+       doc="Consecutive new lines that have to match elsewhere for `copy_paste_growth` to call it a "
+           "copied block. Ships disabled; this is the knob `e4.3a` tunes first, because a table-driven "
+           "test and a duplicated idea are the same twelve lines. `e4.3`.",
+       analyzer="findings.detect", ticket="e4.3"),
     _k(path="blast.hops", kind="integer", default=1, minimum=0, maximum=4, units="hops",
        doc="Rings counted *beyond* the direct one: the direct ring is always counted, so the "
            "default of 1 answers 'direct + one hop' and 0 answers 'direct only'. Anything "

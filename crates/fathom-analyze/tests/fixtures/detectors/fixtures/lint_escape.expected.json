@@ -1,0 +1,16 @@
+[
+  {
+    "detector_id": "lint_escape",
+    "subject": "src/parse/lexer.rs",
+    "message": "src/parse/lexer.rs adds 1 check-suppressing directive(s) — a lint — and the reason is not in the diff: #[allow(clippy::unwrap_used)]",
+    "severity": "high",
+    "confidence": 0.9,
+    "jump_view": "diff",
+    "jump_target": "ep-fix-lint-escape#src/parse/lexer.rs",
+    "suppression_key": "lint_escape:src/parse/lexer.rs",
+    "evidence": [
+      "observed hunk src/parse/lexer.rs @@ -1,4 +1,6 @@ :: #[allow(clippy::unwrap_used)]",
+      "inferred config_key unwrap_used :: a safety-critical id is named: this class of suppression hides a bug class, not a preference"
+    ]
+  }
+]

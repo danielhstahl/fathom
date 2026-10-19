@@ -1,0 +1,67 @@
+{
+  "detector": "*",
+  "episode": {
+    "id": "ep-clean-2",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**",
+      "tests/**"
+    ],
+    "files": [
+      {
+        "path": "tests/api.rs",
+        "change": "modified",
+        "add": 20,
+        "del": 12,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,12 @@",
+            "added": [
+              "assert_eq!(order.total(), Money::from(0));",
+              "assert_eq!(order.total(), Money::from(1));",
+              "assert_eq!(order.total(), Money::from(2));",
+              "assert_eq!(order.total(), Money::from(3));",
+              "assert_eq!(order.total(), Money::from(4));",
+              "assert_eq!(order.total(), Money::from(5));",
+              "assert_eq!(order.total(), Money::from(6));",
+              "assert_eq!(order.total(), Money::from(7));",
+              "assert_eq!(order.total(), Money::from(8));",
+              "assert_eq!(order.total(), Money::from(9));",
+              "assert_eq!(order.total(), Money::from(10));",
+              "assert_eq!(order.total(), Money::from(11));",
+              "assert_eq!(order.total(), Money::from(12));",
+              "assert_eq!(order.total(), Money::from(13));",
+              "assert_eq!(order.total(), Money::from(14));",
+              "assert_eq!(order.total(), Money::from(15));",
+              "assert_eq!(order.total(), Money::from(16));",
+              "assert_eq!(order.total(), Money::from(17));",
+              "assert_eq!(order.total(), Money::from(18));",
+              "assert_eq!(order.total(), Money::from(19));"
+            ],
+            "removed": [
+              "assert_eq!(order.total(), 0);",
+              "assert_eq!(order.total(), 1);",
+              "assert_eq!(order.total(), 2);",
+              "assert_eq!(order.total(), 3);",
+              "assert_eq!(order.total(), 4);",
+              "assert_eq!(order.total(), 5);",
+              "assert_eq!(order.total(), 6);",
+              "assert_eq!(order.total(), 7);",
+              "assert_eq!(order.total(), 8);",
+              "assert_eq!(order.total(), 9);",
+              "assert_eq!(order.total(), 10);",
+              "assert_eq!(order.total(), 11);"
+            ]
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

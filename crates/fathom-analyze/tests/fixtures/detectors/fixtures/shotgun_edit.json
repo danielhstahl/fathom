@@ -1,0 +1,137 @@
+{
+  "detector": "shotgun_edit",
+  "episode": {
+    "id": "ep-fix-shotgun",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [],
+    "files": [
+      {
+        "path": "src/parser/file1.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned1 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "src/parser/file2.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned2 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "src/api/file1.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned1 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "src/api/file2.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned2 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "crates/fathom-store/file1.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned1 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "crates/fathom-store/file2.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned2 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "tools/migrate/file1.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned1 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      },
+      {
+        "path": "tools/migrate/file2.rs",
+        "change": "modified",
+        "add": 1,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,5 @@",
+            "added": [
+              "let tuned2 = adjust();"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

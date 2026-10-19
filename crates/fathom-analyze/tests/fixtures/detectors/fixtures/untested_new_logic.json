@@ -1,0 +1,58 @@
+{
+  "detector": "untested_new_logic",
+  "episode": {
+    "id": "ep-fix-untested",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770014400000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 4,
+    "n_commits": 1,
+    "declared_scope": [
+      "src/**"
+    ],
+    "files": [
+      {
+        "path": "src/parser/grammar.rs",
+        "change": "modified",
+        "add": 25,
+        "del": 0,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,29 @@",
+            "added": [
+              "pub fn parse_grammar(input: &str) -> Grammar {",
+              "    let mut items = Vec::new();",
+              "    while let Some(item) = self.next() {",
+              "        items.push(item?);",
+              "    }",
+              "    Grammar { items, source: input.to_owned() }",
+              "}",
+              "pub struct Grammar {",
+              "    pub items: Vec<Item>,",
+              "    pub source: String,",
+              "}",
+              "impl Grammar {",
+              "    pub fn walk(&self, visit: &mut dyn FnMut(&Item)) {",
+              "        for item in &self.items {",
+              "            visit(item);",
+              "        }",
+              "    }",
+              "}",
+              "pub fn compile(&self) -> Program {",
+              "        self.walk(&mut |item| self.emit(item));",
+              "        Program::default()",
+              "}",
+              "pub fn lower(&self) -> Ir {",
+              "        Ir::default()",
+              "}"
+            ],
+            "removed": []
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": []
+}

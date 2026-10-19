@@ -148,6 +148,33 @@ pub fn deviation<S: AsRef<str>, P: AsRef<str>>(declared: &[S], touched: &[P]) ->
     }
 }
 
+/// Does one path fall inside one set of declared globs?
+///
+/// The single-path question [`deviation`] answers in aggregate, asked once — which is what `e4.3`'s
+/// scope-creep detector needs when it decides whether a *renamed* file left the scope: the new path may
+/// be outside while the path it moved from was inside, and moving a file that was inside is not the same
+/// claim as touching a file nobody declared. Same matcher, same expansions, so the two answers cannot
+/// disagree.
+///
+/// Nothing declared is `false`: "nobody said anything" and "everything is inside" are different claims,
+/// and the caller that has to tell them apart is the one that owns [`Deviation`].
+#[must_use]
+pub fn matches<S: AsRef<str>, P: AsRef<str>>(declared: &[S], path: P) -> bool {
+    let globs = declared
+        .iter()
+        .map(AsRef::as_ref)
+        .map(str::trim)
+        .filter(|glob| !glob.is_empty())
+        .collect::<Vec<_>>();
+    if globs.is_empty() {
+        return false;
+    }
+    match compile(&globs) {
+        Some(set) => set.is_match(path.as_ref()),
+        None => false,
+    }
+}
+
 /// Compile the declared globs into one matcher, widening the ones that name a directory.
 ///
 /// `None` when no pattern at all could be compiled, which the caller reads as "no opinion" — never as "the

@@ -1,0 +1,83 @@
+{
+  "detector": "rework_loop",
+  "episode": {
+    "id": "ep-rework-2",
+    "summary": "invoice-api: agent turn",
+    "author_kind": "agent",
+    "when_utc": 1770007200000,
+    "lineage_ref": "refs/heads/main",
+    "lineage_seq": 2,
+    "n_commits": 1,
+    "declared_scope": [],
+    "files": [
+      {
+        "path": "src/api/validate.rs",
+        "change": "modified",
+        "add": 0,
+        "del": 12,
+        "hunks": [
+          {
+            "header": "@@ -1,4 +1,-8 @@",
+            "added": [],
+            "removed": [
+              "fn validate(order: &Order) -> Result<()> {",
+              "    if order.total().is_negative() {",
+              "        return Err(Error::Negative);",
+              "    }",
+              "    Ok(())",
+              "}",
+              "fn legacy_validate(order: &Order) -> bool {",
+              "    order.total().as_cents() >= 0",
+              "}",
+              "// the old shape, kept for the migration window",
+              "const LEGACY: bool = true;",
+              "fn stamp() -> u64 { 0 }"
+            ]
+          }
+        ]
+      }
+    ],
+    "content": "full"
+  },
+  "prior": [
+    {
+      "id": "ep-rework-1",
+      "summary": "invoice-api: agent turn",
+      "author_kind": "agent",
+      "when_utc": 1770003600000,
+      "lineage_ref": "refs/heads/main",
+      "lineage_seq": 1,
+      "n_commits": 1,
+      "declared_scope": [],
+      "files": [
+        {
+          "path": "src/api/validate.rs",
+          "change": "added",
+          "add": 12,
+          "del": 0,
+          "hunks": [
+            {
+              "header": "@@ -1,4 +1,16 @@",
+              "added": [
+                "fn validate(order: &Order) -> Result<()> {",
+                "    if order.total().is_negative() {",
+                "        return Err(Error::Negative);",
+                "    }",
+                "    Ok(())",
+                "}",
+                "fn legacy_validate(order: &Order) -> bool {",
+                "    order.total().as_cents() >= 0",
+                "}",
+                "// the old shape, kept for the migration window",
+                "const LEGACY: bool = true;",
+                "fn stamp() -> u64 { 0 }"
+              ],
+              "removed": []
+            }
+          ]
+        }
+      ],
+      "content": "full"
+    }
+  ]
+}

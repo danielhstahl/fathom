@@ -1,0 +1,16 @@
+[
+  {
+    "detector_id": "shotgun_edit",
+    "subject": "clusters",
+    "message": "one episode reaches 4 separate clusters (crates/fathom-store, src/api, src/parser, tools/migrate), widest tools/migrate (2 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+    "severity": "medium",
+    "confidence": 0.45,
+    "jump_view": "structure",
+    "jump_target": "ep-fix-shotgun",
+    "suppression_key": "shotgun_edit:clusters",
+    "evidence": [
+      "inferred path fathom show ep-fix-shotgun --files :: crates/fathom-store: crates/fathom-store/file1.rs crates/fathom-store/file2.rs | src/api: src/api/file1.rs src/api/file2.rs | src/parser: src/parser/file1.rs src/parser/file2.rs | tools/migrate: tools/migrate/file1.rs tools/migrate/file2.rs",
+      "absent path e3.1 :: no module graph in this build, so 'unrelated' is a directory heuristic and not a measured absence of coupling"
+    ]
+  }
+]
