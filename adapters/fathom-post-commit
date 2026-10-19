@@ -1,0 +1,280 @@
+#!/bin/sh
+# fathom-post-commit — the harness fallback: a git hook that speaks hooks v1 (ADR-005 §2, e6.2 / reco-7go)
+#
+#     cp adapters/fathom-post-commit .git/hooks/post-commit && chmod +x .git/hooks/post-commit
+#
+# This is the adapter for the repository with no agent in it, which is most repositories and, on any
+# given day, most of yours. It captures what a commit can be asked to confess — which paths changed,
+# how many lines each way, who made it, on which branch — and writes them as `file_edit` events in
+# the same stream a real harness writes, so `fathom index` segments an ordinary history with harness
+# evidence instead of guessing from time gaps.
+#
+# Why a git hook can stand in for a harness at all: ADR-005 §2.1's `file_edit` row is *derived*
+# evidence everywhere it comes from a tool result, and a commit is a stronger statement about a
+# change than a tool result is. What a hook cannot know is the turn and the intent, so it never
+# invents them: `session_id` is the commit's own id, `provenance` says `asserted`, and no `turn_id`
+# is written. The ADR's whole argument is that asserted evidence is graded, not hidden.
+#
+# # The three promises this file has to keep, and how each one is kept
+#
+# **1. It never blocks a commit.** That is the acceptance criterion, and it is structural, not a
+# suggestion: the `EXIT` trap forces status 0 whatever happens inside; no command's failure is
+# examined; stdout and stderr go to a log file, or to `/dev/null` if no log can be written; stdin is
+# closed, never read; there is no network call and no prompt; and the whole thing is bounded — two
+# git plumbing calls, a bounded path loop, a bounded lock wait. A hook that could delay a commit is a
+# hook someone deletes at 6pm, and then the evidence is gone too.
+#
+# **2. It works on any POSIX shell, git bash included.** `/bin/sh`, no bashisms: no arrays, no
+# `[[`, no `$'…'`, no `local` outside a function, no process substitution, no `read -d`. The external
+# commands are the POSIX set git itself ships or requires — `git`, `sed`, `tail`, `wc`, `mkdir`,
+# `date`, `rm` — and `sleep` is tried with a fractional argument and retried with a whole one, since
+# POSIX only promises integers. JSON escaping is `sed`, not a JSON library, because there is no
+# JSON library on a bare Windows box.
+#
+# **3. It obeys the writer's contract** ([docs/harness/README.md](../docs/harness/README.md)): one
+# JSON object per line with the keys sorted, `seq` allocated from the file under a lock (ADR-005
+# §3.3 — `mkdir` is the lock, because there is no `flock` in a shell script and atomic `mkdir` is
+# the one primitive every platform has), a torn tail terminated before a `seq` is chosen, an
+# oversized line refused rather than truncated, and no file contents anywhere — a path, a line
+# count and a digest of the diff are evidence; the diff itself is not (§4.3).
+#
+# Nothing here is product code, and nothing here is imported: this file is the whole adapter.
+
+# The guard. Everything after this line may fail; the commit may not be blamed for it.
+trap 'exit 0' EXIT
+
+#: A newline, spelled once: a `case` pattern cannot contain a literal one inside quotes on a single
+#: line, and this is the only place POSIX gives one that every shell agrees on.
+NL='
+'
+
+LOG_MAX_BYTES=1048576
+MAX_LINE_BYTES=4194304
+LOCK_WAIT_TRIES=40
+LOCK_STALE_SECONDS=5
+PATH_CAP=500
+
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -n "$repo" ] || exit 0
+
+# Where the stream is: ADR-005 §3.1's order, environment first. `paths.events` in `fathom.toml` is
+# deliberately not parsed here — a shell script parsing TOML is a bug budget, not a feature — so a
+# moved stream is a `FATHOM_EVENTS_FILE` away, which every adapter and the reader agree on.
+events=${FATHOM_EVENTS_FILE:-}
+[ -n "$events" ] || events=${RECO_EVENTS_FILE:-}
+if [ -z "$events" ]; then
+    dir=${FATHOM_EVENTS_DIR:-$RECO_EVENTS_DIR}
+    [ -n "$dir" ] && events="$dir/events.jsonl"
+fi
+[ -n "$events" ] || events="$repo/.fathom/events.jsonl"
+
+events_dir=$(dirname "$events") 2>/dev/null || exit 0
+mkdir -p "$events_dir" 2>/dev/null || exit 0
+log="$events_dir/post-commit.log"
+[ -w "$events_dir" ] || log=/dev/null
+
+note() {
+    # Timestamps are `date -u` because a hook that inherits a broken TZ should still write a
+    # readable line; the log is bounded because a hook that fills a disk is the outage it prevented.
+    [ -n "$log" ] || return 0
+    if [ -f "$log" ]; then
+        size=$(wc -c <"$log" 2>/dev/null || echo 0)
+        [ "${size:-0}" -gt "$LOG_MAX_BYTES" ] && rm -f "$log" 2>/dev/null
+    fi
+    printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" "$1" >>"$log" 2>/dev/null
+}
+
+iso_now() {
+    # BSD's date has no -d, so the fallback is the format GNU's date writes with the milliseconds
+    # cut off; both are valid RFC 3339 and `parse_timestamp_millis` accepts either.
+    stamp=$(date -u '+%Y-%m-%dT%H:%M:%S.%3NZ' 2>/dev/null)
+    case "$stamp" in
+        *'.%3NZ') date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null ;;
+        *) printf '%s\n' "$stamp" ;;
+    esac
+}
+
+json_escape() {
+    # Backslash first, then the quote, or the escape gets escaped. git quotes a path that contains
+    # a quote, so this is not the paranoid case it looks like.
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
+sleep_short() {
+    sleep 0.05 2>/dev/null || sleep 1
+}
+
+max_seq() {
+    # The largest `seq` among the last complete lines, not the last line's: "the greatest sequence
+    # in the file" is the sentence that matters, and taking the maximum survives an out-of-order
+    # tail and an unparsable one without reading the whole stream.
+    file=$1
+    tail -n 200 "$file" 2>/dev/null | sed -n 's/.*"seq"[^0-9]*\([0-9][0-9]*\).*/\1/p' |
+        sort -nr 2>/dev/null | sed -n 1p
+}
+
+lock_take() {
+    lock=$1
+    tries=0
+    while [ "$tries" -lt "$LOCK_WAIT_TRIES" ]; do
+        if mkdir "$lock" 2>/dev/null; then
+            printf '%s\n' "$(date +%s 2>/dev/null || echo 0)" >"$lock/stamp" 2>/dev/null
+            return 0
+        fi
+        stamp=$(cat "$lock/stamp" 2>/dev/null || echo "")
+        now=$(date +%s 2>/dev/null || echo 0)
+        # A lock with no stamp is a writer that died between `mkdir` and the stamp write. Treat it
+        # as fresh and wait: waiting out a stuck writer costs one unrecorded commit, stealing a live
+        # writer's lock costs two writers the same sequence number.
+        [ -n "$stamp" ] || stamp=$now
+        if [ "$stamp" ] && [ $((now - stamp)) -gt "$LOCK_STALE_SECONDS" ] 2>/dev/null; then
+            note "taking over a lock stamped $((now - stamp))s ago"
+            rm -rf "$lock" 2>/dev/null
+        else
+            sleep_short
+        fi
+        tries=$((tries + 1))
+    done
+    note "another writer would not let go of the stream; this commit is not recorded"
+    return 1
+}
+
+lock_release() {
+    rm -rf "$1" 2>/dev/null
+}
+
+main() {
+    head=$(git rev-parse HEAD 2>/dev/null) || return 0
+    parents=$(git rev-list --parents -n 1 "$head" 2>/dev/null) || return 0
+    subject=$(git log -1 --format=%s "$head" 2>/dev/null)
+    set -- $parents
+    # A merge is not one turn's work: it is the graph saying two histories met, which rung 4 of the
+    # segmentation already names better than a hook can. Recorded nothing, counted nothing: the
+    # boundary is not missing, it is just not this transport's to state.
+    if [ "$#" -gt 2 ]; then
+        note "merge $head skipped: a merge is a graph boundary, not a turn"
+        return 0
+    fi
+
+    author_name=$(git log -1 --format='%an' "$head" 2>/dev/null)
+    author_email=$(git log -1 --format='%ae' "$head" 2>/dev/null)
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    ts=$(iso_now)
+    session="git:$head"
+
+    lock_take "$events_dir/.events.lock" || return 0
+
+    # A torn tail — a writer that died mid-line — is terminated before a new line goes on it, or
+    # the two writes would interleave into one unreadable line. The damage is counted by the reader
+    # as `bad_lines`; this file is never rewritten to hide it (ADR-005 §3.6).
+    if [ -s "$events" ] && [ -n "$(tail -c 1 "$events" 2>/dev/null)" ]; then
+        printf '\n' >>"$events" 2>/dev/null
+        note "terminated a torn tail in $events"
+    fi
+    seq=$(max_seq "$events")
+    [ -n "$seq" ] || seq=0
+
+    # `-z` is the whole trick: git then writes paths **raw** — no C quoting, no octal escapes,
+    # non-ASCII untouched — which is exactly what a JSON string needs. `tr` turns the NUL
+    # terminators back into newlines so a plain `read` parses numstat's `-z` framing
+    # (`added<TAB>deleted<TAB>path<NUL>`, and `read -d` is not POSIX). `--numstat` gives the line
+    # counts without the diff body, which is the point (§4.3): a path, two counts and a digest are
+    # evidence; the diff is not.
+    #
+    # Records are flushed on the *next* record's header rather than on arrival, because a path with
+    # a newline in it is the one input a newline-framed parser cannot read: the record arrives split
+    # across two lines, and a writer that emitted the first half immediately would put a half-path
+    # into the stream and never tell anyone. With a one-record lookahead the fragment is rejoined,
+    # the control character is seen, and the path is named in the log instead of corrupting the file.
+    count=0
+    pending_added=0
+    pending_deleted=0
+    pending_path=
+    emit() {
+        added=$1
+        deleted=$2
+        path=$3
+        # The stream's own directory is never an event: a recorder that records the file it writes
+        # makes every commit about the recorder, and the loop metric would be a restatement of the
+        # commit count.
+        case "$path" in .fathom | .fathom/*) return 0 ;; esac
+        count=$((count + 1))
+        if [ "$count" -gt "$PATH_CAP" ]; then
+            note "commit $head touched more than $PATH_CAP paths; the rest are not recorded"
+            return 1
+        fi
+        # A path with a control character in it (a newline above all) would put a raw byte in the
+        # middle of the JSON line and damage the stream for every later reader. It is skipped and
+        # named in the log rather than written and hoped about.
+        #
+        # Two checks, because `grep '[[:cntrl:]]'` — the obvious one — cannot work: grep reads
+        # line-by-line, so the newline that is the whole problem is never *on* a line. The newline
+        # is matched directly; the rest is a byte-count difference after `tr -d`, which needs no
+        # character class and no locale.
+        case $path in
+            *"$NL"*)
+                note "path with a newline in it not recorded: $(printf '%s' "$path" | tr '\012' '?')"
+                return 0
+                ;;
+        esac
+        raw_bytes=$(printf '%s' "$path" | wc -c 2>/dev/null)
+        clean_bytes=$(printf '%s' "$path" | LC_ALL=C tr -d '\001-\010\013-\037\177' | wc -c 2>/dev/null)
+        if [ -n "$raw_bytes" ] && [ "$raw_bytes" != "$clean_bytes" ]; then
+            note "path with a control character not recorded: $(printf '%s' "$path" | tr '\001-\037' '?')"
+            return 0
+        fi
+        seq=$((seq + 1))
+        case "$added" in
+            '' | '-') added=0; binary=true ;;
+            *) binary=false ;;
+        esac
+        case "$deleted" in
+            '' | '-') deleted=0 ;;
+        esac
+        # Keys in sorted order, because `sort_keys=True` in every other writer is what lets a
+        # byte-offset index be built twice and compared (ADR-005 §3.2).
+        printf '{"cwd":"%s","fathom_event":"file_edit","git_branch":"%s","harness":"git_post_commit","payload":{"author_email":"%s","author_name":"%s","binary":%s,"change":"update","commit":"%s","lines_added":%s,"lines_removed":%s,"provenance":"asserted","subject":"%s"},"path":"%s","schema_version":1,"seq":%s,"session_id":"%s","source":"file_edit","ts":"%s","event_id":"e%s"}\n' \
+            "$(json_escape "$repo")" "$(json_escape "$branch")" \
+            "$(json_escape "$author_email")" "$(json_escape "$author_name")" "$binary" \
+            "$head" "$added" "$deleted" "$(json_escape "$subject")" \
+            "$(json_escape "$path")" "$seq" "$session" "$ts" "$seq" >>"$events" 2>/dev/null
+        return 0
+    }
+    flush_pending() {
+        [ -n "$pending_path" ] || return 0
+        emit "$pending_added" "$pending_deleted" "$pending_path"
+        pending_path=
+    }
+    git diff-tree -r --root --numstat -z --no-commit-id "$head" 2>/dev/null | tr '\0' '\n' | {
+        # The braces are load-bearing: a pipeline's last stage runs in a subshell, and the pending
+        # record of the *final* path would otherwise die with that subshell unemitted — which is to
+        # say the last file of every commit would be silently missing from the stream.
+        while IFS= read -r line; do
+            # A record header is `added<TAB>deleted<TAB>path`; anything else is a continuation of
+            # the previous path (see the lookahead note above).
+            case "$line" in
+                *"	"*"	"*)
+                    flush_pending || break
+                    pending_added=${line%%	*}
+                    rest=${line#*	}
+                    pending_deleted=${rest%%	*}
+                    pending_path=${rest#*	}
+                    ;;
+                *)
+                    if [ -n "$pending_path" ]; then
+                        pending_path="$pending_path
+${line}"
+                    fi
+                    ;;
+            esac
+        done
+        flush_pending
+    }
+
+    lock_release "$events_dir/.events.lock"
+    note "recorded commit $head"
+    return 0
+}
+
+subject=
+main </dev/null >/dev/null 2>&1
