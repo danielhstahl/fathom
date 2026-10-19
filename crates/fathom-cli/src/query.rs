@@ -98,15 +98,32 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
             )
         })?;
         let row = store.read_commit(&hex).map_err(|_| {
-            Pending::new(
-                ExitCode::IndexDegraded,
-                format!(
-                    "{} ({}) is a commit in this repository but has no row in the index",
-                    short(&hex),
-                    target
+            // "No row" has two causes and they want different sentences: this commit was never indexed, or
+            // the index tried and the object database would not serve it. The second is what a damaged or
+            // filter-cloned repository looks like from the reader's side, and telling that reviewer to run
+            // `fathom index` — the command that just failed for the same reason — is the dead end this branch
+            // exists to close.
+            match store.unreadable_commit(&hex).ok().flatten() {
+                Some(reason) => Pending::new(
+                    ExitCode::IndexDegraded,
+                    format!(
+                        "{} ({}) could not be read out of the object database: {}",
+                        short(&hex),
+                        target,
+                        redactor.text(&reason)
+                    ),
+                    Some(state::REMEDY_UNREADABLE.to_owned()),
                 ),
-                Some(REMEDY_INDEX.to_owned()),
-            )
+                None => Pending::new(
+                    ExitCode::IndexDegraded,
+                    format!(
+                        "{} ({}) is a commit in this repository but has no row in the index",
+                        short(&hex),
+                        target
+                    ),
+                    Some(REMEDY_INDEX.to_owned()),
+                ),
+            }
         })?;
 
         if as_json {
@@ -543,6 +560,13 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
             yes_no(repo["shallow"].as_bool()),
             yes_no(repo["partial_clone"].as_bool()),
         ));
+        // What the repository says about itself that is not a finding — a hundred branches, an object store
+        // on another filesystem. Said once here so the status line is not the only place to read it.
+        for note in repo["notes"].as_array().map(Vec::as_slice).unwrap_or(&[]) {
+            if let Some(note) = note.as_str() {
+                out.push(format!("  note      {note}"));
+            }
+        }
     } else {
         out.push(format!(
             "repository {}",

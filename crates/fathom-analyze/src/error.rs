@@ -46,6 +46,19 @@ pub enum Error {
         what: String,
     },
 
+    /// A commit row the analysis needs is not in the store.
+    ///
+    /// Almost always the *parent*: a commit whose objects could not be read has no row, so every child's
+    /// first-parent delta is unanswerable until the object database is repaired. It gets its own variant
+    /// because forwarding the store's "no rows" error reads as *the database is broken*, when the database
+    /// is perfectly healthy and it is the repository that has a hole in it — two different remedies, and the
+    /// wrong one sends the reader to `--rebuild`, which cannot fix a missing object.
+    #[error("the analysis needs a commit row that is not in the store: {what}")]
+    MissingCommitRow {
+        /// Which commit, and what the run knows about why it is absent.
+        what: String,
+    },
+
     /// The git side refused to answer. Forwarded whole, because `fathom-ingest`'s variants already carry
     /// the exit code and the hint (§7.1: one value, so the message, the hint and the code cannot disagree).
     #[error(transparent)]
@@ -62,6 +75,8 @@ impl Diagnosable for Error {
             Error::NotImplemented { .. } => ErrorCode::NotImplemented,
             Error::InvalidRequest { .. } | Error::UnknownFormat { .. } => ErrorCode::Usage,
             Error::SpineRowUnreadable { .. } => ErrorCode::StoreCorrupt,
+            // The store is fine; the history has a hole in it, and the hole is a missing object.
+            Error::MissingCommitRow { .. } => ErrorCode::ObjectUnavailable,
             Error::Ingest(err) => err.code(),
             Error::Store(err) => err.code(),
         }
@@ -80,6 +95,9 @@ impl Diagnosable for Error {
             Error::InvalidRequest { .. } => Some("ask the facade for a smaller window"),
             Error::UnknownFormat { .. } => Some("`fathom export --help` lists the three"),
             Error::SpineRowUnreadable { .. } => Some("`fathom index --rebuild`"),
+            Error::MissingCommitRow { .. } => Some(
+                "`git fsck --full` in the repository, or re-clone it; fathom never fetches or repairs",
+            ),
             Error::Ingest(err) => err.hint(),
             Error::Store(err) => err.hint(),
         }

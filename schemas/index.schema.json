@@ -49,6 +49,31 @@
     "interrupted": {
       "type": "boolean"
     },
+    "unreadable": {
+      "description": "Every commit this store cannot read out of the object database, named by id and by what the read said. A damaged or filter-cloned repository; the remedy is `git fsck`, never a fathom repair.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "commit": {
+            "description": "The commit fathom tried to index.",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "seen_utc": {
+            "description": "When the index last tried this commit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "commit",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
     "kind": {
       "enum": [
         "cold",
@@ -93,7 +118,8 @@
     "analyzers",
     "worktree",
     "worktree_skipped",
-    "failures"
+    "failures",
+    "unreadable"
   ],
   "title": "fathom index --json",
   "type": "object",

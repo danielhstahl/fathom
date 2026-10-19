@@ -108,6 +108,7 @@ pub fn analyze(
             })?,
             Ok(None) | Err(_) => None,
         };
+        let mut blocked: Option<String> = None;
         let delta = match delta {
             Some(found) => Some(found),
             None => {
@@ -127,6 +128,10 @@ pub fn analyze(
                     )
                 })?;
                 let hex = oid.hex();
+                // Whether the object database will serve this commit, remembered for the refusal below: an
+                // index that could not read a commit and an index that has not seen it yet are different
+                // failures and want different remedies.
+                blocked = store.unreadable_commit(&hex).ok().flatten();
                 insight::for_commit(&store, &hex).map_err(|err| {
                     Pending::new(
                         ExitCode::IndexDegraded,
@@ -137,14 +142,26 @@ pub fn analyze(
             }
         };
         let Some(delta) = delta else {
-            return Err(Pending::new(
-                ExitCode::IndexDegraded,
-                format!(
-                    "{} is a commit in this repository with no episode row in the index",
-                    short(target)
+            return Err(match blocked {
+                // The commit exists, the index tried it, and the object database would not serve it.
+                Some(reason) => Pending::new(
+                    ExitCode::IndexDegraded,
+                    format!(
+                        "{} could not be read out of the object database: {}",
+                        short(target),
+                        redactor.text(&reason)
+                    ),
+                    Some(state::REMEDY_UNREADABLE.to_owned()),
                 ),
-                Some(REMEDY_INDEX.to_owned()),
-            )
+                None => Pending::new(
+                    ExitCode::IndexDegraded,
+                    format!(
+                        "{} is a commit in this repository with no episode row in the index",
+                        short(target)
+                    ),
+                    Some(REMEDY_INDEX.to_owned()),
+                ),
+            }
             .into());
         };
 
@@ -156,6 +173,31 @@ pub fn analyze(
         } else {
             for line in insight::render(&delta) {
                 output::line(format_args!("{line}"));
+            }
+            // The answer above is complete for *this* commit. It is not a claim about the rest of the
+            // repository: when the object database is withholding commits, the reader has to be told that
+            // the history around this episode has holes, or a confident delta becomes the reason they assume
+            // it does not.
+            if let Ok(holes) = store.unreadable_commits() {
+                if !holes.is_empty() {
+                    let named = holes
+                        .iter()
+                        .take(3)
+                        .map(|(oid, _, _)| format!("{}…", &oid[..12]))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    let more = holes.len().saturating_sub(3);
+                    output::line(format_args!(
+                        "\nindex: {} commit(s) in this repository could not be read out of the object \\n         database ({named}{}), so they are in no answer here either",
+                        holes.len(),
+                        if more == 0 {
+                            String::new()
+                        } else {
+                            format!(" and {more} more")
+                        }
+                    ));
+                    output::line(format_args!("  remedy: {}", state::REMEDY_UNREADABLE));
+                }
             }
         }
         Ok(snapshot.worst_code())

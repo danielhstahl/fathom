@@ -1398,10 +1398,21 @@ impl Store {
 ///
 /// No refs at all means no opinion: a store with commit rows and no `ref_tip` rows (a test that seeded
 /// commits directly, an index whose walk found a ref it could not name) keeps every commit rather than
-/// silently segmenting nothing.
+/// silently segmenting nothing. Nor does a ref whose own commit row is missing: see the body, where a tip
+/// that resolves to nothing is treated as no opinion rather than an empty history.
 fn retain_reachable(inputs: &mut Vec<EpisodeInput>, tips: &std::collections::BTreeSet<String>) {
     use std::collections::{BTreeMap, BTreeSet};
     if tips.is_empty() {
+        return;
+    }
+    // A tip this store has no row for is not a tip with an empty history behind it — it is a tip the walk
+    // could not read, which is what a corrupt or filter-omitted object leaves behind (`reco-7f4`). Treating
+    // it as "reachable: nothing" blanks the review surface for every *readable* commit in the repository,
+    // which is the opposite of what a partial read should mean. So: no tip resolves, no opinion, and the
+    // inputs are kept whole, exactly as when there were no tips at all.
+    let known: std::collections::HashSet<&str> =
+        inputs.iter().map(|input| input.oid.as_str()).collect();
+    if !tips.iter().any(|tip| known.contains(tip.as_str())) {
         return;
     }
     let seen: BTreeSet<String> = {

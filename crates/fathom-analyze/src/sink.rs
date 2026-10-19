@@ -158,7 +158,14 @@ pub fn run_stats(report: &RunReport) -> RunStats {
         commits_added: i64::try_from(report.commits_written).unwrap_or(i64::MAX),
         rows_written: i64::try_from(report.rows_written).unwrap_or(i64::MAX),
         interrupted: report.interrupted,
-        error: report.failures.first().cloned(),
+        // Deliberately not `report.failures.first()`. A commit the object database would not serve is a
+        // stated absence about *that commit*, not a run that failed: the run walked what it could, wrote
+        // what it could and closed. Stamping it `aborted` made every commit it *did* write look like
+        // unfinished work ([`Store::oids_pending_derivation`] reads that stamp), which is how a repository
+        // with one damaged object ended up permanently "N commit(s) owed an analysis" with a remedy
+        // (`fathom index`) that could never drain it. The failures are recorded against their own commit
+        // ids by [`crate::index::run`] instead.
+        error: None,
     }
 }
 

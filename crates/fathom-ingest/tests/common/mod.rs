@@ -1302,7 +1302,9 @@ impl Sink for StoreSink<'_> {
                 commits_added: i64::try_from(report.commits_written).unwrap_or(i64::MAX),
                 rows_written: i64::try_from(report.rows_written).unwrap_or(i64::MAX),
                 interrupted: report.interrupted,
-                error: report.failures.first().cloned(),
+                // Mirrors `fathom_analyze::sink::run_stats`: commits that could not be read are recorded
+                // against their own ids, not stamped onto the run.
+                error: None,
             },
         )
     }

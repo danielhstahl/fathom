@@ -191,7 +191,7 @@ pub struct RunReport {
     /// What the walk noticed verbatim, including a `LimitReached` if the caller set a limit.
     pub notices: Vec<Notice>,
     /// Commits that could not be normalized, with the reason rendered. A degraded run, not a failed one.
-    pub failures: Vec<String>,
+    pub failures: Vec<CommitFailure>,
     /// Threads used.
     pub workers: usize,
     /// Wall time.
@@ -208,6 +208,27 @@ impl RunReport {
         }
         u64::try_from(u128::try_from(self.commits_written).unwrap_or(0) * 1_000_000 / micros)
             .unwrap_or(u64::MAX)
+    }
+}
+
+/// A commit the object database would not serve, and what the read said about it.
+///
+/// The commit id is carried as a field rather than as a prefix of a sentence because the two readers want
+/// different halves of it: a terminal wants the whole rendered line ([`CommitFailure::to_string`], which is
+/// the shape `fathom index --json` prints), and the driver wants the id to record the failure against
+/// ([`fathom_store::spine::Store::record_unreadable_commit`]) so the degraded commit stays named after this
+/// process exits — which is the difference between a stated absence and a silent hole (ADR-001 §7.6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitFailure {
+    /// The commit fathom tried to index.
+    pub oid: Oid,
+    /// Why the read failed, already rendered, object id included when the repository could name one.
+    pub reason: String,
+}
+
+impl std::fmt::Display for CommitFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.oid.hex(), self.reason)
     }
 }
 
@@ -330,7 +351,7 @@ pub fn run<S: Sink>(
                     report.files_written += record.files.len();
                     persistable.push(record);
                 }
-                Err(reason) => report.failures.push(reason),
+                Err(failure) => report.failures.push(failure),
             }
         }
         written += persistable.len();
@@ -358,7 +379,7 @@ fn normalize_batch(
     options: &IngestOptions,
     commits: &[Oid],
     workers: usize,
-) -> Result<Vec<Result<CommitRecord, String>>, Error> {
+) -> Result<Vec<Result<CommitRecord, CommitFailure>>, Error> {
     if commits.is_empty() {
         return Ok(Vec::new());
     }
@@ -369,7 +390,7 @@ fn normalize_batch(
     let normalize = options.normalize.clone();
     // `into_par_iter`, not `par_iter`: a repository handle is `Send` and deliberately not `Sync`, so each
     // worker takes one by value rather than sharing a reference (ADR-002 §10).
-    let shards: Vec<Vec<(usize, Result<CommitRecord, String>)>> = handles
+    let shards: Vec<Vec<(usize, Result<CommitRecord, CommitFailure>)>> = handles
         .into_par_iter()
         .enumerate()
         .map(|(index, handle)| {
@@ -381,15 +402,16 @@ fn normalize_batch(
                 .map(|(position, oid)| {
                     (
                         position,
-                        normalizer
-                            .record(*oid)
-                            .map_err(|err| format!("{oid}: {err}")),
+                        normalizer.record(*oid).map_err(|err| CommitFailure {
+                            oid: *oid,
+                            reason: err.to_string(),
+                        }),
                     )
                 })
                 .collect()
         })
         .collect();
-    let mut out: Vec<Option<Result<CommitRecord, String>>> =
+    let mut out: Vec<Option<Result<CommitRecord, CommitFailure>>> =
         (0..commits.len()).map(|_| None).collect();
     for shard in shards {
         for (position, record) in shard {
@@ -398,6 +420,14 @@ fn normalize_batch(
     }
     Ok(out
         .into_iter()
-        .map(|slot| slot.unwrap_or_else(|| Err(String::from("no record was produced"))))
+        .enumerate()
+        .map(|(position, slot)| {
+            slot.unwrap_or_else(|| {
+                Err(CommitFailure {
+                    oid: commits[position],
+                    reason: "no record was produced for this commit".to_owned(),
+                })
+            })
+        })
         .collect())
 }

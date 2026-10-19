@@ -738,7 +738,7 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     if args.json {
         output::line(format_args!(
             "{}",
-            json_report(root, &store_path, &report, args.rebuild, epoch)
+            json_report(root, &store, &store_path, &report, args.rebuild, epoch)
         ));
     } else if args.stats {
         print_stats(&store_path, &report);
@@ -769,6 +769,27 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                 report.worktree_skipped.len()
             ));
         }
+        // A run that could not read some of the history says so here, in the plain report as well as in
+        // `--stats` and `--json`: "degrade, never block" is only honest if the degradation is said out loud
+        // on the path a human actually reads (ADR-001 §7.6). Named by commit, because "one commit failed"
+        // is a fact the user cannot act on.
+        if !report.failures.is_empty() {
+            for failure in report.failures.iter().take(3) {
+                say(format_args!("  could not read {failure}"));
+            }
+            if report.failures.len() > 3 {
+                say(format_args!(
+                    "  {} more commit(s) could not be read",
+                    report.failures.len() - 3
+                ));
+            }
+            say(format_args!(
+                "  {} commit(s) are missing from the index: the objects are the problem, not the index — \
+                 `git fsck --full` in the repository (fathom never fetches or repairs), then `fathom index`, \
+                 and `fathom doctor` repeats this until it stops",
+                report.failures.len()
+            ));
+        }
         say(format_args!(
             "  pass --stats for the per-analyzer cache table, or --json for the same as data"
         ));
@@ -786,6 +807,10 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
         // because its unit budget ran out did what it was told: that is a stated partial, exit 0, and the
         // report says so.
         Some(index::Interrupted::Cancelled) => ExitCode::Cancelled,
+        // Commits this run could not read are INDEX_DEGRADED in the published sense — the index is
+        // incomplete, and the line above names the remedy. A script that runs `fathom index` in a
+        // pre-flight check should not have to parse prose to learn that part of the history is missing.
+        _ if !report.failures.is_empty() => ExitCode::IndexDegraded,
         _ => ExitCode::Ok,
     })
 }
@@ -796,7 +821,8 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
 #[cfg(feature = "sqlite-bundled")]
 fn json_report(
     root: &std::path::Path,
-    store: &std::path::Path,
+    store: &fathom_store::spine::Store,
+    store_path: &std::path::Path,
     report: &fathom_analyze::index::Report,
     rebuild: bool,
     epoch: i64,
@@ -808,7 +834,7 @@ fn json_report(
         "contract": query::INDEX_CONTRACT,
         // The store is named *relative to the repository it belongs to*: an absolute path in a machine-
         // readable report is a path the reader cannot use and a fact about the machine that produced it.
-        "store": redactor.path(store),
+        "store": redactor.path(store_path),
         "rebuild": rebuild,
         "epoch": epoch,
         "kind": report.kind.as_str(),
@@ -858,6 +884,17 @@ fn json_report(
             .map(|(path, reason)| json!({"path": path, "reason": reason}))
             .collect::<Vec<_>>(),
         "failures": report.failures,
+        // Every commit this store cannot read, named by id: the machine-readable twin of the
+        // `object_unreadable` finding `fathom doctor` and `fathom stats` print, and the reason a script does
+        // not have to scrape stderr to find out which commit is missing.
+        "unreadable": store
+            .unreadable_commits()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(commit, reason, seen_utc)| {
+                json!({"commit": commit, "reason": reason, "seen_utc": seen_utc})
+            })
+            .collect::<Vec<_>>(),
     })
 }
 

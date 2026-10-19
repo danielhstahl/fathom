@@ -49,6 +49,14 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
     let index = index_facts(&root);
+    // What the repository itself reports (reco-7f4): a shallow clone, a filtered clone, a commit whose
+    // object the database would not serve. The shell's notice list is where a reviewer meets this without
+    // leaving the frame — the status line counts the notices, `?` holds the list with the remedy for each —
+    // and it is the same list `fathom doctor` prints, from the same `HealthNotice` values.
+    notices.extend(crate::state::repository_notices(&root));
+    // ... and what the store recorded about commits the object database would not serve, which is the same
+    // sentence `fathom doctor` prints and the reason the frame's count is not zero on a damaged clone.
+    notices.extend(crate::state::unreadable_notices(&root));
     // The session (`e1.11`): read before the shell starts, so the reviewer's cursor, filter and layout
     // are in the first frame rather than two keystrokes away, and written back only if the reviewer
     // changed something. `--fresh` still reads it — so that a fresh run that *does* change something can

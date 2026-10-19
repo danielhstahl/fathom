@@ -1288,6 +1288,13 @@ impl RefCounts {
     }
 }
 
+/// How many local branches earn a `ManyBranches` notice.
+///
+/// A number plucked from the shape of the problem rather than from a measurement: below it, the branch list
+/// is something a reviewer has; above it, it is a list somebody maintains, and the rail's ref chooser is
+/// where they will feel it. It is a note, not a finding — nothing about it is wrong.
+const MANY_BRANCHES: usize = 100;
+
 /// Something a human should know about a repository before trusting what fathom says about it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthNotice {
@@ -1330,6 +1337,79 @@ pub enum HealthNotice {
         /// What it points at.
         to: String,
     },
+    /// More local branches than a reviewer can hold in their head, which is a triage question rather than
+    /// a fault. The count is free at health time (the refs are already read); the dates are not, and a
+    /// "stale" verdict would need a definition of stale fathom has no business inventing.
+    ManyBranches {
+        /// How many local branches there are.
+        branches: usize,
+    },
+    /// The object store is on a different filesystem from the working tree — the shape of a network mount,
+    /// a `--separate-git-dir`, or a `.git` moved to another volume. Reading is fine; *watching* is the part
+    /// that lies, because inotify does not report changes made through another host's mount (ADR-004 §7.8).
+    SeparateFilesystemStore {
+        /// Where the object store is.
+        git_dir: PathBuf,
+        /// Where the working tree is.
+        work_dir: PathBuf,
+    },
+}
+
+impl std::fmt::Display for HealthNotice {
+    /// One notice, in the sentence a human reads.
+    ///
+    /// This is the text the `--json` `notices` array carries and the text the status line shortens; the
+    /// `{:?}` of the enum was never meant to be a user-visible string, and a machine-readable report that
+    /// quotes Rust is a report whose key names change when someone renames a variant.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HealthNotice::DetachedHead { at } => {
+                write!(f, "HEAD is detached at {}", at.hex())
+            }
+            HealthNotice::UnbornHead { branch } => {
+                write!(f, "branch {branch} has no commits yet")
+            }
+            HealthNotice::Shallow { boundary } => write!(
+                f,
+                "history is shallow: it stops at {boundary} graft(s), so older history is absent rather than empty"
+            ),
+            HealthNotice::PartialClone { filter } => match filter.as_deref() {
+                Some(filter) => write!(
+                    f,
+                    "the clone was filtered ({filter}), so objects it never fetched are missing"
+                ),
+                None => {
+                    f.write_str("the clone was filtered, so objects it never fetched are missing")
+                }
+            },
+            HealthNotice::Bare => f.write_str("bare repository: there is no working tree to read"),
+            HealthNotice::WorktreeMissing { expected } => {
+                write!(
+                    f,
+                    "the working tree is missing: nothing at {}",
+                    expected.display()
+                )
+            }
+            HealthNotice::NoIndex => f.write_str("there is no index file"),
+            HealthNotice::Untrusted => f.write_str(
+                "the repository belongs to another user, so it was read at arm's length",
+            ),
+            HealthNotice::BrokenSymbolicRef { name, to } => {
+                write!(f, "the ref {name} points at {to}, which does not exist")
+            }
+            HealthNotice::ManyBranches { branches } => write!(
+                f,
+                "the repository carries {branches} local branches, each one a lineage this rail can be \
+                 pointed at"
+            ),
+            HealthNotice::SeparateFilesystemStore { git_dir, .. } => write!(
+                f,
+                "the object store is on a different filesystem from the working tree ({}) — a network \
+                 mount, or a moved `--separate-git-dir`",
+                git_dir.display()
+            ),
+        }
+    }
 }
 
 impl Repository {
@@ -1382,6 +1462,26 @@ impl Repository {
             }
         }
         let submodules = self.submodules()?.len();
+        if counts.branches > MANY_BRANCHES {
+            notices.push(HealthNotice::ManyBranches {
+                branches: counts.branches,
+            });
+        }
+        // Only on unix, and only a fact about devices: what it says is that a watcher here must poll, and
+        // the remedy is printed with it (`fathom watch --backend poll`).
+        #[cfg(unix)]
+        if let Some(work_dir) = self.identity.work_dir.as_ref() {
+            use std::os::unix::fs::MetadataExt as _;
+            let git_dir = self.git_dir();
+            if let (Ok(work), Ok(git)) = (std::fs::metadata(work_dir), std::fs::metadata(git_dir))
+                && work.dev() != git.dev()
+            {
+                notices.push(HealthNotice::SeparateFilesystemStore {
+                    git_dir: git_dir.to_path_buf(),
+                    work_dir: work_dir.clone(),
+                });
+            }
+        }
         match &head {
             Head::Detached { oid } => notices.push(HealthNotice::DetachedHead { at: *oid }),
             Head::Unborn { name } => notices.push(HealthNotice::UnbornHead {

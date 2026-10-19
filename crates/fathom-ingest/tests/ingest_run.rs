@@ -316,10 +316,20 @@ fn a_commit_that_cannot_be_normalized_is_a_failure_not_a_lost_run() {
     assert_eq!(report.commits_seen, 5);
     assert_eq!(report.commits_written, 4);
     assert_eq!(report.failures.len(), 1);
-    assert!(
-        report.failures[0].contains(&head[..8]),
+    assert_eq!(
+        report.failures[0].oid.hex(),
+        head,
         "the failure names the commit it could not do: {:?}",
         report.failures
+    );
+    assert!(
+        report.failures[0].reason.contains(&blob.trim()[..8]),
+        "and the object that stopped it: {:?}",
+        report.failures[0].reason
+    );
+    assert!(
+        report.failures[0].to_string().contains(&head[..8]),
+        "the rendered line leads with the commit, which is what a terminal prints"
     );
     assert_eq!(
         collector.records.len(),

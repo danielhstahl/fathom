@@ -25,7 +25,7 @@
 //! degraded, it is an empty repository, and the copy ADR-006 §10.3 fixes is the one printed.
 
 use fathom_core::exit::ExitCode;
-use fathom_ingest::repo::{Head, ObjectHash, RefFilter, Repository};
+use fathom_ingest::repo::{Head, HealthNotice, ObjectHash, RefFilter, Repository};
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -40,6 +40,17 @@ pub const REMEDY_INDEX: &str =
 /// The remedy for a store that cannot be trusted, which is the same sentence in both verbs that say it.
 #[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
 pub const REMEDY_REBUILD: &str = "the store is disposable (ADR-004 §12): `fathom index --rebuild`";
+
+/// The remedy for a repository whose object database would not serve a commit.
+///
+/// It is not `fathom index`, and the difference is the whole finding: re-indexing a repository that is
+/// missing an object produces the same missing object, which is exactly the loop a user of a damaged clone
+/// was previously left in. Fathom reads repositories and never repairs or fetches them (ADR-001 §8.2), so
+/// the thing to type is git's own.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_UNREADABLE: &str = "the object database is missing something fathom needs, and fathom neither fetches nor repairs: \
+     `git fsck --full` in the repository (then `git fetch`, or re-clone, if it names a missing object), \
+     then `fathom index`";
 
 /// One line of "here is what is wrong, and here is what to do about it".
 ///
@@ -189,6 +200,196 @@ pub fn gather(root: &Path, deep: bool) -> Snapshot {
     }
 }
 
+/// The remedy for a repository that is whole but truncated from the origin's point of view.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_SHALLOW: &str =
+    "the clone was made with `--depth`: `git fetch --unshallow` (fathom never fetches for you)";
+
+/// A commit id the way a terminal prints it: enough hex to be unique in a screenful, whatever the object
+/// hash the repository was created with (sha1 gives 40, sha256 64).
+fn short_oid(oid: &str) -> &str {
+    &oid[..oid.len().min(12)]
+}
+
+/// What a degraded repository costs: `INDEX_DEGRADED`, because the published table describes 12 as "the
+/// index is missing, incomplete or stale" and a history the clone never fetched produces exactly an
+/// incomplete index. Adding a row to ADR-002 §7.3's table is a change of published contract a script
+/// branches on; reading a shallow clone as an incomplete index is not.
+const REPO_EXIT: ExitCode = ExitCode::IndexDegraded;
+
+/// The finding a repository health notice earns, or `None` when the notice is a *state* rather than a
+/// degradation.
+///
+/// A detached `HEAD`, an unborn branch, a bare repository and a missing index are ways for a repository to
+/// be perfectly healthy and simply not be the shape `git status` assumes — ADR-006 §10.3 refuses to print a
+/// warning for an empty repository, and the same rule covers these. What is left is degradation, and each
+/// one carries the sentence to type, which is the difference between a diagnostic and a shrug.
+fn notice_finding(notice: &HealthNotice) -> Option<Finding> {
+    Some(match notice {
+        HealthNotice::Shallow { boundary } => Finding::new(
+            "history_shallow",
+            "repository",
+            format!(
+                "history stops at {boundary} shallow graft(s): everything older than the graft is absent, \
+                 not empty",
+            ),
+            REMEDY_SHALLOW,
+            REPO_EXIT,
+        ),
+        HealthNotice::PartialClone { filter } => Finding::new(
+            "partial_clone",
+            "repository",
+            format!(
+                "the clone was filtered ({}), so the objects it never fetched cannot be read and the commits \
+                 that need them cannot be indexed",
+                filter.as_deref().unwrap_or("no filter recorded"),
+            ),
+            "re-clone without `--filter`, or fetch what is missing with git (fathom never fetches for you), \
+             then `fathom index`",
+            REPO_EXIT,
+        ),
+        HealthNotice::WorktreeMissing { expected } => Finding::new(
+            "worktree_missing",
+            "repository",
+            format!(
+                "the working tree this repository points at is not there: {}",
+                expected.display()
+            ),
+            "restore the directory or drop the stale registration with `git worktree prune`; the commits are \
+             still indexable from a bare or linked checkout",
+            ExitCode::NotARepository,
+        ),
+        HealthNotice::BrokenSymbolicRef { name, to } => Finding::new(
+            "broken_symref",
+            "repository",
+            format!("the ref {name} points at {to}, which does not exist"),
+            "aim it at something real with `git symbolic-ref`, or remove it with `git update-ref -d`",
+            ExitCode::NotARepository,
+        ),
+        HealthNotice::Untrusted => Finding::new(
+            "repository_untrusted",
+            "repository",
+            "the repository belongs to another user, so it was read at arm's length",
+            "if you trust it: `git config --global --add safe.directory <path>`",
+            ExitCode::NotARepository,
+        ),
+        // States, not degradations: said in the repository section, never as a finding.
+        HealthNotice::DetachedHead { .. }
+        | HealthNotice::UnbornHead { .. }
+        | HealthNotice::Bare
+        | HealthNotice::NoIndex
+        // Not degradations either: a branch pile-up and an object store on another filesystem are both
+        // said, with their remedy, in the `notes` array.
+        | HealthNotice::ManyBranches { .. }
+        | HealthNotice::SeparateFilesystemStore { .. } => return None,
+    })
+}
+
+/// The line a notice that is *not* a degradation earns: what it is, and what to do about it, in one
+/// sentence a status line can carry.
+///
+/// `None` for the notices that are findings, because those print with their own remedy already and twice is
+/// not more informative.
+fn notice_note(notice: &HealthNotice) -> Option<String> {
+    Some(match notice {
+        HealthNotice::DetachedHead { .. }
+        | HealthNotice::UnbornHead { .. }
+        | HealthNotice::Bare
+        | HealthNotice::NoIndex => return None,
+        HealthNotice::ManyBranches { branches } => format!(
+            "{branches} local branches is a list, not a state you hold in your head — `git branch \
+             --merged <yours>` is how to find the ones to delete; fathom indexes what the refs reach, and \
+             an old branch is not a wrong one"
+        ),
+        HealthNotice::SeparateFilesystemStore { .. } => format!(
+            "{notice} — `fathom watch` cannot trust inotify across it, so run the watcher with \
+             `--backend poll` (ADR-004 §7.8)"
+        ),
+        other => other.to_string(),
+    })
+}
+
+/// Everything the repository says about itself that a reviewer should know before trusting an answer,
+/// one line each, each with what to do about it.
+///
+/// This is what the TUI's notice list and any other caller that only has lines prints; `fathom doctor` and
+/// `fathom stats` print the same facts as findings (with their remedies) and as notes, from the same
+/// [`HealthNotice`] values, so the three renderings cannot drift.
+#[must_use]
+pub fn repository_notices(root: &Path) -> Vec<String> {
+    let Ok(repository) = Repository::discover(root) else {
+        return Vec::new();
+    };
+    let Ok(health) = repository.health() else {
+        return Vec::new();
+    };
+    health
+        .notices
+        .iter()
+        .filter_map(|notice| {
+            notice_finding(notice).map_or_else(
+                || notice_note(notice),
+                |finding| Some(format!("{} — {}", finding.message, finding.remedy)),
+            )
+        })
+        .collect()
+}
+
+/// The commits this store could not read, as notice lines, for a caller that has the repository but not the
+/// store — which is the TUI's shape, and the reason this is a function rather than part of
+/// [`repository_notices`]: the object database's failures are recorded in the store, so reading them means
+/// opening it, and the shell already has it open.
+///
+/// Same words, same remedy as the `object_unreadable` finding, because a reviewer who meets the sentence in
+/// the frame and again in `fathom doctor` must not have to work out whether they are the same problem.
+#[must_use]
+pub fn unreadable_notices(root: &Path) -> Vec<String> {
+    use fathom_store::spine::Store;
+
+    let path = fathom_analyze::index::default_store_path(root);
+    if !path.is_file() {
+        return Vec::new();
+    }
+    let Ok(store) = Store::open(&path) else {
+        return Vec::new();
+    };
+    let Ok(holes) = store.unreadable_commits() else {
+        return Vec::new();
+    };
+    if holes.is_empty() {
+        return Vec::new();
+    }
+    let redactor = Redactor::for_root(root);
+    let finding = object_unreadable_finding(&holes, &redactor);
+    vec![format!("{} — {}", finding.message, finding.remedy)]
+}
+
+/// The finding for commits the object database would not serve.
+///
+/// One builder because the sentence is said in three places — `fathom stats`, `fathom doctor`, and the TUI's
+/// notice list — and a reviewer who meets a shorter version of it in the frame would read the missing part
+/// as "nothing else is wrong". Up to three are named with their reasons, because the reason is usually the
+/// same object and the fourth copy of a path teaches nothing; the count is the whole store's.
+pub fn object_unreadable_finding(holes: &[(String, String, i64)], redactor: &Redactor) -> Finding {
+    let named = holes
+        .iter()
+        .take(3)
+        .map(|(commit, reason, _)| format!("{} — {}", short_oid(commit), redactor.text(reason)))
+        .collect::<Vec<_>>()
+        .join(" · ");
+    Finding::new(
+        "object_unreadable",
+        "index",
+        format!(
+            "{} commit(s) could not be read out of the object database and are missing from the index: \
+             {named}",
+            holes.len()
+        ),
+        REMEDY_UNREADABLE,
+        ExitCode::IndexDegraded,
+    )
+}
+
 /// The repository section, built from `fathom-ingest`'s own health report.
 fn describe_repository(root: &Path, redactor: &Redactor, findings: &mut Vec<Finding>) -> Value {
     let repo = match Repository::discover(root) {
@@ -222,6 +423,16 @@ fn describe_repository(root: &Path, redactor: &Redactor, findings: &mut Vec<Find
     };
     let head = &health.head;
     let head_oid = head.oid().map(|oid| oid.hex());
+    // The repository's own degradations, as findings. A shallow clone is not a broken repository and a
+    // filter clone is not a corrupt one — each is a whole repository that is smaller than it looks — but
+    // every answer fathom gives about the missing half is an absence, and ADR-001 §7.6's rule is that an
+    // absence is said. This is where it gets said with a remedy, in the same list the index's problems are
+    // in, so `fathom stats`, `fathom show` and `fathom doctor` cannot disagree about it.
+    for notice in &health.notices {
+        if let Some(finding) = notice_finding(notice) {
+            findings.push(finding);
+        }
+    }
     let refs = repo.refs(RefFilter::All).unwrap_or_default();
     let mut remote_names: Vec<String> = refs
         .iter()
@@ -278,7 +489,13 @@ fn describe_repository(root: &Path, redactor: &Redactor, findings: &mut Vec<Find
         "notices": health
             .notices
             .iter()
-            .map(|notice| format!("{notice:?}"))
+            .map(|notice| redactor.text(&notice.to_string()))
+            .collect::<Vec<_>>(),
+        "notes": health
+            .notices
+            .iter()
+            .filter_map(notice_note)
+            .map(|note| redactor.text(&note))
             .collect::<Vec<_>>(),
     })
 }
@@ -355,6 +572,13 @@ fn describe_index(
         None => true,
     };
     let epoch = store.epoch().unwrap_or(0);
+    // The commits the object database would not serve, as the index last discovered them. Read before the
+    // staleness findings, because it is usually their cause: a HEAD that cannot be read is not a HEAD that
+    // has not been indexed yet, and telling somebody to run the command that just failed is how a diagnostic
+    // becomes folklore.
+    let unreadable = store.unreadable_commits().unwrap_or_default();
+    let head_unreadable =
+        head_oid.is_some_and(|oid| unreadable.iter().any(|(commit, _, _)| commit == oid));
     let epoch_status = store
         .meta("epoch_status")
         .ok()
@@ -383,15 +607,27 @@ fn describe_index(
             ExitCode::IndexDegraded,
         ));
     }
+    if !unreadable.is_empty() {
+        findings.push(object_unreadable_finding(&unreadable, redactor));
+    }
     if !head_indexed {
         findings.push(Finding::new(
             "index_stale",
             "index",
             format!(
-                "HEAD ({}) has no commit row, so the newest work is in no answer",
-                head_oid.unwrap_or("unknown")
+                "HEAD ({}) has no commit row, so the newest work is in no answer{}",
+                head_oid.unwrap_or("unknown"),
+                if head_unreadable {
+                    " — it is one of the commits the object database would not serve"
+                } else {
+                    ""
+                }
             ),
-            REMEDY_INDEX,
+            if head_unreadable {
+                REMEDY_UNREADABLE
+            } else {
+                REMEDY_INDEX
+            },
             ExitCode::IndexDegraded,
         ));
     }
@@ -445,6 +681,12 @@ fn describe_index(
         "epoch_status": epoch_status,
         "integrity": if integrity.is_empty() { "ok" } else { "failed" },
         "integrity_problems": integrity,
+        "unreadable_commits": unreadable
+            .iter()
+            .map(|(commit, reason, seen_utc)| {
+                json!({"commit": commit, "reason": redactor.text(reason), "seen_utc": seen_utc})
+            })
+            .collect::<Vec<_>>(),
         "commits": commits,
         "head_indexed": head_indexed,
         "pending_derivation": pending.len(),

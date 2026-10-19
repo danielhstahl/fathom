@@ -73,21 +73,42 @@ this — the table is normative, and the codes below are *its* numbers:
 ### What counts as a degraded index
 
 Every row is a finding, printed with a remedy, and asserted in
-[`crates/fathom-cli/tests/cli.rs`](../../crates/fathom-cli/tests/cli.rs):
+[`crates/fathom-cli/tests/cli.rs`](../../crates/fathom-cli/tests/cli.rs). The repository shapes that produce
+them — a shallow clone, a filtered clone, a corrupt loose object, a pruned one, three hundred branches, a
+force-push rewrite, a `.git` that lives elsewhere — are fixtures of their own in
+[`crates/fathom-cli/tests/resilience.rs`](../../crates/fathom-cli/tests/resilience.rs), which is also where
+the promise that a degraded run never loses the review ledger is pinned.
 
 | Finding code | State | Code | Remedy printed |
 |---|---|---|---|
 | `index_missing` | no store file at all | 12 | `fathom index` |
-| `index_stale` | HEAD has no commit row: the newest work is in no answer | 12 | `fathom index` |
+| `index_stale` | HEAD has no commit row: the newest work is in no answer | 12 | `fathom index`, or the object-database remedy below when HEAD is one of the unreadable commits |
 | `index_incomplete` | commits still owe an analysis (a run died after writing them) | 12 | `fathom index` |
 | `index_run_unclean` | a run is still `running`, or ended `crashed`/`aborted` | 12 | `fathom index` |
 | `index_building` | the epoch is marked `building` — a rebuild was started and not finished | 12 | `fathom index --rebuild` |
 | `index_empty` | the repository has commits and the index has none | 12 | `fathom index` |
+| `object_unreadable` | the object database would not serve these commits (corrupt, pruned, or omitted by a clone filter); each one is named, and the rest of the index is intact | 12 | `git fsck --full`, then `git fetch` or a re-clone, then `fathom index` — fathom never fetches or repairs |
+| `history_shallow` | the clone is shallow, so the history stops partway back | 12 | `git fetch --unshallow` (yours to type), then `fathom index` |
+| `partial_clone` | the clone was filtered (`--filter=blob:none` and friends), so some objects were never fetched | 12 | re-clone without the filter, or fetch what is missing, then `fathom index` |
+| `broken_symref` | a symbolic ref points at a ref that does not exist | 3 | `git update-ref -d <ref>`, or point it at a real target |
 | `store_corrupt` | the file is not trustworthy | 4 | `fathom index --rebuild` |
 | `store_unusable` | the store will not open at all | 4 | `fathom index --rebuild` |
 | `not_a_repository` | `--root` is not a repository | 3 | point `--root` at one |
 | `repository_unreadable` | it is a repository, but `.git` cannot be read | 3 | check the permissions, or point `--root` at the work tree |
 | `feature_absent` | this binary was built without a SQLite backend | 9 | rebuild with `--features sqlite-bundled` |
+
+A commit the object database refuses to serve is *not* a failed run. The run closes `ok` with the commits it
+could read, and the hole is recorded against each commit id — `fathom doctor` and `fathom stats` name those
+commits and their reasons until a later run reads them, and `fathom show`/`fathom analyze` on one of them
+says so instead of telling you to `fathom index` a commit the repository cannot produce. A partial index is
+a usable index; the missing part is said, not hidden.
+
+Other repository facts are stated as notes rather than findings, because they change what the history is
+rather than whether fathom could read it — a bare repository, a detached HEAD, an unborn HEAD, more than a
+hundred local branches, a `.git` on a different device from the work tree, a moved git directory, a
+worktree pointing at a git directory that is gone. `fathom stats` prints them under `repository.notes` and
+`fathom doctor` prints them as `note:` lines, each with what to do about it, and none of them move the exit
+code.
 
 An index that is empty because the *repository* has no commits is not degraded. That is ADR-006 §10.3's
 empty state, printed with its fixed copy: `no index here yet — run \`fathom index\` here, then reopen

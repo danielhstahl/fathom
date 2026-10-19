@@ -60,6 +60,16 @@ pub const KEY_SCHEMA: &str = "fathom-commits/1";
 /// ADR-004 §7 pragmas, as a function of the per-connection page-cache cap.
 const PAGE_CACHE_MIB: i64 = 8;
 
+/// The `meta` key prefix under which "this commit could not be read" is recorded, keyed by commit id.
+///
+/// The fact has no row to live on — a commit the object database would not serve has no `git_commit` row —
+/// so it is one `meta` key per commit, which is the same grain the session state uses
+/// (`docs/concepts/session-state.md` §2: one key per fact, so a bad value is a small bad value). This is
+/// what turns a repository with a damaged object from a silent hole in the index into a stated absence
+/// (ADR-001 §7.6) that `fathom doctor`, `fathom stats` and `fathom show` can all name with the same
+/// sentence.
+pub const UNREADABLE_PREFIX: &str = "commit_unreadable.";
+
 const PRAGMAS: &str = "
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
@@ -580,6 +590,99 @@ impl Store {
             .map_err(|err| corrupt("writing store metadata", &err))
     }
 
+    /// Record that a commit could not be read out of the object database, naming the commit.
+    ///
+    /// The row lives in `meta` under [`UNREADABLE_PREFIX`] rather than in `git_commit`, because the whole
+    /// point is that this commit has no commit row: the fact is "fathom tried to index *this commit* and the
+    /// object database would not serve it", and a commit id is the only key it has. ADR-001 §7.6's stated
+    /// absence, made durable — `fathom doctor` and `fathom show` both read it back, and neither of them
+    /// re-walks the history to guess at it.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the write fails.
+    pub fn record_unreadable_commit(
+        &mut self,
+        oid: &str,
+        reason: &str,
+        run: i64,
+        now: i64,
+    ) -> Result<(), Error> {
+        let value = serde_json::json!({"reason": reason, "run": run, "utc": now});
+        self.set_meta(&format!("{UNREADABLE_PREFIX}{oid}"), &value.to_string())
+    }
+
+    /// Forget the unreadable-commit record for `oid`, because this run *did* read it.
+    ///
+    /// This is what keeps a repaired object from staying condemned in the store: `git fsck`, or a
+    /// `git fetch` the user ran themselves, brings the object back, and the next index writes the row and
+    /// clears the record.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the delete fails.
+    pub fn clear_unreadable_commit(&mut self, oid: &str) -> Result<(), Error> {
+        self.conn
+            .execute(
+                "DELETE FROM meta WHERE key = ?1",
+                params![format!("{UNREADABLE_PREFIX}{oid}")],
+            )
+            .map(|_| ())
+            .map_err(|err| corrupt("clearing an unreadable-commit record", &err))
+    }
+
+    /// Every commit this store could not read, oldest record first: `(commit oid, reason, utc)`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn unreadable_commits(&self) -> Result<Vec<(String, String, i64)>, Error> {
+        let mut statement = self
+            .conn
+            .prepare("SELECT key, value FROM meta WHERE key LIKE ?1 ORDER BY key")
+            .map_err(|err| corrupt("reading unreadable commits", &err))?;
+        let rows = statement
+            .query_map(params![format!("{UNREADABLE_PREFIX}%")], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|err| corrupt("reading unreadable commits", &err))?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (key, value) = row.map_err(|err| corrupt("reading unreadable commits", &err))?;
+            let oid = key
+                .strip_prefix(UNREADABLE_PREFIX)
+                .unwrap_or_default()
+                .to_owned();
+            let parsed: serde_json::Value = serde_json::from_str(&value).unwrap_or_default();
+            out.push((
+                oid,
+                parsed["reason"]
+                    .as_str()
+                    .unwrap_or("the record carried no reason")
+                    .to_owned(),
+                parsed["utc"].as_i64().unwrap_or(0),
+            ));
+        }
+        Ok(out)
+    }
+
+    /// Why this commit could not be read, when this store has been told before.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn unreadable_commit(&self, oid: &str) -> Result<Option<String>, Error> {
+        let key = format!("{UNREADABLE_PREFIX}{oid}");
+        self.meta(&key).map(|value| {
+            value.map(|value| {
+                serde_json::from_str::<serde_json::Value>(&value)
+                    .ok()
+                    .and_then(|parsed| parsed["reason"].as_str().map(str::to_owned))
+                    .unwrap_or_else(|| "the record carried no reason".to_owned())
+            })
+        })
+    }
+
     /// The `store_id`, minted on first use.
     ///
     /// ADR-004 §12.3: a copied or swapped store file is detected by identity, and identity has to exist
@@ -843,6 +946,20 @@ impl Store {
                     written += 1;
                 }
             }
+        }
+        // A commit this run *did* read is no longer a commit that could not be read, and the withdrawal
+        // belongs in this transaction: a store must never carry both a commit row and a "could not be read"
+        // for the same oid, because the second would outlive the first as a permanent false alarm after the
+        // user ran `git fsck` or fetched the object back.
+        if !rows.is_empty() {
+            let oids: Vec<&str> = rows.iter().map(|row| row.oid.as_str()).collect();
+            let json = serde_json::to_string(&oids)
+                .map_err(|err| corrupt("encoding a commit list", &json_error(err)))?;
+            tx.execute(
+                "DELETE FROM meta WHERE key IN (SELECT ?1 || value FROM json_each(?2))",
+                params![UNREADABLE_PREFIX, json],
+            )
+            .map_err(|err| corrupt("withdrawing unreadable-commit records", &err))?;
         }
         tx.commit()
             .map_err(|err| corrupt("committing a batch", &err))?;
@@ -1412,8 +1529,13 @@ impl Store {
                     .map(|key| format!("'{key}'"))
                     .collect::<Vec<_>>()
                     .join(",");
+                // `commit_unreadable.*` is excluded by prefix rather than by name because there is one key
+                // per commit, and each carries the instant it was written and the OS's own words about a
+                // path on this machine. Two legal runs of the same damaged repository do not agree byte
+                // for byte; they agree by commit id, which is how [`Store::unreadable_commits`] reads them.
                 format!(
-                    "SELECT {projection} FROM meta WHERE key NOT IN ({absent}) ORDER BY {projection}"
+                    "SELECT {projection} FROM meta WHERE key NOT IN ({absent}) \
+                     AND key NOT LIKE '{UNREADABLE_PREFIX}%' ORDER BY {projection}"
                 )
             } else {
                 format!("SELECT {projection} FROM {table} ORDER BY {projection}")

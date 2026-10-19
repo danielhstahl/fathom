@@ -283,7 +283,9 @@ pub struct Report {
     pub interrupted: bool,
     /// Which of the two stopped it, for the exit code and the line of output.
     pub reason: Option<Interrupted>,
-    /// Commits whose analysis failed, with the reason. A degraded run, not a failed one (§7.6).
+    /// Every commit this run could not finish, rendered as `<commit>: <reason>` — the commits the object
+    /// database would not serve *and* the commits whose analysis failed. A degraded run, not a failed one
+    /// (§7.6), and the line `fathom index` prints when a repository is damaged.
     pub failures: Vec<String>,
     /// Wall time.
     pub elapsed: Duration,
@@ -459,7 +461,20 @@ pub fn run(
     // 3. The analyses.
     let mut computed = 0_usize;
     let mut interrupted = None;
-    let mut failures: Vec<String> = Vec::new();
+    let mut failures: Vec<String> = spine.failures.iter().map(ToString::to_string).collect();
+    // A commit the object database would not serve is recorded against its own id, where every later read
+    // can find it: `fathom doctor`, `fathom stats` and `fathom show` all answer "which commit, and why" in
+    // the store's own words instead of re-walking the history to guess (ADR-001 §7.6). A run that later
+    // *does* read the commit withdraws the record in the same transaction that writes the row, so a
+    // repository the user repaired with `git fsck` stops being reported as damaged.
+    for failure in &spine.failures {
+        store.record_unreadable_commit(
+            &failure.oid.hex(),
+            &failure.reason,
+            spine_run.unwrap_or(0),
+            now,
+        )?;
+    }
     // The one denominator this run can state up front: the commits that owe derivation. Every tick of the
     // loop below is measured against it, which is what makes the CLI's `indexing 62 % · ~14 s left` a
     // measured figure rather than a guess (`e5.9`).
@@ -583,9 +598,6 @@ pub fn run(
     if let Some(run) = spine_run {
         let mut stats = crate::sink::run_stats(&spine);
         stats.interrupted |= interrupted.is_some();
-        if stats.error.is_none() {
-            stats.error = failures.first().cloned();
-        }
         store.finish_run(run, now, &stats)?;
     }
 
@@ -760,7 +772,11 @@ fn analyse_commit(
     commit: &Oid,
     now: i64,
 ) -> Result<usize, Error> {
-    let row = store.read_commit(&commit.hex())?;
+    let row = store
+        .read_commit(&commit.hex())
+        .map_err(|_| Error::MissingCommitRow {
+            what: format!("commit {} has no row in the store", &commit.hex()[..12]),
+        })?;
     let tree = hex_oid(&row.tree_oid, "tree")?;
     // The first parent's *tree*, because that is the side normalize diffed a merge against — asking the
     // second parent would compute a delta this store never claimed to record. It has to be the tree and not
@@ -768,7 +784,20 @@ fn analyse_commit(
     // tree analyse it once, and keying it on a commit id would make every lookup a miss while looking
     // exactly as warm as if it had worked.
     let parent_tree = match row.parent_oids.first() {
-        Some(hex) => Some(hex_oid(&store.read_commit(hex)?.tree_oid, "parent tree")?),
+        Some(hex) => Some(hex_oid(
+            &store
+                .read_commit(hex)
+                .map_err(|_| Error::MissingCommitRow {
+                    what: format!(
+                        "the first parent {} has no row in the store, which normally means its own \
+                         objects could not be read; `fathom doctor` names the commits the object \
+                         database is hiding",
+                        &hex[..12]
+                    ),
+                })?
+                .tree_oid,
+            "parent tree",
+        )?),
         None => None,
     };
     let mut units = Vec::with_capacity(row.files.len());
