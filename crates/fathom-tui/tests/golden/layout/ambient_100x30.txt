@@ -1,8 +1,8 @@
 # Ambient at 100×30 — complete
 
 ▸ glance · e5.1
-index epoch 1 ready · 500 commits · 48 eps
-`t` opens the timeline, which lists them as the index knows them
+ambient is the newest episode, sized for a second terminal
+`q` picks an episode; `fathom watch` keeps this pane current
 the delta model is not in this build
 reads episode.identity · risk.score · review.state · queue counts
 … and 2 more (e2.11 names them all)

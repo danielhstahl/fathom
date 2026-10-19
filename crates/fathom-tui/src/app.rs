@@ -169,18 +169,11 @@ impl IndexState {
 }
 
 /// Space-separated thousands, the way ADR-006's own mock lines print them (`3 412 eps`).
-#[must_use]
-pub fn format_thousands(value: u64) -> String {
-    let digits = value.to_string();
-    let mut out = String::new();
-    for (index, ch) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index).is_multiple_of(3) {
-            out.push(' ');
-        }
-        out.push(ch);
-    }
-    out
-}
+///
+/// The implementation moved to [`fathom_core::progress::format_thousands`] with `e5.9`, because
+/// `fathom index` prints the same numbers and the `minimal` binary has no shell to borrow them from;
+/// this is the same name the whole crate already calls, re-exported rather than copied.
+pub use fathom_core::progress::format_thousands;
 
 /// What the panes have to draw, and why they may not have much.
 ///
@@ -377,6 +370,13 @@ pub struct App {
     pub repaint: bool,
     /// The frame timing bookkeeping.
     pub scheduler: FrameScheduler,
+    /// One progress estimate per in-flight worker task (`e5.9`).
+    ///
+    /// A worker's message says `412 / 500` and nothing about *when*, because a worker may not read a
+    /// clock (ADR-002 §4.4); the loop owns the monotonic instant, and this is where the samples get
+    /// smoothed into the `~14 s left` the status row prints. Keyed by task, so two kinds of work in
+    /// flight produce two estimates instead of one line flicking between two truths.
+    pub estimates: BTreeMap<&'static str, crate::progress::Tracker>,
 }
 
 /// A keystroke outcome with the action id copied out of the keymap, so applying it does not keep a
@@ -468,6 +468,7 @@ impl App {
             repo_label: repo_label.into(),
             quit: None,
             repaint: false,
+            estimates: BTreeMap::new(),
             scheduler: FrameScheduler::new(),
         };
         app.set_view(ViewId::Queue);
@@ -545,6 +546,28 @@ impl App {
         self.view == ViewId::Timeline && self.focused_pane().is_some_and(|pane| pane.name == "rail")
     }
 
+    /// The episode the secondary panes are views *of* — the same resolution [`App::open_diff`] uses,
+    /// because "what is selected" must mean one thing to every pane that asks (`e5.9`).
+    #[must_use]
+    pub fn episode_in_scope(&self) -> Option<String> {
+        self.scope.episode.clone().or_else(|| match self.view {
+            ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
+            _ => self.timeline.selected().map(|episode| episode.id.clone()),
+        })
+    }
+
+    /// What this pane can say about *why* it has no rows, as opposed to why the index has none.
+    #[must_use]
+    fn empty_reason(&self) -> crate::empty::Reason {
+        crate::empty::Reason {
+            episode: self.episode_in_scope(),
+            query: (self.view == ViewId::Search)
+                .then(|| self.prompt.clone())
+                .filter(|prompt| !prompt.is_empty()),
+            owner: None,
+        }
+    }
+
     /// The rows a pane prints: its own, or the honest empty state.
     #[must_use]
     pub fn pane_rows(&self, pane: &Pane) -> Vec<String> {
@@ -570,34 +593,28 @@ impl App {
             }
             return out;
         }
-        // The empty states ADR-006 §10.3 fixes. A list pane says what the index holds and what to run;
-        // a card says what is missing and who owns it. Neither one shrugs, and neither one is blank.
+        // The empty states ADR-006 §10.3 fixes, and `fathom_tui::empty` owns as one batch (`e5.9`). A
+        // list pane says what the index holds and what to run; a pane that follows a selection says
+        // which selection it is waiting for. Neither one shrugs, and neither one is blank.
         let facts = self.model.index_facts.clone();
         let mut out = match pane.role {
-            Role::Primary => {
-                // A converging progress estimate outranks the empty state: an index still running is a
-                // different fact from one that finished and reads nothing (`reco-1nu`).
-                let mut lines = self.model.index.progress.clone().map_or_else(
-                    || vec![facts.summary(), facts.remedy()],
-                    |progress| vec![progress],
-                );
-                lines.push(
-                    self.model
-                        .unavailable
-                        .clone()
-                        .unwrap_or_else(|| "nothing selected".to_owned()),
-                );
-                lines
-            }
-            Role::Secondary => vec![
-                format!("`{}` — nothing to show yet", pane.name),
-                self.model
-                    .unavailable
-                    .clone()
-                    .unwrap_or_else(|| "select a row in the list".to_owned()),
-            ],
+            // The search field is a field: its "empty state" is the prompt, drawn by `query_line`.
             Role::Query => vec![String::new()],
+            _ => {
+                // A converging progress estimate outranks the empty state: an index still running is a
+                // different fact from one that finished and reads nothing (`reco-1nu`, `e5.9`).
+                if let Some(progress) = self.model.index.progress.clone() {
+                    vec![progress]
+                } else {
+                    crate::empty::words(self.view, pane, &facts, &self.empty_reason())
+                }
+            }
         };
+        // The gap line, when there is one: "blast radius: unknown — no graph snapshot" is a fact about
+        // a figure, not about the pane, so it rides along under whatever the pane's own reason is.
+        if let Some(gap) = self.model.unavailable.clone() {
+            out.push(gap);
+        }
         if !pane.reads.is_empty() {
             out.push(format!(
                 "reads {}",

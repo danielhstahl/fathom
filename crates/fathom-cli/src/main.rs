@@ -19,6 +19,7 @@ mod analyze;
 // needs the store, so it lives above the classifier and below the verb table (ADR-002 §4.3).
 mod attribution;
 mod clock;
+mod demo;
 mod diagnose;
 // The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not
 // open one (ADR-002 §5.2), and handed over as a batch the rail draws. Only the shell has a use for them,
@@ -26,6 +27,9 @@ mod diagnose;
 #[cfg(feature = "tui")]
 mod episodes;
 mod features;
+// The guided first index: the progress row `fathom index` prints while it works (`e5.9`). It reads
+// stderr to decide whether to print at all, which is a composition-root job (ADR-002 §7.5).
+mod guide;
 mod harness;
 mod hooks;
 mod output;
@@ -83,6 +87,9 @@ fn run() -> ExitCode {
     let matches = command.get_matches();
     let cli = verbs::Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
     let globals = verbs::Globals {
+        progress: cli.progress,
+        no_progress: cli.no_progress,
+        demo: cli.demo,
         plain: cli.plain,
         no_alt_screen: cli.no_alt_screen,
         fresh: cli.fresh,

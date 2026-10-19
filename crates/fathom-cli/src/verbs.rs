@@ -63,6 +63,39 @@ pub struct Cli {
     /// its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
     #[arg(long, global = true, value_name = "NAME|PATH")]
     pub theme: Option<String>,
+    /// Review a miniature repository that ships inside this binary, then say what to do next (`e5.9`).
+    ///
+    /// The five-minute tour: Fathom unpacks a 21-commit repository into its cache directory, indexes it
+    /// with the same `fathom index` you would run on your own history, and opens on it. Nothing in the
+    /// directory you ran it from is read or written, no configuration is read, and deleting
+    /// `$XDG_CACHE_HOME/fathom` is a complete undo. With a verb the verb runs against the miniature; with
+    /// none you get the shell.
+    #[arg(long)]
+    pub demo: bool,
+    /// Print the index's progress row even where stderr is not a terminal (`e5.9`).
+    ///
+    /// On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI
+    /// step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index`
+    /// and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and
+    /// `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable
+    /// document is how a parser dies.
+    #[arg(
+        long,
+        global = true,
+        conflicts_with = "no_progress",
+        help = "print the index's progress row even when stderr is not a terminal (`index` and `--demo`)"
+    )]
+    pub progress: bool,
+    /// Never print the index's progress row, even on a terminal (`e5.9`).
+    ///
+    /// The other half of the same choice: a script with its own progress line, or a run whose output is
+    /// being tee'd somewhere, turns it off explicitly instead of discovering it on.
+    #[arg(
+        long = "no-progress",
+        global = true,
+        help = "never print the index's progress row, even on a terminal"
+    )]
+    pub no_progress: bool,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
@@ -81,6 +114,16 @@ pub struct Globals {
     pub mouse: bool,
     /// Print the plain frame in reading order rather than as a grid (`e5.5`).
     pub lines: bool,
+    /// `--progress`: the index's progress row, forced on (`e5.9`).
+    pub progress: bool,
+    /// `--no-progress`: the index's progress row, forced off (`e5.9`).
+    pub no_progress: bool,
+    /// Review the bundled miniature instead of the repository underfoot (`e5.9`).
+    ///
+    /// Resolved before the verb runs, because the answer is a directory to `chdir` into: every verb after
+    /// it reads the demo through its own ordinary path, which is what makes the demo the product rather
+    /// than a picture of it.
+    pub demo: bool,
     /// The theme the reviewer chose, if any (`e5.6`): a built-in name, a theme-directory name, or a path.
     ///
     /// Resolved to a palette by `crate::theme`, which is also where the precedence over the environment
@@ -152,6 +195,13 @@ pub struct IndexArgs {
     /// Do not analyse uncommitted paths (ADR-004 §6.4).
     #[arg(long = "committed-only")]
     pub committed_only: bool,
+    /// Send the run report to stderr instead of stdout.
+    ///
+    /// Not a flag a person types: it is what `fathom --demo` sets, because on that run stdout belongs to
+    /// the frame the shell is about to draw and a summary line printed first is a corrupt first frame.
+    /// `fathom watch --quiet` is the same promise, spelled the same way.
+    #[arg(skip)]
+    pub quiet: bool,
 }
 
 /// `fathom attribution`: the authorship label, and the way to overrule it.
@@ -459,9 +509,15 @@ pub struct TuiArgs {
 /// [`Pending`], or anything a verb chose to raise, when the verb cannot be completed; `main` maps that to
 /// an exit code at the edge, which is the only place the two are joined.
 pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode> {
+    // First, before any verb resolves a root: the miniature is unpacked, indexed, and becomes the working
+    // directory, so that `--root`'s default of `.` is the demo and nothing below here knows the difference
+    // (`e5.9`).
+    if globals.demo {
+        enter_demo(globals)?;
+    }
     match verb {
         None => open_terminal(globals),
-        Some(Verb::Index(args)) => index(args),
+        Some(Verb::Index(args)) => index(args, globals),
         Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
         Some(Verb::Attribution(args)) => match &args.action {
             AttributionAction::Correct(args) => {
@@ -512,6 +568,30 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Hooks(args)) => crate::harness::run(args),
         Some(Verb::Tui(args)) => tui(args, globals),
     }
+}
+
+/// Unpack the miniature, index it, and move the process into it (`e5.9`).
+///
+/// The index runs through [`index`] — the same verb, the same sink, the same report — because the thing
+/// under review in the first five minutes is Fathom's own behaviour, and a demo that fakes the index would
+/// demonstrate nothing about the wait a real repository costs.
+fn enter_demo(globals: &Globals) -> eyre::Result<ExitCode> {
+    let demo = crate::demo::prepare()?;
+    crate::demo::intro(&demo);
+    crate::demo::index(&demo, globals)?;
+    crate::demo::handoff();
+    std::env::set_current_dir(&demo.root).map_err(|err| {
+        Pending::new(
+            ExitCode::Error,
+            format!(
+                "the demo repository at {} could not be made the working directory: {err}",
+                demo.root.display()
+            ),
+            Some("run `fathom --demo` from a directory you can read".to_owned()),
+        )
+    })?;
+    // `Ok` is never looked at: `dispatch` continues into the verb the reviewer asked for.
+    Ok(ExitCode::Ok)
 }
 
 /// `fathom tui --show-keys`: the merged keymap as text, no terminal taken.
@@ -574,7 +654,7 @@ fn open_terminal(globals: &Globals) -> eyre::Result<ExitCode> {
 /// belongs to the daemon process that owns the terminal (`reco-kvk`). The driver's cancel handle is there
 /// and counted either way (`--stats` shows a cancelled run as a stated partial, exit 6).
 #[cfg(feature = "sqlite-bundled")]
-fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
+pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCode> {
     use fathom_analyze::index::{self, Scope, Worktree};
     use fathom_ingest::record::Unclassified;
     use fathom_ingest::repo::Repository;
@@ -596,6 +676,16 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
     // The boundary knobs come from the repository's own `fathom.toml`. This is the crate ADR-002 §4.5 lets
     // read configuration, and the resolution happens here so that segmentation receives a value.
     let segment = crate::segment::from_repository(root);
+    // Created before the store is opened and finished after the run closes, so the row a terminal is
+    // left with is always ended (`e5.9`).
+    let guide = crate::guide::Guide::new(crate::guide::Request::decide(
+        // The overrides are globals, so the same two flags reach the run `fathom --demo` performs on the
+        // reviewer's behalf — a flag that only worked when you had already indexed something yourself would
+        // be a flag nobody discovered in time to use.
+        globals.progress,
+        globals.no_progress,
+        args.json,
+    ));
 
     // `--rebuild` is `advance_epoch` plus a walk, which is what `fathom-store`'s own documentation says it
     // is (ADR-004 §6.3, §9.3). The staging file and the atomic rename are deliberately not attempted here:
@@ -610,6 +700,10 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         // The instant is an argument, not a read, all the way down (ADR-002 §4.4); this is the one place
         // it is read, and every row and counter this run writes carries this one value.
         now: Some(crate::clock::now_millis()),
+        // The guided first index (`e5.9`): a row on stderr while the run goes, so a minute of walking
+        // a real history is not indistinguishable from a hang. `--json` and `--no-progress` silence it,
+        // and a run indexing for a pipe never starts one.
+        progress: Some(guide.sink()),
         scope: if args.refresh || args.rebuild {
             Scope::Everything
         } else {
@@ -624,7 +718,11 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
         },
         ..index::Options::head()
     };
-    let report = index::run(&repository, &mut store, &Unclassified, &options).map_err(failed)?;
+    let report = index::run(&repository, &mut store, &Unclassified, &options);
+    // The in-place row ends here, on every path out of the run: a run that left a bare `\r` behind would
+    // print its own error over the middle of the last progress row (`e5.9`).
+    guide.finish();
+    let report = report.map_err(failed)?;
     // A key that was read and could not be honoured is said out loud, on the JSON path too: "the file
     // changed nothing" and "the file was not applied" are different statements and only one of them is
     // true of a silently dropped `fathom.toml` entry (ADR-002 §7.1).
@@ -645,8 +743,18 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
     } else if args.stats {
         print_stats(&store_path, &report);
     } else {
+        // `--demo` sets `quiet` because stdout is about to carry the frame; every other caller owns
+        // stdout and gets the report there (ADR-002 §7.5).
+        let quiet = args.quiet;
+        let say = move |line: std::fmt::Arguments| {
+            if quiet {
+                output::problem(line);
+            } else {
+                output::line(line);
+            }
+        };
         let added = report.spine.commits_written;
-        output::line(format_args!(
+        say(format_args!(
             "{}: {}{} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
             store_path.display(),
             if args.rebuild { "rebuild: " } else { "" },
@@ -656,12 +764,12 @@ fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
             report.elapsed.as_millis()
         ));
         if !report.worktree_skipped.is_empty() {
-            output::line(format_args!(
+            say(format_args!(
                 "  {} uncommitted path(s) were not analysed; pass --stats to see why",
                 report.worktree_skipped.len()
             ));
         }
-        output::line(format_args!(
+        say(format_args!(
             "  pass --stats for the per-analyzer cache table, or --json for the same as data"
         ));
     }
@@ -858,8 +966,8 @@ fn watch_after_index(_args: &IndexArgs) -> eyre::Result<ExitCode> {
 /// The same verb in a binary that was built without SQLite: the feature gate is the point, and the answer
 /// is the exit code that says which flag to rebuild with (ADR-002 §6.1's `minimal` binary).
 #[cfg(not(feature = "sqlite-bundled"))]
-fn index(args: &IndexArgs) -> eyre::Result<ExitCode> {
-    let _ = args;
+pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCode> {
+    let _ = (args, globals);
     Err(feature_absent("fathom index", "sqlite-bundled"))
 }
 

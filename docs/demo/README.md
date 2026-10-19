@@ -178,7 +178,13 @@ The four P1s, in the order a reviewer meets them:
    prints `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them
    …`, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table. (The tail of
    that sentence was rewritten once more when the read above arrived: it used to promise that nothing in
-   this build could list the episodes, and that stopped being true.)
+   this build could list the episodes, and that stopped being true.) **And the flag exists now:** `e5.9`
+   (`reco-2uo`) shipped `fathom --demo` for real — a 21-commit miniature inside the binary, indexed by the
+   ordinary `fathom index` into the cache directory — so the unindexed pane names it beside `fathom index`
+   rather than lying about it. What keeps *that* claim honest is a test that runs the built binary
+   (`crates/fathom-cli/tests/demo.rs`, clean `$HOME`, under ten seconds, nothing written outside the cache
+   directory) and one that reads the flag list off `fathom --help` (`crates/fathom-cli/tests/copy.rs`), so a
+   promise in the copy and a flag in the binary cannot part company again unnoticed.
 3. **The diff viewer is never handed a patch.** Eighteen golden fixtures, a chunked `PatchSource`,
    a byte-budgeted materialiser — and no production code ever constructs one, while `fathom show
    --json` proves the store holds every hunk header.

@@ -27,6 +27,8 @@
 pub mod app;
 pub mod colour;
 pub mod diff;
+/// Every pane's empty state, as one batch of copy (`e5.9`, ADR-006 §10.3).
+pub mod empty;
 pub mod error;
 pub mod event;
 pub mod frame;
@@ -34,6 +36,8 @@ pub mod index;
 pub mod keymap;
 pub mod layout;
 pub mod materialize;
+/// The progress row: a percentage and a time estimate that converges (`e5.9`, ADR-006 §10.3).
+pub mod progress;
 pub mod render;
 pub mod session;
 pub mod style;

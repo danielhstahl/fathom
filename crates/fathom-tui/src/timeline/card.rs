@@ -56,6 +56,11 @@ pub fn lines(
 }
 
 /// The "nothing is selected" card: a reason, and the key that changes it.
+///
+/// Its third line used to name the tickets that owned the card's delta rows — `e2.10` and `e2.11`, both
+/// of which have since shipped, which made the line a false statement about this build. An empty state may
+/// name an owner only when the owner is still missing; what the reviewer needs instead is the guarantee
+/// that made the pane worth filling (`e5.9`, ADR-006 §0.1).
 fn stated(_width: usize) -> Vec<StyledLine> {
     vec![
         StyledLine::with_face("no episode selected", Face::Emphasis),
@@ -64,7 +69,7 @@ fn stated(_width: usize) -> Vec<StyledLine> {
             Face::Muted,
         ),
         StyledLine::with_face(
-            "the card's delta rows are owned by e2.10 and e2.11",
+            "no row under the cursor means no figures, not none available",
             Face::Muted,
         ),
     ]

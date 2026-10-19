@@ -69,7 +69,14 @@ impl Diagnosable for Error {
 
     fn hint(&self) -> Option<&str> {
         match self {
-            Error::NotImplemented { ticket, .. } => Some(*ticket),
+            // A ticket number is an owner, not a next action: the reader cannot run `e5.7`. The message
+            // already names the owner (`{what} is not implemented yet (owned by {ticket})`), so the hint
+            // does the other half — the verb that says what this build *does* have (`e5.9`: every
+            // user-facing error states something to do).
+            Error::NotImplemented { .. } => Some(
+                "not in this build; `fathom doctor` prints what this build does, and the ticket in \
+                      the message owns what it does not",
+            ),
             Error::InvalidRequest { .. } => Some("ask the facade for a smaller window"),
             Error::UnknownFormat { .. } => Some("`fathom export --help` lists the three"),
             Error::SpineRowUnreadable { .. } => Some("`fathom index --rebuild`"),

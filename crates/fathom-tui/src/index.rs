@@ -229,6 +229,16 @@ impl Facts {
                 "{base}; if a rebuild died halfway, `fathom index --rebuild` starts a clean one"
             );
         }
+        // The one place `--demo` belongs in a pane (`e5.9`): a reviewer staring at an unindexed repository
+        // is exactly the person who has not decided whether this is worth setting up, and the answer is a
+        // flag rather than a commit. It used to be named here when no such flag existed, which is the
+        // mistake `reco-1nu` was filed against — the difference now is that it can be typed.
+        if self.read == Read::Absent {
+            return format!(
+                "{base}; `fathom --demo` reviews a miniature repository, if you would rather see this \
+                 one working before indexing your own"
+            );
+        }
         if self.is_present() && self.episodes.is_some_and(|episodes| episodes > 0) {
             return format!("{base}; `fathom show <episode>` prints one in full");
         }

@@ -35,6 +35,8 @@ pub struct StoreSink<'a> {
     /// calls [`Sink::begin`] itself. The driver needs it to ask the store what this run wrote
     /// ([`Store::oids_pending_derivation`]) instead of re-walking the history to find out.
     pub run_id: Option<i64>,
+    /// Commits this sink has written, for the walk's progress tick (`e5.9`).
+    pub walked: u64,
     /// Leave the `index_run` row open for the driver to close.
     ///
     /// The `index_run` row describes an *index* run, and the spine is only its first pass. Closing it when
@@ -42,6 +44,12 @@ pub struct StoreSink<'a> {
     /// §9.2's recovery turns on that stamp being the truth: a row that lies `ok` is a run whose unfinished
     /// work nobody will ever ask about again.
     pub defer_finish: bool,
+    /// Where to report the walk's progress, if anybody is watching (`e5.9`).
+    ///
+    /// The spine is the first phase of a first index and often the longest, and the batch boundary is
+    /// where the count of commits seen so far is cheap to read — this is the only place a walk can tick
+    /// without walking the history a second time. `None` for every caller that has nobody to tell.
+    pub progress: Option<crate::index::ProgressSink>,
 }
 
 impl<'a> StoreSink<'a> {
@@ -52,6 +60,8 @@ impl<'a> StoreSink<'a> {
             now,
             run_id: None,
             defer_finish: false,
+            progress: None,
+            walked: 0,
         }
     }
 
@@ -65,7 +75,16 @@ impl<'a> StoreSink<'a> {
             now,
             run_id: None,
             defer_finish: true,
+            progress: None,
+            walked: 0,
         }
+    }
+
+    /// Report the walk's batches to `progress` (`e5.9`). `None` leaves the sink silent.
+    #[must_use]
+    pub fn with_progress(mut self, progress: Option<crate::index::ProgressSink>) -> Self {
+        self.progress = progress;
+        self
     }
 }
 
@@ -96,7 +115,25 @@ impl Sink for StoreSink<'_> {
 
     fn write(&mut self, run: RunId, batch: &[CommitRecord]) -> Result<usize, Self::Error> {
         let rows: Vec<CommitRow> = batch.iter().map(commit_row).collect();
-        self.store.write_commits(run.0, self.now, &rows)
+        let written = self.store.write_commits(run.0, self.now, &rows)?;
+        // The walk's tick, at the batch boundary: no repository is walked twice to find out how far the
+        // first walk got, so this counter is the number, and `of` stays unknown until the walk is over
+        // (ADR-006 §0.1 — an uncounted total is printed as unknown, never as a percentage).
+        //
+        // Counted from the batch, not from what the write returned: `write_commits` answers in *rows*, and a
+        // repository with one commit and four touched files would otherwise report having walked five of
+        // them. The row a reviewer reads counts commits, because commits are what the walk is waiting for.
+        self.walked = self
+            .walked
+            .saturating_add(u64::try_from(batch.len()).unwrap_or(u64::MAX));
+        if let Some(progress) = &self.progress {
+            progress.report(&crate::index::Tick {
+                phase: crate::index::Phase::Walking,
+                done: self.walked,
+                of: None,
+            });
+        }
+        Ok(written)
     }
 
     fn finish(&mut self, run: RunId, report: &RunReport) -> Result<(), Self::Error> {

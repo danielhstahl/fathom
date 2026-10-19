@@ -1124,9 +1124,31 @@ fn an_empty_frame_names_the_index_it_actually_found() {
         "the index is finished; the frame must not send the reviewer to run it again:\n{filled}"
     );
 
-    // And neither frame may name a flag this binary does not have.
-    for text in [&bare, &filled] {
-        assert!(!text.contains("--demo"), "`--demo` is not a flag: {text}");
+    // And neither frame may name a flag this binary does not have. This is the check ADR-006 §10.3 records
+    // as learned the expensive way: `--demo` sat in two panes for three stages while no such flag existed.
+    // It exists now (`e5.9`), so the invariant is the general one rather than one flag's name — and the
+    // unindexed frame is *expected* to offer the tour, because a reviewer with nothing indexed is exactly
+    // the person for whom the miniature exists.
+    let help = stdout(&fathom(&["--help"]));
+    for line in bare.lines().chain(filled.lines()) {
+        for word in line.split_whitespace() {
+            let word = word.trim_matches('`').trim_end_matches([',', ';', '.']);
+            if let Some(flag) = word.strip_prefix("--") {
+                let flag = format!("--{}", flag.split('<').next().unwrap_or(flag));
+                assert!(
+                    help.contains(&flag),
+                    "the frame names `{flag}`, which `fathom --help` does not:\n{line}"
+                );
+            }
+        }
     }
+    assert!(
+        bare.contains("--demo"),
+        "the unindexed frame should offer the tour now that there is a tour to offer:\n{bare}"
+    );
+    assert!(
+        !filled.contains("--demo"),
+        "an indexed repository needs no miniature:\n{filled}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -47,6 +47,21 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --demo
+          Review a miniature repository that ships inside this binary, then say what to do next (`e5.9`).
+          
+          The five-minute tour: Fathom unpacks a 21-commit repository into its cache directory, indexes it with the same `fathom index` you would run on your own history, and opens on it. Nothing in the directory you ran it from is read or written, no configuration is read, and deleting `$XDG_CACHE_HOME/fathom` is a complete undo. With a verb the verb runs against the miniature; with none you get the shell.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -117,6 +132,16 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -169,6 +194,16 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -218,6 +253,16 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -257,6 +302,16 @@ Options:
           Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -314,6 +369,16 @@ Options:
           Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -377,6 +442,16 @@ Options:
           Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -450,10 +525,20 @@ Options:
       --heartbeat-ms <HEARTBEAT_MS>
           The liveness beat in milliseconds: how often the state is rewritten while nothing changes
 
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
       --chunk-units <CHUNK_UNITS>
           Analysis units per index chunk — the watcher's slice of the CPU
           
           [default: 2000]
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
       --worktree
           Also re-index uncommitted paths when only the index moved
@@ -508,6 +593,16 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -547,6 +642,16 @@ Options:
           Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
   -h, --help
           Print help (see a summary with '-h')

@@ -1,0 +1,33 @@
+{
+  "contract": "fathom.demo/1",
+  "pack": "fathom-demo.pack",
+  "version": 1,
+  "bytes": 31016,
+  "entries": 120,
+  "head": "70b94d6b353a00973daf887a972b78271135b2a0",
+  "commits": 21,
+  "digest": "13088a3d85a5478943df92a4cd15d100aee7bcc53a28c81c5d1a17194825e2e1",
+  "subjects": [
+    "add the crate: one observation and the store",
+    "parse: read one name=value pair per line",
+    "downsample a window to at most N buckets",
+    "notify: tell the dashboard a segment moved",
+    "bump serde to 1.0.190 for the flatten fix",
+    "move core.rs into its own module",
+    "tests: fold the empty-store case into the append test",
+    "rustfmt the parse module",
+    "dashboard: pin express and zod",
+    "query: answer a range query against the store",
+    "queue: a job the scheduler can run",
+    "scheduler: drain a window of the queue",
+    "generated with claude: the sparkline renderer",
+    "ci: deploy the release build after the tests",
+    "docs: how the dashboard reads signal",
+    "bump express to 4.18.2 for the path-name fix",
+    "summary: fold a window into one figure",
+    "render: bucket the sparkline by width instead of by row",
+    "add toml to the dependency surface",
+    "fetch: pull a page for the dashboard",
+    "merge branch 'fetch'"
+  ]
+}

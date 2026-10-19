@@ -19,6 +19,16 @@ pub fn problem(args: Arguments<'_>) {
     let _ = write_line(io::stderr(), args);
 }
 
+/// One row on stderr with no newline: the progress row that overwrites itself (`e5.9`).
+///
+/// Only a terminal should be handed one — see [`crate::guide`], which decides that. The write is flushed
+/// because a progress row that sits in a buffer is a progress row nobody sees until the run ends.
+pub fn row(args: Arguments<'_>) {
+    let mut sink = io::stderr();
+    let _ = sink.write_fmt(args);
+    let _ = sink.flush();
+}
+
 fn write_line(mut sink: impl Write, args: Arguments<'_>) -> io::Result<()> {
     sink.write_fmt(args)?;
     sink.write_all(b"\n")?;

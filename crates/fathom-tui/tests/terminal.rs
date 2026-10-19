@@ -263,9 +263,13 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
         }
     }
     let progress = seen.clone();
+    // The separator contract, which is what this assertion has always been about (ADR-001 §7.8). The
+    // counter's noun changed in `e5.9`: the row used to read `1 204 / 3 412 done`, and now reads
+    // `1 204 / 3 412 units`, because ADR-006 §10.3's own loading row counts in units (*4 102 / 6 552
+    // commits*) and a single-sample task is not `done` — it is warming up, and the row says `estimating…`
+    // until it has a rate to quote.
     assert!(
-        progress.contains("risk 35 % · 1 204 / 3 412 done")
-            || progress.contains("risk 35 % · 1204 / 3412 done"),
+        progress.contains("risk 35 %") && progress.contains("1 204 / 3 412 units"),
         "the progress line is the reviewer's, with thousands separators: {progress}"
     );
     assert_eq!(

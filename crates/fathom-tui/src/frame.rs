@@ -513,24 +513,18 @@ pub fn apply(app: &mut App, message: Message) {
         }
         Message::Worker(msg) => match msg {
             WorkerMsg::Progress { task, done, of } => {
-                // The line the reviewer reads in the status row: the same thousands separators
-                // every other number in the frame gets (ADR-001 §7.8), and an honest `unknown %`
-                // when the task cannot say how many there are (ADR-001 §7.7).
-                let counts = match of {
-                    Some(total) => format!(
-                        "{} / {} done",
-                        crate::app::format_thousands(done),
-                        crate::app::format_thousands(total)
-                    ),
-                    None => format!("{} done", crate::app::format_thousands(done)),
-                };
-                let percent = match of {
-                    Some(total) if total > 0 => {
-                        format!("{} %", (done.saturating_mul(100) / total).min(100))
-                    }
-                    _ => "unknown %".to_owned(),
-                };
-                app.model.index.progress = Some(format!("{task} {percent} · {counts}"));
+                // The line the reviewer reads in the status row, and the estimate's job (`e5.9`): the
+                // percentage is arithmetic, the `~14 s left` is a smoothed rate that needs samples before
+                // it is worth printing, and ADR-006 §10.3 refuses a percentage on its own — "a lie with a
+                // spinner". Every count in the line keeps the same thousands separators the rest of the
+                // frame uses (ADR-001 §7.8), and a task with no total says `unknown %` rather than
+                // inventing a denominator (ADR-001 §7.7).
+                let tracker = app
+                    .estimates
+                    .entry(task)
+                    .or_insert_with(|| crate::progress::Tracker::new(task, unit_of(task)));
+                tracker.observe(done, of);
+                app.model.index.progress = Some(tracker.line());
             }
             WorkerMsg::Rows {
                 view, pane, lines, ..
@@ -566,6 +560,20 @@ pub fn apply(app: &mut App, message: Message) {
                 app.model.index.progress = None;
             }
         },
+    }
+}
+
+/// What a task's units are called, for the progress row (`e5.9`).
+///
+/// A worker names its task and nothing else, and `decoding 82 % · ~3 s left · 412 / 500 units` reads
+/// wrong when the 500 are hunks. A task this table has not met says `unit`: dull and true, rather than
+/// one module guessing a noun for another module's work.
+fn unit_of(task: &str) -> &'static str {
+    match task {
+        "decoding" => "hunk",
+        "indexing" => "commit",
+        "ranking" => "episode",
+        _ => "unit",
     }
 }
 

@@ -89,5 +89,18 @@ fn the_renderer_refuses_the_same_way_from_every_door() {
         error,
         Error::NotImplemented { ticket: "e5.7", .. }
     ));
-    assert_eq!(error.hint(), Some("e5.7"));
+    // The ticket belongs in the *message* — `{what} is not implemented yet (owned by e5.7)` — and the hint
+    // belongs to the reader. A bare `e5.7` as a hint told a reviewer who owns the gap and nothing they
+    // could do, which is the distinction `e5.9`'s copy rule draws: a hint is an action (`reco-2uo`).
+    assert_eq!(
+        error.hint(),
+        Some(
+            "not in this build; `fathom doctor` prints what this build does, and the ticket in the \
+             message owns what it does not"
+        )
+    );
+    assert!(
+        error.hint().is_some_and(|hint| hint.contains(' ')),
+        "a hint a person cannot act on is an owner's name, not a hint"
+    );
 }

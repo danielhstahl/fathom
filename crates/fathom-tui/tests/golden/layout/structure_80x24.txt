@@ -2,11 +2,11 @@
 
 1 ▣ Structure · (T pins this view)                          fathom/pilot · main
 ┌▸ treemap · e2.3                                    ┬· detail · e2.3          ┐
-│index epoch 1 ready · 500 commits · 48 eps          │`detail` — nothing to sh…│
-│`t` opens the timeline, which lists them as the ind…│the delta model is not i…│
-│the delta model is not in this build                │reads delta.structure.* …│
-│reads delta.structure.* · churn heat per subtree · …│pane `detail` · owned by…│
-│pane `treemap` · owned by e2.3 · ADR-006 §5         │                         │
+│the treemap is one episode's directories, sized by …│the detail pane is the s…│
+│`q` then `j`/`k` to pick an episode, then `s` again │`q` then `j`/`k` to pick…│
+│the delta model is not in this build                │the delta model is not i…│
+│reads delta.structure.* · churn heat per subtree · …│reads delta.structure.* …│
+│pane `treemap` · owned by e2.3 · ADR-006 §5         │pane `detail` · owned by…│
 │                                                    │                         │
 │                                                    │                         │
 │                                                    │                         │

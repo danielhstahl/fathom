@@ -14,13 +14,18 @@
 
 use fathom_tui::index::{Facts, Read};
 
-/// State one: no index at all. The remedy is `fathom index`, and it works.
+/// State one: no index at all. The remedy is `fathom index`, and it works — and beside it sits the flag
+/// that answers "before I point this at my repository, what does it do?" (`reco-2uo` made that flag real;
+/// until then the frame was printing it as a lie).
 #[test]
 fn no_index_prints_the_verb_that_works() {
     assert_eq!(
         Facts::absent().empty_words(),
-        "no index here yet — run `fathom index` here, then reopen fathom"
+        "no index here yet — run `fathom index` here, then reopen fathom; `fathom --demo` reviews a \
+         miniature repository, if you would rather see this one working before indexing your own"
     );
+    // The order is the remedy, then the tour: a reviewer who has already indexed is not being sold the tour.
+    assert!(Facts::absent().remedy().starts_with("run `fathom index`"));
 }
 
 /// State two: the index is finished, the shell can list its episodes, and this pane is the one that has
@@ -96,10 +101,61 @@ fn the_two_states_do_not_collapse_into_one_sentence() {
     assert_ne!(bare.empty_words(), indexed.empty_words());
 }
 
-/// Every state's sentence names only verbs this binary has. `--demo` is the regression this asserts
-/// against: it sat in ADR-006 §10.3's own table and in two panes while no flag of that name existed.
+/// Every state's sentence names only commands this binary has — the rule, not one flag's name.
+///
+/// `--demo` is the regression this asserts against: it sat in ADR-006 §10.3's own table and in two panes
+/// while no flag of that name existed. Now that it exists (`reco-2uo`) a blanket ban on its name would be
+/// as wrong as the lie was, so the list below is the published surface and the test checks membership.
+/// `crates/fathom-cli/tests/copy.rs` is the other half: it fails if this list stops matching what
+/// `fathom --help` actually prints.
 #[test]
-fn no_state_names_a_flag_that_does_not_exist() {
+fn no_state_names_a_command_this_binary_does_not_have() {
+    /// Every verb `fathom --help` lists, and every global flag, as of this build.
+    const VERBS: &[&str] = &[
+        "index",
+        "show",
+        "attribution",
+        "analyze",
+        "stats",
+        "check",
+        "doctor",
+        "export",
+        "mcp",
+        "watch",
+        "hooks",
+        "tui",
+    ];
+    const FLAGS: &[&str] = &[
+        "--demo",
+        "--plain",
+        "--no-alt-screen",
+        "--fresh",
+        "--mouse",
+        "--lines",
+        "--theme",
+        "--version",
+        "--help",
+        "--json",
+        "--stats",
+        "--rebuild",
+        "--refresh",
+        "--watch",
+        "--committed-only",
+        "--progress",
+        "--no-progress",
+        "--show-keys",
+        "--show-session",
+        "--show-theme",
+        "--list-themes",
+        "--strict",
+        "--deep",
+        "--privacy",
+        "--format",
+        "--episodes",
+        "--out",
+        "--schema",
+        "--root",
+    ];
     let all = [
         Facts::unknown(),
         Facts::absent(),
@@ -117,15 +173,34 @@ fn no_state_names_a_flag_that_does_not_exist() {
             facts.origin(),
         ] {
             assert!(
-                !line.contains("--demo"),
-                "{} names `--demo`: {line}",
-                facts.summary()
-            );
-            assert!(
                 !line.trim().is_empty(),
                 "{}: an empty sentence is a shrug",
                 facts.summary()
             );
+            for word in line.split_whitespace() {
+                // Punctuation the sentence puts around it, and the backticks the copy uses to mark a
+                // token as a token — both are decoration, and neither is part of the flag's name.
+                let word = word.trim_matches('`').trim_end_matches([',', ';', '.']);
+                if word.starts_with("--") {
+                    assert!(
+                        FLAGS.contains(&word),
+                        "{} names `{word}`: {line}",
+                        facts.summary()
+                    );
+                }
+                if let Some(verb) = word.strip_prefix("fathom") {
+                    // `fathom show <episode>`, `fathom attribution correct`, `fathom index --rebuild`:
+                    // the verb is the first word after `fathom`, and it has to be one that exists.
+                    if !verb.is_empty() {
+                        let verb = verb.split('_').next().unwrap_or(verb);
+                        assert!(
+                            VERBS.contains(&verb),
+                            "{} names the verb `{verb}`: {line}",
+                            facts.summary()
+                        );
+                    }
+                }
+            }
         }
     }
 }

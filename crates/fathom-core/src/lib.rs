@@ -23,4 +23,7 @@
 pub mod error;
 pub mod exit;
 pub mod privacy;
+/// The progress row's percentage and converging time estimate, shared by the shell and `fathom index`
+/// (`e5.9`).
+pub mod progress;
 pub mod time;

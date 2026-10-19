@@ -31,6 +31,13 @@ jobs:
           python-version: "3.12"
       - name: glossary, plan references and link consistency
         run: python3 tools/check_docs.py
+      - name: "e5.9 demo miniature: the shipped pack is the one the generator writes"
+        # `fathom --demo` is the first thing a stranger runs, and its repository is a checked-in asset —
+        # which means it can drift from the thing that generated it, from its own manifest, or from the
+        # counts the guide prints, silently and in a way nobody notices until the demo looks thin. The
+        # generator is deterministic (pinned dates, pinned identities), so a diff here is a real change to
+        # the miniature and not noise from a different machine.
+        run: python3 tools/gen_demo_repo.py check
       - name: ADR-002 model, generated tables, ticket->crate map, this file's wiring
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)

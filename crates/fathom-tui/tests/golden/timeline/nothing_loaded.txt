@@ -2,10 +2,10 @@
 # no index at all: the pane names the verb that actually works here, `fathom index`
 
 · no index here yet — run `fathom index`  
-  here, then reopen fathom                
-                                          
-                                          
-                                          
+  here, then reopen fathom; `fathom       
+  --demo` reviews a miniature repository, 
+  if you would rather see this one working
+  before indexing your own                
                                           
                                           
                                           
@@ -15,12 +15,12 @@
                                           
 
 ## rail strip
-filter: area=any state=any group=day (F edits) · no index here yet — run `fathom index` here, then reopen fathom
+filter: area=any state=any group=day (F edits) · no index here yet — run `fathom index` here, then reopen fathom; `fathom --demo` reviews a miniature repository, if you would rather see this one working before indexing your own
 
 ## card (35 columns × 14 rows)
 no episode selected                
 `j`/`k` walk the rail, `<Enter>` o…
-the card's delta rows are owned by…
+no row under the cursor means no f…
                                    
                                    
                                    

@@ -2,11 +2,11 @@
 
 1 ▣ Artefact · (T pins this view)                                                                                                           fathom/pilot · main
 ┌▸ preview · e5.7                                                                             ┬· scope · e5.7                                                  ┐
-│index epoch 1 ready · 500 commits · 48 eps                                                   │`scope` — nothing to show yet                                   │
-│`t` opens the timeline, which lists them as the index knows them                             │the delta model is not in this build                            │
-│the delta model is not in this build                                                         │reads episode range · dispositions · export target · format     │
-│reads review ledger entries · episode cards · findings with evidence · operator-action check…│pane `scope` · owned by e5.7 · ADR-006 §5                       │
-│… and 1 more (e2.11 names them all)                                                          │                                                                │
+│the preview is the artefact a `fathom export` would write                                    │the scope is the episode range the artefact covers              │
+│`o` previews the selected episode; the artefact renderer is e5.7's, and `fathom export` says…│`o` builds the scope from the selected episode; `fathom export …│
+│the delta model is not in this build                                                         │the delta model is not in this build                            │
+│reads review ledger entries · episode cards · findings with evidence · operator-action check…│reads episode range · dispositions · export target · format     │
+│… and 1 more (e2.11 names them all)                                                          │pane `scope` · owned by e5.7 · ADR-006 §5                       │
 │pane `preview` · owned by e5.7 · ADR-006 §5                                                  │                                                                │
 │                                                                                             │                                                                │
 │                                                                                             │                                                                │

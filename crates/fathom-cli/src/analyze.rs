@@ -53,7 +53,13 @@ pub fn analyze(
         return Err(crate::verbs::pending(
             ExitCode::Usage,
             "fathom analyze needs an episode: a commit, a rev, an oid prefix or an episode id",
-            None,
+            // A usage error is still a user-facing error, and "you omitted an argument" is only half of it:
+            // the reviewer needs the shape of what goes there and the verb that finds one (`e5.9`).
+            Some(
+                "the grammar is `HEAD`, `@`, `main~3`, `HEAD^2`, a full oid or a hex prefix; `fathom \
+                 stats` prints how many episodes the index holds and `fathom show HEAD` the newest one"
+                    .to_owned(),
+            ),
         ));
     };
 

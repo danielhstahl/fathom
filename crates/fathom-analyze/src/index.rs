@@ -26,6 +26,7 @@
 //! leaves a store the next run *finishes* rather than one it has to explain.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use fathom_ingest::diff::{self, Measurement};
@@ -126,6 +127,100 @@ pub struct Options {
     /// the middle of durable work at an exact point, instead of racing a timer against a loop whose speed
     /// depends on the machine. `None` in every real invocation.
     pub park_after_units: Option<usize>,
+    /// Where to report progress while the run goes (`e5.9`).
+    ///
+    /// `None` is the default and is every headless caller: a tick is a callback into whoever is watching,
+    /// and a library has nobody. `fathom index` installs one so a first index says what it is doing and
+    /// how long it thinks that will take; `--json` installs nothing, because that stream belongs to the
+    /// run report alone (ADR-002 §7.5).
+    pub progress: Option<ProgressSink>,
+}
+
+/// Which part of the run a [`Tick`] is reporting on (`e5.9`).
+///
+/// Four, because a run has four things to do and a reviewer waiting on one of them wants to know which
+/// one is taking the time. One percentage across all four would be worse than useless: the walk and the
+/// analyses cost nothing alike, so `60 %` would mean two different waits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Phase {
+    /// Walking commits into the spine.
+    Walking,
+    /// Deriving the analyses for the commits that need them.
+    Analysing,
+    /// Reading the uncommitted worktree (§6.4).
+    Worktree,
+    /// Re-deriving the episode set (ADR-003 §4.3).
+    Episodes,
+}
+
+impl Phase {
+    /// The word the progress row prints for this phase.
+    #[must_use]
+    pub const fn word(self) -> &'static str {
+        match self {
+            // The walk is the phase ADR-006 §10.3's row is written about — `indexing … commits` — and the
+            // derivation pass gets its own word, because a run that announces `indexing 100 % · done`
+            // and then spends four more seconds on the worktree and the episodes has lied twice.
+            Phase::Walking => "indexing",
+            Phase::Analysing => "analysing",
+            Phase::Worktree => "reading the worktree",
+            Phase::Episodes => "deriving episodes",
+        }
+    }
+
+    /// What one unit of this phase is called, so the row says `4 102 / 6 552 commits` and not `units`.
+    #[must_use]
+    pub const fn unit(self) -> &'static str {
+        match self {
+            Phase::Walking | Phase::Analysing => "commit",
+            Phase::Worktree => "path",
+            Phase::Episodes => "episode",
+        }
+    }
+}
+
+/// One progress tick, handed to [`Options::progress`].
+///
+/// `done` counts the current phase's units and `of` is `None` for as long as the total is genuinely
+/// unknown — the spine walk does not know how many commits a repository has until it has walked it, and
+/// printing `0 %` for "not counted yet" is the lie ADR-006 §0.1 refuses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tick {
+    /// Which pass is working.
+    pub phase: Phase,
+    /// Units of it finished.
+    pub done: u64,
+    /// Units of it there are, once known.
+    pub of: Option<u64>,
+}
+
+/// Where a run reports its progress.
+///
+/// A boxed closure rather than a trait, because there is one thing to report and a trait would be a
+/// second vocabulary for it. `Send + Sync` because the caller that wants progress (`fathom index`) runs
+/// the index on a worker thread while the main thread prints. The manual [`Debug`] is what lets
+/// [`Options`] keep deriving its own: the useful thing a debug line can say about a function is that one
+/// is installed.
+#[derive(Clone)]
+pub struct ProgressSink(Arc<dyn Fn(&Tick) + Send + Sync + 'static>);
+
+impl ProgressSink {
+    /// A sink that calls `f` for every tick.
+    #[must_use]
+    pub fn new(f: impl Fn(&Tick) + Send + Sync + 'static) -> Self {
+        ProgressSink(Arc::new(f))
+    }
+
+    /// Report one tick.
+    pub fn report(&self, tick: &Tick) {
+        (self.0)(tick);
+    }
+}
+
+impl std::fmt::Debug for ProgressSink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ProgressSink(<installed>)")
+    }
 }
 
 impl Default for Options {
@@ -144,6 +239,7 @@ impl Default for Options {
             segment: fathom_ingest::segment::Rules::default(),
             episodes: true,
             park_after_units: None,
+            progress: None,
         }
     }
 }
@@ -326,8 +422,18 @@ pub fn run(
     // 1. The spine, first and through `ingest::run`, which owns the walk, the batching, the resume query and
     //    the `index_run` row — so this run is durable bookkeeping from here on (§9.2). It walks the history
     //    once, and nothing below walks it again: the analyses ask the store which commits this run wrote.
-    let mut sink = StoreSink::deferring(store, now);
+    let mut sink = StoreSink::deferring(store, now).with_progress(options.progress.clone());
     let spine = ingest::run(repo, taxonomy, &options.ingest, &mut sink)?;
+    // The walk's own closing tick: it is the first time the run knows how many commits the repository
+    // had, and a phase that ends without ever reaching its total reads like a run that stopped early.
+    if let Some(progress) = &options.progress {
+        let seen = u64::try_from(spine.commits_seen).unwrap_or(u64::MAX);
+        progress.report(&Tick {
+            phase: Phase::Walking,
+            done: seen,
+            of: Some(seen),
+        });
+    }
     // Which run the spine opened, and therefore which one this function closes at the end. `None` means the
     // walk opened no run at all — no refs, nothing to walk — in which case there is no row to close.
     let spine_run = sink.run_id;
@@ -354,7 +460,18 @@ pub fn run(
     let mut computed = 0_usize;
     let mut interrupted = None;
     let mut failures: Vec<String> = Vec::new();
-    for oid in &targets {
+    // The one denominator this run can state up front: the commits that owe derivation. Every tick of the
+    // loop below is measured against it, which is what makes the CLI's `indexing 62 % · ~14 s left` a
+    // measured figure rather than a guess (`e5.9`).
+    let analyses = u64::try_from(targets.len()).unwrap_or(u64::MAX);
+    for (index, oid) in targets.iter().enumerate() {
+        if let Some(sink) = &options.progress {
+            sink.report(&Tick {
+                phase: Phase::Analysing,
+                done: u64::try_from(index).unwrap_or(u64::MAX),
+                of: Some(analyses),
+            });
+        }
         if triggered(options) {
             interrupted = Some(Interrupted::Cancelled);
             break;
@@ -388,12 +505,44 @@ pub fn run(
         }
     }
 
+    // The analyses' closing tick, and only for a run that was not stopped: a cancelled run that printed
+    // `100 %` would be the false report ADR-004 §9.2 exists to prevent (§7.6's stated partial says how
+    // far it got instead).
+    if let Some(progress) = &options.progress
+        && interrupted.is_none()
+    {
+        progress.report(&Tick {
+            phase: Phase::Analysing,
+            done: analyses,
+            of: Some(analyses),
+        });
+    }
+
     // 4. The worktree (§6.4), unless asked not to look at it or asked to stop.
     let (worktree, worktree_skipped) = if options.worktree == Worktree::Ignore || triggered(options)
     {
         (Vec::new(), Vec::new())
     } else {
-        analyse_worktree(repo, store, options, now)?
+        if let Some(sink) = &options.progress {
+            sink.report(&Tick {
+                phase: Phase::Worktree,
+                done: 0,
+                of: None,
+            });
+        }
+        let (rows, skipped) = analyse_worktree(repo, store, options, now)?;
+        // The phase's closing tick, with what it actually read. Without it the row a terminal keeps
+        // reprinting is the opening one — `reading the worktree unknown % · 0 paths` — and a reviewer
+        // watching that row on a dirty tree has no way to tell "started" from "finished with nothing".
+        if let Some(progress) = &options.progress {
+            let n = u64::try_from(rows.len()).unwrap_or(u64::MAX);
+            progress.report(&Tick {
+                phase: Phase::Worktree,
+                done: n,
+                of: Some(n),
+            });
+        }
+        (rows, skipped)
     };
 
     if triggered(options) && interrupted.is_none() {
@@ -404,7 +553,25 @@ pub fn run(
     //     boundaries are a property of the neighbourhood around each commit, so the whole lineage is
     //     re-derived, and the identity rule means the reruns produce the same ids (§4.3 of the plan).
     let episodes = if options.episodes && interrupted.is_none() {
-        crate::episodes::rebuild(store, &options.segment, now)?
+        if let Some(sink) = &options.progress {
+            sink.report(&Tick {
+                phase: Phase::Episodes,
+                done: 0,
+                of: None,
+            });
+        }
+        let rebuilt = crate::episodes::rebuild(store, &options.segment, now)?;
+        // Same argument as the worktree's closing tick: the opening row says `0 episodes`, and the only
+        // thing that can correct it is a tick that says how many there are now.
+        if let Some(progress) = &options.progress {
+            let n = u64::try_from(rebuilt.episodes).unwrap_or(u64::MAX);
+            progress.report(&Tick {
+                phase: Phase::Episodes,
+                done: n,
+                of: Some(n),
+            });
+        }
+        rebuilt
     } else {
         crate::episodes::Report::default()
     };
