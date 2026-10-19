@@ -17,6 +17,46 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.9` — Guardrail 3 got a corpus, and the false-positive rate was measured (`reco-mkl.1`)
+
+- **Three real repositories, pinned by commit, and the labels to score them with.** `cli/cli`,
+  `pallets/flask` and `astral-sh/ruff`, 60 newest episodes each (180 total, 165 mature), pinned in
+  `crates/fathom-analyze/calibration/g3/corpus/*/pin.json` and re-fetched by
+  `python3 tools/fetch_g3_corpus.py`, which fetches a pinned oid and refuses a remote that hands back
+  anything else. Every episode the corpus flagged got a hand-authored disposition — 22 flags, 22 labels,
+  each with the file or line it was decided on, the actor, and the `e4.6` reason code — and nothing in the
+  build is allowed to write a truth file (`tests/test_g3_calibration_contract.py` reads every source line
+  that names `truth.json` and refuses a write primitive in it, because a harness that authors its own truth
+  measures the harness).
+- **`G3 = 0.682` against a bar of `0.30`, and a miss rate of `1.000`.** At §5.4's published `τ = 70`, three
+  episodes in 180 reached the threshold, so `G3` is **not measurable** there (a denominator of 3 under a
+  floor of 5 prints `not-measurable` rather than the `pass` that 1-of-3 would have given it) while every
+  one of the 7 mature episodes that later needed rework sat *below* it — the two halves of §5.4 failing in
+  opposite directions, which is exactly why §5.4 publishes both. Read at each repository's own top-decile
+  cut, 22 flags go in front of a reviewer and 15 of them are cost without value: 11 `low-stakes` (Dependabot
+  and release-bot bumps, maintenance `update dev dependencies` episodes that re-emit CI templates and a
+  1 000-line lockfile), 3 `false-positive` (three regenerated gh-aw workflow locks charged as hand edits, a
+  test rewrite charged as a test deletion, a fuzzer's own bug report charged as leftover `print`s), and 1
+  `intentional` (dropping Python 3.10, with the `# noqa: F821` the subject line announced). Seven of the
+  fifteen were blamed on the ranking rather than on any detector.
+- **Per-detector attribution, and no shipped default flipped.** Dispositions carry `blame` — `score`, or the
+  ids of the detectors whose claims did not hold — and an unattributed false positive charges every detector
+  that spoke, which is §5.4's rule and stays visible in the receipts rather than being hidden by a tidier
+  number. `lint_escape` 0.800 on 5 flags, `shotgun_edit` (shipped disabled) 0.500 on 4, `generated_edit`
+  1.000 on 2, and `churn_loop`, `rework_loop`, `copy_paste_growth`, `scope_creep` and `secret_string` raised
+  nothing at all — no evidence, not a clean bill of health. Changing a default for everybody needs 8 labelled
+  flags; nothing reached it, so the four `e4.3` shipped disabled stay disabled and `defaults.breaches` reads
+  `0` meaning *nothing is disqualified on this evidence*, never *everything passed* (ADR-001 §7.7).
+- **`e4.3`'s and `m1`'s deferred criteria now point at a command that exists.**
+  `cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` re-measures the
+  blessed `benchmarks/reports/e4-3a-g3-calibration.json` byte for byte — score from
+  `risk::collect::vector` + `score` under `Weights::defaults()`, findings from `detectors::scan` with all
+  twelve detectors enabled, vocabulary from `queue::REASONS`, τ checked against the shipped `risk.tau` — and
+  every gate must come out as its declared `expected`, in either direction. The written answer is
+  [docs/concepts/false-positive-calibration.md](docs/concepts/false-positive-calibration.md); ADR-001 §5.4
+  gained the command and kept its numbers, because the alternative to a measured failure is an unmeasured
+  pass.
+
 ### `e4.5` — the attention queue: the ranked worklist, its four acts, and a ledger of both (`reco-wsj`)
 
 - **`queue-1`: risk × staleness × blast, and the arithmetic is printed.** `fathom_analyze::queue`

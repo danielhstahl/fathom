@@ -1,0 +1,69 @@
+{
+ "schema": "fathom.g3-labels/1",
+ "authoring": {
+  "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
+  "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
+  "annotated_on": "2026-10-19",
+  "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
+ },
+ "labels": [
+  {
+   "commit": "c79af4610339a3acd37c94c938f5546bb39fffe4",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Requiring hashes for build dependencies is a supply-chain policy change over five projects, their build backends and every script header in the repository, co-authored by a bot. The flag asked for a read and this earns one; no finding fired, because there was nothing suspicious about it — only consequential.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show c79af46103 --stat`: pyproject.toml +123, five uv.lock files, `Co-authored-by: zaniebot`."
+  },
+  {
+   "commit": "068e06a3c944d9178528647c3ce93bd470161fb0",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "A new public configuration surface, `analysis.return-type-inference`: +467 lines of logic with one line of tests. `untested_new_logic` is right, and the PR body explains the split (\"I will not merge this PR without the one on top\"). A detector that is right about a real gap is a true positive even when the author already has a plan for it.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 068e06a3c9 --stat` and the PR body; `crates/ty_python_semantic/src/lib.rs` +22 with `pub enum ReturnTypeInference`."
+  },
+  {
+   "commit": "4683270c69cbdaf6ad64d3f983fc458d5a43b41f",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [],
+   "note": "A release-bot version bump: 44 manifests, Cargo.lock, 40 READMEs and the changelog — one mechanical act. `shotgun_edit`'s 42 clusters and `generated_edit`'s README note are the same file list charged twice; there is no decision in it a reviewer can get wrong.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 4683270c69 --stat`, author `astral-automations-bot[bot]`, Cargo.toml ±80 lines of version fields."
+  },
+  {
+   "commit": "bfedc614b7670b8766576b64afd426c292f8c2ce",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Moving two crates onto the workspace `rand` and `rust-version`, with the MSRV bump's Clippy fixes and a `deny.toml` allowlist entry removed. `shotgun_edit`'s four clusters are those two crates and the build policy that covers them; the flag asked for a read of a dependency decision and got one.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show bfedc614b7 --stat` and its body (`deny.toml` −1, `crates/ruff_unicode_names2{,_generator}/Cargo.toml`)."
+  },
+  {
+   "commit": "2e34f5ba227e3f8889632c957f9e5b2c466ad28a",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": [
+    "debug_leftover"
+   ],
+   "note": "`debug_leftover` charged nine \"left behind\" prints in `python/py-fuzzer/fuzz.py`. They are the fuzzer's report — `Minimized seed …`, `Original source for seed …`, and the `Could not minimize` line that already existed and was kept writing to stderr. A fuzzer that does not print what it found has not reported a bug. `untested_new_logic`'s 302 new lines stand on their own; this dismissal is not about that claim.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 2e34f5ba22 -- python/py-fuzzer/fuzz.py`: the nine quoted lines are inside the bug-report path (`print(colored(panic_message, \"red\"))` beside them), and the `daily_fuzz_issue.md.jinja` template in the same commit renders that report."
+  },
+  {
+   "commit": "72d6e487e6a882dd13e4cf307ebcd4941c52687a",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [
+    "score"
+   ],
+   "note": "A nine-commit bot episode bumping `bitflags` and the lockfiles. The flag is the workflow axis again; no finding spoke, so nothing but the ranking cried wolf here.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 72d6e487e6 --stat` (members: nine bump commits, Cargo.lock, uv.lock)."
+  }
+ ]
+}

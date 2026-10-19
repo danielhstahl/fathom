@@ -1,0 +1,101 @@
+{
+ "schema": "fathom.g3-labels/1",
+ "authoring": {
+  "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
+  "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
+  "annotated_on": "2026-10-19",
+  "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
+ },
+ "labels": [
+  {
+   "commit": "7689f98403e2c0b0bc8d1031e60f8cff2620e86a",
+   "decision": "dismissed",
+   "reason": "intentional",
+   "blame": [],
+   "note": "Dropping Python 3.10 is the point of the commit, and both findings describe what dropping a lower bound looks like: version-conditional tests deleted, `# noqa: F821` on `ExceptionGroup` references that only resolve on 3.11+. Both claims are true and neither changed what was read — ADR-001 §5.4's `expected`, which is a false positive by definition and not a defect in the detector.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 7689f98403`: subject `drop support for Python 3.10`; tests/test_appctx.py −22/+16 with the 3 `# noqa: F821` lines; pyproject `requires-python`."
+  },
+  {
+   "commit": "ff6fa22f4d961a28567db11430208b964620f511",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [
+    "lint_escape",
+    "shotgun_edit"
+   ],
+   "note": "A dependency refresh that re-emitted the shared workflow templates, the lockfile and the pre-commit config. `shotgun_edit`'s four clusters are one act seen four times, and `from js_example import views  # noqa: F401` in an example package is the re-export idiom, not an error being suppressed. True findings; no read they earned.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show ff6fa22f4d --stat`: five `.github/workflows/*.yaml`, uv.lock 1 546 lines, three `examples/*/pyproject.toml`; `examples/javascript/js_example/__init__.py` one noqa line."
+  },
+  {
+   "commit": "8285adf5a4f572dbf7a0a3b8f3a96ca0b19c50a4",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [],
+   "note": "The same maintenance act a month later. `.github/workflows/pre-commit.yaml` is the same 29 lines re-emitted in a different order, and the two `# type: ignore` comments are a newer mypy's complaints about click types, moved onto lines that already existed. `lint_escape` is right that suppressions arrived and that the commit message does not say why; reading it was still the cost of a routine dev-dependency bump.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 8285adf5a4 -- src/flask/cli.py`: three hunks, each moving a `# type: ignore` between an existing line and its neighbour; `.github/workflows/pre-commit.yaml` −29/+29."
+  },
+  {
+   "commit": "954f5684e4841aad84a8eec7ace7b81a0d3f6831",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [],
+   "note": "Again: 796 of the episode's 806 churn lines are `uv.lock`, and the one source change is a `# type: ignore[union-attr]` that a newer mypy wanted.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 954f5684e4 --stat`: uv.lock 814 lines, src/flask/cli.py 6, .pre-commit-config.yaml 4."
+  },
+  {
+   "commit": "06ea505ce2b2042af26e96d35ebf159af7c0869d",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": [
+    "test_weakening"
+   ],
+   "note": "`test_weakening` read tests/test_reqctx.py as losing 2 cases and 17 assertion lines and stated the loss did not move elsewhere in the episode. It moved inside the same diff: the greenlet context-copying tests were rewritten as a `concurrent.futures` equivalent, which is the commit's whole subject (\"separate copy per call\"). The claim is not true of this change, and a high-severity finding that is not true is the most expensive kind.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 06ea505ce2 -- tests/test_reqctx.py`: `+from concurrent import futures`, `-from greenlet import greenlet`, the deleted `TestGreenletContextCopying` and its threaded replacement 40 lines below it."
+  },
+  {
+   "commit": "a31e6b73469cb2bf7eb8f70b5ff21f710fd2e23c",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Three request-context host tests deleted with nothing added, including the non-printable `HTTP_HOST` → 400 case. `test_weakening` was right that the coverage left the repository in this episode, and the flag is the thing that makes a reviewer check werkzeug owns it now. \"The subject says it is deliberate\" is a reason to look, not a reason to skip.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show a31e6b7346`: tests/test_reqctx.py −48 / +0; removed `test_bad_environ_raises_bad_request`, `test_environ_for_valid_idna_completes`."
+  },
+  {
+   "commit": "83dbcb222a65a87741c9d96bb183f34528149269",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [
+    "score"
+   ],
+   "note": "A dev-dependency refresh with no findings at all: 749 of 771 churn lines are `uv.lock`, and the flag is the workflow-file axis on four re-emitted template files.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 83dbcb222a --stat`."
+  },
+  {
+   "commit": "91c6b3fecf36b1f04554e57cc4060ccb737a445d",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "One unicode-host test removed, nothing added — the same migration as a31e6b7346 eleven days earlier, and the same answer: \"did this coverage go somewhere\" is a question worth asking about a deleted test, and the episode cannot answer it on its own.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show 91c6b3fecf`: tests/test_reqctx.py −21 / +0."
+  },
+  {
+   "commit": "a197702e2cbcdd43c0d09296b3cea02efe16e407",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [
+    "score"
+   ],
+   "note": "The same maintenance act again: 1 068 of 1 094 churn lines are `uv.lock`.",
+   "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
+   "evidence": "`git show a197702e2c --stat`."
+  }
+ ]
+}

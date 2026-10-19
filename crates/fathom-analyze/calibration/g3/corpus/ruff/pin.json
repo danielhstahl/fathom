@@ -1,0 +1,9 @@
+{
+ "repository": "ruff",
+ "url": "https://github.com/astral-sh/ruff",
+ "head": "0a977a8d18d7a12f6a4d8ce437abad1f279aa5c1",
+ "window": 60,
+ "pinned_now": "2026-10-20T00:00:00Z",
+ "why": "A large Rust monorepo (with a Python toolchain beside it), release automation of its own (`astral-automations-bot` version bumps), and configuration surfaces with generated docs and schema snapshots. It contributes the release-bump and workspace-dependency shapes, and it is the repository where the score's median is highest (21) — which is to say, the quietest window is not a quiet corpus.",
+ "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read."
+}

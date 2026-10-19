@@ -100,6 +100,36 @@ jobs:
       - name: "spike s1: the harness itself builds with every grammar"
         run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
 
+  g3-calibration:
+    name: Guardrail 3 calibration reproduces (three real repositories)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: fetch the pinned corpus
+        # The clones are not checked in — they are other people's history, and the repository is not
+        # allowed to be the place their commits are warehoused. `corpus/*/pin.json` is the artifact and
+        # the fetcher re-materialises it, refusing a remote that returns anything but the pinned oid.
+        # `--check` separately fails loudly when a pin can no longer be fetched at all, which is the
+        # difference between a corpus that expired and a measurement that quietly stopped existing.
+        run: |
+          python3 tools/fetch_g3_corpus.py
+          python3 tools/fetch_g3_corpus.py --check
+      - name: "G3, the miss rate and every gate reproduce from the corpus and the shipped code"
+        # Spike `e4.9` (`reco-mkl.1`) is what `e4.3` and `m1` defer to for "the threshold agreed in
+        # `e0.12`" (ADR-001 §5.4), so the number is only a gate if CI can re-measure it: the score and
+        # the findings come from the shipped code, the dispositions from the hand-authored truth files,
+        # and `--check` refuses a byte of difference in the committed report or a gate that came out
+        # other than its declared `expected`. See docs/concepts/false-positive-calibration.md.
+        run: >
+          cargo run --locked -p fathom-analyze --features sqlite-bundled --example g3_calibration --
+          --root . --check
+
   deny:
     name: cargo-deny (licences, advisories, bans, sources)
     runs-on: ubuntu-latest

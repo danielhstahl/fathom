@@ -747,7 +747,25 @@ miss_rate(W) = |{ e ∈ Mature(W) : rework(e) ∧ risk(e) < τ }| / |{ e ∈ Mat
 Provisional gates: `G3 ≤ 0.30` at alpha, `≤ 0.15` at 1.0; `miss_rate ≤ 0.20`. Thresholds are confirmed
 against the `e4.4` calibration fixture and three real OSS repositories, and the number earlier tickets
 defer to is written here: `e4.3` and `m1` both say "under the threshold agreed in `e0.12`" — `e0.12`
-should set them from the values in this section rather than invent new ones.
+should set them from this section rather than invent new ones.
+
+**These are the numbers, and this is the thing that measures them** (`e4.9`, `reco-mkl.1`):
+
+```text
+python3 tools/fetch_g3_corpus.py
+cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check
+```
+
+Three OSS repositories pinned by commit, dispositions labelled by hand from the closed vocabulary `e4.6`
+ships, per-detector attribution, and a blessed report that `--check` re-measures byte for byte:
+[`benchmarks/reports/e4-3a-g3-calibration.json`](../../benchmarks/reports/e4-3a-g3-calibration.json),
+with its gates in `crates/fathom-analyze/calibration/g3/thresholds.json` and the written answer in
+[Guardrail 3, measured](false-positive-calibration.md). The first measurement on three real
+repositories does **not** clear these bars — `G3` 0.682 across everything the corpus flagged, a miss rate
+of 1.000 at the default τ, and `G3` not measurable at τ 70 at all because three episodes in 180 got that
+high — and the bars stay where they are, because the alternative to a measured failure is an unmeasured
+pass. The `not-applicable` reason code in `FP(e)` above has no separate shipped code; the mapping
+`e4.9` uses is written out in `thresholds.json` rather than left implied.
 
 ### 5.5 Contract on the delta model
 

@@ -109,3 +109,11 @@ required-features = ["sqlite-bundled"]
 [[example]]
 name = "s1_spike"
 required-features = ["langs-all"]
+
+# The Guardrail 3 calibration harness (`e4.3a`) indexes each pinned repository into a store of its own,
+# so it needs a SQLite backend to exist at all — the same spelling as the `episodes` and `ledger` test
+# targets above, and for the same reason: `cargo build -p fathom-analyze --all-targets` has to work at
+# every feature set, not only the one a sibling crate happens to switch on.
+[[example]]
+name = "g3_calibration"
+required-features = ["sqlite-bundled"]

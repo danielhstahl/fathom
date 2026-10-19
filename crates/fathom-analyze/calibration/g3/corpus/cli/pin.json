@@ -1,0 +1,9 @@
+{
+ "repository": "cli",
+ "url": "https://github.com/cli/cli",
+ "head": "ed40e856ffecd31286733876c613a2d3745e12bd",
+ "window": 60,
+ "pinned_now": "2026-10-20T00:00:00Z",
+ "why": "Go, a repository where a bot is one of the most active committers: Dependabot opened 6 of the 60 episodes in the window and its own CI (`gh-aw` agentic workflows) is generated and recompiled in tree, which is exactly the terrain `generated_edit` and the dependency axes have to be right about. It is also the only one of the three with a non-trivial agent-attributed population (20 of 60 episodes attribute to an author kind other than `human`), and the guardrail is meant for agent-driven work.",
+ "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read."
+}

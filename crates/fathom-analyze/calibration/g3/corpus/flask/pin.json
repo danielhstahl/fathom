@@ -1,0 +1,9 @@
+{
+ "repository": "flask",
+ "url": "https://github.com/pallets/flask",
+ "head": "d086db856be187255b8ec61ef409357393020f32",
+ "window": 60,
+ "pinned_now": "2026-10-20T00:00:00Z",
+ "why": "Python, one dominant maintainer, and a release rhythm of routine maintenance: `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile are the single most common thing the top decile of the risk score produced, which is the pattern this guardrail exists to catch or to refuse to catch. Its `test_weakening` cases are real too: test coverage genuinely deleted and genuinely rewritten in place, two episodes apart.",
+ "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read."
+}

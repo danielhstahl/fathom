@@ -1,0 +1,101 @@
+{
+ "what": "The gates the Guardrail 3 calibration harness (`e4.9`, `reco-mkl.1`) holds its own measurement to. ADR-001 §5.4 publishes `G3 <= 0.30` at alpha, `<= 0.15` at 1.0 and `miss_rate <= 0.20`, and says out loud that `e4.3` and `m1` defer to \"the threshold agreed in `e0.12`\"; those numbers are copied into this file from §5.4 and nowhere else, and the harness refuses to run if the alpha threshold here disagrees with the shipped default `risk.tau` — one number, in the document, and a check that the copy did not drift. `cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` re-measures them against the three pinned repositories and fails if any gate came out other than declared.",
+ "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories, at §5.4's published default, the flag set is three episodes out of 180 and every episode that later needed rework sat below the threshold — so `G3` is `not-measurable` at the published τ and the miss rate is 1.0, and the same corpus measured at each repository's own top-decile cut puts 22 flags in front of a reviewer of which 15 were cost without value. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`.",
+ "tau_alpha": 70,
+ "tau_1_0": 70,
+ "tau_note": "§5.4 tightens the *rate* at 1.0 (0.15), not the threshold: tau stays 70 in both gates, so the two `g3-*` gates are one flag set read against two bars. If a later release tunes tau, it changes here, in the document, and the harness's own check against the shipped `risk.tau` is what catches a copy that drifted.",
+ "g3_alpha": 0.3,
+ "g3_1_0": 0.15,
+ "miss_rate_max": 0.2,
+ "fp_reasons": [
+  "intentional",
+  "false-positive",
+  "low-stakes"
+ ],
+ "labelling_note": "ADR-001 §5.4 names §5.4's four false-positive codes as `expected`, `not-applicable`, `low-stakes` and `false-positive`. The closed list that actually shipped is `e4.6`'s (`fathom_analyze::queue::REASONS`), and the mapping is a collapse, not an invention: §5.4's `expected` is shipped `intentional` (\"what looks risky here is what I wanted\"); §5.4's `low-stakes` and `false-positive` are shipped under their own names; §5.4's `not-applicable` has no separate shipped code — `false-positive`'s claim (\"the finding that raised this does not describe my change\") already covers the case, so the two measure together and this file says so instead of hiding the collapse. §5.4's true positive `accepted-with-required-change` is shipped `accepted`: `e4.6`'s ledger has no 'with required change' refinement, so a flag that earned a review that happened is the true positive, and rework of the episode counts as one too per §5.4's own `TP(e)` clause. The five shipped codes that are neither (`not-my-area`, `already-known`, `superseded`, `will-revert`, `other`) are dismissals about the reviewer's attention or the queue's state rather than about the flag: they sit in `G3`'s denominator exactly as §5.4 writes it — the reviewer looked, so the flag cost something — and never in its numerator.",
+ "gates": [
+  {
+   "id": "g3-alpha-at-published-tau",
+   "claim": "at §5.4's published default tau the aggregate false-positive rate clears the alpha gate — measured: three episodes out of 180 reached tau 70 or carried a high-severity finding across the three pinned repositories, so the denominator is three and the floor below which a rate is an anecdote is five. The gate refuses to call that a pass.",
+   "expected": "not-measurable",
+   "metric": "cut_tau_alpha.g3",
+   "denominator": "cut_tau_alpha.labelled",
+   "max": 0.3,
+   "why": "This is §5.4's own alpha gate, scored at §5.4's own default threshold, on real human history: the shipped risk model flags 3 episodes in 180 there, so the guardrail is not measurable at the default and the beta gate cannot be settled at it. The number that makes that sentence safe to print is next to it: `aggregate.cut_tau_alpha.flagged`."
+  },
+  {
+   "id": "g3-alpha-at-corpus-cut",
+   "claim": "across every episode the corpus flagged — §5.4's default plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
+   "expected": "fail",
+   "metric": "cut_corpus.g3",
+   "denominator": "cut_corpus.labelled",
+   "max": 0.3,
+   "min_denominator": 20,
+   "why": "Measured 0.682 on 22 labelled flags: 11 dismissed `low-stakes` (routine dependency and lockfile bumps that the workflow and dependency axes raised and no finding justified), 3 `false-positive` (a regenerated lockfile charged as a hand edit, a test rewrite charged as a test deletion, a fuzzer's report charged as leftover debug output), 1 `intentional`. Seven of the fifteen were blamed on the ranking rather than on any detector — see `aggregate.coverage.blamed_on_score`. The finding is about where the flags come from, not only about the detectors."
+  },
+  {
+   "id": "g3-1-0-at-corpus-cut",
+   "claim": "the same population clears the 1.0 gate of 0.15",
+   "expected": "fail",
+   "metric": "cut_corpus.g3",
+   "denominator": "cut_corpus.labelled",
+   "max": 0.15,
+   "min_denominator": 20,
+   "why": "0.682 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency bumps, which is `e4.4`'s routing and `e4.3`'s catalogue together, not one of them alone."
+  },
+  {
+   "id": "miss-rate-at-published-tau",
+   "claim": "at the published default tau, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
+   "expected": "fail",
+   "metric": "miss.miss_rate",
+   "denominator": "miss.mature_rework",
+   "max": 0.2,
+   "why": "Measured 1.000: all 7 mature reworked episodes in the corpus were below tau 70 (the highest of them scored 63). This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and here it is the number that says the same thing as the gate above: on real OSS history the shipped score does not fire, so the guardrail's two halves fail in opposite directions and only `miss_rate` notices."
+  },
+  {
+   "id": "miss-rate-at-decile-cut",
+   "claim": "at each repository's own top-decile cut — the queue a reviewer would actually have read first — no more than 20 % of the reworked episodes were below it",
+   "expected": "fail",
+   "metric": "miss.miss_rate_at_decile",
+   "denominator": "miss.mature_rework",
+   "max": 0.2,
+   "why": "Measured 0.571 (4 of 7). Raising the threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 22 of 180 episodes still misses most of the episodes that later needed rework, because what got reworked in these windows was ordinary-looking source edits, not lockfiles."
+  },
+  {
+   "id": "miss-rate-denominator-is-big-enough",
+   "claim": "the corpus contains at least 20 mature reworked episodes, which is what a 0.20 gate on a rate needs to be able to tell 0.20 from 0.60",
+   "expected": "fail",
+   "metric": "miss.mature_rework",
+   "kind": "count",
+   "min": 20,
+   "why": "Measured 7 out of 165 mature episodes. The `fail` is a statement about the corpus, not about the product: rework is rare on a healthy repository (4.2 % of mature episodes here), so the miss-rate gate needs roughly five times this window to be worth enforcing, and the ticket that closes this one is a bigger pinned window rather than a relaxed threshold."
+  },
+  {
+   "id": "every-flagged-episode-is-labelled",
+   "claim": "every episode any cut flagged has a hand-authored disposition — a flag nobody labelled is a hole in the guardrail, and a guardrail with a hole in it is not a guardrail",
+   "expected": "pass",
+   "metric": "coverage.unlabelled_total",
+   "kind": "count",
+   "max": 0,
+   "why": "22 flags, 22 labels, across all three cuts. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
+  },
+  {
+   "id": "flag-population-is-large-enough-to-gate",
+   "claim": "the corpus flags at least 20 episodes, below which `G3` is a story about a handful of commits rather than a rate",
+   "expected": "pass",
+   "metric": "cut_corpus.flagged",
+   "kind": "count",
+   "min": 20,
+   "why": "Measured 22 of 180 episodes. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
+  },
+  {
+   "id": "shipped-defaults-agree-with-measurement",
+   "claim": "no detector ships enabled by default while its own measured false-positive rate breaches the alpha gate with enough labelled flags to say so (8, the bar a default flip has to clear, which is deliberately higher than the 5 a printed number has to clear)",
+   "expected": "pass",
+   "metric": "defaults.breaches",
+   "kind": "count",
+   "max": 0,
+   "why": "No detector reaches 8 labelled flags in a 180-episode corpus — the best-covered is `lint_escape` at 5, and `churn_loop`, `rework_loop` and `copy_paste_growth` (with `scope_creep` and `secret_string`) never fired at all, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which). So this harness does not flip a shipped default in either direction, and the four detectors `e4.3` shipped disabled stay disabled: nothing earned their re-enabling. `shotgun_edit`, the one disabled detector the corpus could see at all, measured 0.500 on 4 flags — closer to the gate's wrong side than to its right one."
+  }
+ ]
+}
