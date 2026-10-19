@@ -176,7 +176,68 @@ pub const ADDED_COLUMNS: &[(&str, &str, &str)] = &[
         "TEXT NOT NULL DEFAULT '[]'",
     ),
     ("episode", "attribution_reason", "TEXT NOT NULL DEFAULT ''"),
+    // The intent, and the four facts about it a surface reads without parsing JSON (`e4.2`, `reco-c54`).
+    //
+    // The ADR's `episode` table already reserved an `intent` column ("JSON: prompt sha, plan items,
+    // declared scope"), and that column is what this writes — the *lists* live there, because nothing
+    // queries on a list. These five are the scalars something does query on: which state, which rung, how
+    // sure, the text itself, and the reason there is no text. A row written before this migration has
+    // `intent_state = ''`, which every reader treats as "this build never looked", not as "absent" — the
+    // two are different claims and only one of them can be checked afterwards.
+    ("episode", "intent_state", "TEXT NOT NULL DEFAULT ''"),
+    ("episode", "intent_source", "TEXT NOT NULL DEFAULT ''"),
+    ("episode", "intent_confidence", "REAL NOT NULL DEFAULT 0"),
+    ("episode", "intent_text", "TEXT NOT NULL DEFAULT ''"),
+    ("episode", "intent_reason", "TEXT NOT NULL DEFAULT ''"),
 ];
+
+/// Migration 5: the search document `e4.2` fills and `e5.2` reads (`reco-c54`).
+///
+/// ADR-004 §4.8's `episode_doc` — the plain content table under the `episode_fts` index, reproduced with
+/// its DDL unchanged (that schema is the reference's, not a new invention), and the same durability class:
+/// **R**, rebuildable from the rows it indexes, and never authoritative. Writing it is what makes the
+/// ticket's fourth acceptance criterion a fact rather than a promise: intent text goes into the body
+/// column, so the search surface — `e5.2`'s overlay and ADR-005 §4.1's `search_history` tool, neither of
+/// which exists yet — has the text to search the day either is built, and does not have to be retrofitted
+/// with a second capture path.
+///
+/// The FTS5 half lives in [`DDL_FTS`] rather than here, because §4.8 makes it conditional on a compile
+/// option and a migration may not be conditional: a migration that created the table on one machine and
+/// not on another would make `user_version` mean different schemas on two hosts. So the table is created at
+/// open when `sqlite_compileoption_used('SQLITE_ENABLE_FTS5')` says so, and the absence is recorded.
+pub const MIGRATION_5: &str = "
+CREATE TABLE IF NOT EXISTS episode_doc (
+  episode_id TEXT PRIMARY KEY,
+  title  TEXT NOT NULL,
+  body   TEXT NOT NULL,
+  tokens INTEGER NOT NULL DEFAULT 0
+) STRICT;
+CREATE INDEX IF NOT EXISTS episode_doc_title ON episode_doc(title);
+";
+
+/// The external-content FTS5 index over [`MIGRATION_5`]'s table, with the triggers that keep it in step
+/// (ADR-004 §4.8: "rebuildable independently of the content").
+pub const DDL_FTS: &str = "
+CREATE VIRTUAL TABLE IF NOT EXISTS episode_fts USING fts5(
+  episode_id UNINDEXED, title, body,
+  content='episode_doc', content_rowid='rowid', tokenize='unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS episode_doc_ai AFTER INSERT ON episode_doc BEGIN
+  INSERT INTO episode_fts(rowid, episode_id, title, body)
+  VALUES (new.rowid, new.episode_id, new.title, new.body);
+END;
+CREATE TRIGGER IF NOT EXISTS episode_doc_ad AFTER DELETE ON episode_doc BEGIN
+  INSERT INTO episode_fts(episode_fts, rowid, episode_id, title, body)
+  VALUES ('delete', old.rowid, old.episode_id, old.title, old.body);
+END;
+CREATE TRIGGER IF NOT EXISTS episode_doc_au AFTER UPDATE ON episode_doc BEGIN
+  INSERT INTO episode_fts(episode_fts, rowid, episode_id, title, body)
+  VALUES ('delete', old.rowid, old.episode_id, old.title, old.body);
+  INSERT INTO episode_fts(rowid, episode_id, title, body)
+  VALUES (new.rowid, new.episode_id, new.title, new.body);
+END;
+";
 
 /// One stored human correction (`e4.1`, `reco-w7q`): "whoever answers to this identity is an agent / a
 /// person", learned once and applied to every later commit carrying that signature.
@@ -307,6 +368,21 @@ pub struct EpisodeRow {
     pub attribution_evidence: String,
     /// Why the verdict is `unknown`, or why a label was refused. Empty when the answer was the answer.
     pub attribution_reason: String,
+    /// Which intent state the last index recorded: `recorded`, `digest-only`, `none`, or `''` for a row
+    /// written before migration 5 — which means "this build never looked", not "nothing was recorded".
+    pub intent_state: String,
+    /// The rung that decided, in `fathom_ingest::intent::Source`'s spelling. Empty with no state.
+    pub intent_source: String,
+    /// Confidence in the intent text; `0.0` when there is none.
+    pub intent_confidence: f64,
+    /// The intent text itself, which is what the search document quotes and the card prints. Empty when
+    /// [`EpisodeRow::intent_state`] is not `recorded`.
+    pub intent_text: String,
+    /// Why there is no intent — what was looked for and not found. Empty when there is one.
+    pub intent_reason: String,
+    /// The whole intent document as JSON: the plan list, the declared scope globs, the prompt's digests,
+    /// the evidence list. The ADR's reserved `intent` column, finally written.
+    pub intent: String,
     /// The author as committed.
     pub author_name: String,
     /// The author's address as committed.
@@ -484,10 +560,13 @@ impl Store {
                                 n_commits, n_files, n_add, n_del, n_binary, first_utc, last_utc,
                                 author_name, author_email, summary, overridden, live, seen_utc,
                                 attribution_source, attribution_agent, attribution_evidence,
-                                attribution_reason)
+                                attribution_reason,
+                                intent, intent_state, intent_source, intent_confidence, intent_text,
+                                intent_reason)
                          VALUES (?1,'committed',?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,0,?14,
                                  ?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,1,?30,
-                                 ?31,?32,?33,?34)
+                                 ?31,?32,?33,?34,
+                                 ?35,?36,?37,?38,?39,?40)
                          ON CONFLICT(id) DO UPDATE SET
                             boundary_rule=excluded.boundary_rule,
                             boundary_confidence=excluded.boundary_confidence,
@@ -497,6 +576,12 @@ impl Store {
                             attribution_agent=excluded.attribution_agent,
                             attribution_evidence=excluded.attribution_evidence,
                             attribution_reason=excluded.attribution_reason,
+                            intent=excluded.intent,
+                            intent_state=excluded.intent_state,
+                            intent_source=excluded.intent_source,
+                            intent_confidence=excluded.intent_confidence,
+                            intent_text=excluded.intent_text,
+                            intent_reason=excluded.intent_reason,
                             session_id=excluded.session_id,
                             turn_id=excluded.turn_id,
                             lineage_ref=excluded.lineage_ref,
@@ -552,7 +637,13 @@ impl Store {
                             row.attribution_source,
                             row.attribution_agent,
                             row.attribution_evidence,
-                            row.attribution_reason
+                            row.attribution_reason,
+                            row.intent,
+                            row.intent_state,
+                            row.intent_source,
+                            row.intent_confidence,
+                            row.intent_text,
+                            row.intent_reason
                         ],
                     )
                     .map_err(|err| corrupt("writing episode rows", &err))?;
@@ -561,6 +652,20 @@ impl Store {
                 } else {
                     stats.inserted += 1;
                 }
+                // The search document (ADR-004 §4.8), written from the row and never read back to build
+                // anything: `episode_doc` is class R, the triggers on it keep the FTS index in step, and
+                // deleting the whole table is a supported repair. This is where intent text becomes
+                // searchable — the write path is the only place that has it, which is why `e4.2` owns this
+                // row and `e5.2` does not have to retrofit a capture pass.
+                let body = document_body(&row.summary, &row.intent_text, &row.intent);
+                let tokens = i64::try_from(body.split_whitespace().count()).unwrap_or(i64::MAX);
+                tx.execute(
+                    "INSERT INTO episode_doc(episode_id, title, body, tokens) VALUES (?1,?2,?3,?4)
+                     ON CONFLICT(episode_id) DO UPDATE SET
+                        title=excluded.title, body=excluded.body, tokens=excluded.tokens",
+                    params![row.id, row.summary, body, tokens],
+                )
+                .map_err(|err| corrupt("writing the search document", &err))?;
                 // Membership is derived from the current commit set, so it is replaced rather than merged:
                 // a commit that moved to another episode must not stay pointed at this one.
                 tx.execute(
@@ -1511,7 +1616,42 @@ const EPISODE_COLUMNS: &str = "id, fingerprint, lineage_ref, lineage_seq, create
      session_id, turn_id, boundary_rule, boundary_confidence, author_kind, author_confidence, \
      fallback_fingerprint, shape_fingerprint, first_oid, last_oid, n_files, n_add, n_del, n_binary, first_utc, last_utc, \
      author_name, author_email, summary, overridden, live, noise_share, kind,
-     created_confidence, attribution_source, attribution_agent, attribution_evidence, attribution_reason";
+     created_confidence, attribution_source, attribution_agent, attribution_evidence, attribution_reason,
+     intent, intent_state, intent_source, intent_confidence, intent_text, intent_reason";
+
+/// The `episode_doc.body` for one episode: the summary, the intent text, then the plan items and the
+/// declared globs out of the intent document.
+///
+/// The plan list is in here because that is where a harness usually *puts* the intent — a search that
+/// indexed only the winning line would miss the item that lost the ladder, and the whole point of the
+/// document is that a person can find the episode by any phrase anybody wrote down about it.
+#[must_use]
+pub fn document_body(summary: &str, intent_text: &str, intent_json: &str) -> String {
+    let mut out = String::new();
+    out.push_str(summary);
+    out.push('\n');
+    if !intent_text.is_empty() {
+        out.push_str(intent_text);
+        out.push('\n');
+    }
+    if let Ok(doc) = serde_json::from_str::<serde_json::Value>(intent_json) {
+        if let Some(items) = doc.get("plan").and_then(serde_json::Value::as_array) {
+            for item in items.iter().filter_map(serde_json::Value::as_object) {
+                if let Some(text) = item.get("text").and_then(serde_json::Value::as_str) {
+                    out.push_str(text);
+                    out.push('\n');
+                }
+            }
+        }
+        if let Some(items) = doc.get("scope").and_then(serde_json::Value::as_array) {
+            for glob in items.iter().filter_map(serde_json::Value::as_str) {
+                out.push_str(glob);
+                out.push('\n');
+            }
+        }
+    }
+    out
+}
 
 fn episode_sql_for_id() -> String {
     format!("SELECT {EPISODE_COLUMNS} FROM episode WHERE id = ?1")
@@ -1625,6 +1765,12 @@ fn row_to_episode(row: &rusqlite::Row<'_>) -> rusqlite::Result<EpisodeRow> {
         attribution_agent: row.get(31)?,
         attribution_evidence: row.get(32)?,
         attribution_reason: row.get(33)?,
+        intent: row.get(34)?,
+        intent_state: row.get(35)?,
+        intent_source: row.get(36)?,
+        intent_confidence: row.get(37)?,
+        intent_text: row.get(38)?,
+        intent_reason: row.get(39)?,
     })
 }
 

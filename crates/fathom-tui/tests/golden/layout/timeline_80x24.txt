@@ -11,15 +11,15 @@
 │  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑     │boundary author 0.75 — a rule, not │
 │  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑    │         a fact (ADR-003 §4.7)     │
 │ Thu 18 Sep · session 2 (pi) ── 1 episode │session  session 4 · turn 12       │
-│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     │members  e8f1:0 e8f1:1 e8f1:2 +1   │
-│ Sun 14 Sep · session 1 (pi) ── 1 episode │         more                      │
-│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   │                                   │
-│ Sat 13 Sep ── 1 episode                  │delta    no document was handed to │
-│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │         this card — fathom analyze│
-│ Thu 11 Sep · session 1 (pi) ── 1 episode │         <episode> --json is the   │
-│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │         one source                │
-│                                          │risk     unknown — nothing has     │
-│                                          │… 4 more rows — `<C-w>o` gives thi…│
+│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     │intent   not handed to this card — │
+│ Sun 14 Sep · session 1 (pi) ── 1 episode │         no delta document         │
+│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   │members  e8f1:0 e8f1:1 e8f1:2 +1   │
+│ Sat 13 Sep ── 1 episode                  │         more                      │
+│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │                                   │
+│ Thu 11 Sep · session 1 (pi) ── 1 episode │delta    no document was handed to │
+│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │         this card — fathom analyze│
+│                                          │         <episode> --json is the   │
+│                                          │… 6 more rows — `<C-w>o` gives thi…│
 │filter: area=any state=any group=day (F e…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch 1 · 48 eps · queue 4 open · idx unknown

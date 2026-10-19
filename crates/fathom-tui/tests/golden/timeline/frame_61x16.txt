@@ -13,7 +13,7 @@
 │  c1f5e2 13 Oct ?     +22 −22 ⚑ │where    src/store (9) ·  │
 │ Thu 18 Sep · session 2 (pi) ──…│         tests (1)        │
 │  08d4b1 18 Sep agent +3 −1 ? ✔ │boundary author 0.75 — a  │
-│ Sun 14 Sep · session 1 (pi) ──…│… 19 more rows — `<C-w>o`…│
+│ Sun 14 Sep · session 1 (pi) ──…│… 22 more rows — `<C-w>o`…│
 │filter: area=any state=any grou…│card · reads delta.struct…│
 └───────────────────────────────────────────────────────────┘
 ⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
@@ -46,11 +46,11 @@ where    src/store (9) · tests (1)
 boundary author 0.75 — a rule, not 
          a fact (ADR-003 §4.7)     
 session  session 4 · turn 12       
+intent   not handed to this card — 
+         no delta document         
 members  e8f1:0 e8f1:1 e8f1:2 +1   
          more                      
-                                   
-delta    no document was handed to 
-… 8 more rows — `<C-w>o` gives thi…
+… 10 more rows — `<C-w>o` gives th…
 
 ## card strip
 

@@ -105,6 +105,137 @@
           "description": "ADR-003 §2.1's derived id — what a review is keyed to.",
           "type": "string"
         },
+        "intent": {
+          "additionalProperties": true,
+          "description": "What the episode was for, with the evidence for that (`e4.2`, `reco-c54`): the text, the harness session and turn it arrived on, the plan items, the declared scope globs and the rung that decided. Absent on a row written before migration 5, which stored no intent at all — a different fact from `state: none`, which means intent was looked for through every source and nothing stated it.",
+          "properties": {
+            "confidence": {
+              "description": "Confidence in `text`; 0.0 means nothing was recorded, not that nothing matters.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            "evidence": {
+              "description": "Every rung that fired, strongest first, each in the source's own spelling.",
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "confidence": {
+                    "type": "number"
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "confidence",
+                  "detail",
+                  "source"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "plan": {
+              "description": "The plan items, in the order they were stated, empty when nothing stated a plan.",
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "status": {
+                    "description": "The item's state in the harness's own words, when it had one.",
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "prompt": {
+              "additionalProperties": true,
+              "description": "The turn's prompt digests, and whether its text came with them. A digest with no text is `state: digest-only`, not an absence.",
+              "properties": {
+                "chars": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "text_captured": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "text_captured"
+              ],
+              "type": "object"
+            },
+            "reason": {
+              "description": "What was looked for and not found, when there is no text. Required reading for `state: none`.",
+              "type": "string"
+            },
+            "schema": {
+              "description": "The document's own namespace, so a consumer of the store column does not have to guess which shape it is reading.",
+              "type": "string"
+            },
+            "scope": {
+              "description": "The declared scope, as path globs relative to the repository root, normalised, sorted and deduplicated. `e4.3`'s scope-creep detector measures the change against these (`fathom_analyze::scope::deviation` is that input); nothing in this build enforces them.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "scope_rejected": {
+              "description": "Declared scope values that were refused rather than quietly dropped — an absolute path, a `..`, a NUL.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "session_id": {
+              "description": "The harness session the intent arrived on, when an event or an `Agent-Session:` trailer named one.",
+              "type": "string"
+            },
+            "source": {
+              "description": "The rung that decided: `hook-prompt`, `hook-intent`, `agent-intent-trailer`, `plan-item`, `task-trailer`, `prompt-digest`, `none`.",
+              "type": "string"
+            },
+            "state": {
+              "description": "`recorded`, `digest-only` or `none` — the last is a state, never a blank.",
+              "type": "string"
+            },
+            "text": {
+              "description": "The request, in the asker's own words. Absent unless `state` is `recorded`.",
+              "type": "string"
+            },
+            "truncated": {
+              "description": "Whether `text` was cut at the stored byte cap; a quote that stops mid-sentence says so.",
+              "type": "boolean"
+            },
+            "turn_id": {
+              "description": "The harness turn, ditto (ADR-005 §3.3's session-qualified id).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "confidence",
+            "plan",
+            "scope",
+            "schema",
+            "source",
+            "state"
+          ],
+          "type": "object"
+        },
         "last_utc": {
           "description": "Last member timestamp in milliseconds since the epoch.",
           "type": "integer"

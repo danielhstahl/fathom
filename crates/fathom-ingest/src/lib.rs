@@ -57,6 +57,7 @@ pub mod export;
 pub mod graph;
 pub mod hooks;
 pub mod ingest;
+pub mod intent;
 pub mod normalize;
 pub mod oid;
 pub mod paths;

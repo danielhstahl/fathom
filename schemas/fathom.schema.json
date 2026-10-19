@@ -1302,6 +1302,77 @@
       "x-fathom-owner": "e1.2",
       "x-fathom-section-title": "Ingest limits"
     },
+    "intent": {
+      "additionalProperties": false,
+      "description": "What an episode was *for*: the ladder that answers that question (the harness prompt, the `Agent-Intent:` trailer, a `Task:` line, a prompt digest) and how much of the answer is kept. The ladder's ORDER is not configurable, only its membership \u2014 an intent a user reordered is an intent nobody can explain, which is the same refusal `[episode] boundaries` and `[attribution]` make.",
+      "properties": {
+        "digest_counts": {
+          "default": true,
+          "description": "Whether a prompt digest with no text counts as an intent at all. On, the episode reads `digest-only` with the prompt's digest \u2014 \"a request happened and its text was not captured\" is a fact. Off, and such an episode reads `no recorded intent` like any other, which is the honest choice for a repository that would rather not print a hash where a sentence belongs.",
+          "type": "boolean",
+          "x-fathom-analyzer": "episode.intent",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.2"
+        },
+        "max_text_bytes": {
+          "default": 4096,
+          "description": "Cap on any one piece of intent text \u2014 a prompt, a plan item, a trailer value. A prompt is a paragraph, not a file, and ADR-005 \u00a76.3 forbids file contents crossing this boundary: a harness that echoed a 2 MB prompt into a `UserPromptSubmit` payload would otherwise grow the store by the prompt's size forever. Text that exceeds the cap is kept truncated, and the document says `truncated: true` rather than ending mid-sentence in silence.",
+          "minimum": 64,
+          "type": "integer",
+          "x-fathom-analyzer": "episode.intent",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.2",
+          "x-fathom-units": "bytes"
+        },
+        "plan_cap": {
+          "default": 64,
+          "description": "Plan items kept per episode. The document counts what it dropped instead of quietly losing the tail, because a plan list that silently ends is a plan that was not finished.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "episode.intent",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.2",
+          "x-fathom-units": "items"
+        },
+        "scope_cap": {
+          "default": 64,
+          "description": "Declared-scope globs kept per episode. Absolute paths, `..` escapes and anything holding a NUL are refused and named in `scope_rejected`, never normalised into something that reads as a repository-relative glob.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "episode.intent",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.2",
+          "x-fathom-units": "globs"
+        },
+        "sources": {
+          "default": [
+            "hook-prompt",
+            "hook-intent",
+            "agent-intent-trailer",
+            "plan-item",
+            "task-trailer",
+            "prompt-digest"
+          ],
+          "description": "Which rungs of the intent ladder may decide the text, in the published spellings (`hook-prompt`, `hook-intent`, `agent-intent-trailer`, `plan-item`, `task-trailer`, `prompt-digest`). This **replaces** the list rather than extending it: the only interesting use of the key is to turn something off \u2014 a repository whose prompts carry names it does not want quoted says `[\n\"agent-intent-trailer\"]` and means exactly that. An entry naming no rung this build reads is a notice, not an error: `review-note` and `manual-note` are spellings `[deps.provenance] intent_sources` already lists, and `e4.6`/`e6.5` are the tickets that would produce them.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "episode.intent",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e4.2"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-003 \u00a78 / e4.2 (`reco-c54`)",
+      "x-fathom-section-title": "Intent capture"
+    },
     "keys": {
       "additionalProperties": false,
       "description": "Per-mode user overrides **only**. The canonical binding table is ADR-006's; conflict detection and the cheatsheet are `e5.4`'s.",
@@ -3765,6 +3836,10 @@
       "ingest": {
         "owner": "e1.2",
         "title": "Ingest limits"
+      },
+      "intent": {
+        "owner": "ADR-003 \u00a78 / e4.2 (`reco-c54`)",
+        "title": "Intent capture"
       },
       "keys": {
         "owner": "ADR-006 / e5.4",

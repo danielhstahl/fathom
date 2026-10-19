@@ -163,6 +163,46 @@ fn detailed(episode: &Episode, now: Timestamp, origin: &str, width: usize) -> Ve
         (None, _) => "no harness session on this episode".to_owned(),
     };
     push_field(&mut out, width, "session", &session);
+    // Intent gets a row of its own, and it is never left blank (`e4.2`, `reco-c54`). Three states read
+    // three ways here, and the third is the point: "no recorded intent" is shown as what it is — a checked
+    // absence — and not as an empty field a reviewer has to guess the meaning of.
+    push_field(
+        &mut out,
+        width,
+        "intent",
+        &episode.delta.as_ref().map_or_else(
+            // Not "re-index": this card was handed a row and no model at all, and re-indexing would not
+            // change that. The `delta` field below says the same thing; a directive the reader cannot act
+            // on is worse than a plain statement of what the card was given.
+            || "not handed to this card — no delta document".to_owned(),
+            |delta| match delta.episode.intent.as_ref() {
+                None => "not on this row — re-index to capture it (`fathom index`)".to_owned(),
+                Some(intent) if intent.state == insight::INTENT_RECORDED => format!(
+                    "{} · via {} · {:.2} · `i` for the plan and scope",
+                    intent.text.clone().unwrap_or_default(),
+                    intent.source,
+                    intent.confidence
+                ),
+                Some(intent) if intent.state == insight::INTENT_DIGEST_ONLY => format!(
+                    "no text captured · prompt {} · via {}",
+                    intent
+                        .prompt
+                        .as_ref()
+                        .and_then(|prompt| prompt.sha256.as_deref())
+                        .and_then(|sha| sha.get(..12))
+                        .unwrap_or("—"),
+                    intent.source
+                ),
+                Some(intent) => format!(
+                    "no recorded intent — {}",
+                    intent
+                        .reason
+                        .clone()
+                        .unwrap_or_else(|| "nothing stated it".to_owned())
+                ),
+            },
+        ),
+    );
     push_field(
         &mut out,
         width,
@@ -319,6 +359,105 @@ fn push_risk(out: &mut Vec<StyledLine>, width: usize, episode: &Episode) {
             ),
         );
     }
+}
+
+/// The `i` pane: one episode's intent, in full (`e4.2`, `reco-c54`).
+///
+/// The lines come from [`insight::intent_block`] — the function `fathom show` and the delta document
+/// render through — because the card, the CLI and an exported document must not be three places that spell
+/// an intent differently (ADR-001 §7.10). What this pane adds over the card's one-line `intent` field is
+/// the *plan* and the *declared scope*: the two things a reviewer checks a change against, which do not fit
+/// in a field and are useless one at a time.
+#[must_use]
+pub fn intent_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<StyledLine> {
+    let mut body: Vec<StyledLine> = match episode {
+        None => vec![StyledLine::with_face(
+            "no episode selected — `j`/`k` choose one, then `i`",
+            Face::Muted,
+        )],
+        Some(episode) => {
+            let mut out: Vec<StyledLine> = Vec::new();
+            out.push(StyledLine::with_face(
+                format!("{} — {}", episode.short_id(), episode.summary),
+                Face::Emphasis,
+            ));
+            match episode
+                .delta
+                .as_ref()
+                .and_then(|delta| delta.episode.intent.as_ref())
+            {
+                None => {
+                    out.push(StyledLine::with_face(
+                        "this row carries no intent document — it was written before intent capture, \
+                         and `fathom index --rebuild` reads the trailers and the stream again",
+                        Face::Warning,
+                    ));
+                    out.push(StyledLine::with_face(
+                        "`none recorded` and `never looked` are different facts; this is the second one",
+                        Face::Faint,
+                    ));
+                }
+                Some(intent) => {
+                    out.push(StyledLine::plain(""));
+                    for line in insight::intent_block(intent) {
+                        let face = if line.starts_with("intent    no ") {
+                            // Both absences — "no recorded intent" and "no text captured" — are warnings:
+                            // each is the card saying it looked and came back empty.
+                            Face::Warning
+                        } else if line.starts_with("reason") || line.starts_with("scope") {
+                            Face::Muted
+                        } else {
+                            Face::Text
+                        };
+                        // The label is kept, with a hanging indent on the wrap. Stripping it would save six
+                        // columns and lose the one thing that tells `scope` from `reason` from `plan` once a
+                        // long value has wrapped past the first row.
+                        let (label, value) = match line.split_once("  ") {
+                            Some((label, value)) => (label.trim_end(), value.trim()),
+                            None => ("", line.trim()),
+                        };
+                        let indent = " ".repeat(label.len() + 1);
+                        let body = width.saturating_sub(label.len() + 1).max(8);
+                        for (index, chunk) in wrap(value, body).into_iter().enumerate() {
+                            let mut row = StyledLine::plain("");
+                            row.push(
+                                Face::Muted,
+                                if index == 0 || label.is_empty() {
+                                    label
+                                } else {
+                                    indent.as_str()
+                                },
+                            );
+                            if !label.is_empty() {
+                                row.push(face, &format!(" {chunk}"));
+                            } else {
+                                row.push(face, &chunk);
+                            }
+                            out.push(row);
+                        }
+                    }
+                    out.push(StyledLine::with_face(
+                        "the scope is what was *declared*; the scope-creep finding over it is `e4.3`'s",
+                        Face::Faint,
+                    ));
+                }
+            }
+            out
+        }
+    };
+    if body.len() > rows && rows > 0 {
+        let hidden = body.len() - rows + 1;
+        body.truncate(rows.saturating_sub(1));
+        body.push(StyledLine::with_face(
+            format!("… {hidden} more rows — `i` again, or `<Esc>`, to go back"),
+            Face::Faint,
+        ));
+    }
+    while body.len() < rows {
+        body.push(StyledLine::plain(""));
+    }
+    body.truncate(rows);
+    body.into_iter().map(|line| line.padded(width)).collect()
 }
 
 /// The `w` pane: one episode's ranking, in full, with the ceiling it comes under.

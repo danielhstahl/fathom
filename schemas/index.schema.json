@@ -49,6 +49,78 @@
     "interrupted": {
       "type": "boolean"
     },
+    "intent": {
+      "additionalProperties": false,
+      "description": "What the intent capture (`e4.2`) recorded for this run, and what stream it came from. Every bucket is printed, including the empty one and the 'nothing recorded' one: missing intent is a state, and a state that only appears when it is non-empty is a state a reviewer never learns to read.",
+      "properties": {
+        "recorded": {
+          "description": "Episodes whose intent arrived as text - a prompt, an intent line, a task, a plan item.",
+          "type": "integer"
+        },
+        "from_hook": {
+          "description": "Of those, how many came from the harness stream rather than from a commit trailer.",
+          "type": "integer"
+        },
+        "digest_only": {
+          "description": "Episodes whose only intent evidence is a prompt digest: a request happened, its text was not sent.",
+          "type": "integer"
+        },
+        "none": {
+          "description": "Episodes with nothing recorded anywhere - the ticket's normal state, counted rather than hidden.",
+          "type": "integer"
+        },
+        "harness": {
+          "additionalProperties": false,
+          "description": "The event stream the capture read. `events_file` is printed even when it does not exist, so 'no intent' can be told apart from 'no hooks' without a second command.",
+          "properties": {
+            "events_file": {
+              "description": "Where the stream was looked for, redacted to a repository-relative path.",
+              "type": "string"
+            },
+            "exists": {
+              "description": "Whether a stream file was there at all.",
+              "type": "boolean"
+            },
+            "turns": {
+              "description": "Turns the ledger holds, trimmed ones excluded.",
+              "type": "integer"
+            },
+            "events": {
+              "description": "Events the reader accepted on this pass.",
+              "type": "integer"
+            },
+            "refused": {
+              "description": "Lines the reader refused. Kept beside `turns` because an empty file and an unreadable file produce the same zero, and only one of them is normal.",
+              "type": "integer"
+            },
+            "notices": {
+              "description": "One line per thing the reader found and could not use, including a stream that exists but would not parse: 'no stream' and 'unreadable stream' are different reasons for the same empty intent tally, and only one of them is the repository's fault.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "events_file",
+            "exists",
+            "turns",
+            "events",
+            "refused",
+            "notices"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "recorded",
+        "from_hook",
+        "digest_only",
+        "none",
+        "harness"
+      ],
+      "type": "object"
+    },
     "unreadable": {
       "description": "Every commit this store cannot read out of the object database, named by id and by what the read said. A damaged or filter-cloned repository; the remedy is `git fsck`, never a fathom repair.",
       "items": {
@@ -114,6 +186,7 @@
     "elapsed_ms",
     "commits",
     "interrupted",
+    "intent",
     "reason",
     "analyzers",
     "worktree",

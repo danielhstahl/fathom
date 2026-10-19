@@ -980,6 +980,12 @@ pub struct Limits {
     pub max_bytes_per_session: u64,
     /// How many quarantined records to keep.
     pub quarantine_records: usize,
+    /// The cap on any one piece of intent text read out of a payload (`e4.2`).
+    ///
+    /// The same budget as [`crate::intent::Policy::max_text_bytes`] — one default, named once — and applied
+    /// here as well as there because this is where the payload is: a harness that echoed a megabyte of
+    /// prompt per turn would otherwise grow the cursor, which holds [`Limits::turns_kept`] turns.
+    pub max_intent_text_bytes: usize,
     /// How many turns the cursor carries across a restart.
     pub turns_kept: usize,
     /// Whether refused lines are written to the sidecar.
@@ -998,6 +1004,7 @@ impl Default for Limits {
             max_line_bytes: MAX_LINE_BYTES,
             max_bytes_per_session: DEFAULT_MAX_BYTES_PER_SESSION,
             quarantine_records: DEFAULT_QUARANTINE_RECORDS,
+            max_intent_text_bytes: crate::intent::Policy::default().max_text_bytes,
             turns_kept: DEFAULT_TURNS_KEPT,
             write_quarantine: true,
         }
@@ -1648,6 +1655,24 @@ pub struct Turn {
     pub cwd: Option<String>,
     /// The branch at the time, when the events said.
     pub git_branch: Option<String>,
+    /// The prompt **text**, when the harness sent it.
+    ///
+    /// ADR-005 §2.1's `turn_start` row names `prompt_sha256` and `prompt_chars`, and the reference writer
+    /// and every corpus stream send exactly those two — so `None` here is the normal case, not a gap
+    /// ([`crate::intent::State::Digest`]). A vendor that echoes the prompt into its `UserPromptSubmit`
+    /// payload is answered in full, because the intent of the turn is the one piece of payload content the
+    /// product is for.
+    pub prompt: Option<String>,
+    /// `prompt_sha256`, as sent.
+    pub prompt_sha256: Option<String>,
+    /// `prompt_chars`, as sent, or the length of the text when only the text arrived.
+    pub prompt_chars: Option<u64>,
+    /// A declared intent line (`intent` / `declared_intent` in the payload).
+    pub intent: Option<String>,
+    /// The plan items the harness held for the turn.
+    pub plan: Vec<crate::intent::PlanItem>,
+    /// The declared scope globs, seeded from the session and overridden by the turn.
+    pub scope: Vec<String>,
 }
 
 impl Turn {
@@ -1659,6 +1684,12 @@ impl Turn {
     /// touched three files digests identically however the writes arrived (ADR-005 §3.6). The open-ended
     /// end is written as the empty string rather than an unbounded sentinel, so the digest does not encode
     /// an implementation detail about how an unfinished turn is modelled.
+    ///
+    /// The `e4.2` intent fields are deliberately **not** in here. The digest is the *linkage*'s — the claim
+    /// that a rebuild maps these commits onto these turns again — and intent text is content, not linkage:
+    /// a harness that reworded a prompt, or a vendor that started sending `payload.prompt` where it had
+    /// sent only a digest, would otherwise invalidate every stored linkage in the repository for a change
+    /// that moves no commit and reorders no turn.
     #[must_use]
     pub fn digest_fields(&self) -> Vec<(&'static str, String)> {
         vec![
@@ -1731,7 +1762,37 @@ impl Turn {
             "test_runs": &self.test_runs,
             "cwd": self.cwd,
             "git_branch": self.git_branch,
+            "prompt": self.prompt,
+            "prompt_sha256": self.prompt_sha256,
+            "prompt_chars": self.prompt_chars,
+            "intent": self.intent,
+            "plan": self
+                .plan
+                .iter()
+                .filter_map(|item| serde_json::to_value(item).ok())
+                .collect::<Vec<_>>(),
+            "scope": self.scope,
         })
+    }
+
+    /// What the stream said about this turn's *intent*, in the shape [`crate::intent::capture`] reads.
+    ///
+    /// A projection, not a decision: this says what was stated, [`crate::intent`] decides what it means.
+    /// A turn that stated nothing still returns a value with empty fields, because "the harness had a turn
+    /// and it stated no intent" is the evidence the card's `no recorded intent` line is made of — it is a
+    /// checked absence, and an unchecked one would print the same words.
+    #[must_use]
+    pub fn intent(&self) -> crate::intent::TurnEvidence {
+        crate::intent::TurnEvidence {
+            session_id: self.session_id.clone(),
+            turn_id: self.turn_id.clone(),
+            prompt: self.prompt.clone(),
+            prompt_sha256: self.prompt_sha256.clone(),
+            prompt_chars: self.prompt_chars,
+            intent: self.intent.clone(),
+            plan: self.plan.clone(),
+            scope: self.scope.clone(),
+        }
     }
 }
 
@@ -1748,6 +1809,11 @@ pub struct SessionState {
     pub bytes: u64,
     /// Whether the session is quarantined (over quota, ADR-005 §6 rule 3), and why.
     pub quarantined: Option<String>,
+    /// The scope globs the session declared, which every turn of the session inherits unless the turn
+    /// states its own (`e4.2`: one `scope:` on a session start is how a harness usually declares scope).
+    pub scope: Vec<String>,
+    /// The intent line the session declared, inherited the same way.
+    pub intent: Option<String>,
 }
 
 impl SessionState {
@@ -1760,6 +1826,8 @@ impl SessionState {
             "events": self.events,
             "bytes": self.bytes,
             "quarantined": self.quarantined,
+            "scope": self.scope,
+            "intent": self.intent,
         })
     }
 }
@@ -1948,7 +2016,25 @@ impl Ledger {
                 self.close_session(&session_id, event);
                 return None;
             }
-            FathomEvent::SessionStart | FathomEvent::SubagentStart | FathomEvent::SubagentEnd => {
+            FathomEvent::SessionStart => {
+                // A session that declares a scope or an intent declares it for every turn in it — that is
+                // how a harness usually says "this whole session is inside `src/parser/**`" (`e4.2`). The
+                // turn may still state its own, and does when it does.
+                let stated = crate::intent::TurnEvidence::from_payload(
+                    &event.payload,
+                    limits.max_intent_text_bytes,
+                );
+                if let Some(state) = self.sessions.get_mut(&session_id) {
+                    if !stated.scope.is_empty() {
+                        state.scope = stated.scope;
+                    }
+                    if stated.intent.is_some() {
+                        state.intent = stated.intent;
+                    }
+                }
+                return None;
+            }
+            FathomEvent::SubagentStart | FathomEvent::SubagentEnd => {
                 return None;
             }
             _ => {}
@@ -1989,6 +2075,30 @@ impl Ledger {
             }
             if turn.git_branch.is_none() {
                 turn.git_branch = event.git_branch.clone();
+            }
+            if matches!(event.fathom_event, FathomEvent::TurnStart) {
+                // The `e4.2` capture: everything the prompt-submit payload states about *why* this turn is
+                // happening, read at the boundary that already redacted the payload (ADR-005 §6 rule 4) and
+                // capped to `Limits::max_intent_text_bytes`. Deciding what any of it *means* is
+                // [`crate::intent`]'s job, not this reader's.
+                let stated = crate::intent::TurnEvidence::from_payload(
+                    &event.payload,
+                    limits.max_intent_text_bytes,
+                );
+                turn.prompt = stated.prompt;
+                turn.prompt_sha256 = stated.prompt_sha256;
+                turn.prompt_chars = stated
+                    .prompt_chars
+                    .or_else(|| turn.prompt.as_ref().map(|text| text.chars().count() as u64));
+                if stated.intent.is_some() {
+                    turn.intent = stated.intent;
+                }
+                if !stated.plan.is_empty() {
+                    turn.plan = stated.plan;
+                }
+                if !stated.scope.is_empty() {
+                    turn.scope = stated.scope;
+                }
             }
             match event.fathom_event {
                 FathomEvent::ToolCall => turn.tool_calls += 1,
@@ -2090,6 +2200,14 @@ impl Ledger {
             test_runs: BTreeMap::new(),
             cwd: event.cwd.clone(),
             git_branch: event.git_branch.clone(),
+            prompt: None,
+            prompt_sha256: None,
+            prompt_chars: None,
+            // A session that declared a scope declares it for every turn in it; a turn that states its own
+            // wins (`e4.2`). Same for an intent line stated at session start.
+            intent: state.intent.clone(),
+            plan: Vec::new(),
+            scope: state.scope.clone(),
         });
         if self.turns.len() > limits.turns_kept.max(1) {
             let drop = self.turns.len() - limits.turns_kept.max(1);
@@ -2121,6 +2239,11 @@ impl Ledger {
                         bytes: state.get("bytes").and_then(Value::as_u64).unwrap_or(0),
                         quarantined: state
                             .get("quarantined")
+                            .and_then(Value::as_str)
+                            .map(str::to_owned),
+                        scope: string_list(state.get("scope")),
+                        intent: state
+                            .get("intent")
                             .and_then(Value::as_str)
                             .map(str::to_owned),
                     },
@@ -2189,6 +2312,35 @@ impl Ledger {
                         .get("git_branch")
                         .and_then(Value::as_str)
                         .map(str::to_owned),
+                    // The `e4.2` intent fields, read back so a restart resumes with the intent it already
+                    // read rather than reporting `no recorded intent` for a turn it read last run.
+                    prompt: turn
+                        .get("prompt")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    prompt_sha256: turn
+                        .get("prompt_sha256")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    prompt_chars: turn.get("prompt_chars").and_then(Value::as_u64),
+                    intent: turn
+                        .get("intent")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    plan: turn
+                        .get("plan")
+                        .and_then(Value::as_array)
+                        .map(|items| {
+                            items
+                                .iter()
+                                .filter_map(|item| {
+                                    serde_json::from_value::<crate::intent::PlanItem>(item.clone())
+                                        .ok()
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    scope: string_list(turn.get("scope")),
                 });
             }
         }
@@ -4074,4 +4226,22 @@ fn show(path: &Path, root: Option<&Path>) -> String {
         return relative.display().to_string();
     }
     path.display().to_string()
+}
+
+/// A JSON array of strings as a `Vec<String>`; anything else is the empty list.
+///
+/// Used by the cursor load path for the `e4.2` lists. A field of the wrong shape is no data rather than a
+/// failed restart — the same rule [`Turn::from_json`] applies to every field it reads, because a cursor
+/// written by a newer fathom must not make this one refuse to start (ADR-004 §9.5).
+fn string_list(value: Option<&Value>) -> Vec<String> {
+    value
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
 }

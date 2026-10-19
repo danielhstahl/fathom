@@ -178,26 +178,27 @@ pub fn analyze(
             // repository: when the object database is withholding commits, the reader has to be told that
             // the history around this episode has holes, or a confident delta becomes the reason they assume
             // it does not.
-            if let Ok(holes) = store.unreadable_commits() {
-                if !holes.is_empty() {
-                    let named = holes
-                        .iter()
-                        .take(3)
-                        .map(|(oid, _, _)| format!("{}…", &oid[..12]))
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    let more = holes.len().saturating_sub(3);
-                    output::line(format_args!(
-                        "\nindex: {} commit(s) in this repository could not be read out of the object \\n         database ({named}{}), so they are in no answer here either",
-                        holes.len(),
-                        if more == 0 {
-                            String::new()
-                        } else {
-                            format!(" and {more} more")
-                        }
-                    ));
-                    output::line(format_args!("  remedy: {}", state::REMEDY_UNREADABLE));
-                }
+            if let Ok(holes) = store.unreadable_commits()
+                && !holes.is_empty()
+            {
+                let named = holes
+                    .iter()
+                    .take(3)
+                    .map(|(oid, _, _)| format!("{}…", &oid[..12]))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let more = holes.len().saturating_sub(3);
+                output::line(format_args!(
+                    "\nindex: {} commit(s) in this repository could not be read out of the object \
+                     database ({named}{}), so they are in no answer here either",
+                    holes.len(),
+                    if more == 0 {
+                        String::new()
+                    } else {
+                        format!(" and {more} more")
+                    }
+                ));
+                output::line(format_args!("  remedy: {}", state::REMEDY_UNREADABLE));
             }
         }
         Ok(snapshot.worst_code())

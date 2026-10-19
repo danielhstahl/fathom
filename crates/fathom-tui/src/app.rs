@@ -305,6 +305,13 @@ pub struct App {
     /// about an episode: moving the cursor to another row leaves the answer about the previous one on
     /// screen would be a lie about the new selection.
     pub explain: Option<String>,
+    /// `i` (`intent.show`) has been pressed on the episode named here: the card pane shows that episode's
+    /// captured intent — the request, its source, its plan and its declared scope — instead of the card
+    /// itself (`e4.2`, `reco-c54`).
+    ///
+    /// Keyed by episode id for the same reason [`App::explain`] is: the answer belongs to the episode it was
+    /// asked about, and leaving it up while the cursor has moved would describe the wrong commit.
+    pub intent: Option<String>,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
     /// The last search submitted with `/` then `<Enter>` (`e1.11`).
@@ -448,6 +455,7 @@ impl App {
             diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             explain: None,
+            intent: None,
             prompt: String::new(),
             last_search: None,
             opened: Vec::new(),
@@ -720,6 +728,8 @@ impl App {
             "card" => Some(
                 if self.explaining(self.timeline.selected()) {
                     timeline::risk_lines(self.timeline.selected(), cols, rows)
+                } else if self.showing_intent(self.timeline.selected()) {
+                    timeline::intent_lines(self.timeline.selected(), cols, rows)
                 } else {
                     self.timeline.preview_lines(cols, rows)
                 }
@@ -742,6 +752,8 @@ impl App {
             "rail" => Some(self.timeline.rail_lines(width, rows)),
             "card" => Some(if self.explaining(self.timeline.selected()) {
                 timeline::risk_lines(self.timeline.selected(), width, rows)
+            } else if self.showing_intent(self.timeline.selected()) {
+                timeline::intent_lines(self.timeline.selected(), width, rows)
             } else {
                 self.timeline.preview_lines(width, rows)
             }),
@@ -821,6 +833,15 @@ impl App {
         }
     }
 
+    /// Is `i`'s intent pane up, for the episode currently in scope?
+    #[must_use]
+    pub fn showing_intent(&self, episode: Option<&Episode>) -> bool {
+        match (&self.intent, episode) {
+            (Some(id), Some(episode)) => id == &episode.id,
+            _ => false,
+        }
+    }
+
     /// The queue's panes as text — the `--plain`, screen-reader and golden projection.
     #[must_use]
     pub fn queue_text(&self, pane: &Pane) -> Option<Vec<String>> {
@@ -844,6 +865,8 @@ impl App {
         if pane.name == "card" {
             return if self.explaining(selected) {
                 timeline::risk_lines(selected, width, rows)
+            } else if self.showing_intent(selected) {
+                timeline::intent_lines(selected, width, rows)
             } else {
                 timeline::card_lines(
                     selected,
@@ -1581,6 +1604,12 @@ impl App {
             ));
             return;
         }
+        if self.intent.take().is_some() {
+            // `i` opened the intent pane over the card, and `<Esc>` closes the topmost transient thing it
+            // finds — the pane, not the selection under it (ADR-006 §1 R2).
+            self.toast("intent dismissed — `i` shows the captured intent again");
+            return;
+        }
         if self.explain.take().is_some() {
             // `w` opened an explanation over the card, and `<Esc>` dismisses the topmost transient thing
             // it finds — here that is the explanation, not the selection underneath it, and certainly not
@@ -1763,6 +1792,7 @@ impl App {
                 // the next row down would be a card that describes the wrong episode, so moving on is
                 // the same gesture as `<Esc>` here (`reco-c05`).
                 self.explain = None;
+                self.intent = None;
             }
             self.scope.episode = moved;
         }
@@ -2265,6 +2295,51 @@ impl App {
                     ));
                 } else {
                     self.toast(words);
+                }
+            }
+            // `i`: what this episode was for, and how Fathom knows. A pane and not a toast because the
+            // answer is the text, the plan and the declared scope, and none of them fit in a status line
+            // (`e4.2`, `reco-c54`).
+            "intent.show" => {
+                let id = match self.view {
+                    ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
+                    _ => self.timeline.selected().map(|episode| episode.id.clone()),
+                };
+                let shown = match &id {
+                    Some(id) if self.intent.as_deref() == Some(id.as_str()) => {
+                        self.intent = None;
+                        false
+                    }
+                    Some(id) => {
+                        self.intent = Some(id.clone());
+                        true
+                    }
+                    None => false,
+                };
+                self.scope.episode = id.clone();
+                if shown {
+                    let state = id
+                        .as_deref()
+                        .and_then(|id| self.timeline.find(id))
+                        .and_then(|episode| {
+                            episode
+                                .delta
+                                .as_ref()
+                                .and_then(|delta| delta.episode.intent.as_ref())
+                        })
+                        .map(|intent| match intent.state.as_str() {
+                            insight::INTENT_RECORDED => "intent recorded",
+                            insight::INTENT_DIGEST_ONLY => "intent digest only — no text",
+                            _ => "no recorded intent",
+                        })
+                        .unwrap_or("no intent document on this row");
+                    self.toast(format!(
+                        "{state} — the card pane shows it; `i` again to go back"
+                    ));
+                } else if id.is_some() {
+                    self.toast("intent dismissed — `i` shows it again".to_owned());
+                } else {
+                    self.toast("no episode in scope — `j`/`k` choose one, then `i`".to_owned());
                 }
             }
             "compare.mark" => {

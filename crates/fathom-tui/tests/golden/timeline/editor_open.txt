@@ -17,9 +17,9 @@
 │ │ area · any                                          type, or pick below  │ │
 │ │ state · any                                             Enter to choose  │ │
 │ │ since · any                                         type, or pick below  │ │
-│ │ until · any                                         type, or pick below  │e│
+│ │ until · any                                         type, or pick below  │ │
 │ │ group · day                                             Enter to choose  │ │
-│ │ clear all filters                                              0 active  │ │
+│ │ clear all filters                                              0 active  │e│
 │ │ close — the rail keeps what is set                                <Esc>  │ │
 │ │ 1 of 9 · <C-n>/<C-p> move · <Enter> choose · <Esc> close                 │…│
 │f└──────────────────────────────────────────────────────────────────────────┘…│
@@ -54,11 +54,11 @@ where    src/store (9) · tests (1)
 boundary author 0.75 — a rule, not 
          a fact (ADR-003 §4.7)     
 session  session 4 · turn 12       
+intent   not handed to this card — 
+         no delta document         
 members  e8f1:0 e8f1:1 e8f1:2 +1   
          more                      
-                                   
-delta    no document was handed to 
-… 8 more rows — `<C-w>o` gives thi…
+… 10 more rows — `<C-w>o` gives th…
 
 ## card strip
 

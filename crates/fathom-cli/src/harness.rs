@@ -154,6 +154,99 @@ pub fn config_from_toml(text: &str) -> Configured {
     out
 }
 
+/// The event stream, in the shape an index run reads (`e4.2`, `reco-c54`).
+pub struct Stream {
+    /// The turns the stream describes, or `None` when there is no stream at all.
+    pub ledger: Option<hooks::Ledger>,
+    /// Where it was looked for, which is printed even when nothing was there — "no events file" is a fact
+    /// about a path, and a report that does not name the path cannot be checked.
+    pub events: PathBuf,
+    /// Events the reader accepted, so a run report can say how much evidence the intent came from.
+    pub accepted: u64,
+    /// Turns the ledger holds, trimmed ones excluded.
+    pub turns: usize,
+    /// Lines the reader refused. Kept separate from `turns` because "the file is empty" and "the file is
+    /// unreadable" are different reasons for the same zero, and only one of them is a state a reviewer
+    /// should be told about in the same words.
+    pub refused: u64,
+    /// One line per thing that was read and could not be used.
+    pub notices: Vec<String>,
+}
+
+/// Read the stream for an index run: from byte 0, read-only, and without touching the durable cursor.
+///
+/// Three rules, each one someone would otherwise get wrong:
+///
+/// * **It does not consume.** The offset belongs to whoever owns the queue; an index that advanced it would
+///   silently eat the events a watcher had not accounted for yet — the same argument [`Action::Check`]
+///   is built on.
+/// * **It quarantines nothing.** A diagnostic or an index that writes the sidecar re-records the same
+///   damage on every run and pushes the real records out of a bounded file.
+/// * **Absence is normal.** Most repositories have no adapter installed. `no stream` is printed as a
+///   state, and the trailer fallback is the answer, not a consolation prize.
+#[must_use]
+pub fn stream(root: &Path, now: i64) -> Stream {
+    let configured = configured(root);
+    let located = locate(root, None, &configured);
+    let mut notices = located.notices;
+    if !located.events.exists() {
+        return Stream {
+            ledger: None,
+            events: located.events,
+            accepted: 0,
+            turns: 0,
+            refused: 0,
+            notices,
+        };
+    }
+    let reader = Reader::with_limits(
+        &located.events,
+        Limits {
+            write_quarantine: false,
+            ..located.limits.clone()
+        },
+    );
+    match reader.replay(now) {
+        Ok((cursor, batch)) => {
+            // A stream that exists and yields nothing is two different facts, and the index line must not
+            // print the reassuring one. "no stream at X" is reserved for a path that is not there; a file
+            // whose lines were all refused says so, with the reader's own already-sanitized reason.
+            if !batch.rejections.is_empty() {
+                let first = &batch.rejections[0];
+                notices.push(format!(
+                    "the event stream at {} refused {} of {} line(s); first: {}",
+                    located.events.display(),
+                    batch.rejections.len(),
+                    batch.lines,
+                    first.detail
+                ));
+            }
+            Stream {
+                turns: cursor.ledger.turns.len(),
+                ledger: Some(cursor.ledger),
+                events: located.events,
+                accepted: batch.events.len() as u64,
+                refused: u64::try_from(batch.rejections.len()).unwrap_or(u64::MAX),
+                notices,
+            }
+        }
+        Err(err) => {
+            notices.push(format!(
+                "the event stream at {} could not be read: {err}",
+                located.events.display()
+            ));
+            Stream {
+                ledger: None,
+                events: located.events,
+                accepted: 0,
+                turns: 0,
+                refused: 0,
+                notices,
+            }
+        }
+    }
+}
+
 /// Read the repository's own `fathom.toml`, if it has one.
 #[must_use]
 pub fn configured(root: &Path) -> Configured {

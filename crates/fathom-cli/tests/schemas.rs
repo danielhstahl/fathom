@@ -14,7 +14,6 @@
 //! run (`tests/conftest.py`'s argument, applied to Rust).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use std::collections::BTreeMap;
 use std::process::Output;
 
 /// The validator, shared with `tests/delta_schema.rs` — see that file's header for why it is a `#[path]`

@@ -144,15 +144,26 @@ pub fn correct(
         }
 
         // Re-segment now, with the corrections in the policy, so the label moves in this command.
+        //
+        // The event stream comes along for the ride (`e4.2`). A rebuild recomputes every episode's intent,
+        // and an intent computed without the harness is a *different answer to the same question* — the
+        // trailer's, or none — so a correction to the author of a commit would otherwise quietly downgrade
+        // every prompt-derived intent in the repository to its fallback.
         let resolved = crate::segment::from_repository(root);
-        let report =
-            fathom_analyze::episodes::rebuild(&mut store, &resolved.rules, now).map_err(|err| {
-                Pending::new(
-                    ExitCode::StoreCorrupt,
-                    format!("re-segmenting after the correction: {err}"),
-                    Some("fathom index".to_owned()),
-                )
-            })?;
+        let stream = crate::harness::stream(root, now);
+        let report = fathom_analyze::episodes::rebuild(
+            &mut store,
+            &resolved.rules,
+            stream.ledger.as_ref(),
+            now,
+        )
+        .map_err(|err| {
+            Pending::new(
+                ExitCode::StoreCorrupt,
+                format!("re-segmenting after the correction: {err}"),
+                Some("fathom index".to_owned()),
+            )
+        })?;
         let after: Vec<(String, String)> = store
             .episodes(&fathom_store::episode::EpisodeQuery::default())?
             .iter()
@@ -322,7 +333,11 @@ pub fn forget(root: &Path, identity: &str, as_json: bool) -> eyre::Result<ExitCo
         }
         let resolved = crate::segment::from_repository(root);
         let now = crate::clock::now_millis();
-        fathom_analyze::episodes::rebuild(&mut store, &resolved.rules, now).map_err(failed)?;
+        // Same reason as in `correct`: a rebuild without the stream is a rebuild that forgets what the
+        // harness said (`e4.2`).
+        let stream = crate::harness::stream(root, now);
+        fathom_analyze::episodes::rebuild(&mut store, &resolved.rules, stream.ledger.as_ref(), now)
+            .map_err(failed)?;
         if as_json {
             output::line(format_args!(
                 "{}",

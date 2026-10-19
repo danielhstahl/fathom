@@ -678,6 +678,83 @@ fn replay_from_zero_reproduces_the_same_linkage() {
 }
 
 #[test]
+fn intent_text_does_not_move_the_linkage_digest() {
+    // The other half of `Turn::digest_fields`'s comment, asserted. A vendor that starts sending
+    // `payload.prompt` where it used to send only `prompt_sha256` changes the *content* of a turn, not the
+    // mapping of commits onto turns. If intent text were in the digest, that vendor upgrade would
+    // invalidate every stored linkage in the repository — and ADR-003 §6 is what a review is keyed to.
+    let commits = vec![commit("c1", 12, &["src/a.rs"])];
+
+    let quiet = Temp::new("linkage-quiet");
+    quiet.append(&[
+        line(1, "UserPromptSubmit", "s1", &ts(10), "{}"),
+        edit(2, "s1", &ts(12), "src/a.rs"),
+        line(3, "Stop", "s1", &ts(20), "{}"),
+    ]);
+    quiet.terminate();
+    let quiet_ledger = quiet
+        .reader()
+        .replay(millis(100))
+        .expect("the quiet stream reads")
+        .0
+        .ledger;
+
+    let loud = Temp::new("linkage-loud");
+    loud.append(&[
+        line(
+            1,
+            "UserPromptSubmit",
+            "s1",
+            &ts(10),
+            r#"{"prompt":"say something the quiet stream never said","plan":["one","two"],"declared_scope":["src/**"]}"#,
+        ),
+        edit(2, "s1", &ts(12), "src/a.rs"),
+        line(3, "Stop", "s1", &ts(20), "{}"),
+    ]);
+    loud.terminate();
+    let loud_ledger = loud
+        .reader()
+        .replay(millis(100))
+        .expect("the loud stream reads")
+        .0
+        .ledger;
+
+    // Both streams describe the same turn, and the loud one really did capture more.
+    let quiet_turn = quiet_ledger
+        .turns
+        .iter()
+        .find(|turn| turn.session_id == "s1")
+        .expect("one turn");
+    let loud_turn = loud_ledger
+        .turns
+        .iter()
+        .find(|turn| turn.session_id == "s1")
+        .expect("one turn");
+    assert!(
+        quiet_turn.prompt.is_none() && quiet_turn.plan.is_empty(),
+        "the quiet stream stated nothing: {quiet_turn:?}"
+    );
+    assert_eq!(
+        loud_turn.prompt.as_deref(),
+        Some("say something the quiet stream never said"),
+        "the loud one stated a prompt"
+    );
+    assert_eq!(loud_turn.plan.len(), 2);
+    assert_eq!(loud_turn.scope, vec!["src/**".to_owned()]);
+
+    let quiet_link = hooks::attribute(&commits, &quiet_ledger);
+    let loud_link = hooks::attribute(&commits, &loud_ledger);
+    assert!(
+        quiet_link.by_event > 0,
+        "and the fixture actually links the commit by event, or this proves nothing: {quiet_link:?}"
+    );
+    assert_eq!(
+        quiet_link.digest, loud_link.digest,
+        "the same commits, the same turns, the same mapping — text is not linkage"
+    );
+}
+
+#[test]
 fn turns_are_allocated_at_ingest_and_close_on_the_next_start() {
     let temp = Temp::new("turns");
     scenario(&temp);

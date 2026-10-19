@@ -200,6 +200,106 @@
               "description": "The episode id, stable across rewrites of its commits.",
               "type": "string"
             },
+            "intent": {
+              "additionalProperties": false,
+              "description": "What the episode was *for* (`e4.2`): the ladder that answered it - the harness prompt, a declared intent line, an `Intent:`/`Task:` trailer, a plan item, a prompt digest - with the plan items, the declared scope globs and the evidence list beside it. Null when the row was written before migration 5, which stored no intent at all: a different fact from `state: none`, which means every source was read and none of them stated anything.",
+              "properties": {
+                "confidence": {
+                  "description": "Confidence in `text`; 0.0 means nothing was recorded, not that nothing matters.",
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                "evidence": {
+                  "description": "Every rung that fired, strongest first - including one that exists but is switched off by `[intent] sources`.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "confidence": {"type": "number"},
+                      "detail": {
+                        "description": "The literal, in the source's own spelling.",
+                        "type": "string"
+                      },
+                      "source": {"type": "string"}
+                    },
+                    "required": ["confidence", "detail", "source"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "plan": {
+                  "description": "The plan items, in the order they were stated; empty when nothing stated a plan.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "status": {
+                        "description": "The item's state in the harness's own words, when it had one.",
+                        "type": "string"
+                      },
+                      "text": {"type": "string"}
+                    },
+                    "required": ["text"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "prompt": {
+                  "additionalProperties": false,
+                  "description": "The turn's prompt digests, and whether its text came with them. A digest with no text is `state: digest-only`, not an absence - ADR-005's `turn_start` row carries a digest precisely so that rewording a subject line cannot move a corpus digest.",
+                  "properties": {
+                    "chars": {"minimum": 0, "type": "integer"},
+                    "sha256": {"type": "string"},
+                    "text_captured": {"type": "boolean"}
+                  },
+                  "required": ["text_captured"],
+                  "type": "object"
+                },
+                "reason": {
+                  "description": "What was looked for and not found - the reading that makes `state: none` a checked absence rather than a blank.",
+                  "type": ["string", "null"]
+                },
+                "schema": {
+                  "description": "The document's own namespace, so a reader of the store column knows which shape it holds.",
+                  "type": "string"
+                },
+                "scope": {
+                  "description": "The declared scope, as repository-relative path globs, normalised, sorted and deduplicated. The input the scope-creep comparison reads (`fathom_analyze::scope::deviation`); nothing in this build enforces it.",
+                  "items": {"type": "string"},
+                  "type": "array"
+                },
+                "scope_rejected": {
+                  "description": "Declared scope values refused rather than quietly dropped: an absolute path, a `..`, a NUL.",
+                  "items": {"type": "string"},
+                  "type": "array"
+                },
+                "session_id": {
+                  "description": "The harness session the intent arrived on, when an event or an `Agent-Session:` trailer named one.",
+                  "type": ["string", "null"]
+                },
+                "source": {
+                  "description": "The rung that decided: `hook-prompt`, `hook-intent`, `agent-intent-trailer`, `plan-item`, `task-trailer`, `prompt-digest`, `none`.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "`recorded`, `digest-only` or `none`. The last is a state with a reason, never a blank.",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "The request, in the asker's own words. Absent unless `state` is `recorded`.",
+                  "type": ["string", "null"]
+                },
+                "truncated": {
+                  "description": "Whether `text` was cut at the stored byte cap; a quote that stops mid-sentence says so.",
+                  "type": "boolean"
+                },
+                "turn_id": {
+                  "description": "The harness turn the intent arrived on, session-qualified.",
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["confidence", "evidence", "plan", "schema", "scope", "source", "state"],
+              "type": ["object", "null"]
+            },
             "last_oid": {
               "description": "Tip commit of the episode.",
               "type": "string"

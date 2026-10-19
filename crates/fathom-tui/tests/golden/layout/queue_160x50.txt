@@ -10,13 +10,13 @@
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │where    src/store (9) · tests (1)                              │
 │   · 5f2c99 agent +61 −61 risk ?                                                             │boundary author 0.75 — a rule, not a fact (ADR-003 §4.7)        │
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │session  session 3 · turn 9                                     │
-│   · 40c9b3 agent +96 −0 risk ?                                                              │members  77aa:0 77aa:1 77aa:2 +3 more                           │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │                                                                │
-│   · 9c4d10 agent +58 −12 risk ?                                                             │delta    no document was handed to this card — fathom analyze   │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │         <episode> --json is the one source                     │
-│   · c1f5e2 ? +22 −22 risk ?                                                                 │risk     unknown — nothing has ranked this episode (`reco-c05`  │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │         ranks the spine; e4.4 ranks findings)                  │
-│   · b31c00 agent +18 −6 risk ?                                                              │                                                                │
+│   · 40c9b3 agent +96 −0 risk ?                                                              │intent   not handed to this card — no delta document            │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │members  77aa:0 77aa:1 77aa:2 +3 more                           │
+│   · 9c4d10 agent +58 −12 risk ?                                                             │                                                                │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │delta    no document was handed to this card — fathom analyze   │
+│   · c1f5e2 ? +22 −22 risk ?                                                                 │         <episode> --json is the one source                     │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │risk     unknown — nothing has ranked this episode (`reco-c05`  │
+│   · b31c00 agent +18 −6 risk ?                                                              │         ranks the spine; e4.4 ranks findings)                  │
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │                                                                │
 │   · 2be77f human +8 −3 risk ?                                                               │                                                                │
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │                                                                │

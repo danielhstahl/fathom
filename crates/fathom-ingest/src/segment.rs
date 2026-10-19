@@ -238,6 +238,13 @@ pub struct Rules {
     /// user stored ([`crate::attribute::Policy`]). One value, one cache key, one place a repository can
     /// disagree with the classifier.
     pub attribution: crate::attribute::Policy,
+    /// The intent-capture values: which sources may speak, and how much text is kept
+    /// ([`crate::intent::Policy`], `e4.2`).
+    ///
+    /// Hung on the same struct as `attribution` for the same reason: the ladder order is not configurable
+    /// (an intent a user reordered is an intent nobody can explain), but what it is allowed to read is, and
+    /// ADR-002 §4.5 says the knobs arrive as values or not at all.
+    pub intent: crate::intent::Policy,
     /// Substrings in a subject that mean "still the same turn".
     pub continuation_markers: Vec<String>,
     /// Conventional-commit types: a change of type between neighbours is a new unit.
@@ -258,6 +265,7 @@ impl Default for Rules {
             // that gets to move it, with measurements (ADR-003 §13.7).
             gap_millis: 30 * 60 * 1000,
             attribution: crate::attribute::Policy::default(),
+            intent: crate::intent::Policy::default(),
             continuation_markers: [
                 "wip",
                 "fixup!",

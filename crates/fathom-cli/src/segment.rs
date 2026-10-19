@@ -153,6 +153,102 @@ fn read_attribution(table: &toml_edit::Table, out: &mut Resolved) {
     }
 }
 
+/// Read `[intent]` into the capture policy (`e4.2`, `reco-c54`).
+///
+/// What is configurable is what the ladder may read and how much of it is kept. What is not — and
+/// deliberately never will be — is the *order*: "the first rung that states something decides" is an
+/// argument about which class of evidence is trustworthy, and an intent a user reordered is an intent
+/// nobody can explain. Same refusal `[episode] boundaries` and `[attribution]` already make.
+///
+/// * `sources` — the allow-list, in the published spellings (`hook-prompt`, `hook-intent`,
+///   `agent-intent-trailer`, `plan-item`, `task-trailer`, `prompt-digest`, `none`). **This replaces** the
+///   default list rather than extending it, because the only interesting use of it is to turn something
+///   off: a repository whose prompts carry names it does not want quoted says
+///   `sources = ["agent-intent-trailer"]` and means exactly that. An entry naming no rung this build has
+///   is a notice rather than an error — `review-note` and `manual-note` are spellings
+///   `[deps.provenance] intent_sources` already lists, and `e4.6`/`e6.5` are the tickets that would
+///   produce them — so a config written against one list keeps working when the other reads it.
+/// * `digest_counts` — whether a prompt digest with no text counts as an intent. On, because "a request
+///   happened and its text was not captured" is a fact worth printing; off, and that episode reads
+///   `no recorded intent` like any other.
+/// * `max_text_bytes`, `plan_cap`, `scope_cap` — the size bounds, so a harness that echoes a megabyte of
+///   prompt per turn grows a bounded row rather than the store.
+fn read_intent(table: &toml_edit::Table, out: &mut Resolved) {
+    if let Some(sources) = table.get("sources").and_then(toml_edit::Item::as_array) {
+        let mut kept: Vec<String> = Vec::new();
+        for entry in sources.iter() {
+            let Some(name) = entry.as_str() else {
+                out.notices
+                    .push(format!("intent.sources holds a non-string entry: {entry}"));
+                continue;
+            };
+            let name = name.trim().to_owned();
+            if name.is_empty() {
+                out.notices
+                    .push("intent.sources holds an empty source name".to_owned());
+                continue;
+            }
+            let known = fathom_ingest::intent::Source::parse(&name)
+                != fathom_ingest::intent::Source::None
+                || name == fathom_ingest::intent::Source::None.as_str();
+            if !known {
+                out.notices.push(format!(
+                    "intent.sources names `{name}`, which no rung of this build reads; it is ignored \
+                     rather than guessed at"
+                ));
+                continue;
+            }
+            kept.push(name);
+        }
+        if !kept.is_empty() {
+            out.rules.intent.sources = kept;
+        }
+    }
+
+    if let Some(value) = table
+        .get("digest_counts")
+        .and_then(toml_edit::Item::as_value)
+        .and_then(toml_edit::Value::as_bool)
+    {
+        out.rules.intent.digest_counts = value;
+    }
+
+    for (key, which) in [
+        ("max_text_bytes", Integer::MaxTextBytes),
+        ("plan_cap", Integer::PlanCap),
+        ("scope_cap", Integer::ScopeCap),
+    ] {
+        let Some(value) = table.get(key).and_then(toml_edit::Item::as_value) else {
+            continue;
+        };
+        let Some(number) = value.as_integer() else {
+            out.notices.push(format!(
+                "intent.{key} must be a whole number of bytes or items"
+            ));
+            continue;
+        };
+        if number <= 0 {
+            out.notices.push(format!(
+                "intent.{key} = {number} would keep nothing; the default was used"
+            ));
+            continue;
+        }
+        let keep = usize::try_from(number).unwrap_or(usize::MAX);
+        match which {
+            Integer::MaxTextBytes => out.rules.intent.max_text_bytes = keep,
+            Integer::PlanCap => out.rules.intent.plan_cap = keep,
+            Integer::ScopeCap => out.rules.intent.scope_cap = keep,
+        }
+    }
+}
+
+/// The three integer knobs, named so one loop reads all three instead of three near-identical blocks.
+enum Integer {
+    MaxTextBytes,
+    PlanCap,
+    ScopeCap,
+}
+
 /// Parse the `[episode]` table out of `fathom.toml` text.
 ///
 /// # Errors
@@ -175,6 +271,9 @@ pub fn rules_from_toml(text: &str) -> Resolved {
         .and_then(toml_edit::Item::as_table)
     {
         read_attribution(attribution, &mut out);
+    }
+    if let Some(intent) = document.get("intent").and_then(toml_edit::Item::as_table) {
+        read_intent(intent, &mut out);
     }
 
     let Some(episode) = document.get("episode").and_then(toml_edit::Item::as_table) else {

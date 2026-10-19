@@ -133,11 +133,12 @@ row `a harness session names this commit: s-demo`. Rung 3 (`trailer 0.90`) is wh
 printed and rung 2 (`hook 1.00`) is what the same transport prints when **both** sides of the
 boundary name a turn — ADR-003 §4.2's tie-break, not a difference in the adapter.
 
-Intent, said precisely: hooks v1 carries the turn's *digest*, and intent capture (`e4.2`,
-`reco-c54`) is the open ticket that would attach text to it. What appears in the TUI today is the
-harness session and turn per episode — the identity the intent will hang off — and the `i` key is
-bound to `intent.show`, whose view `e4.2` has not landed yet. That is a gap, and it is
-[name one in §4](#4-what-is-not-proven) rather than papered over here.
+Intent, said precisely: hooks v1 carries the turn's *digest*, and a digest is what this repository's
+own stream carries — `fathom show` prints that state as `no text captured · prompt <sha> · via
+prompt-digest · 0.30` rather than inventing a sentence. Where a harness sends the prompt text, or where
+the commit carries an `Intent:`/`Task:` trailer, intent capture (`e4.2`, `reco-c54`) attaches it to every
+episode of the turn it belongs to; the `i` key now opens the pane that shows it, with the plan and the
+declared scope beside it. §4 names what is still not proven about that capture.
 
 ---
 
@@ -249,17 +250,25 @@ Recorded because the alternative is a checkbox that passes on a fiction.
    `no nslookup`), so [ADR-005 §9](../../docs/adr/0005-harness-contract.md)'s capture has not run.
    The adapter's field spellings stay **[external]**; §2's live run used pi as the vendor. The
    promotion is one `tee` and one key-set diff away, and `--describe` says all of this itself.
-2. **Intent text is not captured.** This ticket moves turn/session identity to the TUI; the prompt
-   text stays a digest (`e4.2`/`reco-c54` owns it, and its `intent.show` view is not landed yet).
+2. **No prompt text from a real vendor reaches the capture.** `e4.2`/`reco-c54` landed the ladder — hook
+   prompt, `Intent:`/`Task:` trailer, plan item, digest, then the named absence — and the `intent.show`
+   pane reads it, but the streams in this repository carry a prompt *digest* and no text (§1), and no
+   vendor has ever written one here (§1 of this list). So the rung that is exercised end to end in the
+   fixtures is the trailer and the digest; the prompt rung is exercised with a stream this project wrote.
+   `fathom index` says which rung it used, per episode, so the claim can be checked against a real
+   adapter's output rather than argued about.
 3. **A wire origin the ADR names and the reader does not.** `message.part.updated` (OpenCode's
    `turn_start`, [ADR-005 §2.1](../../docs/adr/0005-harness-contract.md)) is in the table and in no
    reader table — `e6.1` amended two cells of §2.1 to match the reader and left this one ahead of it.
    The new test would fail on it, so it is named in `KNOWN_GAPS` with a comment saying to delete the
    line when the reader learns the name. The fix belongs to the reader, not to an adapter.
-4. **Commit↔turn attribution from events is not wired into `fathom index`.** `hooks::attribute` and
-   `fill_turn_ids` exist and are tested, and nothing calls them from the index path yet, so the
-   boundaries in §1.5 arrived by the trailer transport. The event transport reaching segmentation
-   directly is the epic's next step, not this ticket's claim.
+4. **Event evidence does not draw episode boundaries.** `hooks::attribute` is called from the index pass
+   now (`fathom_analyze::episodes::rebuild`), and what it produces is *intent evidence and session
+   identity*, nothing more: the boundary cascade still decides from trailers, author changes and time,
+   exactly as before `e4.2`. Letting a stream move a boundary would move episode ids, and every review
+   keyed to them — that is `e4.4`'s decision to make with ADR-003 §4 in front of it, not a side effect of
+   a capture ticket. `fill_turn_ids` remains uncalled, and §1's boundaries arrived by the trailer
+   transport.
 5. **"Recipes followed by someone other than their author without help" was not satisfied.** No
    second person was available. The substitute — every command in the three recipes was copied and
    pasted verbatim into a fresh scratch directory and run, and

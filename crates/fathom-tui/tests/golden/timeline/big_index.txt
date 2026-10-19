@@ -28,10 +28,10 @@ boundary time-gap 0.60 — a rule,
          not a fact (ADR-003 §4.7) 
 session  no harness session on this
          episode                   
+intent   not handed to this card — 
+         no delta document         
 members  6d9637em0 7500b3cm1       
-         881a854m2 +1 more         
-                                   
-… 9 more rows — `<C-w>o` gives thi…
+… 11 more rows — `<C-w>o` gives th…
 
 ## card strip
 

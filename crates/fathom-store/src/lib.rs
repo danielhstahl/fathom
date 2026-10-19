@@ -45,3 +45,9 @@ pub mod episode;
 /// inventory and the SQLite capability probe (ADR-004 §9.6). Gated with [`spine`] for the same reason.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod inventory;
+
+/// The search document of ADR-004 §4.8 — `episode_doc` and its FTS5 index — and the pointer-shaped query
+/// every search surface reads (`e4.2` writes it, `e5.2` will read it). Gated with [`spine`] for the same
+/// reason: with no SQLite backend there is no document table.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod search;

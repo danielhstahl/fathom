@@ -37,6 +37,7 @@ mod rail;
 mod render;
 mod session;
 
+pub use card::intent_lines;
 pub use card::lines as card_lines;
 pub use card::risk_lines;
 pub use days::{date_only, date_or_any, day_label, day_start, relative};
@@ -146,6 +147,16 @@ impl Timeline {
     /// (`reco-1nu`). The rail itself decides what that is worth printing.
     pub fn set_index_facts(&mut self, facts: &crate::index::Facts) {
         self.rail.set_index_facts(facts);
+    }
+
+    /// One episode by id, filtered or not.
+    ///
+    /// The panes mostly act on the cursor, but a pane that answers a question about *this* episode (its
+    /// intent, its explanation) has to look the row up by id, because the filter may have hidden it and the
+    /// answer is still the answer (`e4.2`).
+    #[must_use]
+    pub fn find(&self, id: &str) -> Option<&Episode> {
+        self.rail.episodes().iter().find(|episode| episode.id == id)
     }
 
     /// The episode under the cursor.

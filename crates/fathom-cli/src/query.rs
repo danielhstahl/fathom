@@ -248,6 +248,7 @@ fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_j
         "author_kind": author_kind,
         "author_confidence": author_confidence,
         "attribution": attribution_json(episode),
+        "intent": intent_json(episode),
         "session_id": session_id,
         "turn_id": turn_id,
         // ADR-003 §9.1 / §18.2 D4: the id is `<session_id>:<turn_index>`, and the number is printed as
@@ -351,6 +352,33 @@ fn show_text(
     out
 }
 
+/// The intent block for `--json` (`e4.2`, `reco-c54`): the stored document, verbatim.
+///
+/// `null` when the row carries no intent document at all — a store written before migration 5. That is
+/// deliberately *not* the same JSON as an episode whose intent was looked for and not found, which carries
+/// `{"state": "none", …}`: a consumer must be able to tell "Fathom never asked" from "nothing answered",
+/// because only the second one is a fact about the work.
+fn intent_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_json::Value {
+    let Some(row) = episode.as_ref() else {
+        return serde_json::Value::Null;
+    };
+    if row.intent.is_empty() {
+        return serde_json::Value::Null;
+    }
+    serde_json::from_str(&row.intent).unwrap_or_else(|_| {
+        json!({
+            "schema": "fathom-intent/1",
+            "state": row.intent_state,
+            "source": row.intent_source,
+            "confidence": row.intent_confidence,
+            "text": row.intent_text,
+            "plan": [],
+            "scope": [],
+            "reason": "the stored intent document could not be read; these are the scalars beside it",
+        })
+    })
+}
+
 /// The attribution block for `--json` (`e4.1`, `reco-w7q`): the case behind `author_kind`.
 ///
 /// `null` when the row carries no attribution detail — a store written before migration 4, which stored
@@ -415,6 +443,25 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
         boundary_confidence,
         author_confidence
     )];
+    // The intent block (`e4.2`, `reco-c54`) — through the same renderer the delta document uses, so the
+    // three places an intent appears say it the same way. A row with no document says that too: the ticket's
+    // rule is that a missing intent is shown, not blanked.
+    match fathom_ingest::intent::Intent::from_json(&row.intent) {
+        Some(intent) => {
+            for line in fathom_analyze::insight::intent_block(&intent) {
+                out.push(format!("  {line}"));
+            }
+        }
+        None if row.intent.is_empty() => out.push(
+            "  intent      no intent document on this row — `fathom index` captures it from the hooks or \
+             the `Intent:`/`Task:` trailers"
+                .to_owned(),
+        ),
+        None => out.push(format!(
+            "  intent      {} · the stored document could not be read",
+            row.intent_state
+        )),
+    }
     // The attribution block (`e4.1`, `reco-w7q`): the rung that decided, the agent it named, and — when the
     // label was refused — the reason for refusing it. A card that printed `?` with no reason is the silent
     // bucket the ticket forbids, and a card that printed `agent` with no evidence could not be argued with.

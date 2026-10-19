@@ -10,13 +10,13 @@
 │  77aa0c 1d1h agent +1 204 −90 ●●●●●● ? ✔                                                       │where    src/store (9) · tests (1)                           │
 │  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑                                                           │boundary author 0.75 — a rule, not a fact (ADR-003 §4.7)     │
 │  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑                                                          │session  session 4 · turn 12                                 │
-│ Thu 18 Sep · session 2 (pi) ── 1 episode                                                       │members  e8f1:0 e8f1:1 e8f1:2 +1 more                        │
-│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔                                                           │                                                             │
-│ Sun 14 Sep · session 1 (pi) ── 1 episode                                                       │delta    no document was handed to this card — fathom analyze│
-│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×                                                         │         <episode> --json is the one source                  │
-│ Sat 13 Sep ── 1 episode                                                                        │risk     unknown — nothing has ranked this episode           │
-│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐                                                          │         (`reco-c05` ranks the spine; e4.4 ranks findings)   │
-│ Thu 11 Sep · session 1 (pi) ── 1 episode                                                       │                                                             │
+│ Thu 18 Sep · session 2 (pi) ── 1 episode                                                       │intent   not handed to this card — no delta document         │
+│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔                                                           │members  e8f1:0 e8f1:1 e8f1:2 +1 more                        │
+│ Sun 14 Sep · session 1 (pi) ── 1 episode                                                       │                                                             │
+│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×                                                         │delta    no document was handed to this card — fathom analyze│
+│ Sat 13 Sep ── 1 episode                                                                        │         <episode> --json is the one source                  │
+│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐                                                          │risk     unknown — nothing has ranked this episode           │
+│ Thu 11 Sep · session 1 (pi) ── 1 episode                                                       │         (`reco-c05` ranks the spine; e4.4 ranks findings)   │
 │  b31c00 1mo agent +18 −6 ●●●○○○ ? z                                                            │                                                             │
 │                                                                                                │                                                             │
 │                                                                                                │                                                             │

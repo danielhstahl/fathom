@@ -278,6 +278,13 @@ SECTIONS: dict[str, dict] = {
                            "table, and the confidence bar below which Fathom prints `?` "
                            "instead of guessing. Every value here is handed to the "
                            "classifier as data — no crate below the CLI opens this file."},
+    "intent": {"title": "Intent capture", "owner": "ADR-003 §8 / e4.2 (`reco-c54`)",
+               "doc": "What an episode was *for*: the ladder that answers that question "
+                      "(the harness prompt, the `Agent-Intent:` trailer, a `Task:` line, a "
+                      "prompt digest) and how much of the answer is kept. The ladder's ORDER "
+                      "is not configurable, only its membership — an intent a user reordered "
+                      "is an intent nobody can explain, which is the same refusal `[episode] "
+                      "boundaries` and `[attribution]` make."},
     "ingest": {"title": "Ingest limits", "owner": "e1.2",
                "doc": "The size cap: a bigger blob is recorded as oversized, never slurped."},
     "cache": {"title": "Cache caps", "owner": "ADR-004 §11",
@@ -1565,6 +1572,45 @@ KEY_LIST: list[Key] = [
            "the weakest rung (`identity`) exactly at the bar, so nothing is demoted until a "
            "repository asks for it.",
        analyzer="episode.attribute", ticket="e4.1"),
+    # --- intent (e4.2: what the episode was for, and how much of it is kept) --
+    _k(path="intent.sources", kind="string_list", merge="replace",
+       default=["hook-prompt", "hook-intent", "agent-intent-trailer", "plan-item",
+                "task-trailer", "prompt-digest"],
+       doc="Which rungs of the intent ladder may decide the text, in the published spellings "
+           "(`hook-prompt`, `hook-intent`, `agent-intent-trailer`, `plan-item`, `task-trailer`, "
+           "`prompt-digest`). This **replaces** the list rather than extending it: the only "
+           "interesting use of the key is to turn something off — a repository whose prompts "
+           "carry names it does not want quoted says `[\n\"agent-intent-trailer\"]` and means "
+           "exactly that. An entry naming no rung this build reads is a notice, not an error: "
+           "`review-note` and `manual-note` are spellings `[deps.provenance] intent_sources` "
+           "already lists, and `e4.6`/`e6.5` are the tickets that would produce them.",
+       analyzer="episode.intent", ticket="e4.2"),
+    _k(path="intent.digest_counts", kind="boolean", default=True,
+       doc="Whether a prompt digest with no text counts as an intent at all. On, the episode "
+           "reads `digest-only` with the prompt's digest — \"a request happened and its text "
+           "was not captured\" is a fact. Off, and such an episode reads `no recorded intent` "
+           "like any other, which is the honest choice for a repository that would rather not "
+           "print a hash where a sentence belongs.",
+       analyzer="episode.intent", ticket="e4.2"),
+    _k(path="intent.max_text_bytes", kind="integer", default=4096, minimum=64,
+       units="bytes",
+       doc="Cap on any one piece of intent text — a prompt, a plan item, a trailer value. A "
+           "prompt is a paragraph, not a file, and ADR-005 §6.3 forbids file contents crossing "
+           "this boundary: a harness that echoed a 2 MB prompt into a `UserPromptSubmit` "
+           "payload would otherwise grow the store by the prompt's size forever. Text that "
+           "exceeds the cap is kept truncated, and the document says `truncated: true` rather "
+           "than ending mid-sentence in silence.",
+       analyzer="episode.intent", ticket="e4.2"),
+    _k(path="intent.plan_cap", kind="integer", default=64, minimum=1, units="items",
+       doc="Plan items kept per episode. The document counts what it dropped instead of "
+           "quietly losing the tail, because a plan list that silently ends is a plan that "
+           "was not finished.",
+       analyzer="episode.intent", ticket="e4.2"),
+    _k(path="intent.scope_cap", kind="integer", default=64, minimum=1, units="globs",
+       doc="Declared-scope globs kept per episode. Absolute paths, `..` escapes and anything "
+           "holding a NUL are refused and named in `scope_rejected`, never normalised into "
+           "something that reads as a repository-relative glob.",
+       analyzer="episode.intent", ticket="e4.2"),
     # --- ingest / store / memory caps (defaults come from the budget table) --
     _k(path="ingest.size_cap_mib", kind="integer", default=8, fallback=8,
        budget="ingest.file_size_cap.mib", units="MiB", minimum=1,

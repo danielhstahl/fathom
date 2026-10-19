@@ -363,6 +363,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `diff` | e1.6 | Per-file diff knobs. |
 | `episode` | ADR-003 / e1.3 | Boundary sources in priority order, and the idle gap that ends an episode when nothing better is available. |
 | `attribution` | ADR-003 §8 / e4.1 (`reco-w7q`) | Who wrote a commit: the registry of known agents, the marker table, and the confidence bar below which Fathom prints `?` instead of guessing. Every value here is handed to the classifier as data — no crate below the CLI opens this file. |
+| `intent` | ADR-003 §8 / e4.2 (`reco-c54`) | What an episode was *for*: the ladder that answers that question (the harness prompt, the `Agent-Intent:` trailer, a `Task:` line, a prompt digest) and how much of the answer is kept. The ladder's ORDER is not configurable, only its membership — an intent a user reordered is an intent nobody can explain, which is the same refusal `[episode] boundaries` and `[attribution]` make. |
 | `ingest` | e1.2 | The size cap: a bigger blob is recorded as oversized, never slurped. |
 | `cache` | ADR-004 §11 | The class-R budget. Defaults come from the size class, not from a magic number. |
 | `store` | ADR-004 §7, §11 | WAL ceiling and the soft store-size ceiling `doctor` warns at. |
@@ -602,6 +603,11 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `attribution.markers` | `string_list` | `—` | `extend` | `any` | — | episode.attribute | `e4.1` |
 | `attribution.trust_committer` | `boolean` | `True` | `replace` | `any` | — | episode.attribute | `e4.1` |
 | `attribution.ambiguous_below` | `number` | `0.5` | `replace` | `any` | confidence | episode.attribute | `e4.1` |
+| `intent.sources` | `string_list` | `hook-prompt, hook-intent, agent-intent-trailer, plan-item, task-trailer, prompt-digest` | `replace` | `any` | — | episode.intent | `e4.2` |
+| `intent.digest_counts` | `boolean` | `True` | `replace` | `any` | — | episode.intent | `e4.2` |
+| `intent.max_text_bytes` | `integer` | `4096` | `replace` | `any` | bytes | episode.intent | `e4.2` |
+| `intent.plan_cap` | `integer` | `64` | `replace` | `any` | items | episode.intent | `e4.2` |
+| `intent.scope_cap` | `integer` | `64` | `replace` | `any` | globs | episode.intent | `e4.2` |
 | `ingest.size_cap_mib` | `integer` | `8` | `replace` | `any` | MiB | ingest.normalize | `e1.2` |
 | `cache.budget.mib` | `integer` | `512` | `replace` | `any` | MiB | — | `e1.4` |
 | `store.wal_cap.mib` | `integer` | `64` | `replace` | `any` | MiB | — | `e1.1` |

@@ -43,7 +43,7 @@ use sha2::Digest as _;
 /// never migrates derived data" (§9.5) a mechanism instead of an intention: bump this number and every
 /// stored analysis becomes unreachable, so the rebuild path is the same code path a fresh clone takes —
 /// the *tested* one.
-pub const SCHEMA_VERSION: i64 = 4;
+pub const SCHEMA_VERSION: i64 = 5;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -101,6 +101,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (2, MIGRATION_2),
     (3, crate::episode::MIGRATION_3),
     (4, crate::episode::MIGRATION_4),
+    (5, crate::episode::MIGRATION_5),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.
@@ -521,6 +522,13 @@ impl Store {
                     .map_err(|err| corrupt(format!("adding {table}.{column}"), &err))?;
             }
         }
+
+        // ADR-004 §4.8: the FTS index is created only when the running SQLite has FTS5, because the schema
+        // may not depend on an optional compile option — and the *absence* is recorded rather than left
+        // implicit, so `Store::search` can report `degraded: true` instead of silently running the LIKE
+        // fallback. Idempotent for the same reason every other step here is: `CREATE ... IF NOT EXISTS`.
+        let fts5 = crate::search::ensure_search_index(&self.conn)?;
+        self.set_meta("search.fts5", if fts5 { "present" } else { "absent" })?;
 
         // §9.1: the two version stamps must agree, and the second one is only meaningful once a store
         // exists at all, so it is written here rather than by a separate init step.

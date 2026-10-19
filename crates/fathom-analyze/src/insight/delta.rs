@@ -72,6 +72,11 @@ pub const ROLLUP_CAP: usize = 5;
 /// How many member commits the `episode.members` row lists before the remainder is counted.
 pub const MEMBER_CAP: usize = 8;
 
+/// How many plan items the text rendering lists before it counts the rest (`e4.2`, `reco-c54`). Six is
+/// not a threshold, only a legibility limit: the document carries every item, and a card that printed
+/// forty would hide the four findings under them.
+const PLAN_LINES: usize = 6;
+
 /// The section states, as serialized. Three, because they are the three claims a reviewer acts on
 /// differently: this was measured, this was measured with a hole in it, this was not measured at all.
 ///
@@ -511,6 +516,106 @@ pub struct AttributionEvidence {
     pub confidence: f64,
 }
 
+/// The published spellings of the intent states, as the delta document writes them (`e4.2`, `reco-c54`).
+///
+/// A view crate reads these instead of naming `fathom-ingest` itself: ADR-002 §5.2 gives `fathom-tui` no
+/// ingest edge, and a pane that could not spell the states it prints would be a pane re-deriving them.
+/// They are the ingest crate's own strings *by construction*: each one is `State::as_str` called in a
+/// constant expression, so there is no second copy that can drift — the same shape as [`STATE_MEASURED`]
+/// and its siblings above.
+pub const INTENT_RECORDED: &str = fathom_ingest::intent::State::Recorded.as_str();
+/// A prompt was recorded, its text was not.
+pub const INTENT_DIGEST_ONLY: &str = fathom_ingest::intent::State::Digest.as_str();
+/// Nothing stated the episode's purpose, and that was checked.
+pub const INTENT_NONE: &str = fathom_ingest::intent::State::Absent.as_str();
+
+/// The intent block of the text rendering, as lines (`e4.2`, `reco-c54`).
+///
+/// Three states get three different sentences, because the ticket's rule is that "nothing was
+/// recorded" is a state and not a blank: a reader who cannot tell *"nothing asked"* from *"something
+/// asked and we did not capture it"* has to go ask a human, which is the thing this tool exists to
+/// avoid. Scope and plan get their own lines rather than being folded into the quote, because they are
+/// checked as well as read — scope is what `e4.3`'s scope-creep detector measures a change against
+/// ([`crate::scope::deviation`]), and a plan is read item by
+/// item or not at all.
+///
+/// Public because the card pane and `fathom show` draw these same lines: one rendering of an intent for
+/// every surface, not three that could drift (ADR-001 §7.10).
+#[must_use]
+pub fn intent_block(intent: &fathom_ingest::intent::Intent) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    use fathom_ingest::intent::State;
+    match State::parse(&intent.state) {
+        State::Recorded => out.push(format!(
+            "intent    {} · via {} · {:.2}",
+            intent.text.clone().unwrap_or_default(),
+            intent.source,
+            intent.confidence
+        )),
+        State::Digest => {
+            out.push(format!(
+                "intent    no text captured · prompt {} · via {} · {:.2}",
+                intent
+                    .prompt
+                    .as_ref()
+                    .and_then(|prompt| prompt.sha256.as_deref())
+                    .and_then(|sha| sha.get(..12))
+                    .unwrap_or("—"),
+                intent.source,
+                intent.confidence
+            ));
+            // The digest state explains itself the way the absence does: "no text" invites "then go and
+            // find it", and the reason line is what tells the reviewer there is nothing to find.
+            if let Some(reason) = intent.reason.as_deref() {
+                out.push(format!("reason    {reason}"));
+            }
+        }
+        State::Absent => out.push(format!(
+            "intent    no recorded intent · {}",
+            intent
+                .reason
+                .clone()
+                .unwrap_or_else(|| "nothing stated it, in the hooks or in the trailers".to_owned())
+        )),
+    }
+    if intent.truncated {
+        out.push("intent    (the quote above was cut at the stored byte cap)".to_owned());
+    }
+    if !intent.scope.is_empty() {
+        out.push(format!(
+            "scope     {} (declared){}",
+            intent.scope.join(", "),
+            if intent.scope_rejected.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    " · {} refused: {}",
+                    intent.scope_rejected.len(),
+                    intent.scope_rejected.join(", ")
+                )
+            }
+        ));
+    }
+    for (index, item) in intent.plan.iter().take(PLAN_LINES).enumerate() {
+        out.push(format!(
+            "plan      {}. {}{}",
+            index + 1,
+            item.text,
+            match &item.status {
+                Some(status) => format!(" [{status}]"),
+                None => String::new(),
+            }
+        ));
+    }
+    if intent.plan.len() > PLAN_LINES {
+        out.push(format!(
+            "plan      … {} more item(s)",
+            intent.plan.len() - PLAN_LINES
+        ));
+    }
+    out
+}
+
 /// The episode's own identity, carried verbatim from the spine.
 ///
 /// The digests are here so that a consumer of `--json` can relink after a rebase without asking the store
@@ -547,6 +652,14 @@ pub struct EpisodeRef {
     /// `None` on a row written before migration 4, which recorded the label and nothing else.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attribution: Option<AttributionRef>,
+    /// What the episode was *for*, with the evidence for that (`e4.2`, `reco-c54`): the text, the session
+    /// and turn it arrived on, the plan items, the declared scope globs, and the rung that decided. This
+    /// is the store's intent document, unchanged, because the store column and the document field must not
+    /// be two answers to one question (ADR-001 §7.10). `None` means the row was written before migration
+    /// 5 and no intent was ever read for it — which is a different fact from `state: "none"`, the state a
+    /// row carries when intent *was* looked for and nothing was there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent: Option<fathom_ingest::intent::Intent>,
     /// Which boundary rule opened the episode, as the store recorded it; how far to trust it is
     /// [`EpisodeRef::boundary_confidence`] (`ADR-003 §4.7`).
     pub boundary_rule: String,
@@ -2096,6 +2209,9 @@ pub fn render(delta: &EpisodeDelta) -> Vec<String> {
             ));
         }
     }
+    if let Some(intent) = &episode.intent {
+        out.extend(intent_block(intent));
+    }
     for section in &delta.sections {
         out.push(format!(
             "{} [{}] {}",
@@ -2319,6 +2435,46 @@ mod store_bridge {
         })
     }
 
+    /// The store row's intent columns → the delta's intent block (`e4.2`, `reco-c54`).
+    ///
+    /// Three states, and the middle one is the reason this is a function rather than a `?`:
+    ///
+    /// * no `intent_state` at all — a row from before migration 5, or one whose delta was built from a
+    ///   spine row that predates intent. `None`: nobody looked, which the reader prints as a gap rather
+    ///   than as an absence.
+    /// * a state and a document — the normal case, parsed and handed over whole.
+    /// * a state and an unreadable document — a truncated or foreign JSON blob. The *scalars* are still
+    ///   true, so they are what gets shown, with the parse failure named as the reason. A delta document
+    ///   that refuses to build because one column holds junk is a document that cannot be read at all,
+    ///   and the junk is the finding, not the blocker.
+    fn intent_ref(
+        row: &fathom_store::episode::EpisodeRow,
+    ) -> Option<fathom_ingest::intent::Intent> {
+        use fathom_ingest::intent::Intent;
+        if row.intent.is_empty() {
+            return None;
+        }
+        match Intent::from_json(&row.intent) {
+            Some(intent) => Some(intent),
+            None => Some(Intent {
+                state: fathom_ingest::intent::State::parse(&row.intent_state)
+                    .as_str()
+                    .to_owned(),
+                source: fathom_ingest::intent::Source::parse(&row.intent_source)
+                    .as_str()
+                    .to_owned(),
+                confidence: row.intent_confidence,
+                text: (!row.intent_text.is_empty()).then(|| row.intent_text.clone()),
+                reason: Some(
+                    "the stored intent document could not be read; these fields are the scalars \
+                     beside it"
+                        .to_owned(),
+                ),
+                ..Intent::default()
+            }),
+        }
+    }
+
     fn build_one(store: &Store, row: &EpisodeRow) -> Result<EpisodeDelta, Error> {
         let members = store.episode_members(&row.id)?;
         let mut files: BTreeMap<String, Aggregated> = BTreeMap::new();
@@ -2413,6 +2569,7 @@ mod store_bridge {
                 author_email: row.author_email.clone(),
                 author_confidence: Some(row.author_confidence),
                 attribution: attribution_ref(row),
+                intent: intent_ref(row),
                 boundary_rule: row.boundary_rule.clone(),
                 boundary_confidence: Some(row.boundary_confidence),
                 session: row.session_id.clone(),
@@ -2570,6 +2727,7 @@ impl EpisodeRef {
             author_email: String::new(),
             author_confidence: None,
             attribution: None,
+            intent: None,
             boundary_rule: String::new(),
             boundary_confidence: None,
             session: None,

@@ -28,6 +28,9 @@ pub mod export;
 pub mod insight;
 /// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
 pub mod risk;
+/// The declared scope of an episode, measured against the paths the change touched (`e4.2`). The
+/// scope-creep detector is `e4.3`'s; this is the input it reads.
+pub mod scope;
 
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

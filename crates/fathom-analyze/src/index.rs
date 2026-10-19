@@ -118,6 +118,13 @@ pub struct Options {
     /// These arrive as values because ADR-002 §4.5 forbids a crate below `fathom-cli` from reading a
     /// config file; the CLI turns `fathom.toml`'s `[[episodes.force-split]]` tables into this struct.
     pub segment: fathom_ingest::segment::Rules,
+    /// The harness event stream, already read, when the repository has one (`e4.2`, `e6.1`).
+    ///
+    /// `None` is the common case — most repositories have no adapter installed — and it is a state, not a
+    /// degraded mode: the trailer fallback still runs. The CLI owns the reading (ADR-002 §4.5: this crate
+    /// does not open files it was not handed) and hands the ledger over as data, exactly as it hands over
+    /// the config.
+    pub hooks: Option<fathom_ingest::hooks::Ledger>,
     /// Whether the run rebuilds the episode set (§4.3 of ADR-003's plan). On by default: every verb that
     /// reads episodes wants them present, and the step is idempotent.
     pub episodes: bool,
@@ -237,6 +244,7 @@ impl Default for Options {
             cancel: None,
             now: None,
             segment: fathom_ingest::segment::Rules::default(),
+            hooks: None,
             episodes: true,
             park_after_units: None,
             progress: None,
@@ -575,7 +583,8 @@ pub fn run(
                 of: None,
             });
         }
-        let rebuilt = crate::episodes::rebuild(store, &options.segment, now)?;
+        let rebuilt =
+            crate::episodes::rebuild(store, &options.segment, options.hooks.as_ref(), now)?;
         // Same argument as the worktree's closing tick: the opening row says `0 episodes`, and the only
         // thing that can correct it is a tick that says how many there are now.
         if let Some(progress) = &options.progress {

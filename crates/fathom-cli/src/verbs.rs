@@ -676,6 +676,10 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     // The boundary knobs come from the repository's own `fathom.toml`. This is the crate ADR-002 §4.5 lets
     // read configuration, and the resolution happens here so that segmentation receives a value.
     let segment = crate::segment::from_repository(root);
+    // The harness event stream, read before the run so the step that captures intent has its evidence
+    // (`e4.2`). Absence is the normal case and prints as one, not as a failure.
+    let now = crate::clock::now_millis();
+    let stream = crate::harness::stream(root, now);
     // Created before the store is opened and finished after the run closes, so the row a terminal is
     // left with is always ended (`e5.9`).
     let guide = crate::guide::Guide::new(crate::guide::Request::decide(
@@ -699,7 +703,7 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     let options = index::Options {
         // The instant is an argument, not a read, all the way down (ADR-002 §4.4); this is the one place
         // it is read, and every row and counter this run writes carries this one value.
-        now: Some(crate::clock::now_millis()),
+        now: Some(now),
         // The guided first index (`e5.9`): a row on stderr while the run goes, so a minute of walking
         // a real history is not indistinguishable from a hang. `--json` and `--no-progress` silence it,
         // and a run indexing for a pipe never starts one.
@@ -710,6 +714,9 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
             Scope::NewCommits
         },
         segment: segment.rules.clone(),
+        // The harness stream, read for the intent and for nothing else (`e4.2`). Reading it does not
+        // consume it: the durable cursor stays where the watcher left it.
+        hooks: stream.ledger.clone(),
         refresh: args.refresh || args.rebuild,
         worktree: if args.committed_only {
             Worktree::Ignore
@@ -738,7 +745,15 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     if args.json {
         output::line(format_args!(
             "{}",
-            json_report(root, &store, &store_path, &report, args.rebuild, epoch)
+            json_report(
+                root,
+                &store,
+                &store_path,
+                &report,
+                args.rebuild,
+                epoch,
+                &stream
+            )
         ));
     } else if args.stats {
         print_stats(&store_path, &report);
@@ -763,6 +778,41 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
             report.computed(),
             report.elapsed.as_millis()
         ));
+        // The intent tally, on the same line the run reports (`e4.2`). Every bucket is printed, including
+        // the empty one and the "nothing recorded" one: the ticket's rule is that missing intent is a state,
+        // and a state that only appears when it is non-empty is a state a reviewer never learns to read.
+        {
+            let redactor = crate::sanitize::Redactor::for_root(root);
+            let episodes = &report.episodes;
+            let harness = if !stream.events.exists() {
+                format!("no stream at {}", redactor.path(&stream.events))
+            } else if stream.turns == 0 && stream.refused > 0 {
+                format!(
+                    "unreadable stream at {} ({} line(s) refused)",
+                    redactor.path(&stream.events),
+                    stream.refused
+                )
+            } else {
+                format!(
+                    "{} turn(s) from {}",
+                    stream.turns,
+                    redactor.path(&stream.events)
+                )
+            };
+            say(format_args!(
+                "  intent: {} recorded ({} from the harness), {} digest-only, {} none recorded · harness: {harness}",
+                episodes.intent_recorded,
+                episodes.intent_from_hook,
+                episodes.intent_digest,
+                episodes.intent_absent
+            ));
+            // Whatever was read and could not be used, on its own line (`e4.2`). A stream that exists but
+            // cannot be read must not print as "no stream": the first is a fault to fix, the second is a
+            // repository with no adapter, and the intent tally means something different in each.
+            for notice in &stream.notices {
+                say(format_args!("  stream: {notice}"));
+            }
+        }
         if !report.worktree_skipped.is_empty() {
             say(format_args!(
                 "  {} uncommitted path(s) were not analysed; pass --stats to see why",
@@ -826,6 +876,7 @@ fn json_report(
     report: &fathom_analyze::index::Report,
     rebuild: bool,
     epoch: i64,
+    stream: &crate::harness::Stream,
 ) -> serde_json::Value {
     use serde_json::json;
 
@@ -846,6 +897,26 @@ fn json_report(
             "written": report.spine.commits_written,
         },
         "interrupted": report.interrupted,
+        // The intent capture's tallies, and what stream they came from (`e4.2`). `events_file` is printed
+        // even when it does not exist, so "no intent" can be told apart from "no hooks" without a second
+        // command.
+        "intent": {
+            "recorded": report.episodes.intent_recorded,
+            "from_hook": report.episodes.intent_from_hook,
+            "digest_only": report.episodes.intent_digest,
+            "none": report.episodes.intent_absent,
+            "harness": {
+                "events_file": redactor.path(&stream.events),
+                "exists": stream.events.exists(),
+                "turns": stream.turns,
+                "events": stream.accepted,
+                "refused": stream.refused,
+                // One line per thing the reader found and could not use, including a stream that exists but
+                // would not parse: "no stream" and "unreadable stream" are different reasons for the same
+                // empty intent tally, and only one of them is the repository's fault.
+                "notices": stream.notices,
+            },
+        },
         "reason": report.reason.map(|reason| format!("{reason:?}").to_ascii_lowercase()),
         "analyzers": report
             .analyzers

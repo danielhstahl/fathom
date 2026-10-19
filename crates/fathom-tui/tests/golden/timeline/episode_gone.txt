@@ -27,11 +27,11 @@ where    src/store (4) · tests (1)
 boundary author 0.75 — a rule, not 
          a fact (ADR-003 §4.7)     
 session  session 4 · turn 11       
+intent   not handed to this card — 
+         no delta document         
 members  9c4d:0 9c4d:1             
                                    
-delta    no document was handed to 
-         this card — fathom analyze
-… 7 more rows — `<C-w>o` gives thi…
+… 9 more rows — `<C-w>o` gives thi…
 
 ## card strip
 
