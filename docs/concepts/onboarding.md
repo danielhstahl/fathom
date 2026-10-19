@@ -140,18 +140,28 @@ The inventory, each line written for a specific state:
 
 | View · pane | What its empty state says |
 |---|---|
-| Queue · worklist | the queue is the ranked worklist; nothing loaded because the index is empty, building or filtered — `t` lists them in time order, `fathom analyze <episode> --json` prints one delta |
-| Queue · card, Timeline · card | no episode selected — `j`/`k` walk the rail, `<Enter>` opens the card here |
-| Timeline · rail | every episode in time order, newest first; a filter that hid them is edited with `F`, and `fathom stats` says what the index holds |
-| Diff · tree, hunks | the selected episode's files, riskiest first — and no episode is selected: `q` or `t` picks one with `j`/`k`, then `d` |
-| Structure · treemap, detail | one episode's directories, sized by churn — and no episode is selected |
-| Graph · canvas, detail | one episode's blast radius; with no snapshot it says *unknown* and names the verb that writes one |
-| Deps · manifest, tree | one episode's dependency delta, then that requirement's transitive closure — `p` re-reads the selection, `fathom stats` lists what the index holds |
-| Ambient · glance | the newest episode, sized for a second terminal; `fathom watch` keeps this pane current |
+| Queue · worklist | the queue is the ranked worklist, riskiest first — then `t` lists them in time order, `fathom analyze` prints one delta |
+| Queue · card, Timeline · card | the card is one episode, every figure cited — `j`/`k` choose one, `<Enter>` opens its card |
+| Timeline · rail | the rail is every episode, newest first — `F` edits the filter that hid them, `fathom stats` counts the index |
+| Diff · tree, hunks | the selected episode's files, riskiest first; nothing is selected yet — `q` then `j`/`k` picks an episode, then `d` |
+| Structure · treemap, detail | one episode's directories, sized by churn; nothing is selected — `q` then `j`/`k`, then `s` again |
+| Graph · canvas, detail | one episode's blast radius; no graph snapshot here yet, and `fathom index` writes one |
+| Deps · manifest, tree | one episode's dependency delta, then that requirement's transitive closure — `p` re-reads the selection, `<Enter>` opens the tree |
+| Ambient · glance | the newest episode, for a second terminal — `q` picks one, `fathom watch` keeps it current |
 | Search · results | nothing has been searched for yet, or nothing matches *the query actually typed* — `/` starts again, and fewer letters find more |
-| Artefact · preview, scope | the artefact a `fathom export` would write, and the episode range it covers; `o` here, `fathom export --episodes HEAD~9..HEAD` headless |
+| Artefact · preview, scope | the artefact a `fathom export` would write and the range it covers — `o` here, `fathom export --episodes` headless |
 | any pane this file has not met | the motion that works — `j`/`k`, `<Tab>` — and never an invented cause |
 
+Two formatting rules fall out of measuring the copy against the panes that print it, and both are worth
+stating because they were both learned by looking at a golden and finding half a sentence missing:
+
+* **the keystroke leads the line.** A pane body clips at its right edge and does not wrap, so copy that
+  puts the verb second is copy that gets cut — "`p` re-reads the selection; `fathom stats` counts the
+  index" survives a 48-column manifest pane, and the version that began by explaining the pane did not.
+* **two facts are two lines.** "the treemap is one episode's directories — and no episode is selected"
+  lost its second half to the same clip, which is the half the reviewer had to act on; the purpose and
+  the state are separate rows now, and the wrapping rail still gets them as one sentence
+  ([`Facts::empty_words`](../../crates/fathom-tui/src/index.rs)).
 The one place the miniature is offered inside the frame is the *no index at all* state, beside its remedy:
 a reviewer staring at an unindexed repository is exactly the person who has not yet decided whether this is
 worth setting up, and the answer is a flag rather than a commit. Every other state assumes they have already

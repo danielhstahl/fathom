@@ -3,7 +3,7 @@
 1 ▣ Deps · (T pins this view)                               fathom/pilot · main
 ┌▸ manifest · e2.6                       ┬· tree · e2.6                        ┐
 │the manifest table is one episode's dep…│the tree is that requirement's trans…│
-│select an episode that touched a manife…│`<Enter>` opens the selected require…│
+│`p` re-reads the selection; `fathom sta…│`<Enter>` opens the selected require…│
 │the delta model is not in this build    │the delta model is not in this build │
 │reads delta.dependencies.* · licence se…│reads resolved dependency graph · re…│
 │pane `manifest` · owned by e2.6 · ADR-0…│pane `tree` · owned by e2.6 · ADR-00…│

@@ -78,8 +78,7 @@ pub fn words(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> Vec<S
         let mut lines = vec![facts.summary(), facts.remedy()];
         if facts.read == Read::Absent {
             lines.push(
-                "or `fathom --demo` reviews a miniature repository that ships inside this binary"
-                    .to_owned(),
+                "or `fathom --demo` reviews a miniature that ships in this binary".to_owned(),
             );
         }
         if facts.is_building() {
@@ -98,10 +97,9 @@ pub fn words(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> Vec<S
         return lines;
     }
     if let Some(purpose) = purpose(view, pane) {
-        vec![
-            purpose_for(view, pane, reason, purpose),
-            action(view, pane, facts, reason),
-        ]
+        let mut lines = purpose_for(view, pane, reason, purpose);
+        lines.push(action(view, pane, facts, reason));
+        lines
     } else {
         vec![facts.summary(), action(view, pane, facts, reason)]
     }
@@ -111,9 +109,9 @@ pub fn words(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> Vec<S
 #[must_use]
 fn purpose(view: ViewId, pane: &Pane) -> Option<&'static str> {
     Some(match (view, pane.name) {
-        (ViewId::Queue, "worklist") => "the queue is the ranked worklist — riskiest episode first",
-        (ViewId::Queue, "card") => "the card is one episode: every figure the pane prints is cited",
-        (ViewId::Timeline, "rail") => "the rail is every episode in time order, newest first",
+        (ViewId::Queue, "worklist") => "the queue is the ranked worklist, riskiest first",
+        (ViewId::Queue, "card") => "the card is one episode, every figure cited",
+        (ViewId::Timeline, "rail") => "the rail is every episode, newest first",
         (ViewId::Diff, "tree") => "the tree is the selected episode's files, riskiest first",
         (ViewId::Diff, "hunks") => "the hunks pane is one file's diff at a time",
         (ViewId::Structure, "treemap") => {
@@ -124,8 +122,8 @@ fn purpose(view: ViewId, pane: &Pane) -> Option<&'static str> {
         (ViewId::Graph, "detail") => "the detail pane is the selected edge's evidence",
         (ViewId::Deps, "manifest") => "the manifest table is one episode's dependency delta",
         (ViewId::Deps, "tree") => "the tree is that requirement's transitive closure",
-        (ViewId::Ambient, "glance") => "ambient is the newest episode, sized for a second terminal",
-        (ViewId::Search, "results") => "search covers titles, paths, authors and symbols",
+        (ViewId::Ambient, "glance") => "ambient is the newest episode, for a second terminal",
+        (ViewId::Search, "results") => "search reads titles, paths, authors and symbols",
         (ViewId::Artefact, "preview") => {
             "the preview is the artefact a `fathom export` would write"
         }
@@ -137,21 +135,29 @@ fn purpose(view: ViewId, pane: &Pane) -> Option<&'static str> {
 
 /// The purpose line, with the reason attached when the purpose alone would be a definition and not an
 /// explanation — "the treemap is one episode's treemap" *and* "nothing is selected".
-fn purpose_for(view: ViewId, pane: &Pane, reason: &Reason, purpose: &'static str) -> String {
+/// The purpose line, with the reason attached when the purpose alone would be a definition and not an
+/// explanation — "the treemap is one episode's treemap" *and* "nothing is selected".
+///
+/// Two lines where there are two facts, because a pane body clips rather than wraps: joining them with a
+/// dash is how "…and no episode is selected" — the half a reviewer has to act on — got sliced off the end
+/// of a 48-column card pane.
+fn purpose_for(view: ViewId, pane: &Pane, reason: &Reason, purpose: &'static str) -> Vec<String> {
     match (view, pane.name) {
         (ViewId::Search, "results") if reason.query.is_none() => {
-            "nothing has been searched for yet".to_owned()
+            vec!["nothing has been searched for yet".to_owned()]
         }
-        (ViewId::Search, "results") => format!(
-            "nothing matches `{}`",
-            reason.query.clone().unwrap_or_default()
-        ),
+        (ViewId::Search, "results") => {
+            vec![format!(
+                "nothing matches `{}`",
+                reason.query.clone().unwrap_or_default()
+            )]
+        }
         (ViewId::Diff | ViewId::Structure | ViewId::Graph | ViewId::Deps | ViewId::Artefact, _)
             if reason.episode.is_none() =>
         {
-            format!("{purpose} — and no episode is selected")
+            vec![purpose.to_owned(), "nothing is selected yet".to_owned()]
         }
-        _ => purpose.to_owned(),
+        _ => vec![purpose.to_owned()],
     }
 }
 
@@ -162,31 +168,31 @@ fn action(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
     if facts.episodes.is_some_and(|episodes| episodes == 0) || facts.is_building() {
         return facts.remedy();
     }
+    // The keystroke first, every time. A pane is narrow and the row clips: copy that puts the verb
+    // second is copy that gets cut, and the whole point of these lines is that the half a reviewer can
+    // act on survives being read.
     match (view, pane.name) {
         (ViewId::Queue, "worklist") => {
-            "`t` lists them in time order; `fathom analyze <episode> --json` prints one delta"
-                .to_owned()
+            "`t` lists them in time order; `fathom analyze` prints one delta".to_owned()
         }
         (ViewId::Queue, "card") | (ViewId::Timeline, "card") => {
-            "`j`/`k` choose an episode, `<Enter>` opens its card".to_owned()
+            "`j`/`k` choose one, `<Enter>` opens its card".to_owned()
         }
         (ViewId::Timeline, "rail") => {
-            "`F` edits the filter that hid them; `fathom stats` says what the index holds".to_owned()
+            "`F` edits the filter that hid them; `fathom stats` counts the index".to_owned()
         }
         (ViewId::Diff, "tree") | (ViewId::Diff, "hunks") => {
-            "`q` or `t` picks an episode with `j`/`k`, then `d` opens its diff".to_owned()
+            "`q` then `j`/`k` picks an episode, then `d` opens its diff".to_owned()
         }
         (ViewId::Structure, "treemap") | (ViewId::Structure, "detail") => {
-            "`q` then `j`/`k` to pick an episode, then `s` again".to_owned()
+            "`q` then `j`/`k` picks an episode, then `s` again".to_owned()
         }
         (ViewId::Graph, "canvas") => {
-            "blast radius: unknown — no graph snapshot; `fathom index` writes one".to_owned()
+            "no graph snapshot here yet; `fathom index` writes one".to_owned()
         }
         (ViewId::Graph, "detail") => "`<Tab>` walks the panes, `j`/`k` move the cursor".to_owned(),
         (ViewId::Deps, "manifest") => {
-            "select an episode that touched a manifest — `p` re-reads it, `fathom stats` lists what \
-             the index holds"
-                .to_owned()
+            "`p` re-reads the selection; `fathom stats` counts the index".to_owned()
         }
         (ViewId::Deps, "tree") => "`<Enter>` opens the selected requirement's tree".to_owned(),
         (ViewId::Ambient, "glance") => {
@@ -194,21 +200,16 @@ fn action(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
         }
         (ViewId::Search, "results") => {
             if reason.query.is_some() {
-                "`/` starts again — fewer letters find more; `,` lists every command".to_owned()
+                "`/` starts again — fewer letters find more".to_owned()
             } else {
-                "`/` searches titles, paths, authors and symbols; `,` is the command palette"
-                    .to_owned()
+                "`/` searches titles, paths, authors and symbols; `,` is the palette".to_owned()
             }
         }
         (ViewId::Artefact, "preview") => {
-            "`o` previews the selected episode; the artefact renderer is e5.7's, and `fathom \
-             export` says so when asked"
-                .to_owned()
+            "`o` previews here; `fathom export` writes it (e5.7 owns it)".to_owned()
         }
         (ViewId::Artefact, "scope") => {
-            "`o` builds the scope from the selected episode; `fathom export --episodes HEAD~9..HEAD` \
-             sets it headless"
-                .to_owned()
+            "`o` builds it from the selection; `fathom export --episodes` headless".to_owned()
         }
         // A pane this module has not met: name the motion that works rather than invent a cause for
         // it. The caller appends the owner line, so whose the pane is stays said exactly once.

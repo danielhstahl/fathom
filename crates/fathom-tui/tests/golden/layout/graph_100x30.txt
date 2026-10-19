@@ -3,7 +3,7 @@
 1 ▣ Graph · (T pins this view)                                                  fathom/pilot · main
 ┌▸ canvas · e3.4                                                 ┬· detail · e3.4                  ┐
 │the canvas is one episode's blast radius                        │the detail pane is the selected …│
-│blast radius: unknown — no graph snapshot; `fathom index` write…│`<Tab>` walks the panes, `j`/`k`…│
+│no graph snapshot here yet; `fathom index` writes one           │`<Tab>` walks the panes, `j`/`k`…│
 │the delta model is not in this build                            │the delta model is not in this b…│
 │reads delta.architecture.* · module graph nodes/edges · cycle s…│reads node/edge evidence ids · d…│
 │… and 1 more (e2.11 names them all)                             │… and 1 more (e2.11 names them a…│

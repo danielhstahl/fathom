@@ -3,7 +3,7 @@
 /▏  (input) free text plus filter tokens author: path: risk> dep:
 ▸ results · e5.2                                                                                                                   ┬· preview · e5.2
 nothing has been searched for yet                                                                                                  │index epoch 1 ready · 500 commits · 48 eps
-`/` searches titles, paths, authors and symbols; `,` is the command palette                                                        │`j`/`k` move the cursor, `<Tab>` walks the panes
+`/` searches titles, paths, authors and symbols; `,` is the palette                                                                │`j`/`k` move the cursor, `<Tab>` walks the panes
 the delta model is not in this build                                                                                               │the delta model is not in this build
 reads episode summaries · paths · symbol names · dependency names                                                                  │reads episode card excerpt · match explanation · evidence locator
 … and 1 more (e2.11 names them all)                                                                                                │pane `preview` · owned by e5.2 · ADR-006 §5

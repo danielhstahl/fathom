@@ -1,7 +1,7 @@
 # Ambient at 120×40 — complete
 
 ▸ glance · e5.1
-ambient is the newest episode, sized for a second terminal
+ambient is the newest episode, for a second terminal
 `q` picks an episode; `fathom watch` keeps this pane current
 the delta model is not in this build
 reads episode.identity · risk.score · review.state · queue counts
