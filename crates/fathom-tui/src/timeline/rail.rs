@@ -21,7 +21,7 @@ use crate::app::format_thousands;
 use crate::style::StyledLine;
 
 use super::days;
-use super::episode::{Batch, Episode, GroupKey};
+use super::episode::{Batch, Episode, GroupKey, ReviewState};
 use super::filter::{Facets, Filter};
 use super::render::{self, Scale};
 use super::session::SESSION_MAX;
@@ -364,6 +364,19 @@ impl Rail {
     #[must_use]
     pub fn episodes(&self) -> &[Episode] {
         &self.episodes
+    }
+
+    /// Stamp the review marker on one row (`e4.5`).
+    ///
+    /// The shell writes the ledger first and calls this only when the write landed, which is the whole
+    /// difference between a badge that means "a reviewer decided this" and one that means "a key was
+    /// pressed". Returns whether the row was found, so the caller can say which it did.
+    pub fn set_state(&mut self, id: &str, state: ReviewState) -> bool {
+        if let Some(row) = self.episodes.iter_mut().find(|episode| episode.id == id) {
+            row.state = state;
+            return true;
+        }
+        false
     }
 
     /// The rows on screen as episode indices, collapsed groups excluded — what a test counts when it

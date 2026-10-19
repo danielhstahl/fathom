@@ -17,6 +17,43 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.5` — the attention queue: the ranked worklist, its four acts, and a ledger of both (`reco-wsj`)
+
+- **`queue-1`: risk × staleness × blast, and the arithmetic is printed.** `fathom_analyze::queue`
+  orders the worklist by `risk × staleness × blast` — staleness `+5%` per unread day capped at `+50%`,
+  blast `+3%` per direct dependent capped at `+30%`, severity bands at `70`/`35` — ordering on the exact
+  product and printing the rounded one, with a tie-break chain that ends at the episode id so two runs
+  over the same index give the same list. `w` prints the ordering the way `fathom why` prints a score:
+  formula name, version, every factor and what it was measured from (`queue-1 90 = risk 60 (spine-1) ×
+  staleness 1.50 (10d unread) × blast 1.00 (not measured · e3.2 owns it · displayed by fathom-tui)`).
+  A stale medium now sits above a fresh high, which is the whole point and is a test rather than a claim.
+- **Blast radius is `1.00`, and the queue says so instead of pretending.** No module graph exists yet, so
+  the third factor is shipped idle and attributed out loud — `blast unmeasured (e3.2) · holding this
+  list at 1.00` above the rows, `e3.2` named in every explain sentence. It is never guessed from path
+  prefixes, and an episode nothing has scored stays `?` at the bottom of the list rather than becoming a `0`.
+- **Four acts — `x`, `f`, `-`, `z` — none of them taken until it is written.** The ledger write happens
+  before the shell changes, so a refusal leaves the row exactly where it was and prints `NOT written:
+  <why>`; a run with no ledger attached is a supported configuration and says `in memory only: no ledger
+  attached to this run` instead of implying durability. A flag with no note is refused, a dismissal with
+  no reason is refused, a snooze with no condition is refused. `fathom-store` migration 6 adds
+  `triage_event`: one append-only row per act — who, when, why, the condition, and the risk at the time —
+  kept apart from `review_state` so a second keystroke cannot erase the first one's record, and with no
+  foreign key so a history rewrite cannot delete an act.
+- **A dismiss vocabulary closed to this build, extensible by the repository.** Eight shipped codes
+  (`not-my-area`, `already-known`, `intentional`, `false-positive`, `low-stakes`, `superseded`,
+  `will-revert`, `other`), `other` refused without a note, `[queue].dismiss_reasons` in `fathom.toml`
+  adding more, and a picker ordered by what this repository actually uses. An unknown code still reads
+  back truthfully instead of vanishing. Snoozes are conditions with a stamped baseline
+  (`next-index:41`, `new-in-session:7`, `1d`/`7d`/`30d`), so a year later the ledger still says what the
+  reviewer was waiting for and the shell can answer whether it has happened.
+- **`what you skipped, and why`, on `r`.** Dismissals roll up per reason with count, share, who did it,
+  when last and the riskiest thing in the bucket, over the whole ledger or a window; a systematic pattern
+  (≥5 dismissals on one code and ≥40% of all dismissals) is called `a pattern, not a stack`, an empty
+  ledger says nothing was skipped rather than nothing was found, and an unreadable ledger gets its complaint
+  printed instead of a clean sheet. Clearing a 100-episode queue costs the shell 32 ms of the ticket's
+  five minutes (`clearing_a_hundred_episode_queue_costs_the_shell_seconds_not_minutes`).
+
+
 ### `e4.4` — the risk score became a feature vector with its arithmetic printed (`reco-884`)
 
 - **`features-1`: twelve documented axes, one sum.** Findings and severities, surface, migration

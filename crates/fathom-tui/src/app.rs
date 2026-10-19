@@ -19,6 +19,8 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+use fathom_analyze::insight::{CONDITIONS, Disposition, QueuePlacement, TriageRecord};
+
 use crate::diff::{self, DiffView};
 use crate::diff::{Env, Handoff};
 use crate::event::{Button, FrameScheduler, MouseMsg, Scroll};
@@ -103,6 +105,18 @@ pub enum Overlay {
     /// `F` — the filter chooser (`filter.edit`, `e1.6`). A `prompt` like the other two, because the
     /// registry has no keys of its own to spend and the prompt's are already exclusive (§7.1).
     Filter,
+    /// `-` (`review.dismiss`) — the closed dismiss-reason chooser (`e4.5`, `reco-wsj`).
+    ///
+    /// A `pick`, not a free-text field, on purpose: a closed vocabulary is only closed if the shell will
+    /// not take anything else, and a picker that can be typed past is a text box with a hint.
+    Reason,
+    /// `z` (`review.snooze`) — the snooze-condition chooser (`e4.5`). Same argument as
+    /// [`Overlay::Reason`]: the conditions have to be evaluable later, so they are chosen from a list
+    /// rather than invented at the keyboard.
+    Snooze,
+    /// `f` (`review.flag`) — one line of text, because a flag without a note is a notification nobody
+    /// can act on (`e4.5`).
+    Note,
 }
 
 impl Overlay {
@@ -110,8 +124,22 @@ impl Overlay {
     #[must_use]
     pub const fn mode(self) -> Mode {
         match self {
-            Overlay::Help => Mode::Pick,
-            Overlay::Palette | Overlay::Search | Overlay::Filter => Mode::Prompt,
+            Overlay::Help | Overlay::Reason | Overlay::Snooze => Mode::Pick,
+            Overlay::Palette | Overlay::Search | Overlay::Filter | Overlay::Note => Mode::Prompt,
+        }
+    }
+
+    /// What `<Esc>`'s toast and the status line call it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Overlay::Help => "help",
+            Overlay::Palette => "palette",
+            Overlay::Search => "search",
+            Overlay::Filter => "filters",
+            Overlay::Reason => "dismiss reason",
+            Overlay::Snooze => "snooze condition",
+            Overlay::Note => "flag note",
         }
     }
 }
@@ -305,6 +333,13 @@ pub struct App {
     /// about an episode: moving the cursor to another row leaves the answer about the previous one on
     /// screen would be a lie about the new selection.
     pub explain: Option<String>,
+    /// What the shell knows about triage: the vocabulary, the actor, the ledger, and every act taken since
+    /// the frame opened (`e4.5`, `reco-wsj`).
+    ///
+    /// This is the queue's shell-side state and nothing else's. The ordering, the acts' validation and the
+    /// retrospective all live in `fathom_analyze::queue`; what is here is which chooser is open, which
+    /// episodes are already decided, and the handle that writes.
+    pub queue: crate::queue::State,
     /// `i` (`intent.show`) has been pressed on the episode named here: the card pane shows that episode's
     /// captured intent — the request, its source, its plan and its declared scope — instead of the card
     /// itself (`e4.2`, `reco-c54`).
@@ -329,6 +364,20 @@ pub struct App {
     pub opened: Vec<String>,
     /// The palette row under the cursor, when the palette is open.
     pub palette_row: usize,
+    /// The queue's ordering, cached between frames and stamped with the inputs it was built from.
+    ///
+    /// A [`std::cell::RefCell`] for the same reason the rail's order is one: the order is a pure function
+    /// of the rows and the day, and a frame should compute it once and read it from the list, the strip
+    /// and the counts.
+    pub queue_ranking_cache:
+        std::cell::RefCell<Option<(QueueStamp, fathom_analyze::insight::QueueRanking)>>,
+    /// The chooser's cursor, for the pickers whose rows are not the palette's: the dismiss reason and the
+    /// snooze condition (`e4.5`, `reco-wsj`).
+    ///
+    /// Separate from [`App::palette_row`] because a chooser that opened with the palette's old cursor
+    /// three rows down would apply an act to the third reason while saying it applied the first. Every
+    /// chooser that opens resets this to zero for exactly that reason.
+    pub pick_row: usize,
     /// Row per `(view, pane)`. Selection follows identity when a row list carries it; the shell
     /// only holds the index.
     pub selection: BTreeMap<(ViewId, String), usize>,
@@ -409,6 +458,26 @@ fn own(steps: Vec<KeyStep<'_>>) -> Vec<Step> {
         .collect()
 }
 
+/// What the queue's cached ordering was built from, so a stale order is impossible by construction.
+///
+/// Every field is an input the ordering reads: the rows, the epoch (a new index can move a row's blast
+/// or add rows), the day (staleness steps in days and in nothing finer), the acts taken this session, and
+/// whether the pane is showing the retrospective — the last one only because switching views recomputes
+/// rather than waiting for a stamp that will not arrive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QueueStamp {
+    /// How many rows the rail holds.
+    pub rows: usize,
+    /// Which index epoch they came from.
+    pub epoch: u64,
+    /// Which day, because staleness is a daily step.
+    pub day: i64,
+    /// How many acts the shell has taken.
+    pub decided: usize,
+    /// Whether the retrospective is on screen.
+    pub retrospective: bool,
+}
+
 /// A frame's worth of toast lifetime: long enough to read, short enough not to become chrome.
 const TOAST_FRAMES: u32 = 40;
 
@@ -455,11 +524,14 @@ impl App {
             diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             explain: None,
+            queue: crate::queue::State::absent(),
             intent: None,
             prompt: String::new(),
             last_search: None,
             opened: Vec::new(),
             palette_row: 0,
+            pick_row: 0,
+            queue_ranking_cache: std::cell::RefCell::new(None),
             selection: BTreeMap::new(),
             scroll: BTreeMap::new(),
             chords: ChordState::new(),
@@ -810,7 +882,66 @@ impl App {
     /// score ([`crate::worklist`]'s contract, ADR-002 §5.3).
     #[must_use]
     pub fn queue_rows(&self) -> Vec<&Episode> {
-        self.timeline.ranked()
+        self.queue_open()
+            .into_iter()
+            .filter_map(|id| self.timeline.find(&id))
+            .collect()
+    }
+
+    /// The queue's ordering and counts, rebuilt only when something the ordering reads has changed.
+    ///
+    /// The rail caches its order for the same reason (`timeline::Rail::rebuild`): a frame that re-ranked
+    /// every held episode would be paying for a computation whose inputs turn over once a day, and
+    /// `timeline_bench` is the test that would notice. The stamp is the whole set of inputs this build
+    /// has: how many rows, which epoch, which day (staleness steps in days and in nothing finer), and how
+    /// many acts this shell has taken.
+    fn queue_ranking(&self) -> fathom_analyze::insight::QueueRanking {
+        let stamp = QueueStamp {
+            rows: self.timeline.ranked_len(),
+            epoch: self.timeline.epoch().unwrap_or(0),
+            day: self.timeline.now().as_unix_seconds() / 86_400,
+            decided: self.queue.decided.len(),
+            retrospective: self.queue.retrospective,
+        };
+        let mut cache = self.queue_ranking_cache.borrow_mut();
+        if cache.as_ref().is_none_or(|(last, _)| *last != stamp) {
+            let rows = self.timeline.ranked();
+            let ranking = crate::queue::ranking(
+                &rows,
+                &self.queue,
+                self.timeline.now(),
+                self.timeline.epoch().unwrap_or(0),
+            );
+            *cache = Some((stamp, ranking));
+        }
+        cache
+            .as_ref()
+            .map(|(_, ranking)| ranking.clone())
+            .unwrap_or_else(|| fathom_analyze::insight::QueueRanking {
+                order: Vec::new(),
+                counts: fathom_analyze::insight::QueueCounts::default(),
+                blast_measured: false,
+            })
+    }
+
+    /// The episode ids the queue holds, in queue order.
+    fn queue_open(&self) -> Vec<String> {
+        self.queue_ranking()
+            .order
+            .iter()
+            .filter(|placement| placement.open)
+            .map(|placement| placement.episode.clone())
+            .collect()
+    }
+
+    /// The placements keyed by episode id, for the drawer and for `w`.
+    #[must_use]
+    pub fn queue_placements(&self) -> std::collections::BTreeMap<String, QueuePlacement> {
+        self.queue_ranking()
+            .order
+            .into_iter()
+            .map(|placement| (placement.episode.clone(), placement))
+            .collect()
     }
 
     /// The episode the queue's cursor is on.
@@ -821,7 +952,9 @@ impl App {
             .get(&(ViewId::Queue, "worklist".to_owned()))
             .copied()
             .unwrap_or(0);
-        self.timeline.ranked_row(row)
+        self.queue_open()
+            .get(row)
+            .and_then(|id| self.timeline.find(id))
     }
 
     /// Is `w`'s explanation up, for the episode currently in scope?
@@ -877,7 +1010,19 @@ impl App {
                 )
             };
         }
-        let total = self.timeline.ranked_len();
+        let ranking = self.queue_ranking();
+        if self.queue.retrospective {
+            return crate::queue::retrospective_lines(
+                &self.queue,
+                self.timeline.now(),
+                width,
+                rows,
+            );
+        }
+        if let Some(lines) = self.chooser_body(width, rows) {
+            return lines;
+        }
+        let total = self.queue_open().len();
         let row = self
             .selection
             .get(&(ViewId::Queue, "worklist".to_owned()))
@@ -886,12 +1031,78 @@ impl App {
         // Two rows per episode, so the window is half the pane: the scroll keeps the cursor on screen
         // the way the rail's does, and `<C-d>`/`<C-u>` page episodes rather than lines.
         let (offset, per) = self.queue_window(rows);
-        // Only the window is materialised: the order is the rail's, and a frame that ranked every
-        // held episode is what `timeline_bench` catches (`reco-c05`).
+        // Only the window is materialised; the order is the queue's cached one, and a frame that ranked
+        // every held episode is what `timeline_bench` catches (`reco-c05`).
+        let ids = self.queue_open();
         let window: Vec<&Episode> = (offset..total.min(offset + per))
-            .filter_map(|at| self.timeline.ranked_row(at))
+            .filter_map(|at| ids.get(at))
+            .filter_map(|id| self.timeline.find(id))
             .collect();
-        crate::worklist::lines(&window, row.saturating_sub(offset), rows, width)
+        crate::worklist::lines(
+            &window,
+            &self.queue_placements(),
+            Some(&crate::queue::counts_line(&self.queue, &ranking)),
+            row.saturating_sub(offset),
+            rows,
+            width,
+        )
+    }
+
+    /// The chooser drawn in place of the worklist while `-` or `z` is open, or `None` when neither is.
+    #[must_use]
+    fn chooser_body(&self, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
+        match self.overlay {
+            Some(Overlay::Reason) | Some(Overlay::Snooze) => {
+                let picking = self.overlay == Some(Overlay::Reason);
+                let target = self
+                    .queue
+                    .pick
+                    .as_deref()
+                    .map(|id| {
+                        self.timeline
+                            .find(id)
+                            .map_or_else(|| id.to_owned(), Episode::short_id)
+                    })
+                    .unwrap_or_else(|| "nothing".to_owned());
+                let (title, hint) = if picking {
+                    (
+                        format!("dismiss `{target}` — say why (`-`, then `j`/`k`, `<Enter>`)"),
+                        "the reason is a claim, not a shrug: the retrospective prints these back"
+                            .to_owned(),
+                    )
+                } else {
+                    (
+                        format!("snooze `{target}` — until what (`z`, then `j`/`k`, `<Enter>`)"),
+                        "a condition, not a date: the queue reopens it when the condition happens"
+                            .to_owned(),
+                    )
+                };
+                Some(crate::worklist::chooser(
+                    &title,
+                    &hint,
+                    &self.pick_rows(),
+                    self.pick_row,
+                    width,
+                    rows,
+                ))
+            }
+            Some(Overlay::Note) => {
+                let mut lines = vec![crate::worklist::prompt_line(
+                    if self.queue.pick_reason.is_some() {
+                        "why, in words: "
+                    } else {
+                        "flag note: "
+                    },
+                    &self.prompt,
+                    width,
+                )];
+                while lines.len() < rows {
+                    lines.push(StyledLine::plain(""));
+                }
+                Some(lines)
+            }
+            _ => None,
+        }
     }
 
     /// The worklist's window: the first ranked row it draws, and how many lines each episode gets.
@@ -901,7 +1112,7 @@ impl App {
     /// the answer to "which episode is on line 5" is not 5.
     #[must_use]
     fn queue_window(&self, rows: usize) -> (usize, usize) {
-        let total = self.timeline.ranked_len();
+        let total = self.queue_open().len();
         let row = self
             .selection
             .get(&(ViewId::Queue, "worklist".to_owned()))
@@ -925,21 +1136,11 @@ impl App {
         if self.view != ViewId::Queue || pane.name != "worklist" || self.timeline.is_empty() {
             return None;
         }
-        let held = self.timeline.ranked_len();
-        let (ranked, _) = self.timeline.queue_counts();
-        // The ranked rows sort first, so the first row is where the model's name and its stated
-        // ceiling are read from — the strip never prints a constant the shell could be wrong about,
-        // and it does not walk the whole list to find out.
-        let first: Vec<&Episode> = self.timeline.ranked_row(0).into_iter().collect();
-        Some(crate::worklist::strip(
-            held,
-            ranked,
-            &crate::worklist::model_name(&first),
-            first
-                .first()
-                .and_then(|episode| episode.risk())
-                .map_or(0, |risk| risk.blind_spots.len()),
-        ))
+        if self.queue.retrospective {
+            return Some("what you skipped, and why — `r` goes back to the queue".to_owned());
+        }
+        let _ = (pane,);
+        Some(self.queue_ranking().strip())
     }
 
     /// Run the half of the action registry this view owns (`e1.6`).
@@ -1595,12 +1796,7 @@ impl App {
             self.chords.clear();
             self.toast(format!(
                 "{} closed — the view behind it kept its selection",
-                match overlay {
-                    Overlay::Help => "help",
-                    Overlay::Palette => "palette",
-                    Overlay::Search => "search",
-                    Overlay::Filter => "filters",
-                }
+                overlay.name()
             ));
             return;
         }
@@ -2180,6 +2376,7 @@ impl App {
                 self.prompt.clear();
             }
             "overlay.close" => self.drill_out(),
+            "queue.retrospect" => self.toggle_retrospective(),
             "pane.focus_next" => self.focus_next(),
             "pane.focus_prev" => self.focus_prev(),
             "pane.zoom" => self.toggle_zoom(),
@@ -2229,6 +2426,17 @@ impl App {
             }
             "prompt.submit" => self.submit_prompt(),
             "pick.choose" => self.submit_prompt(),
+            "list.down"
+                if matches!(self.overlay, Some(Overlay::Reason) | Some(Overlay::Snooze)) =>
+            {
+                // `j`/`k` inside a chooser move the chooser, not the list behind it — `Mode::Pick` is
+                // exclusive for exactly this (`ADR-006 §7.1`), and the same two keys meaning two things
+                // at once is how an act lands on the wrong reason.
+                self.move_pick(1);
+            }
+            "list.up" if matches!(self.overlay, Some(Overlay::Reason) | Some(Overlay::Snooze)) => {
+                self.move_pick(-1);
+            }
             "list.down" => self.set_selection(self.selected_row() + 1),
             "list.up" => self.set_selection(self.selected_row().saturating_sub(1)),
             "list.first" => self.set_selection(0),
@@ -2262,6 +2470,14 @@ impl App {
         let label = crate::keymap::action(action).map_or(action, |a| a.label);
         let ticket = crate::keymap::action(action).map_or("another ticket", |a| a.ticket);
         match action {
+            // The four acts (`e4.5`, `reco-wsj`), all registered `global` because a reviewer disposes of
+            // a finding from the rail as readily as from the worklist. They are handled here rather than
+            // falling through to the "another ticket owns it" toast below.
+            "review.accept" => self.act_accept(),
+            "review.flag" => self.open_note(),
+            "review.dismiss" => self.open_reason(),
+            "review.snooze" => self.open_snooze(),
+            "queue.retrospect" => self.toggle_retrospective(),
             // `w`: why this episode is where it is. The answer is a pane, not a toast line, because
             // the arithmetic and the ceiling do not fit in one line (`reco-c05`); the toast names what
             // changed so a screen reader gets the same news.
@@ -2270,13 +2486,35 @@ impl App {
                     ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
                     _ => self.timeline.selected().map(|episode| episode.id.clone()),
                 };
-                let words = crate::worklist::explain_words(
-                    match self.view {
-                        ViewId::Queue => self.queue_selected(),
-                        _ => self.timeline.selected(),
-                    },
-                    self.timeline.now(),
-                );
+                let target = match self.view {
+                    ViewId::Queue => self.queue_selected(),
+                    _ => self.timeline.selected(),
+                };
+                // In the queue, `w` answers "why is this *here*", and here is the queue's ordering — so
+                // the sentence is the queue's, in the same shape `fathom why` prints: formula name and
+                // version, then the arithmetic that produced the number (`e4.5`). The spine's own ranking
+                // is still worth saying, and follows it, because the queue's first factor *is* that score.
+                let words = match (self.view, target) {
+                    (ViewId::Queue, Some(episode)) => self
+                        .queue_ranking()
+                        .order
+                        .iter()
+                        .find(|placement| placement.episode == episode.id)
+                        .map_or_else(
+                            || crate::worklist::explain_words(Some(episode), self.timeline.now()),
+                            |placement| {
+                                format!(
+                                    "{} · {}",
+                                    placement.explain(),
+                                    crate::worklist::explain_words(
+                                        Some(episode),
+                                        self.timeline.now()
+                                    )
+                                )
+                            },
+                        ),
+                    (_, other) => crate::worklist::explain_words(other, self.timeline.now()),
+                };
                 let shown = match &id {
                     Some(id) if self.explain.as_deref() == Some(id.as_str()) => {
                         self.explain = None;
@@ -2365,9 +2603,265 @@ impl App {
     }
 
     /// `<Enter>` in a prompt: run the palette row, or hand the search query to the search owner.
+    /// `r` (`queue.retrospect`): the worklist pane flips between the work and what was skipped.
+    fn toggle_retrospective(&mut self) {
+        self.queue.retrospective = !self.queue.retrospective;
+        if self.queue.retrospective {
+            // The pane prints whatever the ledger holds, including the notice that it could not be read;
+            // the toast says which of the two views the screen is now showing, because the rows and the
+            // rollup occupy the same box and a silent swap would read as a bug (`reco-wsj`).
+            self.toast("what you skipped, and why — `r` goes back to the queue");
+        } else {
+            self.toast("the queue again — `r` shows what was dismissed");
+        }
+    }
+
+    /// The episode an act would apply to: the worklist's row, or the rail's.
+    ///
+    /// The same lookup `w` and `d` use, because an act on the wrong episode is worse than no act.
+    #[must_use]
+    pub fn act_target(&self) -> Option<&str> {
+        match self.view {
+            ViewId::Queue => self.queue_selected().map(|episode| episode.id.as_str()),
+            _ => self.timeline.selected().map(|episode| episode.id.as_str()),
+        }
+    }
+
+    /// The act's ledger row: the act's own words plus who, when, and the risk at the time.
+    ///
+    /// The risk is captured here, at the moment of the act, and never recomputed: "dismissed three
+    /// high-risk episodes" is unrecoverable once the weights move (`e4.5`).
+    #[must_use]
+    fn record_for(&self, act: &fathom_analyze::insight::TriageAct<'_>) -> Option<TriageRecord> {
+        let episode = self.timeline.find(act.episode)?;
+        let risk = episode
+            .risk()
+            .and_then(|risk| u8::try_from(risk.score.max(0)).ok());
+        let model = episode
+            .risk()
+            .map_or_else(String::new, |risk| risk.model.clone());
+        // A snooze is stamped with the baseline it will be checked against, here, because the shell is the
+        // only party that knows the epoch and the session's size — and a snooze without its baseline is a
+        // promise nothing can evaluate later (`e4.5`).
+        let until = match (act.until, act.disposition) {
+            (Some(until), Disposition::Snoozed) => {
+                let in_session = episode
+                    .session
+                    .as_deref()
+                    .and_then(|session| self.queue.sessions.get(session))
+                    .map_or(1, |rows| {
+                        u64::try_from(rows.len()).unwrap_or(u64::MAX).max(1)
+                    });
+                crate::queue::stamp_condition(
+                    episode,
+                    until,
+                    self.timeline.epoch().unwrap_or(0),
+                    in_session,
+                )
+            }
+            (until, _) => until.unwrap_or_default().to_owned(),
+        };
+        Some(TriageRecord {
+            episode: act.episode.to_owned(),
+            fingerprint: episode.fingerprint.clone(),
+            disposition: act.disposition,
+            reason: act.reason.unwrap_or_default().to_owned(),
+            note: act.note.unwrap_or_default().to_owned(),
+            until,
+            actor: self.queue.actor.clone(),
+            utc: self.timeline.now(),
+            risk,
+            risk_model: model,
+        })
+    }
+
+    /// Take one act: validate it, write it, and change the screen only if the write was accepted.
+    ///
+    /// The order is the contract (ADR-001 §7.7). A row that moved before the ledger refused would be a
+    /// sign-off the reviewer believes happened and never did, which is the exact failure the ledger
+    /// exists to prevent.
+    fn take_act(&mut self, act: fathom_analyze::insight::TriageAct<'_>) {
+        if let Err(why) = act.validate(&self.queue.vocabulary) {
+            self.overlay = None;
+            self.prompt.clear();
+            self.toast(why);
+            return;
+        }
+        let Some(record) = self.record_for(&act) else {
+            self.overlay = None;
+            self.toast("nothing is selected — `j`/`k` choose an episode first");
+            return;
+        };
+        let short = record.episode.clone();
+        let disposition = record.disposition;
+        let (line, written) = self.queue.commit(record);
+        self.overlay = None;
+        self.prompt.clear();
+        // The rail's marker is the store's marker, and the shell is the only thing holding it between
+        // renders; keeping the two in step is what lets `t` and `q` show the same truth.
+        let marker = match disposition {
+            Disposition::Accepted => Some(crate::timeline::ReviewState::Accepted),
+            Disposition::Flagged => Some(crate::timeline::ReviewState::Flagged),
+            Disposition::Dismissed => Some(crate::timeline::ReviewState::Dismissed),
+            Disposition::Snoozed => Some(crate::timeline::ReviewState::Snoozed),
+            Disposition::Read => Some(crate::timeline::ReviewState::Read),
+            Disposition::Unread => None,
+        };
+        if let (Some(marker), true) = (marker, written) {
+            self.timeline.set_state(&short, marker);
+        }
+        self.toast(line);
+    }
+
+    /// `x`: the one act with no questions — signing off is the whole act.
+    fn act_accept(&mut self) {
+        let Some(id) = self.act_target().map(str::to_owned) else {
+            self.toast("nothing is selected — `j`/`k` choose an episode first");
+            return;
+        };
+        self.take_act(fathom_analyze::insight::TriageAct::accept(&id));
+    }
+
+    /// `f`: a flag needs a note, so the note is asked for before the act exists.
+    fn open_note(&mut self) {
+        let Some(id) = self.act_target().map(str::to_owned) else {
+            self.toast("nothing is selected — `j`/`k` choose an episode first");
+            return;
+        };
+        self.queue.pick = Some(id);
+        self.prompt.clear();
+        self.overlay = Some(Overlay::Note);
+        self.toast("flag note — type what you want someone to look at, `<Enter>` to flag, `<Esc>` to cancel");
+    }
+
+    /// `-`: the closed vocabulary, in the order this reviewer's own history says they reach for.
+    fn open_reason(&mut self) {
+        let Some(id) = self.act_target().map(str::to_owned) else {
+            self.toast("nothing is selected — `j`/`k` choose an episode first");
+            return;
+        };
+        self.queue.pick = Some(id);
+        self.pick_row = 0;
+        self.overlay = Some(Overlay::Reason);
+        self.toast("dismiss reason — `j`/`k`, `<Enter>` to dismiss, `<Esc>` to cancel");
+    }
+
+    /// `z`: a condition, not a feeling.
+    fn open_snooze(&mut self) {
+        let Some(id) = self.act_target().map(str::to_owned) else {
+            self.toast("nothing is selected — `j`/`k` choose an episode first");
+            return;
+        };
+        self.queue.pick = Some(id);
+        self.pick_row = 0;
+        self.overlay = Some(Overlay::Snooze);
+        self.toast("snooze until — `j`/`k`, `<Enter>` to snooze, `<Esc>` to cancel");
+    }
+
+    /// Move the chooser's cursor, wrapping nowhere: the ends are the ends.
+    fn move_pick(&mut self, delta: i32) {
+        let count = self.pick_rows().len();
+        if count == 0 {
+            return;
+        }
+        let next = i64::try_from(self.pick_row)
+            .unwrap_or(i64::MAX)
+            .saturating_add(i64::from(delta));
+        self.pick_row =
+            usize::try_from(next.clamp(0, i64::try_from(count - 1).unwrap_or(i64::MAX)))
+                .unwrap_or(0);
+    }
+
+    /// `<Enter>` inside a triage prompt or chooser (`e4.5`).
+    ///
+    /// Three shapes, one entry point: a typed note (`f`), a chosen reason (`-`, then `other` may ask for
+    /// a note), and a chosen condition (`z`). Each one builds a [`fathom_analyze::insight::TriageAct`]
+    /// and hands it to [`App::take_act`], which is the only place an act becomes a write.
+    fn triage_submit(&mut self) {
+        let Some(id) = self.queue.pick.clone() else {
+            self.overlay = None;
+            self.prompt.clear();
+            return;
+        };
+        match self.overlay {
+            Some(Overlay::Note) => {
+                let note = self.prompt.trim().to_owned();
+                match self.queue.pick_reason.take() {
+                    // `other` was chosen, and the note *is* the reason: without this hop the code would
+                    // be recorded and the reason for it lost, which is the failure mode `other` exists to
+                    // make visible.
+                    Some(reason) => {
+                        self.take_act(fathom_analyze::insight::TriageAct {
+                            episode: &id,
+                            disposition: Disposition::Dismissed,
+                            reason: Some(&reason),
+                            note: Some(&note),
+                            until: None,
+                        });
+                    }
+                    None => self.take_act(fathom_analyze::insight::TriageAct::flag(&id, &note)),
+                }
+            }
+            Some(Overlay::Reason) => {
+                let rows = self.pick_rows();
+                let Some((code, _)) = rows.get(self.pick_row) else {
+                    self.overlay = None;
+                    return;
+                };
+                let code = code.clone();
+                if code == "other" {
+                    self.queue.pick_reason = Some(code);
+                    self.prompt.clear();
+                    self.overlay = Some(Overlay::Note);
+                    self.toast("`other` needs the reason in words — type it, `<Enter>` to dismiss");
+                    return;
+                }
+                self.take_act(fathom_analyze::insight::TriageAct::dismiss(&id, &code));
+            }
+            Some(Overlay::Snooze) => {
+                let rows = self.pick_rows();
+                let Some((code, _)) = rows.get(self.pick_row) else {
+                    self.overlay = None;
+                    return;
+                };
+                let code = code.clone();
+                self.take_act(fathom_analyze::insight::TriageAct::snooze(&id, &code));
+            }
+            _ => {}
+        }
+    }
+
+    /// The rows of whichever chooser is open.
+    #[must_use]
+    fn pick_rows(&self) -> Vec<(String, String)> {
+        match self.overlay {
+            Some(Overlay::Reason) => self
+                .queue
+                .reasons()
+                .into_iter()
+                .map(|reason| (reason.code, reason.label))
+                .collect(),
+            Some(Overlay::Snooze) => CONDITIONS
+                .iter()
+                .map(|(code, label, _)| ((*code).to_owned(), (*label).to_owned()))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
     fn submit_prompt(&mut self) {
         if self.overlay == Some(Overlay::Filter) {
             self.filter_choose();
+            return;
+        }
+        if matches!(
+            self.overlay,
+            Some(Overlay::Note) | Some(Overlay::Reason) | Some(Overlay::Snooze)
+        ) {
+            // `<Enter>` inside a triage prompt or chooser. Handled ahead of the palette's branch because
+            // the same action id submits all four, and a chooser that fell through to `drill_in` would
+            // open the episode under the cursor instead of taking the act.
+            self.triage_submit();
             return;
         }
         match self.overlay {

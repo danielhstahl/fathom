@@ -43,7 +43,7 @@ use sha2::Digest as _;
 /// never migrates derived data" (§9.5) a mechanism instead of an intention: bump this number and every
 /// stored analysis becomes unreachable, so the rebuild path is the same code path a fresh clone takes —
 /// the *tested* one.
-pub const SCHEMA_VERSION: i64 = 5;
+pub const SCHEMA_VERSION: i64 = 6;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -102,6 +102,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (3, crate::episode::MIGRATION_3),
     (4, crate::episode::MIGRATION_4),
     (5, crate::episode::MIGRATION_5),
+    (6, crate::episode::MIGRATION_6),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.

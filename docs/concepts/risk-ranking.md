@@ -2,10 +2,12 @@
 
 - **Status**: Accepted, and implemented — the spine-only half. `reco-884` (`e4.4`) has now replaced its
   *inputs* with a documented feature vector and a calibration set, in
-  [risk-scoring.md](risk-scoring.md) (`features-1`), and `reco-wsj` (`e4.5`) replaces its *ordering
+  [risk-scoring.md](risk-scoring.md) (`features-1`), and `reco-wsj` (`e4.5`) has replaced its *ordering
   function* with risk × staleness × blast radius; neither changes the shape described here, which is the
   shape the queue, the rail and `w` print. This document stays the contract for **that** ranking —
-  `spine-1` is what the shipped queue computes until `e4.5` rewires it.
+  `spine-1`, which is what the score, the rail's risk column and `fathom why` still compute. The queue
+  orders itself by `queue-1` now (`e4.5`): the score is its first factor and this document's order is not
+  its order. See §12.
 - **Ticket / plan key**: `reco-wsj` (`e4.5`) owns the queue. This ranking was pulled forward out of
   `e4.5` because `reco-glv`'s (`e1.12`) walkthrough could not be completed at all without some
   defensible answer to "which three episodes are the riskiest" — see
@@ -155,8 +157,9 @@ a shape in a diffstat, not a coverage argument.
 4 past 30. Authorship is worth up to 8, as above.
 
 Order, including the ties, is a contract, because `e4.5`'s acceptance criterion is that queue
-ordering is reproducible: **score descending, then churn descending, then recency descending, then
-episode id ascending.** Unranked episodes sort *after* every ranked one, in the rail's own order. A
+ordering is reproducible. This ranking's own order is **score descending, then churn descending, then
+recency descending, then episode id ascending**; `queue-1` (§12) inherits the score and re-ties on the
+same principle, so a run over the same index gives the same list whichever of the two is being read. Unranked episodes sort *after* every ranked one, in the rail's own order. A
 row that was never ranked is never folded into the ranking as a zero — "nothing ranked this" is a
 statement about the tool, and it prints as `risk ?` with a line saying which ticket will fill it
 (ADR-001 §7.7).
@@ -199,7 +202,7 @@ per row.
 | `surfaces` from paths | `e4.4`'s features (a finding, not a path class) | `e4.4` closes |
 | `size`, discounted noise | `e2.2`'s measured noise share instead of a path guess | when the Rust ingest stamps `noise_class` |
 | `deletions`' test heuristic | `e2.9`'s named cases and `e4.4`'s deleted-test feature | `e2.9`'s Rust seam |
-| ordering: score only | risk × staleness × blast radius | `e4.5`, which needs `blast_radius` from `e4.4` |
+| ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score is now `queue-1`'s first factor, and blast still waits on `e3.2` |
 | the blind-spot list | shorter, by closing items 1–7 one at a time | per finding, printed from the findings table |
 
 Nothing in that list changes what the panes print: a number, its vector, its reasons, and the ceiling.
@@ -226,3 +229,28 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   records `cold.queue_visible.ms.small` (`q` until the screen printed `order: ` and a `risk` number),
   `query.queue.ms.small` and `query.card.ms.small` as measured numbers; all three were blocked on
   exactly this empty worklist, and the blocked reason said so.
+
+## 12. What `e4.5` put on top: `queue-1`
+
+`fathom-analyze::queue` orders the worklist as
+
+```
+points = round(risk · S · B / 10⁴)   S = 100 + min(50, 5·days_unread)
+                                     B = 100 + min(30, 3·direct_dependents), 100 unmeasured
+```
+
+Three things about it are the contract, not the arithmetic:
+
+* **The printed number is rounded; the order is not.** Ordering uses the exact product, so a row cannot
+  appear below one it supposedly outranks because both rounded to 47.
+* **A factor with no measurement is `1.00` and says so.** Blast radius needs the module graph (`e3.2`),
+  which does not exist; the queue holds the factor at `1.00`, prints `blast unmeasured (e3.2)` above the
+  rows, and names the owning ticket in every explain sentence. Guessing it from path prefixes would put a
+  number in the review queue that no one measured.
+* **An unranked row is `?`, listed after every scored one.** `QueueCounts.unranked` counts them and the
+  strip says `N unranked`, because a queue of `?`s is not a caught-up queue.
+
+`w` prints the ordering in full, in `fathom why`'s shape: `queue-1 90 = risk 60 (spine-1) × staleness
+1.50 (10d unread) × blast 1.00 (not measured · e3.2 owns it · displayed by fathom-tui)`. The strip keeps
+only the name and the open count, because a strip is forty columns wide and the name is the part that may
+not be truncated away.

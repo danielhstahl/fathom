@@ -162,8 +162,13 @@ fn the_queue_is_ranked_and_not_chronological() {
         vec!["e-bbbb", "e-dddd", "e-aaaa", "e-cccc"],
         "88, then 64, then 41, then the unranked row last:\n{text}"
     );
-    // The rank is printed, because "which three" should not make a reviewer count rows.
-    let first = lines.first().cloned().unwrap_or_default();
+    // The rank is printed, because "which three" should not make a reviewer count rows. `e4.5` put a
+    // count line above the rows, so "the first row" is the first line that names an episode.
+    let first = lines
+        .iter()
+        .find(|line| line.contains("e-"))
+        .cloned()
+        .unwrap_or_default();
     assert!(first.contains('1'), "the top row is numbered 1: {first}");
     assert!(first.contains("88"), "and carries its score: {first}");
     let frame = frame_lines(app).join("\n");
@@ -187,16 +192,25 @@ fn the_strip_names_the_ranking_its_ceiling_and_what_it_is_not() {
     let strip = app
         .queue_strip(pane)
         .expect("a worklist with rows always says how it ordered them");
-    assert!(strip.contains("spine-1"), "the model: {strip}");
+    // `e4.5` replaced this strip's `reco-c05` text. It still has to name the ordering — now `queue-1`,
+    // with the three factors written out so the number can be checked with a pencil — and what it says
+    // instead of a ranking is the open count. What the ranking *cannot see* is no longer the strip's
+    // sentence either: the ceiling belongs to the card's blind rows and to `w`, where there is room to
+    // name each missing thing, and a strip has forty columns to say itself in.
+    assert!(strip.contains("queue-1"), "the model: {strip}");
     assert!(
-        strip.contains("3 ranked of 4 held"),
-        "how many of the held rows carry a ranking: {strip}"
+        strip.contains("risk × staleness × blast"),
+        "the function, in the strip itself: {strip}"
     );
     assert!(
-        strip.contains("cannot see 2 things"),
-        "and how much of the question it cannot answer: {strip}"
+        strip.contains("3 of 4 open"),
+        "how many rows the ordering is actually holding: {strip}"
     );
-    assert!(strip.contains("e4.5"), "and what this list is not: {strip}");
+    let frame = frame_lines(app).join("\n");
+    assert!(
+        frame.contains("cannot see 2 things"),
+        "and the ceiling is still on the screen, where it can be spelled out:\n{frame}"
+    );
 }
 
 #[test]
@@ -259,7 +273,10 @@ fn an_unranked_index_still_draws_a_queue_and_says_what_is_missing() {
         .find(|pane| pane.name == "worklist")
         .expect("a pane");
     let strip = app.queue_strip(pane).unwrap_or_default();
-    assert!(strip.contains("none ranked"), "{strip}");
+    // `e4.5`: an unranked row is counted as unranked rather than described as a queue with no ranking,
+    // and it is 0 open *ranked* — the rows are still there, still asking, still `?`.
+    assert!(strip.contains("4 unranked"), "{strip}");
+    assert!(strip.contains("0 of 4 open"), "{strip}");
 }
 
 // --- the explanation ------------------------------------------------------------------------------

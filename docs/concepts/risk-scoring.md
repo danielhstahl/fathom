@@ -4,7 +4,8 @@
   `fathom why`; one calibration set, checked in; and no opaque model anywhere in the path.
 - **Ticket / plan key**: `reco-884` (`e4.4`). It replaces the *inputs* of
   [risk-ranking.md](risk-ranking.md) (`spine-1`), and leaves that document's shape — rank, reason,
-  ceiling — standing, because `e4.5` (`reco-wsj`) is the ticket that replaces the ordering function.
+  ceiling — standing, because `e4.5` (`reco-wsj`) is the ticket that replaced the ordering function: the
+  score computed here is `queue-1`'s first factor, printed the same way in both.
 - **Implements**: ADR-001 §7.10 (*"every score is explainable: features, weights, and the contribution
   each made, printed on request"*), ADR-001 §7.9 (a number a reviewer cannot check is a recommendation),
   and ADR-002 §4.5 (config is read in the CLI and handed down as values). The features are the ones

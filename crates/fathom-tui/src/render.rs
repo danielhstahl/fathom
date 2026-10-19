@@ -414,10 +414,14 @@ pub fn frame_styled(app: &App) -> Vec<StyledLine> {
             .map(|line| line.text().to_owned())
             .collect::<Vec<String>>(),
     );
+    // A triage chooser is drawn *in* the worklist pane rather than floated over it (`e4.5`): the
+    // reviewer is choosing a reason about the row they can already see, and a panel that covers the row
+    // while they pick its reason is a worse trade than a few rows of the list disappearing for a moment.
     match app.overlay {
         Some(Overlay::Help) => help(&mut grid, app),
         Some(Overlay::Palette) => palette(&mut grid, app),
         Some(Overlay::Filter) => filters(&mut grid, app),
+        Some(Overlay::Reason | Overlay::Snooze | Overlay::Note) => {}
         Some(Overlay::Search) => {
             // The search overlay borrows the frame (§1) and brings its own query row; the live
             // view behind it keeps its selection, which is what `<Esc>` returning to it means.

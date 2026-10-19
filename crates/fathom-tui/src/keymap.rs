@@ -744,6 +744,14 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
+        id: "queue.retrospect",
+        label: "Queue: what you skipped, and why",
+        scope: "review",
+        ticket: "e4.5",
+        modes: &[Mode::Queue],
+        palette: true,
+    },
+    Action {
         id: "risk.explain",
         label: "Why this score / this rank (`fathom why`)",
         scope: "review",
@@ -1378,6 +1386,7 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Diff, "]", "diff.hunk_next");
     bind(Mode::Diff, "b", "diff.noise_toggle");
     bind(Mode::Diff, "y", "diff.copy_path");
+    bind(Mode::Queue, "r", "queue.retrospect");
     bind(Mode::Structure, "<", "structure.sort_cycle");
     bind(Mode::Structure, "[", "structure.level_up");
     bind(Mode::Structure, "]", "structure.level_down");

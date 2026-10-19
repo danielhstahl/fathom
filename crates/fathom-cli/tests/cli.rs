@@ -1117,8 +1117,9 @@ fn an_empty_frame_names_the_index_it_actually_found() {
         "the indexed frame should say which epoch it listed:\n{filled}"
     );
     assert!(
-        filled.contains("order: spine-1"),
-        "the indexed frame should say what order the queue is in:\n{filled}"
+        filled.contains("order: queue-1"),
+        "the indexed frame should say what order the queue is in, and name the function that put it there \
+         (`e4.5` replaced `reco-c05`'s spine-only order, so this assertion moved with it):\n{filled}"
     );
     assert!(
         !filled.contains("run `fathom index`") && !filled.contains("run fathom index"),

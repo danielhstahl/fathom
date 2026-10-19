@@ -239,6 +239,54 @@ CREATE TRIGGER IF NOT EXISTS episode_doc_au AFTER UPDATE ON episode_doc BEGIN
 END;
 ";
 
+/// Migration 6: the triage ledger — every act the attention queue takes (`e4.5`, `reco-wsj`).
+///
+/// One row per **act**, append-only, and that shape is the whole point. `review_state` keeps one row per
+/// episode: the *current* marker, which is what the rail's badge and the queue's counts read, and which a
+/// second `x` on the same episode overwrites. The ledger must not overwrite, because the criterion is
+/// "every triage action records who, when, why" and a record that a later keystroke can erase records
+/// nothing. It is also the only place the retrospective can come from: "`not-my-area`, twelve times this
+/// week, by both reviewers, last at 14:22" is a query over acts, not over states.
+///
+/// # Why this is not `ledger_entry`, and what `e4.6` does with it
+///
+/// ADR-004 §4.7 defines `ledger_entry` as the **mirror of committed markdown** under `.fathom/reviews/`,
+/// class M, with the file as the authoritative copy. That file is `e4.6`'s to write, and `e4.5` sits in
+/// front of it in the plan: the acts have to exist before there is a sign-off format to render them into.
+/// So this table is the act log, and `e4.6` renders *from* it — re-linking with the same `fingerprint`
+/// column, which is why the fingerprint is stored per row rather than derived at read time. The markdown
+/// file then becomes the committable copy, `ledger_entry` its mirror, and this table the record of what
+/// actually happened at the keyboard, including the dismissals and snoozes that are not sign-offs and
+/// never become ledger files.
+///
+/// # No foreign key, on purpose
+///
+/// `review_state` references `episode(id) ON DELETE CASCADE` because a marker on an episode that is gone
+/// is meaningless. A triage act is a *historical fact*: "this reviewer dismissed this fingerprint" stays
+/// true after a rebase retires the episode row, and a cascade would erase the audit trail exactly when it
+/// is most interesting — which is §8.7's rule that a prune may never lose a review, applied to
+/// migrations. The `fingerprint` is the durable link; `episode_id` is a convenience join that is allowed
+/// to dangle.
+pub const MIGRATION_6: &str = "
+CREATE TABLE IF NOT EXISTS triage_event (
+  seq          INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id   TEXT NOT NULL,
+  fingerprint  TEXT NOT NULL,               -- what the act was taken against (e4.6 re-links with it)
+  disposition  TEXT NOT NULL CHECK (disposition IN
+                   ('unread','read','accepted','flagged','dismissed','snoozed')),
+  reason_code  TEXT NOT NULL DEFAULT '',    -- the dismiss vocabulary; empty when not a dismissal
+  note         TEXT NOT NULL DEFAULT '',    -- the reviewer's own words, when the act carries any
+  until        TEXT NOT NULL DEFAULT '',    -- the snooze condition, stamped with its baseline
+  actor        TEXT NOT NULL,               -- who: 'name <address>', or 'unknown', never invented
+  risk         INTEGER,                     -- the score at the time of the act; NULL = unscored then
+  risk_model   TEXT NOT NULL DEFAULT '',    -- which ranking produced that number
+  utc          INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS triage_event_episode ON triage_event(episode_id, seq);
+CREATE INDEX IF NOT EXISTS triage_event_utc ON triage_event(utc);
+CREATE INDEX IF NOT EXISTS triage_event_reason ON triage_event(reason_code);
+";
+
 /// One stored human correction (`e4.1`, `reco-w7q`): "whoever answers to this identity is an agent / a
 /// person", learned once and applied to every later commit carrying that signature.
 ///
@@ -321,6 +369,61 @@ impl fmt::Display for ReviewState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+/// One triage act, as the ledger stores it (`e4.5`, `reco-wsj`).
+///
+/// The store spells the disposition as [`ReviewState`] — the same closed word list, because "what the act
+/// was" and "what the marker now is" are the same word in every surface that prints either. The reasons,
+/// notes and snooze conditions are opaque text here for the same reason `attribution_correction.kind` is:
+/// the vocabulary belongs to the analysis layer, and a store that parsed it would have to be updated every
+/// time a reason word was.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TriageEvent {
+    /// The episode the act was taken on.
+    pub episode: String,
+    /// The digest it was taken against. Read back from the row by [`Store::record_triage`] rather than
+    /// trusted from the caller, so a stale in-memory read cannot write a stale link into the durable copy.
+    pub fingerprint: String,
+    /// What was decided.
+    pub disposition: ReviewState,
+    /// The dismiss code, empty unless `disposition` is `Dismissed`.
+    pub reason: String,
+    /// The reviewer's own words, when the act carries any.
+    pub note: String,
+    /// The snooze condition with its baseline, empty unless `disposition` is `Snoozed`.
+    pub until: String,
+    /// Who: `name <address>`, or `unknown`. Never invented (`ADR-001 §7.7`).
+    pub actor: String,
+    /// The risk score at the time of the act, and which model scored it. `None` when nothing had scored
+    /// the episode then, which the retrospective prints as its own caveat rather than as a zero.
+    pub risk: Option<i64>,
+    /// See [`TriageEvent::risk`].
+    pub risk_model: String,
+    /// When, unix millis.
+    pub utc: i64,
+}
+
+/// The `review_state.note` a triage act writes.
+///
+/// The act's own words if it has any, and otherwise what the act amounted to, so a marker read without the
+/// ledger beside it still says something true. `None` for a bare accept, which has nothing to say beyond
+/// the state itself — and a `NULL` note is how "no note was written" differs from "an empty note was".
+///
+/// No `dismissed:` or `snoozed:` prefix, because the note is always drawn beside the state that says exactly
+/// that (`⚑ dismissed: not-my-area`), and a note reading `dismissed: dismissed: not-my-area` is the sound
+/// of two writers assuming the other one would name the act.
+fn note_text(note: &str, reason: &str, until: &str) -> Option<String> {
+    if !note.is_empty() {
+        return Some(note.to_owned());
+    }
+    if !reason.is_empty() {
+        return Some(reason.to_owned());
+    }
+    if !until.is_empty() {
+        return Some(format!("until {until}"));
+    }
+    None
 }
 
 /// One episode as `e1.3` computed it, in the store's own vocabulary (hex ids, plain strings).
@@ -1149,6 +1252,189 @@ impl Store {
         Ok(())
     }
 
+    /// Record one triage act, and move the episode's current marker to match, in one transaction.
+    ///
+    /// Two writes, never one without the other. The act log is what the retrospective and an audit read;
+    /// `review_state` is what the rail's badge and the queue's counts read. Recording only the first
+    /// leaves the queue lying about what it holds; recording only the second is the criterion this table
+    /// exists to satisfy, so a caller cannot get it wrong: there is no method that writes one alone.
+    ///
+    /// The `fingerprint` is read here rather than passed in, for the same reason `set_review` reads it: a
+    /// caller cannot sign off an episode against a digest it has not been shown, and a stale read in the
+    /// caller must not be able to write a stale link into the durable record.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if either write fails — and then neither row landed, which is the only
+    /// outcome that lets the shell say "recorded" truthfully.
+    pub fn record_triage(&mut self, act: &TriageEvent) -> Result<i64, Error> {
+        let fingerprint: String = self
+            .connection()
+            .query_row(
+                "SELECT fingerprint FROM episode WHERE id = ?1",
+                params![act.episode],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|err| corrupt("reading an episode fingerprint", &err))?
+            .unwrap_or_else(|| act.fingerprint.clone());
+        let tx = self
+            .conn_mut()
+            .transaction()
+            .map_err(|err| corrupt("opening a triage transaction", &err))?;
+        let seq: i64 = tx
+            .query_row(
+                "INSERT INTO triage_event(episode_id, fingerprint, disposition, reason_code, note,
+                                          until, actor, risk, risk_model, utc)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING seq",
+                params![
+                    act.episode,
+                    fingerprint,
+                    act.disposition.as_str(),
+                    act.reason,
+                    act.note,
+                    act.until,
+                    act.actor,
+                    act.risk,
+                    act.risk_model,
+                    act.utc
+                ],
+                |row| row.get(0),
+            )
+            .map_err(|err| corrupt("writing a triage act", &err))?;
+        tx.execute(
+            "INSERT INTO review_state(episode_id, state, fingerprint, actor, note, updated_utc)
+             VALUES (?1,?2,?3,?4,?5,?6)
+             ON CONFLICT(episode_id) DO UPDATE SET state=excluded.state, note=excluded.note,
+                    actor=excluded.actor, updated_utc=excluded.updated_utc",
+            params![
+                act.episode,
+                act.disposition.as_str(),
+                fingerprint,
+                act.actor,
+                note_text(&act.note, &act.reason, &act.until),
+                act.utc
+            ],
+        )
+        .map_err(|err| corrupt("writing review state for a triage act", &err))?;
+        tx.commit()
+            .map_err(|err| corrupt("committing a triage act", &err))?;
+        Ok(seq)
+    }
+
+    /// The act log, newest first, capped so a huge ledger cannot outrun a frame budget.
+    ///
+    /// The cap is reported by [`Store::triage_event_count`] rather than applied silently, and the
+    /// retrospective prints it as a caveat: "the last 5 000 acts" and "every act" are different claims.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn triage_events(&self, limit: i64) -> Result<Vec<TriageEvent>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT episode_id, fingerprint, disposition, reason_code, note, until, actor,
+                        risk, risk_model, utc
+                 FROM triage_event ORDER BY utc DESC, seq DESC LIMIT ?1",
+            )
+            .map_err(|err| corrupt("reading the triage ledger", &err))?;
+        let rows = statement
+            .query_map(params![limit], |row| {
+                Ok(TriageEvent {
+                    episode: row.get(0)?,
+                    fingerprint: row.get(1)?,
+                    disposition: ReviewState::parse(&row.get::<_, String>(2)?),
+                    reason: row.get(3)?,
+                    note: row.get(4)?,
+                    until: row.get(5)?,
+                    actor: row.get(6)?,
+                    risk: row.get::<_, Option<i64>>(7)?,
+                    risk_model: row.get(8)?,
+                    utc: row.get(9)?,
+                })
+            })
+            .map_err(|err| corrupt("reading the triage ledger", &err))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|err| corrupt("reading the triage ledger", &err))?);
+        }
+        Ok(out)
+    }
+
+    /// How many acts the ledger holds, which is how a caller knows [`Store::triage_events`] cut it short.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn triage_event_count(&self) -> Result<i64, Error> {
+        self.connection()
+            .query_row("SELECT count(*) FROM triage_event", [], |row| row.get(0))
+            .map_err(|err| corrupt("counting the triage ledger", &err))
+    }
+
+    /// The last act recorded for one episode, or `None` when nothing has been done with it.
+    ///
+    /// This is what makes a snooze checkable: the stored `until` carries the epoch or session count it was
+    /// stamped against, and a released snooze is an open row again.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn last_triage(&self, id: &str) -> Result<Option<TriageEvent>, Error> {
+        self.connection()
+            .query_row(
+                "SELECT episode_id, fingerprint, disposition, reason_code, note, until, actor,
+                        risk, risk_model, utc
+                 FROM triage_event WHERE episode_id = ?1 ORDER BY utc DESC, seq DESC LIMIT 1",
+                params![id],
+                |row| {
+                    Ok(TriageEvent {
+                        episode: row.get(0)?,
+                        fingerprint: row.get(1)?,
+                        disposition: ReviewState::parse(&row.get::<_, String>(2)?),
+                        reason: row.get(3)?,
+                        note: row.get(4)?,
+                        until: row.get(5)?,
+                        actor: row.get(6)?,
+                        risk: row.get::<_, Option<i64>>(7)?,
+                        risk_model: row.get(8)?,
+                        utc: row.get(9)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|err| corrupt("reading an episode's last triage act", &err))
+    }
+
+    /// How often each dismiss code has been used — the "learnable" half of the vocabulary, and the
+    /// numbers that make the retrospective's rollup a query rather than a scan.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn dismiss_usage(&self) -> Result<std::collections::BTreeMap<String, i64>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT reason_code, count(*) FROM triage_event
+                 WHERE disposition = 'dismissed' AND reason_code <> ''
+                 GROUP BY 1 ORDER BY 2 DESC, 1 ASC",
+            )
+            .map_err(|err| corrupt("counting dismiss reasons", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|err| corrupt("counting dismiss reasons", &err))?;
+        let mut out = std::collections::BTreeMap::new();
+        for row in rows {
+            let (code, count) = row.map_err(|err| corrupt("counting dismiss reasons", &err))?;
+            out.insert(code, count);
+        }
+        Ok(out)
+    }
+
     /// Read one `session_state` value.
     ///
     /// # Errors
@@ -1892,4 +2178,39 @@ fn retire_dead_episodes(conn: &Connection) -> Result<usize, rusqlite::Error> {
            AND id NOT IN (SELECT new_id FROM episode_rewrite)",
         [],
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::note_text;
+
+    /// The marker's note is the act's claim, in the act's own words when it had any.
+    ///
+    /// A unit test rather than an integration one because this is a pure choice about wording a stored
+    /// column, and the difference it encodes — `NULL` for "nothing was written" against `""` for "an empty
+    /// note was" — is exactly the kind of corner an end-to-end test reads as a passing row.
+    #[test]
+    fn the_markers_note_says_what_the_act_said_and_null_when_it_said_nothing() {
+        assert_eq!(
+            note_text("", "not-my-area", "").as_deref(),
+            Some("not-my-area"),
+            "a dismissal's reason is its claim, and a marker read without the ledger should still state it"
+        );
+        assert_eq!(
+            note_text("the pool is being drained", "", "").as_deref(),
+            Some("the pool is being drained"),
+            "a flag's note is the whole act"
+        );
+        assert_eq!(
+            note_text("", "", "next-index:41").as_deref(),
+            Some("until next-index:41"),
+            "a snooze says what it is waiting for, baseline included"
+        );
+        assert_eq!(
+            note_text("", "", ""),
+            None,
+            "a bare accept has nothing to say, and `NULL` is how 'nothing was written' is stored — \
+             distinct from an empty note, which would be a note"
+        );
+    }
 }

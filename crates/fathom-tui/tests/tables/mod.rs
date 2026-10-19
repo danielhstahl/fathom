@@ -62,6 +62,7 @@ pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
     ("review.dismiss", "Dismiss with a reason", "review", "e4.5", &[Mode::Global], true),
     ("review.snooze", "Snooze until a condition", "review", "e4.5", &[Mode::Global], true),
     ("risk.explain", "Why this score / this rank (`fathom why`)", "review", "e4.4", &[Mode::Global], true),
+    ("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5", &[Mode::Queue], true),
     ("intent.show", "Show captured intent and its source", "review", "e4.2", &[Mode::Global], true),
     ("pick.choose", "Choose this entry", "overlay", "e4.5", &[Mode::Pick], false),
     ("prompt.submit", "Submit", "overlay", "e5.2", &[Mode::Prompt], false),
@@ -243,6 +244,7 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
     ("artefact", "[", "artefact.scope_narrow"),
     ("artefact", "]", "artefact.scope_widen"),
     ("artefact", "<Enter>", "artefact.write"),
+    ("queue", "r", "queue.retrospect"),
 ];
 
 /// Every pane with the numbers the layout ladder is built from.

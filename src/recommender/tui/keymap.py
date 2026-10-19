@@ -238,6 +238,10 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
     _a("review.snooze", "Snooze until a condition", "review", "e4.5",
        doc="Opens the snooze-window chooser (`pick`)."),
     _a("risk.explain", "Why this score / this rank (`fathom why`)", "review", "e4.4"),
+    _a("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5",
+       modes=("queue",),
+       doc="Toggles the worklist pane between the ranked queue and the dismissed-with-reason "
+           "rollup, so systematic dismissing is a number on a screen."),
     _a("intent.show", "Show captured intent and its source", "review", "e4.2"),
     _a("pick.choose", "Choose this entry", "overlay", "e4.5", modes=("pick",),
        palette=False),
@@ -477,7 +481,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
     # Views whose whole job is a list plus a card add nothing of their own: the
     # shared motion set *is* the whole keymap, which is what "identical motion
     # behaviour across timeline, queue, file tree and search results" (e5.4) demands.
-    "queue": {},
+    "queue": {
+        "r": "queue.retrospect",
+    },
     "timeline": {},
     "ambient": {},
 }

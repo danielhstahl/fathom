@@ -30,6 +30,9 @@ pub mod detectors;
 pub mod error;
 pub mod export;
 pub mod insight;
+/// The attention queue (`e4.5`, `reco-wsj`): the ordering, the four triage acts and the retrospective.
+/// Its types reach the surfaces through [`insight`], which is the only door `fathom-tui` may open.
+pub mod queue;
 /// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
 pub mod risk;
 /// The declared scope of an episode, measured against the paths the change touched (`e4.2`). The

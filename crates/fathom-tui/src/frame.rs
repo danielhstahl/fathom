@@ -176,6 +176,13 @@ pub struct Options {
     /// shell has no opinion about colour and none is its to have. Folding to what the terminal answered
     /// happens at draw time, not here.
     pub theme: crate::theme::Theme,
+    /// Everything the queue needs to triage: vocabulary, actor, ledger and the acts already in it
+    /// (`e4.5`, `reco-wsj`).
+    ///
+    /// `Default` is `Setup::default()`, which is a shell that takes acts in memory and says so: the
+    /// `--plain` path and every embedder keep compiling, and none of them silently pretend to have written
+    /// a sign-off.
+    pub queue: crate::queue::Setup,
 }
 
 impl Default for Options {
@@ -197,6 +204,7 @@ impl Default for Options {
             lines: false,
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
+            queue: crate::queue::Setup::default(),
         }
     }
 }
@@ -606,6 +614,15 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // The party that can produce patch bytes, installed before `prime` so a session that resumes
     // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).
     app.patches = options.patches.clone();
+    // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
+    // session that resumes straight into the queue must be able to disposition from the first keystroke,
+    // with the vocabulary and the actor that belong to this repository (`e4.5`, `reco-wsj`).
+    app.queue = options.queue.state();
+    if let Some(batch) = &options.episodes {
+        // The `new-in-session` snooze needs to know what a session holds; the shell cannot look that up,
+        // because the shell is not allowed to open the index.
+        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+    }
     let resumed = prime(&mut app, options);
     // The size to open at, in the order anyone's authority outranks anyone else's: what the caller
     // forced, what the terminal says, the size this repository was last read at (`e1.11`), and the
@@ -736,6 +753,12 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     );
     app.notices = options.notices.clone();
     app.patches = options.patches.clone();
+    // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
+    // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
+    app.queue = options.queue.state();
+    if let Some(batch) = &options.episodes {
+        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+    }
     let resumed = prime(&mut app, options);
     // A piped frame has no terminal to ask, so the reviewer's own last frame size is the honest answer
     // for a width — the pipe draws the layout they read, not the one a default picked (`e1.11`).

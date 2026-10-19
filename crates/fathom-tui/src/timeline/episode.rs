@@ -20,7 +20,7 @@
 //! keeps millis, so whoever maps rows into this type converts; the rail never sees a unit it has to
 //! guess at.
 
-use fathom_analyze::insight::{EpisodeDelta, PageWindow, RiskView};
+use fathom_analyze::insight::{BlastInput, EpisodeDelta, PageWindow, RiskView};
 use fathom_core::time::Timestamp;
 
 use crate::diff::Unavailable;
@@ -244,6 +244,15 @@ pub struct Episode {
     /// Whether any current commit still belongs to it (ADR-003 §6.3): a dead episode is shown, marked
     /// `gone`, because "your sign-off is on history that is no longer here" must not be silent.
     pub live: bool,
+    /// What depends on this change, as far as anything knows (`e4.5`).
+    ///
+    /// The queue's third factor, and in this build the honest answer is [`BlastInput::Unmeasured`]: blast
+    /// radius needs `e3.1`/`e3.2`'s module graph, and
+    /// [`crate::insight`'s blast section](fathom_analyze::insight) already refuses a path-prefix guess for
+    /// the same reason. The field exists anyway because that is the door: the day `e3.2` lands, the
+    /// composition root fills it in and the ordering already reads it, prints whose number it is, and
+    /// stops saying the factor is idle. Nothing else changes, which is the point of a door.
+    pub blast: BlastInput,
 }
 
 impl Default for Episode {
@@ -272,6 +281,7 @@ impl Default for Episode {
             boundary_confidence: None,
             delta: None,
             live: true,
+            blast: BlastInput::Unmeasured,
         }
     }
 }

@@ -218,3 +218,22 @@ pub fn episodes(
 // number rather than four close approximations of it.
 pub use crate::risk::FileChange;
 pub use crate::risk::{BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank};
+
+// ---------------------------------------------------------------------------
+// the attention queue, through the same door (`e4.5`, `reco-wsj`)
+// ---------------------------------------------------------------------------
+//
+// The queue's ordering, its four triage acts and its retrospective are computed in
+// [`crate::queue`] — the façade computes nothing, as its own doc insists — but every surface that *shows*
+// them has to name them, and `fathom-tui` may not reach past this module (ADR-002 §5.3, lint `M02`). Same
+// arrangement as the risk block above: the door is the façade, the arithmetic is `queue`'s.
+//
+// The functions come through too, and that is deliberate rather than leakage: the queue re-ranks itself
+// after every keystroke, and a shell that re-derived the order locally would be a second ranking — the
+// same argument `e2.11` made about a second copy of `RiskView`. `rank` is the spine's ([`crate::risk::rank`]),
+// so the queue's arrives as `rank_queue` and nobody has to remember which is which.
+pub use crate::queue::{
+    BlastInput, CONDITIONS, DismissReason, Disposition, QueueCounts, QueuePlacement, QueuePolicy,
+    QueueRanking, QueueRetrospective, QueueRow, QueueWindow, REASONS, ReasonVocabulary, Severity,
+    SnoozeSituation, SnoozeUntil, TriageAct, TriageRecord, rank_queue, retrospect,
+};

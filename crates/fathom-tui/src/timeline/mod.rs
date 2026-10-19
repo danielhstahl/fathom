@@ -149,6 +149,24 @@ impl Timeline {
         self.rail.set_index_facts(facts);
     }
 
+    /// Which index epoch the rows came from, when the source named one (`e4.5`).
+    ///
+    /// The queue needs it to decide a `next-index` snooze, which is the whole reason it is exposed: a
+    /// snooze is checked against the epoch it was stamped with, and a shell that could not say the current
+    /// epoch could never release one.
+    #[must_use]
+    pub fn epoch(&self) -> Option<u64> {
+        self.rail.epoch()
+    }
+
+    /// Stamp one episode's review marker, in the rail and nowhere else (`e4.5`).
+    ///
+    /// The shell writes the ledger first and calls this only when the write landed, so a badge on a row
+    /// means a recorded decision. Returns whether the row was in the batch at all.
+    pub fn set_state(&mut self, id: &str, state: ReviewState) -> bool {
+        self.rail.set_state(id, state)
+    }
+
     /// One episode by id, filtered or not.
     ///
     /// The panes mostly act on the cursor, but a pane that answers a question about *this* episode (its

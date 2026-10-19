@@ -16,16 +16,21 @@
 //! * [`strip`] names the ranking function in the pane's own footer, because §5.1's note is explicit
 //!   that a strip which does not say *how* it ordered is a strip that asks for trust.
 //!
-//! What is deliberately **not** here is the queue's workflow: `x`/`f`/`-`/`z` dispositioning into the
-//! review ledger (`e4.6`), staleness and blast radius in the ordering (`e4.5`, which needs `e4.4`'s
-//! features for it), and queue counts by severity. Rows are ranked, not triaged, and the strip says so.
+//! Since `e4.5` (`reco-wsj`) the list is a *worklist* rather than a ranking display: the rows come from
+//! `fathom_analyze::queue::rank_queue` (so the number in a row and the order of the rows are the same
+//! computation), each row carries the queue's own number and the disposition glyph, and the pane can be
+//! flipped with `r` to the retrospective — what got dismissed, by whom, under which reason. The acts
+//! themselves are taken in [`crate::app`], written through [`crate::queue::Ledger`]; this module draws
+//! them and does not decide anything.
 //!
 //! Nothing in this module computes a number. The order is a sort of values the caller handed over
 //! ([`crate::timeline::Risk`], which `fathom-cli` fills from `fathom_analyze::risk`), which is what
 //! keeps "the TUI contains no analysis logic" true while the panes are still the thing that answers.
 
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
+use fathom_analyze::insight::QueuePlacement;
 use fathom_core::time::Timestamp;
 
 use crate::layout::display_width;
@@ -79,11 +84,29 @@ pub const LINES_PER_EPISODE: usize = 2;
 /// "why is a three-line change up here". Row two is the single biggest reason, with the path that
 /// carries it. `cursor` indexes `episodes`, not lines.
 #[must_use]
-pub fn lines(episodes: &[&Episode], cursor: usize, rows: usize, width: usize) -> Vec<StyledLine> {
+pub fn lines(
+    episodes: &[&Episode],
+    placements: &BTreeMap<String, QueuePlacement>,
+    counts: Option<&str>,
+    cursor: usize,
+    rows: usize,
+    width: usize,
+) -> Vec<StyledLine> {
     let mut body: Vec<StyledLine> = Vec::new();
+    // The counts first, because the first thing a worklist owes the reviewer is how big the job is —
+    // and when it is zero, *that* is the line, not an empty box (`e4.5`).
+    if let Some(counts) = counts {
+        body.push(StyledLine::with_face(counts, Face::Muted));
+    }
     for (row, episode) in episodes.iter().enumerate() {
-        head(&mut body, episode, row == cursor, width);
-        reason(&mut body, episode, width);
+        head(
+            &mut body,
+            episode,
+            placements.get(&episode.id),
+            row == cursor,
+            width,
+        );
+        reason(&mut body, episode, placements.get(&episode.id), width);
     }
     if body.is_empty() {
         body.push(StyledLine::with_face(
@@ -108,20 +131,100 @@ pub fn lines(episodes: &[&Episode], cursor: usize, rows: usize, width: usize) ->
 
 /// Plain-text projection of [`lines`], for `--plain`, the screen reader and the golden files.
 #[must_use]
-pub fn text(episodes: &[&Episode], cursor: usize, rows: usize, width: usize) -> Vec<String> {
-    lines(episodes, cursor, rows, width)
+pub fn text(
+    episodes: &[&Episode],
+    placements: &BTreeMap<String, QueuePlacement>,
+    counts: Option<&str>,
+    cursor: usize,
+    rows: usize,
+    width: usize,
+) -> Vec<String> {
+    lines(episodes, placements, counts, cursor, rows, width)
         .into_iter()
         .map(|line| line.text().to_owned())
         .collect()
 }
 
-/// Row one: `▸  1 e8f1a2 agent  +412 −90  risk 88 migration+ci`.
-fn head(out: &mut Vec<StyledLine>, episode: &Episode, cursor: bool, width: usize) {
-    let rank = episode
-        .risk()
-        .as_ref()
-        .and_then(|risk| risk.rank)
-        .map_or_else(|| "·".to_owned(), |rank| rank.to_string());
+/// Draw an open chooser — the dismiss reason (`-`) or the snooze condition (`z`) — at the top of the
+/// worklist, in place of the rows (`e4.5`).
+///
+/// Drawn in the pane rather than floated over it on purpose: the reviewer is picking a claim *about the
+/// row they can see*, and a modal that hides it while they choose makes the choice worse, not safer.
+/// The rows behind are not gone; `<Esc>` brings them back with the cursor where it was.
+#[must_use]
+pub fn chooser(
+    title: &str,
+    hint: &str,
+    rows: &[(String, String)],
+    cursor: usize,
+    width: usize,
+    height: usize,
+) -> Vec<StyledLine> {
+    let mut out: Vec<StyledLine> = Vec::new();
+    out.push(StyledLine::with_face(title, Face::Emphasis));
+    for (row, (code, label)) in rows.iter().enumerate() {
+        let mut line = StyledLine::new();
+        line.push(
+            if row == cursor {
+                Face::Emphasis
+            } else {
+                Face::Muted
+            },
+            &format!("{}{:>2} ", if row == cursor { "▸" } else { " " }, row + 1),
+        );
+        line.push(
+            if row == cursor {
+                Face::Text
+            } else {
+                Face::Muted
+            },
+            &format!("{code:<16}"),
+        );
+        line.push(Face::Text, label);
+        out.push(fit(line, width));
+    }
+    out.push(StyledLine::with_face(hint, Face::Faint));
+    while out.len() < height {
+        out.push(StyledLine::plain(""));
+    }
+    out.truncate(height);
+    out.into_iter().map(|line| line.padded(width)).collect()
+}
+
+/// The one-line prompt for a flag's note (`f`), drawn where the list was for exactly as long as the
+/// reviewer is typing it.
+#[must_use]
+pub fn prompt_line(label: &str, typed: &str, width: usize) -> StyledLine {
+    let mut line = StyledLine::new();
+    line.push(Face::Emphasis, label);
+    line.push(Face::Text, typed);
+    line.push(Face::Muted, "▏");
+    line.padded(width)
+}
+
+/// Row one: `▸  1 e8f1a2 agent  +412 −90  queue 123 risk 82 migration+ci`.
+///
+/// The leading column is the *queue* rank when the queue has placed the row (`e4.5`), because the number
+/// a worklist row leads with is the one that explains why this row is above the next one; the risk rank
+/// stays inside the risk phrase, where it came from.
+fn head(
+    out: &mut Vec<StyledLine>,
+    episode: &Episode,
+    placement: Option<&QueuePlacement>,
+    cursor: bool,
+    width: usize,
+) {
+    let rank = placement
+        .and_then(|placement| placement.rank)
+        .map(|rank| rank.to_string())
+        .or_else(|| {
+            episode
+                .risk()
+                .as_ref()
+                .and_then(|risk| risk.rank)
+                .map(|rank| rank.to_string())
+        })
+        .unwrap_or_else(|| "·".to_owned());
     let mut line = StyledLine::new();
     line.push(
         if cursor { Face::Emphasis } else { Face::Muted },
@@ -133,6 +236,9 @@ fn head(out: &mut Vec<StyledLine>, episode: &Episode, cursor: bool, width: usize
         Face::Text,
         &format!(" +{} −{}", compact(episode.n_add), compact(episode.n_del)),
     );
+    if let Some(placement) = placement {
+        line.push(Face::Number, &format!(" {}", placement.headline()));
+    }
     match episode.risk() {
         Some(risk) => {
             line.push(Face::Number, &format!(" risk {}", risk.score));
@@ -143,11 +249,28 @@ fn head(out: &mut Vec<StyledLine>, episode: &Episode, cursor: bool, width: usize
         }
         None => line.push(Face::Warning, " risk ?"),
     }
+    if let Some(placement) = placement {
+        // A disposition glyph on an open row means one thing: the row is here *again*, either because a
+        // flag kept it (`⚐`) or because a snooze's condition finally happened (`z`). Silently rejoining
+        // the queue would have the reviewer re-read the same episode wondering why.
+        if matches!(
+            placement.disposition,
+            fathom_analyze::insight::Disposition::Flagged
+                | fathom_analyze::insight::Disposition::Snoozed
+        ) {
+            line.push(Face::Marker, &format!(" {}", placement.disposition.glyph()));
+        }
+    }
     out.push(fit(line, width));
 }
 
 /// Row two: the biggest contributing reason, indented under the row it explains.
-fn reason(out: &mut Vec<StyledLine>, episode: &Episode, width: usize) {
+fn reason(
+    out: &mut Vec<StyledLine>,
+    episode: &Episode,
+    placement: Option<&QueuePlacement>,
+    width: usize,
+) {
     let Some(risk) = episode.risk() else {
         out.push(fit(
             StyledLine::with_face(
@@ -168,6 +291,12 @@ fn reason(out: &mut Vec<StyledLine>, episode: &Episode, width: usize) {
     let mut line = StyledLine::new();
     line.push(Face::Muted, "     · ");
     line.push(Face::Text, &words);
+    if let Some(placement) = placement {
+        // The second factor, in the row that the first factor explains: `4d unread` is why a medium
+        // is above a high today, and making the reviewer press `w` to find that out hides the reason
+        // behind a keystroke (`e4.5`).
+        line.push(Face::Muted, &format!(" · {}", placement.staleness.basis));
+    }
     out.push(fit(line, width));
 }
 

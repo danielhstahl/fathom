@@ -38,6 +38,7 @@ pub mod layout;
 pub mod materialize;
 /// The progress row: a percentage and a time estimate that converges (`e5.9`, ADR-006 §10.3).
 pub mod progress;
+pub mod queue;
 pub mod render;
 pub mod session;
 pub mod style;

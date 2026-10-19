@@ -402,11 +402,30 @@ fn the_queue_answers_which_three_episodes_are_the_riskiest() {
         !frame.contains("risk ?"),
         "the rail's `?` column is answered now:\n{frame}"
     );
-    let mut descending = scored.clone();
+    // What the rows are ordered by changed in `e4.5`: the queue orders by risk × staleness × blast, so
+    // the risk numbers down the pane are close to descending and no longer exactly so — a stale medium
+    // belongs above a fresh high, which is the whole ticket. The queue's own column is the invariant now,
+    // and the risk number each row carries is still `spine-1`'s, unchanged and printed beside it.
+    let points: Vec<u32> = text
+        .lines()
+        .filter(|line| line.contains(" risk "))
+        .filter_map(|line| {
+            line.split("queue ")
+                .nth(1)
+                .and_then(|rest| rest.split_whitespace().next())
+                .and_then(|value| value.parse::<u32>().ok())
+        })
+        .collect();
+    assert_eq!(
+        points.len(),
+        SHAPES.len(),
+        "every row carries the queue's own number as well as its risk:\n{text}"
+    );
+    let mut descending = points.clone();
     descending.sort_unstable_by(|left, right| right.cmp(left));
     assert_eq!(
-        scored, descending,
-        "the queue is in descending risk order, not the store's chronological order"
+        points, descending,
+        "the pane is in the queue's order, highest points first:\n{text}"
     );
     // The rank column agrees with the order, which is the only way "which three" is readable.
     let ranks: Vec<Option<u32>> = rows.iter().map(|(rank, _, _)| *rank).collect();
@@ -419,7 +438,9 @@ fn the_queue_answers_which_three_episodes_are_the_riskiest() {
     );
 
     // The three that matter are at the top, and each one's reason cites the file that put it there.
-    let top_three = text.lines().take(6).collect::<Vec<_>>().join("\n");
+    // Seven lines, because `e4.5` put a count line above the rows: the pane now opens with "queue 21 open"
+    // and the first three episodes start one line lower than they did when this test was written.
+    let top_three = text.lines().take(7).collect::<Vec<_>>().join("\n");
     let line_of = |needle: &str| {
         text.lines()
             .position(|line| line.contains(needle))
@@ -449,13 +470,16 @@ fn the_queue_answers_which_three_episodes_are_the_riskiest() {
     );
 
     // And the screen says what the screen is: the ranking named, its ceiling, and what it is not.
+    // `e4.5` replaced `reco-c05`'s spine-only order in this pane, so the strip names `queue-1` now — and
+    // names the three factors beside it, which is the part a reviewer can check with a calculator.
     assert!(
-        frame.contains("order: spine-1"),
-        "the strip names the ranking function:\n{frame}"
+        frame.contains("order: queue-1") && frame.contains("risk × staleness × blast"),
+        "the strip names the ranking function and its factors:\n{frame}"
     );
     assert!(
-        frame.contains("ranked of 21 held"),
-        "and how many rows carry it:\n{frame}"
+        frame.contains(&format!("{} of {} open", SHAPES.len(), SHAPES.len())),
+        "and how many rows carry it — `e4.5` counts what is open in the queue rather than what the spine
+         held back, because every row here is asking to be read:\n{frame}"
     );
     assert!(
         frame.contains("cannot see 7 things"),

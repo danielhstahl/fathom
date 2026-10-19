@@ -39,6 +39,7 @@ mod output;
 #[cfg(feature = "tui")]
 mod patches;
 mod query;
+mod queue;
 mod sanitize;
 // The episode boundary knobs are configuration, and configuration is read here and nowhere else below the
 // CLI (ADR-002 §4.5). The module is unconditional because `fathom index` needs it in every build that can

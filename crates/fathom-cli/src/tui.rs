@@ -49,6 +49,10 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
     let index = index_facts(&root);
+    // The index's own episode count, taken before `index` moves into the frame: the retrospective's
+    // coverage line is a share of the index, and a denominator the shell cannot read has to be handed
+    // over here (`e4.5`).
+    let index_total = usize::try_from(index.episodes.unwrap_or(0)).unwrap_or(usize::MAX);
     // What the repository itself reports (reco-7f4): a shallow clone, a filtered clone, a commit whose
     // object the database would not serve. The shell's notice list is where a reviewer meets this without
     // leaving the frame — the status line counts the notices, `?` holds the list with the remedy for each —
@@ -104,6 +108,8 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     // In plain mode stdout is the artefact, so the complaints go to stderr with everything else the
     // user is meant to act on (ADR-002 §7.5); in the shell they belong inside the frame, where they
     // stay visible after a notice would otherwise have timed out.
+    let (queue_reasons, queue_notices) = dismiss_reasons(&root);
+    notices.extend(queue_notices);
     let frame_notices = if plain {
         Vec::new()
     } else {
@@ -146,6 +152,15 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         lines: globals.lines,
         term: probe,
         theme,
+        // ...and the queue gets the half it cannot read for itself (`e4.5`, `reco-wsj`): who is
+        // reviewing, which extra reasons this repository ships, how many episodes the index holds, and
+        // the acts already in the ledger — read here, at the edge, because the shell opens nothing.
+        queue: crate::queue::setup(
+            &root,
+            &crate::queue::actor(&root),
+            &queue_reasons,
+            index_total,
+        ),
     };
     if plain {
         for notice in &notices {
@@ -252,6 +267,46 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
     let (overrides, problems) = overrides_from(&tables);
     notices.extend(problems);
     (overrides, notices)
+}
+
+/// `queue.dismiss_reasons` from the repository's own `fathom.toml` (`e4.5`, `reco-wsj`).
+///
+/// The vocabulary is closed and this is the *only* thing a repository may add to it: a list of extra
+/// codes, so a team can say "out of hours" in its own words without every dismissal becoming free text.
+/// A missing key is the normal case. A key that is not a list of strings is a notice, not a silent
+/// drop — the same rule `keys.overrides` follows, because a config line that does nothing is worse than
+/// one that refuses.
+fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<String>) {
+    let Ok(text) = std::fs::read_to_string(root.join("fathom.toml")) else {
+        return (Vec::new(), Vec::new());
+    };
+    let Ok(document) = text.parse::<toml_edit::DocumentMut>() else {
+        // `keymap_overrides` already said the file does not parse; saying it twice in two voices is
+        // noise, and a file that parses for one reader parses for both.
+        return (Vec::new(), Vec::new());
+    };
+    let Some(reasons) = document
+        .get("queue")
+        .and_then(toml_edit::Item::as_table)
+        .and_then(|queue| queue.get("dismiss_reasons"))
+    else {
+        return (Vec::new(), Vec::new());
+    };
+    let Some(reasons) = reasons.as_array() else {
+        return (
+            Vec::new(),
+            vec!["queue.dismiss_reasons must be a list of reason codes".to_owned()],
+        );
+    };
+    let mut out = Vec::new();
+    let mut notices = Vec::new();
+    for reason in reasons {
+        match reason.as_str() {
+            Some(code) => out.push(code.to_owned()),
+            None => notices.push("queue.dismiss_reasons entries must be strings".to_owned()),
+        }
+    }
+    (out, notices)
 }
 
 /// The tab bar's right-hand label: `pilot · main`, or what is honestly known instead.

@@ -208,6 +208,11 @@ fn into_episode(
         n_add: scale(row.n_add),
         n_del: scale(row.n_del),
         n_binary: scale(row.n_binary),
+        // The queue's third factor, and the honest answer this build has: nothing has measured what
+        // depends on this change. `e3.1`/`e3.2` own the module graph; until it exists the composition root
+        // says so rather than guessing from path prefixes, and the queue's strip prints the gap
+        // (`e4.5`, `reco-wsj`).
+        blast: fathom_analyze::insight::BlastInput::Unmeasured,
         state: ReviewState::parse(state.as_str()),
         session: row.session_id,
         turn: row.turn_id,
