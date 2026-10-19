@@ -152,6 +152,22 @@ pub struct Options {
     /// provider on the shipped binary — and `d` asks it. `None` is a build with no index behind the
     /// pane, and the pane says exactly that instead of drawing an empty rectangle.
     pub patches: Option<crate::diff::Provider>,
+    /// Take the mouse: click to select, wheel to scroll (`e5.5`, ADR-006 §10.1).
+    ///
+    /// Off by default and never turned on by a guess, because capture takes the terminal's own text
+    /// selection away for the length of the run. When it is on, the status line says so.
+    pub mouse: bool,
+    /// Print the frame as **ordered lines** instead of a grid when there is no terminal to draw it
+    /// into (`--plain --lines`, ADR-006 §6.7).
+    ///
+    /// Side-by-side panes are the right shape for eyes and the wrong shape for a pipe, a log or a
+    /// screen reader. Ignored when a frame is actually drawn: a grid on a screen is the point.
+    pub lines: bool,
+    /// What the caller's environment said the terminal is (`e5.5`).
+    ///
+    /// The probe is read by `fathom-cli`, because this crate does not read variables (ADR-002 §3);
+    /// what arrives here is what the help overlay reports and what the notices are written from.
+    pub term: crate::terminal::Probe,
 }
 
 impl Default for Options {
@@ -169,6 +185,9 @@ impl Default for Options {
             index: crate::index::Facts::unknown(),
             session: Vec::new(),
             patches: None,
+            mouse: false,
+            lines: false,
+            term: crate::terminal::Probe::unknown(),
         }
     }
 }
@@ -182,6 +201,10 @@ pub enum LoopEnd {
     Disconnected,
     /// The scripted frame limit was reached.
     FrameLimit,
+    /// A scripted run (`max_frames`) ran out of things to draw and nothing more arrived, so the
+    /// limit could no longer be reached. Reported as itself rather than as a quit, because a caller
+    /// that asked for 40 frames and got 12 needs to know which of the two happened.
+    Idle,
     /// A signal arrived, and the screen was put back on the way out.
     Signalled(&'static str),
 }
@@ -287,6 +310,15 @@ pub struct TerminalSink<B: Backend> {
     pub terminal: Terminal<B>,
 }
 
+impl<B: Backend> TerminalSink<B> {
+    /// Wrap a terminal that has already been opened — the real stdout in `run`, a `TestBackend` in a
+    /// test that wants to read the cells back.
+    #[must_use]
+    pub fn new(terminal: Terminal<B>) -> Self {
+        TerminalSink { terminal }
+    }
+}
+
 impl<B: Backend> FrameSink for TerminalSink<B> {
     fn write_terminal(&mut self, bytes: &[u8]) -> Result<String, String> {
         use std::io::{IsTerminal as _, Write as _};
@@ -309,8 +341,12 @@ impl<B: Backend> FrameSink for TerminalSink<B> {
             app.resize(size.width, size.height);
         }
         let lines = crate::render::frame_styled(app);
+        // The terminal answered a question about colour when it was asked (`e5.5`), and the answer is
+        // applied here rather than in the renderer: the layout, the glyphs and the shapes are the same
+        // frame either way, and only the colour goes away.
+        let colour = app.term.color();
         self.terminal
-            .draw(|frame| crate::render::blit(frame.buffer_mut(), &lines))
+            .draw(|frame| crate::render::blit_in_colour(frame.buffer_mut(), &lines, colour))
             .map_err(|err| Error::Terminal {
                 why: format!("{err}"),
             })?;
@@ -332,7 +368,9 @@ pub fn run_loop(
 ) -> Result<Report, Error> {
     let mut scheduler = std::mem::take(&mut app.scheduler);
     scheduler.mark_dirty();
+    let mut timed_out;
     let end = 'outer: loop {
+        timed_out = false;
         let wait = app
             .chord_wait(Instant::now())
             .unwrap_or(crate::terminal::SIGNAL_POLL);
@@ -341,7 +379,10 @@ pub fn run_loop(
             Received::Disconnected => {
                 break 'outer LoopEnd::Disconnected;
             }
-            Received::Timeout => Vec::new(),
+            Received::Timeout => {
+                timed_out = true;
+                Vec::new()
+            }
         };
         batch.extend(bus.drain());
         let arrived = !batch.is_empty();
@@ -406,6 +447,21 @@ pub fn run_loop(
         if app.quit.is_some() {
             break 'outer LoopEnd::Quit;
         }
+        // A scripted run has no future: it is fed by a producer that stops. If a whole poll window
+        // went by with nothing arriving, nothing pending and the frame limit still not reached, that
+        // limit is unreachable — coalesced batches draw fewer frames than the script's sender sent
+        // messages, and on a loaded machine that is fewer than anyone counted on — so the honest
+        // answer is to stop and say it was the quiet that ended the run, not to spin at the poll
+        // interval forever for an event that has already come and gone. A real run passes
+        // `max_frames: None` and waits as long as a reviewer takes to press a key.
+        if max_frames.is_some()
+            && timed_out
+            && !scheduler.is_dirty()
+            && !app.chords.is_pending()
+            && app.quit.is_none()
+        {
+            break 'outer LoopEnd::Idle;
+        }
     };
     app.scheduler = scheduler;
     Ok(Report {
@@ -435,6 +491,11 @@ pub fn apply(app: &mut App, message: Message) {
             app.age_toast();
         }
         Message::Repaint => {}
+        Message::Mouse(message) => {
+            // Additive, and only additive (§10.1): the pointer runs the same moves the keyboard
+            // runs, through `App::pointer`, and it only ever gets here if capture was asked for.
+            app.pointer(message, Instant::now());
+        }
         Message::Signal(signal) => {
             app.quit = Some(format!("signal {signal:?}"));
         }
@@ -519,6 +580,7 @@ pub fn run(options: &Options) -> Result<Report, Error> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    app.term = options.term.clone();
     app.install_handoff_env(options.handoff_env.clone());
     // The party that can produce patch bytes, installed before `prime` so a session that resumes
     // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).
@@ -557,6 +619,18 @@ pub fn run(options: &Options) -> Result<Report, Error> {
         why: err.to_string(),
     })?;
     let _ = hide_cursor();
+    if options.mouse {
+        // Capture is taken *after* the guard exists, so the one restore path that runs on a panic or
+        // a signal puts the pointer back too. A refusal is a notice, not a failure: the keyboard is
+        // the whole interface, and this is an extra on top of it.
+        match restore.enable_mouse() {
+            Ok(()) => app.mouse = true,
+            Err(err) => app.notices.push(format!(
+                "the mouse was asked for and the terminal refused it ({err}) — every gesture is a \
+                 key as well, and `fathom tui --show-keys` lists them"
+            )),
+        }
+    }
     if let Ok(size) = terminal.size() {
         app.resize(size.width, size.height);
     }
@@ -627,6 +701,8 @@ fn prime(app: &mut App, options: &Options) -> Restored {
 ///
 /// No terminal is taken, no escape sequence is written, and the result is the same lines the
 /// interactive frame draws (ADR-006 §6.7: no terminal is a different contract, not a degraded one).
+/// With [`Options::lines`] the same facts come back in reading order instead of side by side —
+/// which is the half of §6.7 a screen reader and a CI log actually want.
 #[must_use]
 pub fn render_plain(options: &Options) -> Vec<String> {
     let keymap = Keymap::merged(&options.overrides);
@@ -650,7 +726,11 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     // Not `app.view = ViewId::Queue` any more (`e1.11`): `--plain` promises the same frame the terminal
     // would have been given, and a resumed session's frame is the reviewer's view. A first session lands
     // on the queue anyway, because that is what `App::new` opens.
-    crate::render::plain_lines(&app)
+    if options.lines {
+        crate::render::plain_flow(&app)
+    } else {
+        crate::render::plain_lines(&app)
+    }
 }
 
 /// One frame, at a chosen size, as text: the shape the smoke tests and `e5.5`'s screenshots use.

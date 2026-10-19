@@ -35,6 +35,13 @@ pub const LEAVE_ALT_SCREEN: &str = "\x1b[?1049l";
 /// Show the cursor again: a raw mode that swallowed the cursor stays swallowed after the process
 /// is gone, and an invisible cursor in the user's own shell is the worst kind of leak.
 pub const SHOW_CURSOR: &str = "\x1b[?25h";
+/// Ask for the mouse: button press/release, wheel, and SGR (1006) coordinates so a column past 222
+/// still arrives as the column it was clicked in — which on an ultrawide is the difference between
+/// a click and a click forty cells to the left.
+pub const ENTER_MOUSE: &str = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
+/// Take it back. Written on every exit path [`LEAVE_ALT_SCREEN`] is, for the same reason: a terminal
+/// left in mouse mode cannot select text, and the process that did it is already gone to explain.
+pub const LEAVE_MOUSE: &str = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
 
 /// How long the loop may sleep waiting for an event before it notices a signal flag.
 ///
@@ -49,6 +56,7 @@ pub const SIGNAL_POLL: Duration = Duration::from_millis(100);
 pub struct TerminalRestore {
     alt: AtomicBool,
     raw: AtomicBool,
+    mouse: AtomicBool,
     sink: Mutex<Box<dyn Write + Send>>,
 }
 
@@ -66,6 +74,7 @@ impl TerminalRestore {
         Arc::new(TerminalRestore {
             alt: AtomicBool::new(false),
             raw: AtomicBool::new(false),
+            mouse: AtomicBool::new(false),
             sink: Mutex::new(sink),
         })
     }
@@ -79,13 +88,40 @@ impl TerminalRestore {
     /// Does the process still own the screen?
     #[must_use]
     pub fn owns_screen(&self) -> bool {
-        self.alt.load(Ordering::SeqCst) || self.raw.load(Ordering::SeqCst)
+        self.alt.load(Ordering::SeqCst) || self.raw.load(Ordering::SeqCst) || self.mouse()
     }
 
     /// Is the alternate screen currently ours?
     #[must_use]
     pub fn alt_screen(&self) -> bool {
         self.alt.load(Ordering::SeqCst)
+    }
+
+    /// Is the pointer ours?
+    #[must_use]
+    pub fn mouse(&self) -> bool {
+        self.mouse.load(Ordering::SeqCst)
+    }
+
+    /// Take the pointer: button, wheel and SGR-coordinate reports.
+    ///
+    /// Separate from [`TerminalRestore::enter`] because it is optional and the reviewer opted into
+    /// it: capture hides the terminal's own text selection, so it is never taken on somebody's
+    /// behalf (`fathom --mouse`). Recorded in the same flag set as the screen, so the one restore
+    /// path — drop, panic, or signal — puts the pointer back with it.
+    ///
+    /// # Errors
+    ///
+    /// Whatever the writer's own failure type was.
+    pub fn enable_mouse(&self) -> std::io::Result<()> {
+        let mut sink = self
+            .sink
+            .lock()
+            .map_err(|err| std::io::Error::other(format!("restore sink is poisoned: {err}")))?;
+        sink.write_all(ENTER_MOUSE.as_bytes())?;
+        sink.flush()?;
+        self.mouse.store(true, Ordering::SeqCst);
+        Ok(())
     }
 
     /// Announce that the screen has been taken, on the same sink [`TerminalRestore::restore`]
@@ -120,6 +156,11 @@ impl TerminalRestore {
         }
         let alt = self.alt.swap(false, Ordering::SeqCst);
         self.raw.store(false, Ordering::SeqCst);
+        // The pointer first: a terminal that goes back to the user's screen with mouse capture still
+        // on cannot select the text that was just printed, and the reason why is gone with us.
+        if self.mouse.swap(false, Ordering::SeqCst) {
+            w.write_all(LEAVE_MOUSE.as_bytes())?;
+        }
         if alt {
             w.write_all(LEAVE_ALT_SCREEN.as_bytes())?;
         }
@@ -303,4 +344,250 @@ mod nix_signals {
     pub const TERMINATE: i32 = 15;
     /// `SIGHUP` — the terminal went away.
     pub const HANGUP: i32 = 1;
+}
+
+// ---------------------------------------------------------------------------
+// what the terminal *is* — the probe, and what it is allowed to say
+// ---------------------------------------------------------------------------
+///
+/// The same frame is drawn for `xterm-256color` on a laptop, `screen-256color` inside tmux, `dumb`
+/// in a CI log and `vt100` over an old `ssh`. The renderer does not branch on any of that — one
+/// frame, one set of facts, colour only ever decorating text that is already there (ADR-006 §10.2)
+/// — but *somebody* has to notice when the terminal cannot carry what was drawn, because a
+/// silently-degraded terminal is the ADR-001 §7.2 failure with the user's name on it.
+///
+/// So this is a description, not a switch: [`Probe::notices`] is the list of things worth telling
+/// the reviewer, and `fathom-cli` reads the environment and hands the probe over
+/// ([`crate::frame::Options::term`]), because this crate does not read variables (ADR-002 §3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Probe {
+    /// `$TERM`, as the terminal set it. `None` is a real and reportable state.
+    pub term: Option<String>,
+    /// `$COLORTERM`, which is the only way a terminal says truecolour these days.
+    pub colorterm: Option<String>,
+    /// `$NO_COLOR` — present means off, whatever its value (the standard is that it is the
+    /// presence that counts).
+    pub no_color: bool,
+    /// `$LC_ALL` / `$LC_CTYPE` / `$LANG`, whichever answered first, in that order.
+    pub locale: Option<String>,
+    /// `$TMUX` is set, so there is a multiplexer between us and the terminal.
+    pub tmux: bool,
+    /// `$STY` is set — GNU `screen`, whose mouse and truecolour story differs from tmux's.
+    pub screen: bool,
+    /// `$SSH_TTY` or `$SSH_CONNECTION` is set, so this frame is crossing a wire.
+    pub ssh: bool,
+    /// Is stdout a terminal at all? `false` means the text contract, not the shell.
+    pub tty: bool,
+}
+
+/// How much colour this terminal was told it may have.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ColorDepth {
+    /// No colour: `TERM=dumb`, `NO_COLOR`, or neither answered.
+    None,
+    /// The eight named colours plus bold.
+    Basic,
+    /// 256 colours, from `TERM=…256color`.
+    Ansi256,
+    /// 24-bit, from `COLORTERM=truecolor|24bit`.
+    TrueColor,
+}
+
+impl ColorDepth {
+    /// The depth's own word, for the frame.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            ColorDepth::None => "no colour",
+            ColorDepth::Basic => "16 colours",
+            ColorDepth::Ansi256 => "256 colours",
+            ColorDepth::TrueColor => "truecolour",
+        }
+    }
+}
+
+impl Probe {
+    /// Build a probe from an environment, which the caller owns.
+    ///
+    /// `look` is a function rather than a map because the caller may compute these lazily, and
+    /// because *this crate must not call `std::env::var` itself* (ADR-002 §3): the TUI is given the
+    /// world, it does not go and read it.
+    #[must_use]
+    pub fn from_env_with(mut look: impl FnMut(&str) -> Option<String>) -> Self {
+        let locale = ["LC_ALL", "LC_CTYPE", "LANG"]
+            .iter()
+            .find_map(|key| look(key).filter(|value| !value.is_empty()));
+        Probe {
+            term: look("TERM").filter(|value| !value.is_empty()),
+            colorterm: look("COLORTERM").filter(|value| !value.is_empty()),
+            no_color: look("NO_COLOR").is_some(),
+            locale,
+            tmux: look("TMUX").is_some_and(|value| !value.is_empty()),
+            screen: look("STY").is_some_and(|value| !value.is_empty()),
+            ssh: look("SSH_TTY").is_some_and(|value| !value.is_empty())
+                || look("SSH_CONNECTION").is_some_and(|value| !value.is_empty()),
+            tty: true,
+        }
+    }
+
+    /// A probe that knows nothing: a headless test, an embedder, a pipe.
+    #[must_use]
+    pub fn unknown() -> Self {
+        Probe {
+            term: None,
+            colorterm: None,
+            no_color: false,
+            locale: None,
+            tmux: false,
+            screen: false,
+            ssh: false,
+            tty: false,
+        }
+    }
+
+    /// Does this terminal believe it speaks UTF-8?
+    ///
+    /// The frame is full of characters above U+007F — the box rules, `▸`, `…`, the risk glyphs.
+    /// They are *text*, so they are not sanitized away, and under a `C`/`POSIX` locale a terminal
+    /// draws each byte of each one as its own glyph. That is not a crash, it is a frame nobody can
+    /// read, and it is worth one line to say so.
+    #[must_use]
+    pub fn utf8(&self) -> bool {
+        match &self.locale {
+            None => false,
+            Some(locale) => {
+                let upper = locale.to_ascii_uppercase();
+                upper.contains("UTF-8") || upper.contains("UTF8")
+            }
+        }
+    }
+
+    /// The colour this terminal was told it may have.
+    #[must_use]
+    pub fn color(&self) -> ColorDepth {
+        if self.no_color {
+            return ColorDepth::None;
+        }
+        let term = self.term.as_deref().unwrap_or_default();
+        let colorterm = self.colorterm.as_deref().unwrap_or_default();
+        if term == "dumb" {
+            return ColorDepth::None;
+        }
+        let colorterm = colorterm.to_ascii_lowercase();
+        if colorterm.contains("truecolor") || colorterm.contains("24bit") {
+            return ColorDepth::TrueColor;
+        }
+        let term_lower = term.to_ascii_lowercase();
+        if term_lower.contains("256color") || term_lower.contains("256-colour") {
+            return ColorDepth::Ansi256;
+        }
+        if term.is_empty() {
+            return ColorDepth::None;
+        }
+        ColorDepth::Basic
+    }
+
+    /// One line describing the terminal, for the help overlay's environment section.
+    #[must_use]
+    pub fn label(&self) -> String {
+        let mut bits = vec![self.term.clone().unwrap_or_else(|| "TERM unset".to_owned())];
+        bits.push(self.color().label().to_owned());
+        bits.push(if self.utf8() {
+            "UTF-8".to_owned()
+        } else {
+            "not UTF-8".to_owned()
+        });
+        if self.tmux {
+            bits.push("inside tmux".to_owned());
+        }
+        if self.screen {
+            bits.push("inside screen".to_owned());
+        }
+        if self.ssh {
+            bits.push("over ssh".to_owned());
+        }
+        bits.join(" · ")
+    }
+
+    /// What is worth telling the reviewer about this terminal, in the order they would act on it.
+    ///
+    /// Every notice names the thing that is missing *and the command or key that fixes it* — a
+    /// warning with no remedy is a shrug with a glyph in front of it. Nothing here is silent and
+    /// nothing here stops the frame from drawing: these are reports, not refusals.
+    #[must_use]
+    pub fn notices(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        match self.term.as_deref() {
+            None => out.push(
+                "TERM is not set, so this terminal has not said what it can do. Fathom draws box \
+                 rules and `…` either way; if they look wrong, set TERM (`xterm-256color` is the \
+                 common answer) or read the text with `fathom --plain`."
+                    .to_owned(),
+            ),
+            Some("dumb") => out.push(
+                "TERM=dumb: no colour and no cursor addressing here. The frame is the same text \
+                 either way — `fathom --plain` prints it without taking the screen at all."
+                    .to_owned(),
+            ),
+            Some(other) => {
+                let lower = other.to_ascii_lowercase();
+                if lower.starts_with("vt100")
+                    || lower.starts_with("vt220")
+                    || lower.starts_with("vt52")
+                    || lower.starts_with("dos")
+                {
+                    out.push(format!(
+                        "TERM={other} names an old terminal: box rules and wide characters may not \
+                         survive it. `fathom --plain` needs none of them."
+                    ));
+                }
+            }
+        }
+        if !self.utf8() {
+            out.push(format!(
+                "the locale is {} — the frame's box characters and `…` are UTF-8 and may render as \
+                 noise. `export LC_CTYPE=C.UTF-8` (or `en_US.UTF-8`) is the fix.",
+                self.locale
+                    .as_deref()
+                    .map_or_else(|| "unset".to_owned(), |locale| locale.to_owned())
+            ));
+        }
+        if self.no_color {
+            out.push(
+                "NO_COLOR is set, so colour is off. Every colour in Fathom has a glyph and a word \
+                 beside it (ADR-006 §10.2), so nothing you could only see by colour is missing."
+                    .to_owned(),
+            );
+        }
+        if self.tmux {
+            out.push(
+                "inside tmux: the wheel and clicks stay with tmux unless `set -g mouse on` is in \
+                 ~/.tmux.conf. Everything the mouse does is bound on the keyboard as well \
+                 (`fathom tui --show-keys`)."
+                    .to_owned(),
+            );
+        }
+        if self.screen {
+            out.push(
+                "inside GNU screen: mouse reporting and truecolour depend on your `termcapinfo`; \
+                 the keyboard path needs neither."
+                    .to_owned(),
+            );
+        }
+        if self.ssh {
+            out.push(
+                "over ssh: TERM and the locale are whatever the far side was given. If wide \
+                 characters in a path or a commit message look one cell wide, that is the far \
+                 side's locale, not this frame's arithmetic."
+                    .to_owned(),
+            );
+        }
+        if !self.tty {
+            out.push(
+                "stdout is not a terminal, so the frame is printed as text; `fathom --plain` says                  so out loud rather than inferring it, and `--lines` puts the panes in reading order                  for a pipe or a screen reader (ADR-006 §6.7)."
+                    .to_owned(),
+            );
+        }
+        out
+    }
 }

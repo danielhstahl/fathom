@@ -1,0 +1,14 @@
+# Diff at 40×10 — degraded — hint line (the next-action reminder), tab bar, pane footer strips (legend, counts, ordering explanation), box frame: side borders and the bottom rule, secondary pane squeezed to a 24-column strip, panes below their documented minimum, to the hard minimum, compact rows in the primary list (one line per item)
+# steps · D1.hint, D2.tabs, D3.strips, D4.frame, D5.secondary_strip, D6.cols_hard, D7.compact_rows
+# lost · hint line (the next-action reminder); tab bar; pane footer strips (legend, counts, ordering explanation); box frame: side borders and the bottom rule; secondary pane squeezed to a 24-column strip; panes below their documented minimum, to the hard minimum; compact rows in the primary list (one line per item)
+
+▸ tree · e1.7     ┬· hunks · e1.7
+▸no diff — no epi…│no patch is loaded
+ `d` loads the se…│
+                  │
+                  │
+                  │
+                  │
+                  │
+                  │
+LAYOUT degraded · 7 dropped · <C-w>o, ?…

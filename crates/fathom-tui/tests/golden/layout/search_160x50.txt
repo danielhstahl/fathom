@@ -1,0 +1,52 @@
+# Search at 160×50 — complete
+
+/▏  (input) free text plus filter tokens author: path: risk> dep:
+▸ results · e5.2                                                                           ┬· preview · e5.2
+index epoch 1 ready · 500 commits · 48 eps                                                 │`preview` — nothing to show yet
+`t` opens the timeline, which lists them as the index knows them                           │the delta model is not in this build
+the delta model is not in this build                                                       │reads episode card excerpt · match explanation · evidence locator
+reads episode summaries · paths · symbol names · dependency names                          │pane `preview` · owned by e5.2 · ADR-006 §5
+… and 1 more (e2.11 names them all)                                                        │
+pane `results` · owned by e5.2 · ADR-006 §5                                                │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+                                                                                           │
+⏺ epoch 1 · 48 eps · queue 4 open · idx unknown

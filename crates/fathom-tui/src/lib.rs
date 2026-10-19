@@ -37,6 +37,7 @@ pub mod render;
 pub mod session;
 pub mod style;
 pub mod terminal;
+pub mod text;
 pub mod timeline;
 pub mod views;
 /// The Queue view's ranked worklist (`reco-c05`): a list, not a scorer.

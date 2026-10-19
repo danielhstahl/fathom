@@ -20,6 +20,7 @@ use fathom_core::exit::ExitCode;
 use fathom_core::time::Clock as _;
 use fathom_tui::frame::{Options, render_plain, run};
 use fathom_tui::keymap::{Keymap, Override, OverrideTables, overrides_from};
+use fathom_tui::terminal::Probe;
 
 use crate::output;
 use crate::verbs::Globals;
@@ -33,6 +34,12 @@ use crate::verbs::Globals;
 pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let (overrides, mut notices) = keymap_overrides(&root);
+    // What the terminal says it is (`e5.5`). Read here, at the edge, because `fathom-tui` may not
+    // read variables (ADR-002 §3); what comes back is a description of the thing we are about to
+    // draw into, and the notices are what makes a degraded terminal a reported one.
+    let mut probe = Probe::from_env_with(|key| std::env::var(key).ok());
+    probe.tty = std::io::stdout().is_terminal();
+    notices.extend(probe.notices());
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
     let index = index_facts(&root);
@@ -57,6 +64,27 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     if plain && !globals.plain {
         notices.push(
             "stdout is not a terminal, so the frame is drawn as text (ADR-006 §6.7)".to_owned(),
+        );
+    }
+    // `--lines` reorders the text render, so on a run that is drawing a grid it does nothing — and
+    // a flag that silently did nothing is the thing this ticket is not allowed to be.
+    if globals.lines && !plain {
+        notices.push(
+            "--lines orders the *text* render; this run draws the grid. Add --plain (ADR-006 §6.7)"
+                .to_owned(),
+        );
+    }
+    // A pointer nobody asked for is a stolen text-selection. Capture is taken only when the reviewer
+    // asked, and only when there is a screen to take it from (`e5.5`).
+    let mouse = globals.mouse && !plain;
+    if globals.mouse && plain {
+        // A flag that silently did nothing is the failure mode this ticket exists to prevent, and
+        // `--mouse` has the most to say about it: the reason it is opt-in is that it costs the
+        // terminal its own text selection.
+        notices.push(
+            "--mouse needs a terminal to take the pointer from, and this run has none; every gesture \
+             is a key as well (`fathom tui --show-keys`)"
+                .to_owned(),
         );
     }
     // In plain mode stdout is the artefact, so the complaints go to stderr with everything else the
@@ -100,6 +128,9 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         // the store or the object store, so `d` asks this provider, and the provider is the only
         // party that can answer. `None` is the no-backend build, and the pane says which it has.
         patches: crate::patches::provider(&root),
+        mouse,
+        lines: globals.lines,
+        term: probe,
     };
     if plain {
         for notice in &notices {

@@ -82,6 +82,8 @@ fn run() -> ExitCode {
         plain: cli.plain,
         no_alt_screen: cli.no_alt_screen,
         fresh: cli.fresh,
+        mouse: cli.mouse,
+        lines: cli.lines,
     };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching

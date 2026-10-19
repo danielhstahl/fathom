@@ -1,0 +1,42 @@
+# Diff at 120×40 — complete
+
+1 ▣ Diff · (T pins this view)                                                                       fathom/pilot · main
+┌▸ tree · e1.7                                                       ┬· hunks · e1.7                                   ┐
+│▸no diff — no episode is in scope                                   │no patch is loaded                               │
+│ `d` loads the selected episode's patch from the index; select an e…│                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│                                                                    │                                                 │
+│no patch is loaded                                                  │no file selected                                 │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+10 episodes from fixture index

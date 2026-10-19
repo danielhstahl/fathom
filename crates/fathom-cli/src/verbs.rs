@@ -37,6 +37,19 @@ pub struct Cli {
     /// nothing writes nothing — it is simply not applied to this one.
     #[arg(long, global = true)]
     pub fresh: bool,
+    /// Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+    ///
+    /// Off by default, because capturing the pointer takes the terminal's own text selection away for
+    /// the length of the run. Every gesture it adds is also a key, and the status line says `mouse on`
+    /// while it is armed.
+    #[arg(long, global = true)]
+    pub mouse: bool,
+    /// With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+    ///
+    /// Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log,
+    /// a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+    #[arg(long, global = true)]
+    pub lines: bool,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
@@ -51,6 +64,10 @@ pub struct Globals {
     pub no_alt_screen: bool,
     /// Do not apply the repository's stored session (`e1.11`).
     pub fresh: bool,
+    /// Capture the pointer (`e5.5`).
+    pub mouse: bool,
+    /// Print the plain frame in reading order rather than as a grid (`e5.5`).
+    pub lines: bool,
 }
 
 /// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;

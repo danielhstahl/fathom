@@ -1,0 +1,52 @@
+# Graph at 160×50 — complete
+
+1 ▣ Graph · (T pins this view)                                                                                                              fathom/pilot · main
+┌▸ canvas · e3.4                                                                               ┬· detail · e3.4                                                ┐
+│index epoch 1 ready · 500 commits · 48 eps                                                    │`detail` — nothing to show yet                                 │
+│`t` opens the timeline, which lists them as the index knows them                              │the delta model is not in this build                           │
+│the delta model is not in this build                                                          │reads node/edge evidence ids · delta.architecture.* · cycle de…│
+│reads delta.architecture.* · module graph nodes/edges · cycle set · layering violation delta  │… and 1 more (e2.11 names them all)                            │
+│… and 1 more (e2.11 names them all)                                                           │pane `detail` · owned by e3.4 · ADR-006 §5                     │
+│pane `canvas` · owned by e3.4 · ADR-006 §5                                                    │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│                                                                                              │                                                               │
+│Did this turn make the shape of the system worse?                                             │detail · reads node/edge evidence ids · owner e3.4             │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+10 episodes from fixture index

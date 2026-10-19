@@ -32,6 +32,16 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -74,10 +84,20 @@ Options:
           
           This is the pass that *measures* ADR-004 §6's invalidation matrix instead of trusting it: after a version or config bump it prints exactly the rows that moved, and after an unremarkable commit it prints 100% hits.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
       --rebuild
           Throw the epoch away and rebuild every analysis from scratch.
           
           The old epoch's rows stay on disk and are marked dead (ADR-004 §6.3), so a rebuild that is interrupted is recoverable by definition; the staging file and atomic swap of §9.3 arrive with the daemon that has a concurrent reader to protect.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
       --watch
           Index once, then keep watching and index as the repository changes.
@@ -124,6 +144,16 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -158,6 +188,16 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -182,6 +222,16 @@ Options:
           Ignore the session this repository has stored, and start from defaults (`e1.11`).
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -217,8 +267,18 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
       --strict
           Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
       --root <ROOT>
           The repository to report on
@@ -265,6 +325,11 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
       --root <ROOT>
           The repository to read
           
@@ -272,6 +337,11 @@ Options:
 
       --json
           Describe what the artefact *would* contain, as JSON, and write nothing
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -316,10 +386,20 @@ Options:
       --deadline <DEADLINE>
           Stop after this many seconds
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
       --backend <BACKEND>
           Which change source to use: `auto`, `notify` or `poll`
           
           [default: auto]
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
       --interval-ms <INTERVAL_MS>
           The debounced polling interval in milliseconds
@@ -373,6 +453,16 @@ Options:
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
 
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -397,6 +487,16 @@ Options:
           Ignore the session this repository has stored, and start from defaults (`e1.11`).
           
           The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
 
   -h, --help
           Print help (see a summary with '-h')

@@ -312,6 +312,29 @@ impl Timeline {
         self.rail.cursor()
     }
 
+    /// Which slot is drawn on line `line` of the rail, given a pane `visible` rows tall.
+    ///
+    /// The pointer needs this and nothing else needs it: a rail row is not always an episode (day
+    /// and session headers are rows too), so "line 3 of the pane" and "row 3 of the list" are
+    /// different numbers, and only the rail's own window arithmetic knows the mapping.
+    #[must_use]
+    pub fn slot_at_line(&self, visible: usize, line: usize) -> Option<usize> {
+        self.rail.slot_at(visible, line)
+    }
+
+    /// Is that slot a group header rather than an episode?
+    ///
+    /// A header is a row the rail draws and the reviewer reads, and it is not something `d` can mark
+    /// read: the pointer needs to tell the two apart, and so does anything else that maps a line to a
+    /// row from the outside.
+    #[must_use]
+    pub fn slot_is_header(&self, slot: usize) -> bool {
+        matches!(
+            self.rail.slot(slot),
+            Some(crate::timeline::Slot::Group { .. })
+        )
+    }
+
     /// The counters, forcing a rebuild if the rail is stale.
     #[must_use]
     pub fn stats(&mut self) -> RailStats {

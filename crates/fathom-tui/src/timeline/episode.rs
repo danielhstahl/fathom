@@ -285,6 +285,36 @@ impl Default for Episode {
 pub type Risk = fathom_analyze::insight::RiskView;
 
 impl Episode {
+    /// Replace every character in this row that may not be drawn as itself.
+    ///
+    /// A commit subject, an author name and a path are all text somebody else wrote, and the frame
+    /// draws them into columns it measured. Two things go wrong if they are pasted through: a
+    /// bidi override can make a path read as something it is not, and an invisible one-cell
+    /// character makes the pane that measured it one cell wrong, which is a wrapped line and a
+    /// shifted frame two rows down ([`crate::text`], ADR-006 §6).
+    ///
+    /// Called once, on load, by the rail — so every pane, the export and `--plain` all read the
+    /// same already-visible version rather than each remembering to sanitize.
+    pub fn sanitize(&mut self) {
+        let scrub = |text: &mut String| {
+            let clean = crate::text::sanitize(text);
+            if clean != *text {
+                *text = clean;
+            }
+        };
+        scrub(&mut self.author_name);
+        scrub(&mut self.summary);
+        for path in &mut self.paths {
+            scrub(path);
+        }
+        for text in [&mut self.session, &mut self.turn, &mut self.boundary_rule]
+            .into_iter()
+            .flatten()
+        {
+            scrub(text);
+        }
+    }
+
     /// Attach a bare ranking to a row that has one and nothing else.
     ///
     /// The risk the queue ranked this row by, or `None` when nothing has ranked it — printed as `?`,

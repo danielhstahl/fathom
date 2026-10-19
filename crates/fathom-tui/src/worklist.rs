@@ -66,6 +66,13 @@ where
     order
 }
 
+/// How many lines one worklist row occupies: the row itself, and the reason under it (§5.1).
+///
+/// One number, because two places need it — [`lines`] to draw the rows, and `App::row_at_line` to say
+/// which row a line of the drawing is. Getting it wrong in the second place is not a layout nuisance:
+/// every click in the queue would land on the wrong episode.
+pub const LINES_PER_EPISODE: usize = 2;
+
 /// Draw the worklist: two rows per episode, exactly `rows` lines, padded to `width`.
 ///
 /// Row one is §5.1's row with the sparkline traded for the surface badge — the column that answers

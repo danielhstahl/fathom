@@ -121,6 +121,13 @@ crossterm = { version = "0.29" }
 signal-hook = { version = "0.3", default-features = false }
 unicode-width = { version = "0.2" }
 unicode-segmentation = { version = "1" }
+proptest = { version = "1", default-features = false, features = ["std"] }
+# `proptest` is a `[dev-dependencies]` of `fathom-tui` only, and it is there for one of `e5.5`'s
+# acceptance bullets: "proptest finds no panic on random text". Random text is how a renderer learns
+# about a lone surrogate-adjacent code point, a lone combining mark, or a bidi override nobody typed
+# on purpose — none of which a hand-written fixture set thinks to include. It is pinned here like
+# everything else (ADR-002 §7), and it stays out of the shipped binary because cargo keeps
+# dev-dependencies out of the normal build graph.
 petgraph = { version = "0.8", default-features = false }
 rmcp = { version = "3", default-features = false, features = ["transport-io"] }
 # tokio is allowed without a `net-*` feature (the MCP SDK needs an executor) but only with a feature

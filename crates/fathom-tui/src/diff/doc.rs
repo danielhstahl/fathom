@@ -885,20 +885,34 @@ fn stated(
     }
 }
 
-/// Expand tabs and make `\r` visible, before any byte range is computed on the text.
+/// Expand tabs, make `\r` visible, and make the undrawable visible — before any byte range is
+/// computed on the text.
+///
+/// The order is the point. Word-diff ranges, the whitespace face and the truncation mark are all
+/// byte offsets into whatever this returns, so anything that changes a byte count has to happen
+/// here: a sanitizer that ran after the ranges were built would colour the wrong half of a changed
+/// line. [`crate::text::sanitize`] is that sanitizer, and what it catches is what a patch is free
+/// to contain — a C0 byte that the terminal interprets instead of printing, a C1 byte, a bidi
+/// override that makes `src/payments.rs` read as `src/snemtymap/crs`.
 fn expand(text: &str) -> String {
-    if !text.contains(['\t', '\r']) {
-        return text.to_owned();
-    }
-    let mut out = String::with_capacity(text.len());
-    for ch in text.chars() {
-        match ch {
-            '\t' => out.push_str(&" ".repeat(TAB_CELLS)),
-            '\r' => out.push('␍'),
-            other => out.push(other),
+    let expanded = if !text.contains(['\t', '\r']) {
+        text.to_owned()
+    } else {
+        let mut out = String::with_capacity(text.len());
+        for ch in text.chars() {
+            match ch {
+                '\t' => out.push_str(&" ".repeat(TAB_CELLS)),
+                '\r' => out.push('␍'),
+                other => out.push(other),
+            }
         }
+        out
+    };
+    if crate::text::needs_sanitizing(&expanded) {
+        crate::text::sanitize(&expanded)
+    } else {
+        expanded
     }
-    out
 }
 
 /// The file's own header row: path, what happened, the counts, and the key that moves on.

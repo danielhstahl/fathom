@@ -33,3 +33,6 @@ graph-layout = ["dep:petgraph"]
 
 [dev-dependencies]
 fathom-fixtures.workspace = true
+# `e5.5`: random Unicode through the width and clipping arithmetic, for the "proptest finds no panic on
+# random text" criterion. Dev-only, so it is in no shipped artefact.
+proptest.workspace = true

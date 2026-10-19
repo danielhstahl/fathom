@@ -1,0 +1,14 @@
+# Timeline at 40×10 — single — hint line (the next-action reminder), tab bar, pane footer strips (legend, counts, ordering explanation), box frame: side borders and the bottom rule, secondary pane squeezed to a 16-column strip, panes below their documented minimum, to the hard minimum, compact rows in the primary list (one line per item), single-pane fallback: secondary panes dropped
+# steps · D1.hint, D2.tabs, D3.strips, D4.frame, D5.secondary_strip, D6.cols_hard, D7.compact_rows, D9.single_pane
+# lost · hint line (the next-action reminder); tab bar; pane footer strips (legend, counts, ordering explanation); box frame: side borders and the bottom rule; secondary pane squeezed to a 16-column strip; panes below their documented minimum, to the hard minimum; compact rows in the primary list (one line per item); single-pane fallback: secondary panes dropped
+
+▸ rail · e1.6
+▸ e8f1a2 0:12 agent +412 −90 ●●●●●● ? ⚑
+  9c4d10 0:41 agent +58 −12 ●●●●○○ ? ⚑
+  2be77f 1:07 human +8 −3 ●●●○○○ ? ✓
+ Mon 13 Oct ── 3 episodes
+  77aa0c 1d1h agent +1 204 −90 ●●●●●● ✔
+  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑
+  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑
+ Thu 18 Sep · session 2 (pi) ── 1 episo…
+LAYOUT single · 8 dropped · <C-w>o, ? ·…

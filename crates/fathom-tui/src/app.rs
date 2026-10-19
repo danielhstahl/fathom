@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 
 use crate::diff::{self, DiffView};
 use crate::diff::{Env, Handoff};
-use crate::event::FrameScheduler;
+use crate::event::{Button, FrameScheduler, MouseMsg, Scroll};
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
 use crate::layout::{Fit, FitState, fit};
 use crate::style::StyledLine;
@@ -348,6 +348,17 @@ pub struct App {
     pub size: (u16, u16),
     /// What the ladder said about that size.
     pub fit: Fit,
+    /// Mouse capture is on (`fathom --mouse`), and the frame says so.
+    ///
+    /// The status line carries it because the alternative is a reviewer who cannot tell, in a
+    /// screenshot or a support question, whether the pointer is supposed to do anything.
+    pub mouse: bool,
+    /// What the terminal said it is (`e5.5`): printed in the help overlay's environment section,
+    /// never assumed. `fathom-cli` reads the environment and hands this over.
+    pub term: crate::terminal::Probe,
+    /// The last press and when it landed, for the double-click the terminal did not report:
+    /// `(column, row, instant)`, 1-based cells.
+    pub click: Option<(u16, u16, Instant)>,
     /// The repository label the tab bar prints, as the CLI resolved it.
     pub repo_label: String,
     /// Quit has been requested.
@@ -384,6 +395,18 @@ fn own(steps: Vec<KeyStep<'_>>) -> Vec<Step> {
 
 /// A frame's worth of toast lifetime: long enough to read, short enough not to become chrome.
 const TOAST_FRAMES: u32 = 40;
+
+/// A terminal cell coordinate (1-based) as an index into the frame (0-based).
+fn cell(value: u16) -> usize {
+    usize::from(value.saturating_sub(1))
+}
+
+/// Two presses on the same cell inside this are one double-click, and one drill.
+///
+/// The terminal does not tell us (SGR mouse reports carry no double-click flag), so the interval is
+/// ours. 400 ms is the number every toolkit uses because it is comfortably over a human's two
+/// deliberate clicks and comfortably under an accidental second one.
+pub const DOUBLE_CLICK: Duration = Duration::from_millis(400);
 
 impl App {
     /// A fresh application: the home view (`q`), pane 1 focused, one tab, empty scope.
@@ -429,6 +452,9 @@ impl App {
             notices: Vec::new(),
             size,
             fit: fit(ViewId::Queue, size.0, size.1),
+            mouse: false,
+            term: crate::terminal::Probe::unknown(),
+            click: None,
             repo_label: repo_label.into(),
             quit: None,
             repaint: false,
@@ -809,7 +835,29 @@ impl App {
             .unwrap_or(0);
         // Two rows per episode, so the window is half the pane: the scroll keeps the cursor on screen
         // the way the rail's does, and `<C-d>`/`<C-u>` page episodes rather than lines.
-        let per = (rows / 2).max(1);
+        let (offset, per) = self.queue_window(rows);
+        // Only the window is materialised: the order is the rail's, and a frame that ranked every
+        // held episode is what `timeline_bench` catches (`reco-c05`).
+        let window: Vec<&Episode> = (offset..total.min(offset + per))
+            .filter_map(|at| self.timeline.ranked_row(at))
+            .collect();
+        crate::worklist::lines(&window, row.saturating_sub(offset), rows, width)
+    }
+
+    /// The worklist's window: the first ranked row it draws, and how many lines each episode gets.
+    ///
+    /// Factored out of [`Self::queue_body`] so a click can name the row under the pointer with the
+    /// same arithmetic that drew it. Two lines per episode is the whole reason this is a function:
+    /// the answer to "which episode is on line 5" is not 5.
+    #[must_use]
+    fn queue_window(&self, rows: usize) -> (usize, usize) {
+        let total = self.timeline.ranked_len();
+        let row = self
+            .selection
+            .get(&(ViewId::Queue, "worklist".to_owned()))
+            .copied()
+            .unwrap_or(0);
+        let per = (rows / crate::worklist::LINES_PER_EPISODE).max(1);
         let want = self.scroll_of().min(total);
         let offset = if row < want {
             row
@@ -818,12 +866,7 @@ impl App {
         } else {
             want
         };
-        // Only the window is materialised: the order is the rail's, and a frame that ranked every
-        // held episode is what `timeline_bench` catches (`reco-c05`).
-        let window: Vec<&Episode> = (offset..total.min(offset + per))
-            .filter_map(|at| self.timeline.ranked_row(at))
-            .collect();
-        crate::worklist::lines(&window, row.saturating_sub(offset), rows, width)
+        (offset, per)
     }
 
     /// The strip the queue's worklist carries: the ranking named, with its ceiling (`reco-c05`).
@@ -1081,11 +1124,7 @@ impl App {
         // the `rows` lines that fit are drawn. A 5 000-file episode costs the same as a nine-file one.
         let total = self.diff.tree_len();
         let selection = self.selected_row().min(total.saturating_sub(1));
-        let start = if rows >= total {
-            0
-        } else {
-            selection.saturating_sub(rows.saturating_sub(3).max(1))
-        };
+        let start = self.diff_tree_start(rows);
         let lines = self.diff.tree_window(start, rows, text_width);
         let mut out: Vec<StyledLine> = Vec::with_capacity(rows);
         for (offset, line) in lines.iter().enumerate() {
@@ -1101,6 +1140,24 @@ impl App {
             out.push(StyledLine::plain("").padded(width));
         }
         out
+    }
+
+    /// The first tree row the pane draws.
+    ///
+    /// The same window arithmetic as [`Self::diff_tree_body`], pulled out because the pointer needs
+    /// to answer "which file is on this line" with the number the renderer used, not a guess at it.
+    #[must_use]
+    fn diff_tree_start(&self, rows: usize) -> usize {
+        if self.diff.index().is_none_or(|scan| scan.files.is_empty()) {
+            return 0;
+        }
+        let total = self.diff.tree_len();
+        let selection = self.selected_row().min(total.saturating_sub(1));
+        if rows >= total {
+            0
+        } else {
+            selection.saturating_sub(rows.saturating_sub(3).max(1))
+        }
     }
 
     /// The hunks pane: the window the shell is scrolled to, or the stated reason there is none.
@@ -1357,6 +1414,19 @@ impl App {
             index.queue_open = u64::try_from(self.timeline.unread()).ok();
         }
         bits.extend(index.bits());
+        // `e5.5`'s half of ADR-001 §7.2: everything the shell noticed about this terminal, this
+        // session or this keymap is counted here, and the full list is one `?` away. A status line
+        // that could hide a notice is how "degraded, and we did not say" happens.
+        if !self.notices.is_empty() {
+            bits.push(format!(
+                "⚠ {} notice{} · ?",
+                self.notices.len(),
+                if self.notices.len() == 1 { "" } else { "s" }
+            ));
+        }
+        if self.mouse {
+            bits.push("mouse on · click selects, wheel scrolls".to_owned());
+        }
         bits
     }
 
@@ -1727,6 +1797,169 @@ impl App {
         }
         self.size = (cols, rows);
         self.refit();
+    }
+
+    // --- the pointer (`e5.5`) ---------------------------------------------------------------------
+
+    /// The mouse, which is additive and nothing else (ADR-006 §10.1).
+    ///
+    /// Every gesture runs code a keystroke already runs: a click focuses the pane under the pointer
+    /// (the same move `<Tab>`/`<C-w>l` make), selects the row under the pointer (the same move
+    /// `H`/`M`/`L` make, at that row), and a double-click drills (the same `drill.in` `<Enter>`
+    /// runs). The wheel scrolls the pane under it, which is `list.scroll_down`/`list.scroll_up` for
+    /// a document and one row at a time for a list. Nothing here exists only on the mouse, which is
+    /// the checkable sentence the ADR asks for, and nothing here runs at all unless the reviewer
+    /// asked for capture with `--mouse` — capture takes the terminal's own text selection away, and
+    /// that trade is not ours to make silently.
+    pub fn pointer(&mut self, event: MouseMsg, now: Instant) {
+        if !self.mouse {
+            // Capture was never taken, so no gesture should have reached here. The check is on the app
+            // rather than only on the loop because that is where a test can see it: a click that moved
+            // a cursor in a terminal that was never asked for the mouse is the bug this guards.
+            return;
+        }
+        if self.overlay.is_some() {
+            // An overlay owns the keyboard outright (§7.1), and the panel covers most of the frame
+            // anyway. A click closes it — exactly what `Esc` does, so the pointer never acts
+            // *through* a prompt that is still holding half-typed text.
+            self.drill_out();
+            return;
+        }
+        let plan = crate::render::frame_plan(
+            self,
+            self.view,
+            usize::from(self.size.0),
+            usize::from(self.size.1),
+        );
+        match event {
+            // A release is the end of a gesture, not one. Reported rather than dropped at the bus so
+            // a drag can be told apart from a click, and ignored here.
+            MouseMsg::Release { .. } => {}
+            MouseMsg::Scroll {
+                col,
+                row,
+                direction,
+            } => {
+                let delta = match direction {
+                    Scroll::Up => -1,
+                    Scroll::Down => 1,
+                };
+                match plan.hit(cell(col), cell(row)) {
+                    crate::render::Hit::Body { pane, ring, .. }
+                    | crate::render::Hit::Header { pane, ring } => {
+                        self.pane = ring;
+                        if pane.interaction() == Mode::Body {
+                            self.scroll_by(delta);
+                        } else {
+                            // One row at a time, clamped the way `set_selection` clamps everything:
+                            // `set_selection` already refuses to run past the last row, and a
+                            // negative target is the same refusal in the other direction.
+                            let target =
+                                i64::try_from(self.selected_row()).unwrap_or(0) + i64::from(delta);
+                            self.set_selection(usize::try_from(target.max(0)).unwrap_or(0));
+                        }
+                    }
+                    // A wheel over chrome scrolls the frame's own focused pane, which is what a
+                    // wheel over a window's title bar does everywhere else.
+                    _ => self.scroll_by(delta),
+                }
+            }
+            MouseMsg::Press {
+                col,
+                row,
+                button,
+                double,
+            } => {
+                match button {
+                    Button::Left => {}
+                    Button::Right => {
+                        self.toast("the right button is bound to nothing — `,` opens the palette");
+                        return;
+                    }
+                    Button::Middle => {
+                        self.toast("the middle button is the terminal's own paste, not Fathom's");
+                        return;
+                    }
+                    Button::Drag => {
+                        self.toast(
+                            "dragging does not resize a pane yet — `<C-w>o` gives one pane the \
+                             whole frame",
+                        );
+                        return;
+                    }
+                    Button::Other => {
+                        self.toast("that button is bound to nothing");
+                        return;
+                    }
+                }
+                // The terminal reports a second press and nothing else, so "double" is ours to
+                // decide, and it is decided the way every toolkit decides it: same cell, short gap.
+                let double = double
+                    || self.click.is_some_and(|(was_col, was_row, at)| {
+                        was_col == col
+                            && was_row == row
+                            && now.saturating_duration_since(at) <= DOUBLE_CLICK
+                    });
+                self.click = Some((col, row, now));
+                match plan.hit(cell(col), cell(row)) {
+                    crate::render::Hit::Body { pane, ring, line } => {
+                        self.pane = ring;
+                        if let Some(target) = self.row_at_line(pane, line, plan.body_rows) {
+                            self.set_selection(target);
+                        }
+                        if double {
+                            self.dispatch("drill.in");
+                        }
+                    }
+                    crate::render::Hit::Header { ring, .. } => {
+                        // A title is a place to click: focus the pane, leave its selection alone.
+                        self.pane = ring;
+                    }
+                    crate::render::Hit::Query => {}
+                    crate::render::Hit::Chrome(what) => {
+                        self.toast(format!("{what} is chrome — click inside a pane"));
+                    }
+                    crate::render::Hit::Outside => {}
+                }
+            }
+        }
+    }
+
+    /// Which row of a pane's list the line under the pointer is.
+    ///
+    /// `None` for a pane with no row to select — a document, a canvas — and for a list the answer is
+    /// computed from the *same* window arithmetic the renderer used, because two lines per episode
+    /// (the worklist) and group headers between rows (the rail) both make `line` the wrong answer.
+    #[must_use]
+    pub fn row_at_line(&self, pane: &Pane, line: usize, rows: usize) -> Option<usize> {
+        match (self.view, pane.name) {
+            (ViewId::Timeline, "rail") => self
+                .timeline
+                .slot_at_line(rows, line)
+                // A day header is a row the rail draws and nothing a click can select: `d` cannot mark
+                // a date read, and `<Enter>` cannot open one. Clicking one focuses the pane and leaves
+                // the cursor where it was, which is what a header is for.
+                .filter(|slot| !self.timeline.slot_is_header(*slot)),
+            (ViewId::Queue, "worklist") if !self.timeline.is_empty() => {
+                // The same two-lines-per-row the pane drew with, from the same constant: `per` in
+                // `queue_window` is the number of *episodes* on a page, and dividing a line number by
+                // it is the kind of mistake that makes every click in the queue land on the wrong row.
+                let (offset, _) = self.queue_window(rows);
+                Some(offset + line / crate::worklist::LINES_PER_EPISODE)
+            }
+            (ViewId::Diff, "tree") => Some(self.diff_tree_start(rows) + line),
+            _ => match pane.interaction() {
+                // A generic list: the frame shows `pane_rows` from the top of the primary pane and
+                // from the scroll offset of a secondary one — which is exactly what `pane_body`
+                // slices, so the row named is the row drawn.
+                Mode::List => Some(if pane.role == Role::Primary {
+                    line
+                } else {
+                    self.scroll_of().saturating_add(line)
+                }),
+                _ => None,
+            },
+        }
     }
 
     /// Ask the ladder again, and make a noise if the answer changed (ADR-001 §7.2).

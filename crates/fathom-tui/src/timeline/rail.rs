@@ -283,6 +283,13 @@ impl Rail {
         self.epoch = batch.epoch;
         self.why_empty = batch.why_empty;
         self.episodes = batch.episodes;
+        // Every string in a row came out of somebody else's commit: a subject, an author name, a
+        // path. [`Episode::sanitize`] makes the ones that cannot be drawn as themselves visible
+        // before any pane measures them (`e5.5`), which is the only place it can be done once for
+        // every pane — the rail is the one choke point every row passes through.
+        for episode in &mut self.episodes {
+            episode.sanitize();
+        }
         // Newest first, with the id as the tie-break so two episodes with the same date have one
         // order rather than whichever order the store happened to return.
         self.episodes
@@ -917,6 +924,17 @@ impl Rail {
             start = self.cursor.saturating_sub(visible - 1);
         }
         start.min(self.slots.len().saturating_sub(visible))
+    }
+
+    /// The slot on drawn line `line`, or `None` if that line is blank because the window ran out.
+    ///
+    /// The inverse of [`Rail::lines`], and it has to use the same `window_start` for the same
+    /// `visible`: the pointer asks "which row is under me", and an answer computed a second way
+    /// would be a second opinion about where the cursor is.
+    #[must_use]
+    pub fn slot_at(&self, visible: usize, line: usize) -> Option<usize> {
+        let index = self.window_start(visible.max(1)) + line;
+        self.slots.get(index).map(|_| index)
     }
 
     /// Say what the index holds, now that the caller has said (`reco-1nu`).

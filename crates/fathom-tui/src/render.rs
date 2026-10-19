@@ -34,11 +34,16 @@ const TC: char = '┬';
 const FOCUS: char = '▸';
 
 /// A frame of cells, so an overlay composites instead of overwriting whole rows.
+///
+/// A cell holds a whole grapheme cluster, not a `char`, because a cell is not a character: a CJK
+/// ideograph is one cluster in two cells, and an index-per-character grid would slide every glyph
+/// after it one cell left and print a frame that lies about where its own borders are. The second
+/// cell of a wide cluster holds nothing at all — not a space, which would push the row a cell long.
 #[derive(Debug)]
 struct Grid {
     cols: usize,
     rows: usize,
-    cells: Vec<char>,
+    cells: Vec<String>,
 }
 
 impl Grid {
@@ -46,15 +51,13 @@ impl Grid {
         Grid {
             cols,
             rows,
-            cells: vec![' '; cols.saturating_mul(rows)],
+            cells: vec![" ".to_owned(); cols.saturating_mul(rows)],
         }
     }
 
     fn fill(&mut self, lines: &[String]) {
         for (y, line) in lines.iter().take(self.rows).enumerate() {
-            for (x, ch) in line.chars().take(self.cols).enumerate() {
-                self.cells[y * self.cols + x] = ch;
-            }
+            self.put(0, y, line);
         }
     }
 
@@ -62,21 +65,32 @@ impl Grid {
         if y >= self.rows {
             return;
         }
-        for (index, ch) in text.chars().enumerate() {
-            let column = x + index;
+        let mut column = x;
+        for cluster in unicode_segmentation::UnicodeSegmentation::graphemes(text, true) {
             if column >= self.cols {
                 break;
             }
-            self.cells[y * self.cols + column] = ch;
+            let wide = crate::text::cluster_width(cluster).max(1);
+            self.cells[y * self.cols + column] = cluster.to_owned();
+            // The cells a wide cluster covers hold nothing: their width is already paid for by the
+            // cluster itself, which is why they are empty strings and not blanks.
+            for covered in 1..wide {
+                if column + covered < self.cols {
+                    self.cells[y * self.cols + column + covered] = String::new();
+                }
+            }
+            column += wide;
         }
     }
 
     fn to_lines(&self) -> Vec<String> {
         (0..self.rows)
             .map(|y| {
-                self.cells[y * self.cols..(y + 1) * self.cols]
+                let joined: String = self.cells[y * self.cols..(y + 1) * self.cols]
                     .iter()
-                    .collect()
+                    .map(String::as_str)
+                    .collect();
+                crate::text::fit(&joined, self.cols)
             })
             .collect()
     }
@@ -91,6 +105,280 @@ struct Panel<'a> {
     title: &'a str,
     lines: &'a [String],
     selection: Option<usize>,
+}
+
+// ---------------------------------------------------------------------------
+// the geometry, separate from the drawing
+// ---------------------------------------------------------------------------
+
+/// One pane's rectangle in the drawn frame.
+///
+/// `ring` is the pane's index in [`View::focus_ring`] — the same number [`App::pane`] holds — so a
+/// click can say "focus this pane" in the vocabulary the keyboard already uses.
+#[derive(Debug, Clone)]
+pub struct PaneRect {
+    /// The pane, from the registry.
+    pub pane: &'static Pane,
+    /// Its position in the focus ring.
+    pub ring: usize,
+    /// First column, in frame cells.
+    pub x: usize,
+    /// First body row.
+    pub y: usize,
+    /// Width in cells.
+    pub cols: usize,
+    /// Body rows.
+    pub rows: usize,
+}
+
+/// The frame's shape at one size: which chrome survived the ladder, where each pane is, and how
+/// many body rows there are.
+///
+/// This is [`view_styled`]'s arithmetic pulled out in front of its drawing, for two reasons. The
+/// mouse needs it (ADR-006 §10.1: the pointer issues the same actions as the keyboard, which
+/// begins with knowing which pane it was over) and the renderer needs it, and the two must never
+/// disagree about where a pane is — a click landing one row off is worse than no mouse.
+#[derive(Debug, Clone)]
+pub struct FramePlan {
+    /// The view being drawn.
+    pub view: ViewId,
+    /// Frame columns.
+    pub cols: usize,
+    /// Frame rows.
+    pub rows: usize,
+    /// What the ladder said.
+    pub fit: layout::Fit,
+    /// The view refused to draw at this size.
+    pub refused: bool,
+    /// A box is drawn (D4 has not fired).
+    pub boxed: bool,
+    /// The footer strips are drawn (D3 has not fired).
+    pub strips: bool,
+    /// The tab bar is drawn (D2 has not fired).
+    pub tabs: bool,
+    /// The hint row is drawn (D1 has not fired).
+    pub hint: bool,
+    /// This view draws its own status line.
+    pub status: bool,
+    /// This view has a query row (the search overlay).
+    pub query: bool,
+    /// First body row (the header row is the one above it).
+    pub body_y: usize,
+    /// How many body rows there are.
+    pub body_rows: usize,
+    /// The panes, left to right, with their rectangles.
+    pub panes: Vec<PaneRect>,
+}
+
+/// What the pointer was over.
+#[derive(Debug, Clone, Copy)]
+pub enum Hit<'a> {
+    /// A pane's body: `line` is the row inside it, 0 at the top.
+    Body {
+        /// The pane.
+        pane: &'a Pane,
+        /// Its focus-ring index.
+        ring: usize,
+        /// The line within the body.
+        line: usize,
+    },
+    /// A pane's header row: a title is a place to click, and it should focus without moving a
+    /// selection the reviewer was about to make.
+    Header {
+        /// The pane.
+        pane: &'a Pane,
+        /// Its focus-ring index.
+        ring: usize,
+    },
+    /// The query row, which belongs to the search field.
+    Query,
+    /// Chrome — the tab bar, the status line, the hint row, the refusal panel. Named, so the
+    /// caller can say what it hit instead of doing nothing quietly.
+    Chrome(&'static str),
+    /// Outside the frame.
+    Outside,
+}
+
+/// The frame's shape at a size, computed the same way [`view_styled`] computes it to draw.
+#[must_use]
+pub fn frame_plan(app: &App, view_id: ViewId, cols: usize, rows: usize) -> FramePlan {
+    let view = View::by_id(view_id);
+    let fit = layout::fit(view_id, cols as u16, rows as u16);
+    let refused = fit.state == FitState::Refused;
+    let applied = fit.applied.clone();
+    let gone = |id: &str| applied.iter().any(|a| a == id);
+    let boxed = view.has_chrome(CH_FRAME) && !gone(layout::Step::Frame.id());
+    let strips = view.has_chrome(CH_STRIPS) && !gone(layout::Step::Strips.id());
+    let tabs = view.has_chrome(CH_TABS) && !gone(layout::Step::Tabs.id());
+    let hint = view.has_chrome(CH_HINT) && !gone(layout::Step::Hint.id());
+    let status = view.has_chrome(CH_STATUS);
+    let query = view.query().is_some();
+    let mut widths = layout::pane_widths(view_id, cols as u16, &applied);
+    if app.zoomed
+        && let Some(pane) = app.focused_pane()
+    {
+        // `<C-w>o`: the focused pane takes the frame. Nothing was dropped and the ladder did not
+        // run — the reviewer asked to look at one thing (§5.0), and `<C-w>o` again puts it back.
+        let frame = usize::from(layout::frame_cols(view, &applied));
+        let width = cols.saturating_sub(frame).max(1);
+        widths = vec![(pane, u16::try_from(width).unwrap_or(1))];
+    }
+    // The renderer's own row budget: exactly one line per row it is going to print. This is not
+    // `layout::chrome_rows`, which is the ADR's model of what chrome *costs* and is what `fit`
+    // reasons about; the two agree on the sizes the ladder was derived at, and this one is the one
+    // that decides whether the drawn frame is `rows` lines tall.
+    let overhead = usize::from(tabs)
+        + usize::from(query)
+        + 1 // the pane header row, boxed or not
+        + usize::from(strips)
+        + usize::from(boxed) // the bottom rule
+        + usize::from(status)
+        + usize::from(hint);
+    let body_rows = rows.saturating_sub(overhead).max(1);
+    let body_y = usize::from(tabs) + usize::from(query) + 1;
+    let ring = view.focus_ring();
+    let mut x = usize::from(boxed);
+    let panes: Vec<PaneRect> = widths
+        .iter()
+        .map(|(pane, width)| {
+            let cols_pane = usize::from(*width);
+            let rect = PaneRect {
+                pane,
+                ring: ring.iter().position(|name| *name == pane.name).unwrap_or(0),
+                x,
+                y: body_y,
+                cols: cols_pane,
+                rows: body_rows,
+            };
+            // One column rule between panes, boxed or not — the same rule `row_of` draws with.
+            x = x.saturating_add(cols_pane).saturating_add(1);
+            rect
+        })
+        .collect();
+    FramePlan {
+        view: view_id,
+        cols,
+        rows,
+        fit,
+        refused,
+        boxed,
+        strips,
+        tabs,
+        hint,
+        status,
+        query,
+        body_y,
+        body_rows,
+        panes,
+    }
+}
+
+/// The frame's bottom chrome rows, in the order the renderer takes them from the bottom.
+///
+/// `None` means the row is not drawn — D3 or D4 fired, or the view has no status line of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChromeRows {
+    /// The hint row, `D1`.
+    pub hint: Option<usize>,
+    /// The status row.
+    pub status: Option<usize>,
+    /// The frame's bottom rule, `D4`.
+    pub bottom: Option<usize>,
+    /// The pane footer strips, `D3`.
+    pub strip: Option<usize>,
+}
+
+impl FramePlan {
+    /// The chrome rows, counted from the bottom of the frame, in the order the renderer takes them:
+    /// hint, status, the box's bottom rule, and the pane footer strips inside the box.
+    ///
+    /// Counting from the bottom is not a stylistic choice: these are the rows the renderer sells from
+    /// the bottom up (`frame::layout` takes the hint row, then the status row, then the frame), and a
+    /// pointer map that counted from the top would disagree with the drawing about which row is the
+    /// bottom rule — the one row a click must never land on as if it were content.
+    #[must_use]
+    pub fn chrome_rows(&self) -> ChromeRows {
+        let mut row = self.rows;
+        let mut take = |take: bool| {
+            if take {
+                row -= 1;
+                Some(row)
+            } else {
+                None
+            }
+        };
+        let hint = take(self.hint);
+        let status = take(self.status);
+        let bottom = take(self.boxed);
+        let strip = take(self.strips);
+        ChromeRows {
+            hint,
+            status,
+            bottom,
+            strip,
+        }
+    }
+
+    /// What the pointer at `(col, row)` was over, in cells from the frame's top-left.
+    #[must_use]
+    pub fn hit(&self, col: usize, row: usize) -> Hit<'static> {
+        if row >= self.rows || col >= self.cols {
+            return Hit::Outside;
+        }
+        if self.refused {
+            return Hit::Chrome("the refusal panel");
+        }
+        if self.tabs && row == 0 {
+            return Hit::Chrome("the tab bar");
+        }
+        if self.query && row == usize::from(self.tabs) {
+            return Hit::Query;
+        }
+        let chrome = self.chrome_rows();
+        if chrome.hint == Some(row) {
+            return Hit::Chrome("the hint line");
+        }
+        if chrome.status == Some(row) {
+            return Hit::Chrome("the status line");
+        }
+        if chrome.bottom == Some(row) {
+            return Hit::Chrome("the bottom rule");
+        }
+        if chrome.strip == Some(row) {
+            return Hit::Chrome("a pane footer strip");
+        }
+        let mut pane_at_col: Option<&PaneRect> = None;
+        for rect in &self.panes {
+            if col >= rect.x && col < rect.x + rect.cols {
+                pane_at_col = Some(rect);
+            }
+        }
+        let Some(rect) = pane_at_col else {
+            return Hit::Chrome("a column rule");
+        };
+        if row + 1 == self.body_y {
+            return Hit::Header {
+                pane: rect.pane,
+                ring: rect.ring,
+            };
+        }
+        if row >= self.body_y && row < self.body_y + self.body_rows {
+            return Hit::Body {
+                pane: rect.pane,
+                ring: rect.ring,
+                line: row - self.body_y,
+            };
+        }
+        Hit::Outside
+    }
+
+    /// The pane under the pointer, if a pane is.
+    #[must_use]
+    pub fn pane_at(&self, col: usize) -> Option<&PaneRect> {
+        self.panes
+            .iter()
+            .find(|rect| col >= rect.x && col < rect.x + rect.cols)
+    }
 }
 
 /// Every line of the frame, each exactly `cols` cells wide and `rows` lines tall.
@@ -164,18 +452,17 @@ pub fn view_styled(app: &App, view_id: ViewId, cols: usize, rows: usize) -> Vec<
     if rows == 0 || cols == 0 {
         return Vec::new();
     }
+    let plan = frame_plan(app, view_id, cols, rows);
     let view = View::by_id(view_id);
-    let fit = layout::fit(view_id, cols as u16, rows as u16);
-    let own_status = view.has_chrome(CH_STATUS);
-    if fit.state == FitState::Refused {
+    if plan.refused {
         // The refusal replaces the view. The status line stays: the ladder never sells it, and the
         // notice has to land somewhere.
         let mut out: Vec<StyledLine> = refusal_lines(view_id, cols as u16, rows as u16)
             .into_iter()
             .map(StyledLine::plain)
             .collect();
-        out.truncate(rows.saturating_sub(usize::from(own_status)).max(1));
-        if own_status && out.len() < rows {
+        out.truncate(rows.saturating_sub(usize::from(plan.status)).max(1));
+        if plan.status && out.len() < rows {
             out.push(StyledLine::plain(status_line(app)).padded(cols));
         }
         out.truncate(rows);
@@ -184,70 +471,47 @@ pub fn view_styled(app: &App, view_id: ViewId, cols: usize, rows: usize) -> Vec<
         }
         return out;
     }
-    let applied = fit.applied.clone();
-    let gone = |id: &str| applied.iter().any(|a| a == id);
-    let boxed = view.has_chrome(CH_FRAME) && !gone(layout::Step::Frame.id());
-    let strips = view.has_chrome(CH_STRIPS) && !gone(layout::Step::Strips.id());
-    let tabs = view.has_chrome(CH_TABS) && !gone(layout::Step::Tabs.id());
-    let hint = view.has_chrome(CH_HINT) && !gone(layout::Step::Hint.id());
-    let mut widths = layout::pane_widths(view_id, cols as u16, &applied);
-    if app.zoomed
-        && let Some(pane) = app.focused_pane()
-    {
-        // `<C-w>o`: the focused pane takes the frame. Nothing was dropped and the ladder did not
-        // run — the reviewer asked to look at one thing (§5.0), and `<C-w>o` again puts it back.
-        let frame = usize::from(layout::frame_cols(view, &applied));
-        let width = cols.saturating_sub(frame).max(1);
-        widths = vec![(pane, u16::try_from(width).unwrap_or(1))];
-    }
-    let query_rows = view.panes.iter().filter(|p| p.role == Role::Query).count();
-    // The renderer's own row budget: exactly one line per row it is going to print. This is not
-    // `layout::chrome_rows`, which is the ADR's model of what chrome *costs* and is what `fit`
-    // reasons about; the two agree on the sizes the ladder was derived at, and this one is the one
-    // that decides whether the drawn frame is `rows` lines tall.
-    let overhead = usize::from(tabs)
-        + query_rows
-        + 1 // the pane header row, boxed or not
-        + usize::from(strips)
-        + usize::from(boxed) // the bottom rule
-        + usize::from(view.has_chrome(CH_STATUS))
-        + usize::from(hint);
-    let body_rows = rows.saturating_sub(overhead).max(1);
+    let boxed = plan.boxed;
+    let body_rows = plan.body_rows;
 
     let mut out: Vec<StyledLine> = Vec::new();
-    if tabs {
+    if plan.tabs {
         out.push(StyledLine::plain(tab_line(app, cols)).padded(cols));
     }
     if let Some(query) = view.query() {
         out.push(StyledLine::plain(query_line(app, query)).padded(cols));
     }
-    let heads: Vec<StyledLine> = widths
+    let heads: Vec<StyledLine> = plan
+        .panes
         .iter()
-        .map(|(pane, width)| StyledLine::plain(pane_head(app, pane)).padded(*width as usize))
+        .map(|rect| StyledLine::plain(pane_head(app, rect.pane)).padded(rect.cols))
         .collect();
     out.push(row_of(&heads, boxed, TL, TC, TR, cols));
 
-    let bodies: Vec<Vec<StyledLine>> = widths
+    let bodies: Vec<Vec<StyledLine>> = plan
+        .panes
         .iter()
-        .map(|(pane, width)| pane_body(app, pane, *width as usize, body_rows))
+        .map(|rect| pane_body(app, rect.pane, rect.cols, body_rows))
         .collect();
     for row in 0..body_rows {
-        let parts: Vec<StyledLine> = widths
+        let parts: Vec<StyledLine> = plan
+            .panes
             .iter()
             .enumerate()
-            .map(|(index, (_pane, width))| {
+            .map(|(index, rect)| {
                 bodies[index]
                     .get(row)
                     .cloned()
-                    .unwrap_or_else(|| StyledLine::plain("").padded(*width as usize))
+                    .unwrap_or_else(|| StyledLine::plain("").padded(rect.cols))
             })
             .collect();
         out.push(row_of(&parts, boxed, V, V, V, cols));
     }
-    if strips {
-        let parts: Vec<StyledLine> = widths
+    if plan.strips {
+        let parts: Vec<StyledLine> = plan
+            .panes
             .iter()
-            .map(|(pane, width)| StyledLine::plain(app.pane_strip(pane)).padded(*width as usize))
+            .map(|rect| StyledLine::plain(app.pane_strip(rect.pane)).padded(rect.cols))
             .collect();
         out.push(row_of(&parts, boxed, V, V, V, cols));
     }
@@ -262,10 +526,10 @@ pub fn view_styled(app: &App, view_id: ViewId, cols: usize, rows: usize) -> Vec<
             .padded(cols),
         );
     }
-    if own_status {
+    if plan.status {
         out.push(StyledLine::plain(status_line(app)).padded(cols));
     }
-    if hint {
+    if plan.hint {
         out.push(StyledLine::plain(app.hint_line()).padded(cols));
     }
     out.truncate(rows);
@@ -307,7 +571,21 @@ fn help(grid: &mut Grid, app: &App) {
     let height = grid.rows;
     let inner = width.saturating_sub(4);
     let room = height.saturating_sub(3).max(1);
-    let mut panel = app.keymap.help_lines(inner);
+    // What went wrong or came short leads, because the keymap below it is long and the truncation
+    // happens at the bottom: a notice that could be the part cut off is a notice nobody read.
+    let mut panel: Vec<String> = Vec::new();
+    if !app.notices.is_empty() {
+        panel.push("reported at startup — nothing below was hidden".to_owned());
+        panel.extend(
+            app.notices
+                .iter()
+                .map(|notice| format!("\u{26a0} {notice}")),
+        );
+        panel.push(String::new());
+    }
+    panel.push(format!("terminal \u{00b7} {}", app.term.label()));
+    panel.push(String::new());
+    panel.extend(app.keymap.help_lines(inner));
     let hidden = panel.len().saturating_sub(room);
     panel.truncate(room);
     if hidden > 0 {
@@ -505,25 +783,27 @@ fn tab_line(app: &App, cols: usize) -> String {
     fit_text(&format!("{left}{}{}", " ".repeat(pad), right), cols)
 }
 
-/// Clip to `cells` display columns with an ellipsis.
+/// Clip to `cells` display columns with an ellipsis, on a cluster boundary.
 fn truncate(text: &str, cells: usize) -> String {
-    if display_width(text) <= cells {
-        return text.to_owned();
-    }
-    let mut out = String::new();
-    for ch in text.chars() {
-        if display_width(&out) + ch.len_utf8().max(1) + 1 > cells {
-            break;
-        }
-        out.push(ch);
-    }
-    out.push('…');
-    out
+    crate::text::clip(text, cells)
 }
 
 /// Write the frame into a ratatui buffer — one `set_string` per styled run, because the text is
 /// already clipped to the frame and the buffer must never see a line that could wrap.
 pub fn blit(buffer: &mut Buffer, lines: &[StyledLine]) {
+    blit_in_colour(buffer, lines, crate::terminal::ColorDepth::TrueColor);
+}
+
+/// [`blit`] with the terminal's own colour answer applied.
+///
+/// `NO_COLOR` and `TERM=dumb` are instructions, not decorations: the frame is laid out and drawn by
+/// exactly the same code, and the only thing that changes is that no cell is given a colour. Shapes
+/// stay, because ADR-006 §10.2 promised they would be enough.
+pub fn blit_in_colour(
+    buffer: &mut Buffer,
+    lines: &[StyledLine],
+    colour: crate::terminal::ColorDepth,
+) {
     for (y, line) in lines.iter().enumerate() {
         let Ok(row) = u16::try_from(y) else {
             break;
@@ -531,6 +811,11 @@ pub fn blit(buffer: &mut Buffer, lines: &[StyledLine]) {
         for (text, column, style) in line.segments() {
             let Ok(x) = u16::try_from(column) else {
                 continue;
+            };
+            let style = if colour == crate::terminal::ColorDepth::None {
+                crate::style::strip_colour(style)
+            } else {
+                style
             };
             buffer.set_string(x, row, text, style);
         }
@@ -554,8 +839,111 @@ pub fn blit_text(buffer: &mut Buffer, lines: &[String]) {
 pub fn plain_lines(app: &App) -> Vec<String> {
     frame_lines(app)
         .into_iter()
+        .map(|line| crate::text::trim_line(&line))
+        .collect()
+}
+
+/// One pane's rows as text, from whoever owns them — the rail, the diff tree, the worklist, or the
+/// shell's own list. This is the same dispatch [`pane_body`] uses, minus the styling and the padding,
+/// which is what lets the line mode print exactly the rows the frame drew.
+#[must_use]
+pub fn pane_text(app: &App, pane: &Pane) -> Vec<String> {
+    if let Some(lines) = app.timeline_text(pane) {
+        return lines
+            .into_iter()
+            .map(|line| line.trim_end().to_owned())
+            .collect();
+    }
+    if let Some(lines) = app.diff_text(pane) {
+        return lines
+            .into_iter()
+            .map(|line| line.trim_end().to_owned())
+            .collect();
+    }
+    if app.view == ViewId::Queue && !app.timeline.is_empty() {
+        return app
+            .queue_text(pane)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|line| line.trim_end().to_owned())
+            .collect();
+    }
+    let offset = if pane.role == Role::Primary {
+        0
+    } else {
+        app.scroll_of()
+    };
+    app.pane_rows(pane)
+        .into_iter()
+        .skip(offset)
         .map(|line| line.trim_end().to_owned())
         .collect()
+}
+
+/// The `--plain --lines` render: the same frame, **read in order** instead of drawn side by side
+/// (ADR-006 §6.7).
+///
+/// The grid is the right shape for eyes and the wrong shape for a pipe, a log or a screen reader:
+/// two panes side by side interleave a worklist row with a card row, and the reader is left to
+/// work out which column each fragment came from. Here every fact is on its own line, the panes
+/// come one after another in focus order, and nothing is padded — which is the same text the frame
+/// draws, in the order a person would read it aloud.
+#[must_use]
+pub fn plain_flow(app: &App) -> Vec<String> {
+    let cols = usize::from(app.size.0);
+    let rows = usize::from(app.size.1);
+    let plan = frame_plan(app, app.view, cols, rows);
+    // An overlay already is a reading surface — the keymap table, the palette, the search field —
+    // and the grid form of it is already one column wide. Sequence the grid rather than pretend the
+    // panel has panes.
+    if app.overlay.is_some() {
+        return plain_lines(app);
+    }
+    let view = View::by_id(app.view);
+    let mut out: Vec<String> = Vec::new();
+    if plan.refused {
+        out.extend(
+            refusal_lines(app.view, cols as u16, rows as u16)
+                .into_iter()
+                .map(|line| line.trim_end().to_owned()),
+        );
+        return out;
+    }
+    out.push(format!(
+        "fathom · {} · {} · {cols}×{rows}",
+        view.title,
+        layout::state_name(plan.fit.state)
+    ));
+    out.push(format!("scope · {}", app.scope.label()));
+    for bit in app.status_bits() {
+        out.push(format!("status · {bit}"));
+    }
+    for notice in &app.notices {
+        out.push(format!("notice · {notice}"));
+    }
+    if let Some(toast) = &app.toast {
+        out.push(format!("said · {toast}"));
+    }
+    for rect in &plan.panes {
+        let focused = app
+            .focused_pane()
+            .is_some_and(|pane| pane.name == rect.pane.name);
+        out.push(String::new());
+        out.push(format!(
+            "{} {} · {} · pane {} of {}",
+            if focused { "▸" } else { "·" },
+            rect.pane.name,
+            rect.pane.ticket,
+            rect.ring + 1,
+            plan.panes.len()
+        ));
+        out.extend(pane_text(app, rect.pane));
+    }
+    if plan.hint {
+        out.push(String::new());
+        out.push(format!("hint · {}", app.hint_line().trim_end()));
+    }
+    out
 }
 
 /// The frame's declared size, for the tests' own assertions.

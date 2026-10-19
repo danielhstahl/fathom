@@ -38,10 +38,76 @@ pub enum Message {
     },
     /// Something a worker decided.
     Worker(WorkerMsg),
+    /// The pointer moved, pressed or wheeled. Only ever produced when mouse capture was asked for
+    /// (`fathom --mouse`), because capture takes native text selection away from the terminal and
+    /// that trade is the reviewer's to make (ADR-006 §10.1).
+    Mouse(MouseMsg),
     /// A signal the loop noticed (the handler itself cannot send: it may not allocate).
     Signal(Signal),
     /// `<C-l>`: repaint without changing anything.
     Repaint,
+}
+
+/// What the pointer did.
+///
+/// Coordinates are 1-based cells, exactly as the terminal reported them. [`App::mouse`] turns them
+/// into a pane and a row through the same [`crate::render::FramePlan`] the renderer drew from, so
+/// the pointer cannot disagree with the frame about where a pane is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseMsg {
+    /// A button went down. `double` is the terminal's own double-click, not a timer we invented.
+    Press {
+        /// Column, 1-based.
+        col: u16,
+        /// Row, 1-based.
+        row: u16,
+        /// Which button, as the terminal spelled it.
+        button: Button,
+        /// Was this the second click of a double?
+        double: bool,
+    },
+    /// A button was released. Reported, because a press without its release is a drag in progress,
+    /// and a drag is not a selection.
+    Release {
+        /// Column, 1-based.
+        col: u16,
+        /// Row, 1-based.
+        row: u16,
+    },
+    /// The wheel, which scrolls the pane under the pointer (§10.1).
+    Scroll {
+        /// Column, 1-based.
+        col: u16,
+        /// Row, 1-based.
+        row: u16,
+        /// Which way the content should move.
+        direction: Scroll,
+    },
+}
+
+/// Which button the terminal says was pressed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Button {
+    /// The selection button — the one that selects.
+    Left,
+    /// The other one. Nothing is bound to it, and the toast says so rather than ignoring it.
+    Right,
+    /// The middle button, which is a paste on X11 and nothing here.
+    Middle,
+    /// The pointer moved with a button held: a drag. Pane-border drag-resizing is §10.1's and is
+    /// not implemented, so a drag is reported as one.
+    Drag,
+    /// A button the terminal reported without naming.
+    Other,
+}
+
+/// Which way the wheel turned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Scroll {
+    /// Content moves up: the reviewer is reading further down.
+    Down,
+    /// Content moves down: back up.
+    Up,
 }
 
 /// What a background task can say.
@@ -199,17 +265,84 @@ impl Bus {
 }
 
 /// Convert a terminal event into the queue's message type, dropping the ones this build has no
-/// use for. Mouse capture is deliberately not enabled in `e1.5` (ADR-006 §10.1 makes the mouse
-/// additive, and capturing the mouse would take native text selection away before there is a
-/// click-to-select to give back) — `e5.8` turns it on together with the click it implements.
+/// use for.
+///
+/// Mouse events are mapped here, but **capture is only ever enabled when the reviewer asked for it**
+/// (`fathom --mouse`, [`crate::terminal::TerminalRestore::enable_mouse`]): turning it on takes native
+/// text selection away from the terminal, and ADR-006 §10.1 makes the mouse additive — it may add a
+/// gesture, never take a capability. Without capture the terminal never sends these events, so this
+/// arm costs nothing on the keyboard path.
 #[must_use]
 pub fn message_from(event: TermEvent) -> Option<Message> {
     match event {
         TermEvent::Key(key) => Some(Message::Key(key)),
         TermEvent::Resize(cols, rows) => Some(Message::Resize { cols, rows }),
-        // Mouse, paste and focus events are accepted by the reader and dropped here: mouse capture
-        // is not enabled until there is a click that needs it (`e5.8`).
+        TermEvent::Mouse(mouse) => Some(Message::Mouse(MouseMsg::from(mouse))),
+        // Paste and focus events are accepted by the reader and dropped here.
         _ => None,
+    }
+}
+
+/// What the terminal's mouse report means here.
+///
+/// The conversions that matter are the two the ADR's mouse sentence rests on: a press is a select, a
+/// wheel is a scroll. Drag and motion reports are passed through as [`Button::Drag`] rather than
+/// dropped, because "nothing happened when you dragged" needs saying — a pane-border drag resize is
+/// §10.1's and is not implemented yet.
+impl From<crossterm::event::MouseEvent> for MouseMsg {
+    fn from(mouse: crossterm::event::MouseEvent) -> Self {
+        use crossterm::event::{MouseEvent as Cm, MouseEventKind};
+        let Cm {
+            kind, column, row, ..
+        } = mouse;
+        match kind {
+            MouseEventKind::Down(button) => MouseMsg::Press {
+                col: column,
+                row,
+                button: Button::from(button),
+                double: false,
+            },
+            MouseEventKind::Up(button) => {
+                let _ = button;
+                MouseMsg::Release { col: column, row }
+            }
+            MouseEventKind::Drag(_) => MouseMsg::Press {
+                col: column,
+                row,
+                button: Button::Drag,
+                double: false,
+            },
+            MouseEventKind::ScrollDown => MouseMsg::Scroll {
+                col: column,
+                row,
+                direction: Scroll::Down,
+            },
+            MouseEventKind::ScrollUp => MouseMsg::Scroll {
+                col: column,
+                row,
+                direction: Scroll::Up,
+            },
+            // A horizontal wheel is a horizontal scroll no pane here has, and a bare motion report
+            // only arrives with any-motion capture, which is never enabled — it would eat the
+            // terminal's own hover and selection behaviour for nothing.
+            MouseEventKind::ScrollLeft | MouseEventKind::ScrollRight | MouseEventKind::Moved => {
+                // Dropped by returning a release at the same cell: the loop already ignores a
+                // release, and "no message" would need a different signature here.
+                MouseMsg::Release { col: column, row }
+            }
+        }
+    }
+}
+
+/// The button, in this crate's words.
+impl From<crossterm::event::MouseButton> for Button {
+    fn from(button: crossterm::event::MouseButton) -> Self {
+        use crossterm::event::MouseButton;
+        match button {
+            MouseButton::Left => Button::Left,
+            MouseButton::Right => Button::Right,
+            MouseButton::Middle => Button::Middle,
+        }
     }
 }
 

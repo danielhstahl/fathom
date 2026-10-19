@@ -1,0 +1,26 @@
+# Diff at 80×24 — complete
+
+1 ▣ Diff · (T pins this view)                               fathom/pilot · main
+┌▸ tree · e1.7               ┬· hunks · e1.7                                   ┐
+│▸no diff — no episode is in…│no patch is loaded                               │
+│ `d` loads the selected epi…│                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│                            │                                                 │
+│no patch is loaded          │no file selected                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+10 episodes from fixture index

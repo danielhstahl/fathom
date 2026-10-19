@@ -20,7 +20,21 @@
 use std::ops::Range;
 
 use ratatui::style::{Color, Modifier, Style};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+/// `style` with every colour taken off and every shape left.
+///
+/// The single place a colour is removed — see [`Face::monochrome`] for why that is a legitimate thing
+/// to do to a frame, and `blit_in_colour` for the one caller that needs it on an already-built style.
+#[must_use]
+pub fn strip_colour(style: Style) -> Style {
+    Style {
+        fg: None,
+        bg: None,
+        underline_color: None,
+        ..style
+    }
+}
+use unicode_segmentation::UnicodeSegmentation;
 
 /// What a run of cells means. Names are the vocabulary a theme maps, not the colours themselves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -77,6 +91,18 @@ pub enum Face {
 }
 
 impl Face {
+    /// The same face with its colours taken off and its shapes left, which is what a terminal that
+    /// said `NO_COLOR` or `TERM=dumb` is given (ADR-006 §6.7).
+    ///
+    /// This is the only place a colour is *removed*, for the same reason [`Face::style`] is the only
+    /// place one is chosen. It is a legitimate removal because of §10.2's rule that no fact may be
+    /// carried by colour alone: every face here also has an intensity, an underline or a glyph, so a
+    /// monochrome frame is a complete frame rather than a lossy one.
+    #[must_use]
+    pub fn monochrome(self) -> Style {
+        strip_colour(self.style())
+    }
+
     /// The registry name a theme file and `fathom tui --theme` would use.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -294,7 +320,7 @@ impl StyledLine {
     /// Display cells the line occupies.
     #[must_use]
     pub fn cells(&self) -> usize {
-        self.text.width()
+        crate::text::width(&self.text)
     }
 
     /// Is there nothing on this line?
@@ -306,7 +332,10 @@ impl StyledLine {
     /// Clip to `width` cells with a `…`, keeping the faces of whatever survives.
     ///
     /// This is [`crate::layout::fit_text`]'s rule for the text channel; the span channel is clipped
-    /// to the same byte, so a run cannot be coloured past the ellipsis.
+    /// to the same byte, so a run cannot be coloured past the ellipsis. The cut is a grapheme
+    /// boundary — [`crate::text::cut`] says which byte — because a styled line is the same text as
+    /// the plain one and must be cut in the same place, or `--plain` and the frame would disagree
+    /// about what the reviewer was shown.
     #[must_use]
     pub fn fit(&self, width: usize) -> StyledLine {
         if width == 0 {
@@ -315,15 +344,10 @@ impl StyledLine {
         if self.cells() <= width {
             return self.clone();
         }
-        let mut out = StyledLine::plain("");
-        let mut used = 0;
-        for (offset, ch) in self.text.char_indices() {
-            let w = ch.width().unwrap_or(0);
-            if used + w + 1 > width {
-                break;
-            }
-            used += w;
-            out.push(self.face_at(offset), &ch.to_string());
+        let cut = crate::text::cut(&self.text, width).unwrap_or(self.text.len());
+        let mut out = StyledLine::new();
+        for (offset, cluster) in self.text[..cut].grapheme_indices(true) {
+            out.push(self.face_at(offset), cluster);
         }
         out.push(Face::Muted, "…");
         out
@@ -433,7 +457,7 @@ impl StyledLine {
                     column,
                     run_face.style(),
                 ));
-                column += self.text[run_start..offset].width();
+                column += crate::text::width(&self.text[run_start..offset]);
                 run_start = offset;
                 run_face = face;
             }

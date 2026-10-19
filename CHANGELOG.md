@@ -17,6 +17,55 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e5.5` — every terminal, every width, and the text render that survives both (`reco-2a3`)
+
+- **The Rust layout ladder reproduces the published matrix.** `fathom_tui::frame::plan()` walks
+  ADR-006 §6.1's sale order — hint, tab bar, footer strips, box frame, secondary-to-strip, hard
+  minimums, compact rows, single pane, refuse — and returns what the frame did and why, which the
+  status line prints as `LAYOUT degraded · N dropped · <C-w>o, ?` instead of quietly shrinking.
+  `crates/fathom-tui/tests/layout_matrix.rs` fails when the Rust answer for any view at
+  40×10, 80×24, 100×30, 120×40, 160×50 or 240×60 disagrees with §6.5's two tables, in either
+  direction, and writes the screenshot goldens under `tests/golden/layout/` that show each step's
+  effect rather than its name. Below a view's refuse floor the panel states the size needed, the
+  size it got, and `fathom --plain` for text; the panel's width budget is derived from its own
+  widest line, so the explanation can never be the reason it does not fit.
+- **Text is measured in terminal cells, not Unicode scalars.** New `fathom_tui::text`: display
+  width, grapheme-cluster-safe clipping, and the invisible-character substitution. CJK, combining
+  stacks, ZWJ emoji sequences, flags and skin-tone modifiers occupy the cells they will actually
+  paint, so a path or a commit subject clipped at a pane edge loses its last grapheme instead of
+  splitting one in half; control characters, C1, bidi overrides and isolates, and zero-width
+  formatting become visible stand-ins in every string this tool did not author — a harness-authored
+  `Agent-Summary:` carrying an RTL override reads left-to-right like everything else, because text
+  that can reorder the reviewer's frame is an attack surface (`tests/unicode.rs`, plus `proptest`
+  as a dev-only dependency asserting no cut lands inside a cluster and no frame panics on random
+  text).
+- **The pointer is opt-in, and additive to the letter.** `fathom tui --mouse` takes the pointer —
+  click selects, a second click in the same cell drills, the wheel scrolls the pane under it — and
+  is off by default because capture takes the terminal's own text selection away, which is how a
+  reviewer gets a path out of `fathom` and into a comment. Every gesture is translated into the
+  `Msg` the equivalent key sends, and `tests/pointer.rs` applies the gesture and the key to two
+  identical shells and asserts the resulting state is identical, for every gesture; a gesture that
+  lands on chrome answers in words instead of doing nothing. Finding the pane under a click exposed
+  a real bug in the keyboard path too: the queue draws two lines per episode and the row maths divided
+  by the page size, so `j` and `k` counted three rows per episode.
+- **Terminal facts are given, never read.** `fathom_tui::terminal::Probe` carries `TERM`,
+  `COLORTERM`, `NO_COLOR`, the `LC_ALL`→`LC_CTYPE`→`LANG` chain, tmux, screen, ssh and whether
+  stdout is a terminal at all; the CLI builds it at the process edge, because a TUI crate that
+  reads the environment cannot be driven from a test, a daemon or the MCP server (ADR-002 §5).
+  Every degraded answer is announced with the remedy in it — `TERM=dumb`, a missing `TERM`, a
+  non-UTF-8 locale pointing at the exact `export`, `NO_COLOR`, tmux needing `set -g mouse on`, a
+  redirected stdout — and a healthy terminal is told nothing, because a wall of caveats trains a
+  reviewer to skip the one that matters. `NO_COLOR` removes colour at the sink and nowhere else
+  (`style::strip_colour`, the mirror of `Face::style`), which §10.2 makes possible: the frame is
+  laid out identically and every glyph, rule and marker stays.
+- **`--plain --lines` prints the frame in reading order.** Two panes side by side is the right shape
+  for eyes and the wrong shape for a log, a pipe or a screen reader, so the line mode gives one block
+  per pane, each headed with the pane's name and position, with no column rules and no clipping to a
+  column width. Same facts, same order, one per line; `crates/fathom-cli/tests/tui_text.rs` pins the
+  three externally checkable claims — no `\x1b` on stdout, no column rule surviving, every grid row
+  present — and that a flag which cannot apply here (`--mouse` on a pipe) says so rather than silently
+  doing nothing.
+
 ### `e2.7` — dependency risk: who asked for this, and should I be worried (`reco-yxi`)
 
 - **New module: [`recommender.deprisk`](src/recommender/deprisk/).** Two questions per episode, and

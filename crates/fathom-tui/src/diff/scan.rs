@@ -886,13 +886,19 @@ fn path_of(rest: &str, prefix: &str) -> String {
 
 /// Undo git's C-style quoting far enough to be right about a space, which is the case a reviewer
 /// actually hits (`"my file.txt"`).
+///
+/// The result is sanitized ([`crate::text::sanitize`]) because git's own escapes are how a path with
+/// a control character in it arrives, and a raw `\r` or a bidi override inside a path is the frame-
+/// breaking kind: the tree pane would print a row whose width is not what it measured, and a
+/// reviewer would quote a filename that is not the filename. This is the parse boundary, so every
+/// pane, the copy-path handoff and `--plain` agree on the one visible spelling.
 fn unquote(text: &str) -> String {
     let trimmed = text.trim_end();
     let Some(body) = trimmed
         .strip_prefix('"')
         .and_then(|inner| inner.strip_suffix('"'))
     else {
-        return trimmed.to_owned();
+        return crate::text::sanitize(trimmed);
     };
     let mut out = String::with_capacity(body.len());
     let mut chars = body.chars();
@@ -909,7 +915,7 @@ fn unquote(text: &str) -> String {
             None => {}
         }
     }
-    out
+    crate::text::sanitize(&out)
 }
 
 /// `@@ -12,7 +12,9 @@ fn thing` → the four numbers.

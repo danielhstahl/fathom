@@ -20,9 +20,6 @@
 //! cannot show `sha · age · author · +n −n · risk` is not a narrow worklist, it is an ellipsis
 //! with a header, and the honest answer is the refusal panel in [`refusal_lines`].
 
-use unicode_width::UnicodeWidthChar;
-use unicode_width::UnicodeWidthStr;
-
 use crate::views::{CH_FRAME, CH_HINT, CH_STATUS, CH_STRIPS, CH_TABS, Pane, Role, View, ViewId};
 
 /// One cell of a pane border.
@@ -44,34 +41,21 @@ pub const NOTICE_COLS: usize = 96;
 /// and a wrapped box is the whole design shifted by one.
 #[must_use]
 pub fn display_width(text: &str) -> usize {
-    text.width()
+    crate::text::width(text)
 }
 
 /// Truncate to `width` cells without splitting a grapheme run, then pad to exactly `width`.
 ///
 /// The ellipsis is one cell, and the padding is why every drawn line is exactly the frame width:
-/// it makes "did this clip?" a string comparison instead of a screenshot review.
+/// it makes "did this clip?" a string comparison instead of a screenshot review. Cutting on a
+/// cluster boundary is what stops `é` (two characters, one cluster) and a ZWJ emoji family (five
+/// characters, one cluster) from being sliced into a different character and an early ellipsis.
+///
+/// The arithmetic itself lives in [`crate::text`], one place for the whole crate, so a measured
+/// width and the string it measured can never disagree.
 #[must_use]
 pub fn fit_text(text: &str, width: usize) -> String {
-    if width == 0 {
-        return String::new();
-    }
-    let mut out = String::new();
-    if display_width(text) <= width {
-        out.push_str(text);
-    } else {
-        for ch in text.chars() {
-            let w = ch.width().unwrap_or(0);
-            if display_width(&out) + w + 1 > width {
-                break;
-            }
-            out.push(ch);
-        }
-        out.push('…');
-    }
-    let pad = width.saturating_sub(display_width(&out));
-    out.push_str(&" ".repeat(pad));
-    out
+    crate::text::fit(text, width)
 }
 
 // ---------------------------------------------------------------------------

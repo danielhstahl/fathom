@@ -1,0 +1,26 @@
+# Structure at 80×24 — complete
+
+1 ▣ Structure · (T pins this view)                          fathom/pilot · main
+┌▸ treemap · e2.3                                    ┬· detail · e2.3          ┐
+│index epoch 1 ready · 500 commits · 48 eps          │`detail` — nothing to sh…│
+│`t` opens the timeline, which lists them as the ind…│the delta model is not i…│
+│the delta model is not in this build                │reads delta.structure.* …│
+│reads delta.structure.* · churn heat per subtree · …│pane `detail` · owned by…│
+│pane `treemap` · owned by e2.3 · ADR-006 §5         │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│                                                    │                         │
+│Where did it land, and is the tree hottest where it…│detail · reads delta.str…│
+└──────────────────────────────────────────────────────────────────────────────┘
+⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+10 episodes from fixture index
