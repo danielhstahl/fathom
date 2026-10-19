@@ -1,0 +1,25 @@
+reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3) [c1].
+
+Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule message-shape at 0.7 confidence [m2].
+
+**What** — lines +3 371 -55 [f1]; files 12 file(s) [f2]; churn 3 426 lines changed [f3]; reviewable churn 3 181 of 3 426 (spine-1/noisy-path, keeps 25%) [f4]; path classes 12 [f5]; change kinds modified 12 [f6].
+
+**Where** — directories src/recommender/store 2f +1685 -0 · benchmarks/reports 1f +710 -0 · tools 2f +319 -8 · docs/concepts 1f +218 -0 · tests 1f +209 -0 [f7]; more directories 4 not listed [f8]; surfaces source 6f +2485 -29 · docs 3f +358 -18 · generated 2f +319 -8 · test 1f +209 -0 [f9]; no path moves were recorded [f10]; basis 12 of 12 paths, ranked by churn; the census is the episode's own paths [f11].
+
+**Surface** — surfaces source 6f +2485 -29 · docs 3f +358 -18 · generated 2f +319 -8 · test 1f +209 -0 [f12]; operator surfaces none — nothing here needs an action outside the review [f13].
+
+**Tests** — test side 1 file(s) · +209 -0 [f14]; source side 6 file(s) · +2 485 -29 [f15]; test share of churn 6% of the episode's churn is test-side [f16].
+
+**Attention** — risk spine-1 31 = size 13 + surfaces 10 + breadth 8 [f17]; size (13/16) +3371 -55 = 3426 churn, of which 3181 is reviewable (327 discounted as generated, lockfile, vendored or binary) [f18]; surfaces (10/50) src/recommender/store/graphsnap.py — source: the logic a reviewer has to read · also touched: test, generated, docs [f19]; breadth (8/12) 4 surfaces over 12 files in 1 commit [f20]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f21].
+
+Scale — totals 12 file(s), +3371 -55, 1 commit(s), 0 binary [m3].
+
+The largest single file is src/recommender/store/graphsnap.py (+880 -0, source) [p9].
+
+Why — as the commit says it: “reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 31 = size 13 + surfaces 10 + breadth 8 [r1], from size 13/16 +3371 -55 = 3426 churn, of which 3181 is reviewable (327 discounted as generated, lockfile, vendored or binary) [r2]; surfaces 10/50 src/recommender/store/graphsnap.py — source: the logic a reviewer has to read · also touched: test, generated, docs [r3]; breadth 8/12 4 surfaces over 12 files in 1 commit [r4].

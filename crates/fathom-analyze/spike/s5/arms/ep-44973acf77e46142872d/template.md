@@ -1,0 +1,25 @@
+reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1) [c1].
+
+Authorship: looprs (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule message-shape at 0.7 confidence [m2].
+
+**What** — lines +8 164 -17 [f1]; files 21 file(s) [f2]; churn 8 181 lines changed [f3]; reviewable churn 8 181 of 8 181 (spine-1/noisy-path, keeps 25%) [f4]; path classes 21 [f5]; change kinds modified 21 [f6].
+
+**Where** — directories crates/fathom-ingest/src 3f +4128 -8 · crates/fathom-ingest/tests 1f +1326 -0 · schemas 2f +1026 -2 · crates/fathom-cli/src 4f +616 -1 · tests 2f +546 -0 [f7]; more directories 5 not listed [f8]; surfaces source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4 [f9]; no path moves were recorded [f10]; basis 21 of 21 paths, ranked by churn; the census is the episode's own paths [f11].
+
+**Surface** — surfaces source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4 [f12]; operator surfaces none — nothing here needs an action outside the review [f13].
+
+**Tests** — test side 7 file(s) · +2 336 -1 [f14]; source side 10 file(s) · +5 772 -12 [f15]; test share of churn 29% of the episode's churn is test-side [f16]; watch source grew by 5 772 while 1 test lines were removed — the deleted cover is not re-established by anything in these rows [f17].
+
+**Attention** — risk spine-1 31 = size 15 + surfaces 10 + breadth 6 [f18]; size (15/16) +8164 -17 = 8181 churn [f19]; surfaces (10/50) crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs [f20]; breadth (6/12) 3 surfaces over 21 files in 1 commit [f21]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f22].
+
+Scale — totals 21 file(s), +8164 -17, 1 commit(s), 0 binary [m3].
+
+The largest single file is crates/fathom-ingest/src/hooks.rs (+4077 -0, source) [p9].
+
+Why — as the commit says it: “reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 31 = size 15 + surfaces 10 + breadth 6 [r1], from size 15/16 +8164 -17 = 8181 churn [r2]; surfaces 10/50 crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs [r3]; breadth 6/12 3 surfaces over 21 files in 1 commit [r4].

@@ -1,0 +1,503 @@
+{
+ "reviewer": {
+  "blinded": true,
+  "blinded_digest": "77f9c5429fa108905f5164bde875c7b34e723865ed2018d3d8822f53899b2e2f",
+  "id": "R2",
+  "independent_reread": false,
+  "limitation": "one base model under three rubrics, one shared reading of the corpus",
+  "model": "halogen-qwen3.8-flash-next",
+  "note": "asked: what did I learn in the time I had",
+  "order": "episode then label",
+  "persona": "time-pressed reviewer, thirty seconds per episode",
+  "weights": "usefulness first"
+ },
+ "schema": "fathom.narrative-panel/1",
+ "scores": [
+  {
+   "accuracy": 4,
+   "episode": "ep-5d5c29560494ff4ba1b6",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-5d5c29560494ff4ba1b6",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-5d5c29560494ff4ba1b6",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-12c3856aa7d39a356fc5",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-12c3856aa7d39a356fc5",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-12c3856aa7d39a356fc5",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-9eae7df04e56608cd3c6",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-9eae7df04e56608cd3c6",
+   "hallucinations": [
+    "the delta itself flags that source grew by 2 690 while 2 test lines were removed"
+   ],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-9eae7df04e56608cd3c6",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b73a5a3e50303b4d09fd",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b73a5a3e50303b4d09fd",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b73a5a3e50303b4d09fd",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-83ce1e4c2fdf284ecc3a",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-83ce1e4c2fdf284ecc3a",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-83ce1e4c2fdf284ecc3a",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-f4ae22f1d86e1adb6564",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-f4ae22f1d86e1adb6564",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-f4ae22f1d86e1adb6564",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-1fcc80f083aae73ddbc5",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-1fcc80f083aae73ddbc5",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-1fcc80f083aae73ddbc5",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-a0d6c1ee0d02af46577a",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-a0d6c1ee0d02af46577a",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-a0d6c1ee0d02af46577a",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-2fc505f5b0b04e3936cc",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-2fc505f5b0b04e3936cc",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-2fc505f5b0b04e3936cc",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-5b096301793eced5902e",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-5b096301793eced5902e",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-5b096301793eced5902e",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-3e7c88e0ea3fbc7ed99b",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-3e7c88e0ea3fbc7ed99b",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-3e7c88e0ea3fbc7ed99b",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-8881edd5aa6464360234",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-8881edd5aa6464360234",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-8881edd5aa6464360234",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-dc66dc3bdab33bb1057c",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-dc66dc3bdab33bb1057c",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-dc66dc3bdab33bb1057c",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-c889856300a3d59575c6",
+   "hallucinations": [
+    "change kinds modified 35"
+   ],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-c889856300a3d59575c6",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-c889856300a3d59575c6",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-44973acf77e46142872d",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-44973acf77e46142872d",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-44973acf77e46142872d",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-bf3b97f296f09cbc2111",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-bf3b97f296f09cbc2111",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-bf3b97f296f09cbc2111",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-0a45952b1de2db26bb9e",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-0a45952b1de2db26bb9e",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 2
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-0a45952b1de2db26bb9e",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-50e8c8b4058e270e0a6f",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-50e8c8b4058e270e0a6f",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-50e8c8b4058e270e0a6f",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b55068697fd91b278c04",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 4
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b55068697fd91b278c04",
+   "hallucinations": [],
+   "label": "B",
+   "trustworthiness": 5,
+   "usefulness": 3
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-b55068697fd91b278c04",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-03fcc089123e2e468204",
+   "hallucinations": [],
+   "label": "A",
+   "trustworthiness": 4,
+   "usefulness": 5
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-03fcc089123e2e468204",
+   "hallucinations": [
+    "cannot see whether a migration can be rolled back - an environment variable declared and never read"
+   ],
+   "label": "B",
+   "trustworthiness": 4,
+   "usefulness": 1
+  },
+  {
+   "accuracy": 4,
+   "episode": "ep-03fcc089123e2e468204",
+   "hallucinations": [],
+   "label": "C",
+   "trustworthiness": 5,
+   "usefulness": 3
+  }
+ ]
+}

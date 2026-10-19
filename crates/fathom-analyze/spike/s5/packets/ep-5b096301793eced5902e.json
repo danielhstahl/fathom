@@ -1,0 +1,374 @@
+{
+ "episode": {
+  "delta_digest": "041ace2442d0a3c1e7b11bc0c50ae2e624bda819d43785decd8c486413bb94cd",
+  "id": "ep-5b096301793eced5902e",
+  "lineage_seq": 24,
+  "n_commits": 1,
+  "subject": "reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)"
+ },
+ "items": [
+  {
+   "id": "c1",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "44217f427564",
+   "value": "reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)"
+  },
+  {
+   "id": "f1",
+   "kind": "figure",
+   "label": "lines",
+   "pointer": "#/totals",
+   "section": "what",
+   "value": "+3 371 -55"
+  },
+  {
+   "id": "f2",
+   "kind": "figure",
+   "label": "files",
+   "pointer": "#/totals/n_files",
+   "section": "what",
+   "value": "12 file(s)"
+  },
+  {
+   "id": "f3",
+   "kind": "figure",
+   "label": "churn",
+   "pointer": "#/totals/churn",
+   "section": "what",
+   "value": "3 426 lines changed"
+  },
+  {
+   "id": "f4",
+   "kind": "figure",
+   "label": "reviewable churn",
+   "pointer": "#/totals/reviewable_churn",
+   "section": "what",
+   "value": "3 181 of 3 426 (spine-1/noisy-path, keeps 25%)"
+  },
+  {
+   "id": "f5",
+   "kind": "figure",
+   "label": "path classes",
+   "pointer": "#/files",
+   "section": "what",
+   "value": " 12"
+  },
+  {
+   "id": "f6",
+   "kind": "figure",
+   "label": "change kinds",
+   "pointer": "#/files",
+   "section": "what",
+   "value": "modified 12"
+  },
+  {
+   "id": "f7",
+   "kind": "figure",
+   "label": "directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "src/recommender/store 2f +1685 -0 · benchmarks/reports 1f +710 -0 · tools 2f +319 -8 · docs/concepts 1f +218 -0 · tests 1f +209 -0"
+  },
+  {
+   "id": "f8",
+   "kind": "figure",
+   "label": "more directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "4 not listed"
+  },
+  {
+   "id": "f9",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "source 6f +2485 -29 · docs 3f +358 -18 · generated 2f +319 -8 · test 1f +209 -0"
+  },
+  {
+   "id": "f10",
+   "kind": "figure",
+   "label": "moves",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "no path moves were recorded"
+  },
+  {
+   "id": "f11",
+   "kind": "figure",
+   "label": "basis",
+   "pointer": "#/totals",
+   "section": "where",
+   "value": "12 of 12 paths, ranked by churn; the census is the episode's own paths"
+  },
+  {
+   "id": "f12",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "source 6f +2485 -29 · docs 3f +358 -18 · generated 2f +319 -8 · test 1f +209 -0"
+  },
+  {
+   "id": "f13",
+   "kind": "figure",
+   "label": "operator surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "none — nothing here needs an action outside the review"
+  },
+  {
+   "id": "f14",
+   "kind": "figure",
+   "label": "test side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "1 file(s) · +209 -0"
+  },
+  {
+   "id": "f15",
+   "kind": "figure",
+   "label": "source side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "6 file(s) · +2 485 -29"
+  },
+  {
+   "id": "f16",
+   "kind": "figure",
+   "label": "test share of churn",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "6% of the episode's churn is test-side"
+  },
+  {
+   "id": "f17",
+   "kind": "figure",
+   "label": "risk",
+   "pointer": "#/risk",
+   "section": "attention",
+   "value": "spine-1 31 = size 13 + surfaces 10 + breadth 8"
+  },
+  {
+   "id": "f18",
+   "kind": "figure",
+   "label": "size (13/16)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "+3371 -55 = 3426 churn, of which 3181 is reviewable (327 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "f19",
+   "kind": "figure",
+   "label": "surfaces (10/50)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "src/recommender/store/graphsnap.py — source: the logic a reviewer has to read · also touched: test, generated, docs"
+  },
+  {
+   "id": "f20",
+   "kind": "figure",
+   "label": "breadth (8/12)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "4 surfaces over 12 files in 1 commit"
+  },
+  {
+   "id": "f21",
+   "kind": "figure",
+   "label": "cannot see",
+   "pointer": "#/risk/blind_spots",
+   "section": "attention",
+   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+  },
+  {
+   "id": "p1",
+   "kind": "file",
+   "label": "file",
+   "path": ".plan/gen.py",
+   "surface": "source",
+   "value": "modified .plan/gen.py +34 -9 source"
+  },
+  {
+   "id": "p2",
+   "kind": "file",
+   "label": "file",
+   "path": ".plan/plan.json",
+   "surface": "source",
+   "value": "modified .plan/plan.json +4 -4 source"
+  },
+  {
+   "id": "p3",
+   "kind": "file",
+   "label": "file",
+   "path": "README.md",
+   "surface": "docs",
+   "value": "modified README.md +9 -0 docs"
+  },
+  {
+   "id": "p4",
+   "kind": "file",
+   "label": "file",
+   "path": "benchmarks/budgets.json",
+   "surface": "source",
+   "value": "modified benchmarks/budgets.json +52 -16 source"
+  },
+  {
+   "id": "p5",
+   "kind": "file",
+   "label": "file",
+   "path": "benchmarks/reports/s3-graph-snapshots.json",
+   "surface": "source",
+   "value": "modified benchmarks/reports/s3-graph-snapshots.json +710 -0 source"
+  },
+  {
+   "id": "p6",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/adr/0004-storage.md",
+   "surface": "docs",
+   "value": "modified docs/adr/0004-storage.md +131 -18 docs"
+  },
+  {
+   "id": "p7",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/graph-storage.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/graph-storage.md +218 -0 docs"
+  },
+  {
+   "id": "p8",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/store/graphbench.py",
+   "surface": "source",
+   "value": "modified src/recommender/store/graphbench.py +805 -0 source"
+  },
+  {
+   "id": "p9",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/store/graphsnap.py",
+   "surface": "source",
+   "value": "modified src/recommender/store/graphsnap.py +880 -0 source"
+  },
+  {
+   "id": "p10",
+   "kind": "file",
+   "label": "file",
+   "path": "tests/test_graph_spike_contract.py",
+   "surface": "test",
+   "value": "modified tests/test_graph_spike_contract.py +209 -0 test"
+  },
+  {
+   "id": "p11",
+   "kind": "file",
+   "label": "file",
+   "path": "tools/gen_budgets.py",
+   "surface": "generated",
+   "value": "modified tools/gen_budgets.py +32 -8 generated"
+  },
+  {
+   "id": "p12",
+   "kind": "file",
+   "label": "file",
+   "path": "tools/gen_graph_tables.py",
+   "surface": "generated",
+   "value": "modified tools/gen_graph_tables.py +287 -0 generated"
+  },
+  {
+   "id": "r1",
+   "kind": "risk",
+   "label": "risk",
+   "score": 31,
+   "value": "spine-1 31 = size 13 + surfaces 10 + breadth 8"
+  },
+  {
+   "id": "r2",
+   "kind": "risk",
+   "label": "risk component size",
+   "value": "size 13/16 +3371 -55 = 3426 churn, of which 3181 is reviewable (327 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "r3",
+   "kind": "risk",
+   "label": "risk component surfaces",
+   "value": "surfaces 10/50 src/recommender/store/graphsnap.py — source: the logic a reviewer has to read · also touched: test, generated, docs"
+  },
+  {
+   "id": "r4",
+   "kind": "risk",
+   "label": "risk component breadth",
+   "value": "breadth 8/12 4 surfaces over 12 files in 1 commit"
+  },
+  {
+   "id": "g1",
+   "kind": "gap",
+   "label": "gap (what)",
+   "value": "path-rule discount only — not answered here, it is e2.2's"
+  },
+  {
+   "id": "g2",
+   "kind": "gap",
+   "label": "gap (where)",
+   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+  },
+  {
+   "id": "g3",
+   "kind": "gap",
+   "label": "gap (dependencies)",
+   "value": "no dependency delta here — not answered here, it is e2.6's"
+  },
+  {
+   "id": "g4",
+   "kind": "gap",
+   "label": "gap (surface)",
+   "value": "findings are e2.8's — not answered here, it is e2.8's"
+  },
+  {
+   "id": "g5",
+   "kind": "gap",
+   "label": "gap (tests)",
+   "value": "case names are e2.9's — not answered here, it is e2.9's"
+  },
+  {
+   "id": "g6",
+   "kind": "gap",
+   "label": "gap (blast)",
+   "value": "no module graph in this build — not answered here, it is e3.2's"
+  },
+  {
+   "id": "g7",
+   "kind": "gap",
+   "label": "gap (attention)",
+   "value": "spine-only ranking — not answered here, it is e4.4's"
+  },
+  {
+   "id": "m1",
+   "kind": "meta",
+   "label": "author",
+   "value": "danielstahl (human author, identity at 0.5 confidence)"
+  },
+  {
+   "id": "m2",
+   "kind": "meta",
+   "label": "boundary",
+   "value": "boundary rule message-shape at 0.7 confidence"
+  },
+  {
+   "id": "m3",
+   "kind": "meta",
+   "label": "totals",
+   "value": "12 file(s), +3371 -55, 1 commit(s), 0 binary"
+  },
+  {
+   "id": "m4",
+   "kind": "meta",
+   "label": "window",
+   "value": "0 minute(s) long"
+  }
+ ],
+ "schema": "fathom.narrative-evidence/1"
+}

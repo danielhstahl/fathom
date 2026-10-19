@@ -1,0 +1,462 @@
+{
+ "episode": {
+  "delta_digest": "bf13cda73e2848a73a5834be31d83cc3bf7ccede6d45ea121a373f05f932a210",
+  "id": "ep-b73a5a3e50303b4d09fd",
+  "lineage_seq": 8,
+  "n_commits": 1,
+  "subject": "reco-cey: repository discovery and git object access via gix (e1.1)"
+ },
+ "items": [
+  {
+   "id": "c1",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "af672b58429e",
+   "value": "reco-cey: repository discovery and git object access via gix (e1.1)"
+  },
+  {
+   "id": "f1",
+   "kind": "figure",
+   "label": "lines",
+   "pointer": "#/totals",
+   "section": "what",
+   "value": "+9 722 -4"
+  },
+  {
+   "id": "f2",
+   "kind": "figure",
+   "label": "files",
+   "pointer": "#/totals/n_files",
+   "section": "what",
+   "value": "23 file(s)"
+  },
+  {
+   "id": "f3",
+   "kind": "figure",
+   "label": "churn",
+   "pointer": "#/totals/churn",
+   "section": "what",
+   "value": "9 726 lines changed"
+  },
+  {
+   "id": "f4",
+   "kind": "figure",
+   "label": "reviewable churn",
+   "pointer": "#/totals/reviewable_churn",
+   "section": "what",
+   "value": "9 697 of 9 726 (spine-1/noisy-path, keeps 25%)"
+  },
+  {
+   "id": "f5",
+   "kind": "figure",
+   "label": "path classes",
+   "pointer": "#/files",
+   "section": "what",
+   "value": " 23"
+  },
+  {
+   "id": "f6",
+   "kind": "figure",
+   "label": "change kinds",
+   "pointer": "#/files",
+   "section": "what",
+   "value": "modified 23"
+  },
+  {
+   "id": "f7",
+   "kind": "figure",
+   "label": "directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "crates/fathom-ingest/src 9f +5035 -3 · crates/fathom-ingest/tests 8f +3923 -0 · crates/fathom-ingest/tests/common 1f +622 -0 · . 2f +60 -0 · benchmarks/reports 1f +51 -0"
+  },
+  {
+   "id": "f8",
+   "kind": "figure",
+   "label": "more directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "2 not listed"
+  },
+  {
+   "id": "f9",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "source 12f +5117 -4 · test 9f +4545 -0 · dependency 1f +39 -0 · docs 1f +21 -0"
+  },
+  {
+   "id": "f10",
+   "kind": "figure",
+   "label": "moves",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "no path moves were recorded"
+  },
+  {
+   "id": "f11",
+   "kind": "figure",
+   "label": "basis",
+   "pointer": "#/totals",
+   "section": "where",
+   "value": "23 of 23 paths, ranked by churn; the census is the episode's own paths"
+  },
+  {
+   "id": "f12",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "source 12f +5117 -4 · test 9f +4545 -0 · dependency 1f +39 -0 · docs 1f +21 -0"
+  },
+  {
+   "id": "f13",
+   "kind": "figure",
+   "label": "operator surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "1 (dependency)"
+  },
+  {
+   "id": "f14",
+   "kind": "figure",
+   "label": "test side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "9 file(s) · +4 545 -0"
+  },
+  {
+   "id": "f15",
+   "kind": "figure",
+   "label": "source side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "12 file(s) · +5 117 -4"
+  },
+  {
+   "id": "f16",
+   "kind": "figure",
+   "label": "test share of churn",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "47% of the episode's churn is test-side"
+  },
+  {
+   "id": "f17",
+   "kind": "figure",
+   "label": "risk",
+   "pointer": "#/risk",
+   "section": "attention",
+   "value": "spine-1 59 = surfaces 36 + size 15 + breadth 8"
+  },
+  {
+   "id": "f18",
+   "kind": "figure",
+   "label": "surfaces (36/50)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs"
+  },
+  {
+   "id": "f19",
+   "kind": "figure",
+   "label": "size (15/16)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "+9722 -4 = 9726 churn, of which 9697 is reviewable (39 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "f20",
+   "kind": "figure",
+   "label": "breadth (8/12)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "4 surfaces over 23 files in 1 commit"
+  },
+  {
+   "id": "f21",
+   "kind": "figure",
+   "label": "cannot see",
+   "pointer": "#/risk/blind_spots",
+   "section": "attention",
+   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+  },
+  {
+   "id": "p1",
+   "kind": "file",
+   "label": "file",
+   "path": "CHANGELOG.md",
+   "surface": "docs",
+   "value": "modified CHANGELOG.md +21 -0 docs"
+  },
+  {
+   "id": "p2",
+   "kind": "file",
+   "label": "file",
+   "path": "Cargo.lock",
+   "surface": "dependency",
+   "value": "modified Cargo.lock +39 -0 dependency"
+  },
+  {
+   "id": "p3",
+   "kind": "file",
+   "label": "file",
+   "path": "benchmarks/reports/e1-1-git-walk.json",
+   "surface": "source",
+   "value": "modified benchmarks/reports/e1-1-git-walk.json +51 -0 source"
+  },
+  {
+   "id": "p4",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-core/src/error.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-core/src/error.rs +28 -0 source"
+  },
+  {
+   "id": "p5",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/Cargo.toml",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/Cargo.toml +3 -1 source"
+  },
+  {
+   "id": "p6",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/backend.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/backend.rs +357 -0 source"
+  },
+  {
+   "id": "p7",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/error.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/error.rs +274 -0 source"
+  },
+  {
+   "id": "p8",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/graph.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/graph.rs +843 -0 source"
+  },
+  {
+   "id": "p9",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/lib.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/lib.rs +41 -3 source"
+  },
+  {
+   "id": "p10",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/oid.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/oid.rs +248 -0 source"
+  },
+  {
+   "id": "p11",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/paths.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/paths.rs +190 -0 source"
+  },
+  {
+   "id": "p12",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/repo.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/repo.rs +1561 -0 source"
+  },
+  {
+   "id": "p13",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/revspec.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/revspec.rs +432 -0 source"
+  },
+  {
+   "id": "p14",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/state.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/state.rs +1089 -0 source"
+  },
+  {
+   "id": "p15",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/agrees_with_git.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/agrees_with_git.rs +462 -0 test"
+  },
+  {
+   "id": "p16",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/backend_seam.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/backend_seam.rs +500 -0 test"
+  },
+  {
+   "id": "p17",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/bench_walk.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/bench_walk.rs +422 -0 test"
+  },
+  {
+   "id": "p18",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/common/mod.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/common/mod.rs +622 -0 test"
+  },
+  {
+   "id": "p19",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/discovery.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/discovery.rs +671 -0 test"
+  },
+  {
+   "id": "p20",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/no_git_subprocess.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/no_git_subprocess.rs +209 -0 test"
+  },
+  {
+   "id": "p21",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/revspec.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/revspec.rs +367 -0 test"
+  },
+  {
+   "id": "p22",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/walk.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/walk.rs +634 -0 test"
+  },
+  {
+   "id": "p23",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/working_state.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/working_state.rs +658 -0 test"
+  },
+  {
+   "id": "r1",
+   "kind": "risk",
+   "label": "risk",
+   "score": 59,
+   "value": "spine-1 59 = surfaces 36 + size 15 + breadth 8"
+  },
+  {
+   "id": "r2",
+   "kind": "risk",
+   "label": "risk component surfaces",
+   "value": "surfaces 36/50 Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs"
+  },
+  {
+   "id": "r3",
+   "kind": "risk",
+   "label": "risk component size",
+   "value": "size 15/16 +9722 -4 = 9726 churn, of which 9697 is reviewable (39 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "r4",
+   "kind": "risk",
+   "label": "risk component breadth",
+   "value": "breadth 8/12 4 surfaces over 23 files in 1 commit"
+  },
+  {
+   "id": "g1",
+   "kind": "gap",
+   "label": "gap (what)",
+   "value": "path-rule discount only — not answered here, it is e2.2's"
+  },
+  {
+   "id": "g2",
+   "kind": "gap",
+   "label": "gap (where)",
+   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+  },
+  {
+   "id": "g3",
+   "kind": "gap",
+   "label": "gap (dependencies)",
+   "value": "no dependency delta here — not answered here, it is e2.6's"
+  },
+  {
+   "id": "g4",
+   "kind": "gap",
+   "label": "gap (surface)",
+   "value": "findings are e2.8's — not answered here, it is e2.8's"
+  },
+  {
+   "id": "g5",
+   "kind": "gap",
+   "label": "gap (tests)",
+   "value": "case names are e2.9's — not answered here, it is e2.9's"
+  },
+  {
+   "id": "g6",
+   "kind": "gap",
+   "label": "gap (blast)",
+   "value": "no module graph in this build — not answered here, it is e3.2's"
+  },
+  {
+   "id": "g7",
+   "kind": "gap",
+   "label": "gap (attention)",
+   "value": "spine-only ranking — not answered here, it is e4.4's"
+  },
+  {
+   "id": "m1",
+   "kind": "meta",
+   "label": "author",
+   "value": "danielstahl (human author, identity at 0.5 confidence)"
+  },
+  {
+   "id": "m2",
+   "kind": "meta",
+   "label": "boundary",
+   "value": "boundary rule message-shape at 0.7 confidence"
+  },
+  {
+   "id": "m3",
+   "kind": "meta",
+   "label": "totals",
+   "value": "23 file(s), +9722 -4, 1 commit(s), 0 binary"
+  },
+  {
+   "id": "m4",
+   "kind": "meta",
+   "label": "window",
+   "value": "0 minute(s) long"
+  }
+ ],
+ "schema": "fathom.narrative-evidence/1"
+}

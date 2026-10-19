@@ -1,0 +1,65 @@
+# evidence for ep-9eae7df04e56608cd3c6: reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)
+[f1] lines: +3 736 -69
+[f2] files: 25 file(s)
+[f3] churn: 3 805 lines changed
+[f4] reviewable churn: 3 805 of 3 805 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  25
+[f6] change kinds: modified 25
+[f7] directories: src/recommender/taxonomy 10f +2431 -0 · tests 3f +680 -2 · docs/concepts 2f +343 -3 · src/recommender/store 2f +93 -49 · src/recommender/config 4f +112 -12
+[f8] more directories: 3 not listed
+[f9] surfaces: source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 25 of 25 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0
+[f13] operator surfaces: 1 (ci)
+[f14] test side: 3 file(s) · +680 -2
+[f15] source side: 18 file(s) · +2 690 -61
+[f16] test share of churn: 18% of the episode's churn is test-side
+[f17] watch: source grew by 2 690 while 2 test lines were removed — the deleted cover is not re-established by anything in these rows
+[f18] risk: spine-1 67 = surfaces 46 + size 13 + breadth 8
+[f19] surfaces (46/50): .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[f20] size (13/16): +3736 -69 = 3805 churn
+[f21] breadth (8/12): 4 surfaces over 25 files in 1 commit
+[f22] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .github/workflows/contracts.yml +11 -0 ci
+[p2] file: modified README.md +12 -3 docs
+[p3] file: modified docs/concepts/config.md +7 -3 docs
+[p4] file: modified docs/concepts/paths.md +336 -0 docs
+[p5] file: modified fathom.toml +18 -0 source
+[p6] file: modified schemas/fathom.schema.json +36 -0 source
+[p7] file: modified src/recommender/config/cli.py +14 -0 source
+[p8] file: modified src/recommender/config/explain.py +65 -9 source
+[p9] file: modified src/recommender/config/layer.py +14 -1 source
+[p10] file: modified src/recommender/config/schema.py +19 -2 source
+[p11] file: modified src/recommender/store/cache.py +6 -1 source
+[p12] file: modified src/recommender/store/git.py +87 -48 source
+[p13] file: modified src/recommender/taxonomy/__init__.py +57 -0 source
+[p14] file: modified src/recommender/taxonomy/__main__.py +8 -0 source
+[p15] file: modified src/recommender/taxonomy/builtins.py +344 -0 source
+[p16] file: modified src/recommender/taxonomy/classes.py +150 -0 source
+[p17] file: modified src/recommender/taxonomy/cli.py +201 -0 source
+[p18] file: modified src/recommender/taxonomy/corpus.py +404 -0 source
+[p19] file: modified src/recommender/taxonomy/engine.py +512 -0 source
+[p20] file: modified src/recommender/taxonomy/explain.py +217 -0 source
+[p21] file: modified src/recommender/taxonomy/noise.py +124 -0 source
+[p22] file: modified src/recommender/taxonomy/rules.py +414 -0 source
+[p23] file: modified tests/test_config_contract.py +16 -1 test
+[p24] file: modified tests/test_storage_contract.py +4 -1 test
+[p25] file: modified tests/test_taxonomy_contract.py +660 -0 test
+[r1] risk: spine-1 67 = surfaces 46 + size 13 + breadth 8
+[r2] risk component surfaces: surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 13/16 +3736 -69 = 3805 churn
+[r4] risk component breadth: breadth 8/12 4 surfaces over 25 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 25 file(s), +3736 -69, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

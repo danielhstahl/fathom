@@ -1,0 +1,62 @@
+# evidence for ep-b55068697fd91b278c04: reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)
+[f1] lines: +8 837 -7
+[f2] files: 23 file(s)
+[f3] churn: 8 844 lines changed
+[f4] reviewable churn: 8 844 of 8 844 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  23
+[f6] change kinds: modified 23
+[f7] directories: src/recommender/deprisk 13f +6155 -0 · tests 1f +1210 -0 · schemas 1f +683 -3 · docs/concepts 3f +343 -1 · src/recommender/config 1f +301 -3
+[f8] more directories: 2 not listed
+[f9] surfaces: source 16f +7163 -6 · test 1f +1210 -0 · docs 5f +404 -1 · ci 1f +60 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 23 of 23 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 16f +7163 -6 · test 1f +1210 -0 · docs 5f +404 -1 · ci 1f +60 -0
+[f13] operator surfaces: 1 (ci)
+[f14] test side: 1 file(s) · +1 210 -0
+[f15] source side: 16 file(s) · +7 163 -6
+[f16] test share of churn: 14% of the episode's churn is test-side
+[f17] risk: spine-1 69 = surfaces 46 + size 15 + breadth 8
+[f18] surfaces (46/50): .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[f19] size (15/16): +8837 -7 = 8844 churn
+[f20] breadth (8/12): 4 surfaces over 23 files in 1 commit
+[f21] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .github/workflows/contracts.yml +60 -0 ci
+[p2] file: modified CHANGELOG.md +60 -0 docs
+[p3] file: modified README.md +1 -0 docs
+[p4] file: modified docs/concepts/config.md +55 -1 docs
+[p5] file: modified docs/concepts/dependency-delta.md +5 -0 docs
+[p6] file: modified docs/concepts/dependency-risk.md +283 -0 docs
+[p7] file: modified fathom.toml +24 -0 source
+[p8] file: modified schemas/fathom.schema.json +683 -3 source
+[p9] file: modified src/recommender/config/schema.py +301 -3 source
+[p10] file: modified src/recommender/deprisk/__init__.py +56 -0 source
+[p11] file: modified src/recommender/deprisk/__main__.py +6 -0 source
+[p12] file: modified src/recommender/deprisk/cli.py +728 -0 source
+[p13] file: modified src/recommender/deprisk/corpus.py +752 -0 source
+[p14] file: modified src/recommender/deprisk/delta.py +692 -0 source
+[p15] file: modified src/recommender/deprisk/eval.py +319 -0 source
+[p16] file: modified src/recommender/deprisk/explain.py +232 -0 source
+[p17] file: modified src/recommender/deprisk/licence.py +226 -0 source
+[p18] file: modified src/recommender/deprisk/model.py +837 -0 source
+[p19] file: modified src/recommender/deprisk/osv.py +700 -0 source
+[p20] file: modified src/recommender/deprisk/policy.py +1009 -0 source
+[p21] file: modified src/recommender/deprisk/provenance.py +282 -0 source
+[p22] file: modified src/recommender/deprisk/render.py +316 -0 source
+[p23] file: modified tests/test_deprisk_contract.py +1210 -0 test
+[r1] risk: spine-1 69 = surfaces 46 + size 15 + breadth 8
+[r2] risk component surfaces: surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 15/16 +8837 -7 = 8844 churn
+[r4] risk component breadth: breadth 8/12 4 surfaces over 23 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: looprs (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule author at 0.75 confidence
+[m3] totals: 23 file(s), +8837 -7, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

@@ -1,0 +1,119 @@
+# evidence for ep-03fcc089123e2e468204: reco-2uo: the first five minutes — a repository that ships in the binary, an estimate that converges, and no shrugs anywhere (e5.9)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-2uo: the first five minutes — a repository that ships in the binary, an estimate that converges, and no shrugs anywhere (e5.9)
+[c2] commit: reco-2uo: the empty states had their verbs cut off — the keystroke leads now, and two facts are two lines
+[f1] lines: +4 598 -332
+[f2] files: 111 file(s)
+[f3] churn: 4 930 lines changed
+[f4] reviewable churn: 4 372 of 4 930 (spine-1/noisy-path, keeps 25%)
+[f5] binary: 1 binary file(s)
+[f6] path classes:  76
+[f7] directories: tools 1f +744 -0 · crates/fathom-tui/tests 4f +730 -12 · crates/fathom-cli/tests 3f +710 -3 · crates/fathom-cli/src 6f +681 -9 · crates/fathom-tui/src 6f +407 -92
+[f8] more directories: 13 not listed
+[f9] surfaces: test 49f +1753 -210 · source 19f +1776 -108 · generated 1f +744 -0 · docs 5f +318 -14 · ci 1f +7 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 76 of 111 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: test 49f +1753 -210 · source 19f +1776 -108 · generated 1f +744 -0 · docs 5f +318 -14 · ci 1f +7 -0
+[f13] operator surfaces: 1 (ci)
+[f14] test side: 49 file(s) · +1 753 -210
+[f15] source side: 19 file(s) · +1 776 -108
+[f16] test share of churn: 40% of the episode's churn is test-side
+[f17] watch: source grew by 1 776 while 210 test lines were removed — the deleted cover is not re-established by anything in these rows
+[f18] risk: spine-1 73 = surfaces 46 + size 14 + breadth 12 + deletions 1
+[f19] surfaces (46/50): .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, other, generated, docs
+[f20] size (14/16): +4598 -332 = 4930 churn, of which 4372 is reviewable (744 discounted as generated, lockfile, vendored or binary)
+[f21] breadth (12/12): 6 surfaces over 111 files in 2 commits
+[f22] deletions (1/14): 7% of the churn is removal (-332 against +4598)
+[f23] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .github/workflows/contracts.yml +7 -0 ci
+[p2] file: modified CHANGELOG.md +53 -0 docs
+[p3] file: modified README.md +13 -3 docs
+[p4] file: modified crates/fathom-analyze/src/error.rs +8 -1 source
+[p5] file: modified crates/fathom-analyze/src/index.rs +171 -4 source
+[p6] file: modified crates/fathom-analyze/src/sink.rs +38 -1 source
+[p7] file: modified crates/fathom-analyze/tests/facade.rs +14 -1 test
+[p8] file: modified crates/fathom-cli/assets/fathom-demo.json +33 -0 source
+[p9] file: modified crates/fathom-cli/assets/fathom-demo.pack +0 -0 other
+[p10] file: modified crates/fathom-cli/src/analyze.rs +7 -1 source
+[p11] file: modified crates/fathom-cli/src/demo.rs +355 -0 source
+[p12] file: modified crates/fathom-cli/src/guide.rs +186 -0 source
+[p13] file: modified crates/fathom-cli/src/main.rs +7 -0 source
+[p14] file: modified crates/fathom-cli/src/output.rs +10 -0 source
+[p15] file: modified crates/fathom-cli/src/verbs.rs +116 -8 source
+[p16] file: modified crates/fathom-cli/tests/cli.rs +25 -3 test
+[p17] file: modified crates/fathom-cli/tests/copy.rs +358 -0 test
+[p18] file: modified crates/fathom-cli/tests/demo.rs +327 -0 test
+[p19] file: modified crates/fathom-cli/tests/snapshots/help.txt +105 -0 test
+[p20] file: modified crates/fathom-core/src/lib.rs +3 -0 source
+[p21] file: modified crates/fathom-core/src/progress.rs +429 -0 source
+[p22] file: modified crates/fathom-tui/src/app.rs +53 -36 source
+[p23] file: modified crates/fathom-tui/src/empty.rs +256 -38 source
+[p24] file: modified crates/fathom-tui/src/frame.rs +26 -18 source
+[p25] file: modified crates/fathom-tui/src/index.rs +10 -0 source
+[p26] file: modified crates/fathom-tui/src/lib.rs +4 -0 source
+[p27] file: modified crates/fathom-tui/src/progress.rs +58 -0 source
+[p28] file: modified crates/fathom-tui/src/timeline/card.rs +6 -1 source
+[p29] file: modified crates/fathom-tui/tests/empty_state.rs +85 -10 test
+[p30] file: modified crates/fathom-tui/tests/empty_views.rs +346 -0 test
+[p31] file: modified crates/fathom-tui/tests/golden/layout/ambient_100x30.txt +3 -3 test
+[p32] file: modified crates/fathom-tui/tests/golden/layout/ambient_120x40.txt +3 -3 test
+[p33] file: modified crates/fathom-tui/tests/golden/layout/ambient_160x50.txt +3 -3 test
+[p34] file: modified crates/fathom-tui/tests/golden/layout/ambient_240x60.txt +3 -3 test
+[p35] file: modified crates/fathom-tui/tests/golden/layout/ambient_40x10.txt +3 -3 test
+[p36] file: modified crates/fathom-tui/tests/golden/layout/ambient_80x24.txt +3 -3 test
+[p37] file: modified crates/fathom-tui/tests/golden/layout/artefact_100x30.txt +6 -6 test
+[p38] file: modified crates/fathom-tui/tests/golden/layout/artefact_120x40.txt +6 -6 test
+[p39] file: modified crates/fathom-tui/tests/golden/layout/artefact_160x50.txt +6 -6 test
+[p40] file: modified crates/fathom-tui/tests/golden/layout/artefact_240x60.txt +6 -6 test
+[p41] file: modified crates/fathom-tui/tests/golden/layout/artefact_40x10.txt +3 -3 test
+[p42] file: modified crates/fathom-tui/tests/golden/layout/artefact_80x24.txt +6 -6 test
+[p43] file: modified crates/fathom-tui/tests/golden/layout/deps_100x30.txt +6 -6 test
+[p44] file: modified crates/fathom-tui/tests/golden/layout/deps_120x40.txt +6 -6 test
+[p45] file: modified crates/fathom-tui/tests/golden/layout/deps_160x50.txt +6 -6 test
+[p46] file: modified crates/fathom-tui/tests/golden/layout/deps_240x60.txt +6 -6 test
+[p47] file: modified crates/fathom-tui/tests/golden/layout/deps_40x10.txt +3 -3 test
+[p48] file: modified crates/fathom-tui/tests/golden/layout/deps_80x24.txt +6 -6 test
+[p49] file: modified crates/fathom-tui/tests/golden/layout/graph_100x30.txt +7 -7 test
+[p50] file: modified crates/fathom-tui/tests/golden/layout/graph_120x40.txt +7 -7 test
+[p51] file: modified crates/fathom-tui/tests/golden/layout/graph_160x50.txt +7 -7 test
+[p52] file: modified crates/fathom-tui/tests/golden/layout/graph_240x60.txt +7 -7 test
+[p53] file: modified crates/fathom-tui/tests/golden/layout/graph_40x10.txt +3 -3 test
+[p54] file: modified crates/fathom-tui/tests/golden/layout/graph_80x24.txt +7 -7 test
+[p55] file: modified crates/fathom-tui/tests/golden/layout/search_100x30.txt +5 -5 test
+[p56] file: modified crates/fathom-tui/tests/golden/layout/search_120x40.txt +6 -6 test
+[p57] file: modified crates/fathom-tui/tests/golden/layout/search_160x50.txt +6 -6 test
+[p58] file: modified crates/fathom-tui/tests/golden/layout/search_240x60.txt +6 -6 test
+[p59] file: modified crates/fathom-tui/tests/golden/layout/search_40x10.txt +2 -2 test
+[p60] file: modified crates/fathom-tui/tests/golden/layout/search_80x24.txt +5 -5 test
+[p61] file: modified crates/fathom-tui/tests/golden/layout/structure_100x30.txt +6 -6 test
+[p62] file: modified crates/fathom-tui/tests/golden/layout/structure_120x40.txt +6 -6 test
+[p63] file: modified crates/fathom-tui/tests/golden/layout/structure_160x50.txt +6 -6 test
+[p64] file: modified crates/fathom-tui/tests/golden/layout/structure_240x60.txt +6 -6 test
+[p65] file: modified crates/fathom-tui/tests/golden/layout/structure_40x10.txt +3 -3 test
+[p66] file: modified crates/fathom-tui/tests/golden/layout/structure_80x24.txt +6 -6 test
+[p67] file: modified crates/fathom-tui/tests/golden/timeline/collapsed.txt +1 -1 test
+[p68] file: modified crates/fathom-tui/tests/golden/timeline/filter_empty.txt +1 -1 test
+[p69] file: modified crates/fathom-tui/tests/golden/timeline/index_ready.txt +1 -1 test
+[p70] file: modified crates/fathom-tui/tests/golden/timeline/nothing_loaded.txt +6 -6 test
+[p71] file: modified crates/fathom-tui/tests/progress.rs +293 -0 test
+[p72] file: modified crates/fathom-tui/tests/terminal.rs +6 -2 test
+[p73] file: modified docs/adr/0006-tui.md +20 -1 docs
+[p74] file: modified docs/concepts/onboarding.md +225 -9 docs
+[p75] file: modified docs/demo/README.md +7 -1 docs
+[p76] file: modified tools/gen_demo_repo.py +744 -0 generated
+[r1] risk: spine-1 73 = surfaces 46 + size 14 + breadth 12 + deletions 1
+[r2] risk component surfaces: surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, other, generated, docs
+[r3] risk component size: size 14/16 +4598 -332 = 4930 churn, of which 4372 is reviewable (744 discounted as generated, lockfile, vendored or binary)
+[r4] risk component breadth: breadth 12/12 6 surfaces over 111 files in 2 commits
+[r5] risk component deletions: deletions 1/14 7% of the churn is removal (-332 against +4598)
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: looprs (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 111 file(s), +4598 -332, 2 commit(s), 1 binary
+[m4] window: 18 minute(s) long

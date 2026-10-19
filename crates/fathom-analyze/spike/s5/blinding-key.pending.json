@@ -1,0 +1,111 @@
+{
+ "key": {
+  "ep-03fcc089123e2e468204": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-0a45952b1de2db26bb9e": {
+   "A": "why",
+   "B": "template",
+   "C": "polish"
+  },
+  "ep-12c3856aa7d39a356fc5": {
+   "A": "template",
+   "B": "why",
+   "C": "polish"
+  },
+  "ep-1fcc80f083aae73ddbc5": {
+   "A": "polish",
+   "B": "why",
+   "C": "template"
+  },
+  "ep-2fc505f5b0b04e3936cc": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-3e7c88e0ea3fbc7ed99b": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-44973acf77e46142872d": {
+   "A": "why",
+   "B": "template",
+   "C": "polish"
+  },
+  "ep-50e8c8b4058e270e0a6f": {
+   "A": "polish",
+   "B": "why",
+   "C": "template"
+  },
+  "ep-5b096301793eced5902e": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-5d5c29560494ff4ba1b6": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-83ce1e4c2fdf284ecc3a": {
+   "A": "template",
+   "B": "why",
+   "C": "polish"
+  },
+  "ep-8881edd5aa6464360234": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-9eae7df04e56608cd3c6": {
+   "A": "template",
+   "B": "polish",
+   "C": "why"
+  },
+  "ep-a0d6c1ee0d02af46577a": {
+   "A": "why",
+   "B": "polish",
+   "C": "template"
+  },
+  "ep-b55068697fd91b278c04": {
+   "A": "polish",
+   "B": "why",
+   "C": "template"
+  },
+  "ep-b73a5a3e50303b4d09fd": {
+   "A": "why",
+   "B": "template",
+   "C": "polish"
+  },
+  "ep-bf3b97f296f09cbc2111": {
+   "A": "template",
+   "B": "polish",
+   "C": "why"
+  },
+  "ep-c889856300a3d59575c6": {
+   "A": "template",
+   "B": "polish",
+   "C": "why"
+  },
+  "ep-dc66dc3bdab33bb1057c": {
+   "A": "polish",
+   "B": "template",
+   "C": "why"
+  },
+  "ep-f4ae22f1d86e1adb6564": {
+   "A": "polish",
+   "B": "why",
+   "C": "template"
+  }
+ },
+ "labels": [
+  "A",
+  "B",
+  "C"
+ ],
+ "schema": "fathom.narrative-panel/1",
+ "seed": "s5-blinding-v1"
+}

@@ -1,0 +1,25 @@
+reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7) [c1].
+
+Authorship: looprs (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule author at 0.75 confidence [m2].
+
+**What** — lines +8 837 -7 [f1]; files 23 file(s) [f2]; churn 8 844 lines changed [f3]; reviewable churn 8 844 of 8 844 (spine-1/noisy-path, keeps 25%) [f4]; path classes 23 [f5]; change kinds modified 23 [f6].
+
+**Where** — directories src/recommender/deprisk 13f +6155 -0 · tests 1f +1210 -0 · schemas 1f +683 -3 · docs/concepts 3f +343 -1 · src/recommender/config 1f +301 -3 [f7]; more directories 2 not listed [f8]; surfaces source 16f +7163 -6 · test 1f +1210 -0 · docs 5f +404 -1 · ci 1f +60 -0 [f9]; no path moves were recorded [f10]; basis 23 of 23 paths, ranked by churn; the census is the episode's own paths [f11].
+
+**Surface** — surfaces source 16f +7163 -6 · test 1f +1210 -0 · docs 5f +404 -1 · ci 1f +60 -0 [f12]; operator surfaces 1 (ci) [f13].
+
+**Tests** — test side 1 file(s) · +1 210 -0 [f14]; source side 16 file(s) · +7 163 -6 [f15]; test share of churn 14% of the episode's churn is test-side [f16].
+
+**Attention** — risk spine-1 69 = surfaces 46 + size 15 + breadth 8 [f17]; surfaces (46/50) .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs [f18]; size (15/16) +8837 -7 = 8844 churn [f19]; breadth (8/12) 4 surfaces over 23 files in 1 commit [f20]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f21].
+
+Scale — totals 23 file(s), +8837 -7, 1 commit(s), 0 binary [m3].
+
+The largest single file is tests/test_deprisk_contract.py (+1210 -0, test) [p23].
+
+Why — as the commit says it: “reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 69 = surfaces 46 + size 15 + breadth 8 [r1], from surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs [r2]; size 15/16 +8837 -7 = 8844 churn [r3]; breadth 8/12 4 surfaces over 23 files in 1 commit [r4].

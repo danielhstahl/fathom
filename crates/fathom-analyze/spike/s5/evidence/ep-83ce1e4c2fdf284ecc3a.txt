@@ -1,0 +1,85 @@
+# evidence for ep-83ce1e4c2fdf284ecc3a: reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)
+[f1] lines: +50 752 -56
+[f2] files: 45 file(s)
+[f3] churn: 50 808 lines changed
+[f4] reviewable churn: 50 722 of 50 808 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  45
+[f6] change kinds: modified 45
+[f7] directories: crates/fathom-ingest/tests/golden 1f +36949 -0 · crates/fathom-ingest/src 10f +3562 -14 · crates/fathom-store/src 3f +3405 -5 · crates/fathom-ingest/tests 9f +3081 -25 · crates/fathom-analyze/src 5f +1337 -0
+[f8] more directories: 13 not listed
+[f9] surfaces: test 14f +41851 -25 · source 28f +8704 -29 · dependency 1f +115 -0 · docs 2f +82 -2
+[f10] moves: no path moves were recorded
+[f11] basis: 45 of 45 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: test 14f +41851 -25 · source 28f +8704 -29 · dependency 1f +115 -0 · docs 2f +82 -2
+[f13] operator surfaces: 1 (dependency)
+[f14] test side: 14 file(s) · +41 851 -25
+[f15] source side: 28 file(s) · +8 704 -29
+[f16] test share of churn: 82% of the episode's churn is test-side
+[f17] watch: source grew by 8 704 while 25 test lines were removed — the deleted cover is not re-established by anything in these rows
+[f18] risk: spine-1 62 = surfaces 36 + size 16 + breadth 10
+[f19] surfaces (36/50): Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs
+[f20] size (16/16): +50752 -56 = 50808 churn, of which 50722 is reviewable (115 discounted as generated, lockfile, vendored or binary)
+[f21] breadth (10/12): 4 surfaces over 45 files in 1 commit
+[f22] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified CHANGELOG.md +78 -1 docs
+[p2] file: modified Cargo.lock +115 -0 dependency
+[p3] file: modified Cargo.toml +5 -0 source
+[p4] file: modified benchmarks/reports/e1-2-ingest.json +64 -0 source
+[p5] file: modified crates/fathom-analyze/Cargo.toml +7 -0 source
+[p6] file: modified crates/fathom-analyze/src/cancel.rs +45 -0 source
+[p7] file: modified crates/fathom-analyze/src/error.rs +26 -0 source
+[p8] file: modified crates/fathom-analyze/src/index.rs +1073 -0 source
+[p9] file: modified crates/fathom-analyze/src/lib.rs +10 -0 source
+[p10] file: modified crates/fathom-analyze/src/sink.rs +183 -0 source
+[p11] file: modified crates/fathom-analyze/tests/common/mod.rs +203 -0 test
+[p12] file: modified crates/fathom-analyze/tests/incremental_index.rs +691 -0 test
+[p13] file: modified crates/fathom-cli/Cargo.toml +1 -1 source
+[p14] file: modified crates/fathom-cli/src/clock.rs +60 -0 source
+[p15] file: modified crates/fathom-cli/src/main.rs +4 -0 source
+[p16] file: modified crates/fathom-cli/src/verbs.rs +233 -4 source
+[p17] file: modified crates/fathom-cli/tests/cli.rs +128 -0 test
+[p18] file: modified crates/fathom-ingest/Cargo.toml +12 -2 source
+[p19] file: modified crates/fathom-ingest/src/diff.rs +881 -0 source
+[p20] file: modified crates/fathom-ingest/src/error.rs +80 -2 source
+[p21] file: modified crates/fathom-ingest/src/export.rs +344 -0 source
+[p22] file: modified crates/fathom-ingest/src/graph.rs +5 -1 source
+[p23] file: modified crates/fathom-ingest/src/ingest.rs +403 -0 source
+[p24] file: modified crates/fathom-ingest/src/lib.rs +7 -0 source
+[p25] file: modified crates/fathom-ingest/src/normalize.rs +534 -0 source
+[p26] file: modified crates/fathom-ingest/src/paths.rs +167 -2 source
+[p27] file: modified crates/fathom-ingest/src/record.rs +1113 -0 source
+[p28] file: modified crates/fathom-ingest/src/repo.rs +28 -9 source
+[p29] file: modified crates/fathom-ingest/tests/bench_ingest.rs +473 -0 test
+[p30] file: modified crates/fathom-ingest/tests/bench_walk.rs +0 -25 test
+[p31] file: modified crates/fathom-ingest/tests/changed_paths.rs +554 -0 test
+[p32] file: modified crates/fathom-ingest/tests/common/mod.rs +799 -0 test
+[p33] file: modified crates/fathom-ingest/tests/export_round_trip.rs +174 -0 test
+[p34] file: modified crates/fathom-ingest/tests/golden/e1-2-commits.json +36949 -0 test
+[p35] file: modified crates/fathom-ingest/tests/golden_export.rs +229 -0 test
+[p36] file: modified crates/fathom-ingest/tests/ingest_run.rs +441 -0 test
+[p37] file: modified crates/fathom-ingest/tests/memory_cap.rs +342 -0 test
+[p38] file: modified crates/fathom-ingest/tests/normalize_kinds.rs +610 -0 test
+[p39] file: modified crates/fathom-ingest/tests/store_round_trip.rs +258 -0 test
+[p40] file: modified crates/fathom-store/Cargo.toml +3 -0 source
+[p41] file: modified crates/fathom-store/src/cache.rs +1575 -0 source
+[p42] file: modified crates/fathom-store/src/lib.rs +24 -5 source
+[p43] file: modified crates/fathom-store/src/spine.rs +1806 -0 source
+[p44] file: modified docs/adr/0002-workspace.md +4 -1 docs
+[p45] file: modified tools/workspace_model.py +11 -3 source
+[r1] risk: spine-1 62 = surfaces 36 + size 16 + breadth 10
+[r2] risk component surfaces: surfaces 36/50 Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 16/16 +50752 -56 = 50808 churn, of which 50722 is reviewable (115 discounted as generated, lockfile, vendored or binary)
+[r4] risk component breadth: breadth 10/12 4 surfaces over 45 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule time-gap at 0.6 confidence
+[m3] totals: 45 file(s), +50752 -56, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

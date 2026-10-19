@@ -1,0 +1,35 @@
+{
+ "files": {
+  "polish.md": "arm B - the model's full polish of arm A, prompt prompt/polish.md",
+  "polish2.md": "arm B second sample, same prompt, for the determinism measurement (6 episodes)",
+  "template.md": "arm A - rendered by recommender.narrative.template, not by the model",
+  "why.md": "arm C - the model's single why-sentence, prompt prompt/why.md"
+ },
+ "generated_on": "2026-10-19T06:50:34Z",
+ "how": "The model that ran this spike generated the arm B and arm C texts itself, in-session, from the pinned prompts in ../prompt/ and the recorded citation index in ../evidence/. There is no API key, provider SDK or outbound endpoint in the spike sandbox, so the arms are recorded artefacts on disk rather than live calls, and re-running the spike re-reads them instead of asking the model again - which is the property you want in a report a CI job can check.",
+ "model": {
+  "harness": "pi coding agent, reasoning level medium",
+  "model_id": "halogen-qwen3.8-flash-next",
+  "prompts": {
+   "polish": {
+    "file": "prompt/polish.md",
+    "sha256_16": "66af5d7d801a413a"
+   },
+   "why": {
+    "file": "prompt/why.md",
+    "sha256_16": "758208fd4291882a"
+   }
+  },
+  "provider": "llamacpp",
+  "session_id_prefix": "01a152de"
+ },
+ "schema": "fathom.narrative-arms-provenance/1",
+ "spike": "s5",
+ "ticket": "reco-6p8",
+ "what_that_costs": [
+  "cost and latency for arms B and C are MODELLED from recorded character counts at a reference price band (spike.REFERENCE), not measured against a bill or a clock; the ship decision is gated on re-measuring them against a real provider endpoint",
+  "sampling parameters are the harness's, not chosen for this experiment, and cannot be re-set",
+  "one base model authored the narratives, the resamples and the three reviewer passes, so arm quality and panel ratings share a bias the panel cannot see; the mechanical audit in audit.py is the part of the measurement that does not depend on that model being any good",
+  "the author knew the audit's rules, because the same session wrote them - the strongest reason the zero hallucination count is read as an upper bound on a disciplined arm, not as a rate a stranger would hit"
+ ]
+}

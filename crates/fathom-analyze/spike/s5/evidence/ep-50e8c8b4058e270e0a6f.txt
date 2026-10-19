@@ -1,0 +1,89 @@
+# evidence for ep-50e8c8b4058e270e0a6f: reco-tt4: one versioned delta model, and the gates that keep it the only one (e2.11)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-tt4: one versioned delta model, and the gates that keep it the only one (e2.11)
+[f1] lines: +7 187 -663
+[f2] files: 47 file(s)
+[f3] churn: 7 850 lines changed
+[f4] reviewable churn: 7 850 of 7 850 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  47
+[f6] change kinds: modified 47
+[f7] directories: crates/fathom-analyze/src/insight 3f +3300 -0 · schemas 3f +1491 -0 · crates/fathom-cli/tests 5f +1000 -240 · tools 3f +587 -2 · crates/fathom-cli/src 4f +404 -90
+[f8] more directories: 11 not listed
+[f9] surfaces: source 20f +5915 -347 · test 21f +1111 -313 · docs 5f +150 -3 · ci 1f +11 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 47 of 47 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 20f +5915 -347 · test 21f +1111 -313 · docs 5f +150 -3 · ci 1f +11 -0
+[f13] operator surfaces: 1 (ci)
+[f14] test side: 21 file(s) · +1 111 -313
+[f15] source side: 20 file(s) · +5 915 -347
+[f16] test share of churn: 18% of the episode's churn is test-side
+[f17] watch: source grew by 5 915 while 313 test lines were removed — the deleted cover is not re-established by anything in these rows
+[f18] risk: spine-1 71 = surfaces 46 + size 14 + breadth 10 + deletions 1
+[f19] surfaces (46/50): .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[f20] size (14/16): +7187 -663 = 7850 churn
+[f21] breadth (10/12): 4 surfaces over 47 files in 1 commit
+[f22] deletions (1/14): 8% of the churn is removal (-663 against +7187)
+[f23] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .github/workflows/contracts.yml +11 -0 ci
+[p2] file: modified CHANGELOG.md +36 -2 docs
+[p3] file: modified README.md +1 -0 docs
+[p4] file: modified crates/fathom-analyze/src/insight.rs +0 -134 source
+[p5] file: modified crates/fathom-analyze/src/insight/delta.rs +2698 -0 source
+[p6] file: modified crates/fathom-analyze/src/insight/mod.rs +219 -0 source
+[p7] file: modified crates/fathom-analyze/src/insight/schema.rs +383 -0 source
+[p8] file: modified crates/fathom-analyze/tests/boundary.rs +8 -3 test
+[p9] file: modified crates/fathom-analyze/tests/facade.rs +23 -10 test
+[p10] file: modified crates/fathom-cli/src/analyze.rs +239 -0 source
+[p11] file: modified crates/fathom-cli/src/episodes.rs +41 -88 source
+[p12] file: modified crates/fathom-cli/src/main.rs +1 -0 source
+[p13] file: modified crates/fathom-cli/src/verbs.rs +123 -2 source
+[p14] file: modified crates/fathom-cli/tests/cli.rs +8 -1 test
+[p15] file: modified crates/fathom-cli/tests/delta_schema.rs +671 -0 test
+[p16] file: modified crates/fathom-cli/tests/schemas.rs +13 -235 test
+[p17] file: modified crates/fathom-cli/tests/snapshots/help.txt +12 -11 test
+[p18] file: modified crates/fathom-cli/tests/tui_data.rs +10 -4 test
+[p19] file: modified crates/fathom-cli/tests/validator.rs +298 -0 test
+[p20] file: modified crates/fathom-tui/src/app.rs +9 -15 source
+[p21] file: modified crates/fathom-tui/src/timeline/card.rs +75 -24 source
+[p22] file: modified crates/fathom-tui/src/timeline/episode.rs +34 -65 source
+[p23] file: modified crates/fathom-tui/src/timeline/rail.rs +1 -1 source
+[p24] file: modified crates/fathom-tui/src/timeline/render.rs +1 -1 source
+[p25] file: modified crates/fathom-tui/src/worklist.rs +13 -15 source
+[p26] file: modified crates/fathom-tui/tests/golden/timeline/big_index.txt +1 -1 test
+[p27] file: modified crates/fathom-tui/tests/golden/timeline/editor_open.txt +5 -5 test
+[p28] file: modified crates/fathom-tui/tests/golden/timeline/episode_gone.txt +3 -3 test
+[p29] file: modified crates/fathom-tui/tests/golden/timeline/filter_unread.txt +2 -2 test
+[p30] file: modified crates/fathom-tui/tests/golden/timeline/frame_61x16.txt +3 -3 test
+[p31] file: modified crates/fathom-tui/tests/golden/timeline/frame_80x24.txt +8 -8 test
+[p32] file: modified crates/fathom-tui/tests/golden/timeline/group_dates.txt +2 -2 test
+[p33] file: modified crates/fathom-tui/tests/golden/timeline/group_session.txt +2 -2 test
+[p34] file: modified crates/fathom-tui/tests/golden/timeline/rail_34.txt +2 -2 test
+[p35] file: modified crates/fathom-tui/tests/golden/timeline/rail_wide.txt +2 -2 test
+[p36] file: modified crates/fathom-tui/tests/risk_rank.rs +22 -13 test
+[p37] file: modified crates/fathom-tui/tests/timeline_behaviour.rs +8 -3 test
+[p38] file: modified crates/fathom-tui/tests/timeline_golden.rs +8 -3 test
+[p39] file: modified docs/adr/0002-workspace.md +1 -1 docs
+[p40] file: modified docs/concepts/cli.md +4 -0 docs
+[p41] file: modified docs/concepts/delta-model.md +108 -0 docs
+[p42] file: modified schemas/episode-delta.baseline.json +807 -0 source
+[p43] file: modified schemas/episode-delta.schema.json +683 -0 source
+[p44] file: modified schemas/export.schema.json +1 -0 source
+[p45] file: modified tools/check_delta_compat.py +569 -0 source
+[p46] file: modified tools/check_workspace.py +1 -1 source
+[p47] file: modified tools/workspace_model.py +17 -1 source
+[r1] risk: spine-1 71 = surfaces 46 + size 14 + breadth 10 + deletions 1
+[r2] risk component surfaces: surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 14/16 +7187 -663 = 7850 churn
+[r4] risk component breadth: breadth 10/12 4 surfaces over 47 files in 1 commit
+[r5] risk component deletions: deletions 1/14 8% of the churn is removal (-663 against +7187)
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: looprs (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 47 file(s), +7187 -663, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

@@ -1,0 +1,469 @@
+{
+ "episode": {
+  "delta_digest": "a6999ac4b478af31b2f8094643e2e9ff2fb4e09963636b7d02062ec21ea794ed",
+  "id": "ep-3e7c88e0ea3fbc7ed99b",
+  "lineage_seq": 26,
+  "n_commits": 2,
+  "subject": "reco-6pl: test surface delta and coverage proxy — the testing contract per episode, in test names and locations, not a coverage percentage (e2.9)"
+ },
+ "items": [
+  {
+   "id": "c1",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "e0a9b7432307",
+   "value": "reco-6pl: test surface delta and coverage proxy — the testing contract per episode, in test names and locations, not a coverage percentage (e2.9)"
+  },
+  {
+   "id": "c2",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "60d6344984ec",
+   "value": "chore: gitignore .transcripts/ — session logs land in the working tree and are not artefacts"
+  },
+  {
+   "id": "f1",
+   "kind": "figure",
+   "label": "lines",
+   "pointer": "#/totals",
+   "section": "what",
+   "value": "+7 242 -6"
+  },
+  {
+   "id": "f2",
+   "kind": "figure",
+   "label": "files",
+   "pointer": "#/totals/n_files",
+   "section": "what",
+   "value": "23 file(s)"
+  },
+  {
+   "id": "f3",
+   "kind": "figure",
+   "label": "churn",
+   "pointer": "#/totals/churn",
+   "section": "what",
+   "value": "7 248 lines changed"
+  },
+  {
+   "id": "f4",
+   "kind": "figure",
+   "label": "reviewable churn",
+   "pointer": "#/totals/reviewable_churn",
+   "section": "what",
+   "value": "7 248 of 7 248 (spine-1/noisy-path, keeps 25%)"
+  },
+  {
+   "id": "f5",
+   "kind": "figure",
+   "label": "path classes",
+   "pointer": "#/files",
+   "section": "what",
+   "value": " 23"
+  },
+  {
+   "id": "f6",
+   "kind": "figure",
+   "label": "change kinds",
+   "pointer": "#/files",
+   "section": "what",
+   "value": "modified 23"
+  },
+  {
+   "id": "f7",
+   "kind": "figure",
+   "label": "directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "src/recommender/testsurface 13f +5363 -0 · tests 1f +967 -0 · docs/concepts 2f +519 -1 · schemas 1f +241 -3 · src/recommender/config 1f +103 -2"
+  },
+  {
+   "id": "f8",
+   "kind": "figure",
+   "label": "more directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "2 not listed"
+  },
+  {
+   "id": "f9",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "source 16f +5713 -5 · test 1f +967 -0 · docs 4f +529 -1 · ci 1f +32 -0 · other 1f +1 -0"
+  },
+  {
+   "id": "f10",
+   "kind": "figure",
+   "label": "moves",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "no path moves were recorded"
+  },
+  {
+   "id": "f11",
+   "kind": "figure",
+   "label": "basis",
+   "pointer": "#/totals",
+   "section": "where",
+   "value": "23 of 23 paths, ranked by churn; the census is the episode's own paths"
+  },
+  {
+   "id": "f12",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "source 16f +5713 -5 · test 1f +967 -0 · docs 4f +529 -1 · ci 1f +32 -0 · other 1f +1 -0"
+  },
+  {
+   "id": "f13",
+   "kind": "figure",
+   "label": "operator surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "1 (ci)"
+  },
+  {
+   "id": "f14",
+   "kind": "figure",
+   "label": "test side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "1 file(s) · +967 -0"
+  },
+  {
+   "id": "f15",
+   "kind": "figure",
+   "label": "source side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "16 file(s) · +5 713 -5"
+  },
+  {
+   "id": "f16",
+   "kind": "figure",
+   "label": "test share of churn",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "13% of the episode's churn is test-side"
+  },
+  {
+   "id": "f17",
+   "kind": "figure",
+   "label": "risk",
+   "pointer": "#/risk",
+   "section": "attention",
+   "value": "spine-1 70 = surfaces 46 + size 14 + breadth 10"
+  },
+  {
+   "id": "f18",
+   "kind": "figure",
+   "label": "surfaces (46/50)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": ".github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, other, docs"
+  },
+  {
+   "id": "f19",
+   "kind": "figure",
+   "label": "size (14/16)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "+7242 -6 = 7248 churn"
+  },
+  {
+   "id": "f20",
+   "kind": "figure",
+   "label": "breadth (10/12)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "5 surfaces over 23 files in 2 commits"
+  },
+  {
+   "id": "f21",
+   "kind": "figure",
+   "label": "cannot see",
+   "pointer": "#/risk/blind_spots",
+   "section": "attention",
+   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+  },
+  {
+   "id": "p1",
+   "kind": "file",
+   "label": "file",
+   "path": ".github/workflows/contracts.yml",
+   "surface": "ci",
+   "value": "modified .github/workflows/contracts.yml +32 -0 ci"
+  },
+  {
+   "id": "p2",
+   "kind": "file",
+   "label": "file",
+   "path": ".gitignore",
+   "surface": "other",
+   "value": "modified .gitignore +1 -0 other"
+  },
+  {
+   "id": "p3",
+   "kind": "file",
+   "label": "file",
+   "path": "CHANGELOG.md",
+   "surface": "docs",
+   "value": "modified CHANGELOG.md +9 -0 docs"
+  },
+  {
+   "id": "p4",
+   "kind": "file",
+   "label": "file",
+   "path": "README.md",
+   "surface": "docs",
+   "value": "modified README.md +1 -0 docs"
+  },
+  {
+   "id": "p5",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/config.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/config.md +20 -1 docs"
+  },
+  {
+   "id": "p6",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/test-surface.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/test-surface.md +499 -0 docs"
+  },
+  {
+   "id": "p7",
+   "kind": "file",
+   "label": "file",
+   "path": "fathom.toml",
+   "surface": "source",
+   "value": "modified fathom.toml +6 -0 source"
+  },
+  {
+   "id": "p8",
+   "kind": "file",
+   "label": "file",
+   "path": "schemas/fathom.schema.json",
+   "surface": "source",
+   "value": "modified schemas/fathom.schema.json +241 -3 source"
+  },
+  {
+   "id": "p9",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/config/schema.py",
+   "surface": "source",
+   "value": "modified src/recommender/config/schema.py +103 -2 source"
+  },
+  {
+   "id": "p10",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/__init__.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/__init__.py +91 -0 source"
+  },
+  {
+   "id": "p11",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/__main__.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/__main__.py +5 -0 source"
+  },
+  {
+   "id": "p12",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/cli.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/cli.py +458 -0 source"
+  },
+  {
+   "id": "p13",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/corpus.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/corpus.py +837 -0 source"
+  },
+  {
+   "id": "p14",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/delta.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/delta.py +709 -0 source"
+  },
+  {
+   "id": "p15",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/diff.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/diff.py +315 -0 source"
+  },
+  {
+   "id": "p16",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/eval.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/eval.py +321 -0 source"
+  },
+  {
+   "id": "p17",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/explain.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/explain.py +167 -0 source"
+  },
+  {
+   "id": "p18",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/parsers.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/parsers.py +1189 -0 source"
+  },
+  {
+   "id": "p19",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/policy.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/policy.py +479 -0 source"
+  },
+  {
+   "id": "p20",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/public.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/public.py +378 -0 source"
+  },
+  {
+   "id": "p21",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/render.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/render.py +204 -0 source"
+  },
+  {
+   "id": "p22",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/testsurface/scan.py",
+   "surface": "source",
+   "value": "modified src/recommender/testsurface/scan.py +210 -0 source"
+  },
+  {
+   "id": "p23",
+   "kind": "file",
+   "label": "file",
+   "path": "tests/test_test_surface_contract.py",
+   "surface": "test",
+   "value": "modified tests/test_test_surface_contract.py +967 -0 test"
+  },
+  {
+   "id": "r1",
+   "kind": "risk",
+   "label": "risk",
+   "score": 70,
+   "value": "spine-1 70 = surfaces 46 + size 14 + breadth 10"
+  },
+  {
+   "id": "r2",
+   "kind": "risk",
+   "label": "risk component surfaces",
+   "value": "surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, other, docs"
+  },
+  {
+   "id": "r3",
+   "kind": "risk",
+   "label": "risk component size",
+   "value": "size 14/16 +7242 -6 = 7248 churn"
+  },
+  {
+   "id": "r4",
+   "kind": "risk",
+   "label": "risk component breadth",
+   "value": "breadth 10/12 5 surfaces over 23 files in 2 commits"
+  },
+  {
+   "id": "g1",
+   "kind": "gap",
+   "label": "gap (what)",
+   "value": "path-rule discount only — not answered here, it is e2.2's"
+  },
+  {
+   "id": "g2",
+   "kind": "gap",
+   "label": "gap (where)",
+   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+  },
+  {
+   "id": "g3",
+   "kind": "gap",
+   "label": "gap (dependencies)",
+   "value": "no dependency delta here — not answered here, it is e2.6's"
+  },
+  {
+   "id": "g4",
+   "kind": "gap",
+   "label": "gap (surface)",
+   "value": "findings are e2.8's — not answered here, it is e2.8's"
+  },
+  {
+   "id": "g5",
+   "kind": "gap",
+   "label": "gap (tests)",
+   "value": "case names are e2.9's — not answered here, it is e2.9's"
+  },
+  {
+   "id": "g6",
+   "kind": "gap",
+   "label": "gap (blast)",
+   "value": "no module graph in this build — not answered here, it is e3.2's"
+  },
+  {
+   "id": "g7",
+   "kind": "gap",
+   "label": "gap (attention)",
+   "value": "spine-only ranking — not answered here, it is e4.4's"
+  },
+  {
+   "id": "m1",
+   "kind": "meta",
+   "label": "author",
+   "value": "looprs (human author, identity at 0.5 confidence)"
+  },
+  {
+   "id": "m2",
+   "kind": "meta",
+   "label": "boundary",
+   "value": "boundary rule message-shape at 0.7 confidence"
+  },
+  {
+   "id": "m3",
+   "kind": "meta",
+   "label": "totals",
+   "value": "23 file(s), +7242 -6, 2 commit(s), 0 binary"
+  },
+  {
+   "id": "m4",
+   "kind": "meta",
+   "label": "window",
+   "value": "1 minute(s) long"
+  }
+ ],
+ "schema": "fathom.narrative-evidence/1"
+}

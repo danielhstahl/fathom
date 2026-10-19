@@ -1,0 +1,61 @@
+# evidence for ep-44973acf77e46142872d: reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)
+[f1] lines: +8 164 -17
+[f2] files: 21 file(s)
+[f3] churn: 8 181 lines changed
+[f4] reviewable churn: 8 181 of 8 181 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  21
+[f6] change kinds: modified 21
+[f7] directories: crates/fathom-ingest/src 3f +4128 -8 · crates/fathom-ingest/tests 1f +1326 -0 · schemas 2f +1026 -2 · crates/fathom-cli/src 4f +616 -1 · tests 2f +546 -0
+[f8] more directories: 5 not listed
+[f9] surfaces: source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4
+[f10] moves: no path moves were recorded
+[f11] basis: 21 of 21 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4
+[f13] operator surfaces: none — nothing here needs an action outside the review
+[f14] test side: 7 file(s) · +2 336 -1
+[f15] source side: 10 file(s) · +5 772 -12
+[f16] test share of churn: 29% of the episode's churn is test-side
+[f17] watch: source grew by 5 772 while 1 test lines were removed — the deleted cover is not re-established by anything in these rows
+[f18] risk: spine-1 31 = size 15 + surfaces 10 + breadth 6
+[f19] size (15/16): +8164 -17 = 8181 churn
+[f20] surfaces (10/50): crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs
+[f21] breadth (6/12): 3 surfaces over 21 files in 1 commit
+[f22] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified crates/fathom-cli/src/diagnose.rs +5 -0 source
+[p2] file: modified crates/fathom-cli/src/harness.rs +562 -0 source
+[p3] file: modified crates/fathom-cli/src/main.rs +1 -0 source
+[p4] file: modified crates/fathom-cli/src/verbs.rs +48 -1 source
+[p5] file: modified crates/fathom-cli/tests/cli.rs +1 -1 test
+[p6] file: modified crates/fathom-cli/tests/hooks_verb.rs +384 -0 test
+[p7] file: modified crates/fathom-cli/tests/schemas.rs +78 -0 test
+[p8] file: modified crates/fathom-cli/tests/snapshots/help.txt +1 -0 test
+[p9] file: modified crates/fathom-ingest/src/hooks.rs +4077 -0 source
+[p10] file: modified crates/fathom-ingest/src/lib.rs +2 -0 source
+[p11] file: modified crates/fathom-ingest/src/segment.rs +49 -8 source
+[p12] file: modified crates/fathom-ingest/tests/hooks_v1.rs +1326 -0 test
+[p13] file: modified docs/adr/0003-episodes.md +19 -2 docs
+[p14] file: modified docs/adr/0005-harness-contract.md +19 -2 docs
+[p15] file: modified docs/concepts/cli.md +12 -0 docs
+[p16] file: modified docs/concepts/episode-segmentation.md +6 -0 docs
+[p17] file: modified schemas/doctor.schema.json +60 -2 source
+[p18] file: modified schemas/hooks.schema.json +966 -0 source
+[p19] file: modified src/recommender/segment.py +2 -1 source
+[p20] file: modified tests/test_cli_contract.py +1 -0 test
+[p21] file: modified tests/test_hooks_contract.py +545 -0 test
+[r1] risk: spine-1 31 = size 15 + surfaces 10 + breadth 6
+[r2] risk component size: size 15/16 +8164 -17 = 8181 churn
+[r3] risk component surfaces: surfaces 10/50 crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs
+[r4] risk component breadth: breadth 6/12 3 surfaces over 21 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: looprs (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 21 file(s), +8164 -17, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

@@ -1,0 +1,27 @@
+reco-8yk: define ZZ Epic One and put the plan under version control [c1].
+
+Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule root at 0.5 confidence [m2].
+
+**What** — lines +3 664 -47 [f1]; files 6 file(s) [f2]; churn 3 711 lines changed [f3]; reviewable churn 3 711 of 3 711 (spine-1/noisy-path, keeps 25%) [f4]; path classes 4 [f5]; change kinds modified 4 [f6].
+
+**Where** — directory .plan 4f +3664 -47 [f7]; surfaces source 3f +3485 -26 · docs 1f +179 -21 [f8]; no path moves were recorded [f9]; basis 4 of 6 paths, ranked by churn; the census is the episode's own paths [f10].
+
+**Surface** — surfaces source 3f +3485 -26 · docs 1f +179 -21 [f11]; operator surfaces none — nothing here needs an action outside the review [f12].
+
+**Tests** — test side 0 file(s) · +0 -0 [f13]; source side 3 file(s) · +3 485 -26 [f14]; test share of churn 0% of the episode's churn is test-side [f15].
+
+**Attention** — risk spine-1 25 = size 13 + surfaces 10 + breadth 2 [f16]; size (13/16) +3664 -47 = 3711 churn [f17]; surfaces (10/50) .plan/plan.json — source: the logic a reviewer has to read · also touched: docs [f18]; breadth (2/12) 2 surfaces over 6 files in 2 commits [f19]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f20].
+
+Scale — totals 6 file(s), +3664 -47, 2 commit(s), 0 binary [m3].
+
+The largest single file is .plan/plan.json (+2099 -0, source) [p4].
+
+The episode's commits, in order: “reco-8yk: define ZZ Epic One and put the plan under version control” [c1]; “plan: decompose Fathom (agentic code-review TUI) into 94 beads” [c2].
+
+Why — as the commit says it: “reco-8yk: define ZZ Epic One and put the plan under version control” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 25 = size 13 + surfaces 10 + breadth 2 [r1], from size 13/16 +3664 -47 = 3711 churn [r2]; surfaces 10/50 .plan/plan.json — source: the logic a reviewer has to read · also touched: docs [r3]; breadth 2/12 2 surfaces over 6 files in 2 commits [r4].

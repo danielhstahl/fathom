@@ -1,0 +1,494 @@
+{
+ "episode": {
+  "delta_digest": "55a261b03435a085d30219096d1c9ee69c44efa7aeff877f1bf2c6c034910792",
+  "id": "ep-bf3b97f296f09cbc2111",
+  "lineage_seq": 39,
+  "n_commits": 1,
+  "subject": "reco-a0v: rename and copy pairing — a fact is what git asserts at 0.75, everything else is a labelled guess a reviewer can accept or reject (e2.4)"
+ },
+ "items": [
+  {
+   "id": "c1",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "1eba75e8c613",
+   "value": "reco-a0v: rename and copy pairing — a fact is what git asserts at 0.75, everything else is a labelled guess a reviewer can accept or reject (e2.4)"
+  },
+  {
+   "id": "f1",
+   "kind": "figure",
+   "label": "lines",
+   "pointer": "#/totals",
+   "section": "what",
+   "value": "+7 476 -16"
+  },
+  {
+   "id": "f2",
+   "kind": "figure",
+   "label": "files",
+   "pointer": "#/totals/n_files",
+   "section": "what",
+   "value": "27 file(s)"
+  },
+  {
+   "id": "f3",
+   "kind": "figure",
+   "label": "churn",
+   "pointer": "#/totals/churn",
+   "section": "what",
+   "value": "7 492 lines changed"
+  },
+  {
+   "id": "f4",
+   "kind": "figure",
+   "label": "reviewable churn",
+   "pointer": "#/totals/reviewable_churn",
+   "section": "what",
+   "value": "7 303 of 7 492 (spine-1/noisy-path, keeps 25%)"
+  },
+  {
+   "id": "f5",
+   "kind": "figure",
+   "label": "path classes",
+   "pointer": "#/files",
+   "section": "what",
+   "value": " 27"
+  },
+  {
+   "id": "f6",
+   "kind": "figure",
+   "label": "change kinds",
+   "pointer": "#/files",
+   "section": "what",
+   "value": "modified 27"
+  },
+  {
+   "id": "f7",
+   "kind": "figure",
+   "label": "directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "src/recommender/rename 12f +3666 -4 · benchmarks/reports 1f +2038 -0 · tests 1f +725 -0 · docs/concepts 3f +418 -1 · tools 1f +253 -0"
+  },
+  {
+   "id": "f8",
+   "kind": "figure",
+   "label": "more directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "6 not listed"
+  },
+  {
+   "id": "f9",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "source 19f +6010 -15 · test 1f +725 -0 · docs 5f +471 -1 · generated 1f +253 -0 · ci 1f +17 -0"
+  },
+  {
+   "id": "f10",
+   "kind": "figure",
+   "label": "moves",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "no path moves were recorded"
+  },
+  {
+   "id": "f11",
+   "kind": "figure",
+   "label": "basis",
+   "pointer": "#/totals",
+   "section": "where",
+   "value": "27 of 27 paths, ranked by churn; the census is the episode's own paths"
+  },
+  {
+   "id": "f12",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "source 19f +6010 -15 · test 1f +725 -0 · docs 5f +471 -1 · generated 1f +253 -0 · ci 1f +17 -0"
+  },
+  {
+   "id": "f13",
+   "kind": "figure",
+   "label": "operator surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "1 (ci)"
+  },
+  {
+   "id": "f14",
+   "kind": "figure",
+   "label": "test side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "1 file(s) · +725 -0"
+  },
+  {
+   "id": "f15",
+   "kind": "figure",
+   "label": "source side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "19 file(s) · +6 010 -15"
+  },
+  {
+   "id": "f16",
+   "kind": "figure",
+   "label": "test share of churn",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "10% of the episode's churn is test-side"
+  },
+  {
+   "id": "f17",
+   "kind": "figure",
+   "label": "risk",
+   "pointer": "#/risk",
+   "section": "attention",
+   "value": "spine-1 70 = surfaces 46 + size 14 + breadth 10"
+  },
+  {
+   "id": "f18",
+   "kind": "figure",
+   "label": "surfaces (46/50)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": ".github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, generated, docs"
+  },
+  {
+   "id": "f19",
+   "kind": "figure",
+   "label": "size (14/16)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "+7476 -16 = 7492 churn, of which 7303 is reviewable (253 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "f20",
+   "kind": "figure",
+   "label": "breadth (10/12)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "5 surfaces over 27 files in 1 commit"
+  },
+  {
+   "id": "f21",
+   "kind": "figure",
+   "label": "cannot see",
+   "pointer": "#/risk/blind_spots",
+   "section": "attention",
+   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+  },
+  {
+   "id": "p1",
+   "kind": "file",
+   "label": "file",
+   "path": ".github/workflows/contracts.yml",
+   "surface": "ci",
+   "value": "modified .github/workflows/contracts.yml +17 -0 ci"
+  },
+  {
+   "id": "p2",
+   "kind": "file",
+   "label": "file",
+   "path": "CHANGELOG.md",
+   "surface": "docs",
+   "value": "modified CHANGELOG.md +51 -0 docs"
+  },
+  {
+   "id": "p3",
+   "kind": "file",
+   "label": "file",
+   "path": "README.md",
+   "surface": "docs",
+   "value": "modified README.md +2 -0 docs"
+  },
+  {
+   "id": "p4",
+   "kind": "file",
+   "label": "file",
+   "path": "benchmarks/reports/e2-4-rename-pairing.json",
+   "surface": "source",
+   "value": "modified benchmarks/reports/e2-4-rename-pairing.json +2038 -0 source"
+  },
+  {
+   "id": "p5",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-store/src/cache.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-store/src/cache.rs +19 -2 source"
+  },
+  {
+   "id": "p6",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/config.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/config.md +13 -1 docs"
+  },
+  {
+   "id": "p7",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/rename-detection.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/rename-detection.md +4 -0 docs"
+  },
+  {
+   "id": "p8",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/rename-pairing.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/rename-pairing.md +401 -0 docs"
+  },
+  {
+   "id": "p9",
+   "kind": "file",
+   "label": "file",
+   "path": "fathom.toml",
+   "surface": "source",
+   "value": "modified fathom.toml +18 -0 source"
+  },
+  {
+   "id": "p10",
+   "kind": "file",
+   "label": "file",
+   "path": "schemas/fathom.schema.json",
+   "surface": "source",
+   "value": "modified schemas/fathom.schema.json +164 -5 source"
+  },
+  {
+   "id": "p11",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/config/schema.py",
+   "surface": "source",
+   "value": "modified src/recommender/config/schema.py +81 -2 source"
+  },
+  {
+   "id": "p12",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/__main__.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/__main__.py +5 -0 source"
+  },
+  {
+   "id": "p13",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/cli.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/cli.py +471 -0 source"
+  },
+  {
+   "id": "p14",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/corpus.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/corpus.py +295 -0 source"
+  },
+  {
+   "id": "p15",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/detect.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/detect.py +4 -4 source"
+  },
+  {
+   "id": "p16",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/eval.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/eval.py +778 -0 source"
+  },
+  {
+   "id": "p17",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/explain.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/explain.py +118 -0 source"
+  },
+  {
+   "id": "p18",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/gitio.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/gitio.py +237 -0 source"
+  },
+  {
+   "id": "p19",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/ledger.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/ledger.py +208 -0 source"
+  },
+  {
+   "id": "p20",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/model.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/model.py +448 -0 source"
+  },
+  {
+   "id": "p21",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/pair.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/pair.py +486 -0 source"
+  },
+  {
+   "id": "p22",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/policy.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/policy.py +314 -0 source"
+  },
+  {
+   "id": "p23",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/rename/render.py",
+   "surface": "source",
+   "value": "modified src/recommender/rename/render.py +302 -0 source"
+  },
+  {
+   "id": "p24",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/store/cache.py",
+   "surface": "source",
+   "value": "modified src/recommender/store/cache.py +11 -1 source"
+  },
+  {
+   "id": "p25",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/store/git.py",
+   "surface": "source",
+   "value": "modified src/recommender/store/git.py +13 -1 source"
+  },
+  {
+   "id": "p26",
+   "kind": "file",
+   "label": "file",
+   "path": "tests/test_rename_pairing_contract.py",
+   "surface": "test",
+   "value": "modified tests/test_rename_pairing_contract.py +725 -0 test"
+  },
+  {
+   "id": "p27",
+   "kind": "file",
+   "label": "file",
+   "path": "tools/gen_rename_pairing_tables.py",
+   "surface": "generated",
+   "value": "modified tools/gen_rename_pairing_tables.py +253 -0 generated"
+  },
+  {
+   "id": "r1",
+   "kind": "risk",
+   "label": "risk",
+   "score": 70,
+   "value": "spine-1 70 = surfaces 46 + size 14 + breadth 10"
+  },
+  {
+   "id": "r2",
+   "kind": "risk",
+   "label": "risk component surfaces",
+   "value": "surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, generated, docs"
+  },
+  {
+   "id": "r3",
+   "kind": "risk",
+   "label": "risk component size",
+   "value": "size 14/16 +7476 -16 = 7492 churn, of which 7303 is reviewable (253 discounted as generated, lockfile, vendored or binary)"
+  },
+  {
+   "id": "r4",
+   "kind": "risk",
+   "label": "risk component breadth",
+   "value": "breadth 10/12 5 surfaces over 27 files in 1 commit"
+  },
+  {
+   "id": "g1",
+   "kind": "gap",
+   "label": "gap (what)",
+   "value": "path-rule discount only — not answered here, it is e2.2's"
+  },
+  {
+   "id": "g2",
+   "kind": "gap",
+   "label": "gap (where)",
+   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+  },
+  {
+   "id": "g3",
+   "kind": "gap",
+   "label": "gap (dependencies)",
+   "value": "no dependency delta here — not answered here, it is e2.6's"
+  },
+  {
+   "id": "g4",
+   "kind": "gap",
+   "label": "gap (surface)",
+   "value": "findings are e2.8's — not answered here, it is e2.8's"
+  },
+  {
+   "id": "g5",
+   "kind": "gap",
+   "label": "gap (tests)",
+   "value": "case names are e2.9's — not answered here, it is e2.9's"
+  },
+  {
+   "id": "g6",
+   "kind": "gap",
+   "label": "gap (blast)",
+   "value": "no module graph in this build — not answered here, it is e3.2's"
+  },
+  {
+   "id": "g7",
+   "kind": "gap",
+   "label": "gap (attention)",
+   "value": "spine-only ranking — not answered here, it is e4.4's"
+  },
+  {
+   "id": "m1",
+   "kind": "meta",
+   "label": "author",
+   "value": "looprs (human author, identity at 0.5 confidence)"
+  },
+  {
+   "id": "m2",
+   "kind": "meta",
+   "label": "boundary",
+   "value": "boundary rule message-shape at 0.7 confidence"
+  },
+  {
+   "id": "m3",
+   "kind": "meta",
+   "label": "totals",
+   "value": "27 file(s), +7476 -16, 1 commit(s), 0 binary"
+  },
+  {
+   "id": "m4",
+   "kind": "meta",
+   "label": "window",
+   "value": "0 minute(s) long"
+  }
+ ],
+ "schema": "fathom.narrative-evidence/1"
+}

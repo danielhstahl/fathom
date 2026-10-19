@@ -1,0 +1,60 @@
+# evidence for ep-8881edd5aa6464360234: reco-6hp: session state persistence and resume — quit saves the session, open gets it back, two TUIs cannot clobber each other, and a corrupt file is quarantined rather than fatal (e1.11)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-6hp: session state persistence and resume — quit saves the session, open gets it back, two TUIs cannot clobber each other, and a corrupt file is quarantined rather than fatal (e1.11)
+[f1] lines: +2 820 -27
+[f2] files: 21 file(s)
+[f3] churn: 2 847 lines changed
+[f4] reviewable churn: 2 847 of 2 847 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  21
+[f6] change kinds: modified 21
+[f7] directories: crates/fathom-cli/src 4f +1002 -2 · crates/fathom-tui/src 5f +783 -13 · crates/fathom-tui/tests 1f +533 -0 · docs/concepts 3f +191 -2 · crates/fathom-tui/src/timeline 2f +74 -7
+[f8] more directories: 5 not listed
+[f9] surfaces: source 12f +1936 -24 · test 3f +659 -0 · docs 6f +225 -3
+[f10] moves: no path moves were recorded
+[f11] basis: 21 of 21 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 12f +1936 -24 · test 3f +659 -0 · docs 6f +225 -3
+[f13] operator surfaces: none — nothing here needs an action outside the review
+[f14] test side: 3 file(s) · +659 -0
+[f15] source side: 12 file(s) · +1 936 -24
+[f16] test share of churn: 23% of the episode's churn is test-side
+[f17] risk: spine-1 29 = size 13 + surfaces 10 + breadth 6
+[f18] size (13/16): +2820 -27 = 2847 churn
+[f19] surfaces (10/50): crates/fathom-cli/src/session.rs — source: the logic a reviewer has to read · also touched: test, docs
+[f20] breadth (6/12): 3 surfaces over 21 files in 1 commit
+[f21] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified CHANGELOG.md +32 -0 docs
+[p2] file: modified README.md +1 -0 docs
+[p3] file: modified crates/fathom-cli/src/main.rs +5 -0 source
+[p4] file: modified crates/fathom-cli/src/session.rs +947 -0 source
+[p5] file: modified crates/fathom-cli/src/tui.rs +29 -2 source
+[p6] file: modified crates/fathom-cli/src/verbs.rs +21 -0 source
+[p7] file: modified crates/fathom-cli/tests/snapshots/help.txt +50 -0 test
+[p8] file: modified crates/fathom-store/src/episode.rs +77 -2 source
+[p9] file: modified crates/fathom-store/tests/episodes.rs +76 -0 test
+[p10] file: modified crates/fathom-tui/src/app.rs +49 -1 source
+[p11] file: modified crates/fathom-tui/src/frame.rs +63 -12 source
+[p12] file: modified crates/fathom-tui/src/lib.rs +1 -0 source
+[p13] file: modified crates/fathom-tui/src/session.rs +657 -0 source
+[p14] file: modified crates/fathom-tui/src/timeline/mod.rs +16 -0 source
+[p15] file: modified crates/fathom-tui/src/timeline/rail.rs +58 -7 source
+[p16] file: modified crates/fathom-tui/src/views.rs +13 -0 source
+[p17] file: modified crates/fathom-tui/tests/session.rs +533 -0 test
+[p18] file: modified docs/adr/0006-tui.md +1 -1 docs
+[p19] file: modified docs/concepts/cli.md +5 -0 docs
+[p20] file: modified docs/concepts/session-state.md +182 -0 docs
+[p21] file: modified docs/concepts/timeline.md +4 -2 docs
+[r1] risk: spine-1 29 = size 13 + surfaces 10 + breadth 6
+[r2] risk component size: size 13/16 +2820 -27 = 2847 churn
+[r3] risk component surfaces: surfaces 10/50 crates/fathom-cli/src/session.rs — source: the logic a reviewer has to read · also touched: test, docs
+[r4] risk component breadth: breadth 6/12 3 surfaces over 21 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: looprs (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 21 file(s), +2820 -27, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

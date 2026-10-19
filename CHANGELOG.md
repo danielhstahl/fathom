@@ -17,6 +17,37 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `s5` — the LLM narrative polish question is measured and closed: ship the template, ship no LLM path (`reco-6p8`, deciding `e4.7`)
+
+- **Three arms, one evidence set, twenty real episodes.** Every arm composed a narrative from the
+  same `fathom-delta/1` document with an address on every fact, so "supported by the evidence" became
+  a checkable predicate instead of an opinion: `recommender.narrative.audit` pulls each sentence back
+  out and asks whether every figure, path, counted noun and motive it asserts is in the evidence it
+  cites — in a strict tier and a tolerant one, and the control arm audits at **zero in both** (265
+  claims), which is what makes the same zero on the LLM arms mean anything.
+- **The result: usefulness rose, trust fell, so the seam stays unwired.** The blind panel (three rubric
+  passes, labels sealed until the scorecards existed) scored usefulness **2.23 → 4.40** and
+  trustworthiness **4.667 → 4.000** for polish against the template, while the polished narratives
+  cited **0.32** of the evidence index against the template's **0.61** — the readability was bought by
+  dropping figures. The template reproduced byte-identically 20/20 and across processes; the polish arm
+  matched itself **0 of 6** resamples, drifting in *which facts got said*. Decision: `reco-nv0`, with
+  five re-open gates (including an arm prompted for helpfulness rather than citation, and three human
+  reviewers). Written answer: [docs/concepts/narrative-polish.md](docs/concepts/narrative-polish.md);
+  numbers: `benchmarks/reports/s5-narrative-polish.json`, re-derivable with
+  `python3 -m recommender.narrative score … --check`.
+- **What is honest about the numbers, and what is not.** Cost and latency for the LLM arms are
+  **modelled** from recorded character counts at a reference price band — no API key or provider
+  endpoint was reachable from the spike sandbox — and the report says so in every row that carries
+  them. The panel is three passes of one model, not three humans, and the arms were written by the same
+  model that wrote the audit, which the concept doc's threats section states as the reason the zero is
+  an upper bound on a disciplined arm and not a rate anyone else would reproduce.
+- **The finding nobody asked for:** arm A's badness is a template bug, not an LLM-shaped hole. It
+  prints figures in document order, repeats the attention block as a risk block, and quotes the delta
+  document's house style at the reader — three fixes that are available without buying determinism,
+  byte-stable exports and the offline guarantee second-hand. Five of the panel's twelve hand-flagged
+  "suspect" claims were complaints about the **delta document** (the `keeps 25%` clause printing when
+  nothing was discounted), which is a follow-up for `e4.7`'s inputs, not a policy about models.
+
 ### `e5.9` — the first five minutes: a miniature repository, a converging index estimate, and no shrugs (`reco-2uo`)
 
 - **`fathom --demo`: a repository that ships inside the binary.** From a clean machine — empty

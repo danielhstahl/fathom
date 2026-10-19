@@ -1,0 +1,59 @@
+# evidence for ep-2fc505f5b0b04e3936cc: reco-myd: background materialisation — hunks decoded off the UI thread, bounded,
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8)
+[f1] lines: +4 662 -352
+[f2] files: 18 file(s)
+[f3] churn: 5 014 lines changed
+[f4] reviewable churn: 5 014 of 5 014 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  18
+[f6] change kinds: modified 18
+[f7] directories: crates/fathom-tui/src/diff 6f +1883 -342 · crates/fathom-tui/src 5f +1321 -6 · crates/fathom-tui/tests 2f +1112 -0 · docs/concepts 2f +297 -4 · . 2f +40 -0
+[f8] more directories: 1 not listed
+[f9] surfaces: source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4
+[f10] moves: no path moves were recorded
+[f11] basis: 18 of 18 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4
+[f13] operator surfaces: none — nothing here needs an action outside the review
+[f14] test side: 2 file(s) · +1 112 -0
+[f15] source side: 11 file(s) · +3 204 -348
+[f16] test share of churn: 22% of the episode's churn is test-side
+[f17] risk: spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1
+[f18] size (14/16): +4662 -352 = 5014 churn
+[f19] surfaces (10/50): crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs
+[f20] breadth (6/12): 3 surfaces over 18 files in 1 commit
+[f21] deletions (1/14): 7% of the churn is removal (-352 against +4662)
+[f22] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified CHANGELOG.md +39 -0 docs
+[p2] file: modified README.md +1 -0 docs
+[p3] file: modified crates/fathom-tui/src/app.rs +28 -6 source
+[p4] file: modified crates/fathom-tui/src/diff/budget.rs +20 -1 source
+[p5] file: modified crates/fathom-tui/src/diff/doc.rs +537 -119 source
+[p6] file: modified crates/fathom-tui/src/diff/materialize.rs +645 -0 source
+[p7] file: modified crates/fathom-tui/src/diff/mod.rs +227 -60 source
+[p8] file: modified crates/fathom-tui/src/diff/model.rs +40 -1 source
+[p9] file: modified crates/fathom-tui/src/diff/tree.rs +414 -161 source
+[p10] file: modified crates/fathom-tui/src/event.rs +9 -0 source
+[p11] file: modified crates/fathom-tui/src/frame.rs +17 -0 source
+[p12] file: modified crates/fathom-tui/src/lib.rs +1 -0 source
+[p13] file: modified crates/fathom-tui/src/materialize.rs +1266 -0 source
+[p14] file: modified crates/fathom-tui/tests/diff_materialize.rs +679 -0 test
+[p15] file: modified crates/fathom-tui/tests/materialize.rs +433 -0 test
+[p16] file: modified docs/adr/0006-tui.md +9 -0 docs
+[p17] file: modified docs/concepts/diff-viewer.md +37 -4 docs
+[p18] file: modified docs/concepts/materialization.md +260 -0 docs
+[r1] risk: spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1
+[r2] risk component size: size 14/16 +4662 -352 = 5014 churn
+[r3] risk component surfaces: surfaces 10/50 crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs
+[r4] risk component breadth: breadth 6/12 3 surfaces over 18 files in 1 commit
+[r5] risk component deletions: deletions 1/14 7% of the churn is removal (-352 against +4662)
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 18 file(s), +4662 -352, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

@@ -1,0 +1,13 @@
+Polished by halogen-qwen3.8-flash-next; every figure below is cited to the delta document.
+
+Spike s3 measured what a graph-per-revision costs at 10k commits, five ways, and named the snapshot policy that closed ADR-004 §14.1 [c1]. One commit, 12 files, +3 371 -55 [m3].
+
+**What changed** - 3 426 lines changed, 3 181 reviewable with 327 discounted as generated, lockfile, vendored or binary [f4 f18]. Twelve paths modified and none moved [f6 f10].
+
+**Where** - src/recommender/store took 2f +1 685 -0 and benchmarks/reports a single 1f +710 -0, with tools at 2f +319 -8, docs/concepts and one test file, plus 4 directories not listed [f7 f8].
+
+**What it can break** - risk spine-1 31 = size 13 + surfaces 10 + breadth 8 [f17], and the file the surfaces term names is src/recommender/store/graphsnap.py [f19]. One test file moved (+209 -0), 6 % of churn [f14 f16]; nothing on this episode asks an operator to act [f13].
+
+**Read first** - benchmarks/reports, where the measurement is [f7].
+
+**Not answered** - the shape sentence [g2], dependencies [g3], operator findings [g4], case names [g5], blast radius [g6] and ranking beyond spine-1 [g7].

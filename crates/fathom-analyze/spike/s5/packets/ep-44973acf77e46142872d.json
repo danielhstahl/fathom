@@ -1,0 +1,454 @@
+{
+ "episode": {
+  "delta_digest": "fb1e17aeabd7663946f54473e07bbb79f78ecc26028adf1655abae0192479c86",
+  "id": "ep-44973acf77e46142872d",
+  "lineage_seq": 37,
+  "n_commits": 1,
+  "subject": "reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)"
+ },
+ "items": [
+  {
+   "id": "c1",
+   "kind": "commit",
+   "label": "commit",
+   "oid": "e1255ce19ec3",
+   "value": "reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)"
+  },
+  {
+   "id": "f1",
+   "kind": "figure",
+   "label": "lines",
+   "pointer": "#/totals",
+   "section": "what",
+   "value": "+8 164 -17"
+  },
+  {
+   "id": "f2",
+   "kind": "figure",
+   "label": "files",
+   "pointer": "#/totals/n_files",
+   "section": "what",
+   "value": "21 file(s)"
+  },
+  {
+   "id": "f3",
+   "kind": "figure",
+   "label": "churn",
+   "pointer": "#/totals/churn",
+   "section": "what",
+   "value": "8 181 lines changed"
+  },
+  {
+   "id": "f4",
+   "kind": "figure",
+   "label": "reviewable churn",
+   "pointer": "#/totals/reviewable_churn",
+   "section": "what",
+   "value": "8 181 of 8 181 (spine-1/noisy-path, keeps 25%)"
+  },
+  {
+   "id": "f5",
+   "kind": "figure",
+   "label": "path classes",
+   "pointer": "#/files",
+   "section": "what",
+   "value": " 21"
+  },
+  {
+   "id": "f6",
+   "kind": "figure",
+   "label": "change kinds",
+   "pointer": "#/files",
+   "section": "what",
+   "value": "modified 21"
+  },
+  {
+   "id": "f7",
+   "kind": "figure",
+   "label": "directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "crates/fathom-ingest/src 3f +4128 -8 · crates/fathom-ingest/tests 1f +1326 -0 · schemas 2f +1026 -2 · crates/fathom-cli/src 4f +616 -1 · tests 2f +546 -0"
+  },
+  {
+   "id": "f8",
+   "kind": "figure",
+   "label": "more directories",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "5 not listed"
+  },
+  {
+   "id": "f9",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4"
+  },
+  {
+   "id": "f10",
+   "kind": "figure",
+   "label": "moves",
+   "pointer": "#/files",
+   "section": "where",
+   "value": "no path moves were recorded"
+  },
+  {
+   "id": "f11",
+   "kind": "figure",
+   "label": "basis",
+   "pointer": "#/totals",
+   "section": "where",
+   "value": "21 of 21 paths, ranked by churn; the census is the episode's own paths"
+  },
+  {
+   "id": "f12",
+   "kind": "figure",
+   "label": "surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "source 10f +5772 -12 · test 7f +2336 -1 · docs 4f +56 -4"
+  },
+  {
+   "id": "f13",
+   "kind": "figure",
+   "label": "operator surfaces",
+   "pointer": "#/files",
+   "section": "surface",
+   "value": "none — nothing here needs an action outside the review"
+  },
+  {
+   "id": "f14",
+   "kind": "figure",
+   "label": "test side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "7 file(s) · +2 336 -1"
+  },
+  {
+   "id": "f15",
+   "kind": "figure",
+   "label": "source side",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "10 file(s) · +5 772 -12"
+  },
+  {
+   "id": "f16",
+   "kind": "figure",
+   "label": "test share of churn",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "29% of the episode's churn is test-side"
+  },
+  {
+   "id": "f17",
+   "kind": "figure",
+   "label": "watch",
+   "pointer": "#/files",
+   "section": "tests",
+   "value": "source grew by 5 772 while 1 test lines were removed — the deleted cover is not re-established by anything in these rows"
+  },
+  {
+   "id": "f18",
+   "kind": "figure",
+   "label": "risk",
+   "pointer": "#/risk",
+   "section": "attention",
+   "value": "spine-1 31 = size 15 + surfaces 10 + breadth 6"
+  },
+  {
+   "id": "f19",
+   "kind": "figure",
+   "label": "size (15/16)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "+8164 -17 = 8181 churn"
+  },
+  {
+   "id": "f20",
+   "kind": "figure",
+   "label": "surfaces (10/50)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs"
+  },
+  {
+   "id": "f21",
+   "kind": "figure",
+   "label": "breadth (6/12)",
+   "pointer": "#/risk/components",
+   "section": "attention",
+   "value": "3 surfaces over 21 files in 1 commit"
+  },
+  {
+   "id": "f22",
+   "kind": "figure",
+   "label": "cannot see",
+   "pointer": "#/risk/blind_spots",
+   "section": "attention",
+   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+  },
+  {
+   "id": "p1",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/src/diagnose.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-cli/src/diagnose.rs +5 -0 source"
+  },
+  {
+   "id": "p2",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/src/harness.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-cli/src/harness.rs +562 -0 source"
+  },
+  {
+   "id": "p3",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/src/main.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-cli/src/main.rs +1 -0 source"
+  },
+  {
+   "id": "p4",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/src/verbs.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-cli/src/verbs.rs +48 -1 source"
+  },
+  {
+   "id": "p5",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/tests/cli.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-cli/tests/cli.rs +1 -1 test"
+  },
+  {
+   "id": "p6",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/tests/hooks_verb.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-cli/tests/hooks_verb.rs +384 -0 test"
+  },
+  {
+   "id": "p7",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/tests/schemas.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-cli/tests/schemas.rs +78 -0 test"
+  },
+  {
+   "id": "p8",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-cli/tests/snapshots/help.txt",
+   "surface": "test",
+   "value": "modified crates/fathom-cli/tests/snapshots/help.txt +1 -0 test"
+  },
+  {
+   "id": "p9",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/hooks.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/hooks.rs +4077 -0 source"
+  },
+  {
+   "id": "p10",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/lib.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/lib.rs +2 -0 source"
+  },
+  {
+   "id": "p11",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/src/segment.rs",
+   "surface": "source",
+   "value": "modified crates/fathom-ingest/src/segment.rs +49 -8 source"
+  },
+  {
+   "id": "p12",
+   "kind": "file",
+   "label": "file",
+   "path": "crates/fathom-ingest/tests/hooks_v1.rs",
+   "surface": "test",
+   "value": "modified crates/fathom-ingest/tests/hooks_v1.rs +1326 -0 test"
+  },
+  {
+   "id": "p13",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/adr/0003-episodes.md",
+   "surface": "docs",
+   "value": "modified docs/adr/0003-episodes.md +19 -2 docs"
+  },
+  {
+   "id": "p14",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/adr/0005-harness-contract.md",
+   "surface": "docs",
+   "value": "modified docs/adr/0005-harness-contract.md +19 -2 docs"
+  },
+  {
+   "id": "p15",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/cli.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/cli.md +12 -0 docs"
+  },
+  {
+   "id": "p16",
+   "kind": "file",
+   "label": "file",
+   "path": "docs/concepts/episode-segmentation.md",
+   "surface": "docs",
+   "value": "modified docs/concepts/episode-segmentation.md +6 -0 docs"
+  },
+  {
+   "id": "p17",
+   "kind": "file",
+   "label": "file",
+   "path": "schemas/doctor.schema.json",
+   "surface": "source",
+   "value": "modified schemas/doctor.schema.json +60 -2 source"
+  },
+  {
+   "id": "p18",
+   "kind": "file",
+   "label": "file",
+   "path": "schemas/hooks.schema.json",
+   "surface": "source",
+   "value": "modified schemas/hooks.schema.json +966 -0 source"
+  },
+  {
+   "id": "p19",
+   "kind": "file",
+   "label": "file",
+   "path": "src/recommender/segment.py",
+   "surface": "source",
+   "value": "modified src/recommender/segment.py +2 -1 source"
+  },
+  {
+   "id": "p20",
+   "kind": "file",
+   "label": "file",
+   "path": "tests/test_cli_contract.py",
+   "surface": "test",
+   "value": "modified tests/test_cli_contract.py +1 -0 test"
+  },
+  {
+   "id": "p21",
+   "kind": "file",
+   "label": "file",
+   "path": "tests/test_hooks_contract.py",
+   "surface": "test",
+   "value": "modified tests/test_hooks_contract.py +545 -0 test"
+  },
+  {
+   "id": "r1",
+   "kind": "risk",
+   "label": "risk",
+   "score": 31,
+   "value": "spine-1 31 = size 15 + surfaces 10 + breadth 6"
+  },
+  {
+   "id": "r2",
+   "kind": "risk",
+   "label": "risk component size",
+   "value": "size 15/16 +8164 -17 = 8181 churn"
+  },
+  {
+   "id": "r3",
+   "kind": "risk",
+   "label": "risk component surfaces",
+   "value": "surfaces 10/50 crates/fathom-ingest/src/hooks.rs — source: the logic a reviewer has to read · also touched: test, docs"
+  },
+  {
+   "id": "r4",
+   "kind": "risk",
+   "label": "risk component breadth",
+   "value": "breadth 6/12 3 surfaces over 21 files in 1 commit"
+  },
+  {
+   "id": "g1",
+   "kind": "gap",
+   "label": "gap (what)",
+   "value": "path-rule discount only — not answered here, it is e2.2's"
+  },
+  {
+   "id": "g2",
+   "kind": "gap",
+   "label": "gap (where)",
+   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+  },
+  {
+   "id": "g3",
+   "kind": "gap",
+   "label": "gap (dependencies)",
+   "value": "no dependency delta here — not answered here, it is e2.6's"
+  },
+  {
+   "id": "g4",
+   "kind": "gap",
+   "label": "gap (surface)",
+   "value": "findings are e2.8's — not answered here, it is e2.8's"
+  },
+  {
+   "id": "g5",
+   "kind": "gap",
+   "label": "gap (tests)",
+   "value": "case names are e2.9's — not answered here, it is e2.9's"
+  },
+  {
+   "id": "g6",
+   "kind": "gap",
+   "label": "gap (blast)",
+   "value": "no module graph in this build — not answered here, it is e3.2's"
+  },
+  {
+   "id": "g7",
+   "kind": "gap",
+   "label": "gap (attention)",
+   "value": "spine-only ranking — not answered here, it is e4.4's"
+  },
+  {
+   "id": "m1",
+   "kind": "meta",
+   "label": "author",
+   "value": "looprs (human author, identity at 0.5 confidence)"
+  },
+  {
+   "id": "m2",
+   "kind": "meta",
+   "label": "boundary",
+   "value": "boundary rule message-shape at 0.7 confidence"
+  },
+  {
+   "id": "m3",
+   "kind": "meta",
+   "label": "totals",
+   "value": "21 file(s), +8164 -17, 1 commit(s), 0 binary"
+  },
+  {
+   "id": "m4",
+   "kind": "meta",
+   "label": "window",
+   "value": "0 minute(s) long"
+  }
+ ],
+ "schema": "fathom.narrative-evidence/1"
+}

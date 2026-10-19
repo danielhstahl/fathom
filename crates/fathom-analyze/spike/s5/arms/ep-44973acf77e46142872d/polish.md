@@ -1,0 +1,13 @@
+Polished by halogen-qwen3.8-flash-next; every figure below is cited to the delta document.
+
+Hooks v1 ingestion arrived: a reader that tolerates a torn line, quarantines what it refuses and remembers its offset [c1]. One commit, 21 files, +8 164 -17 [m3].
+
+**What changed** - 8 181 lines changed, all of it reviewable, on 21 modified paths with no moves [f3 f4 f6 f10].
+
+**Where** - crates/fathom-ingest/src took 3f +4 128 -8 and its tests 1f +1 326 -0, with two schema files at +1 026 -2 and 4 CLI source files, plus 5 directories not listed [f7 f8].
+
+**What it can break** - risk spine-1 31 = size 15 + surfaces 10 + breadth 6 [f18]. Seven test files moved (+2 336 -1) at 29 % of churn [f14 f16], and the delta flags that source grew by 5 772 while 1 test line was removed [f17]. Nothing here asks an operator to act [f13].
+
+**Read first** - crates/fathom-ingest/src/hooks.rs, the file the surfaces term names [f20].
+
+**Not answered** - the shape sentence [g2], dependencies [g3], operator findings [g4], case names [g5], blast radius [g6] and ranking beyond spine-1 [g7].

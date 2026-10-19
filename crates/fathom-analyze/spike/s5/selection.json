@@ -1,0 +1,160 @@
+{
+ "episodes": [
+  {
+   "episode": "ep-5d5c29560494ff4ba1b6",
+   "n_files": 4,
+   "seq": 0,
+   "subject": "reco-8yk: define ZZ Epic One and put the plan under version control"
+  },
+  {
+   "episode": "ep-12c3856aa7d39a356fc5",
+   "n_files": 8,
+   "seq": 3,
+   "subject": "ADR-002: Rust workspace layout and crate boundaries (reco-a54 / e0.2)"
+  },
+  {
+   "episode": "ep-9eae7df04e56608cd3c6",
+   "n_files": 25,
+   "seq": 5,
+   "subject": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
+  },
+  {
+   "episode": "ep-b73a5a3e50303b4d09fd",
+   "n_files": 23,
+   "seq": 8,
+   "subject": "reco-cey: repository discovery and git object access via gix (e1.1)"
+  },
+  {
+   "episode": "ep-83ce1e4c2fdf284ecc3a",
+   "n_files": 45,
+   "seq": 11,
+   "subject": "reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)"
+  },
+  {
+   "episode": "ep-f4ae22f1d86e1adb6564",
+   "n_files": 88,
+   "seq": 13,
+   "subject": "reco-j83: dependency manifest and lockfile parsers across ecosystems (e2.5)"
+  },
+  {
+   "episode": "ep-1fcc80f083aae73ddbc5",
+   "n_files": 19,
+   "seq": 16,
+   "subject": "reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3)"
+  },
+  {
+   "episode": "ep-a0d6c1ee0d02af46577a",
+   "n_files": 31,
+   "seq": 18,
+   "subject": "reco-v6t: the TUI shell — tickless loop, focus model, chord keymap, generated help (e1.5)"
+  },
+  {
+   "episode": "ep-2fc505f5b0b04e3936cc",
+   "n_files": 18,
+   "seq": 21,
+   "subject": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded,"
+  },
+  {
+   "episode": "ep-5b096301793eced5902e",
+   "n_files": 12,
+   "seq": 24,
+   "subject": "reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)"
+  },
+  {
+   "episode": "ep-3e7c88e0ea3fbc7ed99b",
+   "n_files": 23,
+   "seq": 26,
+   "subject": "reco-6pl: test surface delta and coverage proxy — the testing contract per episode, in test names and locations, not a coverage percentage (e2.9)"
+  },
+  {
+   "episode": "ep-8881edd5aa6464360234",
+   "n_files": 21,
+   "seq": 29,
+   "subject": "reco-6hp: session state persistence and resume — quit saves the session, open gets it back, two TUIs cannot clobber each other, and a corrupt file is quarantined rather than fatal (e1.11)"
+  },
+  {
+   "episode": "ep-dc66dc3bdab33bb1057c",
+   "n_files": 19,
+   "seq": 32,
+   "subject": "reco-wzt: the TUI gets a data path — the rail lists the episodes the index holds"
+  },
+  {
+   "episode": "ep-c889856300a3d59575c6",
+   "n_files": 35,
+   "seq": 34,
+   "subject": "reco-c05: the queue ranks — the shipped TUI can answer \"which three are the riskiest\""
+  },
+  {
+   "episode": "ep-44973acf77e46142872d",
+   "n_files": 21,
+   "seq": 37,
+   "subject": "reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)"
+  },
+  {
+   "episode": "ep-bf3b97f296f09cbc2111",
+   "n_files": 27,
+   "seq": 39,
+   "subject": "reco-a0v: rename and copy pairing — a fact is what git asserts at 0.75, everything else is a labelled guess a reviewer can accept or reject (e2.4)"
+  },
+  {
+   "episode": "ep-0a45952b1de2db26bb9e",
+   "n_files": 15,
+   "seq": 42,
+   "subject": "reco-quk.3: a turn_id is <session_id>:<turn_index> on both transports — the trailer transport's bare index read two sessions' turn 3 as one episode (e1.14)"
+  },
+  {
+   "episode": "ep-50e8c8b4058e270e0a6f",
+   "n_files": 47,
+   "seq": 45,
+   "subject": "reco-tt4: one versioned delta model, and the gates that keep it the only one (e2.11)"
+  },
+  {
+   "episode": "ep-b55068697fd91b278c04",
+   "n_files": 23,
+   "seq": 47,
+   "subject": "reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)"
+  },
+  {
+   "episode": "ep-03fcc089123e2e468204",
+   "n_files": 76,
+   "seq": 50,
+   "subject": "reco-2uo: the first five minutes — a repository that ships in the binary, an estimate that converges, and no shrugs anywhere (e5.9)"
+  }
+ ],
+ "provenance": {
+  "corpus": "this repository's own history, indexed by `fathom index` at the HEAD recorded below",
+  "episodes": 20,
+  "head": "8d7868828d8149fa2e31d824326dd822517d2a31",
+  "note": "real agent-authored commits; the annotator is the project author, which §threats of the concept doc owns up to"
+ },
+ "rule": {
+  "candidates": 51,
+  "indexable": 51,
+  "positions": [
+   0,
+   3,
+   5,
+   8,
+   11,
+   13,
+   16,
+   18,
+   21,
+   24,
+   26,
+   29,
+   32,
+   34,
+   37,
+   39,
+   42,
+   45,
+   47,
+   50
+  ],
+  "selected": 20,
+  "target": 20,
+  "text": "indexable episodes in lineage_seq order, at positions round(i*(n-1)/(target-1)) for i in 0..target-1"
+ },
+ "skipped": []
+}

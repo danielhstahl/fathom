@@ -1,0 +1,46 @@
+# evidence for ep-12c3856aa7d39a356fc5: ADR-002: Rust workspace layout and crate boundaries (reco-a54 / e0.2)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: ADR-002: Rust workspace layout and crate boundaries (reco-a54 / e0.2)
+[f1] lines: +3 659 -5
+[f2] files: 8 file(s)
+[f3] churn: 3 664 lines changed
+[f4] reviewable churn: 3 664 of 3 664 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  8
+[f6] change kinds: modified 8
+[f7] directories: tools 2f +2018 -0 · docs/adr 2f +984 -3 · tests 1f +485 -0 · .github/workflows 1f +111 -0 · . 2f +61 -2
+[f8] surfaces: source 3f +2073 -0 · docs 3f +990 -5 · test 1f +485 -0 · ci 1f +111 -0
+[f9] moves: no path moves were recorded
+[f10] basis: 8 of 8 paths, ranked by churn; the census is the episode's own paths
+[f11] surfaces: source 3f +2073 -0 · docs 3f +990 -5 · test 1f +485 -0 · ci 1f +111 -0
+[f12] operator surfaces: 1 (ci)
+[f13] test side: 1 file(s) · +485 -0
+[f14] source side: 3 file(s) · +2 073 -0
+[f15] test share of churn: 13% of the episode's churn is test-side
+[f16] risk: spine-1 65 = surfaces 46 + size 13 + breadth 6
+[f17] surfaces (46/50): .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[f18] size (13/16): +3659 -5 = 3664 churn
+[f19] breadth (6/12): 4 surfaces over 8 files in 1 commit
+[f20] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .github/workflows/contracts.yml +111 -0 ci
+[p2] file: modified README.md +6 -2 docs
+[p3] file: modified deny.toml +55 -0 source
+[p4] file: modified docs/adr/0002-workspace.md +973 -0 docs
+[p5] file: modified docs/adr/README.md +11 -3 docs
+[p6] file: modified tests/test_workspace_contract.py +485 -0 test
+[p7] file: modified tools/check_workspace.py +1211 -0 source
+[p8] file: modified tools/workspace_model.py +807 -0 source
+[r1] risk: spine-1 65 = surfaces 46 + size 13 + breadth 6
+[r2] risk component surfaces: surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 13/16 +3659 -5 = 3664 churn
+[r4] risk component breadth: breadth 6/12 4 surfaces over 8 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule author at 0.75 confidence
+[m3] totals: 8 file(s), +3659 -5, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

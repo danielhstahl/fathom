@@ -1,0 +1,2326 @@
+{
+ "arms": {
+  "_evidence_packet_chars": 107312,
+  "polish": {
+   "by_kind": {
+    "unverifiable": 3
+   },
+   "chars": 23332,
+   "claims": 188,
+   "cost_per_episode_usd_modelled": 0.010825,
+   "episodes": 20,
+   "hallucinated_claims_strict": 0,
+   "hallucinated_claims_tolerant": 0,
+   "inference": 0,
+   "seconds_per_episode_modelled": 5.7,
+   "uncited": 0,
+   "words": 3733
+  },
+  "template": {
+   "by_kind": {},
+   "chars": 64659,
+   "claims": 265,
+   "episodes": 20,
+   "hallucinated_claims_strict": 0,
+   "hallucinated_claims_tolerant": 0,
+   "inference": 0,
+   "ms_per_episode_measured": 3.456,
+   "uncited": 0,
+   "words": 11268
+  },
+  "why": {
+   "by_kind": {
+    "unverifiable": 1
+   },
+   "chars": 2233,
+   "claims": 20,
+   "cost_per_episode_usd_modelled": 0.006868,
+   "episodes": 20,
+   "hallucinated_claims_strict": 0,
+   "hallucinated_claims_tolerant": 0,
+   "inference": 0,
+   "seconds_per_episode_modelled": 0.91,
+   "uncited": 0,
+   "words": 385
+  }
+ },
+ "corpus": {
+  "episodes": [
+   {
+    "episode": "ep-5d5c29560494ff4ba1b6",
+    "n_files": 4,
+    "seq": 0,
+    "subject": "reco-8yk: define ZZ Epic One and put the plan under version control"
+   },
+   {
+    "episode": "ep-12c3856aa7d39a356fc5",
+    "n_files": 8,
+    "seq": 3,
+    "subject": "ADR-002: Rust workspace layout and crate boundaries (reco-a54 / e0.2)"
+   },
+   {
+    "episode": "ep-9eae7df04e56608cd3c6",
+    "n_files": 25,
+    "seq": 5,
+    "subject": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
+   },
+   {
+    "episode": "ep-b73a5a3e50303b4d09fd",
+    "n_files": 23,
+    "seq": 8,
+    "subject": "reco-cey: repository discovery and git object access via gix (e1.1)"
+   },
+   {
+    "episode": "ep-83ce1e4c2fdf284ecc3a",
+    "n_files": 45,
+    "seq": 11,
+    "subject": "reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)"
+   },
+   {
+    "episode": "ep-f4ae22f1d86e1adb6564",
+    "n_files": 88,
+    "seq": 13,
+    "subject": "reco-j83: dependency manifest and lockfile parsers across ecosystems (e2.5)"
+   },
+   {
+    "episode": "ep-1fcc80f083aae73ddbc5",
+    "n_files": 19,
+    "seq": 16,
+    "subject": "reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3)"
+   },
+   {
+    "episode": "ep-a0d6c1ee0d02af46577a",
+    "n_files": 31,
+    "seq": 18,
+    "subject": "reco-v6t: the TUI shell — tickless loop, focus model, chord keymap, generated help (e1.5)"
+   },
+   {
+    "episode": "ep-2fc505f5b0b04e3936cc",
+    "n_files": 18,
+    "seq": 21,
+    "subject": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded,"
+   },
+   {
+    "episode": "ep-5b096301793eced5902e",
+    "n_files": 12,
+    "seq": 24,
+    "subject": "reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)"
+   },
+   {
+    "episode": "ep-3e7c88e0ea3fbc7ed99b",
+    "n_files": 23,
+    "seq": 26,
+    "subject": "reco-6pl: test surface delta and coverage proxy — the testing contract per episode, in test names and locations, not a coverage percentage (e2.9)"
+   },
+   {
+    "episode": "ep-8881edd5aa6464360234",
+    "n_files": 21,
+    "seq": 29,
+    "subject": "reco-6hp: session state persistence and resume — quit saves the session, open gets it back, two TUIs cannot clobber each other, and a corrupt file is quarantined rather than fatal (e1.11)"
+   },
+   {
+    "episode": "ep-dc66dc3bdab33bb1057c",
+    "n_files": 19,
+    "seq": 32,
+    "subject": "reco-wzt: the TUI gets a data path — the rail lists the episodes the index holds"
+   },
+   {
+    "episode": "ep-c889856300a3d59575c6",
+    "n_files": 35,
+    "seq": 34,
+    "subject": "reco-c05: the queue ranks — the shipped TUI can answer \"which three are the riskiest\""
+   },
+   {
+    "episode": "ep-44973acf77e46142872d",
+    "n_files": 21,
+    "seq": 37,
+    "subject": "reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)"
+   },
+   {
+    "episode": "ep-bf3b97f296f09cbc2111",
+    "n_files": 27,
+    "seq": 39,
+    "subject": "reco-a0v: rename and copy pairing — a fact is what git asserts at 0.75, everything else is a labelled guess a reviewer can accept or reject (e2.4)"
+   },
+   {
+    "episode": "ep-0a45952b1de2db26bb9e",
+    "n_files": 15,
+    "seq": 42,
+    "subject": "reco-quk.3: a turn_id is <session_id>:<turn_index> on both transports — the trailer transport's bare index read two sessions' turn 3 as one episode (e1.14)"
+   },
+   {
+    "episode": "ep-50e8c8b4058e270e0a6f",
+    "n_files": 47,
+    "seq": 45,
+    "subject": "reco-tt4: one versioned delta model, and the gates that keep it the only one (e2.11)"
+   },
+   {
+    "episode": "ep-b55068697fd91b278c04",
+    "n_files": 23,
+    "seq": 47,
+    "subject": "reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)"
+   },
+   {
+    "episode": "ep-03fcc089123e2e468204",
+    "n_files": 76,
+    "seq": 50,
+    "subject": "reco-2uo: the first five minutes — a repository that ships in the binary, an estimate that converges, and no shrugs anywhere (e5.9)"
+   }
+  ],
+  "provenance": {
+   "corpus": "this repository's own history, indexed by `fathom index` at the HEAD recorded below",
+   "episodes": 20,
+   "head": "8d7868828d8149fa2e31d824326dd822517d2a31",
+   "note": "real agent-authored commits; the annotator is the project author, which §threats of the concept doc owns up to"
+  },
+  "rule": {
+   "candidates": 51,
+   "indexable": 51,
+   "positions": [
+    0,
+    3,
+    5,
+    8,
+    11,
+    13,
+    16,
+    18,
+    21,
+    24,
+    26,
+    29,
+    32,
+    34,
+    37,
+    39,
+    42,
+    45,
+    47,
+    50
+   ],
+   "selected": 20,
+   "target": 20,
+   "text": "indexable episodes in lineage_seq order, at positions round(i*(n-1)/(target-1)) for i in 0..target-1"
+  },
+  "skipped": []
+ },
+ "determinism": {
+  "polish_note": "6 episodes sampled twice from the model; identical bytes are the absence of drift in one sample, not a determinism guarantee — the second call of a real provider is what a ship decision needs and no key was reachable here",
+  "polish_resampled": [
+   {
+    "byte_identical": false,
+    "episode": "ep-5d5c29560494ff4ba1b6",
+    "figures_only_in_first": [
+     "0",
+     "10,",
+     "13,",
+     "15",
+     "5",
+     "8"
+    ],
+    "figures_only_in_second": [],
+    "words_first": 191,
+    "words_second": 108
+   },
+   {
+    "byte_identical": false,
+    "episode": "ep-12c3856aa7d39a356fc5",
+    "figures_only_in_first": [
+     "/check_workspace.py",
+     "/workflows",
+     "0",
+     "0,",
+     "018",
+     "111",
+     "13",
+     "15",
+     "211",
+     "3,",
+     "485",
+     "65,",
+     "9",
+     "984"
+    ],
+    "figures_only_in_second": [
+     "65"
+    ],
+    "words_first": 190,
+    "words_second": 107
+   },
+   {
+    "byte_identical": false,
+    "episode": "ep-9eae7df04e56608cd3c6",
+    "figures_only_in_first": [
+     "/concepts",
+     "/workflows/contracts.yml",
+     "0,",
+     "13",
+     "14",
+     "15",
+     "5",
+     "6",
+     "680",
+     "69",
+     "8"
+    ],
+    "figures_only_in_second": [
+     "0",
+     "0.9",
+     "69,"
+    ],
+    "words_first": 199,
+    "words_second": 111
+   },
+   {
+    "byte_identical": false,
+    "episode": "ep-b73a5a3e50303b4d09fd",
+    "figures_only_in_first": [
+     "/common",
+     "/fathom-ingest/src",
+     "/reports",
+     "0",
+     "0,",
+     "035",
+     "10",
+     "14",
+     "15",
+     "2",
+     "5",
+     "545",
+     "6",
+     "923"
+    ],
+    "figures_only_in_second": [
+     "/50",
+     "/fathom-ingest"
+    ],
+    "words_first": 192,
+    "words_second": 90
+   },
+   {
+    "byte_identical": false,
+    "episode": "ep-83ce1e4c2fdf284ecc3a",
+    "figures_only_in_first": [
+     "/fathom-ingest/tests/golden",
+     "0",
+     "081",
+     "10",
+     "10,",
+     "13",
+     "2",
+     "25,",
+     "41",
+     "5",
+     "56",
+     "562",
+     "6",
+     "851",
+     "9"
+    ],
+    "figures_only_in_second": [
+     "56,"
+    ],
+    "words_first": 201,
+    "words_second": 99
+   },
+   {
+    "byte_identical": false,
+    "episode": "ep-f4ae22f1d86e1adb6564",
+    "figures_only_in_first": [
+     "/concepts",
+     "/fathom-analyze/tests/golden/deps/js-pnpm-lock/expected.json",
+     "0,",
+     "10",
+     "15",
+     "18",
+     "2",
+     "36",
+     "5",
+     "6",
+     "724",
+     "770"
+    ],
+    "figures_only_in_second": [
+     "5,"
+    ],
+    "words_first": 181,
+    "words_second": 87
+   }
+  ],
+  "template": {
+   "episodes_drifted": 0,
+   "episodes_reproduced": 20,
+   "fresh_process_matches": true,
+   "note": "arm A is a byte function of the delta document: no clock, no locale, no terminal probe, so a golden test can bless it"
+  }
+ },
+ "hallucinations": [],
+ "llm_arm_provenance": {
+  "files": {
+   "polish.md": "arm B - the model's full polish of arm A, prompt prompt/polish.md",
+   "polish2.md": "arm B second sample, same prompt, for the determinism measurement (6 episodes)",
+   "template.md": "arm A - rendered by recommender.narrative.template, not by the model",
+   "why.md": "arm C - the model's single why-sentence, prompt prompt/why.md"
+  },
+  "generated_on": "2026-10-19T06:50:34Z",
+  "how": "The model that ran this spike generated the arm B and arm C texts itself, in-session, from the pinned prompts in ../prompt/ and the recorded citation index in ../evidence/. There is no API key, provider SDK or outbound endpoint in the spike sandbox, so the arms are recorded artefacts on disk rather than live calls, and re-running the spike re-reads them instead of asking the model again - which is the property you want in a report a CI job can check.",
+  "model": {
+   "harness": "pi coding agent, reasoning level medium",
+   "model_id": "halogen-qwen3.8-flash-next",
+   "prompts": {
+    "polish": {
+     "file": "prompt/polish.md",
+     "sha256_16": "66af5d7d801a413a"
+    },
+    "why": {
+     "file": "prompt/why.md",
+     "sha256_16": "758208fd4291882a"
+    }
+   },
+   "provider": "llamacpp",
+   "session_id_prefix": "01a152de"
+  },
+  "schema": "fathom.narrative-arms-provenance/1",
+  "spike": "s5",
+  "ticket": "reco-6p8",
+  "what_that_costs": [
+   "cost and latency for arms B and C are MODELLED from recorded character counts at a reference price band (spike.REFERENCE), not measured against a bill or a clock; the ship decision is gated on re-measuring them against a real provider endpoint",
+   "sampling parameters are the harness's, not chosen for this experiment, and cannot be re-set",
+   "one base model authored the narratives, the resamples and the three reviewer passes, so arm quality and panel ratings share a bias the panel cannot see; the mechanical audit in audit.py is the part of the measurement that does not depend on that model being any good",
+   "the author knew the audit's rules, because the same session wrote them - the strongest reason the zero hallucination count is read as an upper bound on a disciplined arm, not as a rate a stranger would hit"
+  ]
+ },
+ "panel": {
+  "agreement": {
+   "cells_compared": 60,
+   "exact_agreement_share": 0.457,
+   "mean_absolute_difference": {
+    "R1~R2": 0.667,
+    "R1~R3": 0.294,
+    "R2~R3": 0.739
+   },
+   "note": "three rubric passes of one base model: this is a floor on disagreement, not a measurement of human disagreement"
+  },
+  "cross_check": {
+   "polish": {
+    "confirmed_by_audit": 0,
+    "flagged": 7,
+    "over_flag": 7,
+    "over_flag_rate": 1.0,
+    "unconfirmed": [
+     "the surfaces term is the workflow file, where permissions and secrets travel with the artefact",
+     "and this one deletes as much as it adds: 35 % of the churn is removal",
+     "breadth at its cap: 6 surfaces over 111 files in two commits",
+     "the delta itself flags that source grew by 2 690 while 2 test lines were removed",
+     "measured five ways",
+     "Fifteen of the 29 paths were detailed",
+     "Seventy-six of the 111 paths were detailed"
+    ]
+   },
+   "template": {
+    "confirmed_by_audit": 0,
+    "flagged": 4,
+    "over_flag": 4,
+    "over_flag_rate": 1.0,
+    "unconfirmed": [
+     "reviewable churn 3 711 of 3 711 (spine-1/noisy-path, keeps 25%)",
+     "reviewable churn 3 664 of 3 664 (spine-1/noisy-path, keeps 25%)",
+     "change kinds modified 35",
+     "cannot see whether a migration can be rolled back - an environment variable declared and never read"
+    ]
+   },
+   "why": {
+    "confirmed_by_audit": 0,
+    "flagged": 1,
+    "over_flag": 1,
+    "over_flag_rate": 1.0,
+    "unconfirmed": [
+     "Session state is saved on quit and restored on open"
+    ]
+   }
+  },
+  "flags": {
+   "polish": [
+    {
+     "claim": "the surfaces term is the workflow file, where permissions and secrets travel with the artefact",
+     "episode": "ep-bf3b97f296f09cbc2111",
+     "reviewer": "R1"
+    },
+    {
+     "claim": "and this one deletes as much as it adds: 35 % of the churn is removal",
+     "episode": "ep-0a45952b1de2db26bb9e",
+     "reviewer": "R1"
+    },
+    {
+     "claim": "breadth at its cap: 6 surfaces over 111 files in two commits",
+     "episode": "ep-03fcc089123e2e468204",
+     "reviewer": "R1"
+    },
+    {
+     "claim": "the delta itself flags that source grew by 2 690 while 2 test lines were removed",
+     "episode": "ep-9eae7df04e56608cd3c6",
+     "reviewer": "R2"
+    },
+    {
+     "claim": "measured five ways",
+     "episode": "ep-5b096301793eced5902e",
+     "reviewer": "R3"
+    },
+    {
+     "claim": "Fifteen of the 29 paths were detailed",
+     "episode": "ep-0a45952b1de2db26bb9e",
+     "reviewer": "R3"
+    },
+    {
+     "claim": "Seventy-six of the 111 paths were detailed",
+     "episode": "ep-03fcc089123e2e468204",
+     "reviewer": "R3"
+    }
+   ],
+   "template": [
+    {
+     "claim": "reviewable churn 3 711 of 3 711 (spine-1/noisy-path, keeps 25%)",
+     "episode": "ep-5d5c29560494ff4ba1b6",
+     "reviewer": "R1"
+    },
+    {
+     "claim": "reviewable churn 3 664 of 3 664 (spine-1/noisy-path, keeps 25%)",
+     "episode": "ep-12c3856aa7d39a356fc5",
+     "reviewer": "R1"
+    },
+    {
+     "claim": "change kinds modified 35",
+     "episode": "ep-c889856300a3d59575c6",
+     "reviewer": "R2"
+    },
+    {
+     "claim": "cannot see whether a migration can be rolled back - an environment variable declared and never read",
+     "episode": "ep-03fcc089123e2e468204",
+     "reviewer": "R2"
+    }
+   ],
+   "why": [
+    {
+     "claim": "Session state is saved on quit and restored on open",
+     "episode": "ep-8881edd5aa6464360234",
+     "reviewer": "R3"
+    }
+   ]
+  },
+  "integrity_problems": [],
+  "per_reviewer": {
+   "R1": {
+    "polish": {
+     "accuracy": 5.0,
+     "trustworthiness": 4.0,
+     "usefulness": 4.4
+    },
+    "template": {
+     "accuracy": 5.0,
+     "trustworthiness": 5.0,
+     "usefulness": 2.35
+    },
+    "why": {
+     "accuracy": 5.0,
+     "trustworthiness": 4.0,
+     "usefulness": 3.0
+    }
+   },
+   "R2": {
+    "polish": {
+     "accuracy": 4.0,
+     "trustworthiness": 4.0,
+     "usefulness": 4.4
+    },
+    "template": {
+     "accuracy": 4.0,
+     "trustworthiness": 4.0,
+     "usefulness": 1.35
+    },
+    "why": {
+     "accuracy": 4.0,
+     "trustworthiness": 5.0,
+     "usefulness": 3.0
+    }
+   },
+   "R3": {
+    "polish": {
+     "accuracy": 5.0,
+     "trustworthiness": 4.0,
+     "usefulness": 4.4
+    },
+    "template": {
+     "accuracy": 5.0,
+     "trustworthiness": 5.0,
+     "usefulness": 3.0
+    },
+    "why": {
+     "accuracy": 5.0,
+     "trustworthiness": 5.0,
+     "usefulness": 2.0
+    }
+   }
+  },
+  "pooled": {
+   "polish": {
+    "accuracy": 4.667,
+    "n": 60,
+    "trustworthiness": 4.0,
+    "usefulness": 4.4
+   },
+   "template": {
+    "accuracy": 4.667,
+    "n": 60,
+    "trustworthiness": 4.667,
+    "usefulness": 2.233
+   },
+   "why": {
+    "accuracy": 4.667,
+    "n": 60,
+    "trustworthiness": 4.667,
+    "usefulness": 2.667
+   }
+  }
+ },
+ "per_episode": [
+  {
+   "arms": {
+    "polish": {
+     "checkable": 10,
+     "cited_items": 22,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.55,
+      "tokens_in_estimate": 1394,
+      "tokens_out_estimate": 283,
+      "usd_modelled": 0.008427
+     },
+     "coverage": 0.537,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 179
+    },
+    "template": {
+     "checkable": 14,
+     "cited_items": 37,
+     "claims": 14,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 12.64,
+      "tokens_in_estimate": 721,
+      "tokens_out_estimate": 673,
+      "usd_modelled": 0.012258
+     },
+     "coverage": 0.902,
+     "hallucinations_detail": [],
+     "ms_measured": 2.923,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 483
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 2,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.95,
+      "tokens_in_estimate": 1394,
+      "tokens_out_estimate": 30,
+      "usd_modelled": 0.004632
+     },
+     "coverage": 0.049,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 21
+    }
+   },
+   "episode": "ep-5d5c29560494ff4ba1b6",
+   "subject": "reco-8yk: define ZZ Epic One and put the plan under version control"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 11,
+     "cited_items": 19,
+     "claims": 11,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.56,
+      "tokens_in_estimate": 1531,
+      "tokens_out_estimate": 284,
+      "usd_modelled": 0.008853
+     },
+     "coverage": 0.432,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 178
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 36,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 13.11,
+      "tokens_in_estimate": 832,
+      "tokens_out_estimate": 699,
+      "usd_modelled": 0.012981
+     },
+     "coverage": 0.818,
+     "hallucinations_detail": [],
+     "ms_measured": 2.933,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 505
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.85,
+      "tokens_in_estimate": 1531,
+      "tokens_out_estimate": 25,
+      "usd_modelled": 0.004968
+     },
+     "coverage": 0.023,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 16
+    }
+   },
+   "episode": "ep-12c3856aa7d39a356fc5",
+   "subject": "ADR-002: Rust workspace layout and crate boundaries (reco-a54 / e0.2)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 22,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.84,
+      "tokens_in_estimate": 1984,
+      "tokens_out_estimate": 299,
+      "usd_modelled": 0.010437
+     },
+     "coverage": 0.349,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 187
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 38,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.58,
+      "tokens_in_estimate": 1204,
+      "tokens_out_estimate": 780,
+      "usd_modelled": 0.015312
+     },
+     "coverage": 0.603,
+     "hallucinations_detail": [],
+     "ms_measured": 3.209,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 558
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.95,
+      "tokens_in_estimate": 1984,
+      "tokens_out_estimate": 30,
+      "usd_modelled": 0.006402
+     },
+     "coverage": 0.016,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 25
+    }
+   },
+   "episode": "ep-9eae7df04e56608cd3c6",
+   "subject": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 10,
+     "cited_items": 19,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.53,
+      "tokens_in_estimate": 1955,
+      "tokens_out_estimate": 282,
+      "usd_modelled": 0.010095
+     },
+     "coverage": 0.317,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 180
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.36,
+      "tokens_in_estimate": 1188,
+      "tokens_out_estimate": 768,
+      "usd_modelled": 0.015084
+     },
+     "coverage": 0.617,
+     "hallucinations_detail": [],
+     "ms_measured": 3.196,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 542
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.75,
+      "tokens_in_estimate": 1955,
+      "tokens_out_estimate": 19,
+      "usd_modelled": 0.00615
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 13
+    }
+   },
+   "episode": "ep-b73a5a3e50303b4d09fd",
+   "subject": "reco-cey: repository discovery and git object access via gix (e1.1)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 11,
+     "cited_items": 21,
+     "claims": 11,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.75,
+      "tokens_in_estimate": 2439,
+      "tokens_out_estimate": 294,
+      "usd_modelled": 0.011727
+     },
+     "coverage": 0.253,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 189
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 38,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.31,
+      "tokens_in_estimate": 1619,
+      "tokens_out_estimate": 820,
+      "usd_modelled": 0.017157
+     },
+     "coverage": 0.458,
+     "hallucinations_detail": [],
+     "ms_measured": 3.41,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 565
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.76,
+      "tokens_in_estimate": 2439,
+      "tokens_out_estimate": 20,
+      "usd_modelled": 0.007617
+     },
+     "coverage": 0.012,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 12
+    }
+   },
+   "episode": "ep-83ce1e4c2fdf284ecc3a",
+   "subject": "reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 20,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.69,
+      "tokens_in_estimate": 3691,
+      "tokens_out_estimate": 291,
+      "usd_modelled": 0.015438
+     },
+     "coverage": 0.16,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 169
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.35,
+      "tokens_in_estimate": 2868,
+      "tokens_out_estimate": 822,
+      "usd_modelled": 0.020934
+     },
+     "coverage": 0.296,
+     "hallucinations_detail": [],
+     "ms_measured": 5.288,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 540
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.8,
+      "tokens_in_estimate": 3691,
+      "tokens_out_estimate": 22,
+      "usd_modelled": 0.011403
+     },
+     "coverage": 0.008,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 12
+    }
+   },
+   "episode": "ep-f4ae22f1d86e1adb6564",
+   "subject": "reco-j83: dependency manifest and lockfile parsers across ecosystems (e2.5)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 22,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.98,
+      "tokens_in_estimate": 2006,
+      "tokens_out_estimate": 307,
+      "usd_modelled": 0.010623
+     },
+     "coverage": 0.373,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 197
+    },
+    "template": {
+     "checkable": 14,
+     "cited_items": 40,
+     "claims": 14,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.95,
+      "tokens_in_estimate": 1151,
+      "tokens_out_estimate": 855,
+      "usd_modelled": 0.016278
+     },
+     "coverage": 0.678,
+     "hallucinations_detail": [],
+     "ms_measured": 3.536,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 587
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.95,
+      "tokens_in_estimate": 2006,
+      "tokens_out_estimate": 30,
+      "usd_modelled": 0.006468
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 19
+    }
+   },
+   "episode": "ep-1fcc80f083aae73ddbc5",
+   "subject": "reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 10,
+     "cited_items": 21,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 6.09,
+      "tokens_in_estimate": 2219,
+      "tokens_out_estimate": 313,
+      "usd_modelled": 0.011352
+     },
+     "coverage": 0.304,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 204
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 38,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.85,
+      "tokens_in_estimate": 1368,
+      "tokens_out_estimate": 850,
+      "usd_modelled": 0.016854
+     },
+     "coverage": 0.551,
+     "hallucinations_detail": [],
+     "ms_measured": 3.581,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 583
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.87,
+      "tokens_in_estimate": 2219,
+      "tokens_out_estimate": 26,
+      "usd_modelled": 0.007047
+     },
+     "coverage": 0.014,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 19
+    }
+   },
+   "episode": "ep-a0d6c1ee0d02af46577a",
+   "subject": "reco-v6t: the TUI shell — tickless loop, focus model, chord keymap, generated help (e1.5)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 8,
+     "cited_items": 18,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.35,
+      "tokens_in_estimate": 1871,
+      "tokens_out_estimate": 272,
+      "usd_modelled": 0.009693
+     },
+     "coverage": 0.316,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 175
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 39,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.64,
+      "tokens_in_estimate": 1088,
+      "tokens_out_estimate": 783,
+      "usd_modelled": 0.015009
+     },
+     "coverage": 0.684,
+     "hallucinations_detail": [],
+     "ms_measured": 3.228,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 538
+    },
+    "why": {
+     "checkable": 0,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.98,
+      "tokens_in_estimate": 1871,
+      "tokens_out_estimate": 32,
+      "usd_modelled": 0.006093
+     },
+     "coverage": 0.018,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 20
+    }
+   },
+   "episode": "ep-2fc505f5b0b04e3936cc",
+   "subject": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded,"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 19,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.6,
+      "tokens_in_estimate": 1800,
+      "tokens_out_estimate": 286,
+      "usd_modelled": 0.00969
+     },
+     "coverage": 0.388,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 174
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.95,
+      "tokens_in_estimate": 1001,
+      "tokens_out_estimate": 800,
+      "usd_modelled": 0.015003
+     },
+     "coverage": 0.755,
+     "hallucinations_detail": [],
+     "ms_measured": 3.28,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 555
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.96,
+      "tokens_in_estimate": 1800,
+      "tokens_out_estimate": 31,
+      "usd_modelled": 0.005865
+     },
+     "coverage": 0.02,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 22
+    }
+   },
+   "episode": "ep-5b096301793eced5902e",
+   "subject": "reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 8,
+     "cited_items": 19,
+     "claims": 8,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.29,
+      "tokens_in_estimate": 2046,
+      "tokens_out_estimate": 269,
+      "usd_modelled": 0.010173
+     },
+     "coverage": 0.311,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 168
+    },
+    "template": {
+     "checkable": 14,
+     "cited_items": 38,
+     "claims": 14,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.82,
+      "tokens_in_estimate": 1198,
+      "tokens_out_estimate": 848,
+      "usd_modelled": 0.016314
+     },
+     "coverage": 0.623,
+     "hallucinations_detail": [],
+     "ms_measured": 3.433,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 594
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.93,
+      "tokens_in_estimate": 2046,
+      "tokens_out_estimate": 29,
+      "usd_modelled": 0.006573
+     },
+     "coverage": 0.016,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 19
+    }
+   },
+   "episode": "ep-3e7c88e0ea3fbc7ed99b",
+   "subject": "reco-6pl: test surface delta and coverage proxy — the testing contract per episode, in test names and locations, not a coverage percentage (e2.9)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 8,
+     "cited_items": 18,
+     "claims": 8,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.18,
+      "tokens_in_estimate": 1882,
+      "tokens_out_estimate": 263,
+      "usd_modelled": 0.009591
+     },
+     "coverage": 0.31,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 170
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.31,
+      "tokens_in_estimate": 1117,
+      "tokens_out_estimate": 765,
+      "usd_modelled": 0.014826
+     },
+     "coverage": 0.638,
+     "hallucinations_detail": [],
+     "ms_measured": 3.17,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 531
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.98,
+      "tokens_in_estimate": 1882,
+      "tokens_out_estimate": 32,
+      "usd_modelled": 0.006126
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 23
+    }
+   },
+   "episode": "ep-8881edd5aa6464360234",
+   "subject": "reco-6hp: session state persistence and resume — quit saves the session, open gets it back, two TUIs cannot clobber each other, and a corrupt file is quarantined rather than fatal (e1.11)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 10,
+     "cited_items": 20,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.73,
+      "tokens_in_estimate": 1880,
+      "tokens_out_estimate": 293,
+      "usd_modelled": 0.010035
+     },
+     "coverage": 0.339,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 194
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 40,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.49,
+      "tokens_in_estimate": 1105,
+      "tokens_out_estimate": 775,
+      "usd_modelled": 0.01494
+     },
+     "coverage": 0.678,
+     "hallucinations_detail": [],
+     "ms_measured": 3.494,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 550
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.82,
+      "tokens_in_estimate": 1880,
+      "tokens_out_estimate": 23,
+      "usd_modelled": 0.005985
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 18
+    }
+   },
+   "episode": "ep-dc66dc3bdab33bb1057c",
+   "subject": "reco-wzt: the TUI gets a data path — the rail lists the episodes the index holds"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 8,
+     "cited_items": 21,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.42,
+      "tokens_in_estimate": 2174,
+      "tokens_out_estimate": 276,
+      "usd_modelled": 0.010662
+     },
+     "coverage": 0.288,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 180
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 38,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.11,
+      "tokens_in_estimate": 1420,
+      "tokens_out_estimate": 754,
+      "usd_modelled": 0.01557
+     },
+     "coverage": 0.521,
+     "hallucinations_detail": [],
+     "ms_measured": 3.214,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 525
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.85,
+      "tokens_in_estimate": 2174,
+      "tokens_out_estimate": 25,
+      "usd_modelled": 0.006897
+     },
+     "coverage": 0.014,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 19
+    }
+   },
+   "episode": "ep-c889856300a3d59575c6",
+   "subject": "reco-c05: the queue ranks — the shipped TUI can answer \"which three are the riskiest\""
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 20,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.27,
+      "tokens_in_estimate": 1932,
+      "tokens_out_estimate": 268,
+      "usd_modelled": 0.009816
+     },
+     "coverage": 0.339,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 176
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 38,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 14.65,
+      "tokens_in_estimate": 1147,
+      "tokens_out_estimate": 784,
+      "usd_modelled": 0.015201
+     },
+     "coverage": 0.644,
+     "hallucinations_detail": [],
+     "ms_measured": 3.207,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 549
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.98,
+      "tokens_in_estimate": 1932,
+      "tokens_out_estimate": 32,
+      "usd_modelled": 0.006276
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 22
+    }
+   },
+   "episode": "ep-44973acf77e46142872d",
+   "subject": "reco-afh: hooks v1 ingestion — the reader that tolerates a torn line, quarantines what it refuses, remembers its offset, and rebuilds identical turns from byte 0 (e6.1)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 18,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.75,
+      "tokens_in_estimate": 2103,
+      "tokens_out_estimate": 294,
+      "usd_modelled": 0.010719
+     },
+     "coverage": 0.281,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 187
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.36,
+      "tokens_in_estimate": 1280,
+      "tokens_out_estimate": 823,
+      "usd_modelled": 0.016185
+     },
+     "coverage": 0.578,
+     "hallucinations_detail": [],
+     "ms_measured": 3.379,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 583
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 1.02,
+      "tokens_in_estimate": 2103,
+      "tokens_out_estimate": 34,
+      "usd_modelled": 0.006819
+     },
+     "coverage": 0.016,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 24
+    }
+   },
+   "episode": "ep-bf3b97f296f09cbc2111",
+   "subject": "reco-a0v: rename and copy pairing — a fact is what git asserts at 0.75, everything else is a labelled guess a reviewer can accept or reject (e2.4)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 23,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 6.78,
+      "tokens_in_estimate": 2291,
+      "tokens_out_estimate": 351,
+      "usd_modelled": 0.012138
+     },
+     "coverage": 0.404,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {
+       "unverifiable": 1
+      },
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 231
+    },
+    "template": {
+     "checkable": 14,
+     "cited_items": 42,
+     "claims": 14,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 19.11,
+      "tokens_in_estimate": 1262,
+      "tokens_out_estimate": 1029,
+      "usd_modelled": 0.019221
+     },
+     "coverage": 0.737,
+     "hallucinations_detail": [],
+     "ms_measured": 4.101,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 698
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.98,
+      "tokens_in_estimate": 2291,
+      "tokens_out_estimate": 32,
+      "usd_modelled": 0.007353
+     },
+     "coverage": 0.018,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 20
+    }
+   },
+   "episode": "ep-0a45952b1de2db26bb9e",
+   "subject": "reco-quk.3: a turn_id is <session_id>:<turn_index> on both transports — the trailer transport's bare index read two sessions' turn 3 as one episode (e1.14)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 21,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.67,
+      "tokens_in_estimate": 2514,
+      "tokens_out_estimate": 290,
+      "usd_modelled": 0.011892
+     },
+     "coverage": 0.241,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 189
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 40,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 15.35,
+      "tokens_in_estimate": 1692,
+      "tokens_out_estimate": 822,
+      "usd_modelled": 0.017406
+     },
+     "coverage": 0.46,
+     "hallucinations_detail": [],
+     "ms_measured": 3.425,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 577
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.84,
+      "tokens_in_estimate": 2514,
+      "tokens_out_estimate": 24,
+      "usd_modelled": 0.007902
+     },
+     "coverage": 0.011,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 17
+    }
+   },
+   "episode": "ep-50e8c8b4058e270e0a6f",
+   "subject": "reco-tt4: one versioned delta model, and the gates that keep it the only one (e2.11)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 9,
+     "cited_items": 19,
+     "claims": 9,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 5.55,
+      "tokens_in_estimate": 1866,
+      "tokens_out_estimate": 283,
+      "usd_modelled": 0.009843
+     },
+     "coverage": 0.317,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 181
+    },
+    "template": {
+     "checkable": 13,
+     "cited_items": 37,
+     "claims": 13,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 13.82,
+      "tokens_in_estimate": 1128,
+      "tokens_out_estimate": 738,
+      "usd_modelled": 0.014454
+     },
+     "coverage": 0.617,
+     "hallucinations_detail": [],
+     "ms_measured": 3.032,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 526
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.95,
+      "tokens_in_estimate": 1866,
+      "tokens_out_estimate": 30,
+      "usd_modelled": 0.006048
+     },
+     "coverage": 0.017,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 20
+    }
+   },
+   "episode": "ep-b55068697fd91b278c04",
+   "subject": "reco-yxi: dependency risk — who asked for this, advisories with their age, and a licence matrix (e2.7)"
+  },
+  {
+   "arms": {
+    "polish": {
+     "checkable": 10,
+     "cited_items": 24,
+     "claims": 10,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 6.51,
+      "tokens_in_estimate": 3416,
+      "tokens_out_estimate": 336,
+      "usd_modelled": 0.015288
+     },
+     "coverage": 0.205,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": true,
+     "words": 225
+    },
+    "template": {
+     "checkable": 14,
+     "cited_items": 41,
+     "claims": 14,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 18.18,
+      "tokens_in_estimate": 2438,
+      "tokens_out_estimate": 978,
+      "usd_modelled": 0.021984
+     },
+     "coverage": 0.35,
+     "hallucinations_detail": [],
+     "ms_measured": 4.087,
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 679
+    },
+    "why": {
+     "checkable": 1,
+     "cited_items": 1,
+     "claims": 1,
+     "cost": {
+      "basis": "modelled: token counts estimated at 4 chars/token from recorded characters, priced at REFERENCE — no API key was reachable, so this is not an invoice and not a wall-clock",
+      "seconds_modelled": 0.98,
+      "tokens_in_estimate": 3416,
+      "tokens_out_estimate": 32,
+      "usd_modelled": 0.010728
+     },
+     "coverage": 0.009,
+     "hallucinations_detail": [],
+     "strict": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "tolerant": {
+      "by_kind": {},
+      "hallucinated_claims": 0,
+      "hallucination_findings": 0
+     },
+     "watermarked": false,
+     "words": 24
+    }
+   },
+   "episode": "ep-03fcc089123e2e468204",
+   "subject": "reco-2uo: the first five minutes — a repository that ships in the binary, an estimate that converges, and no shrugs anywhere (e5.9)"
+  }
+ ],
+ "question": "does an optional LLM narrative polish beat the deterministic template on accuracy, usefulness and trustworthiness, with hallucinations held at zero",
+ "reference_pricing": {
+  "chars_per_token": 4.0,
+  "time_to_first_token_s": 0.4,
+  "tokens_per_second": 55.0,
+  "usd_per_mtok_in": 3.0,
+  "usd_per_mtok_out": 15.0
+ },
+ "spike": "s5",
+ "ticket": "reco-6p8",
+ "verdict": {
+  "decided": "2026-10-19",
+  "decision": "ship-nothing-yet: arm A is e4.7's narrative; the net-llm polish seam stays unwired (no consumer, no flag, no code path) until every gate in the decision issue is met",
+  "decision_issue": "reco-nv0",
+  "gates": [
+   "hallucinated claims at zero on >=100 episodes and >=3 repositories, with an adversarial arm",
+   "a measured win on trustworthiness as well as usefulness, from three human reviewers",
+   "cost and latency measured against a real provider, and a byte-identical offline fallback",
+   "byte-stable exports (e5.7) survive a polished narrative, or that guarantee is dropped on purpose",
+   "citation preservation enforced by the renderer, not instructed to the model"
+  ],
+  "why": "usefulness rose (2.23 -> 4.40) while trustworthiness fell (4.667 -> 4.000) and coverage halved (0.61 -> 0.32); ADR-001 §8 non-goal 6 asks for a win on trust AND usefulness with hallucinations at zero, and the readability gap the polish arm closes is a template bug worth fixing in the template - see docs/concepts/narrative-polish.md §7"
+ }
+}

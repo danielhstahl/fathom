@@ -1,0 +1,43 @@
+# evidence for ep-5d5c29560494ff4ba1b6: reco-8yk: define ZZ Epic One and put the plan under version control
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-8yk: define ZZ Epic One and put the plan under version control
+[c2] commit: plan: decompose Fathom (agentic code-review TUI) into 94 beads
+[f1] lines: +3 664 -47
+[f2] files: 6 file(s)
+[f3] churn: 3 711 lines changed
+[f4] reviewable churn: 3 711 of 3 711 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  4
+[f6] change kinds: modified 4
+[f7] directory: .plan 4f +3664 -47
+[f8] surfaces: source 3f +3485 -26 · docs 1f +179 -21
+[f9] moves: no path moves were recorded
+[f10] basis: 4 of 6 paths, ranked by churn; the census is the episode's own paths
+[f11] surfaces: source 3f +3485 -26 · docs 1f +179 -21
+[f12] operator surfaces: none — nothing here needs an action outside the review
+[f13] test side: 0 file(s) · +0 -0
+[f14] source side: 3 file(s) · +3 485 -26
+[f15] test share of churn: 0% of the episode's churn is test-side
+[f16] risk: spine-1 25 = size 13 + surfaces 10 + breadth 2
+[f17] size (13/16): +3664 -47 = 3711 churn
+[f18] surfaces (10/50): .plan/plan.json — source: the logic a reviewer has to read · also touched: docs
+[f19] breadth (2/12): 2 surfaces over 6 files in 2 commits
+[f20] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified .plan/README.md +179 -21 docs
+[p2] file: modified .plan/gen.py +1290 -26 source
+[p3] file: modified .plan/keymap.json +96 -0 source
+[p4] file: modified .plan/plan.json +2099 -0 source
+[r1] risk: spine-1 25 = size 13 + surfaces 10 + breadth 2
+[r2] risk component size: size 13/16 +3664 -47 = 3711 churn
+[r3] risk component surfaces: surfaces 10/50 .plan/plan.json — source: the logic a reviewer has to read · also touched: docs
+[r4] risk component breadth: breadth 2/12 2 surfaces over 6 files in 2 commits
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule root at 0.5 confidence
+[m3] totals: 6 file(s), +3664 -47, 2 commit(s), 0 binary
+[m4] window: 25 minute(s) long

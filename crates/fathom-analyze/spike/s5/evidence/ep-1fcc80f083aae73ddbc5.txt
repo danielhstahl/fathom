@@ -1,0 +1,61 @@
+# evidence for ep-1fcc80f083aae73ddbc5: reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3)
+[c2] commit: reco-nts: a boundary a human draws is configuration, and the card says when one was drawn (e1.3)
+[f1] lines: +4 450 -18
+[f2] files: 21 file(s)
+[f3] churn: 4 468 lines changed
+[f4] reviewable churn: 4 468 of 4 468 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  19
+[f6] change kinds: modified 19
+[f7] directories: crates/fathom-store/src 3f +1320 -6 · crates/fathom-ingest/src 2f +970 -0 · crates/fathom-analyze/tests 1f +799 -0 · crates/fathom-store/tests 1f +571 -0 · crates/fathom-cli/src 4f +404 -2
+[f8] more directories: 5 not listed
+[f9] surfaces: source 16f +3078 -18 · test 2f +1370 -0 · docs 1f +2 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 19 of 21 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 16f +3078 -18 · test 2f +1370 -0 · docs 1f +2 -0
+[f13] operator surfaces: none — nothing here needs an action outside the review
+[f14] test side: 2 file(s) · +1 370 -0
+[f15] source side: 16 file(s) · +3 078 -18
+[f16] test share of churn: 31% of the episode's churn is test-side
+[f17] risk: spine-1 38 = size 14 + surfaces 10 + author 8 + breadth 6
+[f18] size (14/16): +4450 -18 = 4468 churn
+[f19] surfaces (10/50): crates/fathom-store/src/episode.rs — source: the logic a reviewer has to read · also touched: test, docs
+[f20] author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3)
+[f21] breadth (6/12): 3 surfaces over 21 files in 2 commits
+[f22] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified crates/fathom-analyze/src/episodes.rs +142 -0 source
+[p2] file: modified crates/fathom-analyze/src/index.rs +61 -1 source
+[p3] file: modified crates/fathom-analyze/src/lib.rs +4 -0 source
+[p4] file: modified crates/fathom-analyze/tests/episodes.rs +799 -0 test
+[p5] file: modified crates/fathom-cli/src/main.rs +4 -0 source
+[p6] file: modified crates/fathom-cli/src/query.rs +119 -2 source
+[p7] file: modified crates/fathom-cli/src/segment.rs +271 -0 source
+[p8] file: modified crates/fathom-cli/src/verbs.rs +10 -0 source
+[p9] file: modified crates/fathom-ingest/src/lib.rs +1 -0 source
+[p10] file: modified crates/fathom-ingest/src/segment.rs +969 -0 source
+[p11] file: modified crates/fathom-store/src/episode.rs +1308 -3 source
+[p12] file: modified crates/fathom-store/src/lib.rs +5 -0 source
+[p13] file: modified crates/fathom-store/src/spine.rs +7 -3 source
+[p14] file: modified crates/fathom-store/tests/episodes.rs +571 -0 test
+[p15] file: modified docs/concepts/config.md +2 -0 docs
+[p16] file: modified fathom.toml +6 -0 source
+[p17] file: modified schemas/fathom.schema.json +28 -0 source
+[p18] file: modified schemas/show.schema.json +131 -9 source
+[p19] file: modified src/recommender/config/schema.py +12 -0 source
+[r1] risk: spine-1 38 = size 14 + surfaces 10 + author 8 + breadth 6
+[r2] risk component size: size 14/16 +4450 -18 = 4468 churn
+[r3] risk component surfaces: surfaces 10/50 crates/fathom-store/src/episode.rs — source: the logic a reviewer has to read · also touched: test, docs
+[r4] risk component author: author 8/8 written by an agent — the reason this tool exists (ADR-001 §7.3)
+[r5] risk component breadth: breadth 6/12 3 surfaces over 21 files in 2 commits
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (agent author, declared at 0.95 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 21 file(s), +4450 -18, 2 commit(s), 0 binary
+[m4] window: 33 minute(s) long

@@ -1,0 +1,25 @@
+reco-cey: repository discovery and git object access via gix (e1.1) [c1].
+
+Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule message-shape at 0.7 confidence [m2].
+
+**What** — lines +9 722 -4 [f1]; files 23 file(s) [f2]; churn 9 726 lines changed [f3]; reviewable churn 9 697 of 9 726 (spine-1/noisy-path, keeps 25%) [f4]; path classes 23 [f5]; change kinds modified 23 [f6].
+
+**Where** — directories crates/fathom-ingest/src 9f +5035 -3 · crates/fathom-ingest/tests 8f +3923 -0 · crates/fathom-ingest/tests/common 1f +622 -0 · . 2f +60 -0 · benchmarks/reports 1f +51 -0 [f7]; more directories 2 not listed [f8]; surfaces source 12f +5117 -4 · test 9f +4545 -0 · dependency 1f +39 -0 · docs 1f +21 -0 [f9]; no path moves were recorded [f10]; basis 23 of 23 paths, ranked by churn; the census is the episode's own paths [f11].
+
+**Surface** — surfaces source 12f +5117 -4 · test 9f +4545 -0 · dependency 1f +39 -0 · docs 1f +21 -0 [f12]; operator surfaces 1 (dependency) [f13].
+
+**Tests** — test side 9 file(s) · +4 545 -0 [f14]; source side 12 file(s) · +5 117 -4 [f15]; test share of churn 47% of the episode's churn is test-side [f16].
+
+**Attention** — risk spine-1 59 = surfaces 36 + size 15 + breadth 8 [f17]; surfaces (36/50) Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs [f18]; size (15/16) +9722 -4 = 9726 churn, of which 9697 is reviewable (39 discounted as generated, lockfile, vendored or binary) [f19]; breadth (8/12) 4 surfaces over 23 files in 1 commit [f20]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f21].
+
+Scale — totals 23 file(s), +9722 -4, 1 commit(s), 0 binary [m3].
+
+The largest single file is crates/fathom-ingest/src/repo.rs (+1561 -0, source) [p12].
+
+Why — as the commit says it: “reco-cey: repository discovery and git object access via gix (e1.1)” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 59 = surfaces 36 + size 15 + breadth 8 [r1], from surfaces 36/50 Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs [r2]; size 15/16 +9722 -4 = 9726 churn, of which 9697 is reviewable (39 discounted as generated, lockfile, vendored or binary) [r3]; breadth 8/12 4 surfaces over 23 files in 1 commit [r4].

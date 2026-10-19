@@ -1,0 +1,127 @@
+# evidence for ep-f4ae22f1d86e1adb6564: reco-j83: dependency manifest and lockfile parsers across ecosystems (e2.5)
+Every fact you may assert, with the id you must cite for it. Nothing else is evidence.
+[c1] commit: reco-j83: dependency manifest and lockfile parsers across ecosystems (e2.5)
+[f1] lines: +12 673 -5
+[f2] files: 88 file(s)
+[f3] churn: 12 678 lines changed
+[f4] reviewable churn: 12 201 of 12 678 (spine-1/noisy-path, keeps 25%)
+[f5] path classes:  88
+[f6] change kinds: modified 88
+[f7] directories: crates/fathom-analyze/src/deps 16f +7951 -0 · crates/fathom-analyze/tests 5f +1770 -0 · crates/fathom-analyze/tests/projection 1f +253 -0 · docs/concepts 1f +248 -0 · crates/fathom-analyze/tests/golden/deps/jvm-pom 2f +128 -0
+[f8] more directories: 34 not listed
+[f9] surfaces: source 21f +8009 -5 · test 42f +3724 -0 · dependency 21f +637 -0 · docs 4f +303 -0
+[f10] moves: no path moves were recorded
+[f11] basis: 88 of 88 paths, ranked by churn; the census is the episode's own paths
+[f12] surfaces: source 21f +8009 -5 · test 42f +3724 -0 · dependency 21f +637 -0 · docs 4f +303 -0
+[f13] operator surfaces: 1 (dependency)
+[f14] test side: 42 file(s) · +3 724 -0
+[f15] source side: 21 file(s) · +8 009 -5
+[f16] test share of churn: 29% of the episode's churn is test-side
+[f17] risk: spine-1 61 = surfaces 36 + size 15 + breadth 10
+[f18] surfaces (36/50): crates/fathom-analyze/tests/golden/deps/js-pnpm-lock/expected.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs
+[f19] size (15/16): +12673 -5 = 12678 churn, of which 12201 is reviewable (637 discounted as generated, lockfile, vendored or binary)
+[f20] breadth (10/12): 4 surfaces over 88 files in 1 commit
+[f21] cannot see: whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour
+[p1] file: modified CHANGELOG.md +34 -0 docs
+[p2] file: modified README.md +1 -0 docs
+[p3] file: modified crates/fathom-analyze/Cargo.toml +15 -0 source
+[p4] file: modified crates/fathom-analyze/src/deps/cargo.rs +357 -0 source
+[p5] file: modified crates/fathom-analyze/src/deps/discover.rs +219 -0 source
+[p6] file: modified crates/fathom-analyze/src/deps/dotnet.rs +288 -0 source
+[p7] file: modified crates/fathom-analyze/src/deps/elixir.rs +377 -0 source
+[p8] file: modified crates/fathom-analyze/src/deps/go.rs +361 -0 source
+[p9] file: modified crates/fathom-analyze/src/deps/jvm.rs +507 -0 source
+[p10] file: modified crates/fathom-analyze/src/deps/mod.rs +242 -0 source
+[p11] file: modified crates/fathom-analyze/src/deps/model.rs +926 -0 source
+[p12] file: modified crates/fathom-analyze/src/deps/node.rs +984 -0 source
+[p13] file: modified crates/fathom-analyze/src/deps/python.rs +1003 -0 source
+[p14] file: modified crates/fathom-analyze/src/deps/ruby.rs +537 -0 source
+[p15] file: modified crates/fathom-analyze/src/deps/scan.rs +973 -0 source
+[p16] file: modified crates/fathom-analyze/src/deps/text.rs +250 -0 source
+[p17] file: modified crates/fathom-analyze/src/deps/toml.rs +273 -0 source
+[p18] file: modified crates/fathom-analyze/src/deps/xml.rs +352 -0 source
+[p19] file: modified crates/fathom-analyze/src/deps/yaml.rs +302 -0 source
+[p20] file: modified crates/fathom-analyze/src/lib.rs +4 -3 source
+[p21] file: modified crates/fathom-analyze/tests/deps_bench.rs +381 -0 test
+[p22] file: modified crates/fathom-analyze/tests/deps_golden.rs +231 -0 test
+[p23] file: modified crates/fathom-analyze/tests/deps_monorepo.rs +371 -0 test
+[p24] file: modified crates/fathom-analyze/tests/deps_repository.rs +339 -0 test
+[p25] file: modified crates/fathom-analyze/tests/deps_tolerance.rs +448 -0 test
+[p26] file: modified crates/fathom-analyze/tests/golden/deps/cargo-lock/Cargo.lock +45 -0 dependency
+[p27] file: modified crates/fathom-analyze/tests/golden/deps/cargo-lock/expected.json +61 -0 test
+[p28] file: modified crates/fathom-analyze/tests/golden/deps/cargo-toml/Cargo.toml +30 -0 test
+[p29] file: modified crates/fathom-analyze/tests/golden/deps/cargo-toml/expected.json +69 -0 test
+[p30] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-central/Api.csproj +9 -0 test
+[p31] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-central/Directory.Packages.props +9 -0 test
+[p32] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-central/expected.json +71 -0 test
+[p33] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-csproj/Api.csproj +16 -0 test
+[p34] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-csproj/expected.json +57 -0 test
+[p35] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-packages-lock/expected.json +62 -0 test
+[p36] file: modified crates/fathom-analyze/tests/golden/deps/dotnet-packages-lock/packages.lock.json +25 -0 test
+[p37] file: modified crates/fathom-analyze/tests/golden/deps/elixir-mix-exs/expected.json +54 -0 test
+[p38] file: modified crates/fathom-analyze/tests/golden/deps/elixir-mix-exs/mix.exs +21 -0 test
+[p39] file: modified crates/fathom-analyze/tests/golden/deps/elixir-mix-lock/expected.json +57 -0 test
+[p40] file: modified crates/fathom-analyze/tests/golden/deps/elixir-mix-lock/mix.lock +6 -0 dependency
+[p41] file: modified crates/fathom-analyze/tests/golden/deps/go-mod/expected.json +60 -0 test
+[p42] file: modified crates/fathom-analyze/tests/golden/deps/go-mod/go.mod +23 -0 dependency
+[p43] file: modified crates/fathom-analyze/tests/golden/deps/go-sum/expected.json +62 -0 test
+[p44] file: modified crates/fathom-analyze/tests/golden/deps/go-sum/go.sum +6 -0 dependency
+[p45] file: modified crates/fathom-analyze/tests/golden/deps/go-work/expected.json +38 -0 test
+[p46] file: modified crates/fathom-analyze/tests/golden/deps/go-work/go.work +9 -0 test
+[p47] file: modified crates/fathom-analyze/tests/golden/deps/js-package-json/expected.json +67 -0 test
+[p48] file: modified crates/fathom-analyze/tests/golden/deps/js-package-json/package.json +19 -0 dependency
+[p49] file: modified crates/fathom-analyze/tests/golden/deps/js-package-lock-v1/expected.json +57 -0 test
+[p50] file: modified crates/fathom-analyze/tests/golden/deps/js-package-lock-v1/package-lock.json +25 -0 dependency
+[p51] file: modified crates/fathom-analyze/tests/golden/deps/js-package-lock-v3/expected.json +66 -0 test
+[p52] file: modified crates/fathom-analyze/tests/golden/deps/js-package-lock-v3/package-lock.json +32 -0 dependency
+[p53] file: modified crates/fathom-analyze/tests/golden/deps/js-pnpm-lock/expected.json +77 -0 dependency
+[p54] file: modified crates/fathom-analyze/tests/golden/deps/js-pnpm-lock/pnpm-lock.yaml +46 -0 dependency
+[p55] file: modified crates/fathom-analyze/tests/golden/deps/js-pnpm-workspace/expected.json +38 -0 test
+[p56] file: modified crates/fathom-analyze/tests/golden/deps/js-pnpm-workspace/pnpm-workspace.yaml +4 -0 test
+[p57] file: modified crates/fathom-analyze/tests/golden/deps/js-yarn-berry/expected.json +56 -0 test
+[p58] file: modified crates/fathom-analyze/tests/golden/deps/js-yarn-berry/yarn.lock +20 -0 dependency
+[p59] file: modified crates/fathom-analyze/tests/golden/deps/js-yarn-lock-v1/expected.json +60 -0 test
+[p60] file: modified crates/fathom-analyze/tests/golden/deps/js-yarn-lock-v1/yarn.lock +19 -0 dependency
+[p61] file: modified crates/fathom-analyze/tests/golden/deps/jvm-gradle-lock/expected.json +59 -0 test
+[p62] file: modified crates/fathom-analyze/tests/golden/deps/jvm-gradle-lock/gradle.lockfile +5 -0 test
+[p63] file: modified crates/fathom-analyze/tests/golden/deps/jvm-gradle/build.gradle.kts +13 -0 dependency
+[p64] file: modified crates/fathom-analyze/tests/golden/deps/jvm-gradle/expected.json +57 -0 test
+[p65] file: modified crates/fathom-analyze/tests/golden/deps/jvm-pom/expected.json +65 -0 test
+[p66] file: modified crates/fathom-analyze/tests/golden/deps/jvm-pom/pom.xml +63 -0 dependency
+[p67] file: modified crates/fathom-analyze/tests/golden/deps/python-pipfile-lock/Pipfile.lock +13 -0 dependency
+[p68] file: modified crates/fathom-analyze/tests/golden/deps/python-pipfile-lock/expected.json +63 -0 test
+[p69] file: modified crates/fathom-analyze/tests/golden/deps/python-poetry-lock/expected.json +59 -0 test
+[p70] file: modified crates/fathom-analyze/tests/golden/deps/python-poetry-lock/poetry.lock +56 -0 dependency
+[p71] file: modified crates/fathom-analyze/tests/golden/deps/python-poetry-pyproject/expected.json +54 -0 test
+[p72] file: modified crates/fathom-analyze/tests/golden/deps/python-poetry-pyproject/pyproject.toml +16 -0 dependency
+[p73] file: modified crates/fathom-analyze/tests/golden/deps/python-pyproject/expected.json +69 -0 test
+[p74] file: modified crates/fathom-analyze/tests/golden/deps/python-pyproject/pyproject.toml +30 -0 dependency
+[p75] file: modified crates/fathom-analyze/tests/golden/deps/python-requirements/expected.json +60 -0 dependency
+[p76] file: modified crates/fathom-analyze/tests/golden/deps/python-requirements/requirements.txt +10 -0 dependency
+[p77] file: modified crates/fathom-analyze/tests/golden/deps/python-uv-lock/expected.json +60 -0 test
+[p78] file: modified crates/fathom-analyze/tests/golden/deps/python-uv-lock/uv.lock +22 -0 dependency
+[p79] file: modified crates/fathom-analyze/tests/golden/deps/ruby-gemfile-lock/Gemfile.lock +36 -0 dependency
+[p80] file: modified crates/fathom-analyze/tests/golden/deps/ruby-gemfile-lock/expected.json +77 -0 test
+[p81] file: modified crates/fathom-analyze/tests/golden/deps/ruby-gemfile/Gemfile +16 -0 test
+[p82] file: modified crates/fathom-analyze/tests/golden/deps/ruby-gemfile/expected.json +59 -0 test
+[p83] file: modified crates/fathom-analyze/tests/projection/mod.rs +253 -0 test
+[p84] file: modified crates/fathom-cli/Cargo.toml +5 -1 source
+[p85] file: modified crates/fathom-cli/src/features.rs +2 -1 source
+[p86] file: modified docs/adr/0002-workspace.md +20 -0 docs
+[p87] file: modified docs/concepts/dependency-surface.md +248 -0 docs
+[p88] file: modified tools/workspace_model.py +32 -0 source
+[r1] risk: spine-1 61 = surfaces 36 + size 15 + breadth 10
+[r2] risk component surfaces: surfaces 36/50 crates/fathom-analyze/tests/golden/deps/js-pnpm-lock/expected.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs
+[r3] risk component size: size 15/16 +12673 -5 = 12678 churn, of which 12201 is reviewable (637 discounted as generated, lockfile, vendored or binary)
+[r4] risk component breadth: breadth 10/12 4 surfaces over 88 files in 1 commit
+[g1] gap (what): path-rule discount only — not answered here, it is e2.2's
+[g2] gap (where): shape sentence is e2.3's — not answered here, it is e2.3's
+[g3] gap (dependencies): no dependency delta here — not answered here, it is e2.6's
+[g4] gap (surface): findings are e2.8's — not answered here, it is e2.8's
+[g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
+[g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
+[g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
+[m2] boundary: boundary rule message-shape at 0.7 confidence
+[m3] totals: 88 file(s), +12673 -5, 1 commit(s), 0 binary
+[m4] window: 0 minute(s) long

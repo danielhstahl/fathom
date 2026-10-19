@@ -1,0 +1,25 @@
+reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8) [c1].
+
+Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+
+Grouping: boundary rule message-shape at 0.7 confidence [m2].
+
+**What** — lines +4 662 -352 [f1]; files 18 file(s) [f2]; churn 5 014 lines changed [f3]; reviewable churn 5 014 of 5 014 (spine-1/noisy-path, keeps 25%) [f4]; path classes 18 [f5]; change kinds modified 18 [f6].
+
+**Where** — directories crates/fathom-tui/src/diff 6f +1883 -342 · crates/fathom-tui/src 5f +1321 -6 · crates/fathom-tui/tests 2f +1112 -0 · docs/concepts 2f +297 -4 · . 2f +40 -0 [f7]; more directories 1 not listed [f8]; surfaces source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4 [f9]; no path moves were recorded [f10]; basis 18 of 18 paths, ranked by churn; the census is the episode's own paths [f11].
+
+**Surface** — surfaces source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4 [f12]; operator surfaces none — nothing here needs an action outside the review [f13].
+
+**Tests** — test side 2 file(s) · +1 112 -0 [f14]; source side 11 file(s) · +3 204 -348 [f15]; test share of churn 22% of the episode's churn is test-side [f16].
+
+**Attention** — risk spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1 [f17]; size (14/16) +4662 -352 = 5014 churn [f18]; surfaces (10/50) crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs [f19]; breadth (6/12) 3 surfaces over 18 files in 1 commit [f20]; deletions (1/14) 7% of the churn is removal (-352 against +4662) [f21]; cannot see whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour [f22].
+
+Scale — totals 18 file(s), +4662 -352, 1 commit(s), 0 binary [m3].
+
+The largest single file is crates/fathom-tui/src/materialize.rs (+1266 -0, source) [p13].
+
+Why — as the commit says it: “reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8)” [c1].
+
+What this narrative does not answer — path-rule discount only — not answered here, it is e2.2's [g1]; shape sentence is e2.3's — not answered here, it is e2.3's [g2]; no dependency delta here — not answered here, it is e2.6's [g3]; findings are e2.8's — not answered here, it is e2.8's [g4]; case names are e2.9's — not answered here, it is e2.9's [g5]; no module graph in this build — not answered here, it is e3.2's [g6]; spine-only ranking — not answered here, it is e4.4's [g7].
+
+Risk — spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1 [r1], from size 14/16 +4662 -352 = 5014 churn [r2]; surfaces 10/50 crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs [r3]; breadth 6/12 3 surfaces over 18 files in 1 commit [r4]; deletions 1/14 7% of the churn is removal (-352 against +4662) [r5].
