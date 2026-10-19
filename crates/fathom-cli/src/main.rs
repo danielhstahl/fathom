@@ -21,6 +21,10 @@ mod attribution;
 mod clock;
 mod demo;
 mod diagnose;
+// Plan versus execution (`e4.8`): the store reads that turn an index into the sessions
+// `fathom_analyze::drift` compares. The rules live there, so that every finding has a fixture; this module
+// owns only what a terminal sees.
+mod drift;
 // The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not
 // open one (ADR-002 §5.2), and handed over as a batch the rail draws. Only the shell has a use for them,
 // which is the only reason the module is gated with the shell.
@@ -32,6 +36,10 @@ mod features;
 mod guide;
 mod harness;
 mod hooks;
+// The episode narrative (`e4.7`): the store read and the formatting choice for the prose that
+// `fathom_analyze::narrative` composes. It is a separate verb from `analyze` for the same reason `why` is:
+// a document and the thing you read it for are different jobs.
+mod narrative;
 mod output;
 // The diff pane's byte source (`reco-0kw`): the episode's patch, materialised from the store and
 // the object store here, because the shell may not do either (ADR-002 §5.2). Only the shell has a

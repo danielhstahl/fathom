@@ -17,6 +17,76 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.7` — the episode narrative: prose with a citation on every claim, and no model in the path (`reco-2rx`)
+
+- **`fathom narrative <episode>` composes the delta document into paragraphs a human can skim.** Text,
+  `--markdown` (the artefact body `e5.7` will carry, via `export::narrative_markdown`) and `--json`
+  (`fathom-narrative/1`) are the same call, byte for byte, and the composition is a pure function of the
+  document — no store, no clock, no config, so an identical episode prints identical bytes and the golden
+  file `crates/fathom-analyze/tests/golden/narrative/measured.md` is a real check.
+- **The three defects spike `s5` measured at 2.23/5 readability are fixed in the template that produced
+  them.** Every claim is priced by one published function and paragraphs are ordered by price, with the
+  expensive ones lifted into **Read this first** (document order was the bug, not the prose); a figure is
+  claimed by exactly one sentence, so `lines` and `churn` are no longer printed twice; and every blind spot
+  became **You cannot tell …** with the owning plan key and the remedy, because `path-rule discount only —
+  not answered here, it is e2.2's` is an internal sentence wearing an external hat. Two demotions keep the
+  ranking honest: an unanswered figure prices at 10, and a figure starting with a zero (`+0 −0`) prices at
+  12, so a quiet episode cannot be dressed up as a loud one.
+- **"Every claim cites its evidence" is checked as content, not as shape.** Six self-audit checks travel with
+  the payload: every citation id resolves and none sits unused, every `#/…` pointer resolves inside the
+  document the narrative was composed from, every locator is a place a reader can go, and **every number a
+  sentence prints appears in the text of the citations that sentence carries** (digit grouping folded, so
+  `9 356` is fair and an invented figure is not). The tamper test runs all four tamperings — invented number,
+  dangling pointer, unattached sentence, orphan citation — because an audit that has never been seen to fail
+  is decoration.
+- **`reco-nv0`'s decision is a queryable fact instead of a paragraph.** `narrative::llm::SHIPPED` is `false`,
+  the five gates that would reopen the polish path are in `llm::GATES` with their current state, and
+  `llm::find_wired_paths` walks this crate's own source in a test and fails the build on a `net-llm` consumer
+  or an HTTP call — the only way "no model in the default path" (ADR-001 §8 non-goal 6) stays true without
+  someone re-reading the docs each quarter. `fathom narrative --attribution` prints the answer, the gates and
+  the watermark (`fathom-template/1 … verified: 29 claims, 31 citations, 6 checks`) and needs no index.
+- Citation ids are `c1..cN`, not `e1..`: this repository's own docs are full of plan keys spelled `e4.7`, and
+  `tools/check_docs.py` reads every `e\d+` as a plan reference, so the collision was a failing build rather
+  than a hypothesis. Asserted by `crates/fathom-analyze/tests/narrative.rs` (14) and
+  `crates/fathom-cli/tests/cli_narrative.rs` (7 end to end); documented in
+  [docs/concepts/episode-narrative.md](docs/concepts/episode-narrative.md).
+
+### `e4.8` — plan versus execution: the six contradictions, with both sides linked (`reco-cpr`)
+
+- **`fathom drift` reads a session, not an episode.** Drift is a session question: an item deferred to the
+  next turn is not drift, a dependency added two turns after the plan that named it is not drift, and a
+  "refactor the parser" that touched only the parser's tests is. The report compares the recorded intent
+  (`e4.2`'s intent column, through the JSON round trip the CLI tests exercise against the real store) against
+  what the episodes touched, in the order the harness recorded them.
+- **Six kinds, each one rule and one threshold**: `plan-unimplemented` (an open item with nothing resembling
+  it inside the window), `test-promised-not-written`, `refactor-claimed-not-performed` (the named target in no
+  touched path and no recorded move), `out-of-scope-edit` (against `e4.2`'s declared globs, unless the plan
+  itself named the path), `unplanned-dependency` (a manifest nobody announced) and `contradicts-signoff` —
+  the last one is `e4.6`'s ledger as the durable side of an argument: a plan item that re-opens work a human
+  signed off as done, citing the entry.
+- **Every finding is a pair, and the pair is printed.** `claim` (the plan text, quoted, with the address that
+  holds it) and `evidence` (the path, the glob, the ledger row) on adjacent lines, each with a `fathom` verb a
+  reviewer can run; `--json` carries `fathom-drift/1` with the same two sides, and `Report::to_insight()`
+  hands them to the delta document through `insight::Finding`, so the narrative and the card cite drift
+  findings through the door every other finding already uses.
+- **Confidence is the intent rung's, not a guess.** Each rule brings a base (0.92 for the arithmetic ones,
+  0.58 for "nothing here resembles that") and the rung prices it, so the same finding reads 0.92 on a hook
+  prompt and 0.83 on an `Intent:` trailer, and the finding prints which rung decided. Never 1.0, floored at
+  0.30 so a trailer-only repository stays reportable at a price that admits it.
+- **Bounded, and it says so.** A finite look-ahead window (default 4), a per-kind cap and a report cap that
+  set `truncated` and end the verdict with *the caps cut some*; `cross_session` off by default, because
+  Monday's run is a different conversation; a switched-off kind is printed as off rather than silently
+  missing. A dismissal is stored against a key built from the rule and the plan text — never the episode id,
+  which an amend changes — so a dismissed contradiction is counted in `suppressed` and does not come back.
+- **What cannot be judged is named, not judged.** No intent, an intent with no declared scope, globs that do
+  not compile, a test surface the index could not read: each is `unchecked` with its owner (`e4.2`, `e2.9`),
+  and "I cannot tell whether a test was touched" never becomes "no test was written". A test walks the
+  module's own source and fails it on `rusqlite`, `std::fs` or a clock read: the analysis half is a pure
+  function (ADR-002 §4.5), which is what makes all 23 fixtures in `crates/fathom-analyze/tests/drift.rs`
+  possible at all. `crates/fathom-cli/tests/cli_drift.rs` (7) drives the binary, including carrying a
+  dismissal from one run's output into the next run's flag; documented in
+  [docs/concepts/plan-drift.md](docs/concepts/plan-drift.md).
+
 ### `e4.9` — Guardrail 3 got a corpus, and the false-positive rate was measured (`reco-mkl.1`)
 
 - **Three real repositories, pinned by commit, and the labels to score them with.** `cli/cli`,

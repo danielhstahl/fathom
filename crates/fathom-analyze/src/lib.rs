@@ -31,9 +31,13 @@ pub mod error;
 pub mod export;
 pub mod insight;
 
+pub mod drift;
 /// The review ledger: sign-offs as committed markdown under `.fathom/reviews/`, the four digests that let a
 /// decision survive a rewrite, the staleness verdict, and the mirror index (`e4.6`, `reco-rlf`).
 pub mod ledger;
+/// The episode narrative (`e4.7`, `reco-2rx`): the deterministic, cited prose a human skims, composed from
+/// the delta document and nothing else. Its own self-check is that no claim arrives without evidence.
+pub mod narrative;
 /// The attention queue (`e4.5`, `reco-wsj`): the ordering, the four triage acts and the retrospective.
 /// Its types reach the surfaces through [`insight`], which is the only door `fathom-tui` may open.
 pub mod queue;

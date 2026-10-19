@@ -231,9 +231,15 @@ CRATES: tuple[Crate, ...] = (
                     heavy=True, enables=("fathom-store/sqlite-bundled",), ticket="e1.4"),
             Feature("sqlite-system", "the same half, against the distro's libsqlite3.",
                     heavy=True, enables=("fathom-store/sqlite-system",), ticket="e7.4"),
-            Feature("net-llm", "optional LLM narrative polish (`e4.7`, spike `s5`). Off by default, "
-                    "watermarked, citation-preserving, and silently absent when unavailable "
-                    "(ADR-001 §8 non-goal 6).", net=True, heavy=True, deps=("ureq", "rustls"),
+            Feature("net-llm", "**Unwired: spike `s5` closed the question (`reco-nv0`).** Reserved for "
+                    "optional LLM narrative polish (`e4.7`); the spike measured a polished arm against the "
+                    "template and shipped neither it nor the seam, so `e4.7` ships the deterministic "
+                    "template alone ([episode narrative](../concepts/episode-narrative.md), "
+                    "[the spike](../concepts/narrative-polish.md)) and the decision is a queryable fact "
+                    "(`narrative::llm::SHIPPED` is false, `narrative::llm::GATES` holds the five "
+                    "conditions). This feature has no consumer, no code path and no `privacy.llm` surface "
+                    "until every gate is met; it stays listed so the seam it was meant for stays visible.",
+                    net=True, heavy=True, deps=("ureq", "rustls"),
                     ticket="e4.7"),
             # The dependency ecosystems (`e2.5`). None of these costs a third-party crate: the parsers are
             # hand-written and tolerant because "degrade to `unparsed`" is the ticket's requirement, not a

@@ -145,6 +145,10 @@ pub enum Verb {
     Review(ReviewArgs),
     /// Print one episode's delta document — the model the TUI, the export and an agent all read
     Analyze(AnalyzeArgs),
+    /// Read one episode: the narrative every claim in it cites its evidence from (`e4.7`)
+    Narrative(NarrativeArgs),
+    /// What the plan said against what the session did — the contradictions, both sides linked (`e4.8`)
+    Drift(DriftArgs),
     /// Print one episode's risk score with every feature, its weight and its contribution (`e4.4`)
     Why(WhyArgs),
     /// Report repo scale, index state and cache hit rate
@@ -384,6 +388,75 @@ pub struct AnalyzeArgs {
     /// Write the generated schema to `schemas/`, replacing the checked-in copy.
     #[arg(long, requires = "schema", conflicts_with = "check")]
     pub write: bool,
+}
+
+/// `fathom narrative` — the prose half of an episode (`e4.7`, `reco-2rx`).
+///
+/// The same handle grammar as `analyze`, `why` and `show`, because a reviewer who has an episode should not
+/// have to learn which verb wants which spelling of it.
+#[derive(Args, Debug)]
+pub struct NarrativeArgs {
+    /// The episode to read: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix.
+    /// Omitted with `--attribution`, which answers a question about the build instead of an episode.
+    pub episode: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the claims, citations and weights as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Print the Markdown artefact body — the exact text `fathom export` will carry.
+    #[arg(long)]
+    pub markdown: bool,
+    /// Print the ranking beside the prose: every claim's weight, so the order can be argued with.
+    #[arg(long)]
+    pub explain: bool,
+    /// How many claims the *Read this first* paragraph holds (1 to 6).
+    #[arg(long, value_name = "N")]
+    pub top: Option<usize>,
+    /// Print whether a model wrote any of this, and the five gates a polish path must clear. Needs no
+    /// index and no episode.
+    #[arg(long = "attribution")]
+    pub attribution: bool,
+}
+
+/// `fathom drift` — plan versus execution across a session (`e4.8`, `reco-cpr`).
+///
+/// Every flag here is a bound on the read or on the report, never on what is true: the window, the
+/// threshold and the caps are the analysis's own and the report prints them beside its verdict.
+#[derive(Args, Debug)]
+pub struct DriftArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Compare one harness session only — its id, or `lineage:refs/heads/main` for the episodes no session
+    /// was named for.
+    #[arg(long, value_name = "S")]
+    pub session: Option<String>,
+    /// Read every episode in the index instead of the newest ones. A long read, and a longer report.
+    #[arg(long)]
+    pub all: bool,
+    /// How many episodes past a plan item to look for the change that did it.
+    #[arg(long, value_name = "N")]
+    pub window: Option<usize>,
+    /// The token overlap at which a plan item counts as addressed (0.05 to 1.0).
+    #[arg(long, value_name = "F")]
+    pub min_overlap: Option<f64>,
+    /// The cap on the report.
+    #[arg(long, value_name = "N")]
+    pub max: Option<usize>,
+    /// A suppression key already argued about; its contradiction is counted, not re-reported. Repeatable.
+    #[arg(long = "dismiss", value_name = "KEY")]
+    pub dismiss: Vec<String>,
+    /// Switch one kind off, in the published spelling (`plan-unimplemented`, …). Repeatable.
+    #[arg(long = "off", value_name = "KIND")]
+    pub off: Vec<String>,
+    /// Print the report as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// Exit 7 when anything was found, so a CI step can gate on it.
+    #[arg(long)]
+    pub fail_on_findings: bool,
 }
 
 /// `fathom why`
@@ -664,6 +737,27 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
             args.schema,
             args.check,
             args.write,
+        ),
+        Some(Verb::Narrative(args)) => crate::narrative::narrate(
+            &args.root,
+            args.episode.as_deref(),
+            args.json,
+            args.markdown,
+            args.explain,
+            args.top,
+            args.attribution,
+        ),
+        Some(Verb::Drift(args)) => crate::drift::drift(
+            &args.root,
+            args.session.as_deref(),
+            args.all,
+            args.window,
+            args.min_overlap,
+            args.max,
+            &args.dismiss,
+            &args.off,
+            args.json,
+            args.fail_on_findings,
         ),
         Some(Verb::Why(args)) => {
             if args.weights {

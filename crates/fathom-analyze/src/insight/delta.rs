@@ -1959,6 +1959,16 @@ impl EpisodeDelta {
             .find(|section| section.id == id.as_str())
     }
 
+    /// Does a JSON pointer address something in this document?
+    ///
+    /// Published because [`crate::narrative`] cites these pointers rather than re-addressing them: one
+    /// resolver for both self-checks means one definition of "the evidence is really there", which is the
+    /// whole difference between a citation and a decoration.
+    #[must_use]
+    pub fn resolves(&self, pointer: &str) -> bool {
+        resolve_pointer(&self.to_value(), pointer)
+    }
+
     /// The state of one section, or `unavailable` when the section is absent — absent means unanswered.
     #[must_use]
     pub fn state_of(&self, id: SectionId) -> &'static str {
