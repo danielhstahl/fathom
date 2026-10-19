@@ -97,6 +97,12 @@ required-features = ["sqlite-bundled"]
 name = "incremental_index"
 required-features = ["sqlite-bundled"]
 
+# The review ledger (`e4.6`) reads the episode table and the mirror table, both of which exist only with a
+# SQLite backend, so the target names the feature it needs rather than relying on unification.
+[[test]]
+name = "ledger"
+required-features = ["sqlite-bundled"]
+
 # The `s1` spike harness (`reco-alj`) lives here, not in the library: it is throwaway code that
 # has to compile against the same six grammar crates `e3.1` will ship with, and `required-features`
 # keeps it — and the C build of all six — out of every default `cargo build` and `cargo test`.

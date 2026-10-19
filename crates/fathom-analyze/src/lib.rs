@@ -30,6 +30,10 @@ pub mod detectors;
 pub mod error;
 pub mod export;
 pub mod insight;
+
+/// The review ledger: sign-offs as committed markdown under `.fathom/reviews/`, the four digests that let a
+/// decision survive a rewrite, the staleness verdict, and the mirror index (`e4.6`, `reco-rlf`).
+pub mod ledger;
 /// The attention queue (`e4.5`, `reco-wsj`): the ordering, the four triage acts and the retrospective.
 /// Its types reach the surfaces through [`insight`], which is the only door `fathom-tui` may open.
 pub mod queue;

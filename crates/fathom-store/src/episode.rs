@@ -591,6 +591,13 @@ pub struct EpisodeQuery {
     pub offset: i64,
     /// At most this many rows; `0` (the default) means "every row the filter selects".
     pub limit: i64,
+    /// Include episodes no current commit belongs to.
+    ///
+    /// Off by default because every surface that draws a list wants the live set; `e4.6`'s ledger turns it on
+    /// because a sign-off that points only at a dead episode is a different, more useful sentence than a
+    /// sign-off that points at nothing — "the history that carried your review was rewritten away" is
+    /// advice, and "no match" is a shrug (ADR-003 §6.5).
+    pub include_dead: bool,
 }
 
 /// What a write of episodes did.
@@ -1945,7 +1952,11 @@ fn episode_sql_for_id() -> String {
 
 /// Build the filter's SQL. Placeholders only — the filter values are user text and never spliced in.
 fn episode_sql(query: &EpisodeQuery, count: bool) -> (String, Vec<SqlValue>) {
-    let mut where_ = vec!["live = 1".to_owned()];
+    let mut where_ = vec![if query.include_dead {
+        "1 = 1".to_owned()
+    } else {
+        "live = 1".to_owned()
+    }];
     let mut args: Vec<SqlValue> = Vec::new();
     if !query.authors.is_empty() {
         let marks = vec!["?"; query.authors.len()].join(",");

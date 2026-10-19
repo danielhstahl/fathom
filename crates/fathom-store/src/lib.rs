@@ -51,3 +51,9 @@ pub mod inventory;
 /// reason: with no SQLite backend there is no document table.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod search;
+
+/// The mirror of the review ledger — ADR-004 §4.7's `ledger_entry`, class M, rebuilt from the committed
+/// markdown and never merged into (`e4.6`, `reco-rlf`). Gated with [`spine`] because a mirror with nothing
+/// to mirror into is the same non-thing a document table without SQLite is.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod ledger;

@@ -141,6 +141,8 @@ pub enum Verb {
     Show(ShowArgs),
     /// Report or correct who Fathom thinks wrote a commit (`e4.1`)
     Attribution(AttributionArgs),
+    /// The review ledger: sign-offs that outlive the history they were written about (`e4.6`)
+    Review(ReviewArgs),
     /// Print one episode's delta document — the model the TUI, the export and an agent all read
     Analyze(AnalyzeArgs),
     /// Print one episode's risk score with every feature, its weight and its contribution (`e4.4`)
@@ -215,6 +217,77 @@ pub struct AttributionArgs {
     /// What to do.
     #[command(subcommand)]
     pub action: AttributionAction,
+}
+
+/// `fathom review …` — the ledger's verbs (`e4.6`, `reco-rlf`).
+///
+/// The root comes from the global `--root` rather than a per-verb flag, because the ledger is a property of
+/// the repository: `fathom --root X review sign` and `fathom --root X episodes` must be able to disagree
+/// about nothing.
+#[derive(Args, Debug)]
+pub struct ReviewArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`).
+    ///
+    /// Global so `fathom review --json sign …` and `fathom review sign … --json` are the same command;
+    /// a reviewer should not have to remember which side of the subverb a flag lives on.
+    #[arg(long, global = true)]
+    pub json: bool,
+    /// What to do with the ledger; bare `fathom review` is `review status`.
+    #[command(subcommand)]
+    pub action: Option<ReviewAction>,
+}
+
+/// What to do with the ledger.
+#[derive(Subcommand, Debug)]
+pub enum ReviewAction {
+    /// The verdict: is every episode covered by a sign-off that still matches (exit `7` when it is not)
+    Status,
+    /// Sign an episode off, appending one entry to `.fathom/reviews/ledger.md`
+    Sign(ReviewSignArgs),
+    /// Render the queue's acts that the ledger has never seen
+    Sync(ReviewSyncArgs),
+    /// List the ledger's entries with their verdicts
+    List(ReviewListArgs),
+    /// Re-hash every entry against its own `digest:` line — tampering, and nothing else
+    Verify,
+}
+
+/// `fathom review sign <EPISODE>`.
+#[derive(Args, Debug)]
+pub struct ReviewSignArgs {
+    /// The episode to sign off, or an unambiguous prefix of its id
+    pub episode: String,
+    /// What the decision is; `accepted` is the one that means *reviewed*
+    #[arg(long, default_value = "accepted")]
+    pub decision: String,
+    /// A note, committed with the entry and folded onto one line
+    #[arg(long)]
+    pub note: Option<String>,
+    /// Who is signing, when git config and `fathom.toml` do not say
+    #[arg(long)]
+    pub identity: Option<String>,
+    /// Record the act as an agent's verdict on someone's behalf, not as a human acceptance
+    #[arg(long)]
+    pub agent: Option<String>,
+}
+
+/// `fathom review sync`.
+#[derive(Args, Debug)]
+pub struct ReviewSyncArgs {
+    /// Report what would be rendered, write nothing
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+/// `fathom review list`.
+#[derive(Args, Debug)]
+pub struct ReviewListArgs {
+    /// Show only entries in this state: `fresh`, `stale`, `orphan` or `unknown`
+    #[arg(long)]
+    pub state: Option<String>,
 }
 
 /// The `fathom attribution` subcommands.
@@ -583,6 +656,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
                 args.json,
             ),
         },
+        Some(Verb::Review(args)) => crate::review::run(args),
         Some(Verb::Analyze(args)) => crate::analyze::analyze(
             &args.root,
             args.episode.as_deref(),
