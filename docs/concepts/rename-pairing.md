@@ -135,7 +135,7 @@ by hand. A ledger file that fails to parse is reported as unreadable and never o
 ## What the card looks like, and the auditor that fails it
 
 ```
-$ fathom rename pairs --base c0 --head c1
+$ fathom rename pairs --base c0 --head c1    # planned: no `rename` subcommand is built yet
 ```
 
 ```

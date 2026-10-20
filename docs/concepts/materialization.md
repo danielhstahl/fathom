@@ -229,7 +229,7 @@ page — so when that page is not enough, the pager is this engine with `PageKey
 cursor left, a byte-bounded page cache — and the reason it is not written today is that scrolling past
 the first page is the same missing machine, from the store side as much as this one. The long-file-tree
 half of the ticket's second sentence is
-done, and it is where the pattern actually bit: [§7.1](#7-1-the-tree-was-the-worst-offender).
+done, and it is where the pattern actually bit: [§7.1](#71-the-tree-was-the-worst-offender).
 
 **No persisted cache.** Decodes live in memory for the life of the run. A cold start re-decodes; that
 is a `fathom.toml` question about caching decode work across runs, and writing decoded text to disk

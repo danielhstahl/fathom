@@ -33,7 +33,7 @@ Session state is the reviewer's posture, has no evidentiary value, and is worth 
 | `tui.tabs` | `view:title`, comma-joined in left-to-right order | the tab strip |
 | `tui.mark` | `panel:x:y` | the jump mark (`)`) |
 | `tui.search` | a pattern | the search field's default (`/`) |
-| `timeline.filter` | `timeline::session::encode`, six segments | the rail's filters — [timeline §5](timeline.md#5-filtering) |
+| `timeline.filter` | `timeline::session::encode`, six segments | the rail's filters — [timeline §5](timeline.md#5-filters) |
 | `timeline.selection` | one episode id | the rail's cursor, by identity through the relink tiers |
 | `timeline.members` | `author:` / `kind:` / `area:` / `repo:` / `remote:` / `sha:` prefixes | each filter's multi-member set |
 | `unread:<episode-id>` | `opened` / `read`, written when the card materialised | the read set, and therefore where `goto.first_unread` lands |

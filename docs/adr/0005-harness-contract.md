@@ -60,7 +60,7 @@ the *absence* of each is a design error someone would otherwise make:
 ### 1.1 What "harness" names here
 
 **Harness** is the adapter layer that receives events from the coding agent (Claude Code, Codex CLI,
-OpenCode) and turns them into [episode](../concepts/thesis.md#episode)-shaped records. It is **not an
+OpenCode) and turns them into [episode](../concepts/episode.md)-shaped records. It is **not an
 agent** and runs no agent loop — ADR-001 amendment 1. It is one of the two pieces "the entire
 remaining product depends on".
 

@@ -230,6 +230,19 @@ jobs:
         if: matrix.channel == 'msrv'
         run: cargo +$MSRV build --workspace --no-default-features --features minimal
 
+      # `e7.5` (reco-60m): the CLI reference page is generated from the binary's own `--help`, so CI is
+      # what keeps it from lying about a flag. It runs here rather than in `contracts.yml` because its
+      # source is a compiled program, and on the linux/stable leg because that is the leg whose build the
+      # committed page was written from. clap's argument tree is feature-independent in this workspace — no
+      # `#[arg]` in `verbs.rs` sits behind a `#[cfg(feature = …)]`, so the `--all-features` build this leg
+      # already produced renders the same help as the default one. If a feature-gated flag is ever added,
+      # this step changes to `cargo build -p fathom-cli` and the comment says why.
+      - name: "e7.5 docs: the CLI reference is the binary's own --help, and every documented command types"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: |
+          python3 tools/gen_docs.py check --page cli
+          python3 tools/check_docs_site.py
+
       - name: the binary answers, on every platform
         run: |
           cargo build -p fathom-cli --no-default-features --features minimal

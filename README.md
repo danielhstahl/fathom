@@ -12,6 +12,15 @@ the agent works. Alongside a coding harness, it is the human's confidence system
 ticket cites, the north-star metric (time-to-confidence) and its guardrails, and the v1 non-goals.
 Everything in this repository is subordinate to that document.
 
+**→ [docs/index.md](docs/index.md)** — the documentation site: the five-minute quickstart, the six concept
+pages (**episode**, **delta**, **risk score**, **review ledger**, **ratchet**, **ambient mode**), the harness
+recipes, the [detector catalogue](docs/detectors/index.md), the [CLI reference](docs/reference/cli.md), the
+[keyboard cheatsheet](docs/reference/cheatsheet.md), the [feature matrix](docs/reference/features.md) and
+[troubleshooting](docs/troubleshooting.md). Parts of it are generated from the code — `fathom --help`, the
+keymap, `features.rs` and the blessed detector catalogue — by `python3 tools/gen_docs.py write`, and CI
+fails if the committed pages disagree with the program (`python3 tools/gen_docs.py check`,
+`python3 tools/check_docs_site.py`).
+
 ## Quickstart
 
 Two ways in. **Install the alpha** if you want to use the thing; **build from source** if you want to
@@ -83,6 +92,7 @@ of which half is code and which half is not.
 | Area | Where | State |
 |---|---|---|
 | Product thesis, glossary, metrics, non-goals | [docs/concepts/thesis.md](docs/concepts/thesis.md) | accepted (ADR-001) |
+| The documentation site: quickstart, the six concept pages, harness recipes, the detector catalogue, CLI reference, cheatsheet, feature matrix, troubleshooting | [docs/index.md](docs/index.md) | `e7.5` (`reco-60m`). The CLI, cheatsheet, detector-example and feature pages are generated from the program (`python3 tools/gen_docs.py check`), and `python3 tools/check_docs_site.py` fails an orphan page, a dangling anchor, a placeholder left in prose, or a shipped verb, build feature, TUI view or detector with no documentation entry |
 | Architecture decision records | [docs/adr/](docs/adr/) | all six accepted: ADR-001, [ADR-002](docs/adr/0002-workspace.md), [ADR-003](docs/adr/0003-episodes.md), [ADR-004](docs/adr/0004-storage.md), [ADR-005](docs/adr/0005-harness-contract.md), [ADR-006](docs/adr/0006-tui.md) |
 | Episode identity and segmentation (what a review is keyed to, and what survives a rebase) | [docs/adr/0003-episodes.md](docs/adr/0003-episodes.md), `crates/fathom-ingest/src/segment.rs`, `src/recommender/segment.py` | accepted; the digests, the boundary cascade and the relink tiers are asserted by `tests/test_episode_identity_contract.py` |
 | Storage, indexing and cache contract (schema, invalidation matrix, perf budgets) | [docs/adr/0004-storage.md](docs/adr/0004-storage.md), `src/recommender/store/`, [benchmarks/budgets.json](benchmarks/budgets.json) | accepted; `e0.11` gates CI on `benchmarks/budgets.json` |

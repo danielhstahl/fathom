@@ -404,7 +404,7 @@ owned by `e0.9` and consumed through the classifier. They are declared in `e0.8`
 they layer, validate and explain like every other key:
 
 ```
-$ fathom testsurface policy
+$ fathom testsurface policy    # planned: no `testsurface` subcommand is built yet
 test surface policy (highest precedence first)
   findings
   test-removed         on    test.findings.test_removed             built-in default

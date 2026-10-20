@@ -31,6 +31,21 @@ jobs:
           python-version: "3.12"
       - name: glossary, plan references and link consistency
         run: python3 tools/check_docs.py
+      - name: "e7.5 docs site: no orphan page, no dangling anchor, no undocumented shipped feature"
+        # `docs/index.md` is the front door of the docs site, and this is the gate that keeps it a door:
+        # every page under `docs/` is reachable from it, every fragment link lands on a heading, and the
+        # four generated pages are the generators' own output. The coverage half is the acceptance
+        # criterion made mechanical — a verb, a TUI view, a build feature or a detector that ships without
+        # a documentation entry fails the build, because the enumerations come out of `enum Verb`,
+        # `features.rs`, `recommender.tui.views` and the blessed detector catalogue rather than out of a
+        # list somebody maintains. The `cli` page is not checked here: its source is a built binary, and
+        # `ci.yml` runs both halves again in the leg that has a compiled binary, because two of the checks
+        # have a program as their source: the `cli` page is clap's `--help`, and every command a page tells
+        # the reader to type is parsed by clap itself (`tools/check_docs_commands.py`, reached through
+        # `check_docs_site.py`). Here they skip themselves with a printed note rather than passing silently.
+        run: |
+          python3 tools/gen_docs.py check --page cheatsheet --page detectors --page features
+          python3 tools/check_docs_site.py
       - name: "e5.9 demo miniature: the shipped pack is the one the generator writes"
         # `fathom --demo` is the first thing a stranger runs, and its repository is a checked-in asset —
         # which means it can drift from the thing that generated it, from its own manifest, or from the

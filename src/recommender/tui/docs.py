@@ -163,8 +163,12 @@ def keymap_table() -> str:
             continue
         for chord, action in sorted(binds.items(), key=lambda kv: kv[0]):
             act = K.ACTIONS.get(action)
-            rows.append(("`%s`" % mode, "`%s`" % chord,
-                         "[`%s`](#the-action-registry)" % action if act else "`%s`" % action,
+            # The action id is a code span, not a link: this table is rendered into two documents
+            # (ADR-006 §7.3 and the docs-site cheatsheet) whose registry headings are spelled
+            # differently, and a generated link that resolves in one of them is a dead link in the
+            # other. `tools/check_docs_site.py` checks every fragment link in the tree, so the
+            # dead one could not stay.
+            rows.append(("`%s`" % mode, "`%s`" % chord, "`%s`" % action,
                          act.title if act else "(tab selection)"))
     return _table(("Mode", "Key", "Action", "Palette label"), rows)
 

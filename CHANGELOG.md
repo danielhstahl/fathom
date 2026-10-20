@@ -17,6 +17,58 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e7.5` — the documentation site: quickstart, the six concept pages, harness recipes, the detector catalogue, and generators that cannot lie (`reco-60m`)
+
+The thesis promised "a five-minute quickstart, a concept glossary, a cookbook of harness recipes, and a
+troubleshooting page", and had two of them. Now it is a site with a front door and an entry point for every
+kind of reader, and the parts that could rot are generated from the program instead of written down.
+
+- **`docs/index.md`** is the front door: who it is for, what to read first, the six nouns in one line each,
+  the task index, the reading order, and the four things no page here will promise. Every page under `docs/`
+  is reachable from it, which `tools/check_docs_site.py` enforces rather than hopes.
+- **`docs/quickstart.md`** is five minutes against the bundled miniature (`fathom --demo`), with every
+  printed line taken from the shipped binary and every `--json` claim checked against what the binary
+  actually answers. It ends by making you name what an episode is — including the four things an episode is
+  **not** — and then points at the concept pages.
+- **The six concept pages**: [`episode`](docs/concepts/episode.md), [`delta`](docs/concepts/delta.md),
+  [`risk score`](docs/concepts/risk-score.md), [`review ledger`](docs/concepts/review-ledger.md),
+  [`ratchet`](docs/concepts/ratchet.md), [`ambient mode`](docs/concepts/ambient-mode.md). Each states the
+  claim, what it is *not*, where the numbers come from, and what would be lost by loosening the definition —
+  with the worked example of a risk score going from 15 to 82 by adding one stub, and the ledger's four
+  gates on a sign-off replay.
+- **`docs/recipes/`**, six harness recipes: review a session, run beside the agent, connect a harness
+  (exact `fathom hooks ingest` payload, what the fields mean, what is deliberately unread), gate a pipeline,
+  export for a pull request, and ask an agent about this repository. Each one runs; the ones that need a
+  future build say so and name the ticket, and the CI build gate is a `fathom check --stdin` invocation a
+  reader can copy.
+- **`docs/detectors/index.md`**, the catalogue: every built-in detector with what it detects, why it is a
+  problem specifically in code an agent wrote, a worked example against a real repository, and how to tune
+  or silence it. The summary table, the knob table, the disabled-detector list and every worked example are
+  **generated** — each example is the detector run on the fixture it must fire on, so a detector that stops
+  firing cannot quietly keep its documentation.
+- **`docs/reference/cli.md`** (generated from `fathom --help`, verb by verb and sub-verb by sub-verb, with
+  the exit-code contract and its `ExitCode` source), **`docs/reference/cheatsheet.md`** (generated from the
+  keymap: the three sequences, the keys a harness may bind, every view/mode/action, the reserved chords and
+  the ones Fathom leaves alone), **`docs/reference/features.md`** (every declared build feature and consent
+  gate, with the claim each one makes and the test that pays for it, including the three net consent keys
+  and why `sqlite-bundled` may not default to off), and **`docs/troubleshooting.md`** (the exit codes you
+  will meet, the three ways an index can lie, hooks delivery, terminal capabilities, and the `doctor`
+  message you cannot act on).
+- `tools/gen_docs.py` writes those four pages between explicit markers — `check` exits 1 on drift, `write`
+  refuses to overwrite a page that lost a marker — and `tools/check_docs_site.py` fails an orphan page, a
+  dangling anchor, a `TODO`/`TBD`/placeholder left in prose, or a shipped `enum Verb` case, declared build
+  feature, TUI view or catalogued detector with no documentation entry. `tools/check_docs_commands.py` hands
+  every command a page tells the reader to type back to clap with `--help` appended, so a recipe that types a
+  subcommand nobody shipped or a flag nobody implemented fails the build instead of the reader. `contracts.yml`
+  runs both; `ci.yml` re-derives the CLI page against the binary it just built and re-runs the site checks with
+  that binary present, which is where those two clap-backed checks actually have a source. `tests/test_docs_site_contract.py`
+  asserts the same rules so a local `pytest` catches them first.
+- Also fixed as found: ADR-006's generated keymap table linked every action to an anchor its own headings
+  never produced (50 dead links, repaired by removing the link from the generator and regenerating the
+  document), four cross-page anchors in `docs/concepts/` pointed at renumbered headings, `docs/reference/`-
+  relative links in the new pages, and `docs/adr/0005`'s `[episode]` link to a glossary heading that does
+  not exist.
+
 ### `e5.7` — the review artefact: one record, three renderings, and the same bytes twice (`reco-1tn`)
 
 - **`fathom export` writes the file a pull request or an audit keeps.** `--episodes` takes an episode id,
