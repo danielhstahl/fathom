@@ -24,6 +24,7 @@
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod ambient;
 pub mod app;
 pub mod colour;
 pub mod diff;

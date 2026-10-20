@@ -33,12 +33,13 @@ reason it gave".
 ## 2 · Open the glance pane
 
 ```bash
-tmux split-window -h -p 30 'fathom watch & fathom'    # agent left, Fathom right
+tmux split-window -h -l 20 'fathom ambient'           # agent left, the glance right
 ```
 
-Press `a` in the Fathom pane. [Ambient mode](../concepts/ambient-mode.md) is a display mode rather than a data
-path: same delta model, no chrome, and it fits 80×12 with a 40×3 floor — the size of a tmux split that is not
-competing with your code.
+`fathom ambient` is [Ambient mode](../concepts/ambient-mode.md) as a process of its own: same delta model,
+no chrome, and it fits 80×12 with a 40×3 floor — the size of a tmux split that is not competing with your
+code. It draws once, then draws again only when what it would say has changed; if no `fathom watch` is alive
+it indexes new commits itself rather than letting you trust a pane that has fallen behind.
 
 ```text
 latest e8f1a2 · agent · 0:12 · risk 82 ✱
@@ -46,11 +47,28 @@ queue  7 open · 2 snoozed · 1 over 24 h
 index  epoch 41 · warm · 3 412 eps · 0:03 ago
 
 look now  e8f1a2 adds a cycle and 288 untested source lines
+
+<Enter> open it · r re-read · p pause · q quit · ? keys
 ```
 
-`<Enter>` opens whatever that line is about, which is the one-keystroke promise the whole view exists to keep.
-When you are caught up it goes quiet and dim on purpose: a second terminal that is always slightly shouting
-gets closed within a week, and then it cannot warn you about the thing it was there for.
+`<Enter>` opens whatever that line is about — the full view, in that terminal, on that episode — which is the
+one-keystroke promise the whole view exists to keep. When you are caught up it goes quiet and dim on purpose:
+a second terminal that is always slightly shouting gets closed within a week, and then it cannot warn you
+about the thing it was there for.
+
+The other way is `fathom watch & fathom` in that pane and `a` inside the shell — the same view, one of the
+shell's, with the queue and timeline a keystroke away instead of a process away. Use it when the second
+terminal is a Fathom you also work in; use `fathom ambient` when it is a glance and nothing else.
+
+Two numbers you can check rather than believe:
+
+```bash
+fathom ambient --self-check --deadline 10   # polls, draws and measured CPU share of ten seconds
+fathom ambient --once --json | head -1      # the same facts, as one machine-readable object
+```
+
+The first exits **11** if the run cost more than 1 % of a core, which is what makes "it goes quiet" a checked
+property. The second is the contract a statusline script reads (`fathom.cli.ambient/1`).
 
 ## 3 · Make the interruptions mean something
 

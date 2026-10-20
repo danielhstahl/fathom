@@ -622,6 +622,7 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["doctor", "--help"],
         vec!["export", "--help"],
         vec!["watch", "--help"],
+        vec!["ambient", "--help"],
         vec!["mcp", "--help"],
         vec!["mcp", "serve", "--help"],
     ] {

@@ -32,8 +32,26 @@ use crate::verbs::Globals;
 /// Whatever the shell raised, wrapped: a screen that could not be taken is an error exit, not a
 /// panic, and the terminal is already back the way it was by the time this returns.
 pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
-    let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let (overrides, mut notices) = keymap_overrides(&root);
+    dispatch_focus(
+        globals,
+        None,
+        &std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+    )
+}
+
+/// Run the shell with the cursor placed on one episode (`reco-8bx`).
+///
+/// This is how `fathom ambient`'s `<Enter>` drills in: the glance pane hands the same terminal to the
+/// shell and names the episode it was pointing at. It is a session *resume*, not a new channel — the shell
+/// already restores its view from `tui.view` and its cursor from `timeline.selection`, so the one keypress
+/// arrives through the same door a reopened shell does, with the same "that episode moved" report if the
+/// id no longer resolves (ADR-003 §6).
+pub fn dispatch_focus(
+    globals: &Globals,
+    focus: Option<&str>,
+    root: &std::path::Path,
+) -> Result<ExitCode> {
+    let (overrides, mut notices) = keymap_overrides(root);
     // What the terminal says it is (`e5.5`). Read here, at the edge, because `fathom-tui` may not
     // read variables (ADR-002 §3); what comes back is a description of the thing we are about to
     // draw into, and the notices are what makes a degraded terminal a reported one.
@@ -139,11 +157,7 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
         // and look (`reco-1nu`): an empty pane over a finished index must not send the reviewer to
         // `fathom index`, which is already done and changes nothing.
         index,
-        session: if globals.fresh {
-            Vec::new()
-        } else {
-            loaded.entries.clone()
-        },
+        session: session_entries(globals, &loaded.entries, focus),
         // ...and the diff pane gets its byte source the same way (`reco-0kw`): the shell never opens
         // the store or the object store, so `d` asks this provider, and the provider is the only
         // party that can answer. `None` is the no-backend build, and the pane says which it has.
@@ -192,6 +206,39 @@ pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
     // The run's own numbers are not the answer anyone asked for, so they
     // stay in the report and out of the pipe; `fathom doctor` is where a slow frame gets reported.
     Ok(ExitCode::Ok)
+}
+
+/// The session rows the shell opens with, with a drill-in's focus applied on top of them.
+///
+/// `--fresh` still means fresh: a reviewer who asked to start from defaults is not overruled by the pane
+/// they came from. Otherwise the stored rows are kept and the two keys that decide *where the shell lands*
+/// are replaced, because a drill-in that left the reviewer in whatever view they last left is a drill-in
+/// that did nothing.
+fn session_entries(
+    globals: &Globals,
+    stored: &[(String, String)],
+    focus: Option<&str>,
+) -> Vec<(String, String)> {
+    let mut entries = if globals.fresh {
+        Vec::new()
+    } else {
+        stored.to_vec()
+    };
+    let Some(episode) = focus.filter(|episode| !episode.is_empty()) else {
+        return entries;
+    };
+    entries.retain(|(key, _)| {
+        key != fathom_tui::session::KEY_VIEW && key != fathom_tui::timeline::KEY_SELECTION
+    });
+    entries.push((
+        fathom_tui::session::KEY_VIEW.to_owned(),
+        "timeline".to_owned(),
+    ));
+    entries.push((
+        fathom_tui::timeline::KEY_SELECTION.to_owned(),
+        episode.to_owned(),
+    ));
+    entries
 }
 
 /// `fathom tui --show-keys`: the merged table as text, for a pipe, CI, or a reader that wants the
@@ -276,7 +323,7 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
 /// A missing key is the normal case. A key that is not a list of strings is a notice, not a silent
 /// drop — the same rule `keys.overrides` follows, because a config line that does nothing is worse than
 /// one that refuses.
-fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<String>) {
+pub(crate) fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<String>) {
     let Ok(text) = std::fs::read_to_string(root.join("fathom.toml")) else {
         return (Vec::new(), Vec::new());
     };
@@ -346,7 +393,7 @@ fn repo_label(root: &std::path::Path) -> String {
 /// (ADR-006 §0.1), and `0 commits` printed over a store that would not open is the same lie with a
 /// digit on it.
 #[cfg(feature = "sqlite-bundled")]
-fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
+pub(crate) fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
     use fathom_store::episode::EpisodeQuery;
     use fathom_store::spine::Store;
 
@@ -372,6 +419,6 @@ fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
 /// A binary built without a SQLite backend cannot read any store, and says so instead of reporting
 /// that the repository is empty (`fathom --version` names the feature that is missing).
 #[cfg(not(feature = "sqlite-bundled"))]
-fn index_facts(_root: &std::path::Path) -> fathom_tui::index::Facts {
+pub(crate) fn index_facts(_root: &std::path::Path) -> fathom_tui::index::Facts {
     fathom_tui::index::Facts::no_backend()
 }

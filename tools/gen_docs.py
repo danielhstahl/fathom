@@ -459,6 +459,8 @@ VERB_DOCS = {
             "the agent-facing surface; the server is `e6.4`'s"),
     "watch": (["docs/recipes/run-beside-the-agent.md", "docs/concepts/session-state.md"],
               "index as commits land"),
+    "ambient": (["docs/concepts/ambient-mode.md", "docs/adr/0006-tui.md"],
+                "the glance pane for the second terminal"),
     "hooks": (["docs/harness/README.md", "docs/adr/0005-harness-contract.md"],
               "the harness event stream, and why a line was refused"),
     "tui": (["docs/reference/cheatsheet.md", "docs/adr/0006-tui.md"],

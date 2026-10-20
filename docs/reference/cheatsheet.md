@@ -117,7 +117,8 @@ up here first.
 
 Ambient is the odd one out, and [the concept page](../concepts/ambient-mode.md) explains why: it is a
 display mode, not a destination, and its floor is 40×3 because ADR-001 §4.1 promises it fits a tmux
-pane beside the harness.
+pane beside the harness. The same view runs as a process of its own — `fathom ambient` — for the terminal
+you leave open next to the agent; there `<Enter>` hands the terminal to this shell, on that episode.
 
 ## 3 Keys by what you are trying to do
 

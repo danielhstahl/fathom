@@ -144,6 +144,7 @@ fathom stats              # repo scale, index state, cache hit rate             
 fathom show HEAD~3        # one episode: message, trailers, files, taxonomy decisions[works: e1.10]
 fathom doctor --json      # the report that is safe to attach to a bug report          [works: e1.10]
 fathom                    # the TUI: queue, timeline, diff, structure, deps, ambient
+fathom ambient            # the glance pane for the second terminal: latest, queue, index, one reason
 fathom why <episode>      # why this episode scored the risk it scored, per feature
 fathom analyze <episode> --json    # the versioned delta model, one source of truth
 fathom narrative <episode>  # the prose every claim in it cites its evidence from

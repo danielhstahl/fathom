@@ -27,7 +27,11 @@ use crate::verbs::{Pending, WatchArgs, failed};
 
 /// Everything the run needs that is not the state machine: the repository path, the chunk size, and where the
 /// store lives.
-struct IndexJob {
+///
+/// `pub(crate)` because a second caller arrived: `fathom ambient` (`reco-8bx`) drives this same job from its
+/// own poll when no watcher is running, so "index what is new, in slices the size of a budget" is one
+/// implementation and not two that can drift.
+pub(crate) struct IndexJob {
     root: PathBuf,
     store_path: PathBuf,
     chunk_units: usize,
@@ -39,6 +43,32 @@ struct IndexJob {
     /// Re-analyse uncommitted paths when the index moves? Off by default, and the *watcher's* option
     /// decides — not the mere fact that `git add` touched the index file, which it does on every commit.
     index_worktree: bool,
+}
+
+impl IndexJob {
+    /// The job for one repository, with the watcher's default slice and slice budget.
+    ///
+    /// The deadline is the same one `fathom watch` gives itself — one poll interval of indexing per ask, so a
+    /// huge backlog is taken in slices and the caller keeps its idle budget.
+    pub(crate) fn for_root(root: &Path, store_path: PathBuf, chunk_units: usize) -> IndexJob {
+        IndexJob {
+            root: root.to_path_buf(),
+            store_path,
+            chunk_units,
+            chunk_deadline: Some(Instant::now() + Duration::from_millis(250)),
+            store_compiled: cfg!(feature = "sqlite-bundled"),
+            index_worktree: false,
+        }
+    }
+
+    /// Re-arm the slice budget for one more ask.
+    ///
+    /// The deadline is absolute, so a caller that drives the job from a poll has to move it each time or the
+    /// first quarter-second of the process is the only indexing it ever does. That is a bug with the shape of
+    /// a silent hang, which is why it is a method rather than something each caller remembers.
+    pub(crate) fn start_slice(&mut self, budget: Duration) {
+        self.chunk_deadline = Some(Instant::now() + budget);
+    }
 }
 
 impl Job for IndexJob {

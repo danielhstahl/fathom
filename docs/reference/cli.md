@@ -11,7 +11,7 @@
   schema file pins it — is [the headless verbs](../concepts/cli.md). This page is the flag list; that
   page is the argument for it.
 
-One binary, sixteen verbs, one exit-code contract. `fathom` with no verb opens the terminal UI if the
+One binary, seventeen verbs, one exit-code contract. `fathom` with no verb opens the terminal UI if the
 `tui` feature was compiled in ([the cheatsheet](cheatsheet.md) is its keyboard reference); every verb
 has a headless form, because ADR-006 §6.7 refuses a fact that only exists on a screen.
 
@@ -47,6 +47,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`export`](#fathom-export)** | Write a review artefact for a pull request or an audit | shipped | [*export-artefact*](../concepts/export-artefact.md) · [*export-for-a-pr*](../recipes/export-for-a-pr.md) |
 | **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | *refuses: names its plan item* | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
 | **[`watch`](#fathom-watch)** | Watch the repository and index as it changes | shipped | [*run-beside-the-agent*](../recipes/run-beside-the-agent.md) · [*session-state*](../concepts/session-state.md) |
+| **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
 | **[`tui`](#fathom-tui)** | Print the terminal UI's keymap, or open the UI itself | shipped | [*cheatsheet*](cheatsheet.md) · [*0006-tui*](../adr/0006-tui.md) |
 <!-- END GENERATED: verbs -->
@@ -855,6 +856,47 @@ Options:
   -V, --version                      Print version
 ```
 <!-- END GENERATED: help.watch -->
+
+## `fathom ambient`
+
+The glance pane on its own, for the second terminal beside an agent: latest episode and its risk, how much
+is waiting, whether the index is current, and the one reason to look now — in a pane that fits 80×12 and
+refuses below 40×3 ([ambient mode](../concepts/ambient-mode.md),
+[ADR-006 §5.7](../adr/0006-tui.md)). It redraws only when what it would say has changed, so a quiet
+repository costs a `stat` and a ref read per poll rather than a screenful of bytes; `--self-check` prints
+the polls, the redraws and the measured CPU share of the run and exits **11** if it blew the 1 %-of-a-core
+budget. `<Enter>` hands the terminal to the full view with that episode selected; `--json` streams one
+object per change under the `fathom.cli.ambient/1` contract, and `--once` prints the same facts once with
+no terminal taken.
+
+<!-- BEGIN GENERATED: help.ambient -->
+```text
+The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+
+Usage: fathom ambient [OPTIONS]
+
+Options:
+      --root <ROOT>                The repository to read [default: .]
+      --json                       Print the pane as one JSON object per change (machine contract `fathom.cli.ambient/1`)
+      --no-alt-screen              Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                      Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --once                       Print the pane once and exit; never take the screen
+      --mouse                      Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --plain                      Draw the pane as text with no terminal taken (ADR-006 §6.7)
+      --interval-ms <INTERVAL_MS>  How often to look, in milliseconds. 400 is what meets the "under a second" promise at near-zero cost [default: 400]
+      --lines                      With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --deadline <DEADLINE>        Stop after this many seconds
+      --theme <NAME|PATH>          Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --no-index                   Never index from the pane: read whatever the last index run left, whoever ran it
+      --chunk-units <CHUNK_UNITS>  Episodes to index per slice when this pane is the one keeping the index current [default: 200]
+      --progress                   print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress                never print the index's progress row, even on a terminal
+      --width <WIDTH>              Render at this width instead of the terminal's — for a pipe, a test, or a tmux status line
+      --self-check                 Run to the deadline and print what the pane cost: polls, redraws and this process's own CPU share. Exits `11` if it blew the budget of 1 % of a core
+  -h, --help                       Print help (see more with '--help')
+  -V, --version                    Print version
+```
+<!-- END GENERATED: help.ambient -->
 
 ## `fathom hooks`
 

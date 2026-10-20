@@ -17,6 +17,44 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The second terminal got its own pane: `fathom ambient` (`reco-8bx`)
+
+The glance view existed inside the shell; what was missing was the thing to leave open in the pane beside the
+agent. `fathom ambient` is that pane — latest episode and its risk, how much is waiting, whether the index is
+current, and the one reason to look now — and the four things the ticket demanded are four numbers rather than
+four adjectives.
+
+* **It fits the sizes it promises.** 80×12 is the box, 40×3 is the floor (ADR-001 §4.1's tmux claim), and the
+  ladder drops the keys line, then the notes, then the gap and the index line in that order. Below the floor it
+  prints `AMBIENT REFUSED — TOO SMALL`, the size it needs and the verb that works at any size, and exits **0**:
+  a pane clipped to 30 columns would be a pane saying something false.
+* **It costs what a quiet repository costs.** The loop blocks for one poll (400 ms), starts each poll with a
+  `stat` of the store, the watcher's heartbeat and `HEAD`, opens the index only when one of those moved, and
+  draws **only if the text it would print changed** — ages are bucketed (`now`, `<15s`, `15s`, `1m`) so a silent
+  repository does not redraw to repeat itself. `fathom ambient --self-check` prints polls, redraws and the
+  run's own measured CPU share and exits **11** over 1 % of one core, so the budget is gated rather than
+  claimed; the gated run measures **0.24 %** of one core with the repository quiet.
+* **A new episode is on the pane inside the second.** The end-to-end test times it: commit returned → pane
+  redrawn with the new episode, under the ticket's **1 s** at the shipping 400 ms poll (0.42 s measured on the
+  machine this was written on), and `<Enter>` hands the terminal to the full
+  view with that episode selected — the session's own resume door (`tui.view`, `timeline.selection`), so a
+  `--root` other than the working directory keeps its identity across the keypress.
+* **"Caught up" is one sentence in one place.** The queue line only counts (`0 open · 12 dealt with`), the index
+  line only reports epoch and age, and the attention line is the only place allowed to say `caught up` — and it
+  says it only when nothing outranks it, where what outranks it is, in order: the index cannot be read, `HEAD`
+  is not in the index, nothing has indexed for ten minutes, a high-risk episode is open, work is unranked, work
+  is waiting. A stale pane is a loud pane; a resting pane is dim all over, faces included, and the test asserts
+  no span on it is printed loud.
+* **And it is pipe-shaped like everything else** (ADR-006 §6.7): `--once` renders once as text, `--json` streams
+  one `fathom.cli.ambient/1` object per change, `--plain` means what it means everywhere, and `--no-index` says
+  on stderr that it is reading whatever the last run left. With no watcher alive it indexes new commits itself,
+  because a glance pane that is quietly behind is worse than none.
+
+Asserted by `crates/fathom-tui/tests/ambient.rs` (17 tests: the two sizes, the refusal, the ladder, the ranking
+of reasons, the caught-up faces, the redraw-only-on-change loop, `q`/`<Enter>`/`r`/`p`/`?`) and
+`crates/fathom-cli/tests/ambient_verb.rs` (7 end-to-end against the shipped binary, including the CPU budget and
+the one-second latency).
+
 ### `e4.9` follow-up — the flag arm fired for the first time, τ moved 70 → 40, and a bot's compiled lock stopped earning the CI claim (`reco-6co`)
 
 `reco-dyt` left two of Guardrail 3's nine gates failing on the same sentence: the change had to be to *what gets

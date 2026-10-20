@@ -15,6 +15,11 @@
 // that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,
 // so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
 mod analyze;
+// The glance pane for the second terminal (`reco-8bx`). It is gated with the shell because it draws the
+// shell's own view, and its `<Enter>` hands the terminal to the shell; a `minimal` binary names the feature
+// it is missing instead (ADR-002 §6.1).
+#[cfg(feature = "tui")]
+mod ambient;
 // Who wrote it, and how to tell Fathom it got it wrong (`e4.1`): the write path for a correction, which
 // needs the store, so it lives above the classifier and below the verb table (ADR-002 §4.3).
 mod attribution;

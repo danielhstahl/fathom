@@ -59,6 +59,20 @@ pub struct Facts {
     pub episodes: Option<u64>,
 }
 
+impl Read {
+    /// The stable spelling, for `--json` and for a bug report that has to say which state it saw.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Read::Unknown => "unknown",
+            Read::Absent => "absent",
+            Read::Present => "present",
+            Read::Unreadable => "unreadable",
+            Read::NoBackend => "no_backend",
+        }
+    }
+}
+
 impl Facts {
     /// Nothing was looked up: the shell's own fallback, and what every headless test frame draws.
     #[must_use]

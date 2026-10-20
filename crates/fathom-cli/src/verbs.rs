@@ -163,6 +163,8 @@ pub enum Verb {
     Mcp(McpArgs),
     /// Watch the repository and index as it changes
     Watch(WatchArgs),
+    /// The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+    Ambient(AmbientArgs),
     /// Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
     Hooks(HooksArgs),
     /// Print the terminal UI's keymap, or open the UI itself
@@ -571,6 +573,47 @@ pub struct WatchArgs {
     pub quiet: bool,
 }
 
+/// `fathom ambient` — the glance pane, in a process of its own (`reco-8bx`).
+///
+/// The flags are the ones a second terminal needs and nothing else: how often to look, how long to run, how
+/// wide to draw, and who is doing the indexing. There is no `--quiet`, because the pane's quiet is designed
+/// rather than configured, and no `--verbose`, because a glance pane that grew a seventh column stopped
+/// being a glance.
+#[derive(Args, Debug)]
+pub struct AmbientArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the pane as one JSON object per change (machine contract `fathom.cli.ambient/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Print the pane once and exit; never take the screen.
+    #[arg(long)]
+    pub once: bool,
+    /// Draw the pane as text with no terminal taken (ADR-006 §6.7).
+    #[arg(long)]
+    pub plain: bool,
+    /// How often to look, in milliseconds. 400 is what meets the "under a second" promise at near-zero cost.
+    #[arg(long, default_value_t = 400)]
+    pub interval_ms: u64,
+    /// Stop after this many seconds.
+    #[arg(long)]
+    pub deadline: Option<u64>,
+    /// Never index from the pane: read whatever the last index run left, whoever ran it.
+    #[arg(long)]
+    pub no_index: bool,
+    /// Episodes to index per slice when this pane is the one keeping the index current.
+    #[arg(long, default_value_t = 200)]
+    pub chunk_units: usize,
+    /// Render at this width instead of the terminal's — for a pipe, a test, or a tmux status line.
+    #[arg(long)]
+    pub width: Option<usize>,
+    /// Run to the deadline and print what the pane cost: polls, redraws and this process's own CPU share.
+    /// Exits `11` if it blew the budget of 1 % of a core.
+    #[arg(long)]
+    pub self_check: bool,
+}
+
 /// `fathom hooks`
 ///
 /// The stream is the harness's, and this verb only reads it (or rebuilds its own offset): nothing here
@@ -788,6 +831,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Export(args)) => crate::export::run(args),
         Some(Verb::Mcp(args)) => mcp(args),
         Some(Verb::Watch(args)) => watch(args),
+        Some(Verb::Ambient(args)) => ambient(args, globals),
         Some(Verb::Hooks(args)) => crate::harness::run(args),
         Some(Verb::Tui(args)) => tui(args, globals),
     }
@@ -1315,6 +1359,18 @@ fn watch(args: &WatchArgs) -> eyre::Result<ExitCode> {
 #[cfg(not(feature = "watch"))]
 fn watch(_args: &WatchArgs) -> eyre::Result<ExitCode> {
     Err(feature_absent("fathom watch", "watch"))
+}
+
+/// The same verb in a binary that was built without the terminal shell: the glance pane is the shell's own
+/// view, and a `minimal` binary says which feature it is missing instead of drawing nothing (ADR-002 §6.1).
+#[cfg(not(feature = "tui"))]
+fn ambient(_args: &AmbientArgs, _globals: &Globals) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom ambient", "tui"))
+}
+
+#[cfg(feature = "tui")]
+fn ambient(args: &AmbientArgs, globals: &Globals) -> eyre::Result<ExitCode> {
+    crate::ambient::run(args, globals)
 }
 
 fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
