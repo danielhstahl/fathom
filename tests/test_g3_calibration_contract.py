@@ -96,7 +96,10 @@ def test_exactly_three_pinned_repositories(pins):
 def test_each_pin_is_a_pinned_commit_and_window(pins):
     for name, pin in pins.items():
         assert re.fullmatch(r"[0-9a-f]{40}", pin["head"]), f"{name}: head is not a full oid"
-        assert pin["window"] >= 20, f"{name}: a window under 20 episodes is an anecdote"
+        # Not a style preference: the miss-rate gates are rates over the mature reworked episodes this
+        # window contains, and at 60 episodes per pin the denominator was 7 — a 0.20 gate cannot tell
+        # 0.20 from 0.60 at n = 7. Shrinking a window re-breaks that gate (corpus README §6).
+        assert pin["window"] >= 180, f"{name}: a window under 180 episodes cannot gate a miss rate"
         assert pin["url"].startswith("https://"), f"{name}: url must be cloneable"
         assert pin["repository"] == name, f"{name}: pin name and directory disagree"
         # The harness has no clock; `pinned_now` is it, so it has to be a real instant in the shape the
@@ -116,6 +119,21 @@ def test_pins_are_the_reporters_the_harness_measured(pins, report):
         assert row["window"] == pins[row["repository"]]["window"]
         assert row["episodes"] > 0 and row["scored"] == row["episodes"], (
             f"{row['repository']}: an episode without a score is an episode the flag set cannot see"
+        )
+
+
+def test_each_window_delivered_the_episodes_it_claims(pins, report):
+    """A shallow clone does not fail; it measures fewer episodes than the pin claims and says nothing.
+
+    The fetcher's depth is derived from the window for exactly this reason (`window * 4 + 20`, because the
+    harness walks four commits per episode), and a widened pin whose clone ran out would quietly shrink the
+    denominator every miss-rate gate is measured on.
+    """
+    for row in report["repositories"]:
+        window = pins[row["repository"]]["window"]
+        assert row["episodes"] == window, (
+            f"{row['repository']}: the pin claims a {window}-episode window and the harness measured "
+            f"{row['episodes']} — re-run `python3 tools/fetch_g3_corpus.py --force`"
         )
 
 
@@ -309,13 +327,38 @@ def test_a_gate_that_passes_on_an_empty_denominator_is_a_lie(report):
             assert "floor" in gate["detail"] or "no measurement" in gate["detail"] or "no denominator" in gate["detail"]
 
 
-def test_alpha_gate_is_not_measurable_at_the_published_tau_and_says_so(report):
+def test_the_alpha_gate_is_measurable_at_the_published_tau_and_fails(report):
+    """The widened corpus cleared the denominator floor at τ 70, and the gate came out over the bar.
+
+    `e4.9`'s 60-episode pins gave three flagged episodes, under the floor of five, so the gate had to refuse
+    to read them (`not-measurable`). The corpus grew, the denominator grew past the floor, and the
+    `expected` moved to `fail` — which is the only direction this may move in when a corpus grows. If a
+    future re-pin drops the flag population back under the floor the gate has to be re-declared as
+    `not-measurable`, not left to print a pass on an anecdote.
+    """
     alpha = report["aggregate"]["cut_tau_alpha"]
     assert alpha["tau"] == 70
-    assert alpha["labelled"] < 5, (
-        "the published default now flags enough episodes to measure `G3` there: the "
-        "`g3-alpha-at-published-tau` gate has to be re-declared, not quietly re-blessed"
+    assert alpha["labelled"] >= 5, (
+        "the published default no longer flags enough episodes to measure `G3` there: the corpus shrank, "
+        "and `g3-alpha-at-published-tau` has to be re-declared `not-measurable` rather than left to guess"
     )
+    declared = {g["id"]: g for g in report["gates"]}["g3-alpha-at-published-tau"]
+    assert declared["expected"] == declared["status"] == "fail", (
+        f"measured {declared['detail']}: over the 0.30 bar on {alpha['labelled']} labelled flags"
+    )
+
+
+def test_the_miss_rate_denominator_is_big_enough_to_read_the_rate(report):
+    """The gate this corpus was widened for, asserted against the artefact.
+
+    Seven mature reworked episodes could not discriminate a 0.20 gate; the ticket that widened the pins did
+    it by growing the corpus, with the bars byte-identical. This is the guard that the corpus stays big
+    enough for the two miss-rate gates to mean something.
+    """
+    miss = report["aggregate"]["miss"]
+    assert miss["mature_rework"] >= 20, f"only {miss['mature_rework']} mature reworked episodes: G3's " "companion gate is an anecdote again"
+    gate = {g["id"]: g for g in report["gates"]}["miss-rate-denominator-is-big-enough"]
+    assert gate["expected"] == gate["status"] == "pass"
 
 
 # ---------------------------------------------------------------------------------------------

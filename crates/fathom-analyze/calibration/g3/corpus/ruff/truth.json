@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, head re-pinned and the window widened to 180 episodes)",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -64,6 +64,132 @@
    "note": "A nine-commit bot episode bumping `bitflags` and the lockfiles. The flag is the workflow axis again; no finding spoke, so nothing but the ranking cried wolf here.",
    "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
    "evidence": "`git show 72d6e487e6 --stat` (members: nine bump commits, Cargo.lock, uv.lock)."
+  },
+  {
+   "commit": "3e3f22dcc47a534d5bb6668817464b02c6e6e133",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Making `stacker` opt-in moves the parser's deep-recursion support behind a new cargo feature: `stacker` becomes optional with `[features] stacker = [\"dep:stacker\"]`, `parser/mod.rs` grows the cfg branches, nine crates re-declare it, and CI gains a `cargo check -p ruff_python_parser --no-default-features` step so the no-stacker build cannot rot. The score's `of +243 on logic, +0 was tests` is a path-class miss — `src/parser/tests.rs` (334 lines) is the parser's own test module and it was updated — but `shotgun_edit`'s eight clusters are the real footprint and the flag pointed at a change in what the shipped parser does.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 3e3f22dc`: `crates/ruff_python_parser/Cargo.toml` `stacker = { workspace = true, optional = true }` + `[features] stacker = [\"dep:stacker\"]`; `.github/workflows/ci.yaml` +3 (`Check parser without stacker`); `src/parser/mod.rs` 81, `src/parser/tests.rs` 334."
+  },
+  {
+   "commit": "8e768d1fbb19e5f21f7dde643a31c2466083e63a",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Four lockfile-only bumps grouped as one episode: transitive `rand`, `anyio` and `urllib3`, and a newer Wrangler for the playground deployment. 619 of 619 churn lines sit on lockfile paths, no finding spoke, and the flag is the dependency axis reading the file class of `Cargo.lock`, `uv.lock` and `playground/deploy/package-lock.json`.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 8e768d1f --stat`: `Cargo.lock` 6; members `24bba096` (uv.lock 8), `34266aa4` (uv.lock 6), `355cda38` (`playground/deploy/package-lock.json` 597, `package.json` 2)."
+  },
+  {
+   "commit": "d298e5155a1318e865d3179988429ad8152ac5d7",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "A renovate NPM development group for the playground workers — `@cloudflare/workers-types`, the React types, oxlint. 1 192 of 1 192 churn lines are lockfile paths, no finding spoke, and the playground is not the shipped artefact. The flag is the supply-chain axis naming `playground/api/package-lock.json`.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show d298e515 --stat`: 4 files +906 −286 — `playground/api/package-lock.json`, `playground/deploy/package-lock.json` + `package.json`, `playground/package-lock.json`."
+  },
+  {
+   "commit": "518d03e3790cdd1d6c34c513b2d451c30a99a770",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "`pyrefly` 1.3.0 in the ty benchmark harness: a manifest line and 30 lines of its lockfile, nothing that ships and no finding. It reached the top decile on the lockfile axis alone, which flags it identically to the release bumps and the playground groups in the same window.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 518d03e3 --stat`: `scripts/ty_benchmark/pyproject.toml` 2, `scripts/ty_benchmark/uv.lock` 30."
+  },
+  {
+   "commit": "5b27c1ccfaa230fb195855f5cf3404a21e3379cd",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["generated_edit", "shotgun_edit"],
+   "note": "The release bot cutting 0.17.0: 97 files, 44 manifests, `Cargo.lock`, forty regenerated crate READMEs, and the changelog rolled into `changelogs/0.16.x.md` with `BREAKING_CHANGES.md` opened for the next cycle. `generated_edit`'s three claims are the version string inside READMEs the release act regenerates, and `shotgun_edit`'s 42 clusters are one mechanical act seen forty-two times — the same reading `4683270c69` got in the e4.9 pass, one minor release later.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 5b27c1cc --stat`: 97 files +983 −759 — `Cargo.toml` 80 version lines, `CHANGELOG.md` −625 beside `changelogs/0.16.x.md` +585 and `BREAKING_CHANGES.md` +78, `crates/*/README.md` 4 lines each, `crates/ruff_command_line/README.md` 12."
+  },
+  {
+   "commit": "3ac6b4c31229664cde21edc4f49949450f8f8e08",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": ["untested_new_logic"],
+   "note": "`untested_new_logic` says the episode `touched no test file at all (0 test paths)`, and it touched six: `mdtest/expression/boolean.md` +37, `if.md` +16, `redundant_condition.md` +51, `statically_known_branches.md` +95, `type_properties/truthiness.md` +11 and `types/infer/tests.rs` +64. mdtest is how ty asserts type-checker behaviour, and the `Truthiness::Uninhabited` variant the finding calls untested is what those resources pin (both branches of a `Never` condition now unreachable). The detector looks for `test`-shaped paths and does not see the project's real test surface; that is a catalogue blind spot, not an untested change.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 3ac6b4c3 --stat`: `crates/ty_python_core/src/lib.rs` 144 (`pub const fn is_uninhabited`, `pub fn union`), `crates/ty_python_semantic/resources/mdtest/expression/boolean.md` +37 and four more mdtest resources, `types/infer/tests.rs` +64, 30 files +864 −296."
+  },
+  {
+   "commit": "fbbe89dc715c70b2fdde2324334b2b3d460302d3",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": ["lint_escape"],
+   "note": "The `#[expect(deprecated)]` `lint_escape` named carries its own reason two lines above it: `We've asked the upstream maintainers to reconsider the deprecation`, with a link to the icu4x issue. The finding's claim is that the reason is not in the diff, and here it is, in the diff, on the lines above the directive. The change itself is the correct handling of `NfcInert` going deprecated in icu_properties 2.3 — a scoped `#[expect]` at the one call site, not a blanket allow.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show fbbe89dc -- crates/ruff_python_literal/src/escape.rs`: the two comment lines then `#[expect(deprecated)] let inert = CodePointSetData::new::<icu_properties::props::NfcInert>();`; rest of the episode is `Cargo.lock` 55."
+  },
+  {
+   "commit": "7857566b3d0415013d6263f3d0fa0ad74bb43120",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Seven renovate NPM development bumps for the playground in one episode — workers-types, react-dom types, oxlint, wrangler — and 154 insertions against 154 deletions of lockfile in its last member. No finding spoke; the flag is the dependency axis on the playground's own lockfiles, which are not the shipped artefact.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 7857566b --stat`: 4 files +154 −154 (`playground/package-lock.json` 166, `playground/deploy/package.json` 2); episode members are seven renovate bump commits."
+  },
+  {
+   "commit": "db2a4a9216db7cf756350a15f4f527f16af3f2f9",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Hyperfine 2.0.0-alpha.2 for the benchmark scripts: `scripts/benchmarks/run_formatter.sh` reshuffled, a CONTRIBUTING note, `pyproject.toml` and its lock. Nothing ships, nothing is tested, no finding spoke, and the flag is the lockfile axis on a benchmark harness.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show db2a4a92 --stat`: `CONTRIBUTING.md` 3, `pyproject.toml` 4, `scripts/benchmarks/run_formatter.sh` 56, `uv.lock` 18."
+  },
+  {
+   "commit": "57a6e86342a46844dfbc8f039273abbc718f2502",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": ["untested_new_logic"],
+   "note": "The second time in this window that `untested_new_logic` claimed `no test file at all` about a ty change that is tested in mdtest: `escape_for_display` is new in `crates/ruff_python_literal/src/escape.rs` and its behaviour — `Literal['a\"b']` rather than `Literal[\"a\\\"b\"]`, NFC-normalised versus raw text — is pinned by 94 added lines of `mdtest/literal/string.md`, which is the suite ty's display behaviour is written in. Same blind spot as `3ac6b4c312`, one crate over.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 57a6e863 --stat`: `crates/ruff_python_literal/src/escape.rs` +244 (`pub fn escape_for_display`), `crates/ruff_python_literal/src/char.rs` 14, `crates/ty_python_semantic/resources/mdtest/literal/string.md` +94, `types/display.rs` 36."
+  },
+  {
+   "commit": "c79d773317a48b215697cf28c3687961de6733f4",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": ["debug_leftover", "untested_new_logic"],
+   "note": "Two findings, both about the fuzzer script rather than about the change. `untested_new_logic` charged `python/py-fuzzer/fuzz.py` for 166 lines including `class Bug`, `RenderableReproducer` and `render_issue_body` — a standalone script in a directory with no test suite, by this repository's design — and `debug_leftover` charged `print(self.maybe_bug.source)`, which is the fuzzer's report and the point of the program. e4.9 dismissed `2e34f5ba22` for the same `debug_leftover` claim on the same file; the second time is evidence of a rule, not a coincidence. What the episode actually does — put minimized reproducers into the daily fuzz issue, `daily_fuzz.yaml` +33 and a new `.jinja` template — is not what either finding described.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show c79d7733 --stat`: `python/py-fuzzer/fuzz.py` 175, `.github/workflows/daily_fuzz.yaml` 33, `python/py-fuzzer/daily_fuzz_issue.md.jinja` +35, `python/py-fuzzer/uv.lock` 77; finding quotes `print(self.maybe_bug.source)`."
+  },
+  {
+   "commit": "8ecfc92734b0b574de2b25b2bebb56a97b3e9ba4",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "A new CI gate: `scripts/check-scripts.py` (+125 lines) and a workflow step that fails a pull request when a script's lockfile is stale, replacing the hand-maintained per-script `.lock` files. `untested_new_logic` is technically right that the script has no tests, and the flag's value is exactly that: the thing being changed is what CI enforces on every future change in the repository, and a gate that decides what fails deserves the read whether or not it has its own tests.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 8ecfc927 --stat`: 28 files +163 −210 — `scripts/check-scripts.py` +125, `.github/workflows/ci.yaml` 4, `pyproject.toml` +11, 24 `scripts/*.py.lock` rewritten or removed."
+  },
+  {
+   "commit": "3265ed1f944c98bb4c04d632fbefb1257cdb583d",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["generated_edit", "shotgun_edit"],
+   "note": "The release bot again, three patch versions earlier: 89 files for 0.16.10, forty `Cargo.toml` version lines, `Cargo.lock`, and the crate READMEs regenerated around them. `generated_edit` charges two hand-written-looking lines in `crates/ruff_python_codegen/README.md` that are the regenerated badge, and `shotgun_edit`'s 40 clusters are the same mechanical act counted forty times.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 3265ed1f --stat`: 89 files +240 −206 — `Cargo.toml`/`Cargo.lock`, ~40 `crates/*/Cargo.toml` at 2 lines, `crates/*/README.md` at 4, the `crates/ruff_python_codegen/README.md` 2 the finding quotes."
+  },
+  {
+   "commit": "41d30df6fdbe215390b3acb46e8cd4017f65580d",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Rust 1.99 and MSRV 1.97, explicitly `following our N-2 support policy`, plus the Clippy fixes that come with it and Hawk moved to 0.1.15. MSRV is a promise to downstream builds, so `rust-toolchain.toml` and the workspace `rust-version` are operator-visible even though the diff is 8 files; `shotgun_edit`'s five clusters are the Clippy fallout. Same answer e4.9 gave to `bfedc614b7`, which was the smaller version of this.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 41d30df6 --stat`: 8 files +87 −86 — `rust-toolchain.toml` 2, workspace `Cargo.toml` `rust-version`, Clippy fixes under `crates/ty_python_semantic/src/types/infer/builder/`, Hawk bump in `.github/workflows`."
   }
  ]
 }

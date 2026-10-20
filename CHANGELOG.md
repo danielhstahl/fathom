@@ -17,6 +17,46 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.9` follow-up — the Guardrail 3 corpus got three times the window, and the miss-rate gate stopped being an anecdote (`reco-dyt`)
+
+`e4.9` measured Guardrail 3 on three pinned repositories and one of its own nine gates said the honest thing:
+`miss-rate-denominator-is-big-enough` **failed**, because across 180 episodes only 7 were both mature and later
+reworked, and a `miss_rate <= 0.20` gate on 7 samples cannot tell 0.20 from 0.60. That was a finding about the
+corpus, and the fix it named was more window rather than a relaxed bar. This pass pays it.
+
+* **Each pin now carries 180 episodes instead of 60**, fetched by `tools/fetch_g3_corpus.py` at the current
+  tips — `cli` and `flask` had not moved since `e4.9`, `ruff` moved 11 commits forward (`0a977a8d18d7` →
+  `3e3f22dcc47a`). The fetcher's depth became `window * 4 + 20` to match `WALK_COMMITS_PER_EPISODE`, because a
+  clone that runs out does not fail: it quietly measures fewer episodes than the pin claims. Corpus: 540
+  episodes, 525 mature, 66 flagged, and **24 mature reworked** — the denominator went 7 → 24 and its gate went
+  `fail` → **pass** without a single bar in `thresholds.json` moving.
+* **All 66 flagged episodes have a hand-authored disposition.** 44 new rows in `corpus/*/truth.json`, each
+  written after reading that episode's diff (`git show`, every member) against the receipt's findings — a
+  settling decision, a reason code from `e4.6`'s closed list for a dismissal, a note, an evidence line naming
+  a file, line or finding text, and `blame` where the false alarm was one part of the flag. Nothing was
+  inferred, templated or generated, and nothing in the tree writes a `truth.json`.
+* **What the bigger corpus says.** `G3` is now measurable at §5.4's published τ and it fails narrowly —
+  **0.333** on 6 labelled flags, where 60-episode pins gave a denominator of 3 and had to refuse — so
+  `g3-alpha-at-published-tau` moved `not-measurable` → `fail`, the only `expected` besides the denominator
+  gate to move, and neither move made a gate more comfortable. The corpus cut is **0.697** (46 of 66 labelled
+  flags cost without value, 26 of the 46 blamed on the ranking rather than a detector), the miss rate is
+  **1.000** at the published τ (nothing in 540 episodes scored above 63) and **0.708** at each repository's
+  own top-decile cut, now a rate over 24 samples instead of an anecdote over 7.
+* **Two limits the wider window made visible, both written down rather than smoothed over:** three
+  default-enabled detectors (`lint_escape` 0.667/9, `untested_new_logic` 0.500/8, `test_weakening` 0.385/13)
+  are over α with enough answerable flags to raise `e0.12`'s "ship it disabled" question, and
+  `defaults.breaches` still prints 0 because the harness's pooling step never fills a pooled per-detector
+  `g3` — so that gate cannot fail today, which is stated in `thresholds.json`, in the corpus README and in
+  [the written answer](docs/concepts/false-positive-calibration.md) rather than left for the next reader to
+  find. And `untested_new_logic` counted ty's mdtest resources as "no test file at all" twice, which is a
+  catalogue blind spot with two labelled examples now in the corpus.
+
+`cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` reproduces the
+re-blessed `benchmarks/reports/e4-3a-g3-calibration.json` byte for byte with all nine gates as declared, and
+`python3 -m pytest -q tests/test_g3_calibration_contract.py` holds the corpus, the labels and the documents to
+it — including two new guards: a pin's window may not drop below 180 episodes, and a window must deliver the
+episodes it claims.
+
 ### `m1` — the beta gate, assessed by running it, and the four things running it found (`reco-69u`)
 
 The beta milestone asks for a thing that only a real pass can answer: can a reviewer work the queue, read the

@@ -1,45 +1,45 @@
 {
   "aggregate": {
     "coverage": {
-      "blamed_on_score": 7,
-      "labels_total": 22,
+      "blamed_on_score": 26,
+      "labels_total": 66,
       "unlabelled_flagged_alpha": 0,
       "unlabelled_flagged_decile": 0,
       "unlabelled_total": 0
     },
     "cut_corpus": {
-      "false_positives": 15,
-      "flagged": 22,
-      "g3": 0.682,
-      "labelled": 22,
+      "false_positives": 46,
+      "flagged": 66,
+      "g3": 0.697,
+      "labelled": 66,
       "per_repository_tau": null,
       "tau": null,
       "tau_note": "the union of both cuts: every episode this corpus flagged",
-      "true_positives": 10
+      "true_positives": 26
     },
     "cut_tau_alpha": {
-      "false_positives": 1,
-      "flagged": 3,
+      "false_positives": 2,
+      "flagged": 6,
       "g3": 0.333,
-      "labelled": 3,
+      "labelled": 6,
       "per_repository_tau": null,
       "tau": 70,
       "tau_note": "ADR-001 §5.4's published default, and the shipped `risk.tau`",
-      "true_positives": 2
+      "true_positives": 4
     },
     "cut_tau_decile": {
-      "false_positives": 15,
-      "flagged": 22,
-      "g3": 0.682,
-      "labelled": 22,
+      "false_positives": 46,
+      "flagged": 66,
+      "g3": 0.697,
+      "labelled": 66,
       "per_repository_tau": {
-        "cli": 34,
-        "flask": 47,
-        "ruff": 42
+        "cli": 33,
+        "flask": 40,
+        "ruff": 40
       },
       "tau": null,
       "tau_note": "each repository's own top-decile boundary",
-      "true_positives": 10
+      "true_positives": 26
     },
     "defaults": {
       "breach_detail": [],
@@ -50,17 +50,17 @@
         "scope_creep raised nothing in the corpus",
         "secret_string raised nothing in the corpus",
         "churn_loop raised nothing in the corpus",
-        "rework_loop raised nothing in the corpus",
-        "copy_paste_growth raised nothing in the corpus"
+        "rework_loop raised nothing in the corpus"
       ],
       "under_measured": [
-        "untested_new_logic measured on 1 labelled flag(s), under the 8 a default flip needs",
-        "test_weakening measured on 4 labelled flag(s), under the 8 a default flip needs",
-        "debug_leftover measured on 1 labelled flag(s), under the 8 a default flip needs",
-        "todo_debt measured on 1 labelled flag(s), under the 8 a default flip needs",
-        "generated_edit measured on 2 labelled flag(s), under the 8 a default flip needs",
-        "lint_escape measured on 5 labelled flag(s), under the 8 a default flip needs",
-        "shotgun_edit measured on 4 labelled flag(s), under the 8 a default flip needs"
+        "untested_new_logic measured on 8 labelled flag(s), under the 8 a default flip needs",
+        "test_weakening measured on 13 labelled flag(s), under the 8 a default flip needs",
+        "debug_leftover measured on 2 labelled flag(s), under the 8 a default flip needs",
+        "todo_debt measured on 3 labelled flag(s), under the 8 a default flip needs",
+        "generated_edit measured on 4 labelled flag(s), under the 8 a default flip needs",
+        "lint_escape measured on 9 labelled flag(s), under the 8 a default flip needs",
+        "shotgun_edit measured on 9 labelled flag(s), under the 8 a default flip needs",
+        "copy_paste_growth measured on 2 labelled flag(s), under the 8 a default flip needs"
       ]
     },
     "detectors_corpus": {
@@ -72,32 +72,32 @@
         "spoke": 0
       },
       "copy_paste_growth": {
-        "answerable_for": 0,
+        "answerable_for": 2,
         "false_positives": 0,
-        "g3": null,
+        "g3": 0.0,
         "ships_enabled": false,
-        "spoke": 0
+        "spoke": 2
       },
       "debug_leftover": {
-        "answerable_for": 1,
-        "false_positives": 1,
-        "g3": 1.0,
-        "ships_enabled": true,
-        "spoke": 1
-      },
-      "generated_edit": {
         "answerable_for": 2,
         "false_positives": 2,
         "g3": 1.0,
         "ships_enabled": true,
         "spoke": 2
       },
-      "lint_escape": {
-        "answerable_for": 5,
+      "generated_edit": {
+        "answerable_for": 4,
         "false_positives": 4,
-        "g3": 0.8,
+        "g3": 1.0,
         "ships_enabled": true,
-        "spoke": 5
+        "spoke": 4
+      },
+      "lint_escape": {
+        "answerable_for": 9,
+        "false_positives": 6,
+        "g3": 0.667,
+        "ships_enabled": true,
+        "spoke": 9
       },
       "rework_loop": {
         "answerable_for": 0,
@@ -121,32 +121,32 @@
         "spoke": 0
       },
       "shotgun_edit": {
-        "answerable_for": 4,
-        "false_positives": 2,
-        "g3": 0.5,
+        "answerable_for": 9,
+        "false_positives": 4,
+        "g3": 0.444,
         "ships_enabled": false,
-        "spoke": 4
+        "spoke": 11
       },
       "test_weakening": {
-        "answerable_for": 4,
-        "false_positives": 2,
-        "g3": 0.5,
+        "answerable_for": 13,
+        "false_positives": 5,
+        "g3": 0.385,
         "ships_enabled": true,
-        "spoke": 4
+        "spoke": 13
       },
       "todo_debt": {
-        "answerable_for": 1,
-        "false_positives": 0,
-        "g3": 0.0,
+        "answerable_for": 3,
+        "false_positives": 1,
+        "g3": 0.333,
         "ships_enabled": true,
-        "spoke": 1
+        "spoke": 3
       },
       "untested_new_logic": {
-        "answerable_for": 1,
-        "false_positives": 0,
-        "g3": 0.0,
+        "answerable_for": 8,
+        "false_positives": 4,
+        "g3": 0.5,
         "ships_enabled": true,
-        "spoke": 2
+        "spoke": 9
       }
     },
     "detectors_note": "A detector's denominator (`answerable_for`) is the labelled flags it was answerable for: every flag it spoke on with no `blame` (§5.4's rule that whatever raised an unwanted flag shares the charge), plus the flags whose `blame` named it. A flag whose `blame` named other detectors is not charged here, and one blamed on `score` is in no detector's denominator at all — so these denominators do not sum to the corpus total, by design. `spoke` is the wider count (every flag at this cut whose findings included this detector's) and is shown so the narrow one reads as a share of it. A detector with `g3: null` raised nothing here, which is no evidence rather than a clean bill of health (ADR-001 §7.7); `defaults.never_fired` names them.",
@@ -215,11 +215,11 @@
         "spoke": 0
       },
       "test_weakening": {
-        "answerable_for": 3,
-        "false_positives": 1,
+        "answerable_for": 6,
+        "false_positives": 2,
         "g3": 0.333,
         "ships_enabled": true,
-        "spoke": 3
+        "spoke": 6
       },
       "todo_debt": {
         "answerable_for": 0,
@@ -245,32 +245,32 @@
         "spoke": 0
       },
       "copy_paste_growth": {
-        "answerable_for": 0,
+        "answerable_for": 2,
         "false_positives": 0,
-        "g3": null,
+        "g3": 0.0,
         "ships_enabled": false,
-        "spoke": 0
+        "spoke": 2
       },
       "debug_leftover": {
-        "answerable_for": 1,
-        "false_positives": 1,
-        "g3": 1.0,
-        "ships_enabled": true,
-        "spoke": 1
-      },
-      "generated_edit": {
         "answerable_for": 2,
         "false_positives": 2,
         "g3": 1.0,
         "ships_enabled": true,
         "spoke": 2
       },
-      "lint_escape": {
-        "answerable_for": 5,
+      "generated_edit": {
+        "answerable_for": 4,
         "false_positives": 4,
-        "g3": 0.8,
+        "g3": 1.0,
         "ships_enabled": true,
-        "spoke": 5
+        "spoke": 4
+      },
+      "lint_escape": {
+        "answerable_for": 9,
+        "false_positives": 6,
+        "g3": 0.667,
+        "ships_enabled": true,
+        "spoke": 9
       },
       "rework_loop": {
         "answerable_for": 0,
@@ -294,41 +294,41 @@
         "spoke": 0
       },
       "shotgun_edit": {
-        "answerable_for": 4,
-        "false_positives": 2,
-        "g3": 0.5,
+        "answerable_for": 9,
+        "false_positives": 4,
+        "g3": 0.444,
         "ships_enabled": false,
-        "spoke": 4
+        "spoke": 11
       },
       "test_weakening": {
-        "answerable_for": 4,
-        "false_positives": 2,
-        "g3": 0.5,
+        "answerable_for": 13,
+        "false_positives": 5,
+        "g3": 0.385,
         "ships_enabled": true,
-        "spoke": 4
+        "spoke": 13
       },
       "todo_debt": {
-        "answerable_for": 1,
-        "false_positives": 0,
-        "g3": 0.0,
+        "answerable_for": 3,
+        "false_positives": 1,
+        "g3": 0.333,
         "ships_enabled": true,
-        "spoke": 1
+        "spoke": 3
       },
       "untested_new_logic": {
-        "answerable_for": 1,
-        "false_positives": 0,
-        "g3": 0.0,
+        "answerable_for": 8,
+        "false_positives": 4,
+        "g3": 0.5,
         "ships_enabled": true,
-        "spoke": 2
+        "spoke": 9
       }
     },
     "miss": {
-      "mature": 165,
-      "mature_rework": 7,
+      "mature": 525,
+      "mature_rework": 24,
       "miss_rate": 1.0,
-      "miss_rate_at_decile": 0.571,
-      "missed": 7,
-      "missed_at_decile": 4
+      "miss_rate_at_decile": 0.708,
+      "missed": 24,
+      "missed_at_decile": 17
     }
   },
   "formulas": {
@@ -356,28 +356,28 @@
   },
   "gates": [
     {
-      "claim": "at §5.4's published default tau the aggregate false-positive rate clears the alpha gate — measured: three episodes out of 180 reached tau 70 or carried a high-severity finding across the three pinned repositories, so the denominator is three and the floor below which a rate is an anecdote is five. The gate refuses to call that a pass.",
-      "detail": "denominator 3 is under the floor 5",
-      "expected": "not-measurable",
+      "claim": "at §5.4's published default tau the aggregate false-positive rate clears the alpha gate — measured: six episodes out of 540 reached tau 70 or carried a high-severity finding across the three pinned repositories, all six carry a hand-authored disposition, and two of the six were cost without value.",
+      "detail": "measured 0.333",
+      "expected": "fail",
       "id": "g3-alpha-at-published-tau",
-      "status": "not-measurable",
-      "why": "This is §5.4's own alpha gate, scored at §5.4's own default threshold, on real human history: the shipped risk model flags 3 episodes in 180 there, so the guardrail is not measurable at the default and the beta gate cannot be settled at it. The number that makes that sentence safe to print is next to it: `aggregate.cut_tau_alpha.flagged`."
+      "status": "fail",
+      "why": "Measured 0.333 (2 of 6) against a bar of 0.30. The widened corpus did not make this gate comfortable, it made it answerable: `e4.9`'s 60-episode pins gave a denominator of three and the gate had to refuse to read it (`not-measurable`, floor five). Now it has a denominator and it fails, narrowly. The wider sentence is unchanged and is next to it: `aggregate.cut_tau_alpha.flagged` is 6 in 540 episodes, so at the published τ the flag arm is carried almost entirely by high-severity findings and §5.4's α gate is a rate over a handful of episodes rather than over the population a reviewer is actually shown."
     },
     {
       "claim": "across every episode the corpus flagged — §5.4's default plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
-      "detail": "measured 0.682",
+      "detail": "measured 0.697",
       "expected": "fail",
       "id": "g3-alpha-at-corpus-cut",
       "status": "fail",
-      "why": "Measured 0.682 on 22 labelled flags: 11 dismissed `low-stakes` (routine dependency and lockfile bumps that the workflow and dependency axes raised and no finding justified), 3 `false-positive` (a regenerated lockfile charged as a hand edit, a test rewrite charged as a test deletion, a fuzzer's report charged as leftover debug output), 1 `intentional`. Seven of the fifteen were blamed on the ranking rather than on any detector — see `aggregate.coverage.blamed_on_score`. The finding is about where the flags come from, not only about the detectors."
+      "why": "Measured 0.697 on 66 labelled flags: 32 dismissed `low-stakes` (Dependabot, renovate and release-bot bumps, and `update dev dependencies` episodes that re-emit the CI workflow templates and a 500-to-1 600-line lockfile — the workflow and dependency axes raised them and no finding justified them), 9 `false-positive` (a test spy charged as untested new logic twice over, `# type: ignore` and `#[expect(deprecated)]` suppressions whose reason is written on the line above them, a `\"TODO\"` that is the name of a GitHub label, a fuzzer's own report charged as leftover debug output, and mdtest — ty's real test surface — counted as no tests at all twice), 5 `intentional` (a `gh repo garden` deletion that took its tests with it, three `test_weakening` skips that are platform and receipt guards, and dropping end-of-life Pythons). 26 of the 46 false positives were blamed on the ranking rather than on any detector — see `aggregate.coverage.blamed_on_score`. The finding is about where the flags come from, not only about the detectors, and tripling the corpus did not move it: 0.682 → 0.697."
     },
     {
       "claim": "the same population clears the 1.0 gate of 0.15",
-      "detail": "measured 0.682",
+      "detail": "measured 0.697",
       "expected": "fail",
       "id": "g3-1-0-at-corpus-cut",
       "status": "fail",
-      "why": "0.682 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency bumps, which is `e4.4`'s routing and `e4.3`'s catalogue together, not one of them alone."
+      "why": "0.697 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency bumps, which is `e4.4`'s routing and `e4.3`'s catalogue together, not one of them alone."
     },
     {
       "claim": "at the published default tau, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
@@ -385,23 +385,23 @@
       "expected": "fail",
       "id": "miss-rate-at-published-tau",
       "status": "fail",
-      "why": "Measured 1.000: all 7 mature reworked episodes in the corpus were below tau 70 (the highest of them scored 63). This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and here it is the number that says the same thing as the gate above: on real OSS history the shipped score does not fire, so the guardrail's two halves fail in opposite directions and only `miss_rate` notices."
+      "why": "Measured 1.000: all 24 mature reworked episodes in the corpus were below tau 70 — nothing in the 540 scored above 63, so the τ arm of §5.4's `F(τ,W)` did not fire anywhere in this corpus at all. This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and it is the number that says what the gate above cannot: on real OSS history the shipped score does not fire, so the guardrail's two halves fail in opposite directions and only `miss_rate` notices."
     },
     {
       "claim": "at each repository's own top-decile cut — the queue a reviewer would actually have read first — no more than 20 % of the reworked episodes were below it",
-      "detail": "measured 0.571",
+      "detail": "measured 0.708",
       "expected": "fail",
       "id": "miss-rate-at-decile-cut",
       "status": "fail",
-      "why": "Measured 0.571 (4 of 7). Raising the threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 22 of 180 episodes still misses most of the episodes that later needed rework, because what got reworked in these windows was ordinary-looking source edits, not lockfiles."
+      "why": "Measured 0.708 (17 of 24). Raising the threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 66 of 540 episodes still misses most of the episodes that later needed rework, because what got reworked in these windows was ordinary-looking source edits, not lockfiles. This is also the gate the widened denominator was for: at 4 of 7 the difference between 0.20 and 0.60 was noise, and at 17 of 24 it is not."
     },
     {
       "claim": "the corpus contains at least 20 mature reworked episodes, which is what a 0.20 gate on a rate needs to be able to tell 0.20 from 0.60",
-      "detail": "measured 7",
-      "expected": "fail",
+      "detail": "measured 24",
+      "expected": "pass",
       "id": "miss-rate-denominator-is-big-enough",
-      "status": "fail",
-      "why": "Measured 7 out of 165 mature episodes. The `fail` is a statement about the corpus, not about the product: rework is rare on a healthy repository (4.2 % of mature episodes here), so the miss-rate gate needs roughly five times this window to be worth enforcing, and the ticket that closes this one is a bigger pinned window rather than a relaxed threshold."
+      "status": "pass",
+      "why": "Measured 24 out of 525 mature episodes (4.6 %). `e4.9` declared this a `fail` about the corpus, not the product — rework is rare on a healthy repository, and 7 samples cannot discriminate a 0.20 gate — and the fix it named was a bigger pinned window rather than a relaxed threshold. Each pin now carries 180 episodes instead of 60 and `astral-sh/ruff` sits at a newer head, which is what clears the floor. Nothing in `thresholds.json`'s bars moved for this gate; the only other `expected` that changed in the same pass is `g3-alpha-at-published-tau`, and that moved because its denominator left the floor, not because anything improved."
     },
     {
       "claim": "every episode any cut flagged has a hand-authored disposition — a flag nobody labelled is a hole in the guardrail, and a guardrail with a hole in it is not a guardrail",
@@ -409,26 +409,26 @@
       "expected": "pass",
       "id": "every-flagged-episode-is-labelled",
       "status": "pass",
-      "why": "22 flags, 22 labels, across all three cuts. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
+      "why": "66 flags, 66 labels, across all three cuts — 22 from the `e4.9` pass (every one of them still resolves inside the widened window and still sits on a flagged episode) and 44 written against the diff in the `reco-dyt` re-pin. No label was inferred from a score, a reason distribution or a template. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
     },
     {
       "claim": "the corpus flags at least 20 episodes, below which `G3` is a story about a handful of commits rather than a rate",
-      "detail": "measured 22",
+      "detail": "measured 66",
       "expected": "pass",
       "id": "flag-population-is-large-enough-to-gate",
       "status": "pass",
-      "why": "Measured 22 of 180 episodes. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
+      "why": "Measured 66 of 540 episodes — 26 `cli`, 20 `flask`, 20 `ruff`, which is the same 12 % flag share the 60-episode windows produced, so the cut is behaving like a rate and not like an accident of one quiet window. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
     },
     {
-      "claim": "no detector ships enabled by default while its own measured false-positive rate breaches the alpha gate with enough labelled flags to say so (8, the bar a default flip has to clear, which is deliberately higher than the 5 a printed number has to clear)",
+      "claim": "no detector is disqualified by `e0.12`'s rule as this harness scores it: a default-enabled detector whose own false-positive rate breaches the alpha gate on at least 8 answerable flags (the bar a default flip has to clear, deliberately higher than the 5 a printed number has to clear) is a detector that must ship disabled. Read `why` before reading the 0 as a clean bill of health.",
       "detail": "measured 0",
       "expected": "pass",
       "id": "shipped-defaults-agree-with-measurement",
       "status": "pass",
-      "why": "No detector reaches 8 labelled flags in a 180-episode corpus — the best-covered is `lint_escape` at 5, and `churn_loop`, `rework_loop` and `copy_paste_growth` (with `scope_creep` and `secret_string`) never fired at all, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which). So this harness does not flip a shipped default in either direction, and the four detectors `e4.3` shipped disabled stay disabled: nothing earned their re-enabling. `shotgun_edit`, the one disabled detector the corpus could see at all, measured 0.500 on 4 flags — closer to the gate's wrong side than to its right one."
+      "why": "Measured 0, and the 0 has a mechanism a reader has to know about: `defaults.breaches` asks each detector's *pooled* `g3`, and the pooling step never fills that field — per-repository rates are computed, the aggregate's are not — so every detector that spoke lands in `defaults.under_measured` (its message says \"under the 8 a default flip needs\" even at 13 flags, which is the tell) and the breach count is structurally zero. Scored instead against `aggregate.detectors_corpus`, which recomputes the rate from the pooled offenders and denominators, the widened corpus does now see three default-enabled detectors over α with at least 8 answerable flags: `lint_escape` 0.667 on 9, `untested_new_logic` 0.500 on 8, `test_weakening` 0.385 on 13. This harness therefore still flips no shipped default in either direction — `e4.3`'s four disabled detectors stay disabled, and `shotgun_edit`, the only disabled detector with a real denominator, measures 0.444 on 9 and does not earn re-enabling — but \"which of those three does `e0.12`'s rule disqualify now\" is a measurable question with an unanswered answer, and it belongs to its own ticket with the weights and the catalogue in it, not to a threshold edit here. `scope_creep`, `secret_string`, `churn_loop` and `rework_loop` still never fired in the corpus, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which)."
     }
   ],
-  "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories, at §5.4's published default, the flag set is three episodes out of 180 and every episode that later needed rework sat below the threshold — so `G3` is `not-measurable` at the published τ and the miss rate is 1.0, and the same corpus measured at each repository's own top-decile cut puts 22 flags in front of a reviewer of which 15 were cost without value. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`.",
+  "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories — three windows of 180 episodes each, 540 episodes, 525 of them mature — the shipped score reaches §5.4's published default on six episodes and every one of the 24 episodes that were mature and later needed rework sat below the threshold, so the miss rate is 1.0; the same corpus measured at each repository's own top-decile cut puts 66 flags in front of a reviewer of which 46 were cost without value, and the α gate measures 0.333 on six labelled flags. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`, and when a gate's `expected` changed in the `reco-dyt` re-pin it changed because the gate started measuring something (`miss-rate-denominator-is-big-enough`, 7 → 24, and `g3-alpha-at-published-tau`, a denominator of 3 → 6), not because a bar moved.",
   "policy": {
     "detectors_enabled": [
       "churn_loop",
@@ -451,45 +451,61 @@
     {
       "at_corpus_cut": {
         "blamed_on_score": [
+          "ep-092dd2cd565e7fcf5e42",
           "ep-f7190f71c22366847661",
           "ep-40391f7e2f2719ecd61c",
           "ep-2447c9b85863fd9e58ad-2",
-          "ep-768a63edf54f8fc2cd7f"
+          "ep-768a63edf54f8fc2cd7f",
+          "ep-f0d3a22ca3c5ddbe8243",
+          "ep-83d19770d9375de03eee",
+          "ep-ad25dcade731e903702a",
+          "ep-162b8767482aa4ed03bf",
+          "ep-3d45b30749e2b217ba15",
+          "ep-bbc2900778656c371a59",
+          "ep-4591d2f647439fc16855"
         ],
-        "false_positives": 5,
-        "flagged": 7,
-        "g3": 0.714,
-        "labelled": 7,
+        "false_positives": 18,
+        "flagged": 26,
+        "g3": 0.692,
+        "labelled": 26,
         "tau": 0,
-        "true_positives": 2,
+        "true_positives": 10,
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
         "blamed_on_score": [],
-        "false_positives": 0,
-        "flagged": 0,
-        "g3": null,
-        "labelled": 0,
+        "false_positives": 1,
+        "flagged": 3,
+        "g3": 0.333,
+        "labelled": 3,
         "tau": 70,
-        "true_positives": 0,
+        "true_positives": 2,
         "unlabelled_flagged": []
       },
       "at_tau_decile": {
         "blamed_on_score": [
+          "ep-092dd2cd565e7fcf5e42",
           "ep-f7190f71c22366847661",
           "ep-40391f7e2f2719ecd61c",
           "ep-2447c9b85863fd9e58ad-2",
-          "ep-768a63edf54f8fc2cd7f"
+          "ep-768a63edf54f8fc2cd7f",
+          "ep-f0d3a22ca3c5ddbe8243",
+          "ep-83d19770d9375de03eee",
+          "ep-ad25dcade731e903702a",
+          "ep-162b8767482aa4ed03bf",
+          "ep-3d45b30749e2b217ba15",
+          "ep-bbc2900778656c371a59",
+          "ep-4591d2f647439fc16855"
         ],
-        "false_positives": 5,
-        "flagged": 7,
-        "g3": 0.714,
-        "labelled": 7,
-        "tau": 34,
-        "true_positives": 2,
+        "false_positives": 18,
+        "flagged": 26,
+        "g3": 0.692,
+        "labelled": 26,
+        "tau": 33,
+        "true_positives": 10,
         "unlabelled_flagged": []
       },
-      "decile_tau": 34,
+      "decile_tau": 33,
       "detectors": [
         {
           "answerable_for": 0,
@@ -500,20 +516,20 @@
           "spoke": 0
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 3,
           "default_enabled": true,
-          "false_positives": 0,
-          "g3": null,
+          "false_positives": 1,
+          "g3": 0.333,
           "id": "untested_new_logic",
-          "spoke": 0
+          "spoke": 3
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 8,
           "default_enabled": true,
-          "false_positives": 0,
-          "g3": null,
+          "false_positives": 3,
+          "g3": 0.375,
           "id": "test_weakening",
-          "spoke": 0
+          "spoke": 8
         },
         {
           "answerable_for": 0,
@@ -524,12 +540,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 2,
           "default_enabled": true,
-          "false_positives": 0,
-          "g3": null,
+          "false_positives": 1,
+          "g3": 0.5,
           "id": "todo_debt",
-          "spoke": 0
+          "spoke": 2
         },
         {
           "answerable_for": 1,
@@ -572,30 +588,30 @@
           "spoke": 0
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 1,
           "default_enabled": false,
           "false_positives": 0,
-          "g3": null,
+          "g3": 0.0,
           "id": "shotgun_edit",
-          "spoke": 0
+          "spoke": 3
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 2,
           "default_enabled": false,
           "false_positives": 0,
-          "g3": null,
+          "g3": 0.0,
           "id": "copy_paste_growth",
-          "spoke": 0
+          "spoke": 2
         }
       ],
-      "episodes": 60,
+      "episodes": 180,
       "episodes_by_author_kind": {
-        "agent": 20,
-        "human": 40,
+        "agent": 71,
+        "human": 109,
         "unknown": 0
       },
       "head": "ed40e856ffecd31286733876c613a2d3745e12bd",
-      "labelled_total": 7,
+      "labelled_total": 26,
       "labels": [
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -605,6 +621,17 @@
           "reason": "",
           "rework": [],
           "score": 38
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "45250aec8ba977669c62384bacaaed290c2460ad",
+          "decision": "dismissed",
+          "episode": "ep-092dd2cd565e7fcf5e42",
+          "reason": "low-stakes",
+          "rework": [
+            "R2"
+          ],
+          "score": 33
         },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -652,6 +679,15 @@
           "score": 34
         },
         {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "31778eb069e08d3a4087a1693cda6d9c9ef4aa09",
+          "decision": "accepted",
+          "episode": "ep-1c82995f139d9c447f52",
+          "reason": "",
+          "rework": [],
+          "score": 33
+        },
+        {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
           "commit": "2c7ec97fddb8da331803e18e8c33395a3b6537ee",
           "decision": "accepted",
@@ -659,16 +695,173 @@
           "reason": "",
           "rework": [],
           "score": 36
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "2d3d20f04058f7b598e41c237105cb85c585c24b",
+          "decision": "dismissed",
+          "episode": "ep-f0d3a22ca3c5ddbe8243",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "863766c17abb27104597dfb30a06072cc79a0a33",
+          "decision": "dismissed",
+          "episode": "ep-83d19770d9375de03eee",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 35
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "40459292dbd0e23baed636634740f31e6262e26d",
+          "decision": "dismissed",
+          "episode": "ep-7bdc7a91a94a2e5b9080",
+          "reason": "intentional",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "3c4e972c3b201f66539da174e430ea5c58e0140b",
+          "decision": "accepted",
+          "episode": "ep-721522e9b62cea8c05f6",
+          "reason": "",
+          "rework": [],
+          "score": 44
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "9b6f66363f51a8265f1bb07f8fc3746017859cf1",
+          "decision": "dismissed",
+          "episode": "ep-7e41b81a73f47fdddf7e",
+          "reason": "intentional",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "80b06678ef3d98881b34b15fd294b35ef6b0a82c",
+          "decision": "accepted",
+          "episode": "ep-cb2a85d8fcefd2fb38ca",
+          "reason": "",
+          "rework": [],
+          "score": 61
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "e4dc24104f760f87d59bd597d350e01a7fcf48b5",
+          "decision": "dismissed",
+          "episode": "ep-ad25dcade731e903702a",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 34
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "17659961c1197840c818ca6a8239a4536f3d1fc3",
+          "decision": "dismissed",
+          "episode": "ep-162b8767482aa4ed03bf",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "a4f0de06871af76fc43bbbfaa13874258c590436",
+          "decision": "dismissed",
+          "episode": "ep-8cf284f7a900c1615394",
+          "reason": "false-positive",
+          "rework": [],
+          "score": 49
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "9a779be4f6a3522e68cc8b648ec50f35abf8aca7",
+          "decision": "dismissed",
+          "episode": "ep-3d45b30749e2b217ba15",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "07e906502a08dd18174cf3badb8eb3819242acee",
+          "decision": "dismissed",
+          "episode": "ep-30b52d7206198acc7d0a",
+          "reason": "intentional",
+          "rework": [],
+          "score": 29
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "81780e761889d7e72f2037e48e1547b3420a9731",
+          "decision": "accepted",
+          "episode": "ep-68eb5af891e678ca7d11",
+          "reason": "",
+          "rework": [],
+          "score": 43
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "3c0f54c8d495abdb74364c10718752f53f6e2662",
+          "decision": "accepted",
+          "episode": "ep-383154b299cddda1a24e",
+          "reason": "",
+          "rework": [],
+          "score": 40
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "d2fe6e98dca4e624a69bbca39bb12b0ca38206b0",
+          "decision": "accepted",
+          "episode": "ep-859df55bc1cfcaf5735e",
+          "reason": "",
+          "rework": [
+            "R2"
+          ],
+          "score": 40
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "46e09a5485d04153eccfaac238c389ffaaebf43c",
+          "decision": "dismissed",
+          "episode": "ep-87ea6875275484004003",
+          "reason": "false-positive",
+          "rework": [
+            "R2"
+          ],
+          "score": 35
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "20c599bb3e8acf889c86d35b2ed9889a663f1a49",
+          "decision": "dismissed",
+          "episode": "ep-bbc2900778656c371a59",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 33
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "145d839ab5e774c3a46295f80f16b75037a8a23b",
+          "decision": "dismissed",
+          "episode": "ep-4591d2f647439fc16855",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 34
         }
       ],
-      "mature": 55,
-      "mature_rework": 3,
+      "mature": 175,
+      "mature_rework": 10,
       "miss_rate": 1.0,
-      "missed_at_decile": 3,
-      "missed_rework": 3,
+      "missed_at_decile": 7,
+      "missed_rework": 10,
       "orphaned_labels": [],
-      "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
-      "pinned_now": "2026-10-20T00:00:00Z",
+      "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head is the branch tip at the time of the re-pin (`git ls-remote`), the window is the 180 newest episodes above it, and `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19) at the same tip. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
+      "pinned_now": "2026-10-20T12:00:00Z",
       "receipts": [
         {
           "commit": "b1c8c0ae5aec75ec8caf6e537071efc15d274f45",
@@ -699,6 +892,35 @@
             "1314 — .github/workflows/dependabot-triage.md — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source",
             "879 — of +189 on logic, +0 was tests (0% covered) over 453 lines of churn",
             "475 — +277 −176 = 453 churn, all of it hand-written"
+          ]
+        },
+        {
+          "commit": "45250aec8ba977669c62384bacaaed290c2460ad",
+          "episode": "ep-092dd2cd565e7fcf5e42",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 45250aec8b` go.mod 2/go.sum 4; members `d73d3d8537` (`deployment.yml` 1, `dependabot-triage.lock.yml` 2, `issue-triage.lock.yml` 2, `acceptance.yml` 1) and `26034fa194` (`deployment.yml` 3 `uses:` lines).",
+            "note": "Three Dependabot bumps grouped as one episode: a patch bump of `klauspost/compress`, and two GitHub Action bumps that re-emitted `deployment.yml` and two `*.lock.yml` agentic workflow locks. The flag's first feature is the workflow axis, `permissions and secrets travel with the artefact`, and nothing here moves a permission or a secret: six `uses:` lines changed a version suffix. Reading it cost more than it could have paid.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 3,
+          "rework": [
+            "R2"
+          ],
+          "score": 33,
+          "scored": true,
+          "summary": "chore(deps): bump github.com/klauspost/compress from 1.20.1 to 1.20.3",
+          "taken_back": 0.364,
+          "why": [
+            "1441 — .github/workflows/deployment.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
+            "422 — dependabot wrote this, which is the reason this tool exists (ADR-001 §7.3)"
           ]
         },
         {
@@ -853,6 +1075,31 @@
           ]
         },
         {
+          "commit": "31778eb069e08d3a4087a1693cda6d9c9ef4aa09",
+          "episode": "ep-1c82995f139d9c447f52",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 31778eb069`: body `Fixes GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617 reported by govulncheck`; go.mod 1 + go.sum 2 on `golang.org/x/net` v0.60.0.",
+            "note": "A two-line dependency bump that closes five open advisories in the HTTP stack of a CLI shipped to millions — the body names GO-2026-6603, -6610, -6611, -6612 and -6617, reported by govulncheck. This is what the supply-chain axis is for: the bump is small, and the reason for it is the whole point. The flag stopped the read on the right file, and the read had a payload.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "Bump golang.org/x/net to v0.60.0",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 6 of 6 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
           "commit": "2c7ec97fddb8da331803e18e8c33395a3b6537ee",
           "episode": "ep-d1c1fb0b2218fa2a1dac",
           "findings": [],
@@ -876,34 +1123,753 @@
             "692 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
             "613 — +1786 −872 = 2658 churn, of which 2658 is reviewable (1 discounted as generated, lockfile, vendored or binary; 0 binary file(s))"
           ]
+        },
+        {
+          "commit": "2d3d20f04058f7b598e41c237105cb85c585c24b",
+          "episode": "ep-f0d3a22ca3c5ddbe8243",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 2d3d20f040`: go.mod 1 + go.sum 2; body `v0.0.27 eagerly built a 2.2MB width lookup table in init(), adding ~12ms to every gh invocation`.",
+            "note": "`go-runewidth` v0.0.30 builds its 2.2 MB width table lazily instead of in `init()`, which is why the bump is worth having; it is not something a reviewer can check in a 3-line lockfile diff. No finding spoke, so the flag is the lockfile path class alone, and it cannot tell this bump from the nine others in the window.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "Bump go-runewidth to v0.0.30 for faster startup",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 6 of 6 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "863766c17abb27104597dfb30a06072cc79a0a33",
+          "episode": "ep-83d19770d9375de03eee",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 863766c17a --stat`: go.mod 2, go.sum 4; episode members re-emit `.github/workflows/codeql.yml` 3 `uses:` lines.",
+            "note": "A patch bump of `charm.land/bubbletea/v2` and a codeql-action group bump, in one episode. The workflow axis charged 1 441 points — the highest feature the episode got — for a file whose only change is three `uses:` version suffixes, and the dependency axis charged the go.mod/go.sum pair. Both axes are reading the path class, not the change.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 3,
+          "rework": [],
+          "score": 35,
+          "scored": true,
+          "summary": "chore(deps): bump charm.land/bubbletea/v2 from 2.0.9 to 2.0.10",
+          "taken_back": 0.0,
+          "why": [
+            "1441 — .github/workflows/codeql.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
+            "506 — 12 of 20 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "40459292dbd0e23baed636634740f31e6262e26d",
+          "episode": "ep-7bdc7a91a94a2e5b9080",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/evidence_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/presentation_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/session_inspection_native_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "test_weakening"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 40459292dbd0`: `t.Skip(\"Supply an explicit font for native rendering.\")` and `\"Select an explicit font for native presentation checks.\"` added in `tool/internal/evidence/{evidence,presentation,session_inspection_native}_test.go`; `engine/contract.go` now rejects a contract that names a font.",
+            "note": "All three `test_weakening` claims are the same act: this commit made a font mandatory for rendering, and moved font selection out of the execution contract, so the native-rendering cases now skip with `Supply an explicit font for native rendering.` instead of failing where no font was selected. The cases are still in the file and still run when a font is supplied. Gating a case on a precondition it cannot meet is exactly what was wanted here.",
+            "reason": "intentional"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "Complete rendering font provenance",
+          "taken_back": 0.0,
+          "why": [
+            "1319 — 3 finding(s): 3 medium · test_weakening on .github/skills/cli-exercise/tool/internal/evidence/evidence_test.go, test_weakening on .github/skills/cli-exercise/tool/internal/evidence/presentation_test.go",
+            "406 — +115 −70 = 185 churn, all of it hand-written",
+            "385 — 3 surface(s) over 17 file(s) in 1 commit(s)"
+          ]
+        },
+        {
+          "commit": "3c4e972c3b201f66539da174e430ea5c58e0140b",
+          "episode": "ep-721522e9b62cea8c05f6",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": "internal/safepaths/absolute_test.go was weakened: 1 assertion line(s) removed and 0 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "internal/safepaths/root_race_test.go was weakened: 5 assertion line(s) removed and 0 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "internal/safepaths/root_test.go was weakened: 7 assertion line(s) removed and 1 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "internal/safepaths/root_validation_test.go was weakened: 4 assertion line(s) removed and 1 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "internal/skills/installer/installer_test.go was weakened: 2 assertion line(s) removed and 0 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/skills/install/install_test.go was weakened: 6 assertion line(s) removed and 0 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/skills/update/update_test.go was weakened: 24 assertion line(s) removed and 0 added; the episode's own test totals were 0 cases and -44 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 4 separate clusters (internal/safepaths, internal/skills, internal/zip, pkg/cmd), widest pkg/cmd (6 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            },
+            {
+              "detector": "copy_paste_growth",
+              "message": "internal/skills/installer/installer.go: 28 of its 74 new line(s) sit in 2 repeated runs of ≥12 consecutive lines (longest 14); the same text appears again in this file",
+              "severity": "low"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 3c4e972c3b --stat`: `internal/safepaths/root.go` −214, `root_validation_test.go` −74, `root_race_test.go` −50, `pkg/cmd/skills/update/update_test.go` −523, 12 files +134 −1499; member `f0215ad677` adds `internal/safepaths/root_mode_unix_test.go` +102.",
+            "note": "The episode pulls the skill changes back out of the filesystem work: 1 499 deletions, and what they take with them is 44 assertion lines from `internal/safepaths` — the package that keeps a write inside a chosen root — plus 523 lines from `pkg/cmd/skills/update/update_test.go`. `test_weakening` was right that the loss did not move elsewhere in the episode; the later members add a directory-mode API and a new `root_mode_unix_test.go`, which is the answer a reviewer wants to find rather than hope for. On path-safety code, a −1 499 is a read, not a skim.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 4,
+          "rework": [],
+          "score": 44,
+          "scored": true,
+          "summary": "Remove skill changes from filesystem update",
+          "taken_back": 0.0,
+          "why": [
+            "1758 — 9 finding(s): 1 low, 8 medium · test_weakening on internal/safepaths/absolute_test.go, test_weakening on internal/safepaths/root_race_test.go",
+            "585 — +323 −1542 = 1865 churn, all of it hand-written",
+            "577 — the test surface shrank while source moved: −853 tests against +149 source (−689), and 1542 of 1865 churn lines are removal"
+          ]
+        },
+        {
+          "commit": "9b6f66363f51a8265f1bb07f8fc3746017859cf1",
+          "episode": "ep-7e41b81a73f47fdddf7e",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/session_inspection_native_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/cleanup_other_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/output_unix_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "test_weakening"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 9b6f66363f51`: `tool/internal/terminal/cleanup_other_test.go` `t.Skip(\"Owned process-group cleanup requires Unix.\")`, `session_inspection_native_test.go` +196 gated on `CLI_EXERCISE_SESSION_MEDIA_RECEIPT`, `output_unix_test.go` +222.",
+            "note": "Three `skipped, no longer runs` claims on an episode that added 880 lines, more than half of them tests. Every skip is a deliberate guard: `Owned process-group cleanup requires Unix.` in the `_other` build of the terminal tests, and a `CLI_EXERCISE_SESSION_MEDIA_RECEIPT` environment gate on the native cases. The detector counted a case that stopped running and did not see that it stopped running on the machine that cannot run it.",
+            "reason": "intentional"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "Fix recorder buffering and session inspection",
+          "taken_back": 0.0,
+          "why": [
+            "1319 — 3 finding(s): 3 medium · test_weakening on .github/skills/cli-exercise/tool/internal/evidence/session_inspection_native_test.go, test_weakening on .github/skills/cli-exercise/tool/internal/terminal/cleanup_other_test.go",
+            "532 — +881 −61 = 942 churn, all of it hand-written",
+            "500 — 4 surface(s) over 16 file(s) in 1 commit(s)"
+          ]
+        },
+        {
+          "commit": "80b06678ef3d98881b34b15fd294b35ef6b0a82c",
+          "episode": "ep-cb2a85d8fcefd2fb38ca",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": ".github/skills/cli-exercise/tool/internal/cliutil/files.go added 95 new line(s) including 5 public declaration(s) — func Inside(directory, candidate string) bool {, func ResolvePath(value string) (string, error) {, func RepositoryRoot(start string) (string, error) { (and 2 more) — and the episode touched .github/skills/cli-exercise/tests/skill-evaluations.json, .github/skills/cli-exercise/tool/internal/cliutil/environment_test.go, .github/skills/cli-exercise/tool/internal/cliutil/io_test.go, .github/skills/cli-exercise/tool/internal/engine/actions_test.go, .github/skills/cli-exercise/tool/internal/engine/assertions_test.go, .github/skills/cli-exercise/tool/internal/engine/runtime_test.go (and 17 more), none of them named for `files` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "untested_new_logic",
+              "message": ".github/skills/cli-exercise/tool/internal/cliutil/io.go added 159 new line(s) including 8 public declaration(s) — func NewRequestID() (string, error) {, func ManifestHash(skillRoot string) (string, error) {, type Streams struct { (and 5 more) — and the episode touched .github/skills/cli-exercise/tests/skill-evaluations.json, .github/skills/cli-exercise/tool/internal/cliutil/environment_test.go, .github/skills/cli-exercise/tool/internal/cliutil/io_test.go, .github/skills/cli-exercise/tool/internal/engine/actions_test.go, .github/skills/cli-exercise/tool/internal/engine/assertions_test.go, .github/skills/cli-exercise/tool/internal/engine/runtime_test.go (and 17 more), none of them named for `io` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "untested_new_logic",
+              "message": ".github/skills/cli-exercise/tool/internal/cliutil/process_other.go added 34 new line(s) including 5 public declaration(s) — func ManagedProcesses() bool { return false }, func CheckPrivate(os.FileInfo) error {, func OwnProcessGroup(*exec.Cmd) {} (and 2 more) — and the episode touched .github/skills/cli-exercise/tests/skill-evaluations.json, .github/skills/cli-exercise/tool/internal/cliutil/environment_test.go, .github/skills/cli-exercise/tool/internal/cliutil/io_test.go, .github/skills/cli-exercise/tool/internal/engine/actions_test.go, .github/skills/cli-exercise/tool/internal/engine/assertions_test.go, .github/skills/cli-exercise/tool/internal/engine/runtime_test.go (and 17 more), none of them named for `process_other` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "untested_new_logic",
+              "message": ".github/skills/cli-exercise/tool/internal/cliutil/process_unix.go added 75 new line(s) including 5 public declaration(s) — func ManagedProcesses() bool { return true }, func CheckPrivate(info os.FileInfo) error {, func OwnProcessGroup(command *exec.Cmd) { (and 2 more) — and the episode touched .github/skills/cli-exercise/tests/skill-evaluations.json, .github/skills/cli-exercise/tool/internal/cliutil/environment_test.go, .github/skills/cli-exercise/tool/internal/cliutil/io_test.go, .github/skills/cli-exercise/tool/internal/engine/actions_test.go, .github/skills/cli-exercise/tool/internal/engine/assertions_test.go, .github/skills/cli-exercise/tool/internal/engine/runtime_test.go (and 17 more), none of them named for `process_unix` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/engine/runtime_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/evidence_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/presentation_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/session_media_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/execution/cli_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/execution/fixture_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/adapter_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/cleanup_other_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/cleanup_unix_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/fixture_test.go was skipped — the case is still in the file and no longer runs in the episode's run",
+              "severity": "medium"
+            },
+            {
+              "detector": "todo_debt",
+              "message": ".github/skills/cli-exercise/tool/internal/preflight/check.go added 1 unfinished-work marker(s) (go): problem(\"runtime\", \"unsupported-platform\", \"Owned terminal process cleanup and private ownership checks are not implemented on this platform.\", false)",
+              "severity": "low"
+            },
+            {
+              "detector": "todo_debt",
+              "message": ".github/skills/cli-exercise/tool/internal/terminal/adapter.go added 1 unfinished-work marker(s) (go): return nil, fmt.Errorf(\"owned terminal process cleanup is not implemented on this platform\")",
+              "severity": "low"
+            },
+            {
+              "detector": "copy_paste_growth",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/main.go: 27 of its 444 new line(s) sit in 2 repeated runs of ≥12 consecutive lines (longest 15); the same text appears in .github/skills/cli-exercise/tool/internal/evidence/session.go",
+              "severity": "low"
+            },
+            {
+              "detector": "copy_paste_growth",
+              "message": ".github/skills/cli-exercise/tool/internal/evidence/session.go: 27 of its 355 new line(s) sit in 2 repeated runs of ≥12 consecutive lines (longest 15); the same text appears in .github/skills/cli-exercise/tool/internal/evidence/main.go",
+              "severity": "low"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 80b06678ef3d --stat`: 72 files, 15 945 insertions; `tool/internal/cliutil/io.go` +159 (`NewRequestID`, `ManifestHash`, `type Streams`), `files.go` +95; 14 medium findings beside 4 low.",
+            "note": "The highest score in the cli window, and the widest thing in it: a new 15 945-line recording-and-evidence skill tool under `.github/skills/cli-exercise`, agent-authored, with new public API in `internal/cliutil` that no test file is named for. `untested_new_logic` put four of those files in front of a reviewer with their public declarations quoted; whether or not the engine suites already reach them, that is the read this guardrail exists to force on agent-authored work at this scale.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 61,
+          "scored": true,
+          "summary": "Add a skill for chaptered CLI recordings",
+          "taken_back": 0.004,
+          "why": [
+            "1758 — 18 finding(s): 4 low, 14 medium · untested_new_logic on .github/skills/cli-exercise/tool/internal/cliutil/files.go, untested_new_logic on .github/skills/cli-exercise/tool/internal/cliutil/io.go",
+            "1029 — .github/skills/cli-exercise/scripts/package-lock.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs, other",
+            "769 — 2 lockfile(s) and 2 manifest(s): .github/skills/cli-exercise/scripts/package-lock.json, .github/skills/cli-exercise/scripts/package.json, .github/skills/cli-exercise/tool/go.mod and 1 more · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "e4dc24104f760f87d59bd597d350e01a7fcf48b5",
+          "episode": "ep-ad25dcade731e903702a",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show e4dc24104f76 --stat`: go.mod 6, go.sum 12; member `28a47f46a` the same 12 lines for `golang.org/x/text` 0.42.0.",
+            "note": "Two Dependabot minor bumps, `golang.org/x/crypto` and `golang.org/x/text`, 18 lines of go.mod and go.sum between them and no finding of any kind. The flag is the lockfile axis and the generated-path share — 30 of 30 churn lines on lockfile paths, which is a description of the file list and not of the change.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 34,
+          "scored": true,
+          "summary": "chore(deps): bump golang.org/x/crypto from 0.56.0 to 0.57.0",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 30 of 30 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "17659961c1197840c818ca6a8239a4536f3d1fc3",
+          "episode": "ep-162b8767482aa4ed03bf",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 17659961c119 --stat` go.mod 2/go.sum 4; members `be5f9acf5` (`codeql.yml` 3, `govulncheck.yml` 1) and `617bbcfb4` (`deployment.yml` 1).",
+            "note": "`golang.org/x/term`, the codeql-actions group and `azure/login`, all Dependabot, all one episode. The workflow axis again reads highest on the episode — `permissions and secrets travel with the artefact` — for three `uses:` lines in `codeql.yml`, one in `govulncheck.yml` and one in `deployment.yml`. No permission, no secret, no operator action.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 3,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "chore(deps): bump golang.org/x/term from 0.45.0 to 0.46.0",
+          "taken_back": 0.0,
+          "why": [
+            "1441 — .github/workflows/codeql.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
+            "422 — dependabot wrote this, which is the reason this tool exists (ADR-001 §7.3)"
+          ]
+        },
+        {
+          "commit": "a4f0de06871af76fc43bbbfaa13874258c590436",
+          "episode": "ep-8cf284f7a900c1615394",
+          "findings": [
+            {
+              "detector": "todo_debt",
+              "message": "pkg/cmd/issue/edit/edit_test.go added 3 unfinished-work marker(s) (go): Add:    []string{\"feature\", \"TODO\", \"bug\"},, Add:    []string{\"feature\", \"TODO\", \"bug\"},, Add:    []string{\"feature\", \"TODO\", \"bug\"},",
+              "severity": "low"
+            },
+            {
+              "detector": "todo_debt",
+              "message": "pkg/cmd/pr/edit/edit_test.go added 3 unfinished-work marker(s) (go): Add:    []string{\"feature\", \"TODO\", \"bug\"},, Add:    []string{\"feature\", \"TODO\", \"bug\"},, Add:    []string{\"feature\", \"TODO\", \"bug\"},",
+              "severity": "low"
+            },
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 10 separate clusters (api, git, internal/codespaces, internal/config, internal/ghcmd, internal/run (and 4 more)), widest pkg/cmd (33 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "todo_debt"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show a4f0de06871a`: go.mod `go 1.26.0 → 1.27.0`, `toolchain go1.27.1`; `.github/golangci-lint-version` v2.12.2 → v2.13.2; the quoted markers are `Add: []string{\"feature\", \"TODO\", \"bug\"}` in `pkg/cmd/{issue,pr}/edit/edit_test.go`, whose 276/318-line churn is indentation.",
+            "note": "`todo_debt` charged six unfinished-work markers, and every one of them is `Add: []string{\"feature\", \"TODO\", \"bug\"}` — a fixture listing GitHub label names in the tests for `gh issue edit` and `gh pr edit`. TODO is the name of a label, not a marker of unfinished work. The rest of the flag is one toolchain sweep: go 1.27.1, the linter and govulncheck version files, and the re-indentation those tools did to the same two test files, which is what `the test surface shrank −373` was counting. `shotgun_edit`'s ten clusters are that same `go fmt`, seen ten times.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 49,
+          "scored": true,
+          "summary": "Bump Go to 1.27.1",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — go.mod — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, other",
+            "879 — 3 finding(s): 2 low, 1 medium · todo_debt on pkg/cmd/issue/edit/edit_test.go, todo_debt on pkg/cmd/pr/edit/edit_test.go",
+            "689 — the test surface shrank: −373 against +286 on tests while source moved +79 −140 · coverage is a floor of 0.75 here, not a share"
+          ]
+        },
+        {
+          "commit": "9a779be4f6a3522e68cc8b648ec50f35abf8aca7",
+          "episode": "ep-3d45b30749e2b217ba15",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 9a779be4f6a3 --stat`: go.mod 2, go.sum 4.",
+            "note": "`golang.org/x/sys` 0.47.0 → 0.48.0: three lines of go.mod and go.sum, no finding, and 6 of 6 churn lines on lockfile paths. The flag says the supply chain is part of the diff, which is true of the path and empty of content for a bot patch bump.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "chore(deps): bump golang.org/x/sys from 0.47.0 to 0.48.0",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 6 of 6 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "07e906502a08dd18174cf3badb8eb3819242acee",
+          "episode": "ep-30b52d7206198acc7d0a",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/repo/garden/http_test.go was deleted, taking 0 test case(s) and 9 assertion line(s) with it",
+              "severity": "high"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "test_weakening"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 5448cdc20 --stat`: `pkg/cmd/repo/garden/garden.go` −508, `http.go` −111, `http_test.go` −55, `pkg/cmd/repo/repo.go` −2; member `07e906502` adds `wait-for-repository-ready` to `acceptance/testdata/repo/repo-archive-unarchive.txtar`.",
+            "note": "The high-severity claim is accurate as far as it goes — `pkg/cmd/repo/garden/http_test.go` was deleted, 9 assertion lines — and the deletion is the point of the episode: the same commit removes `gh repo garden`, the Konami-code garden game, its command registration and all 619 lines of it. The coverage did not go missing; the code it covered left the repository beside it. The other member of the episode is a three-line acceptance-test wait.",
+            "reason": "intentional"
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 29,
+          "scored": true,
+          "summary": "Wait for repository before archiving",
+          "taken_back": 0.0,
+          "why": [
+            "659 — 1 finding(s): 1 high · test_weakening on pkg/cmd/repo/garden/http_test.go",
+            "577 — the test surface shrank while source moved: −55 tests against +0 source (−621), and 676 of 679 churn lines are removal",
+            "507 — +3 −676 = 679 churn, all of it hand-written"
+          ]
+        },
+        {
+          "commit": "81780e761889d7e72f2037e48e1547b3420a9731",
+          "episode": "ep-68eb5af891e678ca7d11",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": "internal/telemetry/service_test.go was weakened: 1 test case(s) removed and 0 added; 22 assertion line(s) removed and 4 added; the episode's own test totals were -1 cases and -19 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "high"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "internal/telemetry/telemetry_test.go was weakened: 3 assertion line(s) removed and 1 added; the episode's own test totals were -1 cases and -19 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 81780e761889 --stat`: `internal/telemetry/service_test.go` 159 lines changed, `internal/telemetry/fake.go` 41; members: `89f056119` deletes `acceptance/testdata/secret/secret-repo.txtar` −63, `1f6b063bb` adds 95 lines to `acceptance/acceptance_test.go`, `cf2f3fcaa` removes them again.",
+            "note": "An agent-attributed episode whose first commit is called `simplify telemetry recording and tests` and whose high finding is that `internal/telemetry/service_test.go` lost a test case and 22 assertion lines while gaining 4. `Simplify the tests` is the subject line a guardrail exists to distrust, and the episode is not only that: it also deleted an acceptance file, and its last commit removes again the 95-line helper its third commit added. The flag asked whether the coverage survived the simplification, and on this corpus that question is worth stopping for.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 5,
+          "rework": [],
+          "score": 43,
+          "scored": true,
+          "summary": "simplify telemetry recording and tests",
+          "taken_back": 0.0,
+          "why": [
+            "1099 — 2 finding(s): 1 high, 1 medium · test_weakening on internal/telemetry/service_test.go, test_weakening on internal/telemetry/telemetry_test.go",
+            "798 — the test surface shrank: −345 against +266 on tests while source moved +27 −48 · coverage is a floor of 0.75 here, not a share",
+            "654 — 4 surface(s) over 34 file(s) in 5 commit(s) · one episode that kept coming back"
+          ]
+        },
+        {
+          "commit": "3c0f54c8d495abdb74364c10718752f53f6e2662",
+          "episode": "ep-383154b299cddda1a24e",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": "internal/telemetry/telemetry_test.go was weakened: 1 test case(s) removed and 0 added; 19 assertion line(s) removed and 8 added; the episode's own test totals were -1 cases and 2 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "high"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/pr/shared/commentable_test.go was weakened: 1 assertion line(s) removed and 0 added; the episode's own test totals were -1 cases and 2 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "member `b54469f47e --stat`: `internal/telemetry/telemetry_test.go` 252 changed, `internal/attachments/flags_test.go` 170, 11 files +200 −406 with no `src` equivalent; finding `test_weakening` (high) −1 case, −19/+8 assertions.",
+            "note": "Flagged high for a case and 19 assertion lines leaving `internal/telemetry/telemetry_test.go`, and the member responsible is a commit called `simplify telemetry test coverage` that takes 252 lines off that file and 406 off the test tree while touching no source. The episode's other member is unrelated acceptance diagnostics, which is the grouping problem the flag exists to see through: a large telemetry test reduction, riding alongside something else.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "Improve workflow timeout diagnostics",
+          "taken_back": 0.113,
+          "why": [
+            "1099 — 2 finding(s): 1 high, 1 medium · test_weakening on internal/telemetry/telemetry_test.go, test_weakening on pkg/cmd/pr/shared/commentable_test.go",
+            "879 — the test surface shrank: −407 against +347 on tests while source moved +0 −0 · coverage is a floor of 0.75 here, not a share",
+            "577 — the test surface shrank while source moved: −407 tests against +0 source (−0), and 408 of 762 churn lines are removal"
+          ]
+        },
+        {
+          "commit": "d2fe6e98dca4e624a69bbca39bb12b0ca38206b0",
+          "episode": "ep-859df55bc1cfcaf5735e",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "internal/attachments/telemetry.go added 26 new line(s) including 2 public declaration(s) — type TelemetryEvent struct {, func Begin(recorder ghtelemetry.InvocationRecorder, command string, attachCount int) *TelemetryEvent { — and the episode touched acceptance/user_capability_test.go, internal/attachments/flags_test.go, internal/attachments/test.go, pkg/cmd/issue/comment/comment_test.go, pkg/cmd/issue/create/create_test.go, pkg/cmd/issue/edit/edit_test.go (and 4 more), none of them named for `telemetry` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/issue/comment/comment_test.go was weakened: 11 assertion line(s) removed and 8 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/issue/create/create_test.go was weakened: 5 assertion line(s) removed and 2 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/issue/edit/edit_test.go was weakened: 6 assertion line(s) removed and 2 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/pr/comment/comment_test.go was weakened: 9 assertion line(s) removed and 2 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/pr/create/create_test.go was weakened: 5 assertion line(s) removed and 2 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            },
+            {
+              "detector": "test_weakening",
+              "message": "pkg/cmd/pr/edit/edit_test.go was weakened: 8 assertion line(s) removed and 2 added; the episode's own test totals were 1 cases and -24 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show d2fe6e98dca4`: `pkg/cmd/issue/comment/comment_test.go` −11/+8 assertion lines (finding `test_weakening`); member `38704130e` adds `internal/attachments/telemetry.go` +36 and `flags_test.go` +43.",
+            "note": "New typed attachment telemetry — `TelemetryEvent` and `Begin(recorder, command, attachCount)` in `internal/attachments/telemetry.go`, with no test named for it — landed beside six command test files whose assertion counts went down 24 lines in the same episode. Both halves of the flag are the question this guardrail is for, and the later take-back (R2, a fifth of what the episode added) says the episode was not finished when it merged.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 4,
+          "rework": [
+            "R2"
+          ],
+          "score": 40,
+          "scored": true,
+          "summary": "start attachment telemetry before asset validation",
+          "taken_back": 0.216,
+          "why": [
+            "1758 — 7 finding(s): 7 medium · untested_new_logic on internal/attachments/telemetry.go, test_weakening on pkg/cmd/issue/comment/comment_test.go",
+            "538 — 3 surface(s) over 37 file(s) in 4 commit(s) · one episode that kept coming back",
+            "505 — +406 −261 = 667 churn, all of it hand-written"
+          ]
+        },
+        {
+          "commit": "46e09a5485d04153eccfaac238c389ffaaebf43c",
+          "episode": "ep-87ea6875275484004003",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "internal/telemetry/fake.go added 42 new line(s) including 1 public declaration(s) — type InvocationRecorderSpy struct { — and the episode touched internal/attachments/flags_test.go, internal/attachments/test.go, internal/telemetry/invocation_test.go, internal/telemetry/telemetry_test.go, pkg/cmd/api/api_test.go, pkg/cmd/attestation/verify/verify_integration_test.go (and 17 more), none of them named for `fake` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 7 separate clusters (cmd/gen-docs, internal/attachments, internal/gh, internal/ghcmd, internal/telemetry, pkg/cmd (and 1 more)), widest pkg/cmd (15 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "untested_new_logic"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 46e09a5485d0 -- internal/telemetry/fake.go`: `_ ghtelemetry.EventRecorder = (*EventRecorderSpy)(nil)`, `_ ghtelemetry.Invocation = (*InvocationRecorderSpy)(nil)` added, `CommandRecorderSpy` removed; whole episode 36 files +114 −101.",
+            "note": "`untested_new_logic` charged `internal/telemetry/fake.go` for 42 new lines and one public declaration, and that declaration is `type InvocationRecorderSpy struct` — the package's test double, in a file called `fake.go`, renamed in the same commit from `CommandRecorderSpy` and pinned to the interface by a `var _ ghtelemetry.Invocation = (*InvocationRecorderSpy)(nil)` assertion. A spy is not untested new logic. `shotgun_edit`'s seven clusters are the mechanical half of the same rename, one call site at a time; nothing the flag claimed described this change.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 7,
+          "rework": [
+            "R2"
+          ],
+          "score": 35,
+          "scored": true,
+          "summary": "separate event recording from invocation policy",
+          "taken_back": 0.205,
+          "why": [
+            "879 — 2 finding(s): 2 medium · untested_new_logic on internal/telemetry/fake.go, shotgun_edit on clusters",
+            "577 — the test surface shrank while source moved: −257 tests against +363 source (−145), and 776 of 1518 churn lines are removal",
+            "569 — +742 −776 = 1518 churn, all of it hand-written"
+          ]
+        },
+        {
+          "commit": "20c599bb3e8acf889c86d35b2ed9889a663f1a49",
+          "episode": "ep-bbc2900778656c371a59",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 20c599bb3 --stat`: go.mod 2, go.sum 4.",
+            "note": "`golang.org/x/sync` 0.22.0 → 0.23.0 — go.mod 2, go.sum 4, no finding, and the flag is the same lockfile axis that flagged six other bump episodes in this window. Nothing distinguishes it from them and nothing in it needs a reader.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 33,
+          "scored": true,
+          "summary": "chore(deps): bump golang.org/x/sync from 0.22.0 to 0.23.0",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 6 of 6 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "145d839ab5e774c3a46295f80f16b75037a8a23b",
+          "episode": "ep-4591d2f647439fc16855",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 145d839ab --stat`: go.mod 2/go.sum 4; members `2091aae79`, `123c1e72c`, `5a7c407d1` each go.mod 2/go.sum 4.",
+            "note": "Four Dependabot minor bumps in one episode — `dev-tunnels`, `klauspost/compress`, `go-containerregistry`, `goldmark` — six lines each in go.mod and go.sum, 24 of 24 churn lines on lockfile paths and no finding. The ranking flagged the file class; there is no claim in the flag about the four packages that a reviewer could check.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 4,
+          "rework": [],
+          "score": 34,
+          "scored": true,
+          "summary": "chore(deps): bump github.com/microsoft/dev-tunnels from 0.1.27 to 0.2.0",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 24 of 24 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
         }
       ],
       "refused_labels": [],
       "repository": "cli",
       "rework_by_rung": {
         "R1": 1,
-        "R2": 3,
+        "R2": 10,
         "R3": 0
       },
-      "score_max": 50,
+      "score_max": 61,
       "score_median": 10,
-      "scored": 60,
+      "scored": 180,
       "url": "https://github.com/cli/cli",
-      "why": "Go, a repository where a bot is one of the most active committers: Dependabot opened 6 of the 60 episodes in the window and its own CI (`gh-aw` agentic workflows) is generated and recompiled in tree, which is exactly the terrain `generated_edit` and the dependency axes have to be right about. It is also the only one of the three with a non-trivial agent-attributed population (20 of 60 episodes attribute to an author kind other than `human`), and the guardrail is meant for agent-driven work.",
-      "window": 60
+      "why": "Go, a repository where a bot is one of the most active committers: Dependabot and the `gh-aw` agentic-workflow bot between them open a large share of the window, their own compiled workflow locks are regenerated in tree, which is exactly the terrain `generated_edit` and the dependency axes have to be right about. It is also the only one of the three with a non-trivial agent-attributed population, and the guardrail is meant for agent-driven work.",
+      "window": 180
     },
     {
       "at_corpus_cut": {
         "blamed_on_score": [
           "ep-4970012ef1b41a51a3ef-2",
-          "ep-4970012ef1b41a51a3ef"
+          "ep-4970012ef1b41a51a3ef",
+          "ep-6715ff32c922a33e81ae",
+          "ep-1f9f2c92b8fe45c53ddd-2",
+          "ep-614e31ff37b6d4580b08",
+          "ep-1f9f2c92b8fe45c53ddd",
+          "ep-3158a2508aea30abb76f",
+          "ep-5744e7f7cf140be2601a"
         ],
-        "false_positives": 7,
-        "flagged": 9,
-        "g3": 0.778,
-        "labelled": 9,
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
         "tau": 0,
-        "true_positives": 5,
+        "true_positives": 10,
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
@@ -919,17 +1885,23 @@
       "at_tau_decile": {
         "blamed_on_score": [
           "ep-4970012ef1b41a51a3ef-2",
-          "ep-4970012ef1b41a51a3ef"
+          "ep-4970012ef1b41a51a3ef",
+          "ep-6715ff32c922a33e81ae",
+          "ep-1f9f2c92b8fe45c53ddd-2",
+          "ep-614e31ff37b6d4580b08",
+          "ep-1f9f2c92b8fe45c53ddd",
+          "ep-3158a2508aea30abb76f",
+          "ep-5744e7f7cf140be2601a"
         ],
-        "false_positives": 7,
-        "flagged": 9,
-        "g3": 0.778,
-        "labelled": 9,
-        "tau": 47,
-        "true_positives": 5,
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
+        "tau": 40,
+        "true_positives": 10,
         "unlabelled_flagged": []
       },
-      "decile_tau": 47,
+      "decile_tau": 40,
       "detectors": [
         {
           "answerable_for": 0,
@@ -948,12 +1920,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 4,
+          "answerable_for": 5,
           "default_enabled": true,
           "false_positives": 2,
-          "g3": 0.5,
+          "g3": 0.4,
           "id": "test_weakening",
-          "spoke": 4
+          "spoke": 5
         },
         {
           "answerable_for": 0,
@@ -988,12 +1960,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 4,
+          "answerable_for": 7,
           "default_enabled": true,
-          "false_positives": 4,
-          "g3": 1.0,
+          "false_positives": 5,
+          "g3": 0.714,
           "id": "lint_escape",
-          "spoke": 4
+          "spoke": 7
         },
         {
           "answerable_for": 0,
@@ -1028,14 +2000,14 @@
           "spoke": 0
         }
       ],
-      "episodes": 60,
+      "episodes": 180,
       "episodes_by_author_kind": {
         "agent": 0,
-        "human": 60,
+        "human": 180,
         "unknown": 0
       },
       "head": "d086db856be187255b8ec61ef409357393020f32",
-      "labelled_total": 9,
+      "labelled_total": 20,
       "labels": [
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -1123,16 +2095,117 @@
             "R2"
           ],
           "score": 47
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "5e621a2801daf95be6d208da9dcc287bb251f63c",
+          "decision": "dismissed",
+          "episode": "ep-6715ff32c922a33e81ae",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 41
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "64dd0809c2fc732ed30539235232a268f9bd96ac",
+          "decision": "dismissed",
+          "episode": "ep-1f9f2c92b8fe45c53ddd-2",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 46
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "97bddc1f61a59522386d36ec37b2b220a01de262",
+          "decision": "dismissed",
+          "episode": "ep-614e31ff37b6d4580b08",
+          "reason": "low-stakes",
+          "rework": [
+            "R2"
+          ],
+          "score": 48
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "da6d075dfde71b2e2a64f39b29ba957d5ffb00b0",
+          "decision": "accepted",
+          "episode": "ep-7140bb4e3da10ce1742e",
+          "reason": "",
+          "rework": [],
+          "score": 51
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "c2705ffd9ce1dc8476cb29eaf5ff5d4c719852d9",
+          "decision": "accepted",
+          "episode": "ep-1e77ec34ae6b7abed98a",
+          "reason": "",
+          "rework": [],
+          "score": 43
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "55c62556571ee46a94da174643b50ece06edead4",
+          "decision": "dismissed",
+          "episode": "ep-1f9f2c92b8fe45c53ddd",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 47
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "5addaf833b2e8c7a616f89dd8ad5a44b07d7c000",
+          "decision": "accepted",
+          "episode": "ep-f1e4af05501104e8bd95",
+          "reason": "",
+          "rework": [],
+          "score": 45
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "f04c5e696400badaa52b3450ded53e9091c2078a",
+          "decision": "dismissed",
+          "episode": "ep-c2e79c2181266f20db89",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 51
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "52df9eed45d0b19c588662ed8492d8fbaa0e7098",
+          "decision": "dismissed",
+          "episode": "ep-3158a2508aea30abb76f",
+          "reason": "intentional",
+          "rework": [],
+          "score": 51
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "0109e496f6ca68de29480fe6413e81b1d3f86aa9",
+          "decision": "accepted",
+          "episode": "ep-2ea2099fe381dfe709da",
+          "reason": "",
+          "rework": [],
+          "score": 51
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "235c52fa10094135746d04a5b6a7bea8125357f0",
+          "decision": "dismissed",
+          "episode": "ep-5744e7f7cf140be2601a",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 40
         }
       ],
-      "mature": 55,
-      "mature_rework": 4,
+      "mature": 175,
+      "mature_rework": 12,
       "miss_rate": 1.0,
-      "missed_at_decile": 1,
-      "missed_rework": 4,
+      "missed_at_decile": 8,
+      "missed_rework": 12,
       "orphaned_labels": [],
-      "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
-      "pinned_now": "2026-10-20T00:00:00Z",
+      "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head is the branch tip at the time of the re-pin (unchanged since e4.9: flask had not moved), the window is the 180 newest episodes above it, and `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19) at the same tip. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
+      "pinned_now": "2026-10-20T12:00:00Z",
       "receipts": [
         {
           "commit": "7689f98403e2c0b0bc8d1031e60f8cff2620e86a",
@@ -1425,33 +2498,363 @@
             "879 — of +3 on logic, +0 was tests (0% covered) over 1094 lines of churn",
             "751 — 1068 of 1094 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
           ]
+        },
+        {
+          "commit": "5e621a2801daf95be6d208da9dcc287bb251f63c",
+          "episode": "ep-6715ff32c922a33e81ae",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 5e621a28`: `tests/test_basic.py` 49, pyproject 3, uv.lock 45; members `976459f7` (editable-workzeug fix, uv.lock 45) and `663198d7` (four workflows + `uv.lock` 218).",
+            "note": "Tests updated for Werkzeug 3.2's domain matching, and the maintenance refresh that came with it: the four shared workflow templates re-emitted, `.pre-commit-config.yaml` pins moved and `uv.lock` rewritten — 304 of the episode's 369 churn lines are the lockfile. No finding spoke; the flag is the workflow axis charging 1 314 points for a template re-emission and the lockfile axis for the rest of it.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 3,
+          "rework": [],
+          "score": 41,
+          "scored": true,
+          "summary": "update domain matching tests for Werkzeug 3.2",
+          "taken_back": 0.022,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, test",
+            "692 — 1 lockfile(s) and 1 manifest(s): pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve",
+            "634 — 304 of 369 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "64dd0809c2fc732ed30539235232a268f9bd96ac",
+          "episode": "ep-1f9f2c92b8fe45c53ddd-2",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 64dd0809 --stat`: `uv.lock` 642 of 656 churn; `.github/workflows/{pre-commit,publish,tests}.yaml` and `.pre-commit-config.yaml` are the other four files.",
+            "note": "The flask maintenance rhythm again, a month earlier in the window than the e4.9 rows: 624 of 656 churn lines are `uv.lock`, and the rest is the shared workflow templates and the pre-commit pins moving under an `update dev dependencies` subject. No finding, and the score's own second feature (`of +2 on logic, +0 was tests`) is counting two lines.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 46,
+          "scored": true,
+          "summary": "update dev dependencies",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +2 on logic, +0 was tests (0% covered) over 656 lines of churn",
+            "732 — 624 of 656 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "97bddc1f61a59522386d36ec37b2b220a01de262",
+          "episode": "ep-614e31ff37b6d4580b08",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 97bddc1f --stat`: `uv.lock` 511, `.github/workflows/{lock,pre-commit,publish,tests}.yaml`, `.pre-commit-config.yaml`, pyproject 4; every workflow line is a `uses:` pin such as `actions/checkout@… # v6.0.1`.",
+            "note": "Same act again: seven SHA-pinned action bumps re-emitted across the workflow templates, `uv.lock` 511 of 549 churn lines, no finding. A later episode took more than half of it back (R2, 0.547), which is what a dependency refresh in a pinned CI looks like — it is not a question a reviewer could have answered better from the flag.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [
+            "R2"
+          ],
+          "score": 48,
+          "scored": true,
+          "summary": "update dev dependencies",
+          "taken_back": 0.547,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +2 on logic, +0 was tests (0% covered) over 549 lines of churn",
+            "713 — 509 of 549 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "da6d075dfde71b2e2a64f39b29ba957d5ffb00b0",
+          "episode": "ep-7140bb4e3da10ce1742e",
+          "findings": [
+            {
+              "detector": "lint_escape",
+              "message": "src/flask/sessions.py adds 1 check-suppressing directive(s) — the type checker on this line — and the reason is not in the diff: return self.get(\"_permanent\", False)  # type: ignore[no-any-return]",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show da6d075d`: `src/flask/sessions.py` 2 lines (`permanent` property), `uv.lock` 1 641 of 1 663 churn; finding quotes the suppressed line verbatim.",
+            "note": "Underneath a 1 641-line `uv.lock` refresh with the subject `update dev dependencies` there is one source change: a `# type: ignore[no-any-return]` on `return self.get(\"_permanent\", False)` — the read of the flag that decides whether a session outlives the browser. `lint_escape`'s claim, a suppression whose reason is not in the diff, holds exactly, and it is the only finding the episode got. This is the shape the detector exists for: a type hole punched on a security-adjacent property and carried in under an unrelated subject line.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 51,
+          "scored": true,
+          "summary": "update dev dependencies",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +3 on logic, +0 was tests (0% covered) over 1663 lines of churn",
+            "750 — 1621 of 1663 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "c2705ffd9ce1dc8476cb29eaf5ff5d4c719852d9",
+          "episode": "ep-1e77ec34ae6b7abed98a",
+          "findings": [
+            {
+              "detector": "lint_escape",
+              "message": "src/flask/ctx.py adds 3 check-suppressing directive(s) — the type checker on this line, the type checker on this line, the type checker on this line — and the reason is not in the diff: result = self.url_adapter.match(return_rule=True)  # type: ignore[union-attr], self._request.routing_exception = e  # type: ignore[union-attr] (and 1 more)",
+              "severity": "medium"
+            },
+            {
+              "detector": "lint_escape",
+              "message": "src/flask/globals.py adds 5 check-suppressing directive(s) — the type checker on this line, the type checker on this line, the type checker on this line, the type checker on this line, the type checker on this line — and the reason is not in the diff: app_ctx: AppContextProxy = LocalProxy(  # type: ignore[assignment], current_app: FlaskProxy = LocalProxy(  # type: ignore[assignment] (and 3 more)",
+              "severity": "medium"
+            },
+            {
+              "detector": "lint_escape",
+              "message": "src/flask/helpers.py adds 1 check-suppressing directive(s) — the type checker on this line — and the reason is not in the diff: yield None  # type: ignore[misc]",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show c2705ffd --stat`: `src/flask/ctx.py` 467, `src/flask/globals.py` 62, `src/flask/helpers.py` 50, `tests/` 5 files 50 lines; findings quote `result = self.url_adapter.match(return_rule=True)  # type: ignore[union-attr]` and five directives in `globals.py`.",
+            "note": "Merging the app and request context is a change to Flask's execution lifecycle: 1 786 churn lines, `src/flask/ctx.py` alone 467, +431 logic against 22 lines of tests, and nine new `# type: ignore` directives in `ctx.py`, `globals.py` and `helpers.py`. Three `lint_escape` findings and the coverage feature both point at the same thing — the type-checker is being told to look away in the middle of the request path, in a commit whose own CHANGES entry describes a user-visible API change. Nothing here was a false alarm.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 43,
+          "scored": true,
+          "summary": "merge app and request context",
+          "taken_back": 0.036,
+          "why": [
+            "1319 — 3 finding(s): 3 medium · lint_escape on src/flask/ctx.py, lint_escape on src/flask/globals.py",
+            "836 — of +431 on logic, +22 was tests (5% covered) over 1786 lines of churn",
+            "582 — +779 −1007 = 1786 churn, all of it hand-written"
+          ]
+        },
+        {
+          "commit": "55c62556571ee46a94da174643b50ece06edead4",
+          "episode": "ep-1f9f2c92b8fe45c53ddd",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 55c62556 --stat`: `uv.lock` 812; `.github/workflows/{pre-commit,publish,tests}.yaml`, `.pre-commit-config.yaml`.",
+            "note": "`uv.lock` is 790 of the episode's 820 churn lines and the other four files are the shared workflow templates and the pre-commit pins. No finding spoke, so the flag is the ranking reading a path class — the third such episode in this window and the fourth in the corpus.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 47,
+          "scored": true,
+          "summary": "update dev dependencies",
+          "taken_back": 0.002,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +3 on logic, +0 was tests (0% covered) over 820 lines of churn",
+            "741 — 790 of 820 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "5addaf833b2e8c7a616f89dd8ad5a44b07d7c000",
+          "episode": "ep-f1e4af05501104e8bd95",
+          "findings": [
+            {
+              "detector": "test_weakening",
+              "message": "tests/test_testing.py was weakened: 6 assertion line(s) removed and 2 added; the episode's own test totals were 0 cases and -4 assertion lines, so the loss did not move elsewhere in it",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "member `git show 53b8f082`: `src/flask/testing.py` `while self._new_contexts: cm = self._new_contexts.pop()` → `for cm in self._new_contexts:` + `.clear()`; `tests/test_testing.py` −23/+8 with `test_redirect_keep_session` replaced by `test_redirect_session`.",
+            "note": "The version bump is noise; the member that matters changed `FlaskClient` to re-push preserved contexts in list order instead of LIFO, and rewrote `test_redirect_keep_session` down into a smaller `test_redirect_session` — `test_weakening`'s 6 assertion lines out, 2 in. The steps that left were the ones asserting a session survived a `follow_redirects` chain, which is exactly the behaviour the changed line governs. A flag that puts the shrinking test and the changed line in front of a reviewer at the same moment is earning its place.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 45,
+          "scored": true,
+          "summary": "start version 3.1.2",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — uv.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, test, docs",
+            "733 — the test surface shrank: −21 against +10 on tests while source moved +2 −2 · coverage is a floor of 0.75 here, not a share",
+            "692 — 1 lockfile(s) and 1 manifest(s): pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "f04c5e696400badaa52b3450ded53e9091c2078a",
+          "episode": "ep-c2e79c2181266f20db89",
+          "findings": [
+            {
+              "detector": "lint_escape",
+              "message": "src/flask/sessions.py adds 1 check-suppressing directive(s) — the linter on this line — and the reason is not in the diff: __setitem__ = __delitem__ = clear = pop = popitem = update = setdefault = _fail  # noqa: B950",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "lint_escape"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show f04c5e69`: `src/flask/sessions.py` 2 lines (the `# noqa: B950` the finding quotes), five other `src/flask/*.py` files at 2 lines each, `uv.lock` 442 of 452 churn.",
+            "note": "The one source change under the lockfile is `__setitem__ = __delitem__ = clear = pop = popitem = update = setdefault = _fail  # noqa: B950` — the session-mutator chain, unchanged in meaning, re-wrapped by the formatter the refresh just bumped, and the suppressed check is the line-length limit. `lint_escape` says the reason is not in the diff; the reason is on the line it is suppressing. Reading this costs a minute and can pay nothing.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 51,
+          "scored": true,
+          "summary": "update dev dependencies",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +9 on logic, +0 was tests (0% covered) over 452 lines of churn",
+            "725 — 426 of 452 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "52df9eed45d0b19c588662ed8492d8fbaa0e7098",
+          "episode": "ep-3158a2508aea30abb76f",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 52df9eed`: `.github/workflows/tests.yaml` −1 matrix entry; `src/flask/cli.py` −8 (the `sys.version_info >= (3, 10)` backport branch and its `# pyright: ignore`); `pyproject.toml` 14; `uv.lock` 262.",
+            "note": "Dropping end-of-life Pythons is the whole commit: one entry out of the test matrix, `requires-python` forward, the `importlib_metadata` backport branch out of `src/flask/cli.py`, 60 lines of version-conditional typing out of `src/flask/typing.py`, and `uv.lock` shrinking by 262. The flag saw a workflow change and a lockfile and no finding disagreed — the risk it is pointing at is the deliberate act, which is §5.4's `expected` and a false positive by definition.",
+            "reason": "intentional"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 51,
+          "scored": true,
+          "summary": "drop end of life python versions",
+          "taken_back": 0.013,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, test, docs",
+            "851 — of +30 on logic, +1 was tests (3% covered) over 362 lines of churn",
+            "692 — 1 lockfile(s) and 1 manifest(s): pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "0109e496f6ca68de29480fe6413e81b1d3f86aa9",
+          "episode": "ep-2ea2099fe381dfe709da",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 0109e496 --stat`: 24 files +1 876 −534 — `requirements/dev.txt` −202, `tox.ini` −62, `.github/workflows/publish.yaml` 26, `.github/workflows/tests.yaml` 41, `uv.lock` +1 641.",
+            "note": "`use uv` is a migration of the whole build-and-release toolchain: eleven `requirements/*.txt` and `tox.ini` deleted, `pyproject.toml` +190, `uv.lock` +1 641 in its first commit, and all four workflows plus `.readthedocs.yaml` rewritten to drive it. That is the pipeline that publishes the package, and the flag's plain description of it — a workflow change, a new lockfile, logic with no tests — is the smallest honest one available. Stopping here is what the guardrail is for.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 51,
+          "scored": true,
+          "summary": "use uv",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/tests.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, other",
+            "879 — of +14 on logic, +0 was tests (0% covered) over 2410 lines of churn",
+            "711 — 2227 of 2410 churn lines sit on generated, lockfile, vendored or binary paths (15 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "235c52fa10094135746d04a5b6a7bea8125357f0",
+          "episode": "ep-5744e7f7cf140be2601a",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 235c52fa`: `.readthedocs.yaml` +1; member `165af0a0` — four workflows, `.pre-commit-config.yaml`, five `requirements/*.txt`, `src/flask/app.py` 6, `src/flask/testing.py` 6.",
+            "note": "One line added to `.readthedocs.yaml` to fix the docs build, bundled with the usual refresh: four workflows, five `requirements/*.txt` bumps and two source files at 6 lines each. 88 of 123 churn lines sit on lockfile paths, no finding spoke, and the docs-build line is a fix stated in its own subject.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "fix rtd build",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/publish.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +8 on logic, +0 was tests (0% covered) over 123 lines of churn",
+            "550 — 88 of 123 churn lines sit on generated, lockfile, vendored or binary paths (4 file(s)) · classified by path, not by token comparison"
+          ]
         }
       ],
       "refused_labels": [],
       "repository": "flask",
       "rework_by_rung": {
-        "R1": 0,
-        "R2": 4,
+        "R1": 1,
+        "R2": 12,
         "R3": 0
       },
       "score_max": 63,
-      "score_median": 12,
-      "scored": 60,
+      "score_median": 6,
+      "scored": 180,
       "url": "https://github.com/pallets/flask",
-      "why": "Python, one dominant maintainer, and a release rhythm of routine maintenance: `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile are the single most common thing the top decile of the risk score produced, which is the pattern this guardrail exists to catch or to refuse to catch. Its `test_weakening` cases are real too: test coverage genuinely deleted and genuinely rewritten in place, two episodes apart.",
-      "window": 60
+      "why": "Python, one dominant maintainer, and a release rhythm of routine maintenance: `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile are the single most common thing the top decile of the risk score produced, which is the pattern this guardrail exists to catch or to refuse to catch. Its `test_weakening` cases are real too: test coverage genuinely deleted and genuinely rewritten in place, episodes apart.",
+      "window": 180
     },
     {
       "at_corpus_cut": {
         "blamed_on_score": [
-          "ep-3e3e3622b7ec661a7d8b"
+          "ep-d2deca2bcbf1cbf19791",
+          "ep-69ae383d46857bacc53e",
+          "ep-3e3e3622b7ec661a7d8b",
+          "ep-8acabbff5a15e0c94546",
+          "ep-57d8924c645c1500f3d6",
+          "ep-b77af739da2ef927bb3a"
         ],
-        "false_positives": 3,
-        "flagged": 6,
-        "g3": 0.5,
-        "labelled": 6,
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
         "tau": 0,
-        "true_positives": 3,
+        "true_positives": 6,
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
@@ -1466,17 +2869,22 @@
       },
       "at_tau_decile": {
         "blamed_on_score": [
-          "ep-3e3e3622b7ec661a7d8b"
+          "ep-d2deca2bcbf1cbf19791",
+          "ep-69ae383d46857bacc53e",
+          "ep-3e3e3622b7ec661a7d8b",
+          "ep-8acabbff5a15e0c94546",
+          "ep-57d8924c645c1500f3d6",
+          "ep-b77af739da2ef927bb3a"
         ],
-        "false_positives": 3,
-        "flagged": 6,
-        "g3": 0.5,
-        "labelled": 6,
-        "tau": 42,
-        "true_positives": 3,
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
+        "tau": 40,
+        "true_positives": 6,
         "unlabelled_flagged": []
       },
-      "decile_tau": 42,
+      "decile_tau": 40,
       "detectors": [
         {
           "answerable_for": 0,
@@ -1487,12 +2895,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 1,
+          "answerable_for": 5,
           "default_enabled": true,
-          "false_positives": 0,
-          "g3": 0.0,
+          "false_positives": 3,
+          "g3": 0.6,
           "id": "untested_new_logic",
-          "spoke": 2
+          "spoke": 6
         },
         {
           "answerable_for": 0,
@@ -1503,12 +2911,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 1,
+          "answerable_for": 2,
           "default_enabled": true,
-          "false_positives": 1,
+          "false_positives": 2,
           "g3": 1.0,
           "id": "debug_leftover",
-          "spoke": 1
+          "spoke": 2
         },
         {
           "answerable_for": 1,
@@ -1519,12 +2927,12 @@
           "spoke": 1
         },
         {
-          "answerable_for": 1,
+          "answerable_for": 3,
           "default_enabled": true,
-          "false_positives": 1,
+          "false_positives": 3,
           "g3": 1.0,
           "id": "generated_edit",
-          "spoke": 1
+          "spoke": 3
         },
         {
           "answerable_for": 0,
@@ -1535,12 +2943,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 0,
+          "answerable_for": 1,
           "default_enabled": true,
-          "false_positives": 0,
-          "g3": null,
+          "false_positives": 1,
+          "g3": 1.0,
           "id": "lint_escape",
-          "spoke": 0
+          "spoke": 1
         },
         {
           "answerable_for": 0,
@@ -1559,12 +2967,12 @@
           "spoke": 0
         },
         {
-          "answerable_for": 3,
+          "answerable_for": 7,
           "default_enabled": false,
-          "false_positives": 1,
-          "g3": 0.333,
+          "false_positives": 3,
+          "g3": 0.429,
           "id": "shotgun_edit",
-          "spoke": 3
+          "spoke": 7
         },
         {
           "answerable_for": 0,
@@ -1575,15 +2983,33 @@
           "spoke": 0
         }
       ],
-      "episodes": 60,
+      "episodes": 180,
       "episodes_by_author_kind": {
-        "agent": 9,
-        "human": 51,
+        "agent": 21,
+        "human": 159,
         "unknown": 0
       },
-      "head": "0a977a8d18d7a12f6a4d8ce437abad1f279aa5c1",
-      "labelled_total": 6,
+      "head": "3e3f22dcc47a534d5bb6668817464b02c6e6e133",
+      "labelled_total": 20,
       "labels": [
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "3e3f22dcc47a534d5bb6668817464b02c6e6e133",
+          "decision": "accepted",
+          "episode": "ep-7664b30c84282dfc969a",
+          "reason": "",
+          "rework": [],
+          "score": 47
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "8e768d1fbb19e5f21f7dde643a31c2466083e63a",
+          "decision": "dismissed",
+          "episode": "ep-d2deca2bcbf1cbf19791",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 40
+        },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
           "commit": "c79af4610339a3acd37c94c938f5546bb39fffe4",
@@ -1630,6 +3056,15 @@
           "score": 42
         },
         {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "d298e5155a1318e865d3179988429ad8152ac5d7",
+          "decision": "dismissed",
+          "episode": "ep-69ae383d46857bacc53e",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 40
+        },
+        {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
           "commit": "72d6e487e6a882dd13e4cf307ebcd4941c52687a",
           "decision": "dismissed",
@@ -1637,17 +3072,174 @@
           "reason": "low-stakes",
           "rework": [],
           "score": 50
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "518d03e3790cdd1d6c34c513b2d451c30a99a770",
+          "decision": "dismissed",
+          "episode": "ep-8acabbff5a15e0c94546",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 40
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "5b27c1ccfaa230fb195855f5cf3404a21e3379cd",
+          "decision": "dismissed",
+          "episode": "ep-a398225771620875a55d",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 59
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "3ac6b4c31229664cde21edc4f49949450f8f8e08",
+          "decision": "dismissed",
+          "episode": "ep-16144a5bb76d016f2405",
+          "reason": "false-positive",
+          "rework": [],
+          "score": 46
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "fbbe89dc715c70b2fdde2324334b2b3d460302d3",
+          "decision": "dismissed",
+          "episode": "ep-3fb0b8db8b075ef5a39a",
+          "reason": "false-positive",
+          "rework": [],
+          "score": 46
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "7857566b3d0415013d6263f3d0fa0ad74bb43120",
+          "decision": "dismissed",
+          "episode": "ep-57d8924c645c1500f3d6",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 48
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "db2a4a9216db7cf756350a15f4f527f16af3f2f9",
+          "decision": "dismissed",
+          "episode": "ep-b77af739da2ef927bb3a",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 40
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "57a6e86342a46844dfbc8f039273abbc718f2502",
+          "decision": "dismissed",
+          "episode": "ep-a74fae026a1d9673fe69",
+          "reason": "false-positive",
+          "rework": [],
+          "score": 42
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "c79d773317a48b215697cf28c3687961de6733f4",
+          "decision": "dismissed",
+          "episode": "ep-9397c3683c83c89be731",
+          "reason": "false-positive",
+          "rework": [],
+          "score": 54
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "8ecfc92734b0b574de2b25b2bebb56a97b3e9ba4",
+          "decision": "accepted",
+          "episode": "ep-a5af10920b495d28c7f9",
+          "reason": "",
+          "rework": [],
+          "score": 46
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "3265ed1f944c98bb4c04d632fbefb1257cdb583d",
+          "decision": "dismissed",
+          "episode": "ep-8aa1d8fcfd812d74dc8a",
+          "reason": "low-stakes",
+          "rework": [],
+          "score": 54
+        },
+        {
+          "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+          "commit": "41d30df6fdbe215390b3acb46e8cd4017f65580d",
+          "decision": "accepted",
+          "episode": "ep-c08a86db111d9e564536",
+          "reason": "",
+          "rework": [],
+          "score": 41
         }
       ],
-      "mature": 55,
-      "mature_rework": 0,
-      "miss_rate": null,
-      "missed_at_decile": 0,
-      "missed_rework": 0,
+      "mature": 175,
+      "mature_rework": 2,
+      "miss_rate": 1.0,
+      "missed_at_decile": 2,
+      "missed_rework": 2,
       "orphaned_labels": [],
-      "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
-      "pinned_now": "2026-10-20T00:00:00Z",
+      "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head moved from `0a977a8d18d7` to the branch tip at the time of the re-pin, 11 commits later, so the window is the 180 newest episodes above a head the previous pass had already labelled; `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19). `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
+      "pinned_now": "2026-10-20T12:00:00Z",
       "receipts": [
+        {
+          "commit": "3e3f22dcc47a534d5bb6668817464b02c6e6e133",
+          "episode": "ep-7664b30c84282dfc969a",
+          "findings": [
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 8 separate clusters (.github/workflows, crates/ruff, crates/ruff_benchmark, crates/ruff_python_parser, crates/ruff_wasm, crates/ty (and 2 more)), widest crates/ruff_python_parser (3 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 3e3f22dc`: `crates/ruff_python_parser/Cargo.toml` `stacker = { workspace = true, optional = true }` + `[features] stacker = [\"dep:stacker\"]`; `.github/workflows/ci.yaml` +3 (`Check parser without stacker`); `src/parser/mod.rs` 81, `src/parser/tests.rs` 334.",
+            "note": "Making `stacker` opt-in moves the parser's deep-recursion support behind a new cargo feature: `stacker` becomes optional with `[features] stacker = [\"dep:stacker\"]`, `parser/mod.rs` grows the cfg branches, nine crates re-declare it, and CI gains a `cargo check -p ruff_python_parser --no-default-features` step so the no-stacker build cannot rot. The score's `of +243 on logic, +0 was tests` is a path-class miss — `src/parser/tests.rs` (334 lines) is the parser's own test module and it was updated — but `shotgun_edit`'s eight clusters are the real footprint and the flag pointed at a change in what the shipped parser does.",
+            "reason": ""
+          },
+          "mature": false,
+          "members": 1,
+          "rework": [],
+          "score": 47,
+          "scored": true,
+          "summary": "Make `stacker` an opt-in feature (#29505)",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/ci.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +243 on logic, +0 was tests (0% covered) over 461 lines of churn",
+            "769 — 1 lockfile(s) and 7 manifest(s): Cargo.lock, crates/ruff/Cargo.toml, crates/ruff_benchmark/Cargo.toml and 5 more · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "8e768d1fbb19e5f21f7dde643a31c2466083e63a",
+          "episode": "ep-d2deca2bcbf1cbf19791",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 8e768d1f --stat`: `Cargo.lock` 6; members `24bba096` (uv.lock 8), `34266aa4` (uv.lock 6), `355cda38` (`playground/deploy/package-lock.json` 597, `package.json` 2).",
+            "note": "Four lockfile-only bumps grouped as one episode: transitive `rand`, `anyio` and `urllib3`, and a newer Wrangler for the playground deployment. 619 of 619 churn lines sit on lockfile paths, no finding spoke, and the flag is the dependency axis reading the file class of `Cargo.lock`, `uv.lock` and `playground/deploy/package-lock.json`.",
+            "reason": "low-stakes"
+          },
+          "mature": false,
+          "members": 4,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "Update transitive rand dependency (#29520)",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — playground/deploy/package-lock.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 3 lockfile(s) and 1 manifest(s): Cargo.lock, playground/deploy/package-lock.json, playground/deploy/package.json and 1 more · the resolution is what the lock recorded, not a re-solve",
+            "843 — 619 of 619 churn lines sit on generated, lockfile, vendored or binary paths (4 file(s)) · classified by path, not by token comparison"
+          ]
+        },
         {
           "commit": "c79af4610339a3acd37c94c938f5546bb39fffe4",
           "episode": "ep-34475a956b48181884bc",
@@ -1825,6 +3417,33 @@
           ]
         },
         {
+          "commit": "d298e5155a1318e865d3179988429ad8152ac5d7",
+          "episode": "ep-69ae383d46857bacc53e",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show d298e515 --stat`: 4 files +906 −286 — `playground/api/package-lock.json`, `playground/deploy/package-lock.json` + `package.json`, `playground/package-lock.json`.",
+            "note": "A renovate NPM development group for the playground workers — `@cloudflare/workers-types`, the React types, oxlint. 1 192 of 1 192 churn lines are lockfile paths, no finding spoke, and the playground is not the shipped artefact. The flag is the supply-chain axis naming `playground/api/package-lock.json`.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "Update NPM Development dependencies (#29360)",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — playground/api/package-lock.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 3 lockfile(s) and 1 manifest(s): playground/api/package-lock.json, playground/deploy/package-lock.json, playground/deploy/package.json and 1 more · the resolution is what the lock recorded, not a re-solve",
+            "843 — 1192 of 1192 churn lines sit on generated, lockfile, vendored or binary paths (4 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
           "commit": "72d6e487e6a882dd13e4cf307ebcd4941c52687a",
           "episode": "ep-3e3e3622b7ec661a7d8b",
           "findings": [],
@@ -1850,21 +3469,390 @@
             "879 — of +8 on logic, +0 was tests (0% covered) over 331 lines of churn",
             "769 — 2 lockfile(s) and 1 manifest(s): Cargo.lock, pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve"
           ]
+        },
+        {
+          "commit": "518d03e3790cdd1d6c34c513b2d451c30a99a770",
+          "episode": "ep-8acabbff5a15e0c94546",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 518d03e3 --stat`: `scripts/ty_benchmark/pyproject.toml` 2, `scripts/ty_benchmark/uv.lock` 30.",
+            "note": "`pyrefly` 1.3.0 in the ty benchmark harness: a manifest line and 30 lines of its lockfile, nothing that ships and no finding. It reached the top decile on the lockfile axis alone, which flags it identically to the release bumps and the playground groups in the same window.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "Update dependency pyrefly to v1.3.0 (#29357)",
+          "taken_back": 0.0,
+          "why": [
+            "1128 — scripts/ty_benchmark/uv.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 2 lockfile(s) and 2 manifest(s): scripts/ty_benchmark/package-lock.json, scripts/ty_benchmark/package.json, scripts/ty_benchmark/pyproject.toml and 1 more · the resolution is what the lock recorded, not a re-solve",
+            "843 — 42 of 42 churn lines sit on generated, lockfile, vendored or binary paths (4 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "5b27c1ccfaa230fb195855f5cf3404a21e3379cd",
+          "episode": "ep-a398225771620875a55d",
+          "findings": [
+            {
+              "detector": "generated_edit",
+              "message": "crates/ruff_command_line/README.md says it is generated — <!-- This file is generated. DO NOT EDIT --> — and 12 line(s) were added to it — the episode also touched codegen/, which may be the run that produced this",
+              "severity": "low"
+            },
+            {
+              "detector": "generated_edit",
+              "message": "crates/ruff_python_codegen/README.md is a generated file (the index classes it generated by its path), and 2 hand-written line(s) were added to it — the episode also touched codegen/, which may be the run that produced this",
+              "severity": "low"
+            },
+            {
+              "detector": "generated_edit",
+              "message": "crates/ruff_unicode_names2_generator/README.md says it is generated — <!-- This file is generated. DO NOT EDIT --> — and 12 line(s) were added to it — the episode also touched codegen/, which may be the run that produced this",
+              "severity": "low"
+            },
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 42 separate clusters (., .github/ISSUE_TEMPLATE, crates/ruff, crates/ruff_annotate_snippets, crates/ruff_cache, crates/ruff_command_line (and 36 more)), widest crates/ruff_linter (4 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "generated_edit",
+              "shotgun_edit"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 5b27c1cc --stat`: 97 files +983 −759 — `Cargo.toml` 80 version lines, `CHANGELOG.md` −625 beside `changelogs/0.16.x.md` +585 and `BREAKING_CHANGES.md` +78, `crates/*/README.md` 4 lines each, `crates/ruff_command_line/README.md` 12.",
+            "note": "The release bot cutting 0.17.0: 97 files, 44 manifests, `Cargo.lock`, forty regenerated crate READMEs, and the changelog rolled into `changelogs/0.16.x.md` with `BREAKING_CHANGES.md` opened for the next cycle. `generated_edit`'s three claims are the version string inside READMEs the release act regenerates, and `shotgun_edit`'s 42 clusters are one mechanical act seen forty-two times — the same reading `4683270c69` got in the e4.9 pass, one minor release later.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 59,
+          "scored": true,
+          "summary": "Bump version to 0.17.0 (#29259)",
+          "taken_back": 0.0,
+          "why": [
+            "1099 — 4 finding(s): 3 low, 1 medium · generated_edit on crates/ruff_command_line/README.md, generated_edit on crates/ruff_python_codegen/README.md",
+            "1029 — Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, docs, generated",
+            "879 — of +85 on logic, +0 was tests (0% covered) over 1750 lines of churn"
+          ]
+        },
+        {
+          "commit": "3ac6b4c31229664cde21edc4f49949450f8f8e08",
+          "episode": "ep-16144a5bb76d016f2405",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "crates/ty_python_core/src/lib.rs added 103 new line(s) including 2 public declaration(s) — pub const fn is_uninhabited(self) -> bool {, pub fn union(self, other: Self) -> Self { — and the episode touched no test file at all (0 test paths, 0 of them named for `lib`)",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "untested_new_logic"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 3ac6b4c3 --stat`: `crates/ty_python_core/src/lib.rs` 144 (`pub const fn is_uninhabited`, `pub fn union`), `crates/ty_python_semantic/resources/mdtest/expression/boolean.md` +37 and four more mdtest resources, `types/infer/tests.rs` +64, 30 files +864 −296.",
+            "note": "`untested_new_logic` says the episode `touched no test file at all (0 test paths)`, and it touched six: `mdtest/expression/boolean.md` +37, `if.md` +16, `redundant_condition.md` +51, `statically_known_branches.md` +95, `type_properties/truthiness.md` +11 and `types/infer/tests.rs` +64. mdtest is how ty asserts type-checker behaviour, and the `Truthiness::Uninhabited` variant the finding calls untested is what those resources pin (both branches of a `Never` condition now unreachable). The detector looks for `test`-shaped paths and does not see the project's real test surface; that is a catalogue blind spot, not an untested change.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 46,
+          "scored": true,
+          "summary": "[ty] Represent uninhabited truthiness explicitly (#28843)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, docs",
+            "879 — of +657 on logic, +0 was tests (0% covered) over 1170 lines of churn",
+            "692 — 1 lockfile(s) and 1 manifest(s): Cargo.lock, crates/ty_python_core/Cargo.toml · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "fbbe89dc715c70b2fdde2324334b2b3d460302d3",
+          "episode": "ep-3fb0b8db8b075ef5a39a",
+          "findings": [
+            {
+              "detector": "lint_escape",
+              "message": "crates/ruff_python_literal/src/escape.rs adds 1 check-suppressing directive(s) — a lint, with an expectation — and the reason is not in the diff: #[expect(deprecated)]",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "lint_escape"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show fbbe89dc -- crates/ruff_python_literal/src/escape.rs`: the two comment lines then `#[expect(deprecated)] let inert = CodePointSetData::new::<icu_properties::props::NfcInert>();`; rest of the episode is `Cargo.lock` 55.",
+            "note": "The `#[expect(deprecated)]` `lint_escape` named carries its own reason two lines above it: `We've asked the upstream maintainers to reconsider the deprecation`, with a link to the icu4x issue. The finding's claim is that the reason is not in the diff, and here it is, in the diff, on the lines above the directive. The change itself is the correct handling of `NfcInert` going deprecated in icu_properties 2.3 — a scoped `#[expect]` at the one call site, not a blanket allow.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 46,
+          "scored": true,
+          "summary": "Update Rust crate icu_normalizer to v2.3.0 (#29166)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source",
+            "879 — of +5 on logic, +0 was tests (0% covered) over 65 lines of churn",
+            "651 — 55 of 65 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
+          ]
+        },
+        {
+          "commit": "7857566b3d0415013d6263f3d0fa0ad74bb43120",
+          "episode": "ep-57d8924c645c1500f3d6",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 7857566b --stat`: 4 files +154 −154 (`playground/package-lock.json` 166, `playground/deploy/package.json` 2); episode members are seven renovate bump commits.",
+            "note": "Seven renovate NPM development bumps for the playground in one episode — workers-types, react-dom types, oxlint, wrangler — and 154 insertions against 154 deletions of lockfile in its last member. No finding spoke; the flag is the dependency axis on the playground's own lockfiles, which are not the shipped artefact.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 7,
+          "rework": [],
+          "score": 48,
+          "scored": true,
+          "summary": "Update NPM Development dependencies (#29165)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — playground/package-lock.json — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source",
+            "879 — of +4 on logic, +0 was tests (0% covered) over 402 lines of churn",
+            "769 — 5 lockfile(s) and 2 manifest(s): Cargo.lock, playground/api/package-lock.json, playground/deploy/package-lock.json and 4 more · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "db2a4a9216db7cf756350a15f4f527f16af3f2f9",
+          "episode": "ep-b77af739da2ef927bb3a",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "score"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show db2a4a92 --stat`: `CONTRIBUTING.md` 3, `pyproject.toml` 4, `scripts/benchmarks/run_formatter.sh` 56, `uv.lock` 18.",
+            "note": "Hyperfine 2.0.0-alpha.2 for the benchmark scripts: `scripts/benchmarks/run_formatter.sh` reshuffled, a CONTRIBUTING note, `pyproject.toml` and its lock. Nothing ships, nothing is tested, no finding spoke, and the flag is the lockfile axis on a benchmark harness.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 40,
+          "scored": true,
+          "summary": "[ty] Upgrade hyperfine to 2.0.0-alpha.2 for benchmarks (#29151)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — uv.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, docs",
+            "879 — of +27 on logic, +0 was tests (0% covered) over 81 lines of churn",
+            "692 — 1 lockfile(s) and 1 manifest(s): pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "57a6e86342a46844dfbc8f039273abbc718f2502",
+          "episode": "ep-a74fae026a1d9673fe69",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "crates/ruff_python_literal/src/escape.rs added 237 new line(s) including 1 public declaration(s) — pub fn escape_for_display(mut self) -> Self { — and the episode touched no test file at all (0 test paths, 0 of them named for `escape`)",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "untested_new_logic"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 57a6e863 --stat`: `crates/ruff_python_literal/src/escape.rs` +244 (`pub fn escape_for_display`), `crates/ruff_python_literal/src/char.rs` 14, `crates/ty_python_semantic/resources/mdtest/literal/string.md` +94, `types/display.rs` 36.",
+            "note": "The second time in this window that `untested_new_logic` claimed `no test file at all` about a ty change that is tested in mdtest: `escape_for_display` is new in `crates/ruff_python_literal/src/escape.rs` and its behaviour — `Literal['a\"b']` rather than `Literal[\"a\\\"b\"]`, NFC-normalised versus raw text — is pinned by 94 added lines of `mdtest/literal/string.md`, which is the suite ty's display behaviour is written in. Same blind spot as `3ac6b4c312`, one crate over.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 42,
+          "scored": true,
+          "summary": "[ty] Improve display of string literal types that include unicode characters or double quotes (#29089)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, docs",
+            "879 — of +266 on logic, +0 was tests (0% covered) over 391 lines of churn",
+            "769 — 1 lockfile(s) and 2 manifest(s): Cargo.lock, Cargo.toml, crates/ruff_python_literal/Cargo.toml · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "c79d773317a48b215697cf28c3687961de6733f4",
+          "episode": "ep-9397c3683c83c89be731",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "python/py-fuzzer/fuzz.py added 166 new line(s) including 4 public declaration(s) — class Bug:, class RenderableReproducer:, def render_issue_body( (and 1 more) — and the episode touched crates/ty/tests/file_watching.rs, none of them named for `fuzz` — an existing suite may already cover it",
+              "severity": "medium"
+            },
+            {
+              "detector": "debug_leftover",
+              "message": "python/py-fuzzer/fuzz.py added 1 debug output line(s) that read as left behind: print(self.maybe_bug.source)",
+              "severity": "low"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "debug_leftover",
+              "untested_new_logic"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show c79d7733 --stat`: `python/py-fuzzer/fuzz.py` 175, `.github/workflows/daily_fuzz.yaml` 33, `python/py-fuzzer/daily_fuzz_issue.md.jinja` +35, `python/py-fuzzer/uv.lock` 77; finding quotes `print(self.maybe_bug.source)`.",
+            "note": "Two findings, both about the fuzzer script rather than about the change. `untested_new_logic` charged `python/py-fuzzer/fuzz.py` for 166 lines including `class Bug`, `RenderableReproducer` and `render_issue_body` — a standalone script in a directory with no test suite, by this repository's design — and `debug_leftover` charged `print(self.maybe_bug.source)`, which is the fuzzer's report and the point of the program. e4.9 dismissed `2e34f5ba22` for the same `debug_leftover` claim on the same file; the second time is evidence of a rule, not a coincidence. What the episode actually does — put minimized reproducers into the daily fuzz issue, `daily_fuzz.yaml` +33 and a new `.jinja` template — is not what either finding described.",
+            "reason": "false-positive"
+          },
+          "mature": true,
+          "members": 2,
+          "rework": [],
+          "score": 54,
+          "scored": true,
+          "summary": "Include minimized reproducers in daily fuzz issues (#29100)",
+          "taken_back": 0.049,
+          "why": [
+            "1314 — .github/workflows/ci.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, test, docs",
+            "874 — of +167 on logic, +1 was tests (1% covered) over 489 lines of churn",
+            "769 — 2 lockfile(s) and 1 manifest(s): python/py-fuzzer/pyproject.toml, python/py-fuzzer/uv.lock, uv.lock · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "8ecfc92734b0b574de2b25b2bebb56a97b3e9ba4",
+          "episode": "ep-a5af10920b495d28c7f9",
+          "findings": [
+            {
+              "detector": "untested_new_logic",
+              "message": "scripts/check-scripts.py added 125 new line(s) including 2 public declaration(s) — def scripts() -> Iterator[Path]:, def main() -> int: — and the episode touched no test file at all (0 test paths, 0 of them named for `check-scripts`)",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 8ecfc927 --stat`: 28 files +163 −210 — `scripts/check-scripts.py` +125, `.github/workflows/ci.yaml` 4, `pyproject.toml` +11, 24 `scripts/*.py.lock` rewritten or removed.",
+            "note": "A new CI gate: `scripts/check-scripts.py` (+125 lines) and a workflow step that fails a pull request when a script's lockfile is stale, replacing the hand-maintained per-script `.lock` files. `untested_new_logic` is technically right that the script has no tests, and the flag's value is exactly that: the thing being changed is what CI enforces on every future change in the repository, and a gate that decides what fails deserves the read whether or not it has its own tests.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 46,
+          "scored": true,
+          "summary": "Check script lockfiles in CI (#29021)",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/ci.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, other",
+            "879 — of +130 on logic, +0 was tests (0% covered) over 373 lines of churn",
+            "500 — 4 surface(s) over 28 file(s) in 1 commit(s)"
+          ]
+        },
+        {
+          "commit": "3265ed1f944c98bb4c04d632fbefb1257cdb583d",
+          "episode": "ep-8aa1d8fcfd812d74dc8a",
+          "findings": [
+            {
+              "detector": "generated_edit",
+              "message": "crates/ruff_python_codegen/README.md is a generated file (the index classes it generated by its path), and 2 hand-written line(s) were added to it — the episode also touched codegen/, which may be the run that produced this",
+              "severity": "low"
+            },
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 40 separate clusters (., .github/ISSUE_TEMPLATE, crates/ruff, crates/ruff_annotate_snippets, crates/ruff_cache, crates/ruff_command_line (and 34 more)), widest crates/ruff_linter (2 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [
+              "generated_edit",
+              "shotgun_edit"
+            ],
+            "decision": "dismissed",
+            "evidence": "`git show 3265ed1f --stat`: 89 files +240 −206 — `Cargo.toml`/`Cargo.lock`, ~40 `crates/*/Cargo.toml` at 2 lines, `crates/*/README.md` at 4, the `crates/ruff_python_codegen/README.md` 2 the finding quotes.",
+            "note": "The release bot again, three patch versions earlier: 89 files for 0.16.10, forty `Cargo.toml` version lines, `Cargo.lock`, and the crate READMEs regenerated around them. `generated_edit` charges two hand-written-looking lines in `crates/ruff_python_codegen/README.md` that are the regenerated badge, and `shotgun_edit`'s 40 clusters are the same mechanical act counted forty times.",
+            "reason": "low-stakes"
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 54,
+          "scored": true,
+          "summary": "Bump version to 0.16.10 (#29055)",
+          "taken_back": 0.0,
+          "why": [
+            "1029 — Cargo.lock — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · also touched: source, docs, generated",
+            "879 — of +79 on logic, +0 was tests (0% covered) over 446 lines of churn",
+            "769 — 2 lockfile(s) and 42 manifest(s): Cargo.lock, Cargo.toml, crates/ruff/Cargo.toml and 41 more · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "41d30df6fdbe215390b3acb46e8cd4017f65580d",
+          "episode": "ep-c08a86db111d9e564536",
+          "findings": [
+            {
+              "detector": "shotgun_edit",
+              "message": "one episode reaches 5 separate clusters (., .github/workflows, crates/ruff, crates/ty_module_resolver, crates/ty_python_semantic), widest crates/ty_python_semantic (3 file(s)) — a change this spread is either a cross-cutting fix or a hunt-and-patch, and a path list cannot tell them apart",
+              "severity": "medium"
+            }
+          ],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 41d30df6 --stat`: 8 files +87 −86 — `rust-toolchain.toml` 2, workspace `Cargo.toml` `rust-version`, Clippy fixes under `crates/ty_python_semantic/src/types/infer/builder/`, Hawk bump in `.github/workflows`.",
+            "note": "Rust 1.99 and MSRV 1.97, explicitly `following our N-2 support policy`, plus the Clippy fixes that come with it and Hawk moved to 0.1.15. MSRV is a promise to downstream builds, so `rust-toolchain.toml` and the workspace `rust-version` are operator-visible even though the diff is 8 files; `shotgun_edit`'s five clusters are the Clippy fallout. Same answer e4.9 gave to `bfedc614b7`, which was the smaller version of this.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 41,
+          "scored": true,
+          "summary": "Update Rust toolchain to 1.99 and MSRV to 1.97 (#29047)",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/ci.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source",
+            "879 — of +83 on logic, +0 was tests (0% covered) over 171 lines of churn",
+            "440 — 1 finding(s): 1 medium · shotgun_edit on clusters"
+          ]
         }
       ],
       "refused_labels": [],
       "repository": "ruff",
       "rework_by_rung": {
         "R1": 0,
-        "R2": 0,
+        "R2": 2,
         "R3": 0
       },
-      "score_max": 54,
+      "score_max": 59,
       "score_median": 21,
-      "scored": 60,
+      "scored": 180,
       "url": "https://github.com/astral-sh/ruff",
-      "why": "A large Rust monorepo (with a Python toolchain beside it), release automation of its own (`astral-automations-bot` version bumps), and configuration surfaces with generated docs and schema snapshots. It contributes the release-bump and workspace-dependency shapes, and it is the repository where the score's median is highest (21) — which is to say, the quietest window is not a quiet corpus.",
-      "window": 60
+      "why": "A large Rust monorepo (with a Python toolchain beside it), release automation of its own (`astral-automations-bot` version bumps), and configuration surfaces with generated docs and schema snapshots. It contributes the release-bump and workspace-dependency shapes, and it is the repository where the score's median is highest — which is to say, the quietest window is not a quiet corpus.",
+      "window": 180
     }
   ],
   "schema": "fathom.g3-calibration/1",

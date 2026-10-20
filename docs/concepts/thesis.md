@@ -760,11 +760,13 @@ Three OSS repositories pinned by commit, dispositions labelled by hand from the 
 ships, per-detector attribution, and a blessed report that `--check` re-measures byte for byte:
 [`benchmarks/reports/e4-3a-g3-calibration.json`](../../benchmarks/reports/e4-3a-g3-calibration.json),
 with its gates in `crates/fathom-analyze/calibration/g3/thresholds.json` and the written answer in
-[Guardrail 3, measured](false-positive-calibration.md). The first measurement on three real
-repositories does **not** clear these bars — `G3` 0.682 across everything the corpus flagged, a miss rate
-of 1.000 at the default τ, and `G3` not measurable at τ 70 at all because three episodes in 180 got that
-high — and the bars stay where they are, because the alternative to a measured failure is an unmeasured
-pass. The `not-applicable` reason code in `FP(e)` above has no separate shipped code; the mapping
+[Guardrail 3, measured](false-positive-calibration.md). The measurement on those repositories — 540
+episodes, 66 flags, every one of them labelled against a diff — does **not** clear these bars: `G3` 0.697
+across everything the corpus flagged, a miss rate of 1.000 at the default τ (all 24 mature reworked episodes
+scored under it), and `G3` 0.333 at τ 70 on the six flags that got there, over the 0.30 bar. Its first pass
+ran 60-episode windows and could not measure that last one at all; the window tripled rather than the bar
+moving. The bars stay where they are, because the alternative to a measured failure is an unmeasured pass.
+The `not-applicable` reason code in `FP(e)` above has no separate shipped code; the mapping
 `e4.9` uses is written out in `thresholds.json` rather than left implied.
 
 ### 5.5 Contract on the delta model

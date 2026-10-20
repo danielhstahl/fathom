@@ -112,6 +112,16 @@ So the beta gate's fourth criterion is **carried, not met**, and the honest sent
 `docs/concepts/false-positive-calibration.md` §5's: the bars stay where they are, because the alternative to
 a measured failure is an unmeasured pass.
 
+**Addendum (2026-10-20, `reco-dyt`).** The corpus follow-up landed: each pin now carries 180 episodes instead
+of 60 (540 episodes, 525 mature), every one of the 66 flagged episodes has a hand-written disposition, and
+`mature_rework` went 7 → 24. Criterion 1.4 is **still not met** — and now none of its gates is a refusal:
+`g3-alpha-at-published-tau` measures **0.333** on 6 labelled flags instead of declining to read 3
+(`not-measurable` → `fail`), the corpus cut is **0.697** (46 of 66), the miss rate is **1.000** at the
+published τ and **0.708** at the decile cut, and the denominator gate is the one `expected` that moved to
+**pass**. No bar moved: 0.30 / 0.15 / 0.20 and the floors are the bytes above. `reco-6co`'s finding is
+unchanged and now measured three times better — nothing in 540 episodes reached τ 70 on score at all, the
+highest was 63 — so the flag arm, not the corpus, is what stands between `m1` and its fourth criterion.
+
 ---
 
 ## 2. What the dogfood found, and what got fixed here

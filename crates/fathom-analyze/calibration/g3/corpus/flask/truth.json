@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window)",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -96,6 +96,105 @@
    "note": "The same maintenance act again: 1 068 of 1 094 churn lines are `uv.lock`.",
    "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
    "evidence": "`git show a197702e2c --stat`."
+  },
+  {
+   "commit": "5e621a2801daf95be6d208da9dcc287bb251f63c",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Tests updated for Werkzeug 3.2's domain matching, and the maintenance refresh that came with it: the four shared workflow templates re-emitted, `.pre-commit-config.yaml` pins moved and `uv.lock` rewritten — 304 of the episode's 369 churn lines are the lockfile. No finding spoke; the flag is the workflow axis charging 1 314 points for a template re-emission and the lockfile axis for the rest of it.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 5e621a28`: `tests/test_basic.py` 49, pyproject 3, uv.lock 45; members `976459f7` (editable-workzeug fix, uv.lock 45) and `663198d7` (four workflows + `uv.lock` 218)."
+  },
+  {
+   "commit": "64dd0809c2fc732ed30539235232a268f9bd96ac",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "The flask maintenance rhythm again, a month earlier in the window than the e4.9 rows: 624 of 656 churn lines are `uv.lock`, and the rest is the shared workflow templates and the pre-commit pins moving under an `update dev dependencies` subject. No finding, and the score's own second feature (`of +2 on logic, +0 was tests`) is counting two lines.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 64dd0809 --stat`: `uv.lock` 642 of 656 churn; `.github/workflows/{pre-commit,publish,tests}.yaml` and `.pre-commit-config.yaml` are the other four files."
+  },
+  {
+   "commit": "97bddc1f61a59522386d36ec37b2b220a01de262",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Same act again: seven SHA-pinned action bumps re-emitted across the workflow templates, `uv.lock` 511 of 549 churn lines, no finding. A later episode took more than half of it back (R2, 0.547), which is what a dependency refresh in a pinned CI looks like — it is not a question a reviewer could have answered better from the flag.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 97bddc1f --stat`: `uv.lock` 511, `.github/workflows/{lock,pre-commit,publish,tests}.yaml`, `.pre-commit-config.yaml`, pyproject 4; every workflow line is a `uses:` pin such as `actions/checkout@… # v6.0.1`."
+  },
+  {
+   "commit": "da6d075dfde71b2e2a64f39b29ba957d5ffb00b0",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Underneath a 1 641-line `uv.lock` refresh with the subject `update dev dependencies` there is one source change: a `# type: ignore[no-any-return]` on `return self.get(\"_permanent\", False)` — the read of the flag that decides whether a session outlives the browser. `lint_escape`'s claim, a suppression whose reason is not in the diff, holds exactly, and it is the only finding the episode got. This is the shape the detector exists for: a type hole punched on a security-adjacent property and carried in under an unrelated subject line.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show da6d075d`: `src/flask/sessions.py` 2 lines (`permanent` property), `uv.lock` 1 641 of 1 663 churn; finding quotes the suppressed line verbatim."
+  },
+  {
+   "commit": "c2705ffd9ce1dc8476cb29eaf5ff5d4c719852d9",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Merging the app and request context is a change to Flask's execution lifecycle: 1 786 churn lines, `src/flask/ctx.py` alone 467, +431 logic against 22 lines of tests, and nine new `# type: ignore` directives in `ctx.py`, `globals.py` and `helpers.py`. Three `lint_escape` findings and the coverage feature both point at the same thing — the type-checker is being told to look away in the middle of the request path, in a commit whose own CHANGES entry describes a user-visible API change. Nothing here was a false alarm.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show c2705ffd --stat`: `src/flask/ctx.py` 467, `src/flask/globals.py` 62, `src/flask/helpers.py` 50, `tests/` 5 files 50 lines; findings quote `result = self.url_adapter.match(return_rule=True)  # type: ignore[union-attr]` and five directives in `globals.py`."
+  },
+  {
+   "commit": "55c62556571ee46a94da174643b50ece06edead4",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "`uv.lock` is 790 of the episode's 820 churn lines and the other four files are the shared workflow templates and the pre-commit pins. No finding spoke, so the flag is the ranking reading a path class — the third such episode in this window and the fourth in the corpus.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 55c62556 --stat`: `uv.lock` 812; `.github/workflows/{pre-commit,publish,tests}.yaml`, `.pre-commit-config.yaml`."
+  },
+  {
+   "commit": "5addaf833b2e8c7a616f89dd8ad5a44b07d7c000",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "The version bump is noise; the member that matters changed `FlaskClient` to re-push preserved contexts in list order instead of LIFO, and rewrote `test_redirect_keep_session` down into a smaller `test_redirect_session` — `test_weakening`'s 6 assertion lines out, 2 in. The steps that left were the ones asserting a session survived a `follow_redirects` chain, which is exactly the behaviour the changed line governs. A flag that puts the shrinking test and the changed line in front of a reviewer at the same moment is earning its place.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "member `git show 53b8f082`: `src/flask/testing.py` `while self._new_contexts: cm = self._new_contexts.pop()` → `for cm in self._new_contexts:` + `.clear()`; `tests/test_testing.py` −23/+8 with `test_redirect_keep_session` replaced by `test_redirect_session`."
+  },
+  {
+   "commit": "f04c5e696400badaa52b3450ded53e9091c2078a",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["lint_escape"],
+   "note": "The one source change under the lockfile is `__setitem__ = __delitem__ = clear = pop = popitem = update = setdefault = _fail  # noqa: B950` — the session-mutator chain, unchanged in meaning, re-wrapped by the formatter the refresh just bumped, and the suppressed check is the line-length limit. `lint_escape` says the reason is not in the diff; the reason is on the line it is suppressing. Reading this costs a minute and can pay nothing.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show f04c5e69`: `src/flask/sessions.py` 2 lines (the `# noqa: B950` the finding quotes), five other `src/flask/*.py` files at 2 lines each, `uv.lock` 442 of 452 churn."
+  },
+  {
+   "commit": "52df9eed45d0b19c588662ed8492d8fbaa0e7098",
+   "decision": "dismissed",
+   "reason": "intentional",
+   "blame": ["score"],
+   "note": "Dropping end-of-life Pythons is the whole commit: one entry out of the test matrix, `requires-python` forward, the `importlib_metadata` backport branch out of `src/flask/cli.py`, 60 lines of version-conditional typing out of `src/flask/typing.py`, and `uv.lock` shrinking by 262. The flag saw a workflow change and a lockfile and no finding disagreed — the risk it is pointing at is the deliberate act, which is §5.4's `expected` and a false positive by definition.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 52df9eed`: `.github/workflows/tests.yaml` −1 matrix entry; `src/flask/cli.py` −8 (the `sys.version_info >= (3, 10)` backport branch and its `# pyright: ignore`); `pyproject.toml` 14; `uv.lock` 262."
+  },
+  {
+   "commit": "0109e496f6ca68de29480fe6413e81b1d3f86aa9",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "`use uv` is a migration of the whole build-and-release toolchain: eleven `requirements/*.txt` and `tox.ini` deleted, `pyproject.toml` +190, `uv.lock` +1 641 in its first commit, and all four workflows plus `.readthedocs.yaml` rewritten to drive it. That is the pipeline that publishes the package, and the flag's plain description of it — a workflow change, a new lockfile, logic with no tests — is the smallest honest one available. Stopping here is what the guardrail is for.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 0109e496 --stat`: 24 files +1 876 −534 — `requirements/dev.txt` −202, `tox.ini` −62, `.github/workflows/publish.yaml` 26, `.github/workflows/tests.yaml` 41, `uv.lock` +1 641."
+  },
+  {
+   "commit": "235c52fa10094135746d04a5b6a7bea8125357f0",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "One line added to `.readthedocs.yaml` to fix the docs build, bundled with the usual refresh: four workflows, five `requirements/*.txt` bumps and two source files at 6 lines each. 88 of 123 churn lines sit on lockfile paths, no finding spoke, and the docs-build line is a fix stated in its own subject.",
+   "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
+   "evidence": "`git show 235c52fa`: `.readthedocs.yaml` +1; member `165af0a0` — four workflows, `.pre-commit-config.yaml`, five `requirements/*.txt`, `src/flask/app.py` 6, `src/flask/testing.py` 6."
   }
  ]
 }

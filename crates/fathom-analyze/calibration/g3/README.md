@@ -41,21 +41,36 @@ corpus/<name>/truth.json   the hand-authored dispositions — read-only to every
 
 | Pin | Language | `head` | Window | Episodes | What it is evidence for | What it is not |
 | --- | --- | --- | --: | --: | --- | --- |
-| `cli` | Go | [`ed40e856ffec`](https://github.com/cli/cli) | 60 | 60 | bot-heavy history: Dependabot bumps, generated-and-recompiled `gh-aw` workflow locks, and the largest agent-attributed share in the corpus (20 of 60 episodes) | not agent-authored *episodes* in the ADR-003 sense; `e6.1`'s harness stream is what would make that claim, and none of these three has one |
-| `flask` | Python | [`d086db856be1`](https://github.com/pallets/flask) | 60 | 60 | the maintenance rhythm — `update dev dependencies` episodes that re-emit CI templates and a 1 000-line lockfile, plus real test deletions *and* real in-place test rewrites | not a low-activity repository, and not agent-driven at all (0 of 60 agent-attributed) |
-| `ruff` | Rust + Python | [`0a977a8d18d7`](https://github.com/astral-sh/ruff) | 60 | 60 | release automation (a version-bump bot), generated docs and schema snapshots, workspace dependency policy | not representative of a small team: its median score (21) is the highest of the three |
+| `cli` | Go | [`ed40e856ffec`](https://github.com/cli/cli) | 180 | 180 | bot-heavy history: Dependabot bumps, generated-and-recompiled `gh-aw` workflow locks, and the largest agent-attributed share in the corpus (71 of 180 episodes) | not agent-authored *episodes* in the ADR-003 sense; `e6.1`'s harness stream is what would make that claim, and none of these three has one |
+| `flask` | Python | [`d086db856be1`](https://github.com/pallets/flask) | 180 | 180 | the maintenance rhythm — `update dev dependencies` episodes that re-emit CI templates and a 1 000-line lockfile, plus real test deletions *and* real in-place test rewrites | not a low-activity repository, and not agent-driven at all (0 of 180 agent-attributed) |
+| `ruff` | Rust + Python | [`3e3f22dcc47a`](https://github.com/astral-sh/ruff) | 180 | 180 | release automation (a version-bump bot), generated docs and schema snapshots, workspace dependency policy | not representative of a small team: its median score (21) is the highest of the three |
 
-180 episodes, 165 of them mature beyond the five-successor rule or seven days of age against the pins'
+540 episodes, 525 of them mature beyond the five-successor rule or seven days of age against the pins'
 clock — see `pinned_now` in each pin: **the harness has no clock**, so the report is the same bytes the day
 it is re-blessed as the day it was measured.
 
 Each `why` field in the pins says in one sentence what the repository buys the corpus, because a calibration
 corpus chosen for convenience measures convenience.
 
+### 1.1 The two passes this corpus is made of
+
+| Pass | Windows | Labels | What it settled |
+| --- | --- | --: | --- |
+| `e4.9` (`reco-mkl.1`, 2026-10-19) | 60 per pin | 22 | the harness, the vocabulary mapping, and five failing gates — one of which, `miss-rate-denominator-is-big-enough`, failed as a statement about the corpus: 7 mature reworked episodes cannot discriminate a 0.20 rate |
+| the re-pin (2026-10-20) | 180 per pin, `ruff` re-pinned 11 commits forward | +44 (66) | that gate. The window tripled, the denominator went 7 → 24, and the gate now passes so that the two miss-rate gates can be read as rates instead of anecdotes |
+
+Nothing else about the bars moved. §5.4's numbers, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED` and the
+20-episode floor are byte-identical to `e4.9`'s; the only other `expected` that moved is
+`g3-alpha-at-published-tau`, whose denominator left the floor (3 → 6) and came out **fail**, not pass.
+Widening a corpus is a labelling job, not a re-bless: 44 new flagged episodes meant 44 diffs read and 44
+dispositions written, and the fetch depth went with the window (see §6).
+
 ## 2. What a label is, and how one was written
 
 One row per flagged episode — every episode any cut flagged, and there is no sampling, because a sample of
-a flag set is a flag set with holes. Each row records:
+a flag set is a flag set with holes. 66 rows today: 22 from the `e4.9` pass, every one of which still
+resolved inside the widened window and still sat on a flagged episode, and 44 written in the re-pin. Each
+row records:
 
 | Field | Rule |
 | --- | --- |
@@ -81,10 +96,12 @@ rate and blunt for "which detector cried wolf", so two rules keep the per-detect
 * **`blame` names who is answerable** when the reviewer can. `score` means the ranking raised a flag no
   finding justified and charges no detector; a detector id charges that detector. An empty `blame` charges
   every detector that spoke on the episode — §5.4's rule, and the conservative reading of a shared episode.
-* **A detector is in a denominator only when the objection was about a finding.** Seven of this corpus's
-  fifteen false positives were blamed on the ranking, not on a detector (`aggregate.coverage.blamed_on_score`),
-  and they are in the aggregate rate and out of every detector's — which is the difference between blaming
-  the catalogue for a routing problem and reading the measurement.
+* **A detector is in a denominator only when the objection was about a finding.** 26 of this corpus's
+  forty-six false positives were blamed on the ranking, not on a detector
+  (`aggregate.coverage.blamed_on_score`), and they are in the aggregate rate and out of every detector's —
+  which is the difference between blaming the catalogue for a routing problem and reading the measurement.
+  The other 20 named their detector: `test_weakening` 4, `untested_new_logic` 4, `lint_escape` 3,
+  `shotgun_edit` 3, `generated_edit` 3, `debug_leftover` 2, `todo_debt` 1.
 
 The blunt half stays on the record: when a false positive is unattributed, every detector that spoke is
 charged, so an episode where one good finding and one bad one share a diff charges both. The receipts in
@@ -119,12 +136,12 @@ about a reviewer having looked. What these labels do certify, and what they do n
 * **They do not certify that a human found these flags unhelpful.** The corpus cannot say that, and the
   report does not try to: the numbers are "the rate at which flags on three pinned real repositories
   charged a reviewer for something that did not need reading, judged against the diff by the agent that
-  wrote this ticket". A human re-labelling the same 22 episodes is the obvious next input, and nothing here
+  wrote this ticket". A human re-labelling the same 66 episodes is the obvious next input, and nothing here
   prevents it — a second `truth.json` beside the first is a disagreement in the repository rather than an
   argument in a ticket.
-* **The population is not agent-authored history.** 29 of 180 episodes attribute to a non-human author kind,
-  and all three repositories predate any Fathom harness stream, so the population the guardrail will be
-  applied to is only partly represented. The pins' `why` fields and the report's
+* **The population is not agent-authored history.** 92 of 540 episodes attribute to a non-human author kind
+  (71 of them in `cli`), and all three repositories predate any Fathom harness stream, so the population the
+  guardrail will be applied to is only partly represented. The pins' `why` fields and the report's
   `episodes_by_author_kind` say which part.
 
 ## 6. Re-pinning, and what it costs
@@ -133,3 +150,27 @@ about a reviewer having looked. What these labels do certify, and what they do n
 pin means the window changes, and the harness then prints `orphaned_labels` for every label whose commit is
 gone and refuses to certify the number until the new flags are labelled. There is no `--relabel`: the
 re-reading *is* the measurement, and a flag on a reworded commit is a different flag.
+
+The one re-pin this corpus has had — 60 episodes per pin to 180, `ruff` moved 11 commits forward — is what
+that sentence costs in practice, so it is written down rather than discovered:
+
+* **The fetch has to go with the window.** The harness walks four commits per episode
+  (`WALK_COMMITS_PER_EPISODE`), so `tools/fetch_g3_corpus.py` now fetches `window * 4 + 20` rather than
+  `window * 2 + 20`; a shallow-enough clone does not fail, it quietly measures fewer episodes than the pin
+  claims, which is the worst possible failure for a calibration.
+* **Every new flagged episode is a diff someone has to read.** The flag share held at about 12 % of the
+  window, so tripling the window tripled the labels: 44 new dispositions, written against `git show` one
+  episode at a time. That is the price of the gate and it is the right price.
+* **Old labels usually survive a widening, but they are not owed that.** The 22 `e4.9` rows still resolved
+  and still sat on flagged episodes; a decile cut that moves (here 34 → 33 for `cli`, 47 → 40 for `flask`)
+  can just as easily strand a label on an episode that is no longer flagged, and the harness refuses to
+  certify `labelled_total` against a cut that disagrees with it.
+* **`pinned_now` has to be above every commit date in the window.** Widening reaches further back, which is
+  safe; re-pinning a head that has moved forward is not, because a commit newer than the pin's clock makes
+  `mature` a lie. The re-pin set the clock above the newest commit in every window instead of leaving
+  `e4.9`'s value in place.
+
+What the widening bought, in the report's own nouns: `mature` 165 → 525, `mature_rework` 7 → 24, and the
+gate `miss-rate-denominator-is-big-enough` from `fail` to `pass` without a single bar in `thresholds.json`
+moving. The two miss-rate gates are now rates over 24 samples instead of anecdotes over 7 — which is the
+whole point of a denominator floor.

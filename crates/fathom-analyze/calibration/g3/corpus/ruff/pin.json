@@ -1,9 +1,9 @@
 {
  "repository": "ruff",
  "url": "https://github.com/astral-sh/ruff",
- "head": "0a977a8d18d7a12f6a4d8ce437abad1f279aa5c1",
- "window": 60,
- "pinned_now": "2026-10-20T00:00:00Z",
- "why": "A large Rust monorepo (with a Python toolchain beside it), release automation of its own (`astral-automations-bot` version bumps), and configuration surfaces with generated docs and schema snapshots. It contributes the release-bump and workspace-dependency shapes, and it is the repository where the score's median is highest (21) — which is to say, the quietest window is not a quiet corpus.",
- "pinned_by": "looprs (e4.9, 2026-10-19): `git clone --depth 140 --single-branch <url>` then `python3 tools/fetch_g3_corpus.py` from this pin; head is the branch tip at the time of the pass and the window is the 60 newest episodes above it. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read."
+ "head": "3e3f22dcc47a534d5bb6668817464b02c6e6e133",
+ "window": 180,
+ "pinned_now": "2026-10-20T12:00:00Z",
+ "why": "A large Rust monorepo (with a Python toolchain beside it), release automation of its own (`astral-automations-bot` version bumps), and configuration surfaces with generated docs and schema snapshots. It contributes the release-bump and workspace-dependency shapes, and it is the repository where the score's median is highest — which is to say, the quietest window is not a quiet corpus.",
+ "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head moved from `0a977a8d18d7` to the branch tip at the time of the re-pin, 11 commits later, so the window is the 180 newest episodes above a head the previous pass had already labelled; `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19). `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read."
 }

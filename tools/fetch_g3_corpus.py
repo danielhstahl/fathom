@@ -16,9 +16,12 @@ python3 tools/fetch_g3_corpus.py --check              # are the clones present a
 
 Each clone is shallow on purpose: the harness measures one window, and a clone that carries the whole
 history of a large repository is 100x the disk for commits nobody measures. The depth below is
-`window * 2 + 20`, because the segmentation groups commits into episodes and merge parents reach past a
-single-parent count — a window that ran off the graft would leave the harness measuring a stated partial
-where it means to measure a window.
+`window * 4 + 20`, because the harness walks four commits per measured episode
+(`WALK_COMMITS_PER_EPISODE` in `crates/fathom-analyze/examples/g3_calibration.rs`), the segmentation groups
+commits into episodes and merge parents reach past a single-parent count — a window that ran off the graft
+would leave the harness measuring a stated partial where it means to measure a window, so the fetch has to
+reach at least as far back as the walk does. A widened `window` in a pin therefore widens the fetch with it;
+the two are one number read twice, not two numbers that can disagree.
 """
 
 from __future__ import annotations
@@ -92,7 +95,7 @@ def main() -> int:
             )
             bad += 1
             continue
-        depth = int(pin["window"]) * 2 + 20
+        depth = int(pin["window"]) * 4 + 20
         if where.exists():
             subprocess.run(["rm", "-rf", str(where)], check=True)
         print(f"{pin['repository']:<12} cloning {pin['url']} at {pin['head'][:12]} (depth {depth})")
