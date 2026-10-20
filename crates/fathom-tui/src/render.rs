@@ -597,6 +597,14 @@ fn help(grid: &mut Grid, app: &App) {
         app.term.color().label()
     ));
     panel.push(String::new());
+    // The query grammar belongs in the help overlay and not only in the box: a reviewer who does not know
+    // `risk>` exists has no way to discover it by typing into a search field, and `?` is where they are
+    // when they have given up looking (ADR-006 §5.8).
+    panel.push("search filters (`/`) — they compose with free text (ADR-006 §5.8)".to_owned());
+    for (token, meaning) in crate::search::FILTERS {
+        panel.push(format!("  {token:<9} {meaning}"));
+    }
+    panel.push(String::new());
     panel.extend(app.keymap.help_lines(inner));
     let hidden = panel.len().saturating_sub(room);
     panel.truncate(room);

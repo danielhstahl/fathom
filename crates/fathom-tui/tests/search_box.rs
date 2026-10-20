@@ -313,3 +313,18 @@ fn a_query_with_a_pipe_in_it_is_one_search_and_not_two() {
         "a query round-trips whole"
     );
 }
+
+#[test]
+fn the_help_overlay_lists_the_filters_because_a_box_cannot_teach_its_own_grammar() {
+    // A reviewer cannot discover `risk>` by typing into a box they are not typing into yet. The grammar has
+    // to be somewhere they read when they give up, and that somewhere is `?` (`reco-mkc`'s third criterion).
+    let mut app = shell((120, 44));
+    app.overlay = Some(fathom_tui::app::Overlay::Help);
+    let lines = fathom_tui::render::frame_lines(&app).join("\n");
+    for (token, meaning) in fathom_tui::search::FILTERS {
+        assert!(
+            lines.contains(token) && lines.contains(meaning.split_whitespace().next().unwrap()),
+            "`{token}` ({meaning}) is missing from the help overlay:\n{lines}"
+        );
+    }
+}
