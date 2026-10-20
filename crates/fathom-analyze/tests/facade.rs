@@ -6,10 +6,8 @@
 //! whose version can drift silently is worse than no contract.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use fathom_analyze::error::Error;
 use fathom_analyze::export::Format;
 use fathom_analyze::insight::{self, PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX, PageWindow};
-use fathom_core::error::Diagnosable;
 
 #[test]
 fn an_unspecified_page_is_a_default_page_never_an_unbounded_one() {
@@ -80,27 +78,35 @@ fn three_formats_and_no_others() {
 }
 
 #[test]
-fn the_renderer_refuses_the_same_way_from_every_door() {
-    // The CLI, the TUI and the MCP server all call this and all get the same refusal (ADR-001 §7.10).
-    let error = fathom_analyze::export::render(Format::Html, "episode-7")
-        .err()
-        .unwrap_or_else(|| panic!("render must refuse until e5.7 lands"));
-    assert!(matches!(
-        error,
-        Error::NotImplemented { ticket: "e5.7", .. }
-    ));
-    // The ticket belongs in the *message* — `{what} is not implemented yet (owned by e5.7)` — and the hint
-    // belongs to the reader. A bare `e5.7` as a hint told a reviewer who owns the gap and nothing they
-    // could do, which is the distinction `e5.9`'s copy rule draws: a hint is an action (`reco-2uo`).
-    assert_eq!(
-        error.hint(),
-        Some(
-            "not in this build; `fathom doctor` prints what this build does, and the ticket in the \
-             message owns what it does not"
-        )
-    );
-    assert!(
-        error.hint().is_some_and(|hint| hint.contains(' ')),
-        "a hint a person cannot act on is an owner's name, not a hint"
-    );
+fn every_format_renders_the_same_record_and_says_the_same_things() {
+    // One structure, three doors (ADR-002 §5.3): the CLI's file, the TUI's preview and an MCP result are
+    // renderings of one `Record`, so the formats may differ in layout and in nothing else. The full
+    // rendering contract lives in `tests/export.rs`; this is the façade-level claim — that `render`
+    // dispatches to all three and none of them refuses any more.
+    let record = fathom_analyze::export::build(&fathom_analyze::export::Input {
+        asked: "HEAD".to_owned(),
+        from: Some("abc1234".to_owned()),
+        to: Some("abc1234".to_owned()),
+        resolved: true,
+        episodes: Vec::new(),
+        commits: Vec::new(),
+        dependencies: None,
+        signoffs: Vec::new(),
+        ledger_problems: Vec::new(),
+        produced_by: "fathom test".to_owned(),
+        store: Some(".fathom/index.sqlite3".to_owned()),
+        epoch: Some(1),
+        asked_with: "fathom export".to_owned(),
+        extra_gaps: Vec::new(),
+    });
+    assert!(record.verify().is_empty(), "{:?}", record.verify());
+    for format in [Format::Markdown, Format::Html, Format::Json] {
+        let text = fathom_analyze::export::render(format, &record);
+        assert!(!text.is_empty(), "{format:?} rendered nothing");
+        assert!(
+            text.contains("fathom-review-record/1"),
+            "{format:?} does not name the contract it wrote"
+        );
+        assert!(!text.contains("<script"), "{format:?} carries a script tag");
+    }
 }

@@ -86,6 +86,10 @@ fn an_unimplemented_verb_refuses_and_names_its_ticket() {
 
 #[test]
 fn export_uses_the_facades_format_list_and_reaches_the_facades_code() {
+    // The format list is the facade's (`fathom_analyze::export::Format`), so `--format` here, the TUI's
+    // export key and an MCP tool call cannot mean three different things (ADR-002 §5.3). A format the
+    // facade refuses is a usage error; a format it accepts against an unindexed repository is the
+    // index's failure, with its own code and its own remedy.
     let bad = fathom(&["export", "--format", "yaml"]);
     assert_eq!(
         code(&bad),
@@ -93,9 +97,28 @@ fn export_uses_the_facades_format_list_and_reaches_the_facades_code() {
         "--format yaml is a usage error: {}",
         stderr(&bad)
     );
-    let good = fathom(&["export", "--format", "md"]);
-    assert_eq!(code(&good), 1, "{}", stderr(&good));
-    assert!(stderr(&good).contains("e5.7"), "{}", stderr(&good));
+    let cold = fathom(&[
+        "export",
+        "--format",
+        "md",
+        "--out",
+        "/tmp/fathom-cli-export-cold",
+    ]);
+    assert_eq!(
+        code(&cold),
+        12,
+        "an export with no index is INDEX_DEGRADED: {}",
+        stderr(&cold)
+    );
+    let text = stderr(&cold);
+    assert!(
+        text.contains("fathom index"),
+        "the remedy is printed: {text}"
+    );
+    assert!(
+        !std::path::Path::new("/tmp/fathom-cli-export-cold.md").exists(),
+        "a refusal writes no artefact"
+    );
 }
 
 #[test]

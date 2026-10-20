@@ -31,6 +31,9 @@ mod drift;
 #[cfg(feature = "tui")]
 mod episodes;
 mod features;
+// The review artefact (`e5.7`): the range, the rows, the file, the exit code. The shape and the renderings
+// live in `fathom_analyze::export`; this is the half that needs a store, a git read and a ledger.
+mod export;
 // The guided first index: the progress row `fathom index` prints while it works (`e5.9`). It reads
 // stderr to decide whether to print at all, which is a composition-root job (ADR-002 §7.5).
 mod guide;

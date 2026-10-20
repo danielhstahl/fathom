@@ -21,7 +21,7 @@ what a machine reads.
 | `fathom why [EPISODE\|rev\|id] [--root R] [--json] [--weight NAME=VALUE] [--tau N] [--calibrate [SET]] [--weights]` | one episode's **risk score and its arithmetic** — every feature, its weight, its contribution, the reasons in order, and what the model could not see; `--calibrate` prints precision/recall of the top decile before and after a retune | `fathom.cli.why/1`, documented in [risk scoring](risk-scoring.md) §4 |
 | `fathom stats [ROOT] [--json]` | repo scale, index state, cache hit rate | [`stats.schema.json`](../../schemas/stats.schema.json) |
 | `fathom doctor [--root R] [--privacy] [--deep] [--strict] [--json]` | the build, the environment, the repository and the index — each finding with a remedy | [`doctor.schema.json`](../../schemas/doctor.schema.json) |
-| `fathom export [--format md\|html\|json] [--out STEM] [--episodes RANGE] [--json]` | the review artefact — **skeleton**: scope and format are validated, the rendering is `e5.7` | [`export.schema.json`](../../schemas/export.schema.json) |
+| `fathom export [--format md\|html\|json] [--out STEM] [--episodes RANGE] [--root R] [--stdout] [--strict] [--json]` | the **review artefact** — one record (summary card, narrative, dependency and architecture deltas, findings with evidence, the operator-action checklist, the sign-off block and the gap list) written as markdown, HTML or JSON, byte-identical when re-exported | [`export.schema.json`](../../schemas/export.schema.json), documented in [the review artefact](export-artefact.md) |
 | `fathom hooks [ROOT] [--check] [--replay] [--tail] [--max N] [--trailer S:T] [--strict] [--json]` | the harness event stream: lag, durable offset, counts by type, why each refused line was refused, and a deterministic replay | [`hooks.schema.json`](../../schemas/hooks.schema.json) |
 
 `fathom analyze` takes an episode id or anything
@@ -64,7 +64,7 @@ this — the table is normative, and the codes below are *its* numbers:
 | Class | Code | Name | When a verb leaves with it |
 |---|---|---|---|
 | ok | 0 | `OK` | the verb answered and the index describes HEAD |
-| user error | 1 | `ERROR` | a rev that names nothing, an unimplemented verb (`fathom check`, the `export` skeleton), a rejected argument *value* |
+| user error | 1 | `ERROR` | a rev that names nothing, an unimplemented verb (`fathom check`), a rejected argument *value*, an artefact whose own self-check failed |
 | user error | 2 | `USAGE` | clap rejected the command line: unknown flag, unknown verb, missing argument |
 | environment | 3 | `NOT_A_REPOSITORY` | `--root` is not a git repository, or `.git` is unreadable |
 | environment | 5 | `CONFIG_INVALID` | `fathom.toml` failed the schema |

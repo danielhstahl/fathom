@@ -1929,7 +1929,7 @@ impl EpisodeDelta {
     /// The document as one compact line — the `--json` contract's single-value-on-stdout rule.
     ///
     /// Byte-stable: `serde_json`'s map is a `BTreeMap`, so key order is alphabetical and two runs of the
-    /// same program over the same episode produce the same bytes (`e5.7` depends on that before it exists).
+    /// same program over the same episode produce the same bytes (`e5.7`'s artefact depends on it).
     #[must_use]
     pub fn to_json(&self) -> String {
         serde_json::to_string(&self.to_value()).unwrap_or_else(|_| String::from("{}"))

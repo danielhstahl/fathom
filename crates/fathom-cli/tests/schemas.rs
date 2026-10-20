@@ -179,18 +179,59 @@ fn show_stats_and_doctor_conform_to_their_schemas() {
 
 #[test]
 fn export_json_conforms_to_its_schema() {
+    // `e5.7`: the verb writes an artefact and reports the run. The payload is the machine line about the
+    // write — scope, contract, verdict, the sign-offs it carried — and the artefact itself is a file, so
+    // this test checks the shape of the report and that the file it describes really exists.
     let dir = fixture::repository("export");
-    let out = fixture::fathom(&["export", "--json", "--root", "."], &dir);
+    let root = dir.to_str().expect("a temporary path in utf-8");
+    assert_eq!(fixture::code(&fixture::fathom(&["index", root], &dir)), 0);
+    let out = fixture::fathom(
+        &[
+            "export",
+            "--json",
+            "--root",
+            ".",
+            "--episodes",
+            "HEAD~2..HEAD",
+        ],
+        &dir,
+    );
     let value = round_trip("export.schema.json", &out);
     assert_eq!(
         fixture::code(&out),
-        1,
-        "the skeleton exits ERROR: {}",
+        0,
+        "an export that wrote its file exits clean: {}",
         fixture::stderr(&out)
     );
-    assert_eq!(value["status"].as_str(), Some("not_implemented"));
-    assert_eq!(value["owner_ticket"].as_str(), Some("e5.7"));
+    assert_eq!(value["status"].as_str(), Some("written"));
+    assert_eq!(value["writes_file"].as_bool(), Some(true));
+    assert_eq!(
+        value["record"]["contract"].as_str(),
+        Some("fathom-review-record/1")
+    );
+    assert_eq!(
+        value["record"]["integrity"]["verified"].as_bool(),
+        Some(true)
+    );
+    let artifact = value["artifact"].as_str().expect("an artifact name");
+    let path = dir.join(artifact);
+    assert!(path.is_file(), "{artifact} was reported and not written");
+    assert_eq!(
+        value["bytes"].as_u64(),
+        Some(std::fs::read(&path).expect("read the artefact").len() as u64),
+        "the report's byte count is the file's"
+    );
+    // The refusal shape: no index, no payload, and the exit code that says why.
+    let cold = fixture::repository("export-cold");
+    let refused = fixture::fathom(&["export", "--json", "--root", "."], &cold);
+    assert_eq!(fixture::code(&refused), 12);
+    assert!(
+        fixture::stdout(&refused).trim().is_empty(),
+        "a refusal prints no payload: {}",
+        fixture::stdout(&refused)
+    );
     std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(&cold).ok();
 }
 
 /// `fathom hooks --json` against `schemas/hooks.schema.json`, with a payload that must fail.

@@ -3,7 +3,7 @@
 1 ▣ Artefact · (T pins this view)                                                                                                           fathom/pilot · main
 ┌▸ preview · e5.7                                                                             ┬· scope · e5.7                                                  ┐
 │the preview is the artefact a `fathom export` would write                                    │the scope is the episode range the artefact covers              │
-│`o` previews here; `fathom export` writes it (e5.7 owns it)                                  │`o` builds it from the selection; `fathom export --episodes` he…│
+│`fathom export` writes the artefact; this preview pane is e5.7's other half                  │`o` builds it from the selection; `fathom export --episodes` he…│
 │the delta model is not in this build                                                         │the delta model is not in this build                            │
 │reads review ledger entries · episode cards · findings with evidence · operator-action check…│reads episode range · dispositions · export target · format     │
 │… and 1 more (e2.11 names them all)                                                          │pane `scope` · owned by e5.7 · ADR-006 §5                       │

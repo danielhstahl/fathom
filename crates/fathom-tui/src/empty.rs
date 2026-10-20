@@ -206,7 +206,7 @@ fn action(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
             }
         }
         (ViewId::Artefact, "preview") => {
-            "`o` previews here; `fathom export` writes it (e5.7 owns it)".to_owned()
+            "`fathom export` writes the artefact; this preview pane is e5.7's other half".to_owned()
         }
         (ViewId::Artefact, "scope") => {
             "`o` builds it from the selection; `fathom export --episodes` headless".to_owned()

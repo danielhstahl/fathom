@@ -8,7 +8,7 @@
 //! Three renderings, one text:
 //!
 //! * **default** — the plain-text narrative, for a terminal;
-//! * **`--markdown`** — the artefact body, the exact bytes `fathom export` will carry when `e5.7` lands;
+//! * **`--markdown`** — the artefact body, the exact bytes `fathom export` carries into the artefact;
 //! * **`--json`** — the structure: claims, citations, weights and the self-check, one line on stdout.
 //!
 //! `--explain` puts the ranking beside the prose rather than inside it: a weight printed inside a sentence

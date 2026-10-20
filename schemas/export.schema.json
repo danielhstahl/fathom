@@ -2,13 +2,28 @@
   "$id": "https://fathom.dev/schemas/export.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "The export skeleton: format, destination and scope are validated and resolved; the rendering is `e5.7`. The payload states plainly that nothing was written.",
+  "description": "`fathom export --json`: the report of one artefact write. The artefact itself is the file on disk (markdown, HTML or the JSON record); this payload is the machine line about the run \u2014 what was exported, where it went, what the artefact concluded, and what it refused. Byte-stability lives in the artefact, not here: this payload carries the destination, so it is a record of a run.",
   "properties": {
     "artifact": {
+      "description": "The file name written, stem plus the format's extension.",
       "type": "string"
     },
+    "bytes": {
+      "description": "The artefact's size in bytes.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "checklist_open": {
+      "description": "The open half of the operator-action checklist, each with the owner of the rest and what to type.",
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "type": "array"
+    },
     "contract": {
-      "const": "fathom.cli.export/1"
+      "const": "fathom.cli.export/1",
+      "type": "string"
     },
     "exit_code": {
       "type": "integer"
@@ -25,54 +40,104 @@
       "type": "string"
     },
     "out": {
+      "description": "The stem the operator asked for, echoed.",
       "type": "string"
     },
-    "owner_ticket": {
-      "type": "string"
+    "record": {
+      "additionalProperties": true,
+      "description": "The artefact's own contract: `fathom-review-record/1`, who wrote it, the seven sections' states straight out of the delta model, and the self-check's verdict.",
+      "type": "object"
     },
     "scope": {
       "additionalProperties": true,
-      "description": "The resolved range: what was asked, the endpoints as short oids, how many commits, and the delta model the artefact would be written from (`delta`: the contract, its version, and each of the seven sections' state with the owner of every gap — or a stated absence with the remedy). `e5.7` renders it.",
+      "description": "The resolved range: what was asked, the endpoints as short oids, whether they resolved, how many commits and episodes, their ids, and the order the artefact prints them in.",
       "type": "object"
     },
+    "sha256": {
+      "description": "sha256 of the artefact's bytes, so a reader can pin the file they were sent.",
+      "type": "string"
+    },
+    "signoffs": {
+      "description": "Every ledger entry in scope, with reviewer, kind, instant, decision, dismissal reason and note.",
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "type": "array"
+    },
     "status": {
-      "const": "not_implemented"
+      "description": "`written` \u2014 an export that writes nothing is a refusal and carries an exit code, not a payload.",
+      "enum": [
+        "written"
+      ],
+      "type": "string"
+    },
+    "strict": {
+      "description": "Whether `--strict` was asked for.",
+      "type": "boolean"
+    },
+    "summary": {
+      "additionalProperties": true,
+      "description": "The summary card's numbers: scale, decisions taken and outstanding, findings, open actions, and the verdict sentence.",
+      "type": "object"
     },
     "writes_file": {
-      "const": false
+      "const": true
     }
   },
   "required": [
     "contract",
     "status",
-    "owner_ticket",
     "format",
     "artifact",
     "out",
-    "scope",
     "writes_file",
+    "bytes",
+    "sha256",
+    "scope",
+    "record",
+    "summary",
+    "signoffs",
+    "checklist_open",
+    "strict",
     "exit_code",
     "exit_name"
   ],
-  "title": "fathom export --json (skeleton)",
+  "title": "fathom export --json",
   "type": "object",
   "x-fathom-contract": "fathom.cli.export/1",
   "x-fathom-exit-codes": [
     {
+      "code": 0,
+      "name": "OK",
+      "when": "the artefact was written and its self-check found nothing"
+    },
+    {
       "code": 1,
       "name": "ERROR",
-      "when": "a rev that names nothing, an unimplemented verb, a rejected argument value"
+      "when": "a rev that names nothing, an unresolvable range, an unwritable destination, or an artefact whose self-check failed"
     },
     {
       "code": 2,
       "name": "USAGE",
-      "when": "clap rejected the command line (bad flag, unknown verb, missing value)"
+      "when": "clap rejected the command line, or `--format` named a format that is not markdown, html or json"
     },
     {
       "code": 3,
       "name": "NOT_A_REPOSITORY",
       "when": "--root is not a git repository, or `.git` is unreadable"
+    },
+    {
+      "code": 7,
+      "name": "CHECK_VIOLATIONS",
+      "when": "--strict was given and the artefact's checklist still has an open item (CI reads this)"
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "there is no index to build the artefact from, or a commit in the range has no episode row; the remedy is printed"
     }
   ],
+  "x-fathom-note": "The skeleton that shipped before e5.7 answered with status `not_implemented`, `writes_file: false` and exit 1 on every call, so no consumer could treat it as a data source; the finished verb is the first version of this contract, not a change to one.",
   "x-fathom-verb": "export"
 }

@@ -17,6 +17,62 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e5.7` — the review artefact: one record, three renderings, and the same bytes twice (`reco-1tn`)
+
+- **`fathom export` writes the file a pull request or an audit keeps.** `--episodes` takes an episode id,
+  any revspec, `A..B` or `A..=B` (a bare handle means *the episode that handle belongs to*, which is what the
+  single-commit verbs already mean and what makes the default `HEAD` a one-episode artefact instead of the
+  whole repository); `--format md|html|json` chooses the rendering, `--out` the stem, `--stdout` puts the
+  artefact on stdout with the report on stderr, and `--strict` exits `7` while the checklist still has an open
+  item — and still writes the artefact, because the operator has to read something to close the gate.
+  A refusal writes nothing: no index is `12` with `fathom index` as the remedy, a rev that names nothing is
+  `1`, and a fourth format is `2`, because the three formats are the façade's list and not a flag.
+- **One structure, three renderings, so the three surfaces cannot disagree.** `export::build` composes a
+  single `Record` from the delta documents, the ledger and the detector report — summary card, `e4.7`'s
+  narrative verbatim, the range's dependency delta, the architecture delta, findings with their evidence,
+  the operator-action checklist, the sign-off block, the commit links, and the gap list — and markdown, HTML
+  and JSON are layouts over it. The JSON artefact *is* the record (`fathom-review-record/1`), so the
+  cross-format test can assert that a finding in the JSON is in the markdown and the HTML too: a fact hidden
+  in one format because it is awkward to lay out is the second reality ADR-001 §7.10 exists to forbid.
+- **Byte-identical is structural, not hoped for.** The builder reads no clock, no locale and no terminal; every
+  instant it prints is one the repository or the ledger already held. Episodes sort by first member commit,
+  commits by instant, findings by severity then kind, sign-offs by stamp; maps are `BTreeMap`s; the `--out`
+  and `--root` the operator typed are stripped from the echoed command line, because an artefact whose text
+  depends on where it was saved is not the same artefact twice. The test rebuilds a record after a wall-clock
+  second, and re-renders one whose inputs arrived in the opposite order.
+- **Committed text is treated as a hostile input in two different ways, because markdown and HTML are two
+  different dangers.** A commit subject carrying `<script>alert("x")</script>`, a `javascript:` link, a pipe
+  and a backtick is the fixture. HTML escapes everything unconditionally and ships as one file: inline CSS,
+  no subresource of any kind, a CSP of `default-src 'none'; script-src 'none'`, `@page` margins,
+  break-inside rules, repeated table headers, and `print-color-adjust: exact` because colour carries meaning
+  here and every colour-coded mark also says what it means in words. Markdown has an inert span and a live
+  everything-else, so fields are escaped on the way in (a code span widens its own fence until the text cannot
+  close it early), and the narrative — which the self-check requires be the composer's own bytes — goes
+  through one span-aware pass that neutralises a `<` that opens a tag and a `[` that opens a dangerous scheme,
+  *outside* code spans only, because escaping inside one would print `&lt;` where the reader came to read `<`.
+  The store keeps the subject verbatim: escaping is a rendering decision, and losing what a commit said is not
+  a safety improvement.
+- **The sign-off block prints the claim and the claim's date, not a green tick.** Each entry carries reviewer
+  and whether they were human or an agent, the ISO-8601 instant from the ledger, the scope it covered
+  (commits, files, churn, paths, the members it named and how many it did not print), the dismiss/snooze code
+  with the shipped vocabulary's words beside it, the digests it was taken against and its own tamper digest,
+  and whether the content still matches — `unchanged`, `changed` with the ledger's reason, or nothing at all
+  when the comparison could not be made, because `None` is not `unchanged`. A dismissal is not counted as
+  reviewed: the verdict says `0 of 2 … · 1 undecided · 1 refused or deferred`.
+- **The artefact prints what it cannot answer, and who owes it.** Each of the seven sections reports its
+  `measured / partial / unavailable` counts across the range; every gap prints once (not once per episode that
+  hit it) with its owner and, where there is one, the command to run; a dependency delta that could not be
+  computed prints *Not computed for this range* rather than a zero. `Record::verify` runs at build time and
+  its verdict ships in the file, and the tamper tests plant each fault — a finding for an episode outside the
+  scope, a summary that disagrees with its episodes, a sign-off for nothing, a host path in `provenance.store`
+  — and require the check to name it.
+- Asserted by `crates/fathom-analyze/tests/export.rs` (25: byte-identity, escaping in both markup languages,
+  anchor resolution, the sign-off and checklist content, the self-check failing when it should) and
+  `crates/fathom-cli/tests/export_verb.rs` (11 end to end in real repositories, including two exports of one
+  range compared byte for byte in all three formats), with the `--json` payload validated against
+  [`schemas/export.schema.json`](schemas/export.schema.json) — which now describes a written artefact instead
+  of a skeleton — and documented in [docs/concepts/export-artefact.md](docs/concepts/export-artefact.md).
+
 ### `e4.7` — the episode narrative: prose with a citation on every claim, and no model in the path (`reco-2rx`)
 
 - **`fathom narrative <episode>` composes the delta document into paragraphs a human can skim.** Text,

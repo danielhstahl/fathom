@@ -554,41 +554,114 @@ fn the_analyze_verb_prints_one_schema_valid_document() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// The export reads the same document rather than inventing its own summary: the scope an artefact would
-/// be written from names the contract, the version and each section's state, straight out of the model.
+/// The artefact is a rendering of the one model, not a second one: `e5.7`'s JSON export carries the
+/// delta documents themselves, and `--json` reports the same seven sections the model states.
 ///
-/// `e5.7` owns the rendering and is not here. What *is* checkable now is the claim that matters for
-/// ADR-001 §7.10 — that the artefact's facts come from the one model — so the export states which
-/// contract it read and what it has, including when it has nothing: an index-less repository gets a
-/// stated absence with a remedy, not an empty list that reads as "no gaps".
+/// This is the ADR-001 §7.10 claim made checkable at the process boundary. An artefact that quietly
+/// invented its own section list, or re-worded a state, would be the second reality the narrow waist
+/// exists to prevent — so the check is that the artefact's facts are the model's facts, byte for byte,
+/// including when the model has nothing: a stated absence with the owner named, never an empty list that
+/// reads as "no gaps".
 #[cfg(feature = "sqlite-bundled")]
 #[test]
-fn the_export_scope_reads_the_same_document() {
+fn the_export_is_a_rendering_of_the_one_model() {
     let dir = repository();
     let root = dir.to_str().expect("a temporary path in utf-8");
     assert_eq!(code(&run(&["index", root])), 0);
-    let out = run(&["export", "--json", "--root", root, "--episodes", "HEAD"]);
+
+    // The machine report: seven sections, in the model's order, with the contract they came from.
+    let out = run(&[
+        "export",
+        "--json",
+        "--root",
+        root,
+        "--episodes",
+        "HEAD~1..HEAD",
+        "--out",
+        &dir.join("artefact").to_str().expect("a utf-8 path"),
+    ]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
     let value: Value =
         serde_json::from_str(&stdout(&out).trim()).expect("export --json prints JSON");
-    let delta = &value["scope"]["delta"];
+    let sections = value["record"]["sections"]
+        .as_array()
+        .expect("the report carries the sections");
     assert_eq!(
-        delta["available"].as_bool(),
-        Some(true),
-        "an indexed repository answers the export's scope with a real delta: {value}"
+        sections.len(),
+        7,
+        "all seven sections, in the model's order, with each one's state: {value}"
     );
-    assert_eq!(delta["contract"].as_str(), Some(insight::CONTRACT));
     assert_eq!(
-        delta["schema_version"].as_u64(),
+        sections
+            .iter()
+            .map(|section| section["id"].as_str().unwrap_or(""))
+            .collect::<Vec<_>>(),
+        vec![
+            "what",
+            "where",
+            "dependencies",
+            "surface",
+            "tests",
+            "blast",
+            "attention"
+        ],
+        "the artefact asks the model's seven questions, in the model's order"
+    );
+    assert_eq!(
+        value["record"]["contract"].as_str(),
+        Some("fathom-review-record/1")
+    );
+
+    // The artefact itself: the delta documents, verbatim, with the model's own contract and version. The
+    // JSON format *is* the record, which is what makes this a check rather than a screenshot.
+    let written = run(&[
+        "export",
+        "--root",
+        root,
+        "--format",
+        "json",
+        "--episodes",
+        "HEAD~1..HEAD",
+        "--out",
+        &dir.join("artefact").to_str().expect("a utf-8 path"),
+    ]);
+    assert_eq!(code(&written), 0, "{}", stderr(&written));
+
+    let artefact =
+        std::fs::read_to_string(dir.join("artefact.json")).expect("the artefact was written");
+    let record: Value = serde_json::from_str(&artefact).expect("the JSON artefact is JSON");
+    assert_eq!(record["contract"].as_str(), Some("fathom-review-record/1"));
+    assert_eq!(
+        record["scope"]["delta_contract"].as_str(),
+        Some(insight::CONTRACT),
+        "the artefact names the contract its figures came from: {record}"
+    );
+    assert_eq!(
+        record["scope"]["delta_version"].as_u64(),
         Some(u64::from(insight::SCHEMA_VERSION))
     );
-    assert_eq!(
-        delta["sections"].as_array().map(Vec::len),
-        Some(7),
-        "all seven sections, in the model's order, with each one's state"
-    );
-    assert_eq!(delta["verified"].as_bool(), Some(true));
+    let episodes = record["episodes"]
+        .as_array()
+        .expect("one entry per episode");
+    assert!(!episodes.is_empty(), "the range held an episode");
+    for episode in episodes {
+        let delta = &episode["delta"];
+        assert_eq!(delta["contract"].as_str(), Some(insight::CONTRACT));
+        assert_eq!(
+            delta["integrity"]["verified"].as_bool(),
+            Some(true),
+            "the artefact carries a document that verifies: {delta}"
+        );
+        assert!(
+            !episode["narrative_markdown"]
+                .as_str()
+                .unwrap_or_default()
+                .is_empty(),
+            "the narrative travels with the record"
+        );
+    }
 
-    // And with no index, the same key carries a reason and a remedy instead of a silent empty list.
+    // And with no index, the verb refuses with a remedy instead of writing an empty artefact.
     let bare = repository();
     let bare_root = bare.to_str().expect("a temporary path in utf-8");
     let cold = run(&[
@@ -599,12 +672,20 @@ fn the_export_scope_reads_the_same_document() {
         "--episodes",
         "HEAD",
     ]);
-    let cold: Value =
-        serde_json::from_str(&stdout(&cold).trim()).expect("export --json prints JSON");
-    assert_eq!(cold["scope"]["delta"]["available"].as_bool(), Some(false));
+    assert_eq!(
+        code(&cold),
+        12,
+        "no index is INDEX_DEGRADED, not an empty artefact: {}",
+        stdout(&cold)
+    );
     assert!(
-        cold["scope"]["delta"]["remedy"].is_string(),
-        "the absence names what to run: {cold}"
+        stderr(&cold).contains("fathom index"),
+        "the absence names what to run: {}",
+        stderr(&cold)
+    );
+    assert!(
+        !dir.join("no-artefact.md").exists(),
+        "a refusal writes nothing"
     );
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);

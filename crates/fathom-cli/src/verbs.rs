@@ -621,18 +621,24 @@ pub struct ExportArgs {
     /// The artefact format: markdown, html or json.
     #[arg(long, default_value = "markdown")]
     pub format: String,
-    /// The file stem to write.
+    /// The file stem to write, or a file name that already carries the format's extension.
     #[arg(long, default_value = "fathom-review")]
     pub out: String,
-    /// The episode range to export, e.g. `HEAD~9..HEAD`.
+    /// The episode range to export, e.g. `HEAD~9..HEAD`, one commit, or one episode id.
     #[arg(long, default_value = "HEAD")]
     pub episodes: String,
     /// The repository to read.
     #[arg(long, default_value = ".")]
     pub root: String,
-    /// Describe what the artefact *would* contain, as JSON, and write nothing.
+    /// Print the report as JSON on stdout, and nothing else there.
     #[arg(long)]
     pub json: bool,
+    /// Write the artefact to stdout instead of a file; the report goes to stderr.
+    #[arg(long, conflicts_with = "json")]
+    pub stdout: bool,
+    /// Exit 7 while the artefact's checklist still has an open item — the form a CI gate wants.
+    #[arg(long)]
+    pub strict: bool,
 }
 
 /// `fathom mcp`
@@ -779,7 +785,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Doctor(args)) => {
             diagnose::doctor(&args.root, args.privacy, args.json, args.deep, args.strict)
         }
-        Some(Verb::Export(args)) => export(args),
+        Some(Verb::Export(args)) => crate::export::run(args),
         Some(Verb::Mcp(args)) => mcp(args),
         Some(Verb::Watch(args)) => watch(args),
         Some(Verb::Hooks(args)) => crate::harness::run(args),
@@ -1324,179 +1330,6 @@ fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
                     .to_owned(),
             ),
         )),
-    }
-}
-
-/// `fathom export`: the skeleton `e5.7` fills in.
-///
-/// What is real here is the *decision surface*: the format list is the facade's, the out stem and the
-/// episode range are parsed and validated, and `--json` answers what the artefact would be built from. What
-/// is not here is the rendering, which is `e5.7`'s, and the verb says so and leaves with `ERROR` rather
-/// than writing a file nobody asked for (ADR-002 §7.2: a stub is a typed failure, never a panic and never a
-/// silently-empty artefact).
-fn export(args: &ExportArgs) -> eyre::Result<ExitCode> {
-    // The format list is the facade's, so `--format` in the CLI, the TUI's export key and the MCP tool
-    // cannot drift apart (§5.1), and its error reaches the right exit code through `Diagnosable`.
-    let format = fathom_analyze::export::Format::parse(&args.format).map_err(failed)?;
-    let artefact = format.file_name(&args.out);
-    let scope = export_scope(&args.root, &args.episodes);
-
-    if args.json {
-        output::line(format_args!(
-            "{}",
-            serde_json::json!({
-                "contract": query::EXPORT_CONTRACT,
-                "status": "not_implemented",
-                "owner_ticket": "e5.7",
-                "format": format.file_name("x").rsplit('.').next().unwrap_or("md"),
-                "artifact": artefact,
-                "out": args.out,
-                "scope": scope,
-                "writes_file": false,
-                "exit_code": ExitCode::Error.as_i32(),
-                "exit_name": ExitCode::Error.name(),
-            })
-        ));
-        return Ok(ExitCode::Error);
-    }
-
-    let rendered = fathom_analyze::export::render(format, &args.out);
-    Err(match rendered {
-        Ok(text) => pending(
-            ExitCode::Error,
-            "`fathom export` is the skeleton: the format, the destination and the scope are \
-             validated; the rendering is owned by e5.7"
-                .to_owned(),
-            Some(format!(
-                "scope {} ({} commit(s)); artefact would be {artefact} ({} bytes once e5.7 renders it)",
-                scope["asked"].as_str().unwrap_or("HEAD"),
-                scope["commits"].as_u64().unwrap_or(0),
-                text.len()
-            )),
-        ),
-        Err(err) => failed(err),
-    })
-}
-
-/// The episode range an export would cover, resolved against the repository if there is one.
-///
-/// Resolving the range is worth doing in the skeleton because it is the half that can be wrong: an export
-/// that reported a scope it had not resolved would be a preview of nothing.
-fn export_scope(root: &str, episodes: &str) -> serde_json::Value {
-    use serde_json::json;
-
-    let (start, end) = match episodes.split_once("..=").or(episodes.split_once("..")) {
-        Some((from, to)) => (from, to),
-        None => (episodes, episodes),
-    };
-    let resolved = std::path::Path::new(root);
-    match fathom_ingest::repo::Repository::discover(resolved) {
-        Ok(repo) => {
-            let one = |spec: &str| {
-                fathom_ingest::revspec::resolve(&repo, spec)
-                    .ok()
-                    .map(|oid| oid.hex())
-            };
-            let from = one(start);
-            let to = one(end);
-            let same = from.is_some() && from == to;
-            json!({
-                "asked": episodes,
-                "from": short_sha(from.as_deref()),
-                "to": short_sha(to.as_deref()),
-                "commits": if same { 1 } else { 0 },
-                "resolved": same,
-                // The artefact will be written from the delta model, and says which one it read. This is
-                // the half of `e5.7` that can be checked before the rendering exists: an export that
-                // quietly invented its own section list is the second reality ADR-001 §7.10 forbids, so
-                // the scope names the contract, the version and every section's state instead.
-                "delta": delta_scope(resolved, to.as_deref()),
-            })
-        }
-        Err(_) => json!({"asked": episodes, "resolved": false}),
-    }
-}
-
-/// Seven characters, because a scope line is not a place to print an oid.
-fn short_sha(oid: Option<&str>) -> Option<String> {
-    oid.map(|value| value.chars().take(7).collect::<String>())
-}
-
-/// The delta model an export of this range would be written from.
-///
-/// `fathom analyze <episode> --json` is the source; this is that same document, reduced to what an
-/// artefact's preamble has room for: the contract, the version, and the state of each of the seven
-/// sections with the owner of every gap. When there is no index the answer is a stated absence with the
-/// remedy, not an empty section list — an export that printed nothing about a section and nothing about
-/// the gap would be reporting zero where nobody looked.
-fn delta_scope(root: &std::path::Path, oid: Option<&str>) -> serde_json::Value {
-    #[cfg(not(feature = "sqlite-bundled"))]
-    {
-        let _ = (root, oid);
-        return serde_json::json!({
-            "available": false,
-            "contract": fathom_analyze::insight::CONTRACT,
-            "why": "this binary was built without a SQLite feature, so no index can be read",
-        });
-    }
-
-    #[cfg(feature = "sqlite-bundled")]
-    {
-        use fathom_analyze::index::default_store_path;
-        use fathom_store::spine::Store;
-        let Some(oid) = oid else {
-            return serde_json::json!({"available": false, "why": "the range resolved to no commit"});
-        };
-        let store_path = default_store_path(root);
-        if !store_path.exists() {
-            return serde_json::json!({
-                "available": false,
-                "contract": fathom_analyze::insight::CONTRACT,
-                "why": format!("no index at {} yet", store_path.display()),
-                "remedy": "fathom index",
-            });
-        }
-        let Ok(store) = Store::open(&store_path) else {
-            return serde_json::json!({
-                "available": false,
-                "contract": fathom_analyze::insight::CONTRACT,
-                "why": "the store would not open",
-                "remedy": "fathom doctor",
-            });
-        };
-        match fathom_analyze::insight::for_commit(&store, oid) {
-            Ok(Some(delta)) => serde_json::json!({
-                "available": true,
-                "contract": delta.contract,
-                "schema_version": delta.schema_version,
-                "episode": fathom_analyze::insight::short_id(&delta.episode.id),
-                "sections": delta
-                    .sections
-                    .iter()
-                    .map(|section| {
-                        serde_json::json!({
-                            "id": section.id,
-                            "state": section.state,
-                            "gap_owner": section.gap.as_ref().map(|gap| gap.owner.clone()),
-                        })
-                    })
-                    .collect::<Vec<_>>(),
-                "gaps": delta.gaps.len(),
-                "verified": delta.integrity.verified,
-            }),
-            Ok(None) => serde_json::json!({
-                "available": false,
-                "contract": fathom_analyze::insight::CONTRACT,
-                "why": "this commit has no episode row in the index",
-                "remedy": "fathom index",
-            }),
-            Err(err) => serde_json::json!({
-                "available": false,
-                "contract": fathom_analyze::insight::CONTRACT,
-                "why": format!("reading the delta failed: {err}"),
-                "remedy": "fathom index --rebuild",
-            }),
-        }
     }
 }
 
