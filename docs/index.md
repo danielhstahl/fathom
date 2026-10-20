@@ -83,7 +83,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [false-positive calibration](concepts/false-positive-calibration.md)
 
 **The screen** — [timeline](concepts/timeline.md) · [diff viewer](concepts/diff-viewer.md) ·
-[background materialisation](concepts/materialization.md) · [theming](concepts/theming.md)
+[the exits out of the reader](concepts/handoff.md) · [background materialisation](concepts/materialization.md) ·
+[theming](concepts/theming.md)
 
 ## Decisions, and how it attaches to an agent
 

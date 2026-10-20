@@ -169,6 +169,10 @@ pub enum Verb {
     Hooks(HooksArgs),
     /// Print the terminal UI's keymap, or open the UI itself
     Tui(TuiArgs),
+    /// Open an episode's file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
+    Open(OpenArgs),
+    /// Show one file's two sides in your own difftool — difftastic, meld, kdiff3, `vim -d` (`e5.8`)
+    Difftool(DifftoolArgs),
 }
 
 /// `fathom index`
@@ -731,6 +735,85 @@ pub struct TuiArgs {
     pub list_themes: bool,
 }
 
+/// `fathom open <EPISODE>` — the exit from reading to editing (`e5.8`, `reco-dmw`).
+///
+/// Fathom is a reader, not an editor (ADR-001 §8 non-goal 2). This verb is the door out: it finds the
+/// file an episode changed and the line its first hunk touches, works out the argument *your* editor
+/// takes for a line, and says what it decided before it runs it.
+#[derive(Args, Debug)]
+pub struct OpenArgs {
+    /// The episode to jump into: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid
+    /// prefix — the same grammar `fathom show`, `analyze` and `why` accept. With no argument, `HEAD`.
+    pub episode: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Which of the episode's files to open, by path or by a unique suffix of it.
+    ///
+    /// With more than one file in the episode and no `--path`, the biggest non-noise change is chosen —
+    /// and printed, so a surprise is at least a visible one.
+    #[arg(long, value_name = "PATH")]
+    pub path: Option<String>,
+    /// Which line, overriding the line the first `@@` header says.
+    #[arg(long, value_name = "N")]
+    pub line: Option<u32>,
+    /// Which editor to use for this run, overriding `$FATHOM_EDITOR`, `$VISUAL` and `$EDITOR`.
+    ///
+    /// The whole spec is used, arguments included, so `--editor "nvim -p"` splits a tab open across your
+    /// command line and this flag.
+    #[arg(long, value_name = "PROGRAM [ARGS…]")]
+    pub editor: Option<String>,
+    /// Print the command and the reason for it, and run nothing.
+    ///
+    /// The door that works with no editor installed, which is what makes "no `$EDITOR`" an explainable
+    /// state rather than a broken one.
+    #[arg(long)]
+    pub print: bool,
+    /// List every file the episode touched with the line each would jump to, and open nothing.
+    #[arg(long)]
+    pub list: bool,
+    /// Print the decision as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `fathom difftool <EPISODE>` — the heavyweight diff, in the tool you already like (`e5.8`).
+///
+/// Fathom's own diff pane is the one that needs nothing installed. This is for the times a reviewer wants
+/// the other kind: the two sides of one file written out and handed to difftastic, meld, kdiff3,
+/// `vim -d` or `code --diff`. The tool comes from `--tool`, `$FATHOM_DIFFTOOL` or `[diff] difftool` in
+/// your own config — never from a clone's `fathom.toml`, which is told as much when it tries.
+#[derive(Args, Debug)]
+pub struct DifftoolArgs {
+    /// The episode whose file to show: the same handle grammar as every other verb. With no argument,
+    /// `HEAD`.
+    pub episode: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Which of the episode's files to show, by path or by a unique suffix of it.
+    #[arg(long, value_name = "PATH")]
+    pub path: Option<String>,
+    /// Which difftool to use, overriding `$FATHOM_DIFFTOOL` and your user config.
+    ///
+    /// A name from the table (`difftastic`, `meld`, `kdiff3`, `nvim`, `vim`, `vscode`, …) or any program
+    /// on `PATH`, which gets the two files as its last two arguments.
+    #[arg(long, value_name = "NAME")]
+    pub tool: Option<String>,
+    /// Print the command and the reason for it, and run nothing. The two files stay on disk.
+    #[arg(long)]
+    pub print: bool,
+    /// List every file the episode touched with the line each would jump to, and show nothing.
+    #[arg(long)]
+    pub list: bool,
+    /// Leave the two staged files behind and say where they are.
+    #[arg(long)]
+    pub keep: bool,
+    /// Print the decision as JSON on stdout, and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+}
+
 /// Run one verb. The return type is the process contract, not a `Result` a caller forgets to check.
 ///
 /// # Errors
@@ -834,6 +917,26 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Ambient(args)) => ambient(args, globals),
         Some(Verb::Hooks(args)) => crate::harness::run(args),
         Some(Verb::Tui(args)) => tui(args, globals),
+        Some(Verb::Open(args)) => crate::open::open(
+            &args.root,
+            args.episode.as_deref(),
+            args.path.as_deref(),
+            args.line,
+            args.editor.as_deref(),
+            args.print,
+            args.list,
+            args.json,
+        ),
+        Some(Verb::Difftool(args)) => crate::open::difftool(
+            &args.root,
+            args.episode.as_deref(),
+            args.path.as_deref(),
+            args.tool.as_deref(),
+            args.print,
+            args.list,
+            args.keep,
+            args.json,
+        ),
     }
 }
 

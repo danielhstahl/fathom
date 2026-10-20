@@ -22,6 +22,10 @@
 
 pub mod error;
 pub mod exit;
+/// The editor and difftool plans Fathom hands off to (`e5.8`, `reco-dmw`): what to run, and why that.
+pub mod handoff;
+/// OSC-8 hyperlinks, and the rule about which terminals get them (`e5.8`, `reco-dmw`).
+pub mod links;
 pub mod privacy;
 /// The progress row's percentage and converging time estimate, shared by the shell and `fathom index`
 /// (`e5.9`).

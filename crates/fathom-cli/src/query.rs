@@ -133,7 +133,18 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
             ));
             return Ok(snapshot.worst_code());
         }
-        for line in show_text(&snapshot, &redactor, &store_path, &row, &episode, target) {
+        // Paths and the commit go through the link printer (`e5.8`): clickable where the terminal
+        // advertised, byte-identical to these same lines where it did not.
+        let links = crate::links::Printer::for_root(root_path);
+        for line in show_text(
+            &snapshot,
+            &redactor,
+            &store_path,
+            &row,
+            &episode,
+            target,
+            &links,
+        ) {
             output::line(format_args!("{line}"));
         }
         Ok(snapshot.worst_code())
@@ -294,8 +305,9 @@ fn show_text(
     row: &fathom_store::spine::CommitRow,
     episode: &Option<fathom_store::episode::EpisodeRow>,
     asked: &str,
+    links: &crate::links::Printer,
 ) -> Vec<String> {
-    let mut out = vec![format!("episode {} — {asked}", short(&row.oid),)];
+    let mut out = vec![format!("episode {} — {asked}", links.commit(&row.oid),)];
     out.push(format!("  message   {}", row.message_head));
     out.push(format!(
         "  author    {} <{}>  {}",
@@ -339,10 +351,12 @@ fn show_text(
             format!("+{}", file.n_add),
             format!("-{}", file.n_del),
             file.noise_class,
-            file.new_path,
+            // The path last and unaligned on purpose: a link's escape sequences are zero-width, and a
+            // column that has to survive them is a column worth not padding.
+            links.path(&file.new_path),
             file.old_path
                 .as_ref()
-                .map(|old| format!("  (from {old})"))
+                .map(|old| format!("  (from {})", links.path(old)))
                 .unwrap_or_default()
         ));
     }

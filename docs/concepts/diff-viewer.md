@@ -237,7 +237,11 @@ The three exits are the ones a reviewer's hands reach for, and none of them is a
 * `y` copies the path under the cursor;
 * `Y` copies the raw patch text of the hunk under the top of the window — header line included, so it
   pastes as a patch and not as a suggestion;
-* `E` opens `$EDITOR` (`$VISUAL` first) at the file and the line the pane is showing.
+* `E` opens the file at the line the pane is showing, in the editor the reviewer chose — `$FATHOM_EDITOR`
+  if set, then `$VISUAL` and `$EDITOR` as the shell would read them, then `[ui] editor` in the user
+  config, then the platform's default. The same planner answers for `fathom open` on the command line,
+  so the key and the verb cannot disagree about which program or which line argument
+  ([the exits out of the reader](handoff.md)); which of the four the answer came from is in the toast.
 
 Nothing is run by the view. Running a program or writing an escape sequence needs the screen handed
 back, and only the frame loop owns the screen it took, so a keystroke queues a `Handoff` — `Run(command)`
@@ -253,10 +257,11 @@ Copy resolution: `FATHOM_CLIPBOARD` (any OS, escape hatch first) → macOS `pbco
 the host supplies; with nothing runnable the plan is OSC 52, the one clipboard that works over `ssh`,
 and the toast names `FATHOM_CLIPBOARD` as the thing to set. OSC 52 goes to the terminal and to nothing
 else — escape bytes in a pipe would claim to have copied something. Editor invocation is per family
-(`vim`/`nvim`/`vi` get `+L:C`, `emacs` gets `+line:C`, `nano` gets `+C`, `helix` gets `C`,
-code/`subl`/`textmate` get `path:line:C`, anything else gets the path), and the variables that name the
-editor — `VISUAL` then `EDITOR`, git's own precedence — are read by `fathom-cli` for the same reason the
-`PATH` answer is: this crate reads neither.
+(`vim`/`nvim`/`vi`/`kak`/`nano`/`micro` get `+L:C`, `hx`/`zed`/`subl` get `path:L`, the VS Code family
+gets `--goto path:L`, the JetBrains family gets `--line L path`, `emacs` gets `+L:C`, and anything else
+gets the path alone and opens at the top — said out loud rather than discovered at the top of a file), and
+the variables that name the editor are read by `fathom-cli` for the same reason the `PATH` answer is: this
+crate reads neither.
 
 `fathom-diff://path:line` is ADR-006's handoff and nothing else emits it: `E` runs the editor
 directly instead of printing a URI nobody asked for.

@@ -65,16 +65,23 @@ mod segment;
 mod state;
 // The terminal shell is the one verb whose crate is optional (ADR-002 §6.2): a `minimal` binary says
 // "compiled out" rather than failing to start, so the module is gated with the feature it needs.
-// The handoff environment is read for the shell and for nothing else, so it is gated exactly as the
-// shell is: a `minimal` binary has no terminal to hand back and no plan to read variables for.
 #[cfg(feature = "tui")]
+mod tui;
+// Who gets to name an editor, and how to run it (`e5.8`, `reco-dmw`). Not gated with the shell: an
+// editor handoff needs a terminal to be *seen* in, not a terminal screen to be drawn on, and
+// `fathom open` works in a `minimal` build for exactly that reason.
 mod handoff;
+// Paths and commits as OSC-8 links, where the terminal asked for them (`e5.8`).
+mod links;
+// Where the reviewer's own configuration lives (`e5.6`, `e5.8`): one list of directories, read by the
+// theme resolver and the handoff settings alike.
+mod userconfig;
+// The two exits a reviewer leaves through: `$EDITOR` at a line, and a heavyweight difftool (`e5.8`).
+mod open;
 // The reviewer's session lives in the store, and only the shell has a use for it, so it is gated the
 // same way the shell is: a `minimal` binary has no session to resume (`e1.11`).
 #[cfg(feature = "tui")]
 mod session;
-#[cfg(feature = "tui")]
-mod tui;
 // Which palette a run is painted with (`e5.6`). Gated with the shell because the only thing it resolves
 // is the shell's theme — and because the printers read the same terminal facts the shell is handed.
 #[cfg(feature = "tui")]

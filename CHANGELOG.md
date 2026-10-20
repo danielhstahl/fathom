@@ -17,6 +17,43 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The exits out of the reader: `fathom open`, `fathom difftool`, and links that only appear when asked for (`reco-dmw`)
+
+Fathom is a reader, and a refusal to be an editor is only worth having if going *out* is good. Two verbs and
+one display decision, all of them planned before anything was run and printed with the reason:
+
+* **`fathom open [EPISODE]`** jumps to one file of one episode at its line in `$EDITOR` — `HEAD`'s episode
+  with no argument, the same handle grammar `show`/`analyze`/`why` accept. The line is the file's first `@@`
+  header, so `]` in the diff pane and `fathom open` agree by construction. With no `--path` the choice is the
+  biggest change on a surface a review reads, ranked by the same `risk::classify` chain `fathom why` ranks
+  with, and the surface is printed beside the path (`dependency`, `generated`, `vendored` are discounted by
+  name as well as by the stored taxonomy, which today says `unknown` for everything). `--list` shows every jump
+  with its line; `--print` prints the plan and runs nothing; the editor's own exit code is the verb's, because
+  `vim :cq` is a reviewer who cancelled.
+* **`fathom difftool [EPISODE]`** writes a file's two sides out of the object store into
+  `$TMPDIR/fathom-difftool-…/` — real extension kept, because difftastic chooses its grammar by suffix — and
+  asks the tool in the shape it documents: `difft`, `meld`, `kdiff3`, `nvim -d`, `code --diff`, WinMerge with
+  `/e`, or any program named with its own arguments (`--tool "mydiff --wait"`), with the two files last.
+* **No editor and no difftool are ordinary paths.** The refusal names what was looked for, the keys that change
+  it (`$FATHOM_EDITOR`, `$VISUAL`, `$EDITOR`, `$FATHOM_DIFFTOOL`, `[ui] editor`, `[diff] difftool`), and where
+  the staged pair is, so a machine with nothing installed still gets the diff. A *requested* tool that is
+  missing is announced as a substitution rather than silently swapped.
+* **A clone cannot name a program this process runs.** `[ui] editor` and `[diff] difftool` are read from the
+  user config and the environment only; a repository's `fathom.toml` that tries is quoted back with the reason
+  (ADR-001 §4.6 — an editor *executes*, which is a stronger reason than the theme rule already rests on).
+* **OSC-8 links for paths and commits, on two conditions.** The terminal has to advertise (`TERM_PROGRAM` with
+  per-terminal floors — iTerm2 3.0, VS Code 1.57, Konsole 22.12 — `VTE_VERSION` ≥ 0.36 parsed as a version, or
+  a vendor marker), and the stream has to be a terminal: `fathom show | fzf` sits inside a Ghostty that
+  advertises and would otherwise receive introducers as payload. tmux below 3.3 and GNU screen veto the route
+  and say which one it was. `FATHOM_HYPERLINKS=always|never|auto` overrules both, `fathom doctor --json` prints
+  the verdict as `emit`/`advertised`/`why`, and the visible text is byte-identical either way — which is what
+  makes a link safe to add to a line a script is parsing.
+
+The plans live in `fathom-core` (`handoff`, `links`) and read no environment, open no file and spawn nothing,
+so the whole editor matrix — vim, neovim, helix, code, zed, sublime, emacs, idea, nano across Linux, macOS and
+Windows — is one `cargo test` on one machine rather than three CI runners, and the diff view's `E` produces the
+same `Command` the verb does. Documented in [the exits out of the reader](docs/concepts/handoff.md).
+
 ### The second terminal got its own pane: `fathom ambient` (`reco-8bx`)
 
 The glance view existed inside the shell; what was missing was the thing to leave open in the pane beside the

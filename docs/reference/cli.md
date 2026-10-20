@@ -50,6 +50,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
 | **[`tui`](#fathom-tui)** | Print the terminal UI's keymap, or open the UI itself | shipped | [*cheatsheet*](cheatsheet.md) · [*0006-tui*](../adr/0006-tui.md) |
+| **[`open`](#fathom-open)** | Open an episode's file at its line in $EDITOR — jump out, do not read around it (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
+| **[`difftool`](#fathom-difftool)** | Show one file's two sides in your own difftool — difftastic, meld, kdiff3, vim -d (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
 <!-- END GENERATED: verbs -->
 
 ## Global flags
@@ -969,6 +971,89 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.tui -->
+
+## `fathom open`
+
+The exit out of the reader: one file of one episode, opened at its line in `$EDITOR`
+([the exits out of the reader](../concepts/handoff.md)). The handle grammar is the one `show`, `analyze`
+and `why` use, with no argument meaning `HEAD`'s episode. Which file, which line and which program are
+all decided before anything is started and all three are printed — the line comes from the file's first
+`@@` header, the file from the largest change on a surface a review reads (with the surface printed, so
+a surprising choice is a visible one), and the program from `--editor`, then `$FATHOM_EDITOR`/`$VISUAL`/`$EDITOR`,
+then `[ui] editor` in the user config. A repository's `fathom.toml` gets no vote: a clone does not name a
+program this process executes. With no editor installed this is a stated path, not a crash, and `--print`
+prints the plan either way; the editor's own exit code is the verb's, because `:cq` is a reviewer who
+cancelled.
+
+<!-- BEGIN GENERATED: help.open -->
+```text
+Open an episode's file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
+
+Usage: fathom open [OPTIONS] [EPISODE]
+
+Arguments:
+  [EPISODE]  The episode to jump into: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix — the same grammar `fathom show`, `analyze` and `why` accept. With no argument, `HEAD`
+
+Options:
+      --plain                     Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>               The repository to read [default: .]
+      --no-alt-screen             Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --path <PATH>               Which of the episode's files to open, by path or by a unique suffix of it
+      --fresh                     Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --line <N>                  Which line, overriding the line the first `@@` header says
+      --editor <PROGRAM [ARGS…]>  Which editor to use for this run, overriding `$FATHOM_EDITOR`, `$VISUAL` and `$EDITOR`
+      --mouse                     Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                     With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --print                     Print the command and the reason for it, and run nothing
+      --list                      List every file the episode touched with the line each would jump to, and open nothing
+      --theme <NAME|PATH>         Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --json                      Print the decision as JSON on stdout, and nothing else there
+      --progress                  print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress               never print the index's progress row, even on a terminal
+  -h, --help                      Print help (see more with '--help')
+  -V, --version                   Print version
+```
+<!-- END GENERATED: help.open -->
+
+## `fathom difftool`
+
+The heavyweight diff, for the reviewer who wants two real files in their own tool rather than the pane.
+The two sides come out of the object store into `$TMPDIR/fathom-difftool-…/` with the file's real
+extension kept (difftastic picks its grammar by suffix), and the tool is asked in the shape it documents
+— `difft`, `meld`, `kdiff3`, `nvim -d`, `code --diff`, WinMerge with `/e`, or any program you name, which
+gets the two files as its last two arguments. A tool that is not installed names itself, lists what was
+looked for, and leaves the pair on disk, so the review continues in whatever viewer exists
+([the exits out of the reader](../concepts/handoff.md#3-fathom-difftool-the-heavyweight-diff)).
+
+<!-- BEGIN GENERATED: help.difftool -->
+```text
+Show one file's two sides in your own difftool — difftastic, meld, kdiff3, `vim -d` (`e5.8`)
+
+Usage: fathom difftool [OPTIONS] [EPISODE]
+
+Arguments:
+  [EPISODE]  The episode whose file to show: the same handle grammar as every other verb. With no argument, `HEAD`
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --path <PATH>        Which of the episode's files to show, by path or by a unique suffix of it
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --tool <NAME>        Which difftool to use, overriding `$FATHOM_DIFFTOOL` and your user config
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --print              Print the command and the reason for it, and run nothing. The two files stay on disk
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list               List every file the episode touched with the line each would jump to, and show nothing
+      --keep               Leave the two staged files behind and say where they are
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --json               Print the decision as JSON on stdout, and nothing else there
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.difftool -->
 
 ---
 

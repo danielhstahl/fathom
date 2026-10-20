@@ -38,7 +38,10 @@ mod word;
 // rename inside the subsystem is not a rename outside it.
 pub use budget::Budget;
 pub use doc::{Doc, Hunks, Live, Plan, Request, build_from, decode, height_of};
-pub use handoff::{Command, Copy, Editor, Env, Handoff, Os, copy_plan, editor_plan};
+pub use handoff::{
+    Command, Copy, DIFFTOOLS, Difftool, EDITOR_KEYS, Editor, Env, Handoff, Os, copy_plan,
+    difftool_plan, editor_plan,
+};
 pub use materialize::{FromCache, Key, Materializer, Warm};
 pub use model::{
     FileEntry, FileKind, Hunk as HunkRecord, Layout, Row, SPLIT_MIN_COLS, Shape, Side, Sign, slot,
@@ -666,7 +669,7 @@ impl DiffView {
     /// Decide how to open a file at a line, without running anything.
     #[must_use]
     pub fn editor_plan(&self, path: &str, line: u32) -> Editor {
-        handoff::editor_plan(self.os, path, line, &self.env)
+        handoff::editor_plan(self.os, path, line, None, &self.env)
     }
 
     /// Install the host's environment — variables and `PATH` — that the copy and editor plans read.

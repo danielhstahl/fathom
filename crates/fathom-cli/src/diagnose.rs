@@ -172,6 +172,10 @@ fn build_section() -> Value {
             "tty": std::io::IsTerminal::is_terminal(&std::io::stdout()),
             "columns": std::env::var("COLUMNS").ok().and_then(|text| text.parse::<u16>().ok()),
             "no_color": std::env::var_os("NO_COLOR").is_some(),
+            // OSC-8 (`e5.8`): the same question the printers asked, answered where a bug report can
+            // quote it. Whether a path was clickable is the first thing a "links do not work" report
+            // needs, and there is no other place this is written down.
+            "hyperlinks": hyperlinks(),
         },
         "now_utc": crate::clock::now_millis(),
     })
@@ -189,6 +193,19 @@ fn build_lines(build: &Value) -> Vec<String> {
             .as_i64()
             .map_or_else(|| "?".to_owned(), crate::query::format_utc),
     )]
+}
+
+/// The OSC-8 answer, as the two facts and one sentence a report needs (`e5.8`).
+///
+/// Whether a path was clickable is the first thing a "the links do not work" report has to answer, and
+/// until now nothing wrote the decision down anywhere a bug report could quote.
+fn hyperlinks() -> Value {
+    let links = crate::links::Printer::for_root(std::path::Path::new("."));
+    json!({
+        "emit": links.enabled(),
+        "advertised": links.advertised(),
+        "why": links.why(),
+    })
 }
 
 /// The SQLite this binary carries, with ADR-004 §4.0's capability probe.

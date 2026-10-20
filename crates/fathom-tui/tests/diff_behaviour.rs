@@ -652,7 +652,7 @@ fn the_editor_command_names_the_file_and_the_line_in_the_spelling_that_editor_us
     ];
     for (editor, want) in cases {
         let env = Env::fixed(&[("EDITOR", editor)], &[editor]);
-        match diff::editor_plan(Os::Linux, "src/a.rs", 42, &env) {
+        match diff::editor_plan(Os::Linux, "src/a.rs", 42, None, &env) {
             Editor::Open(command) => {
                 assert_eq!(command.program, editor, "{editor}");
                 assert_eq!(command.args, want, "{editor}");
@@ -665,12 +665,12 @@ fn the_editor_command_names_the_file_and_the_line_in_the_spelling_that_editor_us
 #[test]
 fn visual_beats_editor_and_a_missing_editor_says_so_with_the_default_it_tried() {
     let env = Env::fixed(&[("EDITOR", "vim"), ("VISUAL", "code")], &["vim", "code"]);
-    match diff::editor_plan(Os::Linux, "x.rs", 1, &env) {
+    match diff::editor_plan(Os::Linux, "x.rs", 1, None, &env) {
         Editor::Open(command) => assert_eq!(command.program, "code", "$VISUAL wins"),
         other => panic!("{other:?}"),
     }
     let none = Env::fixed(&[], &[]);
-    match diff::editor_plan(Os::MacOs, "x.rs", 1, &none) {
+    match diff::editor_plan(Os::MacOs, "x.rs", 1, None, &none) {
         Editor::Unavailable { why } => {
             assert!(why.contains("vi"), "{why}");
             assert!(why.contains("not on PATH"), "{why}");

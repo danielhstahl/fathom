@@ -100,6 +100,11 @@ there is an escape hatch that does not need a rebuild.
 silent fallback to `~/.config` is the worst possible outcome when you deliberately pointed it
 somewhere else.
 
+Two keys live only here, and only here is where they can be read: `[ui] editor` and `[diff] difftool`
+name programs this process *executes* ([the exits out of the reader](handoff.md#4-where-a-program-name-may-come-from)).
+Everything else in a user config changes what Fathom says; these two change what it runs, which is why
+the repository layer is refused them (§5) and why `fathom doctor` prints which layer won.
+
 ### 3.3 No system config file, and why
 
 A root-owned config directory is a fourth place a value can hide, invisible in `git status` and
@@ -152,6 +157,7 @@ or write outside `.fathom/`.* Four rules, all executable:
 | `paths.*` from a repo file must resolve inside the repository | exit 5, naming the offending `file:line` | the store is the one thing Fathom writes; a `..`-shaped value is the write primitive an attacker wants |
 | a file declaring a newer `meta.config_version` is refused | exit 5 with "upgrade fathom" | silently ignoring keys from a newer version and then caching analysis under the wrong digest is unrecoverable; ADR-005 §6.6's "never default to the newest version" applied to config |
 | nothing in a config file is executed, imported, shell-parsed, or expanded | no rule needed: there is no interpolation syntax at all | every interpolation feature added is a new channel from "reviewed text file" to "code execution". Environment references are `FATHOM_*` variables, which exist because they are read by the *layer*, not by the parser |
+| `[ui] editor` and `[diff] difftool` in a repo file are ignored, with a notice naming the key and the value | `fathom open` / `fathom difftool` print `fathom.toml's ... was ignored: a clone does not get to name a program this process runs` and use the user's own choice | these two keys name a program Fathom *executes*, which is the one thing a theme, a threshold and a glob do not do. The theme rule ([theming](theming.md)) and ADR-001 §4.6 already treat clone-provided config as untrusted; execution is the strongest reason in that family, and it is the reason the keys are `scope = user` in spirit even though they are read by the CLI rather than by the config schema |
 
 A suppressed value is **kept in the trace**. Showing the attempt is strictly more useful than
 showing a default: if a project ships `privacy.llm = true` and Fathom silently ignores it, the user

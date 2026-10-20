@@ -57,27 +57,16 @@ fn theme_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// The user config directory, in the order the layers are consulted elsewhere in this binary
-/// (`fathom doctor` prints these same candidates).
+/// The user config directory, delegated to [`crate::userconfig`] — one answer to "where does the
+/// reviewer's own configuration live", shared with `[ui] editor` and `[diff] difftool` (`e5.8`) and
+/// with `fathom doctor`, which prints the same candidates.
 fn config_dir() -> Option<PathBuf> {
-    if let Some(home) = std::env::var_os("XDG_CONFIG_HOME").filter(|value| !value.is_empty()) {
-        return Some(PathBuf::from(home).join("fathom"));
-    }
-    std::env::var_os("HOME")
-        .filter(|value| !value.is_empty())
-        .map(|home| PathBuf::from(home).join(".config").join("fathom"))
+    crate::userconfig::dir()
 }
 
 /// The user config files, first-existing-wins, in precedence order.
-fn user_config_candidates() -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    if let Some(dir) = config_dir() {
-        out.push(dir.join("config.toml"));
-    }
-    if let Some(home) = std::env::var_os("HOME").filter(|value| !value.is_empty()) {
-        out.push(PathBuf::from(home).join(".fathom").join("config.toml"));
-    }
-    out
+pub(crate) fn user_config_candidates() -> Vec<PathBuf> {
+    crate::userconfig::candidates()
 }
 
 /// The `[theme] name` the user config asks for, and any problem reading it.

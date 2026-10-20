@@ -325,6 +325,10 @@ def net_features() -> list[dict]:
 #: feature -> the page that explains what turning it on changes. `tools/check_docs_site.py` fails
 #: when `features.rs` grows a feature this map does not have, or when a target stops existing.
 FEATURE_DOCS = {
+    "open": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],
+             "jump from an episode to the file, at its line, in your editor"),
+    "difftool": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],
+                 "one file's two sides, in your own difftool"),
     "tui": (["docs/reference/cheatsheet.md", "docs/adr/0006-tui.md"],
             "the terminal UI: every view, the keymap, the layout ladder."),
     "mcp": (["docs/reference/cli.md", "docs/adr/0005-harness-contract.md"],
@@ -463,6 +467,10 @@ VERB_DOCS = {
                 "the glance pane for the second terminal"),
     "hooks": (["docs/harness/README.md", "docs/adr/0005-harness-contract.md"],
               "the harness event stream, and why a line was refused"),
+    "open": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],
+             "jump from an episode to the file, at its line, in your editor"),
+    "difftool": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],
+                 "one file's two sides, in your own difftool"),
     "tui": (["docs/reference/cheatsheet.md", "docs/adr/0006-tui.md"],
             "the keymap, the session state and the theme in force"),
 }
