@@ -194,6 +194,50 @@ fn all_three_formats_are_written_and_the_same_range_gives_the_same_bytes() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// `--out` documents two readings — a stem, or "a file name that already carries the format's
+/// extension" — and the second one was not honoured: the extension was appended whatever the name ended
+/// with, so `--out review.md` wrote `review.md.md` while the report named `review.md`. A CI step that
+/// writes `--out "$name.md"` and then posts `"$name.md"` to the pull request posts a file that does not
+/// exist, which is the artefact failing to land for the dumbest possible reason.
+#[test]
+fn a_name_that_already_carries_the_extension_is_the_name_that_is_written() {
+    let dir = repository("extension");
+    assert_eq!(code(&fathom(&dir, &["index"])), 0, "index");
+
+    for (format, extension) in [("md", "md"), ("html", "html"), ("json", "json")] {
+        let named = format!("review.{extension}");
+        let out = fathom(
+            &dir,
+            &[
+                "export",
+                "--format",
+                format,
+                "--out",
+                &named,
+                "--episodes",
+                "HEAD",
+            ],
+        );
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        assert!(
+            dir.join(&named).is_file(),
+            "`--out {named}` wrote no {named}: {}",
+            stdout(&out)
+        );
+        assert!(
+            !dir.join(format!("{named}.{extension}")).exists(),
+            "`--out {named}` grew a second extension"
+        );
+        // And the report names the file it wrote, not a stem plus an extension.
+        assert!(
+            stdout(&out).contains(&named),
+            "the report does not name {named}: {}",
+            stdout(&out)
+        );
+    }
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 #[test]
 fn the_json_artefact_is_the_record_and_the_markdown_is_the_same_facts() {
     let dir = repository("crossformat");

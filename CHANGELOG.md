@@ -17,6 +17,52 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `m1` — the beta gate, assessed by running it, and the four things running it found (`reco-69u`)
+
+The beta milestone asks for a thing that only a real pass can answer: can a reviewer work the queue, read the
+dependencies and non-code surfaces, and export a sign-off that lands on a PR. The assessment is
+[`.plan/beta-gate-reco-69u.md`](.plan/beta-gate-reco-69u.md) — criterion by criterion, with the command that
+re-proves each line, the external review that stands as the evidence
+([`.plan/evidence/reco-69u/flask-pr6168-review.md`](.plan/evidence/reco-69u/flask-pr6168-review.md), a real
+`pallets/flask` PR indexed, reviewed, signed and exported by the shipped binary), and the Guardrail 3
+criterion recorded as **not met**, with its bars unmoved and the shortfall carried by `reco-dyt` (the corpus
+needs five times the window before a 0.20 miss-rate gate can discriminate at n = 7) and `reco-6co` (the flag
+arm is inert at τ 70 while routine bot churn leads every decile). `g3_calibration --check` reproduces the
+blessed report byte for byte, before this commit and after it.
+
+What dogfooding turned up, three of four fixed here:
+
+- **One episode, two risk numbers.** `fathom why` and `fathom export` read a single episode through
+  `detectors::collect::Reader::one`, and that read never folded in the index's per-path rollup — which is
+  where a file's `add`/`del` come from. Every axis that reads per-path churn was therefore measured against
+  zeros: on a real `pallets/flask` episode the verb printed **52** where the queue, the rail and the Guardrail 3
+  harness all said **63**, `test_ratio` claimed "neither logic nor tests arrived" about a diff that deleted
+  22 test lines, and `noise` said "nothing in this change is generated, locked, vendored or binary" about an
+  episode whose `uv.lock` regeneration is 429 of its 498 churn lines. The artefact is the same read, and
+  `untested.rs` gates its flagship claim on `file.add`, so the door that travels to a PR could not see an
+  untested addition at all: this repository's own newest episode went from **6 findings** in the artefact to
+  **10**, the two new mediums being `untested_new_logic` on `tools/check_docs_*.py`. `one()` now applies the
+  same rollup `collect()` does, and
+  `cli_why.rs::an_episode_read_alone_is_measured_the_way_a_page_read_measures_it` fails without it.
+- **`fathom export --out review.md` wrote `review.md.md`.** The destination checked the extension of the
+  name *after* appending the format's, so the documented "a stem that already ends in the extension is used
+  as typed" branch could never fire on the stem. A CI step that writes `--out "$name.md"` and posts
+  `"$name.md"` posts a file that does not exist. Fixed, the report now names the file it wrote, and all three
+  formats are pinned by a test in `export_verb.rs`.
+- **A contract test deleted the repository's own `.fathom/`** — index *and* `.fathom/reviews/ledger.md`, the
+  reviewer's sign-offs — because `test_gitignore_keeps_the_ledger_visible` probed the ignore rules inside the
+  real working tree and then `rmtree`'d the directory. ADR-004 §12 says the store is disposable and the
+  ledger is not; the suite was making both disposable, and it ate a ledger mid-pass. It now creates only
+  what is missing and removes exactly those paths.
+- **A half-finished corpus clone stopped the Guardrail 3 fetcher.** `tools/fetch_g3_corpus.py --check` asked
+  an interrupted clone for its `HEAD` and died with a git traceback instead of saying `NOT AT PIN`; the probe
+  is now tolerant and a plain run re-clones. Separately filed: `reco-b7o`, for telling a shallow clone to run
+  `git fsck` when the objects are behind a graft and the remedy is a deeper fetch.
+
+This repository's `.fathom/reviews/ledger.md` is committed, so `fathom review status` can be satisfied
+without a `git clean` undoing it, and `docs/concepts/risk-scoring.md` §8 now names the equality that §2.1
+restored: one episode read alone is measured the way a page read measures it.
+
 ### `e7.5` — the documentation site: quickstart, the six concept pages, harness recipes, the detector catalogue, and generators that cannot lie (`reco-60m`)
 
 The thesis promised "a five-minute quickstart, a concept glossary, a cookbook of harness recipes, and a

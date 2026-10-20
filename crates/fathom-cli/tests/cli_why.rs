@@ -459,6 +459,48 @@ fn what_outranks_what_is_the_distinction_the_ticket_was_filed_for() {
 }
 
 /// Weights come from `fathom.toml`, and the score says which ones came from where (criterion three).
+/// One episode read alone must be measured the way the same episode is measured in a page read.
+///
+/// `fathom why` and `fathom export` read one episode; the rail, the queue and the Guardrail 3 harness
+/// read a page. Both go through `risk::collect::vector`, but the single-episode read did not fold the
+/// index's per-path rollup into the episode, so every axis that reads per-path churn — `size`, `noise`,
+/// `test_ratio`, `deletions` — was measured against zeros. Shape 5 added 520 lines of logic beside four
+/// lines of test, and the verb printed "neither logic nor tests arrived" about it while the queue
+/// measured the coverage, which is one episode carrying two numbers depending on which door asked. The
+/// fix is the rollup; this is the claim that says it stayed fixed.
+#[test]
+fn an_episode_read_alone_is_measured_the_way_a_page_read_measures_it() {
+    let dir = indexed();
+    // Shape 5: `perf: rewrite the availability path` — src/harbour/avail.py +520 and tests/test_avail.py +4.
+    let out = fathom_in(&dir, &["why", &rev(5)]);
+    assert_eq!(code(&out), Some(0), "{}", stderr(&out));
+    let rows = table(&stdout(&out));
+
+    let ratio = rows
+        .get("test_ratio")
+        .expect("the table accounts for test_ratio either way");
+    assert!(
+        ratio.contains("coverage share"),
+        "logic and tests both arrived, so coverage is measured and not shrugged at:\n{ratio}"
+    );
+    let size = rows.get("size").expect("the table accounts for size");
+    assert!(
+        size.contains("reviewable lines") && !size.contains("0.00 reviewable lines"),
+        "the churn a reviewer reads is the episode's own, not zero:\n{size}"
+    );
+
+    // And the honest absence is still an absence: shape 1 is prose only, so there is nothing new to cover
+    // and the axis stays a stated hole rather than a zero.
+    let out = fathom_in(&dir, &["why", &rev(1)]);
+    assert_eq!(code(&out), Some(0), "{}", stderr(&out));
+    let rows = table(&stdout(&out));
+    let ratio = rows.get("test_ratio").expect("test_ratio is still accounted for");
+    assert!(
+        ratio.contains("neither logic nor tests arrived"),
+        "a docs-only episode has nothing new to cover, and says so:\n{ratio}"
+    );
+}
+
 #[test]
 fn a_weight_in_the_toml_is_a_weight_the_answer_admits_to() {
     let dir = indexed();

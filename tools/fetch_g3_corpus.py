@@ -35,12 +35,19 @@ CORPUS = ROOT / "crates" / "fathom-analyze" / "calibration" / "g3" / "corpus"
 DEFAULT_DEST = ROOT / "target" / "g3-corpus"
 
 
-def git(args: list[str], cwd: pathlib.Path | None = None) -> str:
-    """Run git, and say what failed rather than raising a traceback at a person."""
+def git(args: list[str], cwd: pathlib.Path | None = None, ok: bool = False) -> str:
+    """Run git, and say what failed rather than raising a traceback at a person.
+
+    `ok=True` is for the probes: a directory that holds a `.git` is not necessarily a repository with a
+    commit, and an interrupted clone leaves exactly that — `init` done, `fetch` not. A probe answers "no
+    head" rather than exiting, because the caller's whole job is to notice the clone is not at its pin.
+    """
     proc = subprocess.run(
         ["git", *args], cwd=cwd, capture_output=True, text=True, check=False
     )
     if proc.returncode != 0:
+        if ok:
+            return ""
         sys.exit(f"git {' '.join(args)} failed: {proc.stderr.strip() or proc.stdout.strip()}")
     return proc.stdout.strip()
 
@@ -74,7 +81,7 @@ def main() -> int:
         where = dest / pin["repository"]
         head = ""
         if (where / ".git").is_dir():
-            head = git(["rev-parse", "HEAD"], cwd=where)
+            head = git(["rev-parse", "-q", "--verify", "HEAD"], cwd=where, ok=True)
         if head == pin["head"] and not args.force:
             print(f"{pin['repository']:<12} at {pin['head'][:12]} — already pinned")
             continue

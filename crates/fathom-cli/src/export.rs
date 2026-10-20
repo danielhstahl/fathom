@@ -197,7 +197,13 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
         extra_gaps,
     });
 
-    let artefact = format.file_name(&args.out);
+    let path = destination(&args.out, format);
+    // The name the report and the `--json` payload print is the file that was actually written, which for
+    // `--out review.md` is `review.md` and not the stem with a second extension on it.
+    let artefact = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| format.file_name(&args.out));
     let rendered = fathom_analyze::export::render(format, &record);
     let open = record
         .checklist
@@ -217,7 +223,6 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
             open
         ));
     } else {
-        let path = destination(&args.out, format);
         std::fs::write(&path, rendered.as_bytes()).map_err(|err| {
             eyre::eyre!(
                 "cannot write the artefact to {}: {err}",
@@ -793,17 +798,16 @@ fn longest(scope: &Scope, end: bool) -> Option<String> {
 // ---------------------------------------------------------------------------
 
 /// The file the artefact goes to. A stem gets the format's extension; a name that already carries it is
-/// taken literally, because `--out review.md --format md` means `review.md`.
+/// taken literally, because `--out review.md --format md` means `review.md`, not `review.md.md`.
 fn destination(stem: &str, format: fathom_analyze::export::Format) -> std::path::PathBuf {
-    let name = format.file_name(stem);
-    let path = std::path::Path::new(&name);
-    if path
+    let asked = std::path::Path::new(stem);
+    if asked
         .extension()
         .is_some_and(|ext| ext == format.extension())
     {
-        return path.to_path_buf();
+        return asked.to_path_buf();
     }
-    std::path::Path::new(stem).to_path_buf()
+    std::path::Path::new(&format.file_name(stem)).to_path_buf()
 }
 
 /// The command line, as far as it is the artefact's business.

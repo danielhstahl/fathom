@@ -706,9 +706,22 @@ def test_gitignore_keeps_the_ledger_visible():
             assert line in ignore, "missing ignore rule %r" % line
     probe = ROOT / ".fathom" / "reviews" / "probe.md"
     store_file = ROOT / ".fathom" / "store.sqlite3"
-    probe.parent.mkdir(parents=True, exist_ok=True)
-    probe.write_text("# probe\n")
-    store_file.write_text("")
+    # The probe has to be inside the repository for `git check-ignore` to answer about it, which makes
+    # this the one test in the suite that writes in a real working tree. So it takes back exactly what it
+    # made, and nothing else: wholesale-deleting `.fathom` here deleted a reviewer's index *and* their
+    # sign-offs, and ADR-004 §12's whole rule is that the store is disposable while the ledger is not —
+    # a ledger that is written but not yet committed is the only copy there is. `created_*` is bookkeeping,
+    # not a second assertion.
+    created_dirs: list[pathlib.Path] = []
+    created_files: list[pathlib.Path] = []
+    for directory in (probe.parent, store_file.parent):
+        if not directory.exists():
+            directory.mkdir(parents=True)
+            created_dirs.append(directory)
+    for path, body in ((probe, "# probe\n"), (store_file, "")):
+        if not path.exists():
+            path.write_text(body)
+            created_files.append(path)
     try:
         rc = subprocess.run(["git", "check-ignore", "-q", str(probe.relative_to(ROOT))],
                             cwd=ROOT, capture_output=True)
@@ -717,7 +730,15 @@ def test_gitignore_keeps_the_ledger_visible():
                             cwd=ROOT, capture_output=True)
         assert rc.returncode == 0, "the store must be ignored"
     finally:
-        shutil.rmtree(ROOT / ".fathom", ignore_errors=True)
+        for path in created_files:
+            path.unlink(missing_ok=True)
+        for directory in reversed(created_dirs):
+            # Only an empty directory this test made. A `reviews/` that holds a ledger has contents, and
+            # `rmdir` refuses a non-empty one — which is the point of not reaching for `rmtree` here.
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
 
 
 def test_store_layout_classes_are_consistent_with_the_adr():

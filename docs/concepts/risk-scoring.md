@@ -248,6 +248,20 @@ the sum of its printed terms (`risk_score.rs`), retuning twice must propose the 
 `proptest` suite over random vectors and random weight sets asserts that adding to a feature never
 lowers a score and that a dominating episode stays ahead.
 
+One more equality is worth naming, because the doors are built differently. `fathom why` and `fathom
+export` read a single episode (`detectors::collect::Reader::one`); the rail, the queue and the Guardrail 3
+harness read a page (`Reader::collect`). Both must fold in the index's per-path rollup, because the rollup —
+not the rendered hunks — is where a file's `add`/`del` come from. Read one episode without it and every
+per-path axis is measured against zeros: `size` calls a lockfile regeneration hand-written, `noise` says
+nothing in the change is locked about the episode whose dependency axis is naming two lockfiles,
+`test_ratio` reports that neither logic nor tests arrived about a diff that changed both, and the score a
+reviewer reads in the artefact is not the score the guardrail is measured on. `cli_why.rs`'s
+`an_episode_read_alone_is_measured_the_way_a_page_read_measures_it` is that claim, and it fails without the
+rollup. Nor is it only the score: the artefact's findings come from the same read, and `untested.rs` gates
+its "new logic arrived without a test beside it" claim on `file.add`, so an addition recorded as zero lines
+cannot be untested — the two `untested_new_logic` findings on this repository's own newest episode appear
+only when the rollup is applied.
+
 ## 9. Where it lives, and what is not done
 
 | Piece | File |

@@ -86,14 +86,38 @@ impl<'a> Reader<'a> {
 
     /// One episode by id, or `None` when the index has no such episode.
     ///
+    /// The index's per-path rollup is folded in exactly as [`Self::collect`] folds it in, so that the
+    /// episode a verb reads alone — `fathom why`, `fathom export`, the queue's drill-down — is measured
+    /// on the same per-path `add`/`del` the page read gives the rail, the queue and the Guardrail 3
+    /// harness. [`Self::build`] fills paths, hunks and classes and nothing else: line counts come from the
+    /// rollup, because the rollup is what the indexer reconciled against the diff. Read one episode
+    /// without it and every per-path axis is measured against zero — `size` calls a lockfile regeneration
+    /// "all of it hand-written", `noise` says nothing in the change is locked about the episode whose
+    /// dependency axis is naming two lockfiles, and `test_ratio` reports that neither logic nor tests
+    /// arrived about a diff that changed both.
+    ///
     /// # Errors
     ///
     /// The store's own error when a read fails.
     pub fn one(&self, id: &str) -> Result<Option<Episode>, fathom_store::error::Error> {
-        match self.store.episode(id)? {
-            Some(row) => Ok(Some(self.build(&row)?)),
-            None => Ok(None),
+        let Some(row) = self.store.episode(id)? else {
+            return Ok(None);
+        };
+        let mut episode = self.build(&row)?;
+        let rollup = self.store.episode_files(std::slice::from_ref(&row.id))?;
+        if let Some(files) = rollup.by_episode.get(&row.id) {
+            apply_rollup(&mut episode.files, files);
+            if rollup.truncated {
+                note(
+                    &mut episode,
+                    "the index's per-path rollup was capped by the store's read cap",
+                );
+                if episode.content == Content::Full {
+                    episode.content = Content::Partial;
+                }
+            }
         }
+        Ok(Some(episode))
     }
 
     /// Every episode a query selects.
