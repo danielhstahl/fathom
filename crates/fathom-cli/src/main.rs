@@ -58,6 +58,11 @@ mod query;
 mod queue;
 mod review;
 mod sanitize;
+// The corpus the one search box reads (`reco-mkc`): the store and manifest reads the shell is not allowed
+// to make for itself (ADR-002 §5.2), made here and handed over as an index. Gated with the shell because
+// nothing else draws a search box.
+#[cfg(feature = "tui")]
+mod search;
 // The episode boundary knobs are configuration, and configuration is read here and nowhere else below the
 // CLI (ADR-002 §4.5). The module is unconditional because `fathom index` needs it in every build that can
 // index at all.

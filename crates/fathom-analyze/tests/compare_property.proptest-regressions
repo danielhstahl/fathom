@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ac8ac995478676eca7ec24009f17e1221a952e39da9c09a13a680463f81b0477 # shrinks to mut rows = [Row { seq: 0, files: [("src/api/handlers.rs", "deleted", 3, 0), ("tests/store.rs", "renamed", 4, 1)], findings: 0, gap: false }, Row { seq: 0, files: [("src/store.rs", "added", 1, 0)], findings: 0, gap: false }, Row { seq: 0, files: [("src/store.rs", "added", 1, 0)], findings: 0, gap: false }]

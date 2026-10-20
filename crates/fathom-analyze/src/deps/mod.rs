@@ -282,6 +282,21 @@ pub(crate) fn parse_body(format: Format, text: &str, notes: &mut Notes) -> Resul
     }
 }
 
+/// Recognize and parse one file by its path — the one-call form for a caller that has a path and its text
+/// and no scan of its own (`e5.2`'s search corpus reads the dependency files an index has seen touched).
+///
+/// `None` means the path is not a dependency file, which is the common answer and not a failure; a file
+/// that *is* recognized and does not parse returns the body's own [`Unparsed`] reason, so the caller can
+/// say "this is a lockfile we could not read" instead of "there is nothing here".
+#[must_use]
+pub fn parse_recognized(path: &str, text: &str) -> Option<(Format, Body)> {
+    let discover::Recognition::Recognized(format) = discover::recognize(path) else {
+        return None;
+    };
+    let mut notes = Notes::default();
+    Some((format, parse_body(format, text, &mut notes).ok()?))
+}
+
 /// The shape `fathom deps --json` writes, and the shape `e2.6` and the insight façade pass around.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DepSurface {

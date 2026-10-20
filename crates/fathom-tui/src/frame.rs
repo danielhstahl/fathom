@@ -144,6 +144,17 @@ pub struct Options {
     /// rows and hands them over as `(key, value)` pairs. Empty is not a failure: it is a first session,
     /// an unindexed repository, or `--fresh`, and each of those says so in its own words.
     pub session: Vec<(String, String)>,
+    /// The corpus the one search box reads, if the caller has one (`reco-mkc`).
+    ///
+    /// The same inversion as [`Self::episodes`] and [`Self::patches`]: the shell may not open a store
+    /// (ADR-002 §5.2, lint `E01`), so `fathom-cli` reads the index, builds the corpus of every kind of
+    /// thing a reviewer searches for, and hands over the *index of it* — the shell scores against that and
+    /// never learns that a store exists. `None` is a repository with no index, or a binary built without a
+    /// backend; `/` then says which of the two it is, instead of typing a query into a black hole.
+    ///
+    /// It is shared rather than owned because the same corpus is what a second shell over the same repository
+    /// would read, and because cloning it is the wrong thing to do at ten thousand episodes.
+    pub search: Option<std::sync::Arc<fathom_analyze::search::Index>>,
     /// Who turns the scope's episode into patch bytes, if anyone (`reco-0kw`).
     ///
     /// The same inversion as [`Self::episodes`], pointed the other way: the diff pane is a viewer of
@@ -199,6 +210,7 @@ impl Default for Options {
             episodes: None,
             index: crate::index::Facts::unknown(),
             session: Vec::new(),
+            search: None,
             patches: None,
             mouse: false,
             lines: false,
@@ -613,6 +625,7 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     app.install_handoff_env(options.handoff_env.clone());
     // The party that can produce patch bytes, installed before `prime` so a session that resumes
     // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).
+    app.search = options.search.clone();
     app.patches = options.patches.clone();
     // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
     // session that resumes straight into the queue must be able to disposition from the first keystroke,
@@ -752,6 +765,7 @@ pub fn render_plain(options: &Options) -> Vec<String> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    app.search = options.search.clone();
     app.patches = options.patches.clone();
     // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
     // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.

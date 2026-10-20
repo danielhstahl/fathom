@@ -41,6 +41,9 @@ pub mod materialize;
 pub mod progress;
 pub mod queue;
 pub mod render;
+/// The `/` box: the corpus it scores against, how its rows read, and where `<Enter>` goes (`e5.2`,
+/// `reco-mkc`). The scoring itself belongs to `fathom_analyze::search`; this module is the overlay.
+pub mod search;
 pub mod session;
 pub mod style;
 pub mod terminal;

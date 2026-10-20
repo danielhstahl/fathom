@@ -1,0 +1,92 @@
+# fathom.search/1 · schema 1
+query "epoch"
+  5 of 14 rows, 14 candidates, 5 scored
+    500 episode    e8f1a2c3d4 :: epoch-safe store reads :: epoch = name
+    300 episode    99887766aa :: pin the store's epoch before the read :: epoch = name
+    300 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: epoch = name
+     20 episode    5b5c5d5e5f :: fuzzy search across the history :: epoch ~ body
+     20 finding    new-cycle:store→core :: new-cycle :: epoch ~ body
+query "store"
+  11 of 14 rows, 14 candidates, 11 scored
+    300 episode    e8f1a2c3d4 :: epoch-safe store reads :: store = name
+    300 episode    99887766aa :: pin the store's epoch before the read :: store = name
+    300 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: store = name
+    300 path       crates/fathom-store/src/spine.rs :: crates/fathom-store/src/spine.rs :: store = name
+    160 finding    new-cycle:store→core :: new-cycle :: store = body
+     90 finding    test-deleted-without-coverage:tests/store.rs :: test-deleted-without-coverage :: store = path
+     90 finding    todo-debt:src/store.rs :: todo-debt :: store = path
+     70 path       crates/fathom-analyze/src/search/mod.rs :: crates/fathom-analyze/src/search/mod.rs :: store ~ name
+     40 episode    77aa0c99bb :: the delta model speaks for itself :: store ~ path
+     20 episode    3c4d5e6f70 :: ambient mode for the second terminal :: store ~ body
+     20 episode    5b5c5d5e5f :: fuzzy search across the history :: store ~ body
+query "store epoch"
+  5 of 14 rows, 14 candidates, 5 scored
+    800 episode    e8f1a2c3d4 :: epoch-safe store reads :: store = name epoch = name
+    600 episode    99887766aa :: pin the store's epoch before the read :: store = name epoch = name
+    600 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: store = name epoch = name
+    180 finding    new-cycle:store→core :: new-cycle :: store = body epoch ~ body
+     40 episode    5b5c5d5e5f :: fuzzy search across the history :: store ~ body epoch ~ body
+query "fathstor"
+  6 of 14 rows, 14 candidates, 6 scored
+     70 episode    5b5c5d5e5f :: fuzzy search across the history :: fathstor ~ name
+     70 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: fathstor ~ name
+     70 path       crates/fathom-store/src/spine.rs :: crates/fathom-store/src/spine.rs :: fathstor ~ name
+     40 episode    e8f1a2c3d4 :: epoch-safe store reads :: fathstor ~ path
+     20 episode    77aa0c99bb :: the delta model speaks for itself :: fathstor ~ body
+     20 finding    test-deleted-without-coverage:tests/store.rs :: test-deleted-without-coverage :: fathstor ~ body
+query "serde"
+  5 of 14 rows, 14 candidates, 5 scored
+   1000 dependency serde :: serde :: serde = name
+     40 episode    77aa0c99bb :: the delta model speaks for itself :: serde ~ path
+     20 episode    e8f1a2c3d4 :: epoch-safe store reads :: serde ~ body
+     20 episode    99887766aa :: pin the store's epoch before the read :: serde ~ body
+     20 finding    new-cycle:store→core :: new-cycle :: serde ~ body
+query "kind:path epoch"
+  1 of 14 rows, 4 candidates, 1 scored
+    300 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: epoch = name
+query "author:stahl risk>60"
+  2 of 14 rows, 2 candidates, 2 scored
+  note filtered by token only — no free text was given, so the order is newest first and the score is the caller's prior alone
+      0 episode    e8f1a2c3d4 :: epoch-safe store reads :: 
+      0 episode    5b5c5d5e5f :: fuzzy search across the history :: 
+query "risk>60"
+  3 of 14 rows, 3 candidates, 3 scored
+  note filtered by token only — no free text was given, so the order is newest first and the score is the caller's prior alone
+      0 episode    e8f1a2c3d4 :: epoch-safe store reads :: 
+      0 episode    5b5c5d5e5f :: fuzzy search across the history :: 
+      0 episode    77aa0c99bb :: the delta model speaks for itself :: 
+query "since:7d epoch"
+  3 of 14 rows, 7 candidates, 3 scored
+    500 episode    e8f1a2c3d4 :: epoch-safe store reads :: epoch = name
+    300 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: epoch = name
+     20 episode    5b5c5d5e5f :: fuzzy search across the history :: epoch ~ body
+query "todo"
+  6 of 14 rows, 14 candidates, 6 scored
+    500 finding    todo-debt:src/store.rs :: todo-debt :: todo = name
+     70 episode    3c4d5e6f70 :: ambient mode for the second terminal :: todo ~ name
+     70 episode    77aa0c99bb :: the delta model speaks for itself :: todo ~ name
+     20 episode    e8f1a2c3d4 :: epoch-safe store reads :: todo ~ body
+     20 episode    99887766aa :: pin the store's epoch before the read :: todo ~ body
+     20 finding    new-cycle:store→core :: new-cycle :: todo ~ body
+query "delta model"
+  1 of 14 rows, 14 candidates, 1 scored
+    600 episode    77aa0c99bb :: the delta model speaks for itself :: delta = name model = name
+query "layer:core"
+  0 of 14 rows, 14 candidates, 0 scored
+  note `layer:core` is not a filter this build knows — searched as text. Filters: author: path: dep: kind: since: until: and risk>/risk<.
+query ""
+  14 of 14 rows, 14 candidates, 14 scored
+      0 episode    3c4d5e6f70 :: ambient mode for the second terminal :: 
+      0 episode    e8f1a2c3d4 :: epoch-safe store reads :: 
+      0 episode    5b5c5d5e5f :: fuzzy search across the history :: 
+      0 episode    99887766aa :: pin the store's epoch before the read :: 
+      0 episode    77aa0c99bb :: the delta model speaks for itself :: 
+      0 finding    new-cycle:store→core :: new-cycle :: 
+      0 finding    test-deleted-without-coverage:tests/store.rs :: test-deleted-without-coverage :: 
+      0 finding    todo-debt:src/store.rs :: todo-debt :: 
+      0 dependency ratatui :: ratatui :: 
+      0 dependency serde :: serde :: 
+      0 path       crates/fathom-analyze/src/search/mod.rs :: crates/fathom-analyze/src/search/mod.rs :: 
+      0 path       crates/fathom-store/src/epoch.rs :: crates/fathom-store/src/epoch.rs :: 
+      0 path       crates/fathom-store/src/spine.rs :: crates/fathom-store/src/spine.rs :: 
+      0 path       docs/adr/006-interface.md :: docs/adr/006-interface.md :: 

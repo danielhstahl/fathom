@@ -67,6 +67,9 @@ pub fn dispatch_focus(
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
     let index = index_facts(&root);
+    // Read before the frame's own facts are moved into the shell, because the search corpus needs the same
+    // facts the empty states print — the two must not disagree about whether there is an index at all.
+    let index_facts = index.clone();
     // The index's own episode count, taken before `index` moves into the frame: the retrospective's
     // coverage line is a share of the index, and a denominator the shell cannot read has to be handed
     // over here (`e4.5`).
@@ -161,6 +164,10 @@ pub fn dispatch_focus(
         // ...and the diff pane gets its byte source the same way (`reco-0kw`): the shell never opens
         // the store or the object store, so `d` asks this provider, and the provider is the only
         // party that can answer. `None` is the no-backend build, and the pane says which it has.
+        // ...and the search box gets its corpus the same way (`reco-mkc`): `/` is the one interaction whose
+        // answer must be ready before the reviewer stops typing, so the read happens once here, at startup,
+        // and the shell scores against what it was handed instead of going to the store per keystroke.
+        search: crate::search::index(&root, &index_facts),
         patches: crate::patches::provider(&root),
         mouse,
         lines: globals.lines,

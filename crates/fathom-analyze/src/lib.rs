@@ -22,6 +22,9 @@
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod build;
 pub mod cancel;
+/// The comparison of any two endpoints (`e5.3`, `reco-ifo`): the spec, the labelled endpoints, and the
+/// composition of the per-episode delta documents between them. No second delta engine — see the module.
+pub mod compare;
 pub mod deps;
 /// The agent pathology detectors (`e4.3`): pure functions over the episode-shaped delta model, one
 /// catalogue, one suppression key per finding. Named `detectors` and not `findings` because that is the
@@ -43,6 +46,9 @@ pub mod narrative;
 pub mod queue;
 /// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
 pub mod risk;
+/// The one search box (`e5.2`, `reco-mkc`): the corpus of every kind of thing a reviewer searches for, the
+/// deterministic scorer, and the filter grammar. The store owns the document; this owns the ranking.
+pub mod search;
 /// The declared scope of an episode, measured against the paths the change touched (`e4.2`). The
 /// scope-creep detector is `e4.3`'s; this is the input it reads.
 pub mod scope;

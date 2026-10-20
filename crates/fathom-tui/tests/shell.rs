@@ -505,10 +505,11 @@ fn the_search_field_owns_the_keyboard_and_does_not_move_the_list() {
     app.dispatch("prompt.submit");
     assert_eq!(app.overlay, None);
     assert!(
-        app.toast
-            .as_deref()
-            .is_some_and(|t| t.contains("owned by e5.2")),
-        "the unimplemented scorer is stated, not hidden: {:?}",
+        app.toast.as_deref().is_some_and(|toast| {
+            let _ = toast;
+            toast.contains("no index") || toast.contains("fathom index")
+        }),
+        "a box with nothing to search says what would make it answer: {:?}",
         app.toast
     );
     app.feed_key("<Esc>", Instant::now());

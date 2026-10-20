@@ -103,6 +103,18 @@ required-features = ["sqlite-bundled"]
 name = "ledger"
 required-features = ["sqlite-bundled"]
 
+# The comparison of two endpoints (`e5.3`, `reco-ifo`) is composed from real delta documents, and building
+# a delta document means reading the store's row shapes — the same reason the two targets above name the
+# feature instead of relying on a sibling crate to switch it on.
+[[test]]
+name = "compare_property"
+required-features = ["sqlite-bundled"]
+
+# The one search box's ranking (`e5.2`, `reco-mkc`): a golden ordering, a total order, and the 50 ms p95
+# budget measured on a 10 000-episode corpus. It builds its corpus from `search::Entry` shapes, so it needs
+# no store and no feature gate — the store-backed half of `e5.2` is covered by `crates/fathom-cli`'s
+# `search_verb.rs`.
+
 # The `s1` spike harness (`reco-alj`) lives here, not in the library: it is throwaway code that
 # has to compile against the same six grammar crates `e3.1` will ship with, and `required-features`
 # keeps it — and the C build of all six — out of every default `cargo build` and `cargo test`.

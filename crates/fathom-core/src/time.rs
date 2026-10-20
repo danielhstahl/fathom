@@ -18,7 +18,13 @@ pub struct Timestamp(i64);
 const MICROS_PER_SEC: i64 = 1_000_000;
 const MICROS_PER_MIN: i64 = 60 * MICROS_PER_SEC;
 const MICROS_PER_HOUR: i64 = 3_600 * MICROS_PER_SEC;
-const MICROS_PER_DAY: i64 = 24 * MICROS_PER_HOUR;
+
+/// Microseconds in a UTC day.
+///
+/// Public because "the day this falls in" is asked in three crates — the rail groups by it, the search
+/// filter's relative dates are counted in it, and the ledger stamps one per sign-off — and a constant
+/// copy per crate is three chances for a day to be a different length.
+pub const MICROS_PER_DAY: i64 = 24 * MICROS_PER_HOUR;
 
 impl Timestamp {
     /// The epoch itself; a useful zero for fixtures and for "we do not know".
@@ -51,6 +57,19 @@ impl Timestamp {
     #[must_use]
     pub const fn subsec_micros(self) -> u32 {
         (self.0.rem_euclid(MICROS_PER_SEC)) as u32
+    }
+
+    /// The first instant of the UTC day this falls in, rounding towards negative infinity so a
+    /// pre-1970 history gets the day before, not the day after.
+    #[must_use]
+    pub const fn day_start(self) -> Timestamp {
+        Timestamp(self.0.div_euclid(MICROS_PER_DAY) * MICROS_PER_DAY)
+    }
+
+    /// This instant shifted by whole days, for the relative date forms (`7d`, `yesterday`).
+    #[must_use]
+    pub const fn shift_days(self, days: i64) -> Timestamp {
+        Timestamp(self.0 + days * MICROS_PER_DAY)
     }
 
     /// `(year, month, day)` in UTC. Days-to-civil by the division-free-of-eras algorithm, so a golden
@@ -102,6 +121,22 @@ impl core::fmt::Display for Timestamp {
             "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
         )
     }
+}
+
+/// Days since the Unix epoch for a `(year, month, day)` — the inverse of [`Timestamp::civil`], by the
+/// same division-free-of-eras algorithm so the two cannot disagree about a date.
+///
+/// The public half of what `fathom-tui`'s rail groups on and what a search filter's `since:` needs: one
+/// calendar, one implementation of it.
+#[must_use]
+pub fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+    let year = year - i64::from(month <= 2);
+    let era = if year >= 0 { year } else { year - 399 } / 400;
+    let year_of_era = year - era * 400;
+    let shifted = if month > 2 { month - 3 } else { month + 9 };
+    let day_of_year = (153 * i64::from(shifted) + 2) / 5 + i64::from(day) - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
 }
 
 /// Where "now" comes from. The only implementations live in `fathom-cli` (the real clock, read once per

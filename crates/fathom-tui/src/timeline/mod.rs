@@ -183,6 +183,14 @@ impl Timeline {
         self.rail.selected()
     }
 
+    /// Move the rail's cursor to an episode by id (`e5.2`: a search hit deep-links to a row).
+    ///
+    /// `false` is an answer, not a failure: the id is not in the page the rail holds, and the caller says
+    /// which page that is rather than leaving the cursor where it was and implying the row exists.
+    pub fn select_id(&mut self, id: &str) -> bool {
+        self.rail.select_id(id)
+    }
+
     /// Where the loaded rows came from, as the strip prints it.
     #[must_use]
     pub fn origin(&self) -> &str {

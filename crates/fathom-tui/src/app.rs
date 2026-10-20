@@ -320,6 +320,20 @@ pub struct App {
     /// pane with no source of bytes (a test, an embedder, a binary built without the index), which
     /// is a stated empty state, not a silent one.
     pub patches: Option<diff::Provider>,
+    /// The corpus `/` scores against, if the caller has one (`e5.2`, `reco-mkc`).
+    ///
+    /// Installed by the composition root through [`crate::frame::Options::search`], in the same breath as
+    /// [`App::patches`]: the shell may not open a store to answer a keystroke (ADR-002 §5.2), so it is handed
+    /// an already-built index and scores against that. `None` is a repository with no index or a binary with
+    /// no backend, and `/` says which rather than accepting a query into a black hole.
+    pub search: Option<std::sync::Arc<fathom_analyze::search::Index>>,
+    /// The last report `/` produced, so that the rows on screen and the row `<Enter>` opens are the same
+    /// answer to the same query — and so the strip can repeat what the corpus said about itself.
+    pub search_report: Option<fathom_analyze::search::Report>,
+    /// The reviewer's recent searches, newest first (`e1.11`: `↑` in an empty box walks them).
+    pub recent_searches: Vec<String>,
+    /// Which of the recent searches `↑`/`↓` have walked to, so the cycle continues instead of oscillating.
+    recent_step: usize,
     /// Which episode the loaded patch belongs to, so `d` re-presses cheaply and a scope move is a
     /// re-load. `None` whenever the pane holds no episode-shaped patch (an unavailable scope's
     /// refusal, a cleared pane).
@@ -521,6 +535,10 @@ impl App {
             model,
             diff: DiffView::new(),
             patches: None,
+            search: None,
+            search_report: None,
+            recent_searches: Vec::new(),
+            recent_step: 0,
             diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             explain: None,
@@ -2332,6 +2350,13 @@ impl App {
                 }
             }
         }
+        // The search box is live: any keystroke that could have changed the query re-asks the corpus. That
+        // is the interaction ADR-004's `query.search.ms` budget is a promise about, and `fathom-analyze`'s
+        // `tests/search_scoring.rs` measures it on this call — over a ten-thousand-episode corpus, at the
+        // end of a typing run, not on a toy fixture.
+        if self.overlay == Some(Overlay::Search) {
+            self.refresh_search();
+        }
         applied
     }
 
@@ -2373,7 +2398,12 @@ impl App {
             }
             "search.open" => {
                 self.overlay = Some(Overlay::Search);
-                self.prompt.clear();
+                // A box that starts empty forgets the question the reviewer was last asking (`e1.11`): the
+                // session carries the last query, and `/` is where it belongs.
+                self.prompt = self.last_search.clone().unwrap_or_default();
+                self.palette_row = 0;
+                self.recent_step = 0;
+                self.refresh_search();
             }
             "overlay.close" => self.drill_out(),
             "queue.retrospect" => self.toggle_retrospective(),
@@ -2403,6 +2433,8 @@ impl App {
                     let len = self.filter_rows().len();
                     let next = self.timeline.editor_cursor() + 1;
                     self.timeline.editor_move(next, len);
+                } else if self.overlay == Some(Overlay::Search) && self.walk_recent(1) {
+                    self.refresh_search();
                 } else {
                     self.palette_row += 1;
                 }
@@ -2412,6 +2444,8 @@ impl App {
                     let len = self.filter_rows().len();
                     let next = self.timeline.editor_cursor().saturating_sub(1);
                     self.timeline.editor_move(next, len);
+                } else if self.overlay == Some(Overlay::Search) && self.walk_recent(-1) {
+                    self.refresh_search();
                 } else {
                     self.palette_row = self.palette_row.saturating_sub(1);
                 }
@@ -2875,21 +2909,130 @@ impl App {
                 }
             }
             Some(Overlay::Search) => {
-                let query = self.prompt.clone();
-                self.overlay = None;
-                self.prompt.clear();
+                let query = self.prompt.trim().to_owned();
+                if query.is_empty() {
+                    self.toast("an empty query searches for nothing — type a word, or `<Esc>`");
+                    return;
+                }
+                let target = self
+                    .search_report
+                    .as_ref()
+                    .and_then(|report| report.hits.get(self.palette_row))
+                    .map(crate::search::Link::target);
                 // The query survives the field that held it (`e1.11`): the next session starts from the
                 // reviewer's last question rather than from an empty box, and `--show-session` can say
                 // what was asked.
-                if !query.trim().is_empty() {
-                    self.last_search = Some(query.trim().to_owned());
+                self.last_search = Some(query.clone());
+                self.remember_search(&query);
+                self.overlay = None;
+                self.prompt.clear();
+                match target {
+                    Some(crate::search::Link::Timeline { episode, label }) => {
+                        self.overlay = None;
+                        self.view = ViewId::Timeline;
+                        if self.timeline.select_id(&episode) {
+                            self.toast(format!("{} — jumped from the search", crate::search::clip(&label, 32)));
+                        } else {
+                            // The hit came from the corpus and the rail does not hold it: the two reads
+                            // disagree about which episodes exist, and the reviewer is told which one the
+                            // rail is missing rather than left on the wrong row.
+                            self.toast(format!(
+                                "`{}` is not in the rail's page — `fathom show {}` prints it, and `F` \
+                                 widens the rail",
+                                crate::search::clip(&label, 32),
+                                crate::search::short_id(&episode)
+                            ));
+                        }
+                    }
+                    Some(crate::search::Link::Structure { path }) => {
+                        self.view = ViewId::Structure;
+                        self.toast(format!("{path} — the structure view lists what touched it"));
+                    }
+                    Some(crate::search::Link::Dependencies { name }) => {
+                        self.view = ViewId::Deps;
+                        self.toast(format!("{name} — the dependency view has the manifest that names it"));
+                    }
+                    Some(crate::search::Link::Say { reason }) => self.toast(reason),
+                    // No corpus, so nothing was scored: the box said so in its own pane, and `<Enter>`
+                    // repeats it rather than pretending the empty list was a result.
+                    None => self.toast(
+                        "nothing was searched — this repository has no index for `/` to read \
+                         (`fathom index`)"
+                            .to_owned(),
+                    ),
                 }
-                self.toast(format!(
-                    "search `{query}` — the scorer is owned by e5.2; `,` lists every action"
-                ));
             }
             _ => self.drill_in(),
         }
+    }
+
+    /// Ask the corpus the question in the box and put the answer where the panes read it.
+    ///
+    /// This runs on every keystroke of the query, which is the sentence ADR-004's `query.search.ms` budget
+    /// is a promise about: `tests/search_scoring.rs` in `fathom-analyze` measures it at ten thousand
+    /// episodes, and this function is why that measurement is of the thing the reviewer actually does.
+    pub fn refresh_search(&mut self) {
+        let text = self.prompt.clone();
+        let index = self.search.clone();
+        let (results, preview) = match (&index, text.trim().is_empty()) {
+            (Some(index), false) => {
+                let query = crate::search::query(&text, self.timeline.now());
+                let (rows, why, report) = crate::search::rows(index, &query, crate::search::RESULT_LIMIT);
+                self.search_report = Some(report);
+                (rows, why)
+            }
+            (index, true) => {
+                self.search_report = None;
+                crate::search::blank(&self.recent_searches, index.as_deref())
+            }
+            (None, false) => {
+                self.search_report = None;
+                crate::search::blank(&self.recent_searches, None)
+            }
+        };
+        self.palette_row = self
+            .palette_row
+            .min(self.search_report.as_ref().map_or(0, |report| report.hits.len()));
+        self.model
+            .rows
+            .insert((ViewId::Search, "results".to_owned()), results);
+        self.model
+            .rows
+            .insert((ViewId::Search, "preview".to_owned()), preview);
+    }
+
+    /// Record `query` as the most recent search, newest first, bounded (`e1.11`).
+    fn remember_search(&mut self, query: &str) {
+        let query = query.trim();
+        if query.is_empty() {
+            return;
+        }
+        self.recent_searches.retain(|seen| seen != query);
+        self.recent_searches.insert(0, query.to_owned());
+        self.recent_searches
+            .truncate(fathom_analyze::search::history::HISTORY_MAX);
+        self.recent_step = 0;
+    }
+
+    /// `↑`/`↓` in an empty box: walk the recent searches instead of the results, because there are none.
+    ///
+    /// Only the empty box does this. Once there is a query the arrows belong to the result list, which is
+    /// what the ADR's own key table says they are for.
+    fn walk_recent(&mut self, step: i32) -> bool {
+        if !self.prompt.is_empty() || self.recent_searches.is_empty() {
+            return false;
+        }
+        let count = self.recent_searches.len();
+        self.recent_step = if step > 0 {
+            (self.recent_step + 1) % count
+        } else {
+            self.recent_step
+                .checked_sub(1)
+                .unwrap_or(self.recent_step.saturating_add(count - 1).min(count - 1))
+        };
+        self.prompt = self.recent_searches[self.recent_step].clone();
+        self.last_search = Some(self.prompt.clone());
+        true
     }
 
     /// The palette's filtered rows: `(id, label, keys)`, filtered by a substring of the query.

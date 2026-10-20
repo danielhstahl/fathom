@@ -175,6 +175,12 @@ pub fn snapshot(app: &App) -> Vec<(String, String)> {
     if let Some(query) = app.last_search.as_deref().filter(|query| !query.is_empty()) {
         rows.push((KEY_SEARCH.to_owned(), esc(query)));
     }
+    if !app.recent_searches.is_empty() {
+        rows.push((
+            fathom_analyze::search::history::HISTORY_KEY.to_owned(),
+            fathom_analyze::search::history::history_value(&app.recent_searches),
+        ));
+    }
     for (key, value) in app.timeline.session().entries() {
         rows.push((key, value));
     }
@@ -287,6 +293,17 @@ pub fn restore(app: &mut App, entries: &[(String, String)]) -> Restored {
             out.applied
                 .push(format!("last search `{}`", chars(&query, 24)));
         }
+    }
+
+    // The recent searches, in the search module's own encoding — one row, `|`-escaped, newest first. The
+    // box reads them back into `↑`; the shell does not re-derive a history from the last query, because a
+    // reviewer who searched for three things this morning is not looking for the third one.
+    app.recent_searches = fathom_analyze::search::history::recent(entries);
+    if !app.recent_searches.is_empty() {
+        out.applied.push(format!(
+            "{} recent searches",
+            app.recent_searches.len()
+        ));
     }
 
     let ids: Vec<String> = entries
