@@ -89,8 +89,14 @@ pub const BLAST_UNMEASURED: &str = "not measured · e3.2 owns it · displayed by
 
 /// A score at or above this is `high`.
 ///
-/// Deliberately the same floor as `risk.tau`'s shipped value, so `fathom why` calling an episode flagged
-/// and the queue calling it high are one statement rather than two that happen to agree today.
+/// This buckets the score the queue is *handed*, which is the delta's `spine-1` number, and it is
+/// deliberately **not** `risk.tau`. The two were the same number until `reco-6co` measured τ against real
+/// history: `risk.tau` is now 40 because that is the `features-1` floor three real repositories support
+/// (`features-1`'s ceiling on that corpus was 63, so 70 flagged nothing), and this constant still buckets
+/// `spine-1`, a different model with its own range. "Flagged" is what `fathom why` says about the score it
+/// prints; "high" is what the queue says about the score in the delta. A repository that wants one number
+/// for both sets `[risk] tau` and the queue's policy (`QueuePolicy::high_floor`) to agree — what is not
+/// allowed is a document that quotes one as the other.
 pub const SEVERITY_HIGH: u8 = 70;
 
 /// A score at or above this is `medium`, and below it `low`. Half of [`SEVERITY_HIGH`], and stated

@@ -530,6 +530,6 @@
   },
   "tau_proposed": 36,
   "tau_proposed_flags": 6,
-  "tau_shipped": 70,
-  "tau_shipped_flags": 0
+  "tau_shipped": 40,
+  "tau_shipped_flags": 6
 }

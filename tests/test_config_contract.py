@@ -198,7 +198,7 @@ def test_layer_precedence_order_is_the_tickets():
 
 def test_layer1_defaults_alone():
     config = resolve()
-    assert value(config, "risk.tau") == 70
+    assert value(config, "risk.tau") == 40
     assert config.decision("risk.tau").winner == "defaults"
 
 
@@ -237,7 +237,7 @@ def test_all_five_layers_at_once_produce_one_chain(repo, tmp_path):
     assert decision.winner == "flag"
     assert [step.layer for step in decision.chain()] == \
         ["defaults", "user", "repo", "env", "flag"]
-    assert [step.value for step in decision.chain()] == [70, 75, 80, 90, 95]
+    assert [step.value for step in decision.chain()] == [40, 75, 80, 90, 95]
     assert "fathom.toml:2" in decision.steps[2].source
 
 
@@ -355,7 +355,7 @@ def test_unknown_leaf_suggests_its_sibling(repo):
 def test_unknown_key_does_not_change_the_effective_value(repo):
     write(repo / "fathom.toml", "[risk]\ntaa = 99\n")
     config = resolve(repo)
-    assert value(config, "risk.tau") == 70
+    assert value(config, "risk.tau") == 40
     assert any(w.code == "unknown_key" for w in config.warnings)
 
 
@@ -512,7 +512,7 @@ def test_explain_text_prints_the_chain_and_the_winner(repo, tmp_path):
     write(repo / "fathom.toml", "[risk]\ntau = 80\n")
     text = explain.explain_text(resolve(repo, user=user))
     assert "risk.tau" in text and "80" in text
-    assert "built-in default      70" in text
+    assert "built-in default      40" in text
     assert "user config           75" in text
     assert "repo fathom.toml      80" in text
     assert "won: repo fathom.toml" in text

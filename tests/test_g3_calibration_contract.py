@@ -260,15 +260,26 @@ def test_every_label_resolved_inside_its_window(report):
 
 
 def test_every_flagged_episode_got_a_label(report):
-    """`labelled(e)` is `G3`'s denominator; a flag nobody looked at is a hole in the guardrail."""
+    """`labelled(e)` is `G3`'s denominator; a flag nobody looked at is a hole in the guardrail.
+
+    A label whose episode the cut stopped flagging is the opposite shape, and `reco-6co` is what taught the
+    two apart: changing what gets flagged stranded three dispositions on bot bumps that fell out of the
+    cut. They stay in `truth.json` — a reading of a diff is not retracted because the ranking moved — and
+    the report prints them in `labels_unflagged` instead of folding them into `labelled`, because a rate
+    may only be computed over what the cut flagged. Before that, the harness refused a `labelled_total`
+    that disagreed with the cut at all, which conflated a hole with a surplus.
+    """
     for row in report["repositories"]:
         for cut in ("at_tau_alpha", "at_tau_decile", "at_corpus_cut"):
             assert row[cut]["unlabelled_flagged"] == [], f"{row['repository']} {cut}: unlabelled flags"
         assert row["labelled_total"] == len(row["labels"])
-        assert row["at_corpus_cut"]["labelled"] == row["labelled_total"], (
-            f"{row['repository']}: every label is on a flagged episode, or the receipts are not "
-            "the population the rate was computed over"
-        )
+        assert row["at_corpus_cut"]["labelled"] + len(row["labels_unflagged"]) == row[
+            "labelled_total"
+        ], f"{row['repository']}: labels are neither on a flagged episode nor declared in `labels_unflagged`"
+        assert len(row["labels_unflagged"]) == sum(
+            1 for label in row["labels"] if label["episode"] not in
+            {receipt["episode"] for receipt in row["receipts"]}
+        ), f"{row['repository']}: `labels_unflagged` and the receipts disagree"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -328,19 +339,32 @@ def test_a_gate_that_passes_on_an_empty_denominator_is_a_lie(report):
 
 
 def test_the_alpha_gate_is_measurable_at_the_published_tau_and_fails(report):
-    """The widened corpus cleared the denominator floor at τ 70, and the gate came out over the bar.
+    """The published τ is 40, it flags a population, and the gate comes out over the bar.
 
-    `e4.9`'s 60-episode pins gave three flagged episodes, under the floor of five, so the gate had to refuse
-    to read them (`not-measurable`). The corpus grew, the denominator grew past the floor, and the
-    `expected` moved to `fail` — which is the only direction this may move in when a corpus grows. If a
-    future re-pin drops the flag population back under the floor the gate has to be re-declared as
-    `not-measurable`, not left to print a pass on an anecdote.
+    `e4.9`'s 60-episode pins gave three flagged episodes at τ 70, under the floor of five, so the gate had
+    to refuse to read them (`not-measurable`); the widened corpus read 0.333 on six flags, and six flags is
+    still not a rate over what a reviewer is shown. `reco-6co` moved τ to the corpus's own top-decile
+    floor, which is the lowest threshold whose whole flag population the hand-authored labels can answer
+    for. That last clause is what this test guards: if the shipped default ever sinks below the floor, or
+    the corpus shrinks so the gate's denominator falls under five, the gate has to be re-declared — not
+    left to print a pass on an anecdote or a rate over unlabelled flags.
     """
     alpha = report["aggregate"]["cut_tau_alpha"]
-    assert alpha["tau"] == 70
+    tau = report["formulas"]["tau_alpha"]
+    assert alpha["tau"] == tau == 40
     assert alpha["labelled"] >= 5, (
         "the published default no longer flags enough episodes to measure `G3` there: the corpus shrank, "
         "and `g3-alpha-at-published-tau` has to be re-declared `not-measurable` rather than left to guess"
+    )
+    sweep = {row["tau"]: row for row in report["aggregate"]["tau_sweep"]["rows"]}
+    assert sweep[tau]["unlabelled"] == 0, (
+        f"τ {tau} flags {sweep[tau]['unlabelled']} episode(s) nobody labelled: the published default is "
+        "below the floor the corpus can answer for"
+    )
+    below = sweep.get(tau - 5)
+    assert below is None or below["unlabelled"] > 0, (
+        f"τ {tau - 5} has no unlabelled flags either: the published default is no longer the lowest "
+        "threshold the labels can answer for, and §5.4's sentence about why it is 40 has to be re-read"
     )
     declared = {g["id"]: g for g in report["gates"]}["g3-alpha-at-published-tau"]
     assert declared["expected"] == declared["status"] == "fail", (

@@ -1,37 +1,38 @@
 {
   "aggregate": {
     "coverage": {
-      "blamed_on_score": 26,
-      "labels_total": 66,
+      "blamed_on_score": 23,
+      "labels_total": 67,
+      "labels_unflagged_total": 3,
       "unlabelled_flagged_alpha": 0,
       "unlabelled_flagged_decile": 0,
       "unlabelled_total": 0
     },
     "cut_corpus": {
-      "false_positives": 46,
-      "flagged": 66,
-      "g3": 0.697,
-      "labelled": 66,
+      "false_positives": 43,
+      "flagged": 64,
+      "g3": 0.672,
+      "labelled": 64,
       "per_repository_tau": null,
       "tau": null,
       "tau_note": "the union of both cuts: every episode this corpus flagged",
       "true_positives": 26
     },
     "cut_tau_alpha": {
-      "false_positives": 2,
-      "flagged": 6,
-      "g3": 0.333,
-      "labelled": 6,
+      "false_positives": 31,
+      "flagged": 49,
+      "g3": 0.633,
+      "labelled": 49,
       "per_repository_tau": null,
-      "tau": 70,
+      "tau": 40,
       "tau_note": "ADR-001 §5.4's published default, and the shipped `risk.tau`",
-      "true_positives": 4
+      "true_positives": 22
     },
     "cut_tau_decile": {
-      "false_positives": 46,
-      "flagged": 66,
-      "g3": 0.697,
-      "labelled": 66,
+      "false_positives": 43,
+      "flagged": 64,
+      "g3": 0.672,
+      "labelled": 64,
       "per_repository_tau": {
         "cli": 33,
         "flask": 40,
@@ -159,32 +160,32 @@
         "spoke": 0
       },
       "copy_paste_growth": {
-        "answerable_for": 0,
+        "answerable_for": 2,
         "false_positives": 0,
-        "g3": null,
+        "g3": 0.0,
         "ships_enabled": false,
-        "spoke": 0
+        "spoke": 2
       },
       "debug_leftover": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 2,
+        "false_positives": 2,
+        "g3": 1.0,
         "ships_enabled": true,
-        "spoke": 0
+        "spoke": 2
       },
       "generated_edit": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 4,
+        "false_positives": 4,
+        "g3": 1.0,
         "ships_enabled": true,
-        "spoke": 0
+        "spoke": 4
       },
       "lint_escape": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 9,
+        "false_positives": 6,
+        "g3": 0.667,
         "ships_enabled": true,
-        "spoke": 0
+        "spoke": 9
       },
       "rework_loop": {
         "answerable_for": 0,
@@ -208,32 +209,32 @@
         "spoke": 0
       },
       "shotgun_edit": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 9,
+        "false_positives": 4,
+        "g3": 0.444,
         "ships_enabled": false,
-        "spoke": 0
+        "spoke": 10
       },
       "test_weakening": {
-        "answerable_for": 6,
-        "false_positives": 2,
-        "g3": 0.333,
+        "answerable_for": 11,
+        "false_positives": 3,
+        "g3": 0.273,
         "ships_enabled": true,
-        "spoke": 6
+        "spoke": 11
       },
       "todo_debt": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 3,
+        "false_positives": 1,
+        "g3": 0.333,
         "ships_enabled": true,
-        "spoke": 0
+        "spoke": 3
       },
       "untested_new_logic": {
-        "answerable_for": 0,
-        "false_positives": 0,
-        "g3": null,
+        "answerable_for": 7,
+        "false_positives": 3,
+        "g3": 0.429,
         "ships_enabled": true,
-        "spoke": 0
+        "spoke": 8
       }
     },
     "detectors_tau_decile": {
@@ -325,10 +326,157 @@
     "miss": {
       "mature": 525,
       "mature_rework": 24,
-      "miss_rate": 1.0,
-      "miss_rate_at_decile": 0.708,
-      "missed": 24,
-      "missed_at_decile": 17
+      "miss_rate": 0.792,
+      "miss_rate_at_decile": 0.75,
+      "missed": 19,
+      "missed_at_decile": 18
+    },
+    "tau_sweep": {
+      "grid": [
+        70,
+        65,
+        60,
+        55,
+        50,
+        45,
+        40,
+        35,
+        30,
+        25
+      ],
+      "note": "§5.4's `F(tau,W)` read at every threshold on the grid, over every episode: the flag population the threshold raises, the `G3` the hand-authored labels can answer for at it, the miss rate it produces, and `unlabelled` — flags nobody has read, which is what refuses to become a rate. This is where a published default is chosen or confirmed from; `thresholds.json` states the bar and the gate, and nowhere else does τ move.",
+      "rows": [
+        {
+          "false_positives": 2,
+          "flag_share": 0.011,
+          "flagged": 6,
+          "g3": 0.333,
+          "labelled": 6,
+          "mature_rework": 24,
+          "miss_rate": 1.0,
+          "missed_rework": 24,
+          "tau": 70,
+          "true_positives": 4,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 2,
+          "flag_share": 0.011,
+          "flagged": 6,
+          "g3": 0.333,
+          "labelled": 6,
+          "mature_rework": 24,
+          "miss_rate": 1.0,
+          "missed_rework": 24,
+          "tau": 65,
+          "true_positives": 4,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 4,
+          "flag_share": 0.017,
+          "flagged": 9,
+          "g3": 0.444,
+          "labelled": 9,
+          "mature_rework": 24,
+          "miss_rate": 1.0,
+          "missed_rework": 24,
+          "tau": 60,
+          "true_positives": 5,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 6,
+          "flag_share": 0.02,
+          "flagged": 11,
+          "g3": 0.545,
+          "labelled": 11,
+          "mature_rework": 24,
+          "miss_rate": 1.0,
+          "missed_rework": 24,
+          "tau": 55,
+          "true_positives": 5,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 12,
+          "flag_share": 0.037,
+          "flagged": 20,
+          "g3": 0.6,
+          "labelled": 20,
+          "mature_rework": 24,
+          "miss_rate": 0.958,
+          "missed_rework": 23,
+          "tau": 50,
+          "true_positives": 9,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 23,
+          "flag_share": 0.067,
+          "flagged": 36,
+          "g3": 0.639,
+          "labelled": 36,
+          "mature_rework": 24,
+          "miss_rate": 0.833,
+          "missed_rework": 20,
+          "tau": 45,
+          "true_positives": 17,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 31,
+          "flag_share": 0.091,
+          "flagged": 49,
+          "g3": 0.633,
+          "labelled": 49,
+          "mature_rework": 24,
+          "miss_rate": 0.792,
+          "missed_rework": 19,
+          "tau": 40,
+          "true_positives": 22,
+          "unlabelled": 0
+        },
+        {
+          "false_positives": 33,
+          "flag_share": 0.111,
+          "flagged": 60,
+          "g3": 0.635,
+          "labelled": 52,
+          "mature_rework": 24,
+          "miss_rate": 0.75,
+          "missed_rework": 18,
+          "tau": 35,
+          "true_positives": 24,
+          "unlabelled": 8
+        },
+        {
+          "false_positives": 46,
+          "flag_share": 0.183,
+          "flagged": 99,
+          "g3": 0.687,
+          "labelled": 67,
+          "mature_rework": 24,
+          "miss_rate": 0.625,
+          "missed_rework": 15,
+          "tau": 30,
+          "true_positives": 27,
+          "unlabelled": 32
+        },
+        {
+          "false_positives": 46,
+          "flag_share": 0.228,
+          "flagged": 123,
+          "g3": 0.687,
+          "labelled": 67,
+          "mature_rework": 24,
+          "miss_rate": 0.458,
+          "missed_rework": 11,
+          "tau": 25,
+          "true_positives": 27,
+          "unlabelled": 56
+        }
+      ]
     }
   },
   "formulas": {
@@ -350,50 +498,50 @@
     "miss_rate": "|{e in Mature(W): rework(e) and risk(e) < tau}| / |{e in Mature(W): rework(e)}|",
     "miss_rate_max": 0.2,
     "rework": "ADR-001 §5.3 R1|R2|R3 with N = 5; R1's content rung fires at an undo share >= 0.90",
-    "tau_1_0": 70,
-    "tau_alpha": 70,
-    "tau_note": "§5.4 tightens the *rate* at 1.0 (0.15), not the threshold: tau stays 70 in both gates, so the two `g3-*` gates are one flag set read against two bars. If a later release tunes tau, it changes here, in the document, and the harness's own check against the shipped `risk.tau` is what catches a copy that drifted."
+    "tau_1_0": 40,
+    "tau_alpha": 40,
+    "tau_note": "§5.4 tightens the *rate* at 1.0 (0.15), not the threshold: tau stays 40 in both gates, so the two `g3-*` gates are one flag set read against two bars. This number moved from 70 to 40 in `reco-6co` and it moved *here*, in ADR-001 §5.4, in the shipped `risk.tau` default, in `fathom.toml` and in the reference policy in the same commit: §5.4 always said its default was to be \"confirmed against three real OSS repositories\", and the confirmation is this file's own measurement — nothing in 540 real episodes reached 70, so the τ arm of `F(τ,W)` was inert, while τ 40 is the corpus's own top-decile floor and the lowest threshold whose flags are all labelled (see `tau_sweep` in the blessed report). The harness's check against the shipped `risk.tau` is what catches a copy that drifted."
   },
   "gates": [
     {
-      "claim": "at §5.4's published default tau the aggregate false-positive rate clears the alpha gate — measured: six episodes out of 540 reached tau 70 or carried a high-severity finding across the three pinned repositories, all six carry a hand-authored disposition, and two of the six were cost without value.",
-      "detail": "measured 0.333",
+      "claim": "at §5.4's published default τ — 40, confirmed against real history by this corpus in `reco-6co` — the aggregate false-positive rate clears the alpha gate",
+      "detail": "measured 0.633",
       "expected": "fail",
       "id": "g3-alpha-at-published-tau",
       "status": "fail",
-      "why": "Measured 0.333 (2 of 6) against a bar of 0.30. The widened corpus did not make this gate comfortable, it made it answerable: `e4.9`'s 60-episode pins gave a denominator of three and the gate had to refuse to read it (`not-measurable`, floor five). Now it has a denominator and it fails, narrowly. The wider sentence is unchanged and is next to it: `aggregate.cut_tau_alpha.flagged` is 6 in 540 episodes, so at the published τ the flag arm is carried almost entirely by high-severity findings and §5.4's α gate is a rate over a handful of episodes rather than over the population a reviewer is actually shown."
+      "why": "Measured 0.633 (31 false positives on 49 labelled flags) against a bar of 0.30, and the number means something now, which is the difference between this read and `e4.9`'s. At τ 70 the flag arm was inert: 6 episodes in 540 reached it, all six through a high-severity finding and none through τ, because `features-1`'s ceiling on this corpus is 63. τ 40 is §5.4's own \\\"confirmed against three real OSS repositories\\\" — it is the corpus's top-decile floor (33 / 40 / 40 per repository), the flag population is 49 episodes (9.1 % of the corpus), and every one of them carries a hand-authored disposition. `aggregate.tau_sweep` is the evidence and the floor: at τ 35 eight flags have no label and the rate would be an answer about 52 episodes while 60 were flagged. Read beside `cut_corpus`, the α gate is now the same sentence as the corpus cut rather than a rate over six episodes."
     },
     {
-      "claim": "across every episode the corpus flagged — §5.4's default plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
-      "detail": "measured 0.697",
+      "claim": "across every episode the corpus flagged — §5.4's published τ plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
+      "detail": "measured 0.672",
       "expected": "fail",
       "id": "g3-alpha-at-corpus-cut",
       "status": "fail",
-      "why": "Measured 0.697 on 66 labelled flags: 32 dismissed `low-stakes` (Dependabot, renovate and release-bot bumps, and `update dev dependencies` episodes that re-emit the CI workflow templates and a 500-to-1 600-line lockfile — the workflow and dependency axes raised them and no finding justified them), 9 `false-positive` (a test spy charged as untested new logic twice over, `# type: ignore` and `#[expect(deprecated)]` suppressions whose reason is written on the line above them, a `\"TODO\"` that is the name of a GitHub label, a fuzzer's own report charged as leftover debug output, and mdtest — ty's real test surface — counted as no tests at all twice), 5 `intentional` (a `gh repo garden` deletion that took its tests with it, three `test_weakening` skips that are platform and receipt guards, and dropping end-of-life Pythons). 26 of the 46 false positives were blamed on the ranking rather than on any detector — see `aggregate.coverage.blamed_on_score`. The finding is about where the flags come from, not only about the detectors, and tripling the corpus did not move it: 0.682 → 0.697."
+      "why": "Measured 0.672 on 64 labelled flags: 29 dismissed `low-stakes` (Dependabot, renovate and release-bot bumps, and `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile — the workflow and dependency axes raised them and no finding justified them), 9 `false-positive` (a test spy charged as untested new logic twice over, `# type: ignore` and `#[expect(deprecated)]` suppressions whose reason is written on the line above them, a `\\\"TODO\\\"` that is the name of a GitHub label, a fuzzer's own report charged as leftover debug output, and mdtest — ty's real test surface — counted as no tests at all twice), 5 `intentional` (a `gh repo garden` deletion that took its tests with it, three `test_weakening` skips that are platform and receipt guards, and dropping end-of-life Pythons). 23 of the 43 false positives were blamed on the ranking rather than on a detector (`aggregate.coverage.blamed_on_score`) — down from 26, because the two changes `reco-6co` shipped were made to the ranking: a compiled workflow lock is no longer charged the CI weight, and a resolver bot's pin bump no longer makes the operator-action claim at all. The finding still stands and it is still about where the flags come from: the majority of what is left is human-authored maintenance that re-emits CI from an out-of-tree template, which no path rule can see."
     },
     {
       "claim": "the same population clears the 1.0 gate of 0.15",
-      "detail": "measured 0.697",
+      "detail": "measured 0.672",
       "expected": "fail",
       "id": "g3-1-0-at-corpus-cut",
       "status": "fail",
-      "why": "0.697 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency bumps, which is `e4.4`'s routing and `e4.3`'s catalogue together, not one of them alone."
+      "why": "0.672 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency and template refreshes, which is `e4.4`'s routing and `e4.3`'s catalogue together — the dependency delta saying which pin moved and whether an advisory names it, and a catalogue that knows a regenerated artefact from a hand edit — not one of them alone."
     },
     {
-      "claim": "at the published default tau, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
-      "detail": "measured 1",
+      "claim": "at the published default τ, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
+      "detail": "measured 0.792",
       "expected": "fail",
       "id": "miss-rate-at-published-tau",
       "status": "fail",
-      "why": "Measured 1.000: all 24 mature reworked episodes in the corpus were below tau 70 — nothing in the 540 scored above 63, so the τ arm of §5.4's `F(τ,W)` did not fire anywhere in this corpus at all. This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and it is the number that says what the gate above cannot: on real OSS history the shipped score does not fire, so the guardrail's two halves fail in opposite directions and only `miss_rate` notices."
+      "why": "Measured 0.792: 19 of the 24 mature reworked episodes in the corpus sit below τ 40. At τ 70 this gate measured 1.000 — nothing in 540 episodes reached the published default, so the τ arm of §5.4's `F(τ,W)` did not fire anywhere and the gate was a statement about a threshold nobody reached rather than about recall. Moving τ to the corpus's own decile floor moved the gate from 1.000 to 0.792, which is what the flag arm being live is worth on this history, and it is still four times the bar: what got reworked in these windows was ordinary-looking source edits that the path-and-shape model scores in the 20s and 30s, and no threshold that catches them stops also flagging a fifth of the corpus (`tau_sweep`: τ 25 reaches 13 of the 24 and flags 123 episodes, 22.8 %, and 56 of them nobody has read). This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and it is the number that says the guardrail's two halves still fail in opposite directions."
     },
     {
       "claim": "at each repository's own top-decile cut — the queue a reviewer would actually have read first — no more than 20 % of the reworked episodes were below it",
-      "detail": "measured 0.708",
+      "detail": "measured 0.75",
       "expected": "fail",
       "id": "miss-rate-at-decile-cut",
       "status": "fail",
-      "why": "Measured 0.708 (17 of 24). Raising the threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 66 of 540 episodes still misses most of the episodes that later needed rework, because what got reworked in these windows was ordinary-looking source edits, not lockfiles. This is also the gate the widened denominator was for: at 4 of 7 the difference between 0.20 and 0.60 was noise, and at 17 of 24 it is not."
+      "why": "Measured 0.750 (18 of 24). Raising a threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 64 of 540 episodes still misses three quarters of the episodes that later needed rework. It is also where `reco-6co` paid: capping a resolver bot's bump at the dependency claim moved one reworked bump below `cli`'s own cut, so this gate went 0.708 → 0.750 while every other number in the run improved or held. That is the cost of the change and it is written here rather than in a footnote — a bot's bump can be the thing that later needed rework, and a rule that dims the class dims that episode too."
     },
     {
       "claim": "the corpus contains at least 20 mature reworked episodes, which is what a 0.20 gate on a rate needs to be able to tell 0.20 from 0.60",
@@ -401,7 +549,7 @@
       "expected": "pass",
       "id": "miss-rate-denominator-is-big-enough",
       "status": "pass",
-      "why": "Measured 24 out of 525 mature episodes (4.6 %). `e4.9` declared this a `fail` about the corpus, not the product — rework is rare on a healthy repository, and 7 samples cannot discriminate a 0.20 gate — and the fix it named was a bigger pinned window rather than a relaxed threshold. Each pin now carries 180 episodes instead of 60 and `astral-sh/ruff` sits at a newer head, which is what clears the floor. Nothing in `thresholds.json`'s bars moved for this gate; the only other `expected` that changed in the same pass is `g3-alpha-at-published-tau`, and that moved because its denominator left the floor, not because anything improved."
+      "why": "Measured 24 out of 525 mature episodes (4.6 %). `e4.9` declared this a `fail` about the corpus, not the product — rework is rare on a healthy repository, and 7 samples cannot discriminate a 0.20 gate — and the fix it named was a bigger pinned window rather than a relaxed threshold. Each pin carries 180 episodes instead of 60 and `astral-sh/ruff` sits at a newer head, which is what clears the floor. Nothing in `thresholds.json`'s bars moved for this gate, and nothing moved for it in `reco-6co` either — the ranking changed, the corpus did not."
     },
     {
       "claim": "every episode any cut flagged has a hand-authored disposition — a flag nobody labelled is a hole in the guardrail, and a guardrail with a hole in it is not a guardrail",
@@ -409,15 +557,15 @@
       "expected": "pass",
       "id": "every-flagged-episode-is-labelled",
       "status": "pass",
-      "why": "66 flags, 66 labels, across all three cuts — 22 from the `e4.9` pass (every one of them still resolves inside the widened window and still sits on a flagged episode) and 44 written against the diff in the `reco-dyt` re-pin. No label was inferred from a score, a reason distribution or a template. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
+      "why": "64 flags, 64 labels, across all three cuts. `reco-6co` moved the ranking, and a moved ranking promotes episodes nobody has read: one (`cli`, `Keep v3.3.0 label for create-github-app-token pin`, 34) came into the flag population and was labelled against `git show` before the run was blessed, and three bot bumps the change demoted out of the cut kept their dispositions and are printed in `labels_unflagged` — a reading of a diff is not retracted when the score moves, but it is not in a rate either. No label was inferred from a score, a reason distribution or a template. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
     },
     {
       "claim": "the corpus flags at least 20 episodes, below which `G3` is a story about a handful of commits rather than a rate",
-      "detail": "measured 66",
+      "detail": "measured 64",
       "expected": "pass",
       "id": "flag-population-is-large-enough-to-gate",
       "status": "pass",
-      "why": "Measured 66 of 540 episodes — 26 `cli`, 20 `flask`, 20 `ruff`, which is the same 12 % flag share the 60-episode windows produced, so the cut is behaving like a rate and not like an accident of one quiet window. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
+      "why": "Measured 64 of 540 episodes — 24 `cli`, 20 `flask`, 20 `ruff`, 11.9 % of the window: the cut is behaving like a rate and not like an accident of one quiet window. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
     },
     {
       "claim": "no detector is disqualified by `e0.12`'s rule as this harness scores it: a default-enabled detector whose own false-positive rate breaches the alpha gate on at least 8 answerable flags (the bar a default flip has to clear, deliberately higher than the 5 a printed number has to clear) is a detector that must ship disabled. Read `why` before reading the 0 as a clean bill of health.",
@@ -425,10 +573,10 @@
       "expected": "pass",
       "id": "shipped-defaults-agree-with-measurement",
       "status": "pass",
-      "why": "Measured 0, and the 0 has a mechanism a reader has to know about: `defaults.breaches` asks each detector's *pooled* `g3`, and the pooling step never fills that field — per-repository rates are computed, the aggregate's are not — so every detector that spoke lands in `defaults.under_measured` (its message says \"under the 8 a default flip needs\" even at 13 flags, which is the tell) and the breach count is structurally zero. Scored instead against `aggregate.detectors_corpus`, which recomputes the rate from the pooled offenders and denominators, the widened corpus does now see three default-enabled detectors over α with at least 8 answerable flags: `lint_escape` 0.667 on 9, `untested_new_logic` 0.500 on 8, `test_weakening` 0.385 on 13. This harness therefore still flips no shipped default in either direction — `e4.3`'s four disabled detectors stay disabled, and `shotgun_edit`, the only disabled detector with a real denominator, measures 0.444 on 9 and does not earn re-enabling — but \"which of those three does `e0.12`'s rule disqualify now\" is a measurable question with an unanswered answer, and it belongs to its own ticket with the weights and the catalogue in it, not to a threshold edit here. `scope_creep`, `secret_string`, `churn_loop` and `rework_loop` still never fired in the corpus, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which)."
+      "why": "Measured 0, and the 0 has a mechanism a reader has to know about: `defaults.breaches` asks each detector's *pooled* `g3`, and the pooling step never fills that field — per-repository rates are computed, the aggregate's are not — so every detector that spoke lands in `defaults.under_measured` (its message says \\\"under the 8 a default flip needs\\\" even at 13 flags, which is the tell) and the breach count is structurally zero. Scored instead against `aggregate.detectors_corpus`, which recomputes the rate from the pooled offenders and denominators, the corpus sees three default-enabled detectors over α with at least 8 answerable flags: `lint_escape` 0.667 on 9, `untested_new_logic` 0.500 on 8, `test_weakening` 0.385 on 13 — unchanged by `reco-6co`, because nothing in the catalogue changed. This harness therefore still flips no shipped default in either direction — `e4.3`'s four disabled detectors stay disabled, and `shotgun_edit`, the only disabled detector with a real denominator, measures 0.444 on 9 and does not earn re-enabling — but \\\"which of those three does `e0.12`'s rule disqualify now\\\" is a measurable question with an unanswered answer, and it belongs to its own ticket with the weights and the catalogue in it, not to a threshold edit here. `scope_creep`, `secret_string`, `churn_loop` and `rework_loop` still never fired in the corpus, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which)."
     }
   ],
-  "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories — three windows of 180 episodes each, 540 episodes, 525 of them mature — the shipped score reaches §5.4's published default on six episodes and every one of the 24 episodes that were mature and later needed rework sat below the threshold, so the miss rate is 1.0; the same corpus measured at each repository's own top-decile cut puts 66 flags in front of a reviewer of which 46 were cost without value, and the α gate measures 0.333 on six labelled flags. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`, and when a gate's `expected` changed in the `reco-dyt` re-pin it changed because the gate started measuring something (`miss-rate-denominator-is-big-enough`, 7 → 24, and `g3-alpha-at-published-tau`, a denominator of 3 → 6), not because a bar moved.",
+  "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories — three windows of 180 episodes each, 540 episodes, 525 of them mature — the shipped score at §5.4's published default τ flags 49 episodes and 31 of them were cost without value, so the α gate measures 0.633; across everything the corpus flags at each repository's own top-decile cut, 66 → 64 flags of which 43 were cost without value, `G3` 0.672; and 19 of the 24 episodes that were mature and later needed rework still sat below τ, a miss rate of 0.792. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`, and when a gate's `expected` changed it changed because the measurement moved — `miss-rate-denominator-is-big-enough` at the `reco-dyt` re-pin (7 → 24 mature reworked episodes), and `every-flagged-episode-is-labelled` here, where `reco-6co`'s re-score promoted one episode into the flag population, one disposition was written against its diff, and the gate came back to `pass`. The bars themselves — 0.30, 0.15, 0.20 — have never moved.",
   "policy": {
     "detectors_enabled": [
       "churn_loop",
@@ -451,56 +599,50 @@
     {
       "at_corpus_cut": {
         "blamed_on_score": [
-          "ep-092dd2cd565e7fcf5e42",
           "ep-f7190f71c22366847661",
           "ep-40391f7e2f2719ecd61c",
           "ep-2447c9b85863fd9e58ad-2",
           "ep-768a63edf54f8fc2cd7f",
           "ep-f0d3a22ca3c5ddbe8243",
-          "ep-83d19770d9375de03eee",
           "ep-ad25dcade731e903702a",
-          "ep-162b8767482aa4ed03bf",
           "ep-3d45b30749e2b217ba15",
           "ep-bbc2900778656c371a59",
           "ep-4591d2f647439fc16855"
         ],
-        "false_positives": 18,
-        "flagged": 26,
-        "g3": 0.692,
-        "labelled": 26,
+        "false_positives": 15,
+        "flagged": 24,
+        "g3": 0.625,
+        "labelled": 24,
         "tau": 0,
         "true_positives": 10,
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
         "blamed_on_score": [],
-        "false_positives": 1,
-        "flagged": 3,
+        "false_positives": 3,
+        "flagged": 9,
         "g3": 0.333,
-        "labelled": 3,
-        "tau": 70,
-        "true_positives": 2,
+        "labelled": 9,
+        "tau": 40,
+        "true_positives": 6,
         "unlabelled_flagged": []
       },
       "at_tau_decile": {
         "blamed_on_score": [
-          "ep-092dd2cd565e7fcf5e42",
           "ep-f7190f71c22366847661",
           "ep-40391f7e2f2719ecd61c",
           "ep-2447c9b85863fd9e58ad-2",
           "ep-768a63edf54f8fc2cd7f",
           "ep-f0d3a22ca3c5ddbe8243",
-          "ep-83d19770d9375de03eee",
           "ep-ad25dcade731e903702a",
-          "ep-162b8767482aa4ed03bf",
           "ep-3d45b30749e2b217ba15",
           "ep-bbc2900778656c371a59",
           "ep-4591d2f647439fc16855"
         ],
-        "false_positives": 18,
-        "flagged": 26,
-        "g3": 0.692,
-        "labelled": 26,
+        "false_positives": 15,
+        "flagged": 24,
+        "g3": 0.625,
+        "labelled": 24,
         "tau": 33,
         "true_positives": 10,
         "unlabelled_flagged": []
@@ -611,7 +753,7 @@
         "unknown": 0
       },
       "head": "ed40e856ffecd31286733876c613a2d3745e12bd",
-      "labelled_total": 26,
+      "labelled_total": 27,
       "labels": [
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -620,7 +762,7 @@
           "episode": "ep-630bfe7968173fd898d9",
           "reason": "",
           "rework": [],
-          "score": 38
+          "score": 40
         },
         {
           "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
@@ -631,7 +773,7 @@
           "rework": [
             "R2"
           ],
-          "score": 33
+          "score": 32
         },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -640,7 +782,7 @@
           "episode": "ep-f7190f71c22366847661",
           "reason": "low-stakes",
           "rework": [],
-          "score": 35
+          "score": 34
         },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -652,13 +794,22 @@
           "score": 34
         },
         {
+          "actor": "looprs (agent) — pi, reco-6co re-measure, 2026-10-20",
+          "commit": "1ea48c825275ff2eb8e31e27777f043ab4fde6c8",
+          "decision": "accepted",
+          "episode": "ep-25647899ddf0c4028656",
+          "reason": "",
+          "rework": [],
+          "score": 34
+        },
+        {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
           "commit": "efe3c7630da3296a9435293c1a7b0e5358a022e0",
           "decision": "dismissed",
           "episode": "ep-ce996837e3d3085a3db7",
           "reason": "false-positive",
           "rework": [],
-          "score": 50
+          "score": 57
         },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -667,7 +818,7 @@
           "episode": "ep-2447c9b85863fd9e58ad-2",
           "reason": "low-stakes",
           "rework": [],
-          "score": 43
+          "score": 39
         },
         {
           "actor": "looprs (agent) — pi, e4.9 corpus pass, 2026-10-19",
@@ -712,7 +863,7 @@
           "episode": "ep-83d19770d9375de03eee",
           "reason": "low-stakes",
           "rework": [],
-          "score": 35
+          "score": 32
         },
         {
           "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
@@ -766,7 +917,7 @@
           "episode": "ep-162b8767482aa4ed03bf",
           "reason": "low-stakes",
           "rework": [],
-          "score": 33
+          "score": 30
         },
         {
           "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
@@ -854,11 +1005,34 @@
           "score": 34
         }
       ],
+      "labels_unflagged": [
+        {
+          "commit": "45250aec8ba977669c62384bacaaed290c2460ad",
+          "decision": "dismissed",
+          "episode": "ep-092dd2cd565e7fcf5e42",
+          "reason": "low-stakes",
+          "score": 32
+        },
+        {
+          "commit": "863766c17abb27104597dfb30a06072cc79a0a33",
+          "decision": "dismissed",
+          "episode": "ep-83d19770d9375de03eee",
+          "reason": "low-stakes",
+          "score": 32
+        },
+        {
+          "commit": "17659961c1197840c818ca6a8239a4536f3d1fc3",
+          "decision": "dismissed",
+          "episode": "ep-162b8767482aa4ed03bf",
+          "reason": "low-stakes",
+          "score": 30
+        }
+      ],
       "mature": 175,
       "mature_rework": 10,
-      "miss_rate": 1.0,
-      "missed_at_decile": 7,
-      "missed_rework": 10,
+      "miss_rate": 0.9,
+      "missed_at_decile": 8,
+      "missed_rework": 9,
       "orphaned_labels": [],
       "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head is the branch tip at the time of the re-pin (`git ls-remote`), the window is the 180 newest episodes above it, and `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19) at the same tip. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
       "pinned_now": "2026-10-20T12:00:00Z",
@@ -884,43 +1058,14 @@
           "mature": false,
           "members": 1,
           "rework": [],
-          "score": 38,
+          "score": 40,
           "scored": true,
           "summary": "Merge pull request #14750 from cli/williammartin-investigate-dependabot-aic",
           "taken_back": 0.0,
           "why": [
-            "1314 — .github/workflows/dependabot-triage.md — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source",
+            "1314 — .github/workflows/dependabot-triage.md — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
             "879 — of +189 on logic, +0 was tests (0% covered) over 453 lines of churn",
-            "475 — +277 −176 = 453 churn, all of it hand-written"
-          ]
-        },
-        {
-          "commit": "45250aec8ba977669c62384bacaaed290c2460ad",
-          "episode": "ep-092dd2cd565e7fcf5e42",
-          "findings": [],
-          "label": {
-            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
-            "blame": [
-              "score"
-            ],
-            "decision": "dismissed",
-            "evidence": "`git show 45250aec8b` go.mod 2/go.sum 4; members `d73d3d8537` (`deployment.yml` 1, `dependabot-triage.lock.yml` 2, `issue-triage.lock.yml` 2, `acceptance.yml` 1) and `26034fa194` (`deployment.yml` 3 `uses:` lines).",
-            "note": "Three Dependabot bumps grouped as one episode: a patch bump of `klauspost/compress`, and two GitHub Action bumps that re-emitted `deployment.yml` and two `*.lock.yml` agentic workflow locks. The flag's first feature is the workflow axis, `permissions and secrets travel with the artefact`, and nothing here moves a permission or a secret: six `uses:` lines changed a version suffix. Reading it cost more than it could have paid.",
-            "reason": "low-stakes"
-          },
-          "mature": true,
-          "members": 3,
-          "rework": [
-            "R2"
-          ],
-          "score": 33,
-          "scored": true,
-          "summary": "chore(deps): bump github.com/klauspost/compress from 1.20.1 to 1.20.3",
-          "taken_back": 0.364,
-          "why": [
-            "1441 — .github/workflows/deployment.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
-            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
-            "422 — dependabot wrote this, which is the reason this tool exists (ADR-001 §7.3)"
+            "473 — +277 −176 = 453 churn, of which 443 is reviewable (14 discounted as generated, lockfile, vendored or binary; 0 binary file(s))"
           ]
         },
         {
@@ -940,14 +1085,14 @@
           "mature": true,
           "members": 2,
           "rework": [],
-          "score": 35,
+          "score": 34,
           "scored": true,
           "summary": "chore(deps): bump github.com/cli/go-gh/v2 from 2.16.1 to 2.16.2",
           "taken_back": 0.0,
           "why": [
-            "1441 — .github/workflows/issue-triage.lock.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
-            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
-            "506 — 6 of 10 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
+            "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
+            "843 — 10 of 10 churn lines sit on generated, lockfile, vendored or binary paths (4 file(s)) · classified by path, not by token comparison",
+            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
           ]
         },
         {
@@ -975,6 +1120,31 @@
             "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
             "843 — 28 of 28 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
             "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
+          ]
+        },
+        {
+          "commit": "1ea48c825275ff2eb8e31e27777f043ab4fde6c8",
+          "episode": "ep-25647899ddf0c4028656",
+          "findings": [],
+          "label": {
+            "actor": "looprs (agent) — pi, reco-6co re-measure, 2026-10-20",
+            "blame": [],
+            "decision": "accepted",
+            "evidence": "`git show 1ea48c8252`: `.github/workflows/issue-triage.md` line 121 `uses: actions/create-github-app-token@64ab729a62…  # v3.3.0` → `@v3.3.0`; `.github/aw/actions-lock.json` +5 (new `create-github-app-token@v3.3.0` entry, sha `64ab729a62`); `.github/workflows/issue-triage.lock.yml` recompiled (`gh-aw-manifest` records `version: v3.3.0` where it had recorded the SHA).",
+            "note": "Promoted into the flagged set when `reco-6co` stopped charging a bot's compiled workflow lock the CI weight, and it earns the read. The source of an agentic workflow that mints GitHub App tokens moved its pin from an immutable SHA (`create-github-app-token@64ab729a62…`) to a mutable tag (`@v3.3.0`) so the compiler resolves and records the version; what runs today is the same commit, but the source now floats on a tag anyone can move, and `actions-lock.json` gained the entry that decides what it resolves to. That is a provenance decision about a secrets-holding workflow, which is exactly what the workflow axis claims.",
+            "reason": ""
+          },
+          "mature": true,
+          "members": 1,
+          "rework": [],
+          "score": 34,
+          "scored": true,
+          "summary": "Keep v3.3.0 label for create-github-app-token pin",
+          "taken_back": 0.0,
+          "why": [
+            "1314 — .github/workflows/issue-triage.md — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "879 — of +5 on logic, +0 was tests (0% covered) over 15 lines of churn",
+            "410 — 8 of 15 churn lines sit on generated, lockfile, vendored or binary paths (1 file(s)) · classified by path, not by token comparison"
           ]
         },
         {
@@ -1010,13 +1180,13 @@
           "mature": true,
           "members": 1,
           "rework": [],
-          "score": 50,
+          "score": 57,
           "scored": true,
           "summary": "Fix Go vendoring in Dependabot triage; bump gh-aw",
           "taken_back": 0.008,
           "why": [
             "1319 — 3 finding(s): 3 medium · generated_edit on .github/workflows/agentics-maintenance.yml, generated_edit on .github/workflows/dependabot-triage.lock.yml",
-            "1314 — .github/workflows/issue-triage.lock.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, docs",
+            "1314 — .github/workflows/agentics-maintenance.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source, docs",
             "879 — of +38 on logic, +0 was tests (0% covered) over 961 lines of churn"
           ]
         },
@@ -1037,12 +1207,12 @@
           "mature": true,
           "members": 3,
           "rework": [],
-          "score": 43,
+          "score": 39,
           "scored": true,
           "summary": "chore(deps): bump the codeql-actions group with 3 updates",
           "taken_back": 0.0,
           "why": [
-            "1441 — .github/workflows/codeql.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
+            "1128 — .github/workflows/codeql.yml — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · dependabot moved pins under a ci path: the pins are the change, and no ci act is claimed for a resolver's bump · also touched: dependency",
             "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
             "735 — 54 of 62 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
           ]
@@ -1149,33 +1319,6 @@
             "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
             "843 — 6 of 6 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
             "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
-          ]
-        },
-        {
-          "commit": "863766c17abb27104597dfb30a06072cc79a0a33",
-          "episode": "ep-83d19770d9375de03eee",
-          "findings": [],
-          "label": {
-            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
-            "blame": [
-              "score"
-            ],
-            "decision": "dismissed",
-            "evidence": "`git show 863766c17a --stat`: go.mod 2, go.sum 4; episode members re-emit `.github/workflows/codeql.yml` 3 `uses:` lines.",
-            "note": "A patch bump of `charm.land/bubbletea/v2` and a codeql-action group bump, in one episode. The workflow axis charged 1 441 points — the highest feature the episode got — for a file whose only change is three `uses:` version suffixes, and the dependency axis charged the go.mod/go.sum pair. Both axes are reading the path class, not the change.",
-            "reason": "low-stakes"
-          },
-          "mature": true,
-          "members": 3,
-          "rework": [],
-          "score": 35,
-          "scored": true,
-          "summary": "chore(deps): bump charm.land/bubbletea/v2 from 2.0.9 to 2.0.10",
-          "taken_back": 0.0,
-          "why": [
-            "1441 — .github/workflows/codeql.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
-            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
-            "506 — 12 of 20 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison"
           ]
         },
         {
@@ -1476,33 +1619,6 @@
             "1128 — go.sum — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it",
             "843 — 30 of 30 churn lines sit on generated, lockfile, vendored or binary paths (2 file(s)) · classified by path, not by token comparison",
             "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve"
-          ]
-        },
-        {
-          "commit": "17659961c1197840c818ca6a8239a4536f3d1fc3",
-          "episode": "ep-162b8767482aa4ed03bf",
-          "findings": [],
-          "label": {
-            "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
-            "blame": [
-              "score"
-            ],
-            "decision": "dismissed",
-            "evidence": "`git show 17659961c119 --stat` go.mod 2/go.sum 4; members `be5f9acf5` (`codeql.yml` 3, `govulncheck.yml` 1) and `617bbcfb4` (`deployment.yml` 1).",
-            "note": "`golang.org/x/term`, the codeql-actions group and `azure/login`, all Dependabot, all one episode. The workflow axis again reads highest on the episode — `permissions and secrets travel with the artefact` — for three `uses:` lines in `codeql.yml`, one in `govulncheck.yml` and one in `deployment.yml`. No permission, no secret, no operator action.",
-            "reason": "low-stakes"
-          },
-          "mature": true,
-          "members": 3,
-          "rework": [],
-          "score": 33,
-          "scored": true,
-          "summary": "chore(deps): bump golang.org/x/term from 0.45.0 to 0.46.0",
-          "taken_back": 0.0,
-          "why": [
-            "1441 — .github/workflows/codeql.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency",
-            "759 — 1 lockfile(s) and 1 manifest(s): go.mod, go.sum · the resolution is what the lock recorded, not a re-solve",
-            "422 — dependabot wrote this, which is the reason this tool exists (ADR-001 §7.3)"
           ]
         },
         {
@@ -1873,13 +1989,22 @@
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
-        "blamed_on_score": [],
-        "false_positives": 1,
-        "flagged": 3,
-        "g3": 0.333,
-        "labelled": 3,
-        "tau": 70,
-        "true_positives": 2,
+        "blamed_on_score": [
+          "ep-4970012ef1b41a51a3ef-2",
+          "ep-4970012ef1b41a51a3ef",
+          "ep-6715ff32c922a33e81ae",
+          "ep-1f9f2c92b8fe45c53ddd-2",
+          "ep-614e31ff37b6d4580b08",
+          "ep-1f9f2c92b8fe45c53ddd",
+          "ep-3158a2508aea30abb76f",
+          "ep-5744e7f7cf140be2601a"
+        ],
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
+        "tau": 40,
+        "true_positives": 10,
         "unlabelled_flagged": []
       },
       "at_tau_decile": {
@@ -2198,11 +2323,12 @@
           "score": 40
         }
       ],
+      "labels_unflagged": [],
       "mature": 175,
       "mature_rework": 12,
-      "miss_rate": 1.0,
+      "miss_rate": 0.667,
       "missed_at_decile": 8,
-      "missed_rework": 12,
+      "missed_rework": 8,
       "orphaned_labels": [],
       "pinned_by": "looprs (agent, reco-dyt, 2026-10-20): re-pinned to widen the window from 60 episodes to 180 — the miss-rate gate's denominator was 7 and a 0.20 gate on 7 samples cannot tell 0.20 from 0.60, so the corpus grew rather than the bar moving. head is the branch tip at the time of the re-pin (unchanged since e4.9: flask had not moved), the window is the 180 newest episodes above it, and `python3 tools/fetch_g3_corpus.py` fetches the pin at depth `window * 4 + 20`. The previous pass was e4.9 (`reco-mkl.1`, 2026-10-19) at the same tip. `pinned_now` is a fixed instant above every commit date in the window, because the harness's clock is a field and never a read.",
       "pinned_now": "2026-10-20T12:00:00Z",
@@ -2858,13 +2984,20 @@
         "unlabelled_flagged": []
       },
       "at_tau_alpha": {
-        "blamed_on_score": [],
-        "false_positives": 0,
-        "flagged": 0,
-        "g3": null,
-        "labelled": 0,
-        "tau": 70,
-        "true_positives": 0,
+        "blamed_on_score": [
+          "ep-d2deca2bcbf1cbf19791",
+          "ep-69ae383d46857bacc53e",
+          "ep-3e3e3622b7ec661a7d8b",
+          "ep-8acabbff5a15e0c94546",
+          "ep-57d8924c645c1500f3d6",
+          "ep-b77af739da2ef927bb3a"
+        ],
+        "false_positives": 14,
+        "flagged": 20,
+        "g3": 0.7,
+        "labelled": 20,
+        "tau": 40,
+        "true_positives": 6,
         "unlabelled_flagged": []
       },
       "at_tau_decile": {
@@ -3071,7 +3204,7 @@
           "episode": "ep-3e3e3622b7ec661a7d8b",
           "reason": "low-stakes",
           "rework": [],
-          "score": 50
+          "score": 47
         },
         {
           "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
@@ -3173,6 +3306,7 @@
           "score": 41
         }
       ],
+      "labels_unflagged": [],
       "mature": 175,
       "mature_rework": 2,
       "miss_rate": 1.0,
@@ -3460,12 +3594,12 @@
           "mature": true,
           "members": 9,
           "rework": [],
-          "score": 50,
+          "score": 47,
           "scored": true,
           "summary": "Update Rust crate bitflags to v2.13.2 (#29350)",
           "taken_back": 0.0,
           "why": [
-            "1314 — .github/workflows/ci.yaml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: dependency, source",
+            "1029 — .github/workflows/ci.yaml — a dependency or lockfile: the supply chain is part of the diff · an operator must act on it · renovate moved pins under a ci path: the pins are the change, and no ci act is claimed for a resolver's bump · also touched: dependency, source",
             "879 — of +8 on logic, +0 was tests (0% covered) over 331 lines of churn",
             "769 — 2 lockfile(s) and 1 manifest(s): Cargo.lock, pyproject.toml, uv.lock · the resolution is what the lock recorded, not a re-solve"
           ]

@@ -429,6 +429,105 @@ fn classification_follows_the_stored_taxonomy_when_the_index_has_one() {
 }
 
 #[test]
+fn a_locked_or_generated_file_under_a_ci_path_is_ranked_as_what_it_is() {
+    // The shape `reco-6co` measured on the `cli/cli` pin: a Dependabot `go_modules` bump whose episode
+    // also carries `.github/workflows/issue-triage.lock.yml`, the agentic workflow the gh-aw compiler
+    // regenerated beside it. `OPERATOR_FIRST` matches `.github/workflows/` as a directory, so before
+    // this rung the compiled lock was charged the CI weight — the axis whose printed sentence is "an
+    // operator must act on it" — and that single claim was the largest contribution to the bump's score.
+    assert_eq!(
+        classify(".github/workflows/issue-triage.lock.yml", "unknown", "unknown"),
+        Surface::Dependency,
+        "a lock is a lock, wherever it sits: the pins are the change"
+    );
+    assert_eq!(
+        classify(".github/workflows/dependabot-triage.lock.yaml", "unknown", "unknown"),
+        Surface::Dependency
+    );
+    assert_eq!(
+        classify(".github/workflows/agentics.generated.yml", "unknown", "unknown"),
+        Surface::Generated,
+        "a file that says `generated` in its name is derived elsewhere, not hand-edited pipeline"
+    );
+    assert_eq!(
+        classify(".github/workflows/uv.lock", "unknown", "unknown"),
+        Surface::Dependency,
+        "the lockfile tables are consulted before the CI directory, not after it"
+    );
+
+    // What the rule must NOT swallow. A hand-written workflow is still CI; a workflow file *named*
+    // `lock.yaml` — `pallets/flask` has one, and its job is updating lockfiles — is a pipeline; a
+    // manifest a human edits (`go.mod`, `pyproject.toml`) is not a lockfile.
+    assert_eq!(
+        classify(".github/workflows/deployment.yml", "unknown", "unknown"),
+        Surface::Ci
+    );
+    assert_eq!(
+        classify(".github/workflows/lock.yaml", "unknown", "unknown"),
+        Surface::Ci
+    );
+    assert_eq!(
+        classify(".github/workflows/go.mod", "unknown", "unknown"),
+        Surface::Ci,
+        "a manifest under a CI path is still read as CI: nobody but a workflow edit lives there by design"
+    );
+
+    // The same claim made by the stored taxonomy instead of by the name outranks the directory too.
+    assert_eq!(
+        classify(".github/workflows/agentics-maintenance.yml", "generated", "informative"),
+        Surface::Generated
+    );
+    assert_eq!(
+        classify(".github/workflows/uv.lock", "lockfile", "lockfile"),
+        Surface::Dependency
+    );
+
+    // And the episode shape, ranked: the bump with the recompiled lock beside go.mod/go.sum sits below
+    // the same edit where the CI file is a hand-written workflow of the same size.
+    let bump = ranked(
+        &[
+            (".github/workflows/issue-triage.lock.yml", 2, 2),
+            ("go.mod", 2, 0),
+            ("go.sum", 4, 4),
+        ],
+        "agent",
+    );
+    let edited = ranked(
+        &[
+            (".github/workflows/deployment.yml", 2, 2),
+            ("go.mod", 2, 0),
+            ("go.sum", 4, 4),
+        ],
+        "agent",
+    );
+    assert!(
+        points(&bump, "surfaces") < points(&edited, "surfaces"),
+        "a machine's regenerated lock may not earn the surface claim a hand-written workflow earns: {} vs {}",
+        bump.vector(),
+        edited.vector()
+    );
+}
+
+#[test]
+fn a_resolver_bots_bump_makes_the_supply_chain_claim_and_not_the_operator_claim() {
+    // The cap is a pure function of the surface, and the four surfaces whose claim is "an operator must
+    // act on it" are the ones it caps; everything a resolver does not do (source, docs, env) is its own
+    // answer, and `dependency` is where a pin bump genuinely lands.
+    assert_eq!(Surface::Ci.resolver_capped(), Surface::Dependency);
+    assert_eq!(Surface::Migration.resolver_capped(), Surface::Dependency);
+    assert_eq!(Surface::Infra.resolver_capped(), Surface::Dependency);
+    assert_eq!(Surface::Container.resolver_capped(), Surface::Dependency);
+    assert_eq!(Surface::Dependency.resolver_capped(), Surface::Dependency);
+    assert_eq!(Surface::Source.resolver_capped(), Surface::Source);
+    assert_eq!(Surface::Docs.resolver_capped(), Surface::Docs);
+    assert!(
+        Surface::Ci.weight() > Surface::Dependency.weight(),
+        "the cap has to be a demotion, or the sentence printed with it is a lie"
+    );
+    assert!(Surface::Dependency.operator());
+}
+
+#[test]
 fn breadth_and_author_are_separate_claimable_points() {
     // Scope creep: twelve files across many surfaces is its own risk, independent of the size of
     // any one of them.

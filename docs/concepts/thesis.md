@@ -723,7 +723,7 @@ The attention queue only earns trust if "high risk" means something. This guardr
 crying wolf, because a reviewer who stops believing the flags stops using the product.
 
 ```
-τ             = high-risk threshold, default risk score ≥ 70 (per-repo tunable)
+τ             = high-risk threshold, default risk score ≥ 40 (per-repo tunable)
 F(τ,W)        = { e ∈ E(W) : risk(e) ≥ τ ∨ ∃ finding with severity = high }
 labelled(e)   = e has a disposition (the reviewer looked)
 FP(e)         = disposition.reason_code ∈ { expected, not-applicable, low-stakes, false-positive }
@@ -731,6 +731,17 @@ TP(e)         = disposition == accepted-with-required-change ∨ rework(e)
 
 G3(τ,W) = |{ e ∈ F(τ,W) : labelled(e) ∧ FP(e) }| / |{ e ∈ F(τ,W) : labelled(e) }|
 ```
+
+τ was 70 — `e2.10`'s key-spec default, carried in until something measured it — and this section always said
+the number had to be "confirmed against three real OSS repositories". `reco-6co` did the confirming, and 70
+came out inert: across 540 real episodes the shipped score topped out at 63, six episodes reached the
+threshold and all six got in through a high-severity finding, so the `risk(e) ≥ τ` half of `F(τ,W)` fired on
+nothing and every one of the 24 mature episodes that later needed rework sat below it. The confirmed default
+is the corpus's own **top-decile floor, 40** — the highest of the three repositories' top-decile cuts, which
+is also the lowest threshold whose whole flag population (49 episodes, 9.1 % of the corpus) the
+hand-authored dispositions can answer for. It is one number, held in `risk.tau`, in
+`crates/fathom-analyze/calibration/g3/thresholds.json` and in this section, and the harness below refuses to
+run when the copies disagree.
 
 `G3` resolves immediately from the *dismiss vocabulary*, which is why that vocabulary must stay closed and
 small: it doubles as the labelling mechanism. The slow confirmation is `rework(e)` — a flagged episode
@@ -749,7 +760,7 @@ against the `e4.4` calibration fixture and three real OSS repositories, and the 
 defer to is written here: `e4.3` and `m1` both say "under the threshold agreed in `e0.12`" — `e0.12`
 should set them from this section rather than invent new ones.
 
-**These are the numbers, and this is the thing that measures them** (`e4.9`, `reco-mkl.1`):
+**These are the numbers, and this is the thing that measures them** (`e4.9`, `reco-mkl.1`; re-measured by `reco-6co`, which is also when τ moved):
 
 ```text
 python3 tools/fetch_g3_corpus.py
@@ -761,13 +772,16 @@ ships, per-detector attribution, and a blessed report that `--check` re-measures
 [`benchmarks/reports/e4-3a-g3-calibration.json`](../../benchmarks/reports/e4-3a-g3-calibration.json),
 with its gates in `crates/fathom-analyze/calibration/g3/thresholds.json` and the written answer in
 [Guardrail 3, measured](false-positive-calibration.md). The measurement on those repositories — 540
-episodes, 66 flags, every one of them labelled against a diff — does **not** clear these bars: `G3` 0.697
-across everything the corpus flagged, a miss rate of 1.000 at the default τ (all 24 mature reworked episodes
-scored under it), and `G3` 0.333 at τ 70 on the six flags that got there, over the 0.30 bar. Its first pass
-ran 60-episode windows and could not measure that last one at all; the window tripled rather than the bar
-moving. The bars stay where they are, because the alternative to a measured failure is an unmeasured pass.
-The `not-applicable` reason code in `FP(e)` above has no separate shipped code; the mapping
-`e4.9` uses is written out in `thresholds.json` rather than left implied.
+episodes, 64 flags, every one of them labelled against a diff — does **not** clear these bars: `G3` 0.672
+across everything the corpus flagged, `G3` 0.633 at the published τ 40 on the 49 episodes it flags, and a
+miss rate of 0.792 (19 of the 24 mature reworked episodes still scored under τ). Before `reco-6co` the same
+corpus read `G3` 0.697 and a miss rate of 1.000 at τ 70 — on real history the flag arm did not fire at all,
+which is the failure this section's own confirmation clause existed to catch, and the window tripling in
+`reco-dyt` measured it three times better rather than fixing it. The bars stay where they are, because the
+alternative to a measured failure is an unmeasured pass; what moved is what gets flagged, and the answer
+page states what that bought and what is still outstanding. The `not-applicable` reason code in `FP(e)`
+above has no separate shipped code; the mapping `e4.9` uses is written out in `thresholds.json` rather than
+left implied.
 
 ### 5.5 Contract on the delta model
 

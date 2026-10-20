@@ -17,6 +17,59 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e4.9` follow-up — the flag arm fired for the first time, τ moved 70 → 40, and a bot's compiled lock stopped earning the CI claim (`reco-6co`)
+
+`reco-dyt` left two of Guardrail 3's nine gates failing on the same sentence: the change had to be to *what gets
+flagged*, not to the bar. This is that change, measured before and after on the same pinned corpus.
+
+* **The τ arm of `F(τ,W)` was inert and now is not.** `risk.tau` shipped at `e2.10`'s **70**; `features-1`'s
+  ceiling across 540 episodes of real OSS history is **63**, so at the published default six episodes in 540
+  were flagged and every one of them by a high-severity finding, and all 24 mature reworked episodes sat below
+  the line (miss rate 1.000). ADR-001 §5.4 always said τ was to be *confirmed against three real
+  repositories*, so the harness now prints the derivation: a new `aggregate.tau_sweep` scores the grid
+  70…25 and reports, per threshold, the flag population, its share, how much of it a human has read,
+  `G3` and the miss rate. τ is **40** — the highest of the three repositories' top-decile cuts (33/40/40)
+  and the lowest threshold whose entire flag population carries a hand-authored disposition. Five copies of
+  that one number moved in the same commit: `Weights::defaults()`, `fathom.toml`, the key spec (and the
+  generated `schemas/fathom.schema.json`), the reference store's `DEFAULT_CONFIG`, §5.4 and
+  `thresholds.json`; the harness already refuses to run when the corpus's τ disagrees with the shipped one.
+* **A locked or generated file under a CI path is ranked as what it is.** `OPERATOR_FIRST` is a *directory*
+  table, so `.github/workflows/` matched `issue-triage.lock.yml` — the `gh-aw` agentic-workflow lock a
+  compiler re-emitted beside a Dependabot `go_modules` bump — and charged it the 46-point CI weight whose
+  printed sentence is "an operator must act on it". `risk::classify` consults a `MACHINE_WRITTEN` rung
+  first now (name-rule, plus the taxonomy's `generated`/`lockfile` answers): a lock is a lock wherever it
+  sits. The named episode — three Dependabot bumps, +12 −12 over seven files — went **33 → 32** and fell out
+  of `cli`'s top decile at 33. Deliberately *not* `Generated`: `generated_edit` measured `G3` 1.000 on 4
+  flags, all of them a release bump's regenerated README, so classifying a resolver's lock as a hand-edit of
+  a generated file would have bought three more bot bumps and a finding that was wrong every time.
+* **A resolver bot's bump makes the supply-chain claim and not the operator claim.** `e4.1`'s registry can
+  name *which* program wrote an episode, and `dependabot`/`renovate`/`github-actions` (`RESOLVER_AGENTS`) are
+  bumping services rather than authoring agents. For their episodes `Surface::resolver_capped` caps
+  migration/CI/IaC/container at `dependency`: the pins moved, nobody has to deploy or rotate anything, and the
+  printed reason names who wrote it and which claim was withdrawn (`ep-2447c9b8…-2` 43 → 39). An authored
+  agent turn is untouched — the `authorship` axis still charges a bot's bump, because that claim was never
+  the false one.
+* **What it bought, and what it cost, in the report's own numbers.** Flag population at τ 6 → **49** of 540
+  (9.1 %, all labelled); `G3` at τ **0.633** against §5.4's 0.30 (was 0.333 on 6 flags, which was not a rate
+  over anything a reviewer was shown); corpus-cut `G3` 0.697 → **0.672**; false positives blamed on the
+  ranking 26 → **23**; miss rate at τ 1.000 → **0.792**. And a cost said out loud: dimming a class dims every
+  member of it, so the miss rate at the decile cut went **0.708 → 0.750**. Five of nine gates fail, and no
+  bar, floor or bound in `thresholds.json` moved — the only §5.4 number that moved is the one §5.4 says to
+  confirm.
+* **What it did not buy.** `flask`'s `update dev dependencies` episodes — a maintenance refresh that
+  re-emits five CI workflow files from an out-of-tree template, 11 of its 20 flags — are hand-committed edits
+  to real workflow files, and a path rule cannot see that. Naming them is content work (`e2.6`'s dependency
+  delta saying *which* pin moved, a catalogue that tells a template re-emission from a permissions edit) and
+  it is the standing distance to 0.30, not something a threshold edit gets to decide. Three dispositions the
+  re-score demoted below the cut stay in `truth.json` and are printed as `labels_unflagged`, excluded from
+  every denominator: a reading of a diff is not retracted because a score moved.
+
+`cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` reproduces the
+re-blessed report byte for byte with all nine gates as declared; `tests/test_g3_calibration_contract.py` now
+also refuses a τ where the report has unlabelled flags, and allows a label that no cut flags. New tests name
+the shapes: `risk_spine.rs` ranks the compiled lock under the CI directory and asserts the resolver cap is a
+demotion, and `fathom-ingest` separates the pin movers from the writing bots.
+
 ### `e4.9` follow-up — the Guardrail 3 corpus got three times the window, and the miss-rate gate stopped being an anecdote (`reco-dyt`)
 
 `e4.9` measured Guardrail 3 on three pinned repositories and one of its own nine gates said the honest thing:

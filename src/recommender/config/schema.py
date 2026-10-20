@@ -1317,8 +1317,11 @@ KEY_LIST: list[Key] = [
        doc="Per-signal weights in the risk score. `deep`: adding a signal's weight in a "
            "repo file does not drop the signals you weighted at home.",
        analyzer="findings.detect", ticket="e2.9"),
-    _k(path="risk.tau", kind="integer", default=70, minimum=0, maximum=100, units="score",
-       doc="Risk threshold above which an episode is surfaced as needing attention.",
+    _k(path="risk.tau", kind="integer", default=40, minimum=0, maximum=100, units="score",
+       doc="Risk threshold above which an episode is surfaced as needing attention. 70 until "
+           "`e2.10`'s default was measured: nothing in 540 episodes of real OSS history reached it "
+           "(`reco-6co`, docs/concepts/false-positive-calibration.md), so the confirmed default is the "
+           "corpus's own top-decile floor.",
        analyzer="risk.score", ticket="e2.10"),
     _k(path="detectors.enabled", kind="string_list", merge="extend",
        default=["test_deletion", "untested_new_logic", "debug_leftover"],

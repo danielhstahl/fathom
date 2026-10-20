@@ -52,25 +52,31 @@ it is re-blessed as the day it was measured.
 Each `why` field in the pins says in one sentence what the repository buys the corpus, because a calibration
 corpus chosen for convenience measures convenience.
 
-### 1.1 The two passes this corpus is made of
+### 1.1 The three passes this corpus is made of
 
 | Pass | Windows | Labels | What it settled |
 | --- | --- | --: | --- |
 | `e4.9` (`reco-mkl.1`, 2026-10-19) | 60 per pin | 22 | the harness, the vocabulary mapping, and five failing gates — one of which, `miss-rate-denominator-is-big-enough`, failed as a statement about the corpus: 7 mature reworked episodes cannot discriminate a 0.20 rate |
-| the re-pin (2026-10-20) | 180 per pin, `ruff` re-pinned 11 commits forward | +44 (66) | that gate. The window tripled, the denominator went 7 → 24, and the gate now passes so that the two miss-rate gates can be read as rates instead of anecdotes |
+| the re-pin (`reco-dyt`, 2026-10-20) | 180 per pin, `ruff` re-pinned 11 commits forward | +44 (66) | that gate. The window tripled, the denominator went 7 → 24, and the gate now passes so that the two miss-rate gates can be read as rates instead of anecdotes |
+| the re-score (`reco-6co`, 2026-10-20) | unchanged — no re-fetch, no re-label | +1 (67) | τ, and what gets flagged. The ranking stopped charging a compiled workflow lock the CI weight and stopped letting a resolver bot's pin bump make the operator-action claim; that promoted one episode into the flag population (one new disposition, written against its diff), stranded three below the cut, and moved four gates' measurements. §5.4's τ moved with them: 70 → 40, derived from `aggregate.tau_sweep` |
 
-Nothing else about the bars moved. §5.4's numbers, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED` and the
-20-episode floor are byte-identical to `e4.9`'s; the only other `expected` that moved is
-`g3-alpha-at-published-tau`, whose denominator left the floor (3 → 6) and came out **fail**, not pass.
+Nothing about the *bars* moved, in any of the three passes: §5.4's `G3 ≤ 0.30 / ≤ 0.15` and
+`miss_rate ≤ 0.20`, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED` and the 20-episode floor are
+byte-identical to `e4.9`'s. What has moved is an input to the measurement and an `expected` or two:
+`g3-alpha-at-published-tau`'s denominator left the floor (3 → 6) and came out **fail**, not pass, and τ —
+§5.4's own default, and this file's `tau_alpha` — went 70 → 40 in `reco-6co` because the corpus said 70 was
+inert. That is the one number in here the corpus is allowed to set rather than copy, and §5.4 says so.
 Widening a corpus is a labelling job, not a re-bless: 44 new flagged episodes meant 44 diffs read and 44
 dispositions written, and the fetch depth went with the window (see §6).
 
 ## 2. What a label is, and how one was written
 
 One row per flagged episode — every episode any cut flagged, and there is no sampling, because a sample of
-a flag set is a flag set with holes. 66 rows today: 22 from the `e4.9` pass, every one of which still
-resolved inside the widened window and still sat on a flagged episode, and 44 written in the re-pin. Each
-row records:
+a flag set is a flag set with holes. 67 rows today: 22 from the `e4.9` pass, 44 from the re-pin, and 1
+written when `reco-6co`'s re-score promoted an episode into the cut. Three dispositions now sit on bot
+bumps that re-score demoted *out* of the flag set; the report prints them as `labels_unflagged` and keeps
+them out of every denominator — a reading of a diff is not retracted because a score moved, and it is not a
+flag either. Each row records:
 
 | Field | Rule |
 | --- | --- |
@@ -144,7 +150,7 @@ about a reviewer having looked. What these labels do certify, and what they do n
   guardrail will be applied to is only partly represented. The pins' `why` fields and the report's
   `episodes_by_author_kind` say which part.
 
-## 6. Re-pinning, and what it costs
+## 6. Re-pinning, re-scoring, and what each costs
 
 `pin.json`'s `head` is an oid; `tools/fetch_g3_corpus.py` refuses a remote that gives anything else. Moving a
 pin means the window changes, and the harness then prints `orphaned_labels` for every label whose commit is
@@ -163,8 +169,12 @@ that sentence costs in practice, so it is written down rather than discovered:
   episode at a time. That is the price of the gate and it is the right price.
 * **Old labels usually survive a widening, but they are not owed that.** The 22 `e4.9` rows still resolved
   and still sat on flagged episodes; a decile cut that moves (here 34 → 33 for `cli`, 47 → 40 for `flask`)
-  can just as easily strand a label on an episode that is no longer flagged, and the harness refuses to
-  certify `labelled_total` against a cut that disagrees with it.
+  can just as easily strand a label on an episode that is no longer flagged.
+* **A re-score strands labels too, and that is a different shape.** When `reco-6co` changed what gets
+  flagged, three dispositions fell out of `cli`'s cut with the episodes they judged. They stay in
+  `truth.json` — a hole in the guardrail is a *flag* nobody read, not a reading that outlived the score —
+  and the report prints them per repository as `labels_unflagged` and excludes them from `labelled`, so no
+  rate is computed over an episode the cut did not flag.
 * **`pinned_now` has to be above every commit date in the window.** Widening reaches further back, which is
   safe; re-pinning a head that has moved forward is not, because a commit newer than the pin's clock makes
   `mature` a lie. The re-pin set the clock above the newest commit in every window instead of leaving

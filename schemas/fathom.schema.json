@@ -2917,8 +2917,8 @@
       "description": "The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 \u00a76).",
       "properties": {
         "tau": {
-          "default": 70,
-          "description": "Risk threshold above which an episode is surfaced as needing attention.",
+          "default": 40,
+          "description": "Risk threshold above which an episode is surfaced as needing attention. 70 until `e2.10`'s default was measured: nothing in 540 episodes of real OSS history reached it (`reco-6co`, docs/concepts/false-positive-calibration.md), so the confirmed default is the corpus's own top-decile floor.",
           "maximum": 100,
           "minimum": 0,
           "type": "integer",

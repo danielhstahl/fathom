@@ -1,9 +1,9 @@
 {
  "what": "The gates the Guardrail 3 calibration harness (`e4.9`, `reco-mkl.1`) holds its own measurement to. ADR-001 §5.4 publishes `G3 <= 0.30` at alpha, `<= 0.15` at 1.0 and `miss_rate <= 0.20`, and says out loud that `e4.3` and `m1` defer to \"the threshold agreed in `e0.12`\"; those numbers are copied into this file from §5.4 and nowhere else, and the harness refuses to run if the alpha threshold here disagrees with the shipped default `risk.tau` — one number, in the document, and a check that the copy did not drift. `cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` re-measures them against the three pinned repositories and fails if any gate came out other than declared.",
- "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories — three windows of 180 episodes each, 540 episodes, 525 of them mature — the shipped score reaches §5.4's published default on six episodes and every one of the 24 episodes that were mature and later needed rework sat below the threshold, so the miss rate is 1.0; the same corpus measured at each repository's own top-decile cut puts 66 flags in front of a reviewer of which 46 were cost without value, and the α gate measures 0.333 on six labelled flags. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`, and when a gate's `expected` changed in the `reco-dyt` re-pin it changed because the gate started measuring something (`miss-rate-denominator-is-big-enough`, 7 → 24, and `g3-alpha-at-published-tau`, a denominator of 3 → 6), not because a bar moved.",
- "tau_alpha": 70,
- "tau_1_0": 70,
- "tau_note": "§5.4 tightens the *rate* at 1.0 (0.15), not the threshold: tau stays 70 in both gates, so the two `g3-*` gates are one flag set read against two bars. If a later release tunes tau, it changes here, in the document, and the harness's own check against the shipped `risk.tau` is what catches a copy that drifted.",
+ "how_gates_are_set": "Every gate declares `expected`: `pass`, `fail` or `not-measurable`. A gate that surprises us in either direction fails the run, because a claim that quietly starts passing has to be re-read just as hard as one that fails. The `fail` gates are the measurement's findings, not its defects: on three real OSS repositories — three windows of 180 episodes each, 540 episodes, 525 of them mature — the shipped score at §5.4's published default τ flags 49 episodes and 31 of them were cost without value, so the α gate measures 0.633; across everything the corpus flags at each repository's own top-decile cut, 66 → 64 flags of which 43 were cost without value, `G3` 0.672; and 19 of the 24 episodes that were mature and later needed rework still sat below τ, a miss rate of 0.792. Those are the numbers `e0.12`'s thresholds have to survive; they are written here rather than smoothed into a sentence. A gate is never adjusted to fit a measurement: the `min_denominator` floor is what turns an anecdote into `not-measurable` instead of into a comfortable `pass`, and when a gate's `expected` changed it changed because the measurement moved — `miss-rate-denominator-is-big-enough` at the `reco-dyt` re-pin (7 → 24 mature reworked episodes), and `every-flagged-episode-is-labelled` here, where `reco-6co`'s re-score promoted one episode into the flag population, one disposition was written against its diff, and the gate came back to `pass`. The bars themselves — 0.30, 0.15, 0.20 — have never moved.",
+ "tau_alpha": 40,
+ "tau_1_0": 40,
+ "tau_note": "§5.4 tightens the *rate* at 1.0 (0.15), not the threshold: tau stays 40 in both gates, so the two `g3-*` gates are one flag set read against two bars. This number moved from 70 to 40 in `reco-6co` and it moved *here*, in ADR-001 §5.4, in the shipped `risk.tau` default, in `fathom.toml` and in the reference policy in the same commit: §5.4 always said its default was to be \"confirmed against three real OSS repositories\", and the confirmation is this file's own measurement — nothing in 540 real episodes reached 70, so the τ arm of `F(τ,W)` was inert, while τ 40 is the corpus's own top-decile floor and the lowest threshold whose flags are all labelled (see `tau_sweep` in the blessed report). The harness's check against the shipped `risk.tau` is what catches a copy that drifted.",
  "g3_alpha": 0.3,
  "g3_1_0": 0.15,
  "miss_rate_max": 0.2,
@@ -16,22 +16,22 @@
  "gates": [
   {
    "id": "g3-alpha-at-published-tau",
-   "claim": "at §5.4's published default tau the aggregate false-positive rate clears the alpha gate — measured: six episodes out of 540 reached tau 70 or carried a high-severity finding across the three pinned repositories, all six carry a hand-authored disposition, and two of the six were cost without value.",
+   "claim": "at §5.4's published default τ — 40, confirmed against real history by this corpus in `reco-6co` — the aggregate false-positive rate clears the alpha gate",
    "expected": "fail",
    "metric": "cut_tau_alpha.g3",
    "denominator": "cut_tau_alpha.labelled",
    "max": 0.3,
-   "why": "Measured 0.333 (2 of 6) against a bar of 0.30. The widened corpus did not make this gate comfortable, it made it answerable: `e4.9`'s 60-episode pins gave a denominator of three and the gate had to refuse to read it (`not-measurable`, floor five). Now it has a denominator and it fails, narrowly. The wider sentence is unchanged and is next to it: `aggregate.cut_tau_alpha.flagged` is 6 in 540 episodes, so at the published τ the flag arm is carried almost entirely by high-severity findings and §5.4's α gate is a rate over a handful of episodes rather than over the population a reviewer is actually shown."
+   "why": "Measured 0.633 (31 false positives on 49 labelled flags) against a bar of 0.30, and the number means something now, which is the difference between this read and `e4.9`'s. At τ 70 the flag arm was inert: 6 episodes in 540 reached it, all six through a high-severity finding and none through τ, because `features-1`'s ceiling on this corpus is 63. τ 40 is §5.4's own \\\"confirmed against three real OSS repositories\\\" — it is the corpus's top-decile floor (33 / 40 / 40 per repository), the flag population is 49 episodes (9.1 % of the corpus), and every one of them carries a hand-authored disposition. `aggregate.tau_sweep` is the evidence and the floor: at τ 35 eight flags have no label and the rate would be an answer about 52 episodes while 60 were flagged. Read beside `cut_corpus`, the α gate is now the same sentence as the corpus cut rather than a rate over six episodes."
   },
   {
    "id": "g3-alpha-at-corpus-cut",
-   "claim": "across every episode the corpus flagged — §5.4's default plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
+   "claim": "across every episode the corpus flagged — §5.4's published τ plus each repository's own top-decile cut, which is what a reviewer would actually have been shown — no more than 30 % of the labelled flags were cost without value",
    "expected": "fail",
    "metric": "cut_corpus.g3",
    "denominator": "cut_corpus.labelled",
    "max": 0.3,
    "min_denominator": 20,
-   "why": "Measured 0.697 on 66 labelled flags: 32 dismissed `low-stakes` (Dependabot, renovate and release-bot bumps, and `update dev dependencies` episodes that re-emit the CI workflow templates and a 500-to-1 600-line lockfile — the workflow and dependency axes raised them and no finding justified them), 9 `false-positive` (a test spy charged as untested new logic twice over, `# type: ignore` and `#[expect(deprecated)]` suppressions whose reason is written on the line above them, a `\"TODO\"` that is the name of a GitHub label, a fuzzer's own report charged as leftover debug output, and mdtest — ty's real test surface — counted as no tests at all twice), 5 `intentional` (a `gh repo garden` deletion that took its tests with it, three `test_weakening` skips that are platform and receipt guards, and dropping end-of-life Pythons). 26 of the 46 false positives were blamed on the ranking rather than on any detector — see `aggregate.coverage.blamed_on_score`. The finding is about where the flags come from, not only about the detectors, and tripling the corpus did not move it: 0.682 → 0.697."
+   "why": "Measured 0.672 on 64 labelled flags: 29 dismissed `low-stakes` (Dependabot, renovate and release-bot bumps, and `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile — the workflow and dependency axes raised them and no finding justified them), 9 `false-positive` (a test spy charged as untested new logic twice over, `# type: ignore` and `#[expect(deprecated)]` suppressions whose reason is written on the line above them, a `\\\"TODO\\\"` that is the name of a GitHub label, a fuzzer's own report charged as leftover debug output, and mdtest — ty's real test surface — counted as no tests at all twice), 5 `intentional` (a `gh repo garden` deletion that took its tests with it, three `test_weakening` skips that are platform and receipt guards, and dropping end-of-life Pythons). 23 of the 43 false positives were blamed on the ranking rather than on a detector (`aggregate.coverage.blamed_on_score`) — down from 26, because the two changes `reco-6co` shipped were made to the ranking: a compiled workflow lock is no longer charged the CI weight, and a resolver bot's pin bump no longer makes the operator-action claim at all. The finding still stands and it is still about where the flags come from: the majority of what is left is human-authored maintenance that re-emits CI from an out-of-tree template, which no path rule can see."
   },
   {
    "id": "g3-1-0-at-corpus-cut",
@@ -41,16 +41,16 @@
    "denominator": "cut_corpus.labelled",
    "max": 0.15,
    "min_denominator": 20,
-   "why": "0.697 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency bumps, which is `e4.4`'s routing and `e4.3`'s catalogue together, not one of them alone."
+   "why": "0.672 against 0.15. Written down so that the distance to the 1.0 gate is a measurement and not a vibe: closing it means the flag set stops being mostly routine dependency and template refreshes, which is `e4.4`'s routing and `e4.3`'s catalogue together — the dependency delta saying which pin moved and whether an advisory names it, and a catalogue that knows a regenerated artefact from a hand edit — not one of them alone."
   },
   {
    "id": "miss-rate-at-published-tau",
-   "claim": "at the published default tau, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
+   "claim": "at the published default τ, no more than 20 % of the episodes that later needed rework sat below the flag threshold",
    "expected": "fail",
    "metric": "miss.miss_rate",
    "denominator": "miss.mature_rework",
    "max": 0.2,
-   "why": "Measured 1.000: all 24 mature reworked episodes in the corpus were below tau 70 — nothing in the 540 scored above 63, so the τ arm of §5.4's `F(τ,W)` did not fire anywhere in this corpus at all. This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and it is the number that says what the gate above cannot: on real OSS history the shipped score does not fire, so the guardrail's two halves fail in opposite directions and only `miss_rate` notices."
+   "why": "Measured 0.792: 19 of the 24 mature reworked episodes in the corpus sit below τ 40. At τ 70 this gate measured 1.000 — nothing in 540 episodes reached the published default, so the τ arm of §5.4's `F(τ,W)` did not fire anywhere and the gate was a statement about a threshold nobody reached rather than about recall. Moving τ to the corpus's own decile floor moved the gate from 1.000 to 0.792, which is what the flag arm being live is worth on this history, and it is still four times the bar: what got reworked in these windows was ordinary-looking source edits that the path-and-shape model scores in the 20s and 30s, and no threshold that catches them stops also flagging a fifth of the corpus (`tau_sweep`: τ 25 reaches 13 of the 24 and flags 123 episodes, 22.8 %, and 56 of them nobody has read). This is the companion number §5.4 requires precisely because `G3` alone is satisfied by flagging nothing, and it is the number that says the guardrail's two halves still fail in opposite directions."
   },
   {
    "id": "miss-rate-at-decile-cut",
@@ -59,7 +59,7 @@
    "metric": "miss.miss_rate_at_decile",
    "denominator": "miss.mature_rework",
    "max": 0.2,
-   "why": "Measured 0.708 (17 of 24). Raising the threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 66 of 540 episodes still misses most of the episodes that later needed rework, because what got reworked in these windows was ordinary-looking source edits, not lockfiles. This is also the gate the widened denominator was for: at 4 of 7 the difference between 0.20 and 0.60 was noise, and at 17 of 24 it is not."
+   "why": "Measured 0.750 (18 of 24). Raising a threshold's strictness is not the same as raising its recall, and this is the number that shows it: even a cut that flags 64 of 540 episodes still misses three quarters of the episodes that later needed rework. It is also where `reco-6co` paid: capping a resolver bot's bump at the dependency claim moved one reworked bump below `cli`'s own cut, so this gate went 0.708 → 0.750 while every other number in the run improved or held. That is the cost of the change and it is written here rather than in a footnote — a bot's bump can be the thing that later needed rework, and a rule that dims the class dims that episode too."
   },
   {
    "id": "miss-rate-denominator-is-big-enough",
@@ -68,7 +68,7 @@
    "metric": "miss.mature_rework",
    "kind": "count",
    "min": 20,
-   "why": "Measured 24 out of 525 mature episodes (4.6 %). `e4.9` declared this a `fail` about the corpus, not the product — rework is rare on a healthy repository, and 7 samples cannot discriminate a 0.20 gate — and the fix it named was a bigger pinned window rather than a relaxed threshold. Each pin now carries 180 episodes instead of 60 and `astral-sh/ruff` sits at a newer head, which is what clears the floor. Nothing in `thresholds.json`'s bars moved for this gate; the only other `expected` that changed in the same pass is `g3-alpha-at-published-tau`, and that moved because its denominator left the floor, not because anything improved."
+   "why": "Measured 24 out of 525 mature episodes (4.6 %). `e4.9` declared this a `fail` about the corpus, not the product — rework is rare on a healthy repository, and 7 samples cannot discriminate a 0.20 gate — and the fix it named was a bigger pinned window rather than a relaxed threshold. Each pin carries 180 episodes instead of 60 and `astral-sh/ruff` sits at a newer head, which is what clears the floor. Nothing in `thresholds.json`'s bars moved for this gate, and nothing moved for it in `reco-6co` either — the ranking changed, the corpus did not."
   },
   {
    "id": "every-flagged-episode-is-labelled",
@@ -77,7 +77,7 @@
    "metric": "coverage.unlabelled_total",
    "kind": "count",
    "max": 0,
-   "why": "66 flags, 66 labels, across all three cuts — 22 from the `e4.9` pass (every one of them still resolves inside the widened window and still sits on a flagged episode) and 44 written against the diff in the `reco-dyt` re-pin. No label was inferred from a score, a reason distribution or a template. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
+   "why": "64 flags, 64 labels, across all three cuts. `reco-6co` moved the ranking, and a moved ranking promotes episodes nobody has read: one (`cli`, `Keep v3.3.0 label for create-github-app-token pin`, 34) came into the flag population and was labelled against `git show` before the run was blessed, and three bot bumps the change demoted out of the cut kept their dispositions and are printed in `labels_unflagged` — a reading of a diff is not retracted when the score moves, but it is not in a rate either. No label was inferred from a score, a reason distribution or a template. `tests/test_g3_calibration_contract.py` also refuses a label with no note or no evidence, a reason code outside `e4.6`'s closed list, and a label keyed to a commit that is not in its pin's window."
   },
   {
    "id": "flag-population-is-large-enough-to-gate",
@@ -86,7 +86,7 @@
    "metric": "cut_corpus.flagged",
    "kind": "count",
    "min": 20,
-   "why": "Measured 66 of 540 episodes — 26 `cli`, 20 `flask`, 20 `ruff`, which is the same 12 % flag share the 60-episode windows produced, so the cut is behaving like a rate and not like an accident of one quiet window. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
+   "why": "Measured 64 of 540 episodes — 24 `cli`, 20 `flask`, 20 `ruff`, 11.9 % of the window: the cut is behaving like a rate and not like an accident of one quiet window. This gate exists so that a future re-pin to a quieter window fails loudly instead of turning every ratio gate into `not-measurable` and the suite into a green shrug."
   },
   {
    "id": "shipped-defaults-agree-with-measurement",
@@ -95,7 +95,7 @@
    "metric": "defaults.breaches",
    "kind": "count",
    "max": 0,
-   "why": "Measured 0, and the 0 has a mechanism a reader has to know about: `defaults.breaches` asks each detector's *pooled* `g3`, and the pooling step never fills that field — per-repository rates are computed, the aggregate's are not — so every detector that spoke lands in `defaults.under_measured` (its message says \"under the 8 a default flip needs\" even at 13 flags, which is the tell) and the breach count is structurally zero. Scored instead against `aggregate.detectors_corpus`, which recomputes the rate from the pooled offenders and denominators, the widened corpus does now see three default-enabled detectors over α with at least 8 answerable flags: `lint_escape` 0.667 on 9, `untested_new_logic` 0.500 on 8, `test_weakening` 0.385 on 13. This harness therefore still flips no shipped default in either direction — `e4.3`'s four disabled detectors stay disabled, and `shotgun_edit`, the only disabled detector with a real denominator, measures 0.444 on 9 and does not earn re-enabling — but \"which of those three does `e0.12`'s rule disqualify now\" is a measurable question with an unanswered answer, and it belongs to its own ticket with the weights and the catalogue in it, not to a threshold edit here. `scope_creep`, `secret_string`, `churn_loop` and `rework_loop` still never fired in the corpus, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which)."
+   "why": "Measured 0, and the 0 has a mechanism a reader has to know about: `defaults.breaches` asks each detector's *pooled* `g3`, and the pooling step never fills that field — per-repository rates are computed, the aggregate's are not — so every detector that spoke lands in `defaults.under_measured` (its message says \\\"under the 8 a default flip needs\\\" even at 13 flags, which is the tell) and the breach count is structurally zero. Scored instead against `aggregate.detectors_corpus`, which recomputes the rate from the pooled offenders and denominators, the corpus sees three default-enabled detectors over α with at least 8 answerable flags: `lint_escape` 0.667 on 9, `untested_new_logic` 0.500 on 8, `test_weakening` 0.385 on 13 — unchanged by `reco-6co`, because nothing in the catalogue changed. This harness therefore still flips no shipped default in either direction — `e4.3`'s four disabled detectors stay disabled, and `shotgun_edit`, the only disabled detector with a real denominator, measures 0.444 on 9 and does not earn re-enabling — but \\\"which of those three does `e0.12`'s rule disqualify now\\\" is a measurable question with an unanswered answer, and it belongs to its own ticket with the weights and the catalogue in it, not to a threshold edit here. `scope_creep`, `secret_string`, `churn_loop` and `rework_loop` still never fired in the corpus, which is no evidence rather than clean (`aggregate.defaults.never_fired` says which)."
   }
  ]
 }

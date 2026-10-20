@@ -115,13 +115,31 @@ reason this ranking is worth writing at all. Weight is "what a reviewer would st
 | `binary` | 4 | not text | same |
 | `docs` | 3 | `*.md`, `*.rst`, `*.adoc` | read, not executed |
 
-Two rules about this table. First, the classification prefers the stored taxonomy
-(`git_commit_file.path_class`, `e0.9`) and falls back to the path table only when the index says
-`unknown` — which is every index this build's indexer writes until the `e0.9` table is wired into the
-Rust ingest. Second, where the two disagree they disagree on purpose: the taxonomy answers what a path
+Three rules about this table. First, **a path that says in its own name that a machine wrote it is ranked
+as what it is, ahead of every directory rule**: `*.lock.yml`, `*.lock.yaml` and `*.generated.*` are a
+resolver's or a workflow compiler's artefacts wherever they sit, and so are the paths the stored taxonomy
+classes `generated`, `vendored` or `lockfile`. They are consulted before the operator table because that
+table is a *directory* table, and a directory cannot tell a permissions edit from a machine's regeneration
+of its own file: on the calibration corpus, `.github/workflows/issue-triage.lock.yml` — a compiled
+agentic-workflow lock — was earning the `ci` weight and its printed "an operator must act on it" for a
+Dependabot bump (`reco-6co`,
+[the measurement](false-positive-calibration.md)).
+
+Second, the classification prefers the stored taxonomy (`git_commit_file.path_class`, `e0.9`) and falls
+back to the path table only when the index says `unknown` — which is every index this build's indexer
+writes until the `e0.9` table is wired into the Rust ingest.
+
+Third, where the two disagree they disagree on purpose: the taxonomy answers what a path
 *is*, and this answers what a *reviewer* should think, which needs CI split from other configuration
 and lockfiles split from other generated files. A stored `config` class is therefore re-read as
 `ci`, `container` or `env` from the path, and the reason prints which.
+
+One more thing the surface claim knows about itself: when the episode was written by a **bumping service**
+(`dependabot`, `renovate`, `github-actions` — the entries in `e4.1`'s registry that move pins on a
+schedule), the surfaces whose claim is "an operator must act on it" are capped to `dependency`. A bot's
+`uses:` bump under `.github/workflows/` changed a pin, not a pipeline: the supply-chain claim is true and
+the operator-action claim is not, and the printed reason says which surface was capped and who wrote it.
+An authored agent turn is untouched by the cap — that is the case ADR-001 §7.3 is about.
 
 ## 5. The size axis
 

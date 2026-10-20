@@ -59,7 +59,10 @@ DEFAULT_CONFIG = {
     "test": {"globs": ["tests/**", "**/test_*.py"]},
     "graph": {"ignored_dirs": ["node_modules"]},
     "detectors": {"enabled": ["test_deletion", "untested_new_logic", "debug_leftover"]},
-    "risk": {"weights": {"size": 0.4, "test_ratio": 0.3, "blast": 0.3}, "tau": 70},
+    # `tau` is the shipped default, and §5.4 measures it (`reco-6co`: 70 flagged nothing in 540 real
+    # episodes, so the flag arm was inert). ADR-004 §5.5 wants this fixture and the key spec to be one
+    # answer, which is what `test_defaults_agree_with_the_store_fixture` asserts.
+    "risk": {"weights": {"size": 0.4, "test_ratio": 0.3, "blast": 0.3}, "tau": 40},
     "blast": {"hops": 1},
     "ingest": {"size_cap_mib": 8},
 }

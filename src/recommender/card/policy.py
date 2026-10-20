@@ -191,7 +191,7 @@ KNOBS: tuple[Knob, ...] = (
          "to `note` is how a reviewer sees everything the analyses raised; raising it to `high` "
          "is how a triage card stays short. Findings below it are still counted.",
          units="severity"),
-    Knob("risk_tau", "risk.tau", "integer", 70,
+    Knob("risk_tau", "risk.tau", "integer", 40,
          "The queue's surfacing threshold, owned by `e4.4`. The card does not score risk and does "
          "not rank the queue; it reads this one number so a relayed risk score can say whether "
          "the episode would be surfaced at all.",

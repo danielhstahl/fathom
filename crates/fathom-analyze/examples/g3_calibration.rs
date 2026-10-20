@@ -115,6 +115,16 @@ const WALK_COMMITS_PER_EPISODE: usize = 4;
 /// The three detectors §5.3 R3 names.
 const R3_DETECTORS: [&str; 3] = ["rework_loop", "churn_loop", "test_weakening"];
 
+/// The thresholds the report measures the flag arm at, highest first.
+///
+/// §5.4 publishes one τ and gates on it, which is fine until nothing in the corpus reaches it and the
+/// gate is a rate over six episodes. This grid is how the document gets the other half of the answer —
+/// *what population a given τ actually flags*, and what `G3` and the miss rate do there — so that
+/// setting or confirming the shipped default is a reading rather than a preference. It is fixed, and it
+/// is read by the harness from the same measurements as every other number in the report: a sweep the
+/// harness could tune to make a document read better would not be evidence.
+const TAU_SWEEP: [u64; 10] = [70, 65, 60, 55, 50, 45, 40, 35, 30, 25];
+
 // ---------------------------------------------------------------------------------------------
 // the corpus: pins (mechanical), truth (human), thresholds (the document, as numbers)
 // ---------------------------------------------------------------------------------------------
@@ -913,6 +923,59 @@ fn percentile(scores: &[u8], q: f64) -> u8 {
     sorted[idx.min(sorted.len() - 1)]
 }
 
+/// What one τ does to the whole corpus: the flag population it raises, the `G3` the labels can answer
+/// for at it, the miss rate it produces, and how many flags nobody has labelled. See [`TAU_SWEEP`].
+fn tau_sweep(repos: &[Repo], fp_reasons: &[String]) -> Vec<Value> {
+    TAU_SWEEP
+        .iter()
+        .map(|&tau| {
+            let mut flagged = 0_usize;
+            let mut labelled = 0_usize;
+            let mut fp = 0_usize;
+            let mut tp = 0_usize;
+            let mut unlabelled = 0_usize;
+            let mut mature_rework = 0_usize;
+            let mut missed = 0_usize;
+            let mut episodes = 0_usize;
+            for repo in repos {
+                for e in &repo.episodes {
+                    episodes += 1;
+                    if e.flagged(tau) {
+                        flagged += 1;
+                        match &e.label {
+                            None => unlabelled += 1,
+                            Some(label) => {
+                                labelled += 1;
+                                fp += usize::from(is_fp(label, fp_reasons));
+                                tp += usize::from(is_tp(label, e.rework.any()));
+                            }
+                        }
+                    }
+                    if e.mature && e.rework.any() {
+                        mature_rework += 1;
+                        if !e.flagged(tau) {
+                            missed += 1;
+                        }
+                    }
+                }
+            }
+            json!({
+                "tau": tau,
+                "flagged": flagged,
+                "flag_share": rate(flagged, episodes),
+                "labelled": labelled,
+                "unlabelled": unlabelled,
+                "false_positives": fp,
+                "true_positives": tp,
+                "g3": rate(fp, labelled),
+                "mature_rework": mature_rework,
+                "missed_rework": missed,
+                "miss_rate": rate(missed, mature_rework),
+            })
+        })
+        .collect()
+}
+
 // ---------------------------------------------------------------------------------------------
 // the gates
 // ---------------------------------------------------------------------------------------------
@@ -1154,6 +1217,25 @@ fn main() {
                 })
                 .collect::<Vec<_>>(),
             "orphaned_labels": repo.orphaned.iter().map(|l| l.commit.clone()).collect::<Vec<_>>(),
+            // Dispositions whose episode the cut stopped flagging. They are not a hole in the guardrail — a
+            // hole is a flag nobody read — they are a reading that stands while the ranking moved under it,
+            // which is what happens when a ticket changes what gets flagged. They are printed rather than
+            // folded into `labelled`, because a rate may only be computed over what the cut flagged.
+            "labels_unflagged": repo
+                .episodes
+                .iter()
+                .filter(|e| e.label.is_some() && !e.flagged(alpha) && !e.flagged(decile))
+                .map(|e| {
+                    let label = e.label.as_ref().expect("just filtered");
+                    json!({
+                        "episode": e.id,
+                        "commit": label.commit,
+                        "decision": label.decision,
+                        "reason": label.reason,
+                        "score": e.score,
+                    })
+                })
+                .collect::<Vec<_>>(),
             "refused_labels": repo.refused,
             "mature": mature,
             "mature_rework": mature_rework,
@@ -1184,6 +1266,16 @@ fn main() {
 
     // The aggregate the gates read.
     let mut aggregate = json!({});
+    aggregate["tau_sweep"] = json!({
+        "note": "§5.4's `F(tau,W)` read at every threshold on the grid, over every episode: the flag \
+                 population the threshold raises, the `G3` the hand-authored labels can answer for at \
+                 it, the miss rate it produces, and `unlabelled` — flags nobody has read, which is \
+                 what refuses to become a rate. This is where a published default is chosen or \
+                 confirmed from; `thresholds.json` states the bar and the gate, and nowhere else \
+                 does τ move.",
+        "grid": TAU_SWEEP,
+        "rows": tau_sweep(&repos, &thresholds.fp_reasons),
+    });
     aggregate["detectors_note"] = json!(
         "A detector's denominator (`answerable_for`) is the labelled flags it was answerable for: every \
          flag it spoke on with no `blame` (§5.4's rule that whatever raised an unwanted flag shares the \
@@ -1327,6 +1419,15 @@ fn main() {
         "labels_total": repos
             .iter()
             .map(|r| r.episodes.iter().filter(|e| e.label.is_some()).count())
+            .sum::<usize>(),
+        "labels_unflagged_total": repos
+            .iter()
+            .map(|r| {
+                r.episodes
+                    .iter()
+                    .filter(|e| e.label.is_some() && !e.flagged(u64::from(thresholds.tau_alpha)) && !e.flagged(decile_taus[&r.pin.repository]))
+                    .count()
+            })
             .sum::<usize>(),
     });
 

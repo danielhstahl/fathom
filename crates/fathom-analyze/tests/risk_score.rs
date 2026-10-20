@@ -245,19 +245,24 @@ fn a_score_prints_every_feature_its_weight_and_its_contribution() {
         "a destructive migration with a high finding has to sit above the calibration corpus's \
          top-decile floor: {scored:?}"
     );
-    // …but it is not *flagged*, and that is a finding about the knob rather than a bug here: `risk.tau`
-    // ships at 70 because it is shared with `spine-1`, and nothing measured by `features-1` in the
-    // reference corpus reaches 70. `fathom why --calibrate` prints that in numbers and proposes the
-    // corpus's own decile floor; a reviewer who wants the flag set `risk.tau`.
-    assert_eq!(scored.tau, 70, "the key spec's default, not a private one");
-    assert!(!scored.flagged, "49 against a threshold of 70 is below it");
-    let mut lowered = Weights::defaults();
-    lowered.tau = 45;
-    let flagged = score::score(&destructive_migration(), &lowered);
+    // And it *is* flagged, which it was not while `risk.tau` shipped at `e2.10`'s 70: the Guardrail 3
+    // corpus measured that a `features-1` score of 70 was never reached on 540 real episodes, so the flag
+    // arm was inert, and `reco-6co` confirmed the default at the corpus's own top-decile floor.
+    // `fathom why --calibrate` still proposes each corpus's own floor beside it, because the right τ is a
+    // reading of a repository and not a constant anybody's repo has to keep.
+    assert_eq!(scored.tau, 40, "the shipped default, not a private one");
     assert!(
-        flagged.flagged,
-        "the same score at τ 45 routes differently: {} vs {}",
-        flagged.score, scored.score
+        scored.flagged,
+        "49 against a threshold of 40 routes: {scored:?}"
+    );
+    let mut raised = Weights::defaults();
+    raised.tau = 55;
+    let strict = score::score(&destructive_migration(), &raised);
+    assert!(
+        !strict.flagged,
+        "the same score at τ 55 routes differently: {} vs {}",
+        strict.score,
+        scored.score
     );
 }
 
@@ -827,16 +832,17 @@ fn calibration_meets_its_bar() {
     );
     let before = &comparison.before;
     let after = &comparison.after;
-    // The threshold is part of the proposal, and the corpus has a finding about it: nothing in
-    // `features-1`'s range reaches the shipped `risk.tau` of 70, so as shipped the flag routes nothing.
-    // A retune that left the knob alone would have proposed a queue in which nothing is flagged.
+    // The threshold is part of the proposal, and the corpus has a finding about it either way: the
+    // shipped `risk.tau` is a number measured on real history (`reco-6co`), and each corpus is still
+    // entitled to its own floor. A retune that left the knob alone would have proposed a queue in which
+    // this fixture's own must-read cases were flagged by luck.
     assert_eq!(
-        comparison.tau_shipped, 70,
-        "the key spec's value, shared with `spine-1`"
+        comparison.tau_shipped, 40,
+        "the shipped default, confirmed against three real repositories"
     );
     assert_eq!(
-        comparison.tau_shipped_flags, 0,
-        "and this corpus says what that value does: nothing"
+        comparison.tau_shipped_flags, 6,
+        "and this corpus says what that value does here: six of forty, which is the decile plus ties"
     );
     assert!(
         comparison.tau_proposed >= 1 && comparison.tau_proposed <= 100,

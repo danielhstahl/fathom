@@ -217,15 +217,32 @@ impl Weights {
     }
 }
 
-/// `risk.tau`, as declared in the key spec (`e2.10`), which is `70` and stays `70`.
+/// `risk.tau`: the score at or above which an episode is **flagged** — §5.4's `F(τ,W)` threshold, and
+/// the number ADR-001 §5.4 publishes as the default.
 ///
-/// The honest reason it stays: the key is shared with `spine-1`, whose scores run high, and the Python
-/// reference policy (`src/recommender/card/policy.py`) declares `70` — one key, one default, whatever the
-/// model. What `e4.4` adds is the means to *check* it: on the calibration corpus, `features-1` scores the
-/// worst labelled case 45, so a threshold of `70` flags nothing, and `fathom why --calibrate` says so in
-/// numbers and proposes the corpus's own decile floor instead. That is the ticket's whole point — a knob
-/// change evaluated rather than felt, including this one.
-pub const DEFAULT_TAU: u8 = 70;
+/// It was 70 from `e2.10` until `reco-6co` measured it. The Guardrail 3 corpus — 540 episodes of real
+/// human OSS history across three repositories pinned by commit
+/// ([the measurement, and the command that re-runs it](../../../../docs/concepts/false-positive-calibration.md))
+/// — found a ceiling of 63: six episodes in 540 reached 70, and every one of them got in through a
+/// high-severity finding, so the τ half of §5.4's `F(τ,W)` never fired anywhere in the corpus and all
+/// 24 mature episodes that later needed rework sat below it. A threshold nothing reaches is not a gate.
+/// §5.4 always said its number was "confirmed against three real OSS repositories"; this is that
+/// confirmation, and the number that came out is 40.
+///
+/// 40 is the corpus's own top-decile floor, not a preference: it is the highest of the three pins'
+/// top-decile cuts (33 / 40 / 40), which makes it the *lowest* threshold whose whole flag population
+/// the corpus's hand-authored dispositions can answer for — at τ 35 eight flags have no label, and an
+/// unlabelled flag is a hole in the guardrail rather than a rate. At τ 40 the flag arm fires on 49 of
+/// 540 episodes (9.1 %): the queue a reviewer actually reads first, which is what makes §5.4's rate a
+/// rate. The `--check` in that harness compares this constant against `thresholds.json` and refuses to
+/// run when they disagree, and it is also what `calibrate` re-derives per corpus.
+///
+/// The key is one key shared by three readers, and all three moved in the same commit: this constant,
+/// `thresholds.json`'s `tau_alpha` / `tau_1_0`, ADR-001 §5.4, `fathom.toml`, and the reference policy
+/// in `src/recommender/card/policy.py`. `spine-1` reads the same key and its scores run higher; the
+/// queue's own `high`/`medium` buckets are [`super::super::queue`'s] severity floors, which are stated
+/// against `spine-1`'s range and deliberately not this number.
+pub const DEFAULT_TAU: u8 = 40;
 
 /// `fathom.toml`'s `[risk]` and `[risk.weights]`, read.
 #[derive(Debug, Clone, Default)]

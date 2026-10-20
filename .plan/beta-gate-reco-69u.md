@@ -122,6 +122,25 @@ published τ and **0.708** at the decile cut, and the denominator gate is the on
 unchanged and now measured three times better — nothing in 540 episodes reached τ 70 on score at all, the
 highest was 63 — so the flag arm, not the corpus, is what stands between `m1` and its fourth criterion.
 
+**Addendum (2026-10-20, `reco-6co`).** The flag-arm follow-up landed, and §1.4 is **still not met** — now with
+every gate reading as a rate instead of a refusal. τ was confirmed against the three pins rather than kept:
+§5.4's published default is **40** (it moved in §5.4, `risk.tau`, `thresholds.json`, the key spec and
+`fathom.toml` together, which is the trio the harness checks), because the corpus's own top-decile cuts are
+33/40/40 and 40 is the lowest threshold whose whole flag population a human has read. At it the flag arm fires
+on **49 of 540** episodes instead of six-by-finding, and the numbers are: `G3` **0.633** at τ (bar 0.30,
+**fail**), **0.672** at the corpus cut (bars 0.30 and 0.15, **fail**), miss rate **0.792** at τ and **0.750**
+at the decile cut (bar 0.20, **fail**), denominator and labelling gates **pass**. No bar moved; two
+`expected`s moved with their measurements, as before. What the ranking change bought is visible in the same
+report: false positives blamed on the ranking 26 → **23**, corpus `G3` 0.697 → **0.672**, and the Dependabot
+episode that led `cli`'s decile on a compiled workflow lock's CI claim now scores 32 and is not flagged at
+all. What it did not buy is the remaining distance, and it is content rather than routing: a maintenance
+refresh that re-emits five real workflow files from an out-of-tree template is a hand commit that no path,
+line count or author string distinguishes from a permissions edit, and `untested_new_logic` still cannot see
+ty's mdtest suites. One divergence this ticket deliberately left open, stated rather than papered: the queue
+buckets the delta's `spine-1` number at 70 and `fathom why` flags `features-1` at 40, so `high` and `flagged`
+are no longer the same statement — setting the queue's floor to 40 would be an unmeasured change to a model
+this corpus does not score, and `queue::order::SEVERITY_HIGH`'s doc says exactly that.
+
 ---
 
 ## 2. What the dogfood found, and what got fixed here

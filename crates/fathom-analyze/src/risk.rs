@@ -263,6 +263,28 @@ impl Surface {
         )
     }
 
+    /// What this surface is worth when a **resolver bot** moved the pins, and nothing else.
+    ///
+    /// `e4.1`'s registry can name *which* program wrote an episode, and the names in
+    /// [`fathom_ingest::attribute::RESOLVER_AGENTS`] name a bumping service rather than an authoring
+    /// agent: Dependabot, Renovate, and the `github-actions` bot. Their whole diff is a pin the service
+    /// moved by policy, and the axis that matters is the supply chain — what the build now depends on.
+    /// A version bump under `.github/workflows/` is not a person editing a pipeline: nothing about the
+    /// run's permissions, secrets or triggers changed, and the reviewer is not being asked to deploy or
+    /// rotate anything. So the surfaces whose printed claim is "an operator must act on it" are capped
+    /// to [`Surface::Dependency`] for such an episode, and the reason says which surface was capped and
+    /// who wrote it. An authored agent turn (`claude`, `copilot`, …) is untouched: ADR-001 §7.3 is about
+    /// the work the reviewer's own agent wrote, which is the whole thesis.
+    #[must_use]
+    pub const fn resolver_capped(self) -> Surface {
+        match self {
+            Surface::Migration | Surface::Ci | Surface::Infra | Surface::Container => {
+                Surface::Dependency
+            }
+            other => other,
+        }
+    }
+
     /// Is this churn a review does not read line by line? Discounted in the size component, never
     /// removed from it (e2.2's rule that noise is a view, not a deletion).
     #[must_use]
@@ -290,6 +312,54 @@ impl Surface {
 /// matches the last path segment as a prefix (so `dockerfile` catches `Dockerfile`, `Dockerfile.dev`)
 /// or the whole path as a substring (so `.github/workflows/` catches it at any depth).
 type Pattern = (&'static str, Surface);
+
+/// Paths that say *in their own name* that a machine wrote them, and which therefore do not make the
+/// operator-action claim of [`OPERATOR_FIRST`].
+///
+/// This table is consulted **before** [`OPERATOR_FIRST`], and the order is the whole point of it.
+/// `OPERATOR_FIRST` is a directory table: `.github/workflows/` is matched as a substring so a
+/// permissions change cannot be buried beside an `.editorconfig` typo. The same prefix swallows
+/// whatever a resolver or a workflow compiler regenerates *inside* the directory — a `gh-aw`
+/// `*.lock.yml` recompiled beside an action bump, a `.generated.yml` emitted by a config generator —
+/// and reads it as CI, which is the weight whose printed sentence is "an operator must act on it".
+/// On the `cli/cli` calibration pin that single misattribution is the largest contribution to a
+/// Dependabot bump's score: `.github/workflows/issue-triage.lock.yml`, a compiled agentic-workflow
+/// lock, earned the CI claim on a 33-point episode (`reco-6co`,
+/// [the measurement](../../../docs/concepts/false-positive-calibration.md)). A machine's round-trip is
+/// not an operator's errand, so a lock is ranked as a lock and a compiled artefact as a compiled
+/// artefact.
+///
+/// A `*.lock.*` file is a [`Surface::Dependency`] and not a [`Surface::Generated`] one deliberately, even
+/// though its banner says it was generated. A lock *is* what moved — the pins are the change, and the
+/// supply-chain claim is the true one — and `Generated` is the surface `e4.3`'s `generated_edit`
+/// detector prices as a hand-edit of a file a program owns, which is a claim the corpus measured at
+/// `G3` 1.000 on 4 flags: classifying a resolver's regeneration as a generated file being edited asked
+/// reviewers to read three more bot bumps for a finding that was wrong every time it fired. Both
+/// surfaces are `noisy()`, so the size discount is the same either way.
+///
+/// It is a name rule and it is deliberately narrow: the file has to declare itself. `lock.yaml` — the
+/// workflow in `pallets/flask` whose job is to *update* lockfiles — is not a lock, and a manifest
+/// (`go.mod`, `pyproject.toml`, `package.json`) is not a lockfile either: a human edits those, and they
+/// stay in [`PATH_TABLE`] behind the operator rung. The lockfile names below are the ones `PATH_TABLE`
+/// already prices as `Dependency`; they are listed here so that a resolver's own answer is read as a
+/// lock even inside a directory that would otherwise be read as CI.
+const MACHINE_WRITTEN: &[Pattern] = &[
+    ("*.lock.yml", Surface::Dependency),
+    ("*.lock.yaml", Surface::Dependency),
+    ("*.generated.yml", Surface::Generated),
+    ("*.generated.yaml", Surface::Generated),
+    ("uv.lock", Surface::Dependency),
+    ("cargo.lock", Surface::Dependency),
+    ("package-lock.json", Surface::Dependency),
+    ("yarn.lock", Surface::Dependency),
+    ("pnpm-lock", Surface::Dependency),
+    ("poetry.lock", Surface::Dependency),
+    ("pipfile.lock", Surface::Dependency),
+    ("gemfile.lock", Surface::Dependency),
+    ("composer.lock", Surface::Dependency),
+    ("mix.lock", Surface::Dependency),
+    ("go.sum", Surface::Dependency),
+];
 
 /// The kinds the e0.9 table lumps into `config`, and which the ranking therefore has to recognise
 /// *before* consulting the stored class: ranking a workflow permissions change as `config` would put
@@ -409,17 +479,28 @@ pub fn surface_from_class(path_class: &str, noise_class: &str) -> Option<Surface
 
 /// What kind of file `path` is, for ranking purposes.
 ///
-/// Three sources, in this precedence order, and the reasons print the path itself so a wrong answer is
+/// Four sources, in this precedence order, and the reasons print the path itself so a wrong answer is
 /// visible instead of structural:
 ///
-/// 1. [`OPERATOR_FIRST`] — CI, IaC, container, env and migration files, which the stored taxonomy
+/// 1. [`MACHINE_WRITTEN`] — a name that says a resolver or a compiler wrote the file, wherever it
+///    lives. Ahead of everything else because the operator rung below is a *directory* rung, and a
+///    directory cannot tell a permissions edit from a machine's regeneration of its own artefact;
+/// 2. the stored taxonomy's machine-written answers ([`machine_from_class`]) — the same claim made by
+///    the index's `path_class` / `noise_class` columns instead of by the name;
+/// 3. [`OPERATOR_FIRST`] — CI, IaC, container, env and migration files, which the stored taxonomy
 ///    calls `config` and which the ranking must not;
-/// 2. the stored taxonomy ([`surface_from_class`]) — the authoritative e0.9 answer when present;
-/// 3. the rest of the path table, then the test/docs/asset/code conventions, then [`Surface::Other`].
+/// 4. the rest of the stored taxonomy ([`surface_from_class`]), then the rest of the path table, then
+///    the test/docs/asset/code conventions, then [`Surface::Other`].
 #[must_use]
 pub fn classify(path: &str, path_class: &str, noise_class: &str) -> Surface {
     let lower = path.to_ascii_lowercase();
     let name = lower.rsplit('/').next().unwrap_or(lower.as_str());
+    if let Some(surface) = table_match(&lower, name, MACHINE_WRITTEN) {
+        return surface;
+    }
+    if let Some(surface) = machine_from_class(path_class, noise_class) {
+        return surface;
+    }
     if let Some(surface) = table_match(&lower, name, OPERATOR_FIRST) {
         return surface;
     }
@@ -442,6 +523,30 @@ pub fn classify(path: &str, path_class: &str, noise_class: &str) -> Surface {
         return Surface::Source;
     }
     Surface::Other
+}
+
+/// The stored-taxonomy answers that mean "a machine wrote this file", mapped onto [`Surface`].
+///
+/// The machine-written rungs of [`classify`]'s precedence: the taxonomy saying `generated` or
+/// `lockfile` about a file under `.github/workflows/` is evidence about *the file*, which the
+/// directory rung has no way to weigh, so it outranks it. Everything else the taxonomy knows —
+/// `source`, `test`, `docs`, `migration`, `config` — is not a claim about who wrote the file and stays
+/// behind [`OPERATOR_FIRST`], which is the rung that exists precisely because the taxonomy lumps CI and
+/// IaC into `config`.
+#[must_use]
+pub fn machine_from_class(path_class: &str, noise_class: &str) -> Option<Surface> {
+    let class = path_class.trim().to_ascii_lowercase();
+    let noise = noise_class.trim().to_ascii_lowercase();
+    if class == "generated" || noise == "generated" {
+        return Some(Surface::Generated);
+    }
+    if class == "vendored" || noise == "vendored" {
+        return Some(Surface::Vendored);
+    }
+    if class == "lockfile" || noise == "lockfile" {
+        return Some(Surface::Dependency);
+    }
+    None
 }
 
 /// Match one already-lowercased path against one pattern table. First match wins, in table order.

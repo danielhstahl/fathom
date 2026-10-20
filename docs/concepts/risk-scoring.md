@@ -134,7 +134,7 @@ Sum: `32.97`, which rounds to `33`.
 
 ```toml
 [risk]
-tau = 55          # score ≥ tau is what the queue surfaces (`e2.10`; default 70)
+tau = 55          # score ≥ tau is what the queue surfaces (`e2.10`; default 40)
 
 [risk.weights]
 findings = 0.25   # up from 0.16: this repository trusts its detectors
@@ -161,8 +161,12 @@ The rules, all of them asserted in `risk_score.rs`:
   that is at least as much of *every* axis fall behind (§8's property tests). It does **not** guarantee a
   particular pairwise reordering of two arbitrary episodes — the denominator dilutes, and
   `risk_score.rs` says so out loud rather than asserting a stronger thing than is true.
-* `risk.tau` keeps its `e2.10` default of **70**, shared with `spine-1` and with the reference policy in
-  `src/recommender/card/policy.py`. §6 records what that value actually does to `features-1`.
+* `risk.tau` is **40** since `reco-6co`. It was `e2.10`'s 70, shared with `spine-1` and with the
+  reference policy in `src/recommender/card/policy.py`, until the Guardrail 3 corpus measured what 70 did
+  to `features-1` on 540 real episodes: nothing — the ceiling was 63, so the flag arm never fired
+  ([the measurement](false-positive-calibration.md)). 40 is that corpus's own top-decile floor, and the
+  one key is held in five places that are checked against each other: `Weights::defaults()`,
+  `fathom.toml`, the key spec, ADR-001 §5.4 and `thresholds.json`.
 
 ## 6. Calibration: `fathom why --calibrate`
 
@@ -185,7 +189,7 @@ calibration: 40 cases · 6 labelled must-read · the top 10% is 4 episodes
       shipped    0.750   0.500   0.600        4       3         1         5.3
       retuned    1.000   0.667   0.800        4       2         0         3.5
        change   +0.250  +0.167  +0.200                             1.8 earlier
-   threshold  `risk.tau` 70 flags 0 of 40 as shipped; the proposal sets it to 36, which flags 6
+   threshold  `risk.tau` 40 flags 6 of 40 as shipped; the proposal sets it to 36, which flags 6
 ```
 
 The retune moved five weights — `findings 0.16 → 0.25`, `size 0.07 → 0.00`, `deletions 0.07 → 0.02`,
@@ -198,9 +202,10 @@ Read the numbers as the finding, not the decoration:
 * the shipped weights were **not** crazy — half the labelled cases were already in the top decile;
 * the wins came from listening to the detectors more (`findings` up) and to raw line counts less
   (`size` to zero), which is the argument this corpus was built to be able to make;
-* **nothing in `features-1`'s range reaches the shipped `risk.tau` of 70.** The corpus says so, and the
-  proposal moves the threshold to its own decile floor (36). That is the ticket's purpose in one line: a
-  knob change, evaluated rather than felt — including this one.
+* **the shipped threshold was a knob nobody had measured.** At `e2.10`'s 70 this corpus flagged nothing;
+  `reco-6co` confirmed the default against three real repositories and it is 40 now, so the shipped line
+  flags 6 of 40 here and the proposal still moves it to this corpus's own decile floor (36). That is the
+  ticket's purpose in one line: a knob change, evaluated rather than felt — including this one.
 
 Two honesty rules are enforced by the retune itself: it **refuses to move a weight** on a corpus with no
 labelled positives, and the report prints a notice if a future objective ever ends below the shipped F1

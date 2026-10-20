@@ -217,7 +217,7 @@ pub fn vector(
     };
 
     measurements.push(findings(report));
-    measurements.push(surface(&by_surface, episode));
+    measurements.push(surface(&by_surface, episode, resolver_agent(row)));
     measurements.push(migration(
         row,
         episode,
@@ -308,6 +308,7 @@ fn findings(report: &Report) -> Measurement {
 fn surface(
     by_surface: &BTreeMap<Surface, (u64, u64, usize)>,
     episode: &DetectorEpisode,
+    resolver: Option<&str>,
 ) -> Measurement {
     let Some((top, _)) = by_surface
         .iter()
@@ -319,6 +320,11 @@ fn surface(
             "e4.4",
         );
     };
+    // A bumping service moved the pins, so the surfaces whose claim is "an operator must act on it" are
+    // read as what the episode actually did: the build now depends on different versions. See
+    // [`Surface::resolver_capped`] and [`fathom_ingest::attribute::RESOLVER_AGENTS`].
+    let claimed = resolver.map_or(*top, |_| top.resolver_capped());
+    let capped = (claimed != *top).then_some(*top);
     let quoted = episode
         .files
         .iter()
@@ -326,11 +332,19 @@ fn surface(
         .max_by_key(|file| file.churn())
         .map(|file| file.path.clone());
     let mut detail = match quoted {
-        Some(path) => format!("{path} — {}", top.describe()),
-        None => top.describe().to_owned(),
+        Some(path) => format!("{path} — {}", claimed.describe()),
+        None => claimed.describe().to_owned(),
     };
-    if top.operator() {
+    if claimed.operator() {
         detail.push_str(" · an operator must act on it");
+    }
+    if let (Some(from), Some(agent)) = (capped, resolver) {
+        detail.push_str(&format!(
+            " · {agent} moved pins under a {} path: the pins are the change, and no {} act is \
+             claimed for a resolver's bump",
+            from.as_str(),
+            from.as_str()
+        ));
     }
     let others: Vec<&str> = by_surface
         .keys()
@@ -341,7 +355,22 @@ fn surface(
         let shown: Vec<&str> = others.iter().copied().take(4).collect();
         detail.push_str(&format!(" · also touched: {}", shown.join(", ")));
     }
-    Measurement::measured(Feature::Surface, top.weight() as f64, "path class", detail)
+    Measurement::measured(
+        Feature::Surface,
+        claimed.weight() as f64,
+        "path class",
+        detail,
+    )
+}
+
+/// The attributed agent, when the attribution named one of the bumping services.
+///
+/// `e4.1` writes the registry id into `episode.attribution_agent`, so this reads a stored fact rather
+/// than pattern-matching an author string a second time — the same fact the card prints as "written by
+/// dependabot", read here for the one question the ranking asks of it.
+fn resolver_agent(row: &EpisodeRow) -> Option<&str> {
+    fathom_ingest::attribute::is_resolver_agent(&row.attribution_agent)
+        .then_some(row.attribution_agent.as_str())
 }
 
 /// The statements in a migration that may not be reversible.

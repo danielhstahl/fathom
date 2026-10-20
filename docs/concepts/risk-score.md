@@ -122,7 +122,7 @@ knowing who wrote a change, and having no test describe new logic, are both risk
 
 ## `flagged` is a routing decision
 
-An episode is **flagged** when its score reaches `risk.tau` (default **70**, `[risk] tau` in
+An episode is **flagged** when its score reaches `risk.tau` (default **40**, `[risk] tau` in
 `fathom.toml`) or when it carries a `high` severity finding. Flagging routes: it puts the episode at the
 front of the queue and marks it in the timeline. It is not a statement that the change is bad, and the
 [ledger](review-ledger.md) is where a human's actual judgement goes.

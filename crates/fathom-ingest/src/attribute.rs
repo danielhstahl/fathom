@@ -128,6 +128,32 @@ pub const DEFAULT_AGENTS: [(&str, &[&str]); 13] = [
     ("autofix", &["autofix"]),
 ];
 
+/// The registry entries that name a **bumping service** rather than an authoring agent.
+///
+/// The distinction is not decorative and it is not a vibe: Dependabot, Renovate and the `github-actions`
+/// bot exist to move a version pin on a schedule, and the whole of the diff they write *is* that pin.
+/// ADR-001 §7.3 prices an unreviewed program's work highly because the reviewer has to read logic nobody
+/// reasoned about; a resolver's bump has no logic in it, and charging it the CI or migration claim —
+/// "an operator must act on it" — is the single largest reason a bot's routine led the review queue in
+/// the Guardrail 3 corpus (`reco-6co`). `fathom-analyze`'s risk collector reads this list to cap that
+/// claim at the dependency surface; a declared
+/// authoring agent (`claude`, `copilot`, `codex`, …) is untouched by it, because that is the work the
+/// thesis is about.
+///
+/// Names are the same strings as [`DEFAULT_AGENTS`] entries, matched the same way: a lower-cased
+/// substring of the registry id the attribution wrote into `episode.attribution_agent`.
+pub const RESOLVER_AGENTS: [&str; 3] = ["dependabot", "renovate", "github-actions"];
+
+/// Is this attributed agent one of the bumping services in [`RESOLVER_AGENTS`]?
+#[must_use]
+pub fn is_resolver_agent(agent: &str) -> bool {
+    let agent = agent.trim().to_ascii_lowercase();
+    !agent.is_empty()
+        && RESOLVER_AGENTS
+            .iter()
+            .any(|resolver| agent.contains(resolver))
+}
+
 /// The trailer keys whose *values* are read for an agent name (rung 3).
 ///
 /// The key alone is never evidence: `Signed-off-by:` is the DCO line a thousand humans sign, and
@@ -1063,4 +1089,40 @@ pub fn signatures(commits: &[CommitFacts]) -> Vec<String> {
     }
     keys.sort();
     keys
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_resolver_agent;
+
+    /// The bots `reco-6co`'s surface cap is drawn around: a service that moves pins on a schedule, which
+    /// is a different kind of change from a bot turn that wrote logic. Matched the way the registry's
+    /// `match` strings are matched — case-insensitive containment over both identity fields — because the
+    /// names differ per forge (`dependabot[bot]` and its noreply address are the same actor).
+    #[test]
+    fn pin_moving_bots_are_distinguished_from_writing_bots() {
+        for who in [
+            "dependabot[bot]",
+            "49699333+dependabot[bot]@users.noreply.github.com",
+            "Renovate Bot",
+            "renovate@[1071683].bot.github.com",
+            "github-actions[bot]",
+        ] {
+            assert!(is_resolver_agent(who), "{who} moves pins");
+        }
+        for who in [
+            "copilot",
+            "github-copilot[bot]",
+            "claude",
+            "github-aw[bot]",
+            "bot@noreply",
+            "paulus@palletsprojects.com",
+            "",
+        ] {
+            assert!(
+                !is_resolver_agent(who),
+                "{who} is an author — ADR-001 §7.3 is about exactly this kind of change"
+            );
+        }
+    }
 }

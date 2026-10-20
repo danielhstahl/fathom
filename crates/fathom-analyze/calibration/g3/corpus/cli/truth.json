@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window)",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window), 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window) and 2026-10-20 (reco-6co, the labels the re-scored cut promoted)",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -250,6 +250,15 @@
    "note": "Four Dependabot minor bumps in one episode — `dev-tunnels`, `klauspost/compress`, `go-containerregistry`, `goldmark` — six lines each in go.mod and go.sum, 24 of 24 churn lines on lockfile paths and no finding. The ranking flagged the file class; there is no claim in the flag about the four packages that a reviewer could check.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 145d839ab --stat`: go.mod 2/go.sum 4; members `2091aae79`, `123c1e72c`, `5a7c407d1` each go.mod 2/go.sum 4."
+  },
+  {
+   "commit": "1ea48c825275ff2eb8e31e27777f043ab4fde6c8",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Promoted into the flagged set when `reco-6co` stopped charging a bot's compiled workflow lock the CI weight, and it earns the read. The source of an agentic workflow that mints GitHub App tokens moved its pin from an immutable SHA (`create-github-app-token@64ab729a62…`) to a mutable tag (`@v3.3.0`) so the compiler resolves and records the version; what runs today is the same commit, but the source now floats on a tag anyone can move, and `actions-lock.json` gained the entry that decides what it resolves to. That is a provenance decision about a secrets-holding workflow, which is exactly what the workflow axis claims.",
+   "actor": "looprs (agent) — pi, reco-6co re-measure, 2026-10-20",
+   "evidence": "`git show 1ea48c8252`: `.github/workflows/issue-triage.md` line 121 `uses: actions/create-github-app-token@64ab729a62…  # v3.3.0` → `@v3.3.0`; `.github/aw/actions-lock.json` +5 (new `create-github-app-token@v3.3.0` entry, sha `64ab729a62`); `.github/workflows/issue-triage.lock.yml` recompiled (`gh-aw-manifest` records `version: v3.3.0` where it had recorded the SHA)."
   }
  ]
 }

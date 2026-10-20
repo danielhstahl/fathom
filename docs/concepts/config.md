@@ -556,7 +556,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `deps.findings.license_drift` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
 | `deps.findings.license_added_to_set` | `boolean` | `True` | `replace` | `any` | — | deps.delta | `e2.7` |
 | `risk.weights.<weight>` | `number` | `blast=0.3, size=0.4, test_ratio=0.3` | `deep` | `any` | — | findings.detect | `e2.9` |
-| `risk.tau` | `integer` | `70` | `replace` | `any` | score | risk.score | `e2.10` |
+| `risk.tau` | `integer` | `40` | `replace` | `any` | score | risk.score | `e2.10` |
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
 | `detectors.suppress` | `string_list` | `—` | `extend` | `any` | — | findings.detect | `e4.3` |
 | `detectors.max_findings` | `integer` | `12` | `replace` | `any` | rows | findings.detect | `e4.3` |

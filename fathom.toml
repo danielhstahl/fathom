@@ -138,7 +138,11 @@ contracts = ["src/recommender", "tools"]
 [risk]
 # An unreviewed episode is only worth an interruption if the interruption teaches something;
 # the weights are the ranking knobs ADR-004 §6 says change `risk.score` and nothing else.
-tau = 70
+# tau is §5.4's published default and it is a measured number: the Guardrail 3 corpus's own
+# top-decile floor, confirmed against three real repositories by reco-6co. One number, also in
+# ADR-001 §5.4, thresholds.json, the key spec and `Weights::defaults()`; the G3 harness refuses
+# to run when the copies disagree.
+tau = 40
 
 [risk.weights]
 size = 0.3
