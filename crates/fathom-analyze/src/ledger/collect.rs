@@ -363,12 +363,15 @@ pub fn unsettled(
             skipped += 1;
             continue;
         };
+        // The stamp is the ledger's, not the act log's: the file keeps whole seconds, so the key this
+        // comparison is built on has to be cut to the same resolution or every act looks unseen forever
+        // ([`super::entry::ledger_clock`]).
         let key = (
             episode.id.clone(),
             episode.content.digest.clone(),
             act.actor.clone(),
             decision.as_str().to_owned(),
-            act.utc,
+            super::entry::ledger_clock(act.utc),
         );
         if seen.contains(&key) {
             continue;
@@ -392,6 +395,8 @@ pub fn unsettled(
             skipped += 1;
         }
     }
+    // The act log is an append-only log of keystrokes and can hold two identical acts a heartbeat apart;
+    // `seen` above folds those into one entry, and one entry is what the mirror's primary key can hold.
     fresh.sort_by(|a, b| (a.signed_utc, &a.id).cmp(&(b.signed_utc, &b.id)));
     Ok((fresh, skipped))
 }

@@ -532,6 +532,98 @@ fn sync_with_no_acts_renders_nothing_and_says_so() {
     assert_eq!(json["rendered"], 0);
 }
 
+/// The act the rail's `x` writes, through the store, because the shell is the only thing that writes it.
+///
+/// The stamp has a sub-second part on purpose: a keystroke lands when it lands, and the ledger file can only
+/// hold whole seconds. That gap is what made `sync` re-render the same act forever (`reco-2pw`).
+fn record_act(repo: &Repo, minute: i64) -> String {
+    use fathom_store::episode::{EpisodeQuery, ReviewState, TriageEvent};
+
+    let path = repo.path().join(".fathom").join("index.sqlite3");
+    let mut store =
+        fathom_store::spine::Store::open(&path).expect("the store `fathom index` wrote opens");
+    let episode = store
+        .episodes(&EpisodeQuery::default())
+        .expect("the episode read works")
+        .into_iter()
+        .find(|row| row.summary.starts_with("feat: narrow"))
+        .expect("the fixture's agent turn is an episode");
+    store
+        .record_triage(&TriageEvent {
+            episode: episode.id.clone(),
+            fingerprint: episode.fingerprint.clone(),
+            disposition: ReviewState::Accepted,
+            reason: String::new(),
+            note: "read it end to end".to_owned(),
+            until: String::new(),
+            actor: DANA.to_owned(),
+            risk: Some(30),
+            risk_model: "fathom-risk/1".to_owned(),
+            utc: 1_700_000_000_000 + minute * 60_000 + 937,
+        })
+        .expect("the act lands in the log");
+    episode.id
+}
+
+/// `fathom review sync` twice is the same review, once (`reco-2pw`).
+///
+/// The verb's own claim is that it is re-runnable — "twice in a row renders nothing the second time" — and
+/// with an act from the rail it was not: the file cannot hold the act's sub-second stamp, so the second run
+/// could not recognise the entry the first had written, appended a second copy of a sign-off nobody made
+/// twice, and then the mirror's primary key rejected the duplicate id. Exit 4, `STORE_CORRUPT`, from the
+/// one verb whose whole job is to be safe to run again.
+#[test]
+fn sync_twice_renders_the_act_once_and_says_so_both_times() {
+    let repo = Repo::new("sync-twice");
+    let episode = record_act(&repo, 0);
+
+    let first = fathom(repo.path(), &["review", "sync"]);
+    assert_eq!(code(&first), 0, "{}", stderr(&first));
+    assert!(
+        stdout(&first).starts_with("rendered 1 act(s)"),
+        "the act becomes one entry: {}",
+        stdout(&first)
+    );
+
+    let second = fathom(repo.path(), &["review", "sync"]);
+    assert_eq!(
+        code(&second),
+        0,
+        "the second run is a question, not an error: {}{}",
+        stdout(&second),
+        stderr(&second)
+    );
+    assert!(
+        stdout(&second).starts_with("rendered 0 act(s)"),
+        "the act is already rendered: {}",
+        stdout(&second)
+    );
+
+    let text = repo.ledger_text();
+    assert_eq!(
+        text.matches("\n## sg-").count(),
+        1,
+        "one act, one block — a second is a review nobody made twice: {text}"
+    );
+    assert!(
+        text.contains(&episode),
+        "and it names the episode the act named: {text}"
+    );
+
+    // And the verdict stops telling the reviewer to run the verb they just ran.
+    let status: serde_json::Value = serde_json::from_str(&stdout(&fathom(
+        repo.path(),
+        &["review", "status", "--json"],
+    )))
+    .expect("parses");
+    assert_eq!(status["fresh"], 1, "{status}");
+    assert_eq!(status["unsettled_acts"], 0, "{status}");
+    assert!(
+        !stdout(&fathom(repo.path(), &["review", "status"])).contains("never been rendered"),
+        "the ledger is caught up with the act log, and must stop saying it is not"
+    );
+}
+
 /// A ledger git is *ignoring* is a different failure from a ledger git has not been asked to hold, and the
 /// two need different remedies (ADR-004 §12.1: the required stanza is `.fathom/*` plus `!.fathom/reviews/`).
 #[test]

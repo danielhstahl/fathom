@@ -142,6 +142,13 @@ verdict   NOT ALL REVIEWED
 
 (The long digests are elided in the second block so the lines fit; the real output prints them in full.)
 
+The stamp is to the whole second, and that is a rule rather than a rounding: `entry_id` and `digest` are derived
+from the text of the file, so a sub-second remainder would make the entry an act read from the act log and a
+different entry read from the markdown, and `fathom review sync` — whose whole contract is that it is re-runnable
+— would render the same keystroke twice, the second copy landing as a sign-off nobody made and the mirror's
+primary key rejecting its own id. So a stamp is cut to the resolution the file can carry on its way in
+(`ledger_clock`), which makes the round trip through the markdown an identity.
+
 ## Who signed
 
 Resolved in this order, first answer wins: `--identity`, `$FATHOM_REVIEWER`, `[review] identity` in
@@ -162,6 +169,15 @@ accepted still what is here?* The states come from the re-link ladder:
   back to the queue rather than being quietly treated as reviewed.
 * **`unknown`** — the content digest was never computed, so staleness is undecidable. Reported as stale with
   the reason "content was never measured", because a digest that cannot be computed is not a pass.
+
+Which question the ladder's first rung asks matters more than it looks. An episode id can survive a rewrite and
+still name nothing that exists: the segmentation pass keeps a dead row when it carries a decision (ADR-003
+§6.5) so the sign-off reads from either end, and the marker an act leaves in the TUI is exactly such a row.
+`exact` therefore means "the id names a **live** episode"; a dead one is not an answer but the absence of one,
+and the ladder goes on to the tiers that find the successor a reword moved the change onto (§5.5), keeping the
+dead row for the orphan's sentence when nothing answers. Stopping at the id instead orphaned every sign-off the
+product itself had recorded, while the store re-attached the same marker one table away
+(`a_reword_after_a_queue_act_relinks_the_sign_off_on_the_shape_tier`).
 
 Two denominator rules are worth knowing because they are the difference between a gate that closes and one
 that whines forever: an episode whose paths are all under `.fathom/` is **excluded** (the commit that records

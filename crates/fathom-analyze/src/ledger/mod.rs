@@ -95,7 +95,8 @@ pub mod collect;
 pub use entry::{
     Actor, ActorKind, ContentCompare, ContentProfile, Decision, DiffTouch, EpisodeFacts,
     FileContent, FileState, PathContent, PathFact, SignError, SignOff, compare_signed,
-    content_digest, entry_digest, entry_id, iso_utc, parse_iso_utc, render_paths, sign,
+    content_digest, entry_digest, entry_id, iso_utc, ledger_clock, parse_iso_utc, render_paths,
+    sign,
 };
 pub use format::{
     LEDGER_DIR, LEDGER_FILE, Parsed, Problem, default_path, discover, parse, parse_text, preamble,

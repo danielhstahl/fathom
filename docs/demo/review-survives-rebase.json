@@ -1,0 +1,78 @@
+{
+ "title": "reco-2pw — the mark a reviewer made survives the rewrite under it",
+ "comment": [
+  "The one claim acceptance step (d) could not make, made as a walkthrough: a reviewer marks an episode",
+  "reviewed, the history under that mark is rewritten in another terminal, the index catches up, and the",
+  "review state is still there and still reachable. `docs/demo/README.md` has the reproduction; the fixture",
+  "is `python3 tools/review_state_fixture.py --out /tmp/fathom-review` (six hourly commits, one episode",
+  "each, one path each, so the row on screen is the commit in `git log`) indexed with `fathom index`.",
+  "The rewrite below is the one `mvp-500-commit-review.json` step (d) performs — cherry-pick the tail onto",
+  "`HEAD~3` and prune the objects it replaces — plus a reword of the marked commit, because a reword is the",
+  "rewrite that moves an episode id (ADR-003 §5.5) and so the only one that can prove the decision followed",
+  "it. `tests/test_review_state_contract.py` replays this file against the built binary and asserts frames.",
+  "",
+  "The order is the reviewer's, not a test's: mark, render the act into the ledger, rewrite, re-index,",
+  "reopen. A ledger that is only ever written after the history moved would be a ledger nothing signs."
+ ],
+ "steps": [
+  {
+   "keys": "",
+   "note": "open `fathom tui` on the six-commit agent history: the queue is the landing view and every row in it is open work",
+   "hold": 1.2
+  },
+  {
+   "keys": "t",
+   "note": "the timeline. The rail opens with the newest episode under the cursor and its last column is `⚑` — unread — which is the state this whole ticket is about",
+   "hold": 0.9
+  },
+  {
+   "keys": "x",
+   "note": "`x`: mark it reviewed. The rail's glyph flips `⚑` → `✔`, the card line says `✔ accepted`, and the toast names the episode, the risk and who signed it. This is the state step (d) says a rebase must not lose",
+   "hold": 0.9
+  },
+  {
+   "keys": "q",
+   "note": "the queue, to check it was an act and not a paint: one less row is open than when we arrived",
+   "hold": 0.9
+  },
+  {
+   "keys": "<C-c>",
+   "note": "quit; the session goes with it (`e1.11`)"
+  },
+  {
+   "shell": "out=$($FATHOM review sync 2>&1); echo \"sync exits $?\"; echo \"$out\" | head -2",
+   "note": "the act becomes a committable ledger entry before the history moves — which is what a reviewer does: mark, render, commit, push. `fathom review sync` is the act log → ledger hop, and it is re-runnable by design",
+   "sleep": 0.2
+  },
+  {
+   "shell": "export GIT_AUTHOR_NAME=claude GIT_AUTHOR_EMAIL=claude@harness.invalid GIT_COMMITTER_NAME=claude GIT_COMMITTER_EMAIL=claude@harness.invalid GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null; tip=$(git rev-parse HEAD); base=$(git rev-parse HEAD~3); git reset --hard -q $base; for c in $(git rev-list --reverse $base..$tip); do if [ \"$(git log -1 --format=%s $c)\" = \"feat: tune module 5\" ]; then git cherry-pick $c >/dev/null && git commit -q --amend -m \"feat: retune module 5 after the review\"; else git cherry-pick $c >/dev/null; fi; done; git reflog expire --expire=now --all; git gc -q --prune=now; echo \"head=$(git rev-parse --short HEAD) commits=$(git rev-list --all --count) tip=$(git log -1 --format=%s)\"",
+   "note": "another terminal rewrites the last three commits and prunes the ones it replaced — the force-push case ADR-003 exists for — and rewords the marked one, which moves its id and nothing else about it",
+   "sleep": 0.3
+  },
+  {
+   "shell": "out=$($FATHOM index 2>&1 | head -1); echo \"$out\"",
+   "note": "the index catches up in a separate process: three new commits, of which two kept their episode ids — identity is author + subject + paths, and for those two none of them moved",
+   "sleep": 0.3
+  },
+  {
+   "keys": "",
+   "restart": true,
+   "note": "reopen: a fresh process reading the rewritten index, which is the only frame the claim is about"
+  },
+  {
+   "keys": "t",
+   "note": "the mark is still here, on the row that now carries the reworded subject. The id moved and the review state followed it on ADR-003 §6.2's `shape` rung — author plus path set, the two facts a reword cannot move — and the dead row it was written against keeps its decision so the ledger reads from either end (§6.5)",
+   "hold": 0.9
+  },
+  {
+   "shell": "$FATHOM review list; out=$(echo; $FATHOM review status 2>&1); code=$?; echo \"$out\" | head -3; echo \"status exits $code\"",
+   "note": "and the committable half agrees with the rail: the entry is `fresh` against an episode id the ledger has never seen, re-linked on the rung ADR-003 names. `fathom review status --json` prints it as `link_method: shape` with the origin in `relinked_from`",
+   "sleep": 0.3
+  },
+  {
+   "keys": "<C-c>",
+   "note": "end. Nothing was lost and nothing was silently re-decided — and every figure on this page came out of the binary",
+   "hold": 0.4
+  }
+ ]
+}

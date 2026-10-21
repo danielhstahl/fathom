@@ -29,7 +29,7 @@ use fathom_analyze::index::{self, Report};
 use fathom_analyze::ledger::collect;
 use fathom_analyze::ledger::entry::{Actor, ActorKind, Decision, EpisodeFacts, sign};
 use fathom_analyze::ledger::format::{self as ledger_format, LEDGER_DIR};
-use fathom_analyze::ledger::relink::EntryState;
+use fathom_analyze::ledger::relink::{EntryState, LinkMethod};
 use fathom_ingest::record::Unclassified;
 use fathom_ingest::repo::Repository;
 use fathom_store::spine::Store;
@@ -564,6 +564,199 @@ fn an_episode_deleted_outright_is_an_orphan_with_a_reason() {
             .iter()
             .map(|link| link.reason.clone())
             .collect::<Vec<_>>()
+    );
+}
+
+/// The sign-off the *product* wrote survives the reword that moved its episode's id (`reco-2pw`).
+///
+/// The 95% test above signs with [`sign`] in a loop, which writes the markdown and nothing else — so the
+/// dead episode is pruned (ADR-003 §6.5) and the ladder never meets a dead exact hit. A reviewer pressing
+/// `x` in the rail is different: the act writes a `review_state` row, which is exactly the row that keeps
+/// the dead episode in the index, which is exactly the row a ladder that stops at a dead exact hit returns
+/// as an orphan. This is that case, with the act log as the TUI writes it.
+#[test]
+fn a_reword_after_a_queue_act_relinks_the_sign_off_on_the_shape_tier() {
+    use fathom_store::episode::{ReviewState, TriageEvent};
+
+    let repo = Repo::new("reword");
+    repo.init();
+    repo.commit(
+        "pi-agent",
+        60,
+        "feat: the store change",
+        &[("src/store.rs", "// first\n")],
+    );
+    repo.commit(
+        "pi-agent",
+        240,
+        "feat: the cli change",
+        &[("src/cli.rs", "// next\n")],
+    );
+    index(&repo);
+
+    let target = live(&repo)
+        .into_iter()
+        .rev()
+        .find(|episode| episode.summary.contains("the cli change"))
+        .expect("the newest turn is its own episode");
+
+    // The act `x` writes: the act log, the review row, and a stamp between two seconds, because that is
+    // when a keystroke lands.
+    let act = TriageEvent {
+        episode: target.id.clone(),
+        fingerprint: target.fingerprint.clone(),
+        disposition: ReviewState::Accepted,
+        reason: String::new(),
+        note: "read it end to end".to_owned(),
+        until: String::new(),
+        actor: reviewer().display,
+        risk: Some(30),
+        risk_model: "fathom-risk/1".to_owned(),
+        utc: NOW + 937,
+    };
+    store(&repo)
+        .record_triage(&act)
+        .expect("the act lands in the log");
+    let rendered = {
+        let store = store(&repo);
+        collect::unsettled(&store, repo.path(), &episode_facts(&repo))
+            .expect("reading the act log")
+            .0
+    };
+    assert_eq!(rendered.len(), 1, "the act is one entry to render");
+    ledger_format::append_entries(&ledger_format::default_path(repo.path()), &rendered)
+        .expect("writing the rendered entry");
+    let before = refresh(&repo);
+    assert_eq!(before.verdict.fresh, 1, "and it is fresh where it stands");
+    assert_eq!(before.verdict.orphan, 0);
+
+    // ADR-003 §5.5: a reword moves the strong digest and the fallback with it, and leaves the path set
+    // alone — so tier 2 (`shape`) is the rung the decision rides across on.
+    repo.reword("feat: the cli change, retitled", 400);
+    reindex(&repo);
+
+    let after = refresh(&repo);
+    let orphans: Vec<String> = state_names(&after, EntryState::Orphan);
+    assert_eq!(
+        after.verdict.orphan, 0,
+        "the sign-off followed its episode onto the new id; orphans: {orphans:?}"
+    );
+    assert_eq!(
+        after.verdict.fresh, 1,
+        "and it is still fresh: the content never moved"
+    );
+    let moved = after
+        .links
+        .iter()
+        .find(|link| link.relinked_from.is_some())
+        .expect("the entry moved, which is the whole point of the fixture");
+    assert_eq!(moved.relinked_from.as_deref(), Some(target.id.as_str()));
+    assert_ne!(
+        moved.episode.as_deref(),
+        Some(target.id.as_str()),
+        "the id it names is the successor, not the dead row"
+    );
+    assert_eq!(
+        moved.method,
+        LinkMethod::Shape,
+        "the rung is the one ADR-003 §5.5 names for a reword, and a surface can print it: {}",
+        moved.method.as_str()
+    );
+    assert!(
+        store(&repo)
+            .episode_rewrites()
+            .expect("the rewrite table reads")
+            .iter()
+            .any(|(old, new, _, method)| old == &target.id
+                && new == moved.episode.as_deref().unwrap_or_default()
+                && method == "shape"),
+        "RL5: the re-link is a queryable rewrite row naming both ends, not a memory: {:?}",
+        store(&repo)
+            .episode_rewrites()
+            .expect("the rewrite table reads")
+    );
+    // And the dead row is still there — the ladder passed it, it did not delete it. ADR-003 §6.5 keeps a
+    // dead episode that carries a decision so the ledger can be read from either end.
+    assert!(
+        episode_facts(&repo)
+            .iter()
+            .any(|episode| episode.id == target.id && !episode.live),
+        "the row the sign-off was written against is kept, decision and all"
+    );
+}
+
+/// An act stamped between two seconds is still one act, and `fathom review sync` is still idempotent
+/// against it (`reco-2pw`).
+///
+/// `the_queue_acts_render_into_entries_once` uses a whole-second instant, which is the one instant that
+/// cannot show this: the file renders a stamp to the second, so an entry written from a sub-second act
+/// comes back from the file with a *different* stamp, and the derived identity that `unsettled` compares
+/// stops matching. The second run then re-rendered the act, appended a second copy of a review nobody
+/// made twice, and the mirror's primary key refused the duplicate — a `STORE_CORRUPT` exit from a verb
+/// whose whole claim is that it can be run twice.
+#[test]
+fn an_act_stamped_between_two_seconds_renders_once_too() {
+    use fathom_store::episode::{ReviewState, TriageEvent};
+
+    let repo = Repo::new("subsecond");
+    repo.init();
+    repo.turn(60, "src/store.rs", "change the store");
+    index(&repo);
+    let episodes = live(&repo);
+    let episode = episodes
+        .iter()
+        .find(|candidate| candidate.summary.contains("change the store"))
+        .expect("the fixture has an episode");
+    store(&repo)
+        .record_triage(&TriageEvent {
+            episode: episode.id.clone(),
+            fingerprint: episode.fingerprint.clone(),
+            disposition: ReviewState::Accepted,
+            reason: String::new(),
+            note: "937 ms past the second".to_owned(),
+            until: String::new(),
+            actor: reviewer().display,
+            risk: None,
+            risk_model: String::new(),
+            utc: NOW + 937,
+        })
+        .expect("the act lands in the log");
+
+    let first = {
+        let store = store(&repo);
+        collect::unsettled(&store, repo.path(), &episodes)
+            .expect("reading the act log")
+            .0
+    };
+    assert_eq!(first.len(), 1, "one act, one entry");
+    ledger_format::append_entries(&ledger_format::default_path(repo.path()), &first)
+        .expect("writing the rendered entry");
+
+    let second = {
+        let store = store(&repo);
+        collect::unsettled(&store, repo.path(), &episodes)
+            .expect("reading the act log again")
+            .0
+    };
+    assert!(
+        second.is_empty(),
+        "the same act, asked about again, is already rendered — a second copy is a review nobody made: \
+         {} entry(ies) pending",
+        second.len()
+    );
+
+    // And the entry the file holds is byte-identical to the one that was written: the round trip through
+    // the markdown is an identity, which is what makes the answer above knowable at all.
+    let (entries, problems) = collect::read(repo.path());
+    assert!(problems.is_empty(), "{problems:?}");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(
+        entries[0].id, first[0].id,
+        "the derived id survived the file"
+    );
+    assert_eq!(
+        entries[0].signed_utc, first[0].signed_utc,
+        "and so did the instant it is derived from"
     );
 }
 

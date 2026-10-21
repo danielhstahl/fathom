@@ -735,6 +735,25 @@ impl SignError {
     }
 }
 
+/// The ledger's clock: the whole second, and nothing finer.
+///
+/// The file is the truth (`ADR-004 §9.1`), and the file renders a stamp as `YYYY-MM-DDTHH:MM:SSZ` —
+/// [`iso_utc`] drops everything after the second and [`parse_iso_utc`] can only read back what it wrote.
+/// So an entry whose in-memory stamp has a sub-second part is an entry that changes when it is re-read:
+/// its `signed:` line, and therefore its derived id, come back different from what was written. That is
+/// not cosmetic. `collect::unsettled` asks "have I already rendered this act?" by rebuilding the act's
+/// entry identity and looking for it among the parsed entries, and an act logged by the TUI carries the
+/// millisecond its keystroke landed in — so the answer was always *no*: `fathom review sync` re-rendered
+/// every act on every run, appended a second copy of a sign-off that had not changed, and then the mirror
+/// refused the duplicate id (`reco-2pw`).
+///
+/// Truncating here, in the one place that turns an instant into a ledger stamp, is what makes the
+/// round trip through the file an identity: sign, write, re-read, and the entry is the same entry.
+#[must_use]
+pub const fn ledger_clock(millis: i64) -> i64 {
+    millis - millis.rem_euclid(1_000)
+}
+
 /// Build a sign-off for `episode`.
 ///
 /// Refuses rather than writes a weak entry: no identity, a provisional episode, or an episode whose content
@@ -755,6 +774,8 @@ pub fn sign(
     if episode.content.files.is_empty() {
         return Err(SignError::NoContent);
     }
+    // The file cannot hold a finer stamp than this, so nothing else may claim to (`ledger_clock`).
+    let signed_utc = ledger_clock(signed_utc);
     let scale = Scale {
         commits: episode.members.len().try_into().unwrap_or(i64::MAX),
         files: episode.content.files.len().try_into().unwrap_or(i64::MAX),

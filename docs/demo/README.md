@@ -53,7 +53,87 @@ see (`fathom tui` computes its own and throws it away — that is one of the def
 | (a) orient in under a minute | **not achieved** | The frame appears in **14.7 ms**. The first *answer* never arrives. The rail's only line tells the reviewer to run `fathom index`; they do — it takes 0.4 s and changes nothing — and reopen to the same sentence. Orientation is "I can say which episodes matter and why"; at the 34.8 s the walkthrough ran, the reviewer could name zero of the ten planted risky episodes. |
 | (b) find and read the three riskiest episodes | **not achieved** | Risk is `?` on every row, the queue is empty, `w` says *owned by e4.4*, search says *the scorer is owned by e5.2*, and the diff viewer has no patch. `search` could not have found the CI secret anyway: `<Space>` cannot be typed in a prompt. |
 | (c) no mouse, no leaving the TUI | **achieved** | All 41 steps are keystrokes, deliberate waits, or hand-offs to another process. The palette reaches all 78 registered actions, `<C-w>` window motions work, `?` prints the merged keymap, `T` pins a tab. Nothing needed a mouse. The three `shell` steps are the rebase, the index run the TUI cannot do for itself, and the headless session dump — things that genuinely live in another process, which is what step (d) is about. |
-| (d) rebase midway, nothing lost | **partly** | The last five commits were cherry-picked onto `HEAD~5` and the old ones pruned, with the TUI open. Survived and restored: filter, pinned tab, focused pane, pane sizes, the `m` mark, the last search (`tui.search` came back verbatim). Could not be checked: the review ledger — `x` / `f` / `z` act on the episode in scope and there is never one. Newly wrong: `fathom stats` then reports **505 commits in a 500-commit repository**, and `fathom doctor` exits 0. |
+| (d) rebase midway, nothing lost | **partly** | The last five commits were cherry-picked onto `HEAD~5` and the old ones pruned, with the TUI open. Survived and restored: filter, pinned tab, focused pane, pane sizes, the `m` mark, the last search (`tui.search` came back verbatim). Could not be checked: the review ledger — `x` / `f` / `z` act on the episode in scope and there is never one. Newly wrong: `fathom stats` then reports **505 commits in a 500-commit repository**, and `fathom doctor` exits 0. **Checked since:** the half that could not be checked is a walkthrough of its own now — [`review-survives-rebase.json`](review-survives-rebase.json), below — and it found two defects on the way, both fixed. |
+
+## The half of step (d) that could not be checked (`reco-2pw`)
+
+Step (d)'s sentence was "the review ledger could not be checked, because `x` / `f` / `z` act on the episode
+in scope and there is never one". The rail got its rows (P1 #1 under *What the walkthrough filed*, below)
+and the acts got their surface
+(`reco-wsj`), so the keystrokes land now — and checking the claim properly is what this second walkthrough
+is for. It is twelve steps and **6.8 s** end to end, and it is run by `pytest`, not by a bystander:
+
+| File | What it is |
+|---|---|
+| [`review-survives-rebase.json`](review-survives-rebase.json) | the script: mark, render the act into the ledger, rewrite the history under the mark, re-index, reopen |
+| [`review-survives-rebase.cast`](review-survives-rebase.cast) | asciicast v2, 132×40, the same twelve steps as a film |
+| [`../../tools/review_state_fixture.py`](../../tools/review_state_fixture.py) | the six-commit fixture it is reviewed in: one commit per episode, one path per episode, and a reviewer identity committed into the repository's own config so a sign-off names the same person on every machine |
+| [`../../tests/test_review_state_contract.py`](../../tests/test_review_state_contract.py) | the claim as four tests against the built binary, the last of which replays this script keystroke for keystroke |
+
+```bash
+python3 tools/review_state_fixture.py --out /tmp/fathom-review   # six hourly commits, one episode each
+(cd /tmp/fathom-review && fathom index)
+python3 tools/tui_session.py --root /tmp/fathom-review \
+    --script docs/demo/review-survives-rebase.json --cast /tmp/review.cast
+python3 -m pytest tests/test_review_state_contract.py -q         # …and the same run, asserted
+```
+
+`x` on the newest row flips the rail's state column `⚑` → `✔`, the card says `✔ accepted`, and the toast
+names the episode, the risk and who signed it. Then, in another terminal, the last three commits are
+cherry-picked onto `HEAD~3` and the ones they replace are pruned — the same rewrite step (d) performs — with
+one difference: the marked commit is **reworded**, which is the rewrite that moves an episode id (ADR-003
+§5.5) and therefore the only one that can prove the decision travelled with the change. What the four
+hand-offs to another process printed:
+
+```text
+sync exits 0 · rendered 1 act(s) into the ledger; 0 act(s) had no describable episode
+  sg-8a715815ff5fff10  accepted  ep-147e49c8309a300b4f55
+head=d84d7c6 commits=6 tip=feat: retune module 5 after the review
+index … 6 commit(s) walked, 3 new, 0 analyse unit(s) computed in 7 ms
+fresh   accepted  human  Dana Stahl <dana@example.com> ep-9e3ec6365a90b28ee2ac
+ledger  1 file(s) · 1 entries · 1 fresh · 0 stale · 0 orphan · 0 tampered
+```
+
+`ep-147e…` was signed off and no longer exists; the sign-off is `fresh` against `ep-9e3e…`, which is the
+reworded change under its new id, and `fathom review status --json` prints the rung it came over as
+`link_method: "shape"`, `link_score: 0.7`, `relinked_from: "ep-147e…"` — ADR-003 §6.2's second tier, the one
+reserved for a reword, and a printed fact rather than an inference. Two of the three rewritten commits kept
+their ids outright (§5.4: a rebase of picks moves oids, parents and dates and no identity), which is the
+*other* half of the claim and is asserted separately, with `link_method: "exact"`.
+
+**Two defects were found by writing this, and both are fixed here.**
+
+1. **A sign-off the product wrote was orphaned by any rewrite that moved its id.** The ledger's ladder
+   stopped at tier 0 whenever the entry's id still resolved — including when it resolved to the *dead* row
+   the segmentation pass keeps precisely because it carries a decision (ADR-003 §6.5). So the rail and the
+   ledger contradicted each other after a reword: the store had re-attached the marker to the successor, and
+   `fathom review status` counted the same decision as `0 fresh · 0 stale · 1 orphan` — "the episode is in
+   the index but no current commit belongs to it". The ladder now treats
+   a dead exact hit as the absence of an answer rather than an answer: it goes on to the weaker tiers, and
+   keeps the dead row's sentence for the case where nothing live turns up — which is still what a deleted
+   episode gets (`an_episode_deleted_outright_is_an_orphan_with_a_reason`). Every existing relink test signed
+   with `sign()` in a loop, which writes the markdown and no `review_state` row, so the dead row was pruned
+   and the tier-0 trap never sprang: the bug only existed for reviews the product itself had recorded.
+2. **`fathom review sync` was not re-runnable.** Its own documentation promises that running it twice renders
+   nothing the second time, and with a real act it did worse than duplicating work: the ledger file holds a
+   stamp to the whole second, a keystroke lands between two of them, so the entry read back out of the file
+   never matched the entry the act implies, and the second run appended a second copy of a sign-off nobody
+   made twice — then the mirror's primary key rejected the duplicate id and the verb exited 4 with
+   `STORE_CORRUPT`. A stamp entering the ledger is now cut to the resolution the file can carry
+   (`ledger_clock`), which makes the round trip through the markdown an identity, and `fathom review status`
+   stopped telling reviewers to run a sync they had just run (`1 settled act(s) … have never been rendered`,
+   forever).
+
+The recorded run above is the one in the cast; the assertions are in
+`crates/fathom-analyze/tests/ledger.rs` (`a_reword_after_a_queue_act_relinks_the_sign_off_on_the_shape_tier`,
+`an_act_stamped_between_two_seconds_renders_once_too`),
+`crates/fathom-cli/tests/review_verb.rs` (`sync_twice_renders_the_act_once_and_says_so`) and
+`tests/test_review_state_contract.py`, which is the only one of the three that presses the key.
+
+The table above and the one below are still the 2026-10-17 MVP run, unregenerated: re-running it would also
+re-measure the budget rows, and four of those rows are *recorded* as blocked on a store→frame path that the
+read above has since built. That rewrite of this page is its own job. What step (d) needed was never a newer
+set of timings — it was a way to press `x`, move the history, and be shown rather than told.
 
 ## The script, with the clock
 

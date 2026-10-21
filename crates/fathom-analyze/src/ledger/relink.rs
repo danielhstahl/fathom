@@ -21,7 +21,7 @@
 //!
 //! | `link_method` | Evidence | `link_score` | Typical rewrite |
 //! |---|---|---|---|
-//! | `exact` | the entry's episode id still names an episode | 1.00 | a plain `rebase -i`, `--amend --no-edit`, a force-push |
+//! | `exact` | the entry's episode id still names a **live** episode | 1.00 | a plain `rebase -i`, `--amend --no-edit`, a force-push |
 //! | `fingerprint` | the entry's strong digest names a live episode whose id differs | 0.98 | a twin that lost or gained its `-2` suffix |
 //! | `fingerprint` | shared `fallback_fingerprint` (author + subject) | 0.90 | an amend or squash that moved files |
 //! | `shape` | shared `shape_fingerprint` (author + paths) | 0.70 | a reword, mid-rebase or not |
@@ -31,6 +31,14 @@
 //! Within a tier the candidate is the **most recent** live episode (`last_utc`, then `created_utc`, then id),
 //! which is ADR-003 RL3's tie-break carried over: the row just under the live one is almost always its
 //! predecessor, and the id ordering makes the choice total, so the same index always produces the same link.
+//!
+//! A dead episode is never the *answer*, only the *explanation*. ADR-003 §6.5 keeps a dead row that carries a
+//! decision so that a sign-off can be read from either end, and §5.5 says a reword moves the id and the
+//! decision follows it onto the successor — so an id that resolves only to a dead row sends the ladder on to
+//! the weaker tiers, and the dead row is what the orphan names when they find nothing. An act taken in the TUI
+//! writes a `review_state` row, which is exactly the row that keeps a dead episode from being pruned, so a
+//! ladder that stopped at a dead exact hit would orphan every sign-off the product itself produced and
+//! contradict the segmentation pass, which re-links the same marker one table away (`reco-2pw`).
 //!
 //! # What is *not* here, and on purpose
 //!
@@ -178,7 +186,8 @@ impl Link {
 ///
 /// `entries` and the returned links are in the same order, so a caller can zip them. `episodes` may include
 /// dead ones: an entry that points only at a dead episode is an orphan *with a reason*, which is a different
-/// sentence from "nothing here matches" and the more useful one.
+/// sentence from "nothing here matches" and the more useful one — but only after every tier has been asked
+/// whether the change has a live successor.
 #[must_use]
 pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
     // Which live episodes already carry a fresh accepted entry of their own — the RL0 guard below. Computed
@@ -205,13 +214,23 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
                     .filter(|episode| tier.matches(entry, episode))
                     .collect::<Vec<_>>()
             };
-            // Tier 0: the id itself, live or dead, because an id that still resolves is a fact and not a
-            // guess — and if it resolves to a dead episode, saying so is more useful than saying "nothing".
-            let by_id: Vec<&EpisodeFacts> = episodes
-                .iter()
-                .filter(|episode| episode.id == entry.episode)
-                .collect();
-            let (chosen, method, score) = if let Some(episode) = by_id.first() {
+            // Tier 0: the id itself — but only a *live* episode under that id answers the question the
+            // verdict asks, which is "is the change this reviewer signed still in this history, and is
+            // what they signed still what is here?". A dead row with that id is not an answer, it is the
+            // absence of one: ADR-003 §6.5 keeps it precisely so that a sign-off can be read from either
+            // end, and §5.5 is explicit that a reword moves the id and the decision follows it onto the
+            // successor. So a dead exact hit is remembered, not returned: it is what the orphan reason
+            // names when no tier finds a successor, and nothing else. Stopping here instead — which is
+            // what this ladder did — orphaned every sign-off the product itself had written, because the
+            // `review_state` row a TUI act leaves behind is exactly the reason the dead row is kept
+            // (`reco-2pw`).
+            let by_id = |live: bool| {
+                episodes
+                    .iter()
+                    .find(|episode| episode.id == entry.episode && episode.live == live)
+            };
+            let dead_exact = by_id(false);
+            let (chosen, method, score) = if let Some(episode) = by_id(true) {
                 (Some((*episode).clone()), LinkMethod::Exact, 1.0)
             } else {
                 let mut chosen = None;
@@ -254,6 +273,29 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
             };
 
             let Some(episode) = chosen else {
+                // Nothing live matched, so the entry is an orphan. It is still two different sentences
+                // — "the id names a row this history no longer carries" and "nothing here matches at
+                // all" — and only the first one tells the reviewer their review was real.
+                if let Some(dead) = dead_exact {
+                    return Link {
+                        entry: entry.id.clone(),
+                        episode: Some(dead.id.clone()),
+                        // The link did not move: this is the episode the entry named, still named, and
+                        // still dead. `relinked_from` is for a decision that *arrived* somewhere else.
+                        relinked_from: None,
+                        method: LinkMethod::Exact,
+                        score: 1.0,
+                        state: EntryState::Orphan,
+                        reason: "the episode is in the index but no current commit belongs to it — the \
+                                 history that carried it was rewritten away, and no re-link tier found a \
+                                 successor for it in this one"
+                            .to_owned(),
+                        linked_fingerprint: dead.fingerprint.clone(),
+                        dead: true,
+                        tampered,
+                        summary: dead.summary.clone(),
+                    };
+                }
                 return Link {
                     entry: entry.id.clone(),
                     episode: None,
@@ -278,23 +320,8 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
             } else {
                 Some(entry.episode.clone())
             };
-            if !episode.live {
-                return Link {
-                    entry: entry.id.clone(),
-                    episode: Some(episode.id.clone()),
-                    relinked_from,
-                    method,
-                    score,
-                    state: EntryState::Orphan,
-                    reason: "the episode is in the index but no current commit belongs to it — the history \
-                             that carried it was rewritten away"
-                        .to_owned(),
-                    linked_fingerprint: episode.fingerprint.clone(),
-                    dead: true,
-                    tampered,
-                    summary: episode.summary.clone(),
-                };
-            }
+            // Every candidate the ladder can choose is live — a dead one is either the exact hit handled
+            // above or filtered out of the tiers — so a link that got here points at a reviewable episode.
             let (state, reason) =
                 match super::entry::compare_signed(&entry.content, &entry.paths, &episode.content) {
                     ContentCompare::Same => (EntryState::Fresh, String::new()),
