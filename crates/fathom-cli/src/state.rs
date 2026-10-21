@@ -21,6 +21,19 @@
 //! | epoch still `building` | a rebuild was started and not finished | 12 | `fathom index --rebuild` |
 //! | store fails its checks | the file is not trustworthy | 4 | `fathom index --rebuild` |
 //!
+//! # The seventh state, which is not a degradation
+//!
+//! | State | Why it is not one | Code | Remedy |
+//! |---|---|---|---|
+//! | rows the history left behind | a rebase or force-push left commit rows for commits the object database has forgotten; the scale counted them and nothing said so | 12, under `--strict` only | `fathom index --prune` |
+//!
+//! [`Severity`] is the switch. The dead-row set is *untidy*: every answer the index gives is still the
+//! answer — the queue is segmented over the reachable history, HEAD is indexed, the analysis is current —
+//! so `fathom stats` prints the count, prints the verb that reclaims the rows, and leaves with 0 like the
+//! healthy index it is. `fathom doctor --strict`, the pre-flight posture, is the one that says "fix this"
+//! and exits 12. A rewrite that leaves rows behind is a normal thing a repository does; a CI job that has
+//! decided its stores stay clean is entitled to say so.
+//!
 //! Note what is *not* here: an index with nothing in it because the repository has no commits is not
 //! degraded, it is an empty repository, and the copy ADR-006 §10.3 fixes is the one printed.
 
@@ -52,6 +65,43 @@ pub const REMEDY_UNREADABLE: &str = "the object database is missing something fa
      `git fsck --full` in the repository (then `git fetch`, or re-clone, if it names a missing object), \
      then `fathom index`";
 
+/// The remedy for rows the history has left behind.
+///
+/// It is the one verb that deletes (ADR-004 §8.1), and it is worth saying which: `fathom index` walks the
+/// history and never removes anything, so a user who typed it — the obvious thing to type — was told nothing
+/// happened, which is `reco-218`'s complaint. `--rebuild` is not the remedy either: an epoch bump makes
+/// derived rows unreachable and leaves the spine's rows exactly where they were.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_PRUNE: &str = "`fathom index --prune` removes them (`--prune --dry-run` prints the list first); \
+     a rewrite leaves rows behind by design and nothing else deletes them";
+
+/// How much a finding costs the verb that printed it.
+///
+/// The distinction is not decoration: `fathom stats` and `fathom doctor` read the same snapshot and have
+/// different jobs. One finding is a **degradation** — an answer is missing or wrong, so every verb that
+/// reports the state of the index says so with its code. The other kind is **untidy**: every answer is
+/// still the answer, and what the finding is asking for is housekeeping. `fathom doctor` prints both with
+/// their remedies; only `--strict`, the pre-flight posture a CI job uses, exits for the second kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    /// The index is missing, incomplete, stale or untrustworthy: the verb leaves with this code.
+    Degraded,
+    /// The index is whole and merely holding what the history no longer has: printed with its remedy, and
+    /// it moves the exit code only under `fathom doctor --strict`.
+    Untidy,
+}
+
+impl Severity {
+    /// The machine name, as it appears in a finding's JSON.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Severity::Degraded => "degraded",
+            Severity::Untidy => "untidy",
+        }
+    }
+}
+
 /// One line of "here is what is wrong, and here is what to do about it".
 ///
 /// A finding always carries its remedy, which is the difference between a diagnostic and a shrug. `exit` is
@@ -69,6 +119,8 @@ pub struct Finding {
     pub remedy: &'static str,
     /// The published code this finding maps to.
     pub exit: ExitCode,
+    /// Whether it degrades an answer or only untidies the store — see [`Severity`].
+    pub severity: Severity,
 }
 
 impl Finding {
@@ -86,6 +138,22 @@ impl Finding {
             message: message.into(),
             remedy,
             exit,
+            severity: Severity::Degraded,
+        }
+    }
+
+    /// A finding worth fixing that is not a broken answer — see [`Severity::Untidy`].
+    #[must_use]
+    pub fn untidy(
+        code: &'static str,
+        section: &'static str,
+        message: impl Into<String>,
+        remedy: &'static str,
+        exit: ExitCode,
+    ) -> Self {
+        Finding {
+            severity: Severity::Untidy,
+            ..Self::new(code, section, message, remedy, exit)
         }
     }
 
@@ -99,6 +167,7 @@ impl Finding {
             "remedy": self.remedy,
             "exit_code": self.exit.as_i32(),
             "exit_name": self.exit.name(),
+            "severity": self.severity.as_str(),
         })
     }
 
@@ -132,10 +201,31 @@ impl Snapshot {
     /// "Worst" is by number rather than by an invented severity scale: ADR-002 §7.3's table is already
     /// ordered roughly by how much attention a code wants, and a second ordering would be a second contract
     /// to keep in sync.
+    ///
+    /// Only [`Severity::Degraded`] findings count. This is the code a verb that *reports the state of the
+    /// index* leaves with — `fathom stats`, `fathom show`, `fathom analyze` — and an untidy store whose every
+    /// answer is still the answer is not a store whose report should read as a failure.
     #[must_use]
     pub fn worst_code(&self) -> ExitCode {
+        self.worst_code_with(Severity::Degraded)
+    }
+
+    /// The same, counting the [`Severity::Untidy`] findings too: what `fathom doctor --strict` leaves with.
+    ///
+    /// The pre-flight question is not "is the index answering correctly" but "is there anything here a
+    /// someone should fix", which is exactly the question `reco-218`'s dead-row set asks.
+    #[must_use]
+    pub fn worst_code_strict(&self) -> ExitCode {
+        self.worst_code_with(Severity::Untidy)
+    }
+
+    fn worst_code_with(&self, at_least: Severity) -> ExitCode {
         self.findings
             .iter()
+            .filter(|finding| match at_least {
+                Severity::Degraded => finding.severity == Severity::Degraded,
+                Severity::Untidy => true,
+            })
             .map(|finding| finding.exit.as_i32())
             .filter(|code| *code != 0)
             .max()
@@ -390,6 +480,36 @@ pub fn object_unreadable_finding(holes: &[(String, String, i64)], redactor: &Red
     )
 }
 
+/// The finding for commit rows the history has left behind (`reco-218`).
+///
+/// Untidy, not degraded, and the distinction is the finding's whole claim: the index describes HEAD, every
+/// episode is segmented over the reachable history, and the review queue does not show the ghosts — so no
+/// answer is wrong. What is wrong is that the store is counted as holding a repository that no longer
+/// exists, which is what `fathom stats`' `scale` line said and what nothing used to say. The named oids are
+/// the newest few: the commits a reviewer is likeliest to remember typing.
+pub fn dead_rows_finding(dead: &fathom_store::inventory::DeadRows) -> Finding {
+    let named = dead
+        .sample
+        .iter()
+        .take(3)
+        .map(String::as_str)
+        .map(short_oid)
+        .collect::<Vec<_>>()
+        .join(" · ");
+    Finding::untidy(
+        "index_dead_rows",
+        "index",
+        format!(
+            "{count} of the {retained} commit row(s) in the index are rows for commits no ref can reach: \
+             the history was rewritten and the objects are gone — {named}",
+            count = dead.dead,
+            retained = dead.retained,
+        ),
+        REMEDY_PRUNE,
+        ExitCode::IndexDegraded,
+    )
+}
+
 /// The repository section, built from `fathom-ingest`'s own health report.
 fn describe_repository(root: &Path, redactor: &Redactor, findings: &mut Vec<Finding>) -> Value {
     let repo = match Repository::discover(root) {
@@ -557,7 +677,12 @@ fn describe_index(
     let wal = std::fs::metadata(path.with_extension("sqlite3-wal"))
         .map(|meta| meta.len())
         .unwrap_or(0);
-    let scale = store.scale().ok();
+    // One read, one walk: the scale the report prints and the dead set it must not silently exclude are two
+    // halves of the same judgement, and `scale()` on its own would have to walk again to say which rows it
+    // left out.
+    let inventory = store.inventory().ok();
+    let scale = inventory.as_ref().map(|inventory| inventory.scale.clone());
+    let dead = inventory.as_ref().map(|inventory| inventory.dead.clone());
     let runs = store.run_summary().ok();
     let inventory = store.cache_inventory().ok();
     let counters = store.counters("cache.").unwrap_or_default();
@@ -609,6 +734,11 @@ fn describe_index(
     }
     if !unreadable.is_empty() {
         findings.push(object_unreadable_finding(&unreadable, redactor));
+    }
+    // The ghosts of a rewrite, said as untidy rather than degraded: every answer is the answer, but the
+    // store is holding rows for commits that do not exist and nothing else in the report would say so.
+    if let Some(dead) = dead.as_ref().filter(|dead| dead.dead > 0) {
+        findings.push(dead_rows_finding(dead));
     }
     if !head_indexed {
         findings.push(Finding::new(
@@ -688,6 +818,23 @@ fn describe_index(
             })
             .collect::<Vec<_>>(),
         "commits": commits,
+        "commits_retained": dead.as_ref().map_or(0, |dead| dead.retained),
+        "dead_commits": dead.as_ref().map_or(0, |dead| dead.dead),
+        "dead_files": dead.as_ref().map_or(0, |dead| dead.dead_files),
+        "dead_unjudged": dead.as_ref().map_or(0, |dead| dead.unjudged),
+        "dead_unjudged_reason": dead
+            .as_ref()
+            .and_then(|dead| dead.reason.clone())
+            .map(|reason| redactor.text(&reason)),
+        "dead_sample": dead
+            .as_ref()
+            .map(|dead| {
+                dead.sample
+                    .iter()
+                    .map(|oid| json!({"commit": oid}))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default(),
         "head_indexed": head_indexed,
         "pending_derivation": pending.len(),
         "ref_tips": tips

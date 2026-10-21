@@ -645,6 +645,30 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
             scale["files"].as_u64().unwrap_or(0),
             scale["authors"].as_u64().unwrap_or(0)
         ));
+        // The other half of the one read `state.rs` makes: what the scale line did *not* count, and the verb
+        // that reclaims it. A rewrite leaves rows behind by design (ADR-004 §6.2); what `reco-218` was is a
+        // report that added them to the repository's size and called the difference nothing.
+        let dead = index["dead_commits"].as_u64().unwrap_or(0);
+        let unjudged = index["dead_unjudged"].as_u64().unwrap_or(0);
+        if dead > 0 {
+            out.push(format!(
+                "  dead      {dead} of {} commit row(s) are rows for commits no ref reaches \
+                 ({} file row(s)) — `fathom index --prune` removes them",
+                index["commits_retained"].as_u64().unwrap_or(0),
+                index["dead_files"].as_u64().unwrap_or(0),
+            ));
+        }
+        if unjudged > 0 {
+            // Not a claim about dead rows — the opposite: the store could not tell. Usually a shallow clone
+            // or an unreadable object, each with its own finding below.
+            out.push(format!(
+                "  reach     {} commit row(s) the store could not place: {}",
+                unjudged,
+                index["dead_unjudged_reason"]
+                    .as_str()
+                    .unwrap_or("the stored parent chain has a break in it")
+            ));
+        }
         out.push(format!(
             "  churn     +{} -{} over {} to {}",
             scale["lines_added"].as_u64().unwrap_or(0),

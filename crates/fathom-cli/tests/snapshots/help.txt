@@ -148,6 +148,14 @@ Options:
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
 
+      --prune
+          Remove the commit rows no ref can reach — what a rebase, an `--amend` or a force-push leaves behind.
+          
+          The only verb that deletes anything (ADR-004 §8.1). It runs after this run, against the ref tips this run just read, and it refuses rather than guesses: rows the store cannot prove are dead stay, and so does any row a review or a sign-off points at. `fathom stats` prints the count and names this flag.
+
+      --dry-run
+          With `--prune`: print what would be removed and remove nothing
+
       --progress
           Print the index's progress row even where stderr is not a terminal (`e5.9`).
           

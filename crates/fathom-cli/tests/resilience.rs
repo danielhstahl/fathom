@@ -42,6 +42,15 @@ fn sandbox(tag: &str) -> PathBuf {
 }
 
 fn git(working: &Path, args: &[&str], base: &Path) -> String {
+    git_when(working, args, base, "2026-01-01T00:00:00+00:00")
+}
+
+/// The same command on a clock of the caller's choosing.
+///
+/// Every fixture commit is stamped at one instant, which is what makes a fixture reproducible — and it also
+/// means a cherry-pick of one hands back the *same* commit id. A rewrite has to make new ones, or it
+/// rewrites nothing and the test proves nothing.
+fn git_when(working: &Path, args: &[&str], base: &Path, when: &str) -> String {
     let out = Command::new("git")
         .current_dir(working)
         .env_clear()
@@ -58,8 +67,8 @@ fn git(working: &Path, args: &[&str], base: &Path) -> String {
         .env("GIT_CONFIG_VALUE_2", "main")
         .env("GIT_CONFIG_KEY_3", "protocol.file.allow")
         .env("GIT_CONFIG_VALUE_3", "always")
-        .env("GIT_AUTHOR_DATE", "2026-01-01T00:00:00+00:00")
-        .env("GIT_COMMITTER_DATE", "2026-01-01T00:00:00+00:00")
+        .env("GIT_AUTHOR_DATE", when)
+        .env("GIT_COMMITTER_DATE", when)
         .args(args)
         .output()
         .expect("git is on PATH");
@@ -769,6 +778,250 @@ fn a_force_push_rewrite_does_not_lose_the_review_ledger() {
         0,
         "and the index describes the new HEAD, so the rewrite is a fact the report agrees with"
     );
+}
+
+// ---------------------------------------------------------------------------
+// 7b — the rows a rewrite leaves behind, and the verb that takes them (`reco-218`)
+// ---------------------------------------------------------------------------
+
+/// The same rewrite as the fixture above, without the reviewer's decision in the way: the demo's scripted
+/// rebase, run where nothing has reviewed the commits being replaced.
+fn rewritten(base: &Path) -> PathBuf {
+    let repo = repository(base, "rewritten", 6);
+    assert_survives(
+        &index(&repo, base),
+        "index of the history before the rewrite",
+    );
+    let tip = git(&repo, &["rev-parse", "HEAD"], base);
+    let root = git(&repo, &["rev-parse", "HEAD~2"], base);
+    git(&repo, &["reset", "--hard", "-q", &root], base);
+    for rev in git(
+        &repo,
+        &["rev-list", "--reverse", &format!("{root}..{tip}")],
+        base,
+    )
+    .lines()
+    {
+        // A new committer date is what makes a cherry-pick a *new* commit rather than the same object.
+        git_when(
+            &repo,
+            &["cherry-pick", rev.trim()],
+            base,
+            "2026-01-02T00:00:00+00:00",
+        );
+    }
+    git(&repo, &["reflog", "expire", "--expire=now", "--all"], base);
+    git(&repo, &["gc", "-q", "--prune=now"], base);
+    assert_eq!(
+        git(&repo, &["rev-list", "--all", "--count"], base),
+        "6",
+        "the fixture's rewrite must actually prune, or it proves nothing"
+    );
+    assert_survives(&index(&repo, base), "re-index after the rewrite");
+    repo
+}
+
+#[test]
+fn a_rewritten_history_names_the_rows_it_left_behind() {
+    let base = sandbox("rewritten");
+    let repo = rewritten(&base);
+
+    let (report, exit) = stats(&repo, &base);
+    // Reporting the ghosts is not the same as failing over them: HEAD is indexed, the queue is segmented
+    // over the history that still exists, and the index is not degraded.
+    assert_eq!(
+        exit,
+        0,
+        "an index that describes HEAD is not a degraded one: {:?}",
+        finding_codes(&report)
+    );
+    let index = &report["index"];
+    assert_eq!(
+        index["commits"].as_u64(),
+        Some(6),
+        "the scale the report prints is git's number, not the file's: {:?}",
+        index["scale"]
+    );
+    assert_eq!(
+        index["commits_retained"].as_u64(),
+        Some(8),
+        "six live rows, two ghosts"
+    );
+    assert_eq!(index["dead_commits"].as_u64(), Some(2));
+    assert_eq!(index["dead_files"].as_u64(), Some(2));
+    assert_eq!(
+        index["dead_unjudged"].as_u64(),
+        Some(0),
+        "nothing here is a mystery"
+    );
+    assert_eq!(
+        index["dead_sample"].as_array().map_or(0, |rows| rows.len()),
+        2,
+        "and the ghosts are named: {:?}",
+        index["dead_sample"]
+    );
+
+    // The same read, printed as a finding with a remedy that is a command.
+    let report = doctor(&repo, &base);
+    assert!(
+        finding_codes(&report).contains(&"index_dead_rows".to_owned()),
+        "the dead set is a finding: {:?}",
+        finding_codes(&report)
+    );
+    assert!(
+        remedy_for(&report, "index_dead_rows").contains("--prune"),
+        "and it names the verb that removes them"
+    );
+    assert_eq!(
+        report["exit_code"].as_i64(),
+        Some(12),
+        "the code it would exit for"
+    );
+    let strict = fathom(
+        &["doctor", "--strict", "--root", &repo.display().to_string()],
+        &base,
+    );
+    assert_eq!(
+        code(&strict),
+        12,
+        "`--strict` exits for it: {}{}",
+        stdout(&strict),
+        stderr(&strict)
+    );
+
+    // The prune, in the order a person would run it: see it, then do it.
+    let dry = fathom(
+        &[
+            "index",
+            "--prune",
+            "--dry-run",
+            "--json",
+            &repo.display().to_string(),
+        ],
+        &base,
+    );
+    assert_survives(&dry, "fathom index --prune --dry-run");
+    let dry = json_of(&dry, "fathom index --prune --dry-run --json");
+    assert_eq!(dry["prune"]["dry_run"], serde_json::Value::Bool(true));
+    assert_eq!(dry["prune"]["commits_removed"].as_u64(), Some(2));
+    let (report, _) = stats(&repo, &base);
+    assert_eq!(
+        report["index"]["dead_commits"].as_u64(),
+        Some(2),
+        "a dry run that removed something is not a dry run"
+    );
+
+    let run = fathom(
+        &["index", "--prune", "--json", &repo.display().to_string()],
+        &base,
+    );
+    assert_survives(&run, "fathom index --prune");
+    let run = json_of(&run, "fathom index --prune --json");
+    assert_eq!(run["prune"]["commits_removed"].as_u64(), Some(2));
+
+    let (report, exit) = stats(&repo, &base);
+    assert_eq!(exit, 0);
+    assert_eq!(
+        report["index"]["dead_commits"].as_u64(),
+        Some(0),
+        "the ghosts are gone"
+    );
+    assert_eq!(
+        report["index"]["commits"].as_u64(),
+        Some(6),
+        "and the history that was there is exactly as big as it was"
+    );
+    let strict = fathom(
+        &["doctor", "--strict", "--root", &repo.display().to_string()],
+        &base,
+    );
+    assert_eq!(
+        code(&strict),
+        0,
+        "and there is nothing left to be strict about"
+    );
+}
+
+#[test]
+fn a_prune_takes_the_ghost_a_review_was_written_against_and_leaves_the_review() {
+    // ADR-004 §8.2's promise, end to end: a prune may not lose a review. The reviewer's decision is stored
+    // against an episode identity, a rewrite moves that identity, and the commit row underneath it is what
+    // the prune is for. What has to survive is the *decision*, which it does because the relink ladder
+    // (ADR-003 §4) carried it to the episode that replaced the one it was written against before the prune
+    // ever ran — so the ghost is nobody's evidence any more, and it goes.
+    //
+    // Where the identity does *not* move with the decision — an episode retired with a decision still on it —
+    // the pruner withholds the row instead. That shape is the store's own to test, because the identity that
+    // makes it happen is invisible from git: see `dead_rows::a_prune_never_loses_a_review`.
+    let base = sandbox("prune-review");
+    let repo = repository(&base, "reviewed", 6);
+    assert_survives(&index(&repo, &base), "index before the rewrite");
+    let tip = git(&repo, &["rev-parse", "HEAD"], &base);
+    let episode = store_for(&repo)
+        .episode_for_commit(&tip)
+        .expect("the store reads its episodes")
+        .expect("an indexed commit belongs to an episode")
+        .id;
+    store_for(&repo)
+        .set_review(
+            &episode,
+            fathom_store::episode::ReviewState::Accepted,
+            "fixture",
+            Some("reviewed before the rewrite"),
+            1_700_000_000_000,
+        )
+        .expect("write the decision");
+
+    // A reword of the tip: new commit id, so the old row is a ghost; the committer clock has to move or git
+    // hands back the same object and nothing was rewritten at all.
+    git_when(
+        &repo,
+        &["commit", "-q", "--amend", "-m", "reworded: commit 5"],
+        &base,
+        "2026-01-02T00:00:00+00:00",
+    );
+    git(&repo, &["reflog", "expire", "--expire=now", "--all"], &base);
+    git(&repo, &["gc", "-q", "--prune=now"], &base);
+    assert_survives(&index(&repo, &base), "re-index after the rewrite");
+
+    let (report, _) = stats(&repo, &base);
+    assert_eq!(
+        report["index"]["dead_commits"].as_u64(),
+        Some(1),
+        "the reworded commit is a ghost: {:?}",
+        report["index"]
+    );
+    let run = fathom(
+        &["index", "--prune", "--json", &repo.display().to_string()],
+        &base,
+    );
+    assert_survives(
+        &run,
+        "fathom index --prune, after a reviewed commit was rewritten",
+    );
+    let run = json_of(&run, "fathom index --prune --json");
+    assert_eq!(run["prune"]["commits_removed"].as_u64(), Some(1));
+    assert_eq!(run["prune"]["withheld_reviewed"].as_u64(), Some(0));
+
+    // The decision is where a reviewer would look for it: on the episode the *new* commit belongs to.
+    let new_tip = git(&repo, &["rev-parse", "HEAD"], &base);
+    let carried = store_for(&repo)
+        .episode_for_commit(&new_tip)
+        .expect("the store reads its episodes")
+        .expect("the rewritten commit belongs to an episode")
+        .id;
+    assert!(
+        ledger(&repo)
+            .iter()
+            .any(|(id, state)| id == &carried && state == "Accepted"),
+        "the prune took the row and left the decision: {:?} on {carried}",
+        ledger(&repo)
+    );
+    let strict = fathom(
+        &["doctor", "--strict", "--root", &repo.display().to_string()],
+        &base,
+    );
+    assert_eq!(code(&strict), 0, "{}{}", stdout(&strict), stderr(&strict));
 }
 
 // ---------------------------------------------------------------------------

@@ -281,6 +281,16 @@ pub struct IndexArgs {
     /// Do not analyse uncommitted paths (ADR-004 §6.4).
     #[arg(long = "committed-only")]
     pub committed_only: bool,
+    /// Remove the commit rows no ref can reach — what a rebase, an `--amend` or a force-push leaves behind.
+    ///
+    /// The only verb that deletes anything (ADR-004 §8.1). It runs after this run, against the ref tips this
+    /// run just read, and it refuses rather than guesses: rows the store cannot prove are dead stay, and so
+    /// does any row a review or a sign-off points at. `fathom stats` prints the count and names this flag.
+    #[arg(long)]
+    pub prune: bool,
+    /// With `--prune`: print what would be removed and remove nothing.
+    #[arg(long, requires = "prune")]
+    pub dry_run: bool,
     /// Send the run report to stderr instead of stdout.
     ///
     /// Not a flag a person types: it is what `fathom --demo` sets, because on that run stdout belongs to
@@ -1261,12 +1271,15 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     // exempt, and each exemption is a different reason: `--rebuild` advances the analysis epoch, which is an
     // explicit act rather than a catch-up; `--refresh` is the pass that *measures* the cache and has to be
     // this process's own work to mean anything; `--stats` asks about this process's read of the cache table;
-    // `--watch` is asking to become the watcher itself.
+    // `--watch` is asking to become the watcher itself. `--prune` is exempt on `--rebuild`'s reason: deleting
+    // rows is an act on this store, and it has to happen after the ref snapshot this process is about to
+    // write, not after somebody else's idea of when it ran.
     #[cfg(feature = "watch")]
     if !args.rebuild
         && !args.refresh
         && !args.stats
         && !args.watch
+        && !args.prune
         && let Some(reply) = crate::daemon::ask_for_pass(root, "fathom index")
     {
         return index_by_daemon(args, &reply);
@@ -1354,6 +1367,19 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     }
     let epoch = store.epoch().map_err(failed)?;
 
+    // `--prune` runs *after* the index, and that order is the safety of it: the dead set is defined by the
+    // refs as they are now, and the run above is what just wrote them (ADR-004 §8.1 — the pruner is the only
+    // thing that deletes, and it deletes only what the store can prove is dead).
+    let prune = if args.prune {
+        Some(
+            store
+                .prune_dead_commits(args.dry_run, now)
+                .map_err(failed)?,
+        )
+    } else {
+        None
+    };
+
     if args.json {
         output::line(format_args!(
             "{}",
@@ -1364,11 +1390,17 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                 &report,
                 args.rebuild,
                 epoch,
-                &stream
+                &stream,
+                prune.as_ref(),
             )
         ));
     } else if args.stats {
         print_stats(&store_path, &report);
+        if let Some(prune) = &prune {
+            for line in prune_lines(prune) {
+                output::line(format_args!("{line}"));
+            }
+        }
     } else {
         // `--demo` sets `quiet` because stdout is about to carry the frame; every other caller owns
         // stdout and gets the report there (ADR-002 §7.5).
@@ -1431,6 +1463,11 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                 report.worktree_skipped.len()
             ));
         }
+        if let Some(prune) = &prune {
+            for line in prune_lines(prune) {
+                say(format_args!("{line}"));
+            }
+        }
         // A run that could not read some of the history says so here, in the plain report as well as in
         // `--stats` and `--json`: "degrade, never block" is only honest if the degradation is said out loud
         // on the path a human actually reads (ADR-001 §7.6). Named by commit, because "one commit failed"
@@ -1477,9 +1514,60 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     })
 }
 
+/// The `--prune` result, in the lines the plain report has room for.
+///
+/// Three cases, and the third is the one a report is tempted to print as the second: something went, nothing
+/// needed going, and nothing *could* go because the store cannot tell a dead row from a live one.
+#[cfg(feature = "sqlite-bundled")]
+fn prune_lines(prune: &fathom_store::prune::PruneReport) -> Vec<String> {
+    if let Some(why) = &prune.refusal {
+        return vec![format!(
+            "  prune     nothing removed: the store cannot tell dead rows from live ones ({why})"
+        )];
+    }
+    if prune.commits_removed == 0 {
+        return vec![
+            "  prune     nothing to remove: every commit row in the index is reachable from a ref"
+                .to_owned(),
+        ];
+    }
+    let mut out = vec![format!(
+        "  prune     {} {} dead commit row(s), {} file row(s){}",
+        if prune.dry_run {
+            "would remove"
+        } else {
+            "removed"
+        },
+        prune.commits_removed,
+        prune.files_removed,
+        if prune.episodes_removed > 0 {
+            format!(
+                ", {} episode(s) with no members left",
+                prune.episodes_removed
+            )
+        } else {
+            String::new()
+        },
+    )];
+    // The guard, said out loud rather than as a smaller number: "it only took 1 of the 2" is a fact about
+    // the reviewer's decisions, and silence about it reads as a bug in the prune (ADR-004 §8.2).
+    if prune.withheld_reviewed > 0 {
+        out.push(format!(
+            "  prune     {} dead commit row(s) left in place: a review or a sign-off points at them",
+            prune.withheld_reviewed
+        ));
+    }
+    if prune.dry_run {
+        out.push("  prune     nothing was removed: this was --dry-run".to_owned());
+    }
+    out
+}
+
 /// The `--json` shape, assembled here rather than derived from [`index::Report`]'s own serde so that the
 /// key names are the CLI's promise and not a struct's internals: a field renamed in `fathom-analyze` must
 /// not silently rename `fathom index --json`'s contract.
+#[allow(clippy::too_many_arguments)] // eight arguments, and every one is a different part of the store the
+                                      // report reads; a struct would only hide that
 #[cfg(feature = "sqlite-bundled")]
 fn json_report(
     root: &std::path::Path,
@@ -1489,6 +1577,7 @@ fn json_report(
     rebuild: bool,
     epoch: i64,
     stream: &crate::harness::Stream,
+    prune: Option<&fathom_store::prune::PruneReport>,
 ) -> serde_json::Value {
     use serde_json::json;
 
@@ -1509,6 +1598,20 @@ fn json_report(
             "written": report.spine.commits_written,
         },
         "interrupted": report.interrupted,
+        // What `--prune` took, or would have taken. Absent (`null`) when the flag was not passed, so a
+        // consumer can tell "nothing was removed" apart from "nothing was asked".
+        "prune": prune.map(|prune| {
+            json!({
+                "dry_run": prune.dry_run,
+                "commits_removed": prune.commits_removed,
+                "files_removed": prune.files_removed,
+                "episodes_removed": prune.episodes_removed,
+                "withheld_reviewed": prune.withheld_reviewed,
+                "withheld_undecidable": prune.withheld_undecidable,
+                "refusal": prune.refusal,
+                "sample": prune.sample,
+            })
+        }),
         // The intent capture's tallies, and what stream they came from (`e4.2`). `events_file` is printed
         // even when it does not exist, so "no intent" can be told apart from "no hooks" without a second
         // command.

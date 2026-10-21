@@ -486,6 +486,14 @@ this it cost 40 ms and produced 284 bytes", which is the difference between a bu
 being diagnosable and being a mystery. Dead rows are reaped by age and by budget pressure, never
 by causality.
 
+Two kinds of "dead" get conflated here, and only one of them is this section. A **derived** row made
+unreachable by an epoch or version bump (§6.3) is a gold mine: the answer is still sitting there, and
+throwing it away is paying to recompute it. A **spine** row for a commit that no longer exists in the object
+database — what a `rebase`, an `--amend` or a force-push leaves behind — is not: nothing will ever hit it
+again, and the harm it does is that `fathom stats` counted it as the repository (`reco-218`). Both are kept,
+because a review may point at either; the difference is that the second kind is now *named* — reported as its
+own count beside the reachable one, and removable by §8.1's pruner under §8.2's guard.
+
 ### 6.3 The epoch
 
 `meta.index_epoch` is the generation readers see; `meta.build_epoch` is the generation a rebuild is
@@ -630,6 +638,17 @@ testable from this container (§14.2), so it is specified here and verified in `
 It runs in the daemon at idle (and via `fathom store prune`), deletes in batches of
 `prune.batch_rows = 5 000` with a checkpoint between batches, and never inside a user-facing
 latency path.
+
+What exists today is the half `reco-218` needed: `fathom index --prune`, which removes the commit rows a
+rewrite left behind — the ones no ref reaches, counted by the same reachability walk `fathom stats` prints —
+together with their file rows and any episode that loses its last member with them (`fathom-store::prune`).
+The retention windows of §8.7, the LRU of §8.6 and the `fathom store usage`/`migrate` verbs are still §14's
+deferred list. Two things did not wait for the rest of the verb surface, because both are about the rows
+this verb can prove dead: the **review guard** (§8.2's "never pruned", applied commit by commit, with the
+withheld count reported rather than subtracted silently) and the **refusal** — where the store cannot tell a
+dead row from a live one, because the walk hit a break in the parent chain it holds or had no ref tip to
+walk from, it deletes nothing and says why. `--dry-run` is §8.7's rule that any deletion policy has to answer
+"what would it have done", and it runs the same statements rather than a second copy of the logic.
 
 ### 8.2 Never pruned
 
@@ -877,6 +896,24 @@ re-index, diff-viewer open time, the query p95s, peak RSS from the outside of th
 per commit — plus criterion benches for the store-side primitives at §11's microsecond scale, each
 checked against its budget *and* against the blessed baseline in
 `benchmarks/baselines/perf-gate.json`.
+
+**Which half of the file `store.bytes_per_commit_spine` is measured on, and over what denominator.** The
+store is one SQLite file that holds the spine *and* the analyse cache beside it, so "bytes per commit" is
+two different numbers depending on which tables you add up, and only one of them has a budget. The split is
+the one `tools/mvp_acceptance.py` measures with `dbstat`: everything that is not `cache`, `cache_input`,
+`session_state`, `index_run` or `schema_meta` is the spine. On the 500-commit `e1.12` fixture
+(`benchmarks/reports/e1-12-mvp-acceptance.json`): **1 679 360 spine bytes = 3 358 B/commit** against the
+4 096 B budget, while the *whole file* is 2 359 296 bytes = **4 718 B/commit** — larger than the spine
+number by design, because the cache rows and their blobs are §8.6's and `cache.budget.mib`'s business, not
+the spine's, and a cache that is doing its job makes a whole-file figure look fat. So a whole-file number
+compared against `store.bytes_per_commit_spine` is the wrong comparison: it would fail a build for a warm
+cache. `store.size.mib` is the budget that covers the file.
+
+The denominator is the history, not the file: `git rev-list --all --count`, the same reachable count
+`fathom stats` prints (§9.1). Dividing by the row count instead would flatter a store that has been left
+rows behind by a rewrite — 1 679 360 B over 505 rows reads 3 325 B/commit for a 500-commit repository, a
+number that is both smaller than the truth and a description of a file nobody has — which is `reco-218`
+showing up in a budget it was never meant to measure.
 
 ### 11.1 Size classes
 

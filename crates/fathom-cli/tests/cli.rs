@@ -806,6 +806,10 @@ fn help_uses_the_names_the_adrs_use() {
         "--stats",
         "--refresh",
         "--committed-only",
+        // `reco-218`: ADR-004 §8.1 names the prune, and ADR-004 §11's byte budget is measured on the same
+        // store the prune cleans, so the flag has to be readable from `--help` as well as from the ADR.
+        "--prune",
+        "--dry-run",
     ] {
         assert!(
             index.contains(flag),

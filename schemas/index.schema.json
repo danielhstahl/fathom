@@ -175,6 +175,64 @@
     },
     "worktree_skipped": {
       "type": "array"
+    },
+    "prune": {
+      "additionalProperties": false,
+      "description": "What `--prune` removed (or, on `--dry-run`, would have): the commit rows no ref reaches, what cascaded with them, and what the review guard refused to touch. `null` when `--prune` was not passed \u2014 'nothing was asked' is not the same statement as 'nothing was dead'.",
+      "properties": {
+        "commits_removed": {
+          "description": "`git_commit` rows removed: every one of them provably unreachable.",
+          "type": "integer"
+        },
+        "dry_run": {
+          "description": "True when `--dry-run` was passed. Every number below is then what a real prune *would* do, computed by the same statements rather than a second estimate.",
+          "type": "boolean"
+        },
+        "episodes_removed": {
+          "description": "Episode rows that lost their last member to the prune and carried no decision, review or relink, so nothing pointed at them.",
+          "type": "integer"
+        },
+        "files_removed": {
+          "description": "`git_commit_file` rows that went with those commits.",
+          "type": "integer"
+        },
+        "refusal": {
+          "description": "Why the store deleted nothing because it could not tell dead rows from live ones \u2014 a break in the stored parent chain, or no ref tip to walk from. A refusal is a stated partial, not an error: the verb still exits 0.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sample": {
+          "description": "Up to twelve of the commit ids involved, newest first.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "withheld_reviewed": {
+          "description": "Dead commits left in place because a review state or a mirrored ledger entry points at them (ADR-004 \u00a78.2). Counted, never silently subtracted.",
+          "type": "integer"
+        },
+        "withheld_undecidable": {
+          "description": "Pairs with `refusal`: the rows that would have been candidates had the store been able to judge.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dry_run",
+        "commits_removed",
+        "files_removed",
+        "episodes_removed",
+        "withheld_reviewed",
+        "withheld_undecidable",
+        "refusal",
+        "sample"
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
     }
   },
   "required": [

@@ -8,7 +8,9 @@
 //!
 //! Everything here is a read. Nothing takes `&mut self`, nothing writes a counter, nothing decides what a
 //! stale index *means* — that judgement is the verb's, and it is written down in
-//! `docs/concepts/cli.md` next to the exit code it produces.
+//! `docs/concepts/cli.md` next to the exit code it produces. The one exception is the reachability walk
+//! [`Store::inventory`] needs, which materialises its working set in a `temp` table: per-connection, gone
+//! when the read ends, and never a byte of the store itself.
 //!
 //! The aggregates are plain structs of primitives and `BTreeMap`s rather than `serde_json::Value`: the
 //! store reports facts, and the JSON key names are the CLI's published contract (`schemas/`), not this
@@ -20,6 +22,7 @@ use std::fmt;
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::error::Error;
+use crate::spine::Store;
 
 fn corrupt(what: impl fmt::Display, err: &rusqlite::Error) -> Error {
     Error::StoreCorrupt {
@@ -32,11 +35,18 @@ fn corrupt(what: impl fmt::Display, err: &rusqlite::Error) -> Error {
 /// "Repo scale" in `fathom stats`, in the units the spine stores. Every figure is a column the ingest
 /// pipeline already wrote, so this is a read and not a second walk — the difference ADR-004 §6.1 R1 makes
 /// for a warm run, applied to a status command.
+///
+/// The figures count the commits the refs still reach, not every row in the file: a rebase leaves five
+/// commit rows behind whose commits git has already pruned, and a status command that adds them to the
+/// repository's size is the defect `reco-218` is about. What was excluded is [`DeadRows`], read by the same
+/// statement in the same [`Store::inventory`] call, so the two numbers cannot disagree about which rows are
+/// which. When the store cannot judge reachability at all the figures fall back to every row — an
+/// unjudgeable store is reported as a whole store with `unjudged` set, never as a store that shrank.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Scale {
-    /// Rows in `git_commit`.
+    /// Commit rows a ref still reaches.
     pub commits: i64,
-    /// Rows in `git_commit_file`.
+    /// `git_commit_file` rows those commits carry.
     pub files: i64,
     /// Distinct `author_name <author_email>` pairs.
     pub authors: i64,
@@ -58,6 +68,286 @@ pub struct Scale {
     pub kinds: BTreeMap<String, i64>,
     /// The five most frequent authors, busiest first: `(author, commits)`.
     pub top_authors: Vec<(String, i64)>,
+}
+
+/// The rows the store retains for commits no ref can reach any more.
+///
+/// A rewrite — `rebase`, `commit --amend`, a force-push — replaces commits by identity while leaving their
+/// rows behind, and `git gc --prune=now` then deletes the objects, so the repository has *fewer* commits
+/// than the index counts. The spine is append-only (ADR-004 §6.2: mark-dead, do not delete on the event
+/// path) and the pruner is the only thing that deletes (§8.1), so the rows are expected; what was not
+/// expected is a report that counts them as live and calls the difference nothing.
+///
+/// `unjudged` is the honest third case. A store cannot always tell dead from merely-missing, and saying so
+/// is the difference between a count and a guess:
+///
+/// * a reachable commit names a parent this store has no row for (a shallow clone's graft, an object the
+///   walk could not read), so everything below that break is unverifiable — the rows are not provably
+///   dead, they are unprovable, and `dead` stays 0;
+/// * no ref tip resolves to a row at all, or a row's parent list could not be read, so nothing was judged:
+///   every row is `unjudged` and `reachable` equals `retained`, which is the same "no opinion keeps
+///   everything" rule [`crate::episode`] applies to the segmentation input.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DeadRows {
+    /// Rows in `git_commit`: everything the file holds, reachable or not.
+    pub retained: i64,
+    /// Rows a ref tip reaches through the stored parent pointers.
+    pub reachable: i64,
+    /// Rows retained and reached by nothing: provably the ghosts of a rewritten history.
+    pub dead: i64,
+    /// Rows that are neither reachable nor provably dead — see the type's docs.
+    pub unjudged: i64,
+    /// `git_commit_file` rows the dead commits carry: what a prune reclaims along with them.
+    pub dead_files: i64,
+    /// Ref tips with no commit row: the walk could not start from them, which is a fact worth printing
+    /// beside an `unjudged` that is "everything".
+    pub tips_without_rows: i64,
+    /// Up to [`DeadRows::SAMPLE`] dead oids, newest first — enough for a report line to name the commits
+    /// it means rather than gesture at them.
+    pub sample: Vec<String>,
+    /// Why nothing could be judged, when nothing could: the store's own error text for a walk that would
+    /// not run. `None` whenever the walk ran, whatever it concluded.
+    pub reason: Option<String>,
+}
+
+impl DeadRows {
+    /// How many dead oids [`DeadRows::sample`] holds at most: a finding line has room for three, and a
+    /// `--json` consumer wants a few more than that.
+    pub const SAMPLE: usize = 12;
+
+    /// Did the store reach a judgement at all?
+    #[must_use]
+    pub fn judged(&self) -> bool {
+        self.reason.is_none()
+    }
+
+    /// Is the set empty — every retained row a ref still reaches?
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.dead == 0
+    }
+}
+
+/// One read of the spine: how big the reachable repository is, and what the store is holding that is not
+/// part of it.
+///
+/// One read rather than two because both halves need the same reachability walk, and a status command that
+/// walked twice would be paying twice to be allowed to disagree.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Inventory {
+    /// The scale of what the refs reach.
+    pub scale: Scale,
+    /// What the refs do not reach.
+    pub dead: DeadRows,
+}
+
+/// The SQL that fills `temp.fathom_live` with every commit row a stored ref tip reaches.
+///
+/// The roots are the tips of kind `head`, `branch` and `remote`: a commit a remote-tracking ref names is on
+/// a branch this checkout has not adopted, which is a fact about the checkout and not about the repository,
+/// so it is not dead. Tags are left out for the reason [`crate::episode::Store::ref_tip_oids`] gives — a tag
+/// pinned to a rebased-away commit records the release that commit *was*, and is not a request to keep
+/// showing the row. The episode step walks the narrower set because it segments one lineage; this walk
+/// asks what the repository still contains, and every name a human could type answers that.
+const LIVE_WALK: &str = "\
+    INSERT OR IGNORE INTO temp.fathom_live (oid) \
+    WITH RECURSIVE live(oid) AS ( \
+        SELECT oid FROM ref_tip WHERE kind IN ('head','branch','remote') \
+        UNION \
+        SELECT parent.value FROM live \
+        JOIN git_commit c ON c.oid = live.oid \
+        JOIN json_each(c.parent_oids) AS parent \
+    ) \
+    SELECT oid FROM live";
+
+/// Parent oids the reachable commits name that this store has no row for: the breaks in the chain.
+const CHAIN_BREAKS: &str = "\
+    SELECT count(*) FROM temp.fathom_live l \
+    JOIN git_commit c ON c.oid = l.oid \
+    JOIN json_each(c.parent_oids) AS parent \
+    WHERE NOT EXISTS (SELECT 1 FROM git_commit g WHERE g.oid = parent.value)";
+
+/// The commit rows the walk did not reach.
+const DEAD_COUNT: &str = "\
+    SELECT count(*) FROM git_commit \
+    WHERE oid NOT IN (SELECT oid FROM temp.fathom_live)";
+
+/// The same set as oids, exported for the pruner, which turns it into a work list.
+pub(crate) const UNREACHABLE_OIDS: &str = "\
+    SELECT oid FROM git_commit \
+    WHERE oid NOT IN (SELECT oid FROM temp.fathom_live)";
+
+/// The file rows those commits carry.
+const DEAD_FILES: &str = "\
+    SELECT count(*) FROM git_commit_file \
+    WHERE commit_oid NOT IN (SELECT oid FROM temp.fathom_live)";
+
+/// The same set, newest first, for a report line that has to name what it means.
+const DEAD_SAMPLE: &str = "\
+    SELECT oid FROM git_commit \
+    WHERE oid NOT IN (SELECT oid FROM temp.fathom_live) \
+    ORDER BY author_utc DESC, oid LIMIT ?1";
+
+/// The ref tips the walk could not start from.
+const TIPS_WITHOUT_ROWS: &str = "\
+    SELECT count(*) FROM ref_tip t \
+    WHERE t.kind IN ('head','branch','remote') \
+    AND NOT EXISTS (SELECT 1 FROM git_commit g WHERE g.oid = t.oid)";
+
+/// The reachability walk, materialised once in a temp table.
+///
+/// A temp table rather than a `WITH RECURSIVE` prefix on every statement because one read issues half a
+/// dozen of them, and a CTE is re-evaluated per statement: the walk would run six times to answer one
+/// question. Temp objects are already this module's idiom — [`Store::sqlite_provenance`] probes `STRICT`
+/// and FTS5 by making one — and they are per-connection, so a reader in another process cannot see or
+/// disturb them.
+///
+/// When the walk cannot run the table is filled with *every* commit row, which makes every join below a
+/// no-op: an unjudgeable store reports its whole scale and says so through [`DeadRows::reason`] instead of
+/// reporting a history that shrank for no reason.
+pub(crate) struct LiveSet<'a> {
+    store: &'a Store,
+    /// Whether the walk ran, and so whether "not in the table" means "dead".
+    walked: bool,
+    /// Why it did not run, when it did not.
+    reason: Option<String>,
+    /// How many commit rows the table holds.
+    matched: i64,
+    /// How many commit rows exist.
+    retained: i64,
+    /// Whether the joins are worth issuing at all: when every row is in the set they would filter nothing.
+    filter: bool,
+    /// How many parents the reachable commits name that have no row.
+    breaks: i64,
+}
+
+impl<'a> LiveSet<'a> {
+    pub(crate) fn build(store: &'a Store) -> Result<Self, Error> {
+        let conn = store.connection();
+        let mut set = Self {
+            store,
+            walked: false,
+            reason: None,
+            matched: 0,
+            retained: 0,
+            filter: false,
+            breaks: 0,
+        };
+        set.retained = conn
+            .query_row("SELECT count(*) FROM git_commit", [], |row| row.get(0))
+            .map_err(|err| corrupt("counting the spine", &err))?;
+        // A fresh set every time: the table is this read's working memory, and a row left over from the
+        // last read would be a live commit that stopped existing between two statements.
+        if let Err(err) = conn.execute_batch(
+            "DROP TABLE IF EXISTS temp.fathom_live; \
+             CREATE TABLE temp.fathom_live (oid TEXT PRIMARY KEY) WITHOUT ROWID;",
+        ) {
+            set.reason = Some(format!("the reachability walk could not start: {err}"));
+            return Ok(set);
+        }
+        match conn.execute(LIVE_WALK, []) {
+            Ok(_) => set.walked = true,
+            // The one way this statement can fail on a structurally sound store is a `parent_oids` the
+            // JSON parser will not take — damage, not an absence. Either way the walk has no answer, and
+            // the answer to "no answer" is to say so, not to report a shrunken history.
+            Err(err) => set.reason = Some(format!("the reachability walk could not run: {err}")),
+        }
+        if !set.walked {
+            // No opinion: every row is in the set, so nothing is excluded from the scale. If *this* fails
+            // there is no read left to fall back on, and the store is as unreadable as the error says.
+            let fill = conn.execute_batch(
+                "DELETE FROM temp.fathom_live; \
+                 INSERT OR IGNORE INTO temp.fathom_live (oid) SELECT oid FROM git_commit;",
+            );
+            if let Err(err) = fill {
+                return Err(corrupt(
+                    set.reason
+                        .take()
+                        .unwrap_or_else(|| "the reachability set could not be filled".to_owned()),
+                    &err,
+                ));
+            }
+        } else {
+            // A tip that names nothing is not a tip with an empty history behind it — it is a tip the walk
+            // could not read, and a store whose every tip is one has no roots to judge from. Same rule as
+            // `crate::episode`'s reachability step, for the same reason: treating it as "reachable: none"
+            // would report a whole repository as a graveyard.
+            let rooted: i64 = conn
+                .query_row(
+                    "SELECT count(*) FROM temp.fathom_live l \
+                     WHERE EXISTS (SELECT 1 FROM git_commit g WHERE g.oid = l.oid)",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|err| corrupt("reading the reachability set", &err))?;
+            if rooted == 0 {
+                set.walked = false;
+                set.reason = Some(
+                    "no ref tip has a commit row, so nothing could be judged reachable".to_owned(),
+                );
+                conn.execute_batch(
+                    "DELETE FROM temp.fathom_live; \
+                     INSERT OR IGNORE INTO temp.fathom_live (oid) SELECT oid FROM git_commit;",
+                )
+                .map_err(|err| corrupt("filling the reachability set", &err))?;
+            }
+        }
+        set.matched = conn
+            .query_row("SELECT count(*) FROM temp.fathom_live", [], |row| {
+                row.get(0)
+            })
+            .map_err(|err| corrupt("counting the reachability set", &err))?;
+        set.filter = set.walked && set.matched < set.retained;
+        set.breaks = if set.walked {
+            conn.query_row(CHAIN_BREAKS, [], |row| row.get(0))
+                .map_err(|err| corrupt("walking the parent chain", &err))?
+        } else {
+            0
+        };
+        Ok(set)
+    }
+
+    /// Whether the aggregates have to join the set at all.
+    fn filters(&self) -> bool {
+        self.filter
+    }
+
+    /// Why this store cannot tell a dead row from a live one, if it cannot.
+    ///
+    /// Two ways: the walk never ran, or it ran into a break in the chain below a commit the refs still
+    /// reach. [`crate::prune`] refuses on either, because a row whose death cannot be proved is a row that
+    /// must not be deleted.
+    pub(crate) fn refusal(&self) -> Option<String> {
+        if !self.walked {
+            return Some(
+                self.reason
+                    .clone()
+                    .unwrap_or_else(|| "the reachability walk did not run".to_owned()),
+            );
+        }
+        (self.breaks > 0).then(|| {
+            format!(
+                "the reachable commits name {} parent commit(s) this store has no row for",
+                self.breaks
+            )
+        })
+    }
+
+    /// Every commit row in the store, whether reached or not.
+    pub(crate) fn retained(&self) -> i64 {
+        self.retained
+    }
+}
+
+impl Drop for LiveSet<'_> {
+    fn drop(&mut self) {
+        // Best effort: a leftover temp table is invisible to every other connection and disappears with
+        // this one, so a failure here is worth no error variant.
+        let _ = self
+            .store
+            .connection()
+            .execute_batch("DROP TABLE IF EXISTS temp.fathom_live");
+    }
 }
 
 /// One `index_run` row, projected to what a status report prints.
@@ -220,16 +510,52 @@ impl crate::spine::Store {
 
     /// The repository's scale, as the store holds it.
     ///
+    /// A thin slice of [`Store::inventory`], which is where the one reachability walk happens.
+    ///
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] if any aggregate read fails.
     pub fn scale(&self) -> Result<Scale, Error> {
+        Ok(self.inventory()?.scale)
+    }
+
+    /// The commit rows no ref can reach any more.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the walk or an aggregate read fails.
+    pub fn dead_rows(&self) -> Result<DeadRows, Error> {
+        Ok(self.inventory()?.dead)
+    }
+
+    /// The scale of what the refs reach, and the rows they do not, from one walk of the stored parents.
+    ///
+    /// This is the read behind `fathom stats`' `scale` and `dead` lines and behind the `reco-218` finding
+    /// `fathom doctor` prints for them, which is the point of putting them in one call: the reachable count
+    /// and the dead count have to be two halves of one judgement, or a status report can print a repository
+    /// whose halves do not add up.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the walk or an aggregate read fails.
+    pub fn inventory(&self) -> Result<Inventory, Error> {
         let conn = self.connection();
+        let live = LiveSet::build(self)?;
+        let (commit_rows, file_rows) = if live.filters() {
+            (
+                "git_commit JOIN temp.fathom_live ON temp.fathom_live.oid = git_commit.oid",
+                "git_commit_file JOIN temp.fathom_live ON temp.fathom_live.oid = git_commit_file.commit_oid",
+            )
+        } else {
+            ("git_commit", "git_commit_file")
+        };
         let mut scale = Scale::default();
         (scale.commits, scale.files) = conn
             .query_row(
-                "SELECT (SELECT count(*) FROM git_commit),
-                        (SELECT count(*) FROM git_commit_file)",
+                &format!(
+                    "SELECT (SELECT count(*) FROM {commit_rows}), \
+                            (SELECT count(*) FROM {file_rows})"
+                ),
                 [],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -242,12 +568,14 @@ impl crate::spine::Store {
             scale.oversized_commits,
         ) = conn
             .query_row(
-                "SELECT count(DISTINCT author_name || ' <' || author_email || '>'),
-                        coalesce(sum(n_add), 0),
-                        coalesce(sum(n_del), 0),
-                        coalesce(sum(n_binary), 0),
-                        coalesce(sum(oversized), 0)
-                 FROM git_commit",
+                &format!(
+                    "SELECT count(DISTINCT author_name || ' <' || author_email || '>'), \
+                            coalesce(sum(n_add), 0), \
+                            coalesce(sum(n_del), 0), \
+                            coalesce(sum(n_binary), 0), \
+                            coalesce(sum(oversized), 0) \
+                     FROM {commit_rows}"
+                ),
                 [],
                 |row| {
                     Ok((
@@ -262,20 +590,20 @@ impl crate::spine::Store {
             .map_err(|err| corrupt("summing the spine", &err))?;
         (scale.first_commit_utc, scale.last_commit_utc) = conn
             .query_row(
-                "SELECT min(author_utc), max(author_utc) FROM git_commit",
+                &format!("SELECT min(author_utc), max(author_utc) FROM {commit_rows}"),
                 [],
                 |row| Ok((row.get::<_, Option<i64>>(0)?, row.get::<_, Option<i64>>(1)?)),
             )
             .map_err(|err| corrupt("reading the date range", &err))?;
-        scale.noise = self.grouped("noise_class")?;
-        scale.kinds = self.grouped("change_kind")?;
+        scale.noise = self.grouped("noise_class", file_rows)?;
+        scale.kinds = self.grouped("change_kind", file_rows)?;
         scale.top_authors = {
             let mut statement = conn
-                .prepare(
-                    "SELECT author_name || ' <' || author_email || '>', count(*) AS n
-                     FROM git_commit GROUP BY author_name, author_email
-                     ORDER BY n DESC, author_name LIMIT 5",
-                )
+                .prepare(&format!(
+                    "SELECT author_name || ' <' || author_email || '>', count(*) AS n \
+                     FROM {commit_rows} GROUP BY author_name, author_email \
+                     ORDER BY n DESC, author_name LIMIT 5"
+                ))
                 .map_err(|err| corrupt("grouping by author", &err))?;
             let rows = statement
                 .query_map([], |row| {
@@ -285,18 +613,68 @@ impl crate::spine::Store {
             rows.collect::<Result<_, _>>()
                 .map_err(|err| corrupt("grouping by author", &err))?
         };
-        Ok(scale)
+
+        let mut dead = DeadRows {
+            retained: live.retained,
+            reachable: if live.filters() {
+                scale.commits
+            } else {
+                live.retained
+            },
+            ..Default::default()
+        };
+        if !live.walked {
+            // Nothing was judged, so nothing is dead: every row is on the unprovable side, and `reason` says
+            // which kind of "could not tell" this is.
+            dead.unjudged = live.retained;
+            dead.reason = live.reason.clone();
+            dead.tips_without_rows = conn
+                .query_row(TIPS_WITHOUT_ROWS, [], |row| row.get(0))
+                .unwrap_or(0);
+            return Ok(Inventory { scale, dead });
+        }
+        dead.tips_without_rows = conn
+            .query_row(TIPS_WITHOUT_ROWS, [], |row| row.get(0))
+            .map_err(|err| corrupt("reading the ref tips", &err))?;
+        let unreachable: i64 = conn
+            .query_row(DEAD_COUNT, [], |row| row.get(0))
+            .map_err(|err| corrupt("counting the unreachable rows", &err))?;
+        if live.breaks > 0 {
+            // The chain has a break below a commit the refs still reach, so the rows past it are only
+            // unprovable. A shallow clone lands here by construction, and so does a store whose walk hit an
+            // object the object database would not serve — both already said by their own findings.
+            dead.unjudged = unreachable;
+        } else {
+            dead.dead = unreachable;
+            dead.dead_files = conn
+                .query_row(DEAD_FILES, [], |row| row.get(0))
+                .map_err(|err| corrupt("counting the unreachable file rows", &err))?;
+            let mut statement = conn
+                .prepare(DEAD_SAMPLE)
+                .map_err(|err| corrupt("reading the unreachable rows", &err))?;
+            let rows = statement
+                .query_map(
+                    [i64::try_from(DeadRows::SAMPLE).unwrap_or(i64::MAX)],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(|err| corrupt("reading the unreachable rows", &err))?;
+            dead.sample = rows
+                .collect::<Result<_, _>>()
+                .map_err(|err| corrupt("reading the unreachable rows", &err))?;
+        }
+        Ok(Inventory { scale, dead })
     }
 
     /// One `GROUP BY` over `git_commit_file`, for the two histograms in [`Scale`].
-    fn grouped(&self, column: &str) -> Result<BTreeMap<String, i64>, Error> {
-        // `column` is one of two literals below, never caller input; the interpolation is for the query
-        // planner, not for a string the store's caller controls.
+    fn grouped(&self, column: &str, from: &str) -> Result<BTreeMap<String, i64>, Error> {
+        // `column` is one of two literals below and `from` is one of two joins built a few lines up,
+        // never caller input; the interpolation is for the query planner, not for a string the store's
+        // caller controls.
         debug_assert!(matches!(column, "noise_class" | "change_kind"));
         let mut statement = self
             .connection()
             .prepare(&format!(
-                "SELECT {column}, count(*) FROM git_commit_file GROUP BY {column} ORDER BY {column}"
+                "SELECT {column}, count(*) FROM {from} GROUP BY {column} ORDER BY {column}"
             ))
             .map_err(|err| corrupt("grouping file rows", &err))?;
         let rows = statement

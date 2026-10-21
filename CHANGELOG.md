@@ -17,6 +17,65 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A rewritten history left rows behind, `fathom stats` counted them as the repository, and `fathom doctor` found nothing (`reco-218`)
+
+The acceptance walkthrough rewrites the fixture's last five commits in another terminal — `git reset --hard`,
+five `git cherry-pick`s, an expired reflog, `git gc --prune=now` — and re-indexes. Afterwards the repository
+had 500 commits and `fathom stats` printed:
+
+```text
+scale     505 commit(s), 630 file row(s), 5 author(s)
+```
+
+and `fathom doctor` exited 0. The spine is append-only (ADR-004 §6.2), so the five replaced commits were
+still rows; nothing unreachable them, nothing said so, and they were still in the churn window, the taxonomy
+counts and every scale line the CLI prints. ADR-004 §8.1 already named the verb that should have said it —
+the pruner, "the only thing that deletes" — and it did not exist, so §6.2's "rows that are not reachable
+remain, and the report says so" was a sentence with no implementation: nothing could say *so*.
+
+* **The store now counts the history and the residue separately.** `Store::inventory()` returns the scale the
+    status verbs read *and* the dead set: `retained` commit rows, `reachable` — what `HEAD`, the branches and
+    the remote-tracking refs reach through the stored parent pointers — `dead`, `dead_files`, and up to twelve
+    dead commit ids, newest first. `fathom stats`' `scale` line is now git's number, and a `dead` line names
+    the rows it left out and the verb that removes them. Reachability deliberately does **not** start from
+    tags: a tag pinned at a rewritten commit would otherwise hold its ghost open forever, which is ADR-004
+    §8.7's open question rather than a licence to guess here.
+* **Where the store cannot tell, it says so instead of picking.** No ref tip to walk from, or a reachable
+    commit whose parent row is missing from the store — a fetch-sparse repository, a ref moved mid-run — and
+    the walk reports `unjudged` with its reason, every unreachable row is held out of the dead set, and the
+    pruner refuses. `fathom stats` prints that as a `reach` line: rows it could not place, never rows it
+    killed.
+* **`fathom index --prune` exists**, and it is the only thing in the codebase that deletes spine rows (ADR-004
+    §8.1). It runs *after* the index, against the ref tips that run just wrote; it takes the provably dead
+    commit rows, the file rows that cascade with them, any episode that loses its last member and carries no
+    decision, and the document row that would have orphaned behind it. `--dry-run` prints the same numbers
+    from the same statements and removes nothing. A real prune opens an `index_run` of its own, `kind =
+    'prune'`, so a prune killed halfway is a run the next opener marks `crashed` and `fathom doctor`
+    complains about.
+* **A prune may never lose a review** (ADR-004 §8.2), and the guard is counted rather than subtracted
+    silently: a dead commit whose episode carries a review state or a mirrored ledger entry stays, and the
+    report says `1 dead commit row(s) left in place: a review or a sign-off points at them`.
+* **`fathom doctor` reports it, and only `--strict` pays for it.** A store holding rows for commits that no
+    longer exist is not an index that is failing to answer — HEAD is indexed, the queue is segmented over the
+    history that still exists — so `index_dead_rows` is a new *untidy* severity: exit 0 from `fathom stats`
+    and from plain `fathom doctor`, exit 12 (`INDEX_DEGRADED`) from `fathom doctor --strict`, with the remedy
+    on the line after the finding either way.
+* **ADR-004 §11's byte budget got the sentence it needed**: `store.bytes_per_commit_spine` is measured on the
+    spine half of the store file — everything that is not `cache`, `cache_input`, `session_state`,
+    `index_run` or `schema_meta`, split with `dbstat` — over the count of commits the refs *reach*. The whole
+    file on the same fixture is 4 718 B/commit against a 4 096 B spine budget, so the two figures are not
+    interchangeable, and dividing by the row count would flatter a store a rewrite had left rows in.
+
+*Asserted by*: `crates/fathom-store/tests/dead_rows.rs` (14: the reachable count against git's, a rebase's
+ghosts named, a tag not holding its commit alive, a remote-tracking branch holding its own, the two
+unjudgeable shapes and the refusal they earn, the prune's cascade and its idempotence, and both halves of the
+review guard), `crates/fathom-cli/tests/resilience.rs` (17, including a real `git` rewrite whose ghosts are
+reported at 2 and pruned to 0 with `doctor --strict` agreeing, and a rewrite of a reviewed commit whose
+decision survives the prune), and `tests/test_history_rewrite_contract.py` (7 against the built binary,
+replaying the acceptance script's own rebase step out of `docs/demo/mvp-500-commit-review.json`: 500
+reachable, 505 retained, 5 dead, exit 0 from `stats`, exit 12 from `doctor --strict`, and a dry run that
+removes nothing before the real one removes exactly five).
+
 ### The status strip printed `unknown` for four facts the CLI had already read from the store (`reco-zv9`)
 
 The bottom strip read:

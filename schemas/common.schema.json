@@ -153,15 +153,24 @@
         },
         "section": {
           "type": "string"
+        },
+        "severity": {
+          "description": "What the finding costs the verb that printed it: `degraded` is a missing or wrong answer and moves the exit code of every verb that reports the index; `untidy` is housekeeping \u2014 reported with its remedy everywhere, and it moves an exit code only under `fathom doctor --strict`.",
+          "enum": [
+            "degraded",
+            "untidy"
+          ],
+          "type": "string"
         }
       },
       "required": [
         "code",
-        "section",
+        "exit_code",
+        "exit_name",
         "message",
         "remedy",
-        "exit_code",
-        "exit_name"
+        "section",
+        "severity"
       ],
       "type": "object"
     },
@@ -259,6 +268,46 @@
         },
         "wal_bytes": {
           "type": "integer"
+        },
+        "commits_retained": {
+          "description": "Rows in `git_commit`: everything the file retains. `commits` counts only the rows a ref still reaches, so this is the bigger number wherever a history was rewritten.",
+          "type": "integer"
+        },
+        "dead_commits": {
+          "description": "Retained commit rows no ref can reach \u2014 the commits a rebase, `--amend` or force-push replaced (ADR-004 \u00a76.2). The remedy is the pruner, `fathom index --prune` (\u00a78.1).",
+          "type": "integer"
+        },
+        "dead_files": {
+          "description": "`git_commit_file` rows the dead commits carry: what a prune reclaims with them.",
+          "type": "integer"
+        },
+        "dead_sample": {
+          "description": "Up to twelve of the dead commit ids, newest first, so a report line can name what it means. The set itself is `dead_commits`; this is its evidence.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "commit": {
+                "description": "A commit row the store retains and no ref reaches.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "commit"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "dead_unjudged": {
+          "description": "Rows that are neither reachable nor provably dead: the store hit a break in the parent chain it holds, or had no ref tip to walk from. Never reported as dead.",
+          "type": "integer"
+        },
+        "dead_unjudged_reason": {
+          "description": "Why nothing could be judged, when nothing could: the store's own words.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [

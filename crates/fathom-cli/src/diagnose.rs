@@ -44,7 +44,10 @@ pub fn doctor(
     let watch = watch_section(root_path);
     let hooks_stream = crate::harness::doctor_json(root_path);
     let consent = consent_section();
-    let code = snapshot.worst_code();
+    // The code `--strict` will leave with, printed either way. It counts the untidy findings too — a store
+    // holding rows for commits that no longer exist is not a broken index, but it is a thing to fix, and
+    // "fix this or say why not" is exactly what a pre-flight check is for.
+    let code = snapshot.worst_code_strict();
 
     if as_json {
         let report = json!({

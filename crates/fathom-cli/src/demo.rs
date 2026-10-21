@@ -105,6 +105,10 @@ pub fn index(demo: &Demo, globals: &crate::verbs::Globals) -> Result<()> {
         // claims to have uncommitted work: what is under review is the history, which is also what a
         // reviewer gets when they run this on their own repository an hour later.
         committed_only: true,
+        // Nothing is deleted on a demo: the miniature is rewritten to be looked at, and a prune is an act a
+        // person asks for.
+        prune: false,
+        dry_run: false,
         // No progress flags of its own: `--progress` and `--no-progress` are globals now, so the indexing
         // the demo does on the reviewer's behalf obeys the same override as a real `fathom index` — rows on
         // a terminal, silence on a pipe, and `fathom --demo --progress` forces them either way.

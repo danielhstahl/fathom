@@ -103,11 +103,49 @@ the promise that a degraded run never loses the review ledger is pinned.
 | `history_shallow` | the clone is shallow, so the history stops partway back | 12 | `git fetch --unshallow` (yours to type), then `fathom index` |
 | `partial_clone` | the clone was filtered (`--filter=blob:none` and friends), so some objects were never fetched | 12 | re-clone without the filter, or fetch what is missing, then `fathom index` |
 | `broken_symref` | a symbolic ref points at a ref that does not exist | 3 | `git update-ref -d <ref>`, or point it at a real target |
+| `worktree_missing` | the working tree this repository points at is not there — a linked work tree that was moved or deleted out from under its registration | 3 | restore the directory, or drop the stale registration with `git worktree prune`; the commits are still indexable from a bare or linked checkout |
+| `repository_untrusted` | the repository belongs to another user, so git read it at arm's length and fathom read it the same way | 3 | `git config --global --add safe.directory <path>`, if you trust it |
 | `store_corrupt` | the file is not trustworthy | 4 | `fathom index --rebuild` |
 | `store_unusable` | the store will not open at all | 4 | `fathom index --rebuild` |
 | `not_a_repository` | `--root` is not a repository | 3 | point `--root` at one |
 | `repository_unreadable` | it is a repository, but `.git` cannot be read | 3 | check the permissions, or point `--root` at the work tree |
 | `feature_absent` | this binary was built without a SQLite backend | 9 | rebuild with `--features sqlite-bundled` |
+
+### The one finding that is untidy rather than degraded
+
+`fathom stats` exits 12 for everything above because in each case an answer is missing or wrong. There is
+one finding that is not like that, and printing it with code 12 anyway would make a healthy repository look
+broken:
+
+| Finding code | State | `stats` | `doctor` | `doctor --strict` | Remedy printed |
+|---|---|---|---|---|---|
+| `index_dead_rows` | commit rows for commits that no longer exist: a `rebase`, a `commit --amend` or a force-push replaced them, and `git gc --prune=now` has usually deleted the objects | 0 | reported, exit 0 | **12** | `fathom index --prune` |
+
+The index is not wrong in this state — HEAD is indexed, the queue is segmented over the history the refs
+still reach, and every episode answer is the answer. What is wrong is that the store *counts* as the
+repository the rows a rewrite left behind: `fathom stats` used to print `505 commit(s)` for a 500-commit
+repository and `fathom doctor` said "nothing found". So the size the report prints is what a ref can still
+reach, the rows it left out are printed as their own line with the verb that removes them,
+and the exit code of `--strict` — the pre-flight posture, the one that asks "is there anything here somebody
+should fix" — is where the difference has to be paid.
+
+The pruner is the only thing that deletes (ADR-004 §8.1), and it refuses rather than guesses:
+
+* a row whose death the store cannot prove stays. A shallow clone's graft, or a parent the walk could not
+  read, means the rows below that break might be ancestors rather than ghosts — `fathom stats` prints them
+  as `reach … could not place`, never as dead;
+* a dead commit whose episode carries a review, or a mirrored sign-off, stays, because a prune may never
+  lose a review (ADR-004 §8.2) and the relink ladder needs the episode it carried a decision from. The prune
+  says how many it left alone instead of reporting a smaller number.
+
+**The keys.** `fathom stats --json` carries the pair in `index`: `commits` is what the refs reach — the number
+the text report prints — and `commits_retained` is what the file holds. Between them are the dead set:
+`dead_commits` and `dead_files` (the rows, and the file rows they carry), `dead_sample` (up to twelve of
+them as `{commit}`, newest first), and `dead_unjudged` with `dead_unjudged_reason` for the rows the store
+could place in neither set. `fathom index --prune --json` adds a `prune` object — `dry_run`,
+`commits_removed`, `files_removed`, `episodes_removed`, `withheld_reviewed`, `withheld_undecidable`, `refusal`
+and `sample` — and prints `prune: null` when `--prune` was never asked for, because "nothing was asked" is
+not the same statement as "nothing was dead".
 
 A commit the object database refuses to serve is *not* a failed run. The run closes `ok` with the commits it
 could read, and the hole is recorded against each commit id — `fathom doctor` and `fathom stats` name those

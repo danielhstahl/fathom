@@ -46,6 +46,12 @@ pub mod episode;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod inventory;
 
+/// The one writer with a `DELETE` in it: the rows a rewrite left behind, once the store can prove they are
+/// dead (ADR-004 §8.1, and `reco-218`). Gated with [`spine`] because a store that cannot be opened cannot
+/// be pruned either.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod prune;
+
 /// The search document of ADR-004 §4.8 — `episode_doc` and its FTS5 index — and the pointer-shaped query
 /// every search surface reads (`e4.2` writes it, `e5.2` will read it). Gated with [`spine`] for the same
 /// reason: with no SQLite backend there is no document table.
