@@ -1,0 +1,126 @@
+# Fuzzing: the readers that take repository content, driven with bytes nobody wrote (`e7.8`, `reco-41a`).
+#
+# Two cadences, because one cadence is always the wrong one:
+#
+# * **pull_request — a smoke.** One minute per target on a seed corpus of ~50 shapes. Long enough to catch
+#   "this change made a parser crash on a shape we already had", short enough that nobody learns to ignore
+#   the job. This is the half of the acceptance criterion that runs on the pull.
+# * **nightly — the 30-minute run.** Thirty minutes per target, on a matrix so the wall clock stays inside
+#   a nightly's budget. This is the "30-minute smoke runs in CI" the ticket asks for, and the run that finds
+#   the shape no seed contained.
+#
+# The corpus grows in only one direction: a crash artefact becomes a regression test in
+# `crates/fathom-analyze/tests/hardening.rs` (or `…/fathom-ingest/tests/hooks_hardening.rs`) and, if it is a
+# *shape* rather than a one-off byte sequence, a new seed in `tools/gen_fuzz_corpus.py`. Committing raw
+# artefacts into `fuzz/corpus/` would make `python3 tools/gen_fuzz_corpus.py check` — the gate that keeps the
+# corpus reproducible — false.
+#
+# Nightly toolchain, and only here: libFuzzer is `-Zsanitizer`, which stable cannot pass. The main workspace
+# stays on the pinned stable toolchain precisely so that `cargo build --workspace` remains a promise a clean
+# clone can keep (`fuzz/Cargo.toml` explains the separate workspace).
+
+name: fuzz
+
+on:
+  pull_request:
+    paths:
+      - "crates/fathom-analyze/**"
+      - "crates/fathom-ingest/**"
+      - "fuzz/**"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    # 03:17 UTC, every day. A prime-ish minute so the run does not collide with the hour's traffic.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "Minutes per target"
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.target }})
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [lockfile, hooks, paths]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rui314/setup-mold@v1
+      - name: Install nightly (libFuzzer needs -Zsanitizer)
+        run: rustup toolchain install nightly --profile minimal --component llvm-tools
+      - name: Install cargo-fuzz
+        run: cargo +nightly install cargo-fuzz --locked
+      - name: The committed corpus is the generated one
+        run: python3 tools/gen_fuzz_corpus.py check
+      - name: Seed the corpus cargo-fuzz will run
+        run: |
+          mkdir -p fuzz/fuzz/corpus
+          cp -R fuzz/corpus/. fuzz/fuzz/corpus/
+      - name: Build the targets
+        working-directory: fuzz
+        run: cargo +nightly fuzz build --debug ${{ matrix.target }}
+      - name: One minute per target
+        working-directory: fuzz
+        run: >-
+          cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=60
+          -rss_limit_mb=4096 -timeout=10 -error_exitcode=86
+      - name: Keep the artefact if it crashed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz/fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore
+
+  nightly:
+    name: 30 minutes (${{ matrix.target }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [lockfile, hooks, paths]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rui314/setup-mold@v1
+      - name: Install nightly (libFuzzer needs -Zsanitizer)
+        run: rustup toolchain install nightly --profile minimal --component llvm-tools
+      - name: Install cargo-fuzz
+        run: cargo +nightly install cargo-fuzz --locked
+      - name: Minutes per target
+        id: minutes
+        run: echo "value=${{ inputs.minutes || '30' }}" >> "$GITHUB_OUTPUT"
+      - name: The committed corpus is the generated one
+        run: python3 tools/gen_fuzz_corpus.py check
+      - name: Seed the corpus cargo-fuzz will run
+        run: |
+          mkdir -p fuzz/fuzz/corpus
+          cp -R fuzz/corpus/. fuzz/fuzz/corpus/
+      - name: Build the targets
+        working-directory: fuzz
+        run: cargo +nightly fuzz build ${{ matrix.target }}
+      - name: Fuzz
+        working-directory: fuzz
+        run: >-
+          cargo +nightly fuzz run ${{ matrix.target }} --
+          -max_total_time=${{ steps.minutes.value * 60 }}
+          -rss_limit_mb=4096 -timeout=25 -error_exitcode=86
+      - name: Keep the artefacts if it crashed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-nightly-crash-${{ matrix.target }}
+          path: fuzz/fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore

@@ -1,0 +1,1 @@
+{"fathom_event_schema": 1, "seq": 2, "event_id": "e2", "event": "file_edit", "session_id": "s1", "turn_index": 1, "ts": "2026-10-21T04:00:01Z", "cwd": "/srv/work/repo", "files": ["../../../../etc/passwd", "/etc/shadow", "~/.ssh/authorized_keys", "src/../../root/.bashrc", "a/../b/c.txt", "\u0000nul"]}

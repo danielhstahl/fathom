@@ -54,6 +54,9 @@ pub const CONTRACT: &str = "fathom.cli.review/1";
 pub(crate) fn run(args: &ReviewArgs) -> eyre::Result<ExitCode> {
     use crate::verbs::ReviewAction;
     let root = std::path::Path::new(&args.root);
+    // The ledger is the one file this verb appends to, and `status`/`list` refresh the store's mirror rows,
+    // so every path through here writes somewhere: containment is checked before any of it (`e7.8`).
+    crate::sandbox::ensure_state_dir(root)?;
     let as_json = args.json;
     match args.action.as_ref().unwrap_or(&ReviewAction::Status) {
         ReviewAction::Status => status(root, as_json),
@@ -197,6 +200,7 @@ fn sign_off(
             )
         })?;
     let path = ledger_format::default_path(root);
+    crate::sandbox::Root::for_root(root).ensure_write(&path)?;
     entry.file = display(&path, root);
     ledger_format::append_entries(&path, std::slice::from_ref(&entry)).map_err(|err| {
         Pending::new(
@@ -265,6 +269,7 @@ fn sync(root: &Path, dry_run: bool, as_json: bool) -> eyre::Result<ExitCode> {
     let (mut entries, skipped) = collect::unsettled(&store, root, &facts).map_err(failed)?;
     let acts = store.triage_events(5_000).map_err(failed)?;
     let path = ledger_format::default_path(root);
+    crate::sandbox::Root::for_root(root).ensure_write(&path)?;
     for entry in &mut entries {
         entry.file = display(&path, root);
     }

@@ -23,3 +23,11 @@ dist/
 # number is `benchmarks/baselines/perf-gate.json`, and `make bench-bless` is the only thing that
 # rewrites it.
 benchmarks/trend/
+
+# --- Fuzzing (`e7.8` / reco-41a) --------------------------------------------------------------
+# cargo-fuzz's own working directories: the *seeds* are committed under fuzz/corpus and are
+# regenerated (and checked) by tools/gen_fuzz_corpus.py; what lands here is build output,
+# discovered inputs and crash artefacts, none of which belongs in git.
+fuzz/target/
+fuzz/fuzz/
+# --- end fuzzing ------------------------------------------------------------------------------

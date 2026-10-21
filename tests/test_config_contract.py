@@ -1028,3 +1028,281 @@ def test_module_runs_as_a_program(tmp_path):
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert completed.returncode == 0, completed.stderr
     assert "precedence: command-line flag" in completed.stdout
+
+
+# ---------------------------------------------------------------------------
+# `e7.8` (reco-41a): the glob matcher is not a denial of service
+# ---------------------------------------------------------------------------
+#: Every glob key whose value a **cloned** `fathom.toml` may set, and so the list the
+#: ReDoS question is about: user globs are a person's own mistake, repo globs are an
+#: attack surface. See docs/security/threat-model.md F-4.
+REPO_SETTABLE_GLOB_KEYS = [
+    "noise.globs",
+    "noise.keep",
+    "test.globs",
+    "test.untested.exclude",
+    "non_code.patterns",
+    "non_code.env.declaration_globs",
+    "non_code.env.committed_globs",
+    "non_code.flags.globs",
+    "non_code.migration.globs",
+    "non_code.migration.model_globs",
+    "non_code.iac.globs",
+]
+
+
+def _legacy_glob(pattern: str) -> re.Pattern:
+    """The pre-`e7.8` translation: glob → one anchored `re.Pattern`, verbatim.
+
+    Kept here, in the test, rather than in the module: its only remaining job is to be the
+    thing the new matcher is compared against. A translation that no test can run is a
+    translation that can be quietly reintroduced.
+    """
+    pat = pattern[1:] if pattern.startswith("!") else pattern
+    out = ["\\A"]
+    i, n = 0, len(pat)
+    try:
+        while i < n:
+            ch = pat[i]
+            if ch == "*":
+                if pat.startswith("**", i):
+                    if pat.startswith("/", i + 2):
+                        out.append("(?:[^/]+/)*")
+                        i += 3
+                        continue
+                    out.append(".*")
+                    i += 2
+                    continue
+                out.append("[^/]*")
+                i += 1
+                continue
+            if ch == "?":
+                out.append("[^/]")
+                i += 1
+                continue
+            if ch == "{":
+                end = pat.find("}", i)
+                if end == -1:
+                    return None
+                alts = pat[i + 1:end].split(",")
+                out.append("(?:%s)" % "|".join(re.escape(a) for a in alts))
+                i = end + 1
+                continue
+            if ch == "[":
+                end = pat.find("]", i)
+                if end == -1:
+                    return None
+                out.append("[%s]" % pat[i + 1:end])
+                i = end + 1
+                continue
+            out.append(re.escape(ch))
+            i += 1
+        out.append("\\Z")
+    except Exception:                                     # noqa: BLE001 - a fixture helper
+        return None
+    try:
+        return re.compile("".join(out))
+    except re.error:
+        return None
+
+
+def _legacy_matches(pattern: str, path: str):
+    """The legacy `matches`, including its directory-shape rules; None when it cannot compile."""
+    rx = _legacy_glob(pattern)
+    if rx is None:
+        return None
+    path = globs.normalise(path)
+    if rx.match(path):
+        return True
+    if pattern.endswith("/**") and rx.match(path + "/"):
+        return True
+    if pattern.endswith("/") and path.startswith(pattern):
+        return True
+    return False
+
+
+#: The patterns the two engines must agree about: the shipped table plus the shapes that
+#: motivated the change.
+GLOB_CONFORMANCE_PATTERNS = [
+    "Cargo.lock", "Cargo.lock", "*.lock", "**/*.lock", "src/*.rs", "src/**/*.rs",
+    "**/dist/**", "dist/**", "dist/", "**", "*", "**/**", "?", "?.rs", "{a,b}/x",
+    "x.{js,ts}", "[a-z].txt", "[a-c]x", "**/vendor/**", "docs/**", "**/dist/**/*",
+    "a**b", "**a**b", "*a*b", "tests/**/*_test.py", "**/*_test.py", "a/{b,c}", "{a,b}",
+    "**/node_modules/**", "target/", "**/target", "[0-9]*", "**/[0-9]*",
+    "**a**a**a**a**a**a**a**a", "*a*a*a*a*a*a*a*a*a*", "src/**/**/**/*.min.*",
+]
+GLOB_CONFORMANCE_PATHS = [
+    "Cargo.lock", "src/a.rs", "src/a/b.rs", "dist/app.js", "a/dist/app.js", "docs",
+    "docs/x.md", "x.js", "x.ts", "q.txt", "bx", "vendor/x/y.js", "keep.txt", "a/x", "c/x",
+    "a", "ab", "aXb", "tests/t/foo_test.py", "node_modules/x/i.js", "0abc", "dist", "",
+    "a/b/c/d/e.txt", "x.lock", "y/y.lock",
+    "a" * 80 + "b", "a" * 6 + "/" + "a" * 6 + "/x", "x" * 50 + ".min.js",
+]
+
+
+def _both_engines(pattern: str, path: str):
+    """The same pattern run through each engine in `globs`, bypassing the choice."""
+    tokens = globs._tokenize(pattern[1:] if pattern.startswith("!") else pattern)
+    return (bool(globs._to_regex(tokens).match(path)),
+            globs._to_machine(tokens).match(path))
+
+
+def test_glob_engines_agree_with_the_legacy_translation():
+    """The new matcher ≡ the regex translation it replaced, on every pattern `re` can run.
+
+    The hostile wildcard-dense shapes are deliberately *not* in this list: the legacy
+    translator is the thing that hangs on them, and a conformance test that hangs is not a
+    test. They get their own timing test below, and `globs` is checked against itself for
+    them in `test_both_glob_engines_accept_the_same_language`.
+
+    Two accepted differences, both about `[… ]`, named here so they cannot multiply in
+    silence: the legacy translator handed a class body straight to `re`, where `[!a]` is the
+    two-character set `!` and `a` rather than the glob complement, and where an empty class
+    `[]` became whatever `re` happened to make of it. Every glob syntax — including this
+    project's documented one — means the complement, and an empty class is a pattern error.
+    """
+    differences = []
+    for pattern in GLOB_CONFORMANCE_PATTERNS:
+        body = pattern[1:] if pattern.startswith("!") else pattern
+        if "[!" in body or "[]" in body or body.count("*") > 3:
+            continue                        # documented below; the legacy engine cannot run
+        for path in GLOB_CONFORMANCE_PATHS:
+            want = _legacy_matches(pattern, path)
+            if want is None:
+                continue
+            got = globs.matches(pattern, path)
+            if want != got:
+                differences.append((pattern, path, want, got))
+    assert differences == [], "legacy vs new: %s" % (differences[:6],)
+
+
+def test_both_glob_engines_accept_the_same_language():
+    """`_to_regex` and `_to_machine` are one language, including where the regex is slow.
+
+    Paths here are short on purpose: on a 30-character path a dense pattern is a few seconds
+    of backtracking, which is the bug, so the cross-check is run where the backtracker can
+    finish. What it buys is the claim the module docstring makes — that moving a pattern to
+    the linear engine cannot change which paths it matches.
+    """
+    dense = [p for p in GLOB_CONFORMANCE_PATTERNS
+             if globs.compile_glob(p).engine == "machine"
+             and "[!" not in p and "[]" not in p]
+    short = [p for p in GLOB_CONFORMANCE_PATHS if len(p) <= 24]
+    assert dense, "no pattern exceeded the regex wildcard budget, so nothing was cross-checked"
+    disagreements = []
+    for pattern in dense:
+        body = pattern[1:] if pattern.startswith("!") else pattern
+        if "[!" in body or "[]" in body:      # documented difference from `re`, tested below
+            continue
+        for path in short:
+            by_regex, by_machine = _both_engines(pattern, path)
+            if by_regex != by_machine:
+                disagreements.append((pattern, path, by_regex, by_machine))
+    assert disagreements == [], "regex vs machine: %s" % (disagreements[:6],)
+
+
+def test_negated_character_class_is_the_glob_complement():
+    """`[!a].txt` is 'any character except a', which is what the syntax summary promises."""
+    assert globs.matches("[!a].txt", "q.txt") is True
+    assert globs.matches("[!a].txt", "a.txt") is False
+    assert globs.matches("[abc]x", "bx") is True
+    assert globs.matches("[a-c]x", "dx") is False
+
+
+def test_an_empty_character_class_is_a_pattern_error():
+    """`[]` used to be whatever `re` made of it; now it is refused like any other bad glob."""
+    with pytest.raises(globs.BadPattern):
+        globs.compile_glob("[]a")
+    with pytest.raises(globs.BadPattern):
+        globs.compile_glob("[z-a]")
+    assert globs.matches("[]a", "z") is False
+
+
+@pytest.mark.parametrize("key", REPO_SETTABLE_GLOB_KEYS)
+def test_a_bad_glob_in_any_repo_settable_key_is_a_warning(repo, key):
+    """Every key a clone can fill with globs is compiled at load, so none reaches the matcher raw.
+
+    This is the check that has to be *derived*, not remembered: the ReDoS work is only worth
+    what it protects if a glob typed into any of these keys is validated on the way in. A bad
+    pattern is a warning naming the key, never a crash and never silence.
+    """
+    section, _, name = key.rpartition(".")
+    write(repo / "fathom.toml", "[%s]\n%s = [\"**/{unbalanced\"]\n" % (section, name))
+    config = resolve(repo)
+    loud = [w for w in config.warnings if w.code == "bad_glob"]
+    assert loud, "no bad_glob warning for %s" % key
+    assert key in " ".join(w.message for w in loud), [w.message for w in loud]
+
+
+def test_the_repo_settable_glob_list_is_what_the_schema_says():
+    """`REPO_SETTABLE_GLOB_KEYS` names the attack surface; this test keeps it honest.
+
+    A `glob_list` that is `scope = "user"` cannot be set by a clone, so it is not attack
+    surface and does not belong in the list; a `glob_list` that *can* come from a repo file
+    and is missing from the list is a key this file has stopped covering.
+    """
+    from recommender.config.schema import KEY_LIST
+
+    repo_settable = {key.path for key in KEY_LIST
+                     if key.kind == "glob_list" and key.scope != "user"}
+    # `taxonomy.classes.<class-name>` is an open map: the placeholder path is not what a
+    # resolution contains, and its entries are covered by the containment-style check in
+    # `layer._glob_keys`.
+    repo_settable = {p for p in repo_settable if "<" not in p}
+    assert repo_settable == set(REPO_SETTABLE_GLOB_KEYS), (
+        "schema says %s" % sorted(repo_settable))
+
+
+def test_the_open_glob_map_is_compile_checked_too():
+    """`taxonomy.classes.<name>` is the one glob list that is not a literal key."""
+    repo = tmp_repo()
+    write(repo / "fathom.toml", '[taxonomy.classes]\ndocs = ["**/{unbalanced"]\n')
+    config = resolve(repo)
+    assert any(w.code == "bad_glob" for w in config.warnings)
+
+
+def test_a_wildcard_dense_pattern_does_not_burn_time():
+    """The ReDoS proof: a hostile pattern × a hostile path, answered in milliseconds.
+
+    `**a**a…` is the shape that made the regex translation a denial of service, and the path
+    is deliberately one that never matches — the case a backtracking engine is worst at. The
+    legacy translator is timed on a *shorter* path, because the same 200-character path does
+    not come back.
+    """
+    import time
+
+    hostile = [
+        ("**a**a**a**a**a**a**a**a", "a" * 200 + "b"),
+        ("*a*a*a*a*a*a*a*a*a*a*a*a", "a" * 200 + "b"),
+        ("**/**/**/**/**/**/*.md", "x/" * 100 + "xy"),
+        ("**a*b*c*d*e*f*g*h*i*j", "z" * 200),
+    ]
+    for pattern, path in hostile:
+        assert globs.compile_glob(pattern).engine == "machine", pattern
+        started = time.perf_counter()
+        globs.matches(pattern, path)
+        took = time.perf_counter() - started
+        assert took < 0.05, "%r against a %d-character path took %.3fs" % (
+            pattern, len(path), took)
+
+    started = time.perf_counter()
+    _legacy_matches("**a**a**a", "a" * 18 + "b")
+    legacy_took = time.perf_counter() - started
+    started = time.perf_counter()
+    globs.matches("**a**a**a", "a" * 18 + "b")
+    new_took = time.perf_counter() - started
+    assert new_took < legacy_took, (new_took, legacy_took)
+
+
+def test_regex_engine_is_only_used_within_its_budget():
+    """The engine split is checkable: dense patterns never reach the backtracker."""
+    assert globs.compile_glob("**/vendor/**").engine == "regex"
+    assert globs.compile_glob("*.min.js").engine == "regex"
+    assert globs.compile_glob("**a**a**a**a").engine == "machine"
+    assert globs.compile_glob("*a*a*a*").engine == "machine"
+    # And a path longer than the regex bound goes to the machine even for a cheap pattern,
+    # because O(path²) is only a bound if path is bounded.
+    compiled = globs.compile_glob("*.md")
+    long_path = "x" * (globs.REGEX_PATH_LIMIT + 10) + ".md"
+    assert compiled.match(long_path) is True
+    assert compiled.match("short.md") is True

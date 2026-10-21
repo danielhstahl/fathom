@@ -1093,6 +1093,9 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     let root = std::path::Path::new(&args.root);
     let repository = Repository::discover(root).map_err(failed)?;
     let store_path = index::default_store_path(root);
+    // Containment first, before anything is created: a clone whose `.fathom` is a symlink must be refused
+    // rather than written through (`e7.8`, threat model F-1).
+    crate::sandbox::ensure_state_dir(root)?;
     if let Some(dir) = store_path.parent() {
         std::fs::create_dir_all(dir).map_err(|err| {
             Pending::new(

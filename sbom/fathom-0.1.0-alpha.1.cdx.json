@@ -1349,7 +1349,7 @@
         },
         {
           "name": "fathom:cargo-lock-sha256",
-          "value": "1cb07325cbf60b4acee8cf224f6229a210765960d57ef02fac4221d7024295fb"
+          "value": "4559ff7f47904c3401e515da857a71cda8037e892c51f3a807115573d40455d7"
         },
         {
           "name": "fathom:network-crates",
@@ -1367,7 +1367,7 @@
       }
     ]
   },
-  "serialNumber": "urn:uuid:2b02b82b-26ab-57c9-92a5-7b9fb98f8ad0",
+  "serialNumber": "urn:uuid:cfd14ef3-adbb-5f74-9641-4819037abeae",
   "specVersion": "1.5",
   "version": 1
 }

@@ -311,6 +311,9 @@ OPEN_EXAMPLES = {
                                       "one entry per taxonomy class (see `fathom taxonomy classes`)"),
     "risk.weights.<weight>": ("[risk.weights]\n# new_signal = 0.1",
                                "one entry per signal, 0..1"),
+    "attribution.agents.<agent-id>": ('[attribution.agents]\n# copilot = ["copilot", "github-copilot"]',
+                                      "one entry per agent id, holding lower-cased identity "
+                                      "substrings; entries add to the built-in registry"),
     "keys.overrides.<mode>.<binding>": ('[keys.overrides.queue]\n# j = "move_down"',
                                         "one entry per mode and key"),
 }
@@ -357,7 +360,11 @@ def render_starter_file() -> str:
         if key.merge == "extend":
             lines.append("#   merge: extend — this file adds to the layers below it")
         if key.is_open():
-            example, note = OPEN_EXAMPLES[key.path]
+            example, note = OPEN_EXAMPLES.get(
+                key.path,
+                ("# %s.<name> = [\"...\"]" % key.path.rsplit(".", 1)[0],
+                 "one entry per name"))     # an open map added without an example here
+                                            # must degrade to a guess, not crash `init`
             lines.append("#   open map — %s. e.g." % note)
             for row in example.splitlines():
                 lines.append("# %s" % row)

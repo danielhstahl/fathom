@@ -19,6 +19,16 @@
 
 use crate::deps::text::{Notes, is_flow, unquote};
 
+/// The deepest nesting this subset will build.
+///
+/// Every level of a block mapping or block sequence is one frame of [`parse_block`] recursion, and the
+/// indent that buys it is one space of indentation in a file nobody has to be sincere about. A 100 KB
+/// `pnpm-lock.yaml` whose first 5 000 lines add one space each would otherwise overflow the stack of
+/// whatever was reading it, and a stack overflow is a `SIGSEGV`, not an error the caller can report
+/// (`e7.8`, threat model F-5). Real lockfiles nest a handful deep; pnpm's own deepest practical block is
+/// about six. A hundred is generous and still 1 000× below the depth that hurts.
+const MAX_DEPTH: usize = 100;
+
 /// A parsed YAML value, deliberately minimal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
@@ -133,7 +143,7 @@ pub fn parse(text: &str, notes: &mut Notes) -> Result<Node, String> {
         ));
     }
     let mut cursor = 0usize;
-    let node = parse_block(&mut lines, &mut cursor, 0, notes)?;
+    let node = parse_block(&mut lines, &mut cursor, 0, 1, notes)?;
     if cursor != lines.len() {
         return Err(format!(
             "line {}: content left over at the top level",
@@ -148,13 +158,20 @@ fn parse_block(
     lines: &mut [Line],
     cursor: &mut usize,
     block: usize,
+    depth: usize,
     notes: &mut Notes,
 ) -> Result<Node, String> {
+    if depth > MAX_DEPTH {
+        return Err(format!(
+            "line {}: nested more than {MAX_DEPTH} levels deep, which is not a lockfile",
+            lines[*cursor].number
+        ));
+    }
     let line = &lines[*cursor];
     if line.text == "-" || line.text.starts_with("- ") {
-        parse_seq(lines, cursor, block, notes)
+        parse_seq(lines, cursor, block, depth, notes)
     } else {
-        parse_map(lines, cursor, block, notes)
+        parse_map(lines, cursor, block, depth, notes)
     }
 }
 
@@ -162,6 +179,7 @@ fn parse_map(
     lines: &mut [Line],
     cursor: &mut usize,
     block: usize,
+    depth: usize,
     notes: &mut Notes,
 ) -> Result<Node, String> {
     let mut entries: Vec<(String, Node)> = Vec::new();
@@ -193,7 +211,7 @@ fn parse_map(
         if value.is_empty() {
             let has_child = lines.get(*cursor).is_some_and(|next| next.indent > block);
             if has_child {
-                let child = parse_block(lines, cursor, lines[*cursor].indent, notes)?;
+                let child = parse_block(lines, cursor, lines[*cursor].indent, depth + 1, notes)?;
                 entries.push((key, child));
             } else {
                 entries.push((key, Node::Scalar(String::new())));
@@ -230,6 +248,7 @@ fn parse_seq(
     lines: &mut [Line],
     cursor: &mut usize,
     block: usize,
+    depth: usize,
     notes: &mut Notes,
 ) -> Result<Node, String> {
     let mut items: Vec<Node> = Vec::new();
@@ -251,7 +270,13 @@ fn parse_seq(
         if body.is_empty() {
             *cursor += 1;
             if lines.get(*cursor).is_some_and(|next| next.indent > block) {
-                items.push(parse_block(lines, cursor, lines[*cursor].indent, notes)?);
+                items.push(parse_block(
+                    lines,
+                    cursor,
+                    lines[*cursor].indent,
+                    depth + 1,
+                    notes,
+                )?);
                 continue;
             }
             return Err(format!("line {number}: empty sequence item"));
@@ -264,7 +289,7 @@ fn parse_seq(
                 text: body,
                 number,
             };
-            items.push(parse_map(lines, cursor, content_col, notes)?);
+            items.push(parse_map(lines, cursor, content_col, depth + 1, notes)?);
             continue;
         }
         *cursor += 1;

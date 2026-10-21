@@ -55,6 +55,9 @@ pub mod diff;
 pub mod error;
 pub mod export;
 pub mod graph;
+/// The named fuzz entry point (`e7.8`, `reco-41a`): the one call the hook-event cargo-fuzz target and the
+/// corpus/proptest tests share, so a nightly find is a morning regression test.
+pub mod hardening;
 pub mod hooks;
 pub mod ingest;
 pub mod intent;

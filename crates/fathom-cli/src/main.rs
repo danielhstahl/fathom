@@ -61,6 +61,9 @@ mod patches;
 mod query;
 mod queue;
 mod review;
+// Which paths a run is allowed to write: the containment rule that a clone's symlink may not point a
+// store, a cache or a ledger outside the repository (`e7.8`).
+mod sandbox;
 mod sanitize;
 // The corpus the one search box reads (`reco-mkc`): the store and manifest reads the shell is not allowed
 // to make for itself (ADR-002 §5.2), made here and handed over as an index — and the same corpus the

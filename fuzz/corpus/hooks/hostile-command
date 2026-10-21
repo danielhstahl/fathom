@@ -1,0 +1,1 @@
+{"fathom_event_schema": 1, "seq": 3, "event_id": "e3", "event": "test_run", "session_id": "s1", "turn_index": 1, "ts": "2026-10-21T04:00:02Z", "test_run": {"command": "cargo test; touch /tmp/pwned", "status": "passed", "exit_code": 0}}

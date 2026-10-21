@@ -18,6 +18,14 @@
 //! whether it read the whole blob, which is where [`crate::deps::text::toml_reason`]-style classification
 //! would be the wrong tool.
 
+/// The deepest element nesting [`parse`] will build.
+///
+/// [`parse`] recurses once per open element, so nesting is the one axis of a hostile XML file that the
+/// parser itself can lose a stack over: 5 000 `<a>` tags are 5 000 frames, and the loss is a `SIGSEGV`
+/// rather than a reportable error. No build file a human maintains nests anywhere near this; the depth is
+/// here so that "hostile" has an answer (`e7.8`, threat model F-5).
+const MAX_DEPTH: usize = 100;
+
 /// One attribute.
 pub type Attr = (String, String);
 
@@ -100,7 +108,7 @@ pub fn parse(text: &str) -> Result<Element, String> {
         text: String::new(),
     };
     if !closed {
-        cursor.children(&mut root)?;
+        cursor.children(&mut root, 1)?;
     }
     Ok(root)
 }
@@ -243,7 +251,7 @@ impl<'a> Scanner<'a> {
     }
 
     /// Fill `element`'s children until its close tag.
-    fn children(&mut self, element: &mut Element) -> Result<(), String> {
+    fn children(&mut self, element: &mut Element, depth: usize) -> Result<(), String> {
         let openers = element.name.clone();
         let mut text = String::new();
         loop {
@@ -282,7 +290,14 @@ impl<'a> Scanner<'a> {
                         text: String::new(),
                     };
                     if !closed {
-                        self.children(&mut child)?;
+                        if depth >= MAX_DEPTH {
+                            return Err(format!(
+                                "line {}: nested more than {MAX_DEPTH} elements deep, which is not a \
+                                 build file",
+                                self.line
+                            ));
+                        }
+                        self.children(&mut child, depth + 1)?;
                     }
                     element.children.push(child);
                 }

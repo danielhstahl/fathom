@@ -261,9 +261,19 @@ def test_only_the_cli_reads_the_environment_or_a_file():
     for name in IO_MODULES:
         assert "open" in module_source(name) or "read_text" in module_source(name)
     text = module_source("cli")
-    assert "urllib.request.urlopen" in text, "the refresh path must exist somewhere"
-    assert "import urllib" in text.split("def _osv_query")[1][:400], \
-        "the network import must be local to the one function that fetches"
+    assert "urllib.request.build_opener" in text, "the refresh path must exist somewhere"
+    assert "urllib.request.urlopen(" not in text, \
+        "`urlopen` follows redirects, and the one fetch site must not (e7.8)"
+    # Parsed rather than windowed: the point is that *no other function* in the module can
+    # reach the network stack, and a character window around one definition cannot show that.
+    tree = ast.parse(text)
+    importer = {node.name for node in ast.walk(tree)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                for sub in ast.walk(node)
+                if isinstance(sub, ast.Import)
+                for alias in sub.names
+                if alias.name.split(".")[0] == "urllib"}
+    assert importer == {"_osv_query"}, "the network import must be local to the fetch: %s" % importer
 
 
 def test_every_verb_runs_without_touching_the_network():
@@ -1208,3 +1218,139 @@ def test_no_stale_state_is_left_behind_in_the_repository():
     assert not (ROOT / ".fathom" / "advisories.json").exists() or \
         subprocess.run(["git", "ls-files", ".fathom"], cwd=str(ROOT), capture_output=True,
                        text=True, check=False).stdout.strip() == ""
+
+
+# ===========================================================================
+# `e7.8` (reco-41a): the one network call, and what it will and will not accept
+# ===========================================================================
+class _Lookup:
+    """Just the three fields the OSV query body is made of."""
+
+    package = "jwt"
+    version = "2.1.0"
+    osv_ecosystem = "PyPI"
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes):
+        self._payload = payload
+
+    def read(self, limit: int = -1) -> bytes:
+        return self._payload if limit < 0 else self._payload[:limit]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+
+class _FakeOpener:
+    """Stands in for `urllib.request.build_opener(...).open(...)` and records the request."""
+
+    def __init__(self, payload: bytes = b'{"vulns": []}'):
+        self.payload = payload
+        self.request = None
+        self.timeout = None
+
+    def open(self, request, timeout=None):
+        self.request = request
+        self.timeout = timeout
+        return _FakeResponse(self.payload)
+
+
+def _fetch(monkeypatch, endpoint: str, payload: bytes = b'{"vulns": []}', timeout_ms: int = 4_000):
+    import urllib.request
+
+    opener = _FakeOpener(payload)
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: opener)
+    result = cli._osv_query(endpoint, _Lookup(), timeout_ms)
+    return opener, result
+
+
+def test_a_lookalike_osv_endpoint_is_refused():
+    """`startswith(OSV_ENDPOINTS)` was the whole allow-list, and three strings beat it.
+
+    Each case below passes a prefix test and fails a parse: `api.osv.dev.evil.test` and
+    `api.osv.dev@evil.test` are hosts that are not `api.osv.dev`, and cleartext, a non-standard
+    port, a path or a query are all ways an "allowed endpoint" stops being the endpoint that
+    was allowed. See [threat model F-2](../docs/security/threat-model.md).
+    """
+    for hostile in [
+        "https://api.osv.dev.evil.test",
+        "https://api.osv.dev@evil.test",
+        "https://evil.test#https://api.osv.dev",
+        "http://api.osv.dev",
+        "https://api.osv.dev:8443",
+        "https://api.osv.dev/mirror",
+        "https://api.osv.dev/?proxy=evil",
+        "https://user:pass@api.osv.dev",
+        "file:///etc/passwd",
+        "",
+    ]:
+        with pytest.raises(ValueError) as exc:
+            cli._validate_endpoint(hostile)
+        assert "refusing" in str(exc.value), hostile
+
+
+def test_the_accepted_endpoint_is_the_one_that_is_queried(monkeypatch):
+    """The URL is reassembled from the parts that were checked, not from the input string."""
+    opener, _ = _fetch(monkeypatch, "https://api.osv.dev/")
+    assert opener.request.full_url == "https://api.osv.dev/v1/query"
+    assert json.loads(opener.request.data.decode("utf-8")) == {
+        "package": {"name": "jwt", "ecosystem": "PyPI"}, "version": "2.1.0"}
+    assert opener.timeout == pytest.approx(4.0), "the timeout is config, not a literal"
+
+
+def test_the_fetch_is_a_configured_opener_not_a_bare_urlopen(monkeypatch):
+    """`urlopen` follows redirects; this call must not, so it is not what the module uses."""
+    import urllib.request
+
+    seen = []
+    real = urllib.request.build_opener
+
+    def spy(*handlers):
+        seen.extend(handlers)
+        return real(*handlers)
+
+    monkeypatch.setattr(urllib.request, "build_opener", spy)
+    source = pathlib.Path(cli.__file__).read_text(encoding="utf-8")
+    assert "urllib.request.urlopen(" not in source, "the fetch must go through an opener"
+    try:
+        cli._osv_query("https://api.osv.dev", _Lookup(), 1_000)
+    except Exception:                                       # noqa: BLE001 - no network in tests
+        pass
+    assert any(isinstance(handler, cli._NoRedirect) for handler in seen), seen
+
+
+def test_a_redirect_is_not_followed():
+    """An allowed endpoint that answers 302 has named a host that was never allowed.
+
+    Returning `None` from the handler is how urllib is told "I did not handle this", which
+    leaves the default handler to raise rather than issue a second request to a host the
+    allow-list never saw.
+    """
+    handler = cli._NoRedirect()
+    for code in (301, 302, 303, 307, 308):
+        assert getattr(handler, "http_error_%d" % code)(None, None, code, "Found", {}) is None
+
+
+def test_the_response_size_is_capped_and_a_cap_is_a_refusal(monkeypatch):
+    """Truncating an oversized advisory would be worse than refusing it: half a CVE is a guess."""
+    import urllib.request
+
+    huge = b'{"vulns": []}' + b"x" * (cli.MAX_RESPONSE_BYTES + 1)
+    opener = _FakeOpener(huge)
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: opener)
+    with pytest.raises(ValueError, match="refusing an OSV response"):
+        cli._osv_query("https://api.osv.dev", _Lookup(), 4_000)
+
+
+def test_the_timeout_floor_stops_a_zero_meaning_forever(monkeypatch):
+    """`deps.advisories.timeout_ms` is the knob; 0 must not mean "hang".
+
+    The schema bounds the value at load, so this is about a caller that bypasses the schema —
+    and `_osv_query` is where the floor has to be, because that is where the number is used.
+    """
+    opener, _ = _fetch(monkeypatch, "https://api.osv.dev", timeout_ms=0)
+    assert opener.timeout == pytest.approx(0.2)

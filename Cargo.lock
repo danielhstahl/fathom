@@ -940,6 +940,7 @@ dependencies = [
  "filetime",
  "gix",
  "notify",
+ "proptest",
  "rayon",
  "serde",
  "serde_json",

@@ -1,0 +1,54 @@
+# The fuzzing workspace (`e7.8`, `reco-41a`).
+#
+# This is a **separate cargo workspace** — the `[workspace]` table below detaches it from the one at the
+# repository root, and the root's `[workspace] exclude` list agrees. Three reasons it is not a member:
+#
+# 1. libFuzzer needs `-Zsanitizer=address` and a nightly toolchain, so nothing here can build with the
+#    pinned stable `rust-toolchain.toml`; a member of the main workspace would make `cargo build --workspace`
+#    — the promise `e0.7`'s acceptance criterion makes to a clean clone — depend on a nightly install.
+# 2. It keeps `-Z` flags and the fuzzing-only dependency (`libfuzzer-sys`) out of the shipped dependency
+#    graph, and out of `cargo deny`'s view of what ships (`deny.toml` audits the product's graph; this one
+#    is a build-only tool, like `criterion`).
+# 3. A separate `fuzz/Cargo.lock` means fuzzing never changes the product's lockfile.
+#
+# The targets call the same functions the per-commit tests call — `fathom_analyze::hardening::*` and
+# `fathom_ingest::hardening::hook_event` — which is the whole point of putting those drivers in the
+# libraries rather than in this directory. See [`README.md`](README.md).
+
+[workspace]
+
+[package]
+name = "fathom-fuzz"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97.0"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "Cargo-fuzz targets for the readers that take repository content: lockfiles, hook events and path names."
+
+[dependencies]
+# The ecosystems behind the lockfile target are the point of it, so they are all on.
+fathom-analyze = { path = "../crates/fathom-analyze", features = ["deps-all"] }
+fathom-ingest = { path = "../crates/fathom-ingest" }
+serde_json = "1"
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "lockfile"
+path = "fuzz_targets/lockfile.rs"
+
+[[bin]]
+name = "hooks"
+path = "fuzz_targets/hooks.rs"
+
+[[bin]]
+name = "paths"
+path = "fuzz_targets/paths.rs"
+
+[profile.dev]
+# The same optimisation release gets, because a fuzzer exploring unoptimised code finds different bugs and
+# misses the ones that only exist where the code is inlined.
+opt-level = 3
+
+[profile.release]
+debug = true

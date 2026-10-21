@@ -544,7 +544,13 @@ def _glob_keys(config: Config) -> list[str]:
     in `noise.globs`, and `e0.9`'s engine would otherwise swallow it silently (see
     `recommender.taxonomy.rules._compile`).
     """
-    keys = ["noise.globs", "test.globs", "non_code.patterns"]
+    # Derived from the schema rather than written out: a `glob_list` added tomorrow is
+    # compile-checked tomorrow, and the failure mode this prevents (a hostile pattern reaching
+    # the matcher unchecked) is exactly the one a hand-maintained list walks into.
+    declared = [key.path for key in S.KEY_LIST
+                if key.kind == "glob_list" and "<" not in key.path]
+    present = set(config.keys())
+    keys = [path for path in declared if path in present]
     keys += [path for path in config.keys() if path.startswith("taxonomy.classes.")]
     return keys
 

@@ -9,6 +9,10 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# `fuzz/` is its own workspace on purpose: libFuzzer is a nightly `-Z` flag, and a member here would make
+# `cargo build --workspace` — the clean-clone promise `e0.7`'s acceptance criterion makes — depend on a
+# nightly install. See `fuzz/Cargo.toml` and `docs/security/threat-model.md` (`e7.8`).
+exclude = ["fuzz"]
 
 [workspace.package]
 edition = "2024"

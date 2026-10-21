@@ -32,6 +32,10 @@ pub mod deps;
 pub mod detectors;
 pub mod error;
 pub mod export;
+/// The named fuzz entry points (`e7.8`, `reco-41a`): one call per hostile-input family, shared by the
+/// cargo-fuzz targets in `fuzz/` and the corpus/proptest tests, so the nightly run and the per-commit run
+/// cannot drift apart.
+pub mod hardening;
 pub mod insight;
 
 pub mod drift;

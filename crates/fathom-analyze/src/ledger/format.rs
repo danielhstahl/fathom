@@ -59,6 +59,14 @@ pub const LEDGER_DIR: &str = ".fathom/reviews";
 /// The default ledger file's name. `fathom review sign` appends here; `discover` reads everything beside it.
 pub const LEDGER_FILE: &str = "ledger.md";
 
+/// The largest ledger file [`parse`] will read.
+///
+/// A ledger is markdown prose with one block per decision; the fixture corpus's largest is a few tens of
+/// kilobytes. The cap is here for the case a size was never meant to cover: a clone that names a huge file
+/// (or a device) `x.md` in `.fathom/reviews/` would otherwise have every reader of the ledger read it into
+/// memory (`e7.8`, threat model F-7).
+pub const MAX_LEDGER_BYTES: u64 = 32 * 1024 * 1024;
+
 /// The format tag line, and the format this build writes.
 pub const FORMAT_TAG: &str = "fathom-review/1";
 
@@ -182,9 +190,27 @@ pub fn discover(root: &Path) -> Vec<PathBuf> {
 /// Never fails: a file that is unreadable or not UTF-8 is a [`Problem`] with the file's name, because "the
 /// ledger cannot be read" and "the ledger holds 3 reviews" must not be the same answer, and the caller has
 /// to be able to print both and continue with whatever else it found.
+///
+/// Two files are refused rather than read, and both refusals are a [`Problem`] rather than a silence:
+///
+/// * one that does not **resolve inside the repository** — `.fathom/reviews/x.md -> ~/.ssh/id_rsa` is a
+///   symlink a clone can ship, and reading it would smuggle an arbitrary file of the reviewer's into a
+///   report (`e7.8`, threat model F-1);
+/// * one bigger than [`MAX_LEDGER_BYTES`] — the ledger is a few hundred lines of markdown, and a 4 GiB
+///   file (or a device a clone pointed the name at) is not a ledger.
 #[must_use]
 pub fn parse(path: &Path, root: &Path) -> Parsed {
     let display = relative(path, root);
+    if let Some(what) = refusal(path, root) {
+        return Parsed {
+            problems: vec![Problem {
+                file: display,
+                line: 1,
+                what,
+            }],
+            ..Parsed::default()
+        };
+    }
     let Ok(text) = std::fs::read_to_string(path) else {
         return Parsed {
             problems: vec![Problem {
@@ -196,6 +222,48 @@ pub fn parse(path: &Path, root: &Path) -> Parsed {
         };
     };
     parse_text(&display, &text)
+}
+
+/// Why this path may not be read, in words, or `None` when it may.
+fn refusal(path: &Path, root: &Path) -> Option<String> {
+    if !resolves_inside(root, path) {
+        return Some(
+            "this ledger file resolves outside the repository (it is a symlink, or sits under one), and \
+             its contents are not read — a clone must not be able to point a review at a file of \
+             somebody else's"
+                .to_owned(),
+        );
+    }
+    match std::fs::metadata(path) {
+        Ok(meta) if !meta.is_file() => Some(
+            "this is not a regular file (a directory, a device or a fifo was named `*.md`), so it is not \
+             read"
+                .to_owned(),
+        ),
+        Ok(meta) if meta.len() > MAX_LEDGER_BYTES => Some(format!(
+            "this ledger file is {} bytes, over the {} byte cap, so it is not read",
+            meta.len(),
+            MAX_LEDGER_BYTES
+        )),
+        Err(err) => Some(format!("this ledger file could not be stat'ed: {err}")),
+        _ => None,
+    }
+}
+
+/// Does `path` resolve, symlinks and all, to somewhere inside `root`?
+///
+/// `root` is canonicalised first (it is the caller's `--root`, which may be `.`), and the ledger file is
+/// resolved through the filesystem. A path that cannot be resolved at all is treated as outside: a file
+/// the reader cannot place is a file the reader does not open.
+#[must_use]
+fn resolves_inside(root: &Path, path: &Path) -> bool {
+    let Ok(root) = root.canonicalize() else {
+        return false;
+    };
+    match path.canonicalize() {
+        Ok(resolved) => resolved.starts_with(&root),
+        Err(_) => false,
+    }
 }
 
 /// Parse a ledger from its text. Split out so a test and the golden file exercise the same reader the file

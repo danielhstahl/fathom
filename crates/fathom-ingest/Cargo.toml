@@ -31,6 +31,10 @@ notify = { workspace = true, optional = true }
 # feature is turned on *here* and nowhere in the library: `fathom-ingest`'s production code never
 # names SQLite (ADR-002 §3), and `fathom-cli` is what decides the store build (`e1.10`).
 fathom-store = { workspace = true, features = ["sqlite-bundled"] }
+# `e7.8`'s event-reader fuzz harness (`tests/hooks_hardening.rs`): random bytes through the same driver
+# the cargo-fuzz target in `fuzz/` calls. Already in the lock through `fathom-tui` (`e5.5`), so this adds
+# no vendor, and dev-dependencies stay out of the shipped binary.
+proptest.workspace = true
 
 # ADR-002 §6.2. `watch` and `watch-poll` are separate because inotify lies on NFS (ADR-004 §7.8) and
 # the polling backend is a different dependency cost, not a different boolean. `mmap-index` forwards to

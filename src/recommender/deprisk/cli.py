@@ -451,23 +451,93 @@ def _refresh(args, policy: Policy, cache: OSV.Cache, view) -> int:
 
 
 def _osv_query(endpoint: str, lookup, timeout_ms: int) -> dict:
-    """One OSV query. Endpoint fixed in code, timeout from config, nothing else configurable."""
+    """One OSV query. Endpoint fixed in code, timeout from config, nothing else configurable.
+
+    The endpoint check is a *parse*, not a prefix test, and that is the whole finding: the
+    version this file replaces asked `endpoint.startswith("https://api.osv.dev")`, which
+    `https://api.osv.dev.evil.test` and `https://api.osv.dev@evil.test` both pass
+    (`e7.8`, threat model F-2). What is checked now is every part of the URL that could
+    point somewhere else — scheme, host, port, userinfo, path, query — and the URL the
+    request is built from is reassembled from the checked parts rather than from the string
+    that came in. Redirects are refused rather than followed, and the response is read with
+    a byte cap: a consent-gated fetch that will read an unbounded body is a memory
+    exhaustion bug with a plausible hostname in front of it.
+    """
     import urllib.error
     import urllib.request
 
-    from .policy import OSV_ENDPOINTS
-
-    if not any(str(endpoint).startswith(allowed) for allowed in OSV_ENDPOINTS):
-        raise ValueError("refusing to query %r: only %s are allowed endpoints"
-                         % (endpoint, ", ".join(OSV_ENDPOINTS)))
+    base = _validate_endpoint(endpoint)
     body = json.dumps({"package": {"name": lookup.package, "ecosystem": lookup.osv_ecosystem},
                        "version": lookup.version}).encode("utf-8")
     request = urllib.request.Request(
-        "%s/v1/query" % str(endpoint).rstrip("/"), data=body,
+        "%s/v1/query" % base, data=body,
         headers={"content-type": "application/json",
                  "user-agent": "fathom/0.1 (dependency-risk cache; e2.7)"})
-    with urllib.request.urlopen(request, timeout=max(0.2, timeout_ms / 1000.0)) as response:
-        return json.loads(response.read().decode("utf-8"))
+    opener = urllib.request.build_opener(_NoRedirect())
+    with opener.open(request, timeout=max(0.2, timeout_ms / 1000.0)) as response:
+        payload = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(payload) > MAX_RESPONSE_BYTES:
+        raise ValueError("refusing an OSV response over %d bytes" % MAX_RESPONSE_BYTES)
+    return json.loads(payload.decode("utf-8"))
+
+
+class _NoRedirect:
+    """A handler that turns a 3xx into an error instead of a second request.
+
+    The allow-list is on the endpoint, and a redirect is the one mechanism by which an
+    allowed endpoint names a host that was never allowed. urllib dispatches a 302 to the
+    handler method of that name; returning `None` means "not handled here", the default
+    handler then raises `HTTPError`. No base class, and deliberately so: this module imports
+    `urllib` inside the one function that fetches, so anything at module level has to be
+    definable without it.
+    """
+
+    def http_error_302(self, req, fp, code, msg, headers):        # noqa: ANN001,D102
+        return None
+
+    http_error_301 = http_error_302
+    http_error_303 = http_error_302
+    http_error_307 = http_error_302
+    http_error_308 = http_error_302
+
+
+#: The largest OSV response this package will read, in bytes.
+#: Real responses for one package-version are a few kilobytes.
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+
+
+def _validate_endpoint(endpoint: str) -> str:
+    """The checked base URL for one endpoint string, or a `ValueError` naming the refusal.
+
+    Split out so the rule can be tested without a socket: every hostile spelling of
+    "looks like OSV" is an argument to this function and not a monkey-patch exercise.
+    """
+    from urllib.parse import urlsplit
+
+    from .policy import OSV_ENDPOINTS
+
+    allowed_hosts = {urlsplit(one).hostname for one in OSV_ENDPOINTS}
+    allowed_paths = {urlsplit(one).path for one in OSV_ENDPOINTS}
+    parts = urlsplit(str(endpoint))
+    if parts.scheme != "https":
+        raise ValueError("refusing to query %r: the advisory endpoint must be https"
+                         % (endpoint,))
+    if parts.username or parts.password:
+        raise ValueError("refusing to query %r: credentials in the endpoint are refused"
+                         % (endpoint,))
+    if parts.hostname not in allowed_hosts:
+        raise ValueError("refusing to query %r: only %s are allowed endpoints"
+                         % (endpoint, ", ".join(OSV_ENDPOINTS)))
+    if parts.port not in (None, 443):
+        raise ValueError("refusing to query %r: only the standard https port is allowed"
+                         % (endpoint,))
+    if parts.path not in allowed_paths | {"", "/"}:
+        raise ValueError("refusing to query %r: only %s are allowed endpoints"
+                         % (endpoint, ", ".join(OSV_ENDPOINTS)))
+    if parts.query or parts.fragment:
+        raise ValueError("refusing to query %r: a query or fragment on the endpoint is "
+                         "not how OSV is addressed" % (endpoint,))
+    return "https://%s" % parts.hostname
 
 
 def cmd_policy(args) -> int:
