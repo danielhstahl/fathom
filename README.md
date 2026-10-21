@@ -61,7 +61,10 @@ v0.1.0-alpha.1` is the pre-flight that says so before anyone pushes a tag. And t
 git spine (index, episodes, timeline, diff, queue, session) is usable for a daily review; the ranked
 delta-carrying review frame is Epic 2's, the architecture graph is Epic 3's, and there is no export yet.
 [docs/concepts/release.md](docs/concepts/release.md) is the release document — what an artefact set is,
-how to cut the next alpha, and what adoption looks like without telemetry.
+how to cut the next alpha, and what adoption looks like without telemetry. Each release also carries a
+generated [SBOM and licence report](docs/concepts/privacy.md#6-what-a-release-publishes), and
+the default binary makes no outbound call unless you turned a named feature on
+([privacy](docs/concepts/privacy.md)).
 
 ### Build from source
 
@@ -74,6 +77,13 @@ cargo build -p fathom-cli                     # 2. default features are the ship
 ./target/debug/fathom doctor --privacy        # 4. what is compiled in, and what would need consent
 cargo test --workspace                        # 5. the contract tests, boundary lint included
 ```
+
+Step 4 is the privacy posture of *your* build, printed by the binary rather than promised by a README:
+[docs/concepts/privacy.md](docs/concepts/privacy.md) is the page, `python3 tools/check_privacy.py` is the
+check that keeps it true, and a CI job runs the shipped binary with no network available at all
+([`.github/workflows/privacy.yml`](.github/workflows/privacy.yml)). A default build contains no HTTP
+client, no TLS stack and no git transport — you can verify that about a binary instead of trusting this
+sentence, which is the whole point of the `net-*` naming rule.
 
 `cargo build --workspace` and `cargo test --workspace` are expected to succeed on a clean clone with
 nothing installed but a Rust toolchain (the pinned one is in `rust-toolchain.toml`); that promise is

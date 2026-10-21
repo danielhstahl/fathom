@@ -149,6 +149,118 @@ fn doctor_reports_this_build() {
         text.contains("outbound features compiled in: net-advisories"),
         "a build with the net features reports them: {text}"
     );
+    // `e6.8` (reco-h7p): the table has to answer "what is on, what is off, and which key turns it on",
+    // which is a consent column and a verdict, not just a list of compiled features.
+    assert!(
+        text.contains("CONSENT") && text.contains("STATE") && text.contains("SET IN"),
+        "the gate columns are missing: {text}"
+    );
+    assert!(
+        text.contains("consent is user-scoped") && text.contains("privacy.<key> = true"),
+        "the report names the key and the file it belongs in: {text}"
+    );
+    assert!(
+        text.contains("local records:") && text.contains("usage metrics:"),
+        "the local-only half of the posture is missing: {text}"
+    );
+}
+
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn doctor_privacy_says_who_may_open_a_gate_and_who_only_pretended_to() {
+    // The runtime half of ADR-002 §6.3, asserted on two files a user actually has: their own config,
+    // which may consent, and a cloned repository's, which may not (ADR-001 §4.6). A report that conflated
+    // the two would tell a user a clone had switched something on for them, which is the sentence this
+    // whole feature exists to make impossible.
+    let base = sandbox("privacy");
+    let home = base.join("home").join("taylor");
+    let root = base.join("work").join("acme");
+    std::fs::write(
+        home.join(".config").join("fathom").join("config.toml"),
+        "[provider.github]\ntoken = \"ghp_supersecretvalue\"\n[privacy]\nadvisories = true\nllm = false\n",
+    )
+    .expect("write the user config");
+    std::fs::write(
+        root.join("fathom.toml"),
+        "[privacy]\nmcp_http_transport = true\n",
+    )
+    .expect("write the repository config");
+
+    let out = in_home(&["doctor", "--privacy"], &base, &root);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let text = stdout(&out);
+    /// The columns, by position, because the same binary is tested with and without the `net-*`
+    /// features compiled in and only the consent column means the same thing in both.
+    fn columns(text: &str, feature: &str) -> Vec<String> {
+        text.lines()
+            .find(|line| line.starts_with(feature))
+            .unwrap_or_default()
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect()
+    }
+    // Consent the user gave: named, and attributed to their own layer.
+    let advisories = columns(&text, "net-advisories");
+    assert_eq!(
+        advisories.get(3).map(String::as_str),
+        Some("yes"),
+        "{advisories:?}"
+    );
+    assert_eq!(
+        advisories.get(6).map(String::as_str),
+        Some("user"),
+        "the granted key is attributed to the user layer: {advisories:?}"
+    );
+    // Consent the user withheld (an explicit `= false`), and consent the repository tried to grant: both
+    // read `no`, and the file the user's answer came from is still named.
+    let polish = columns(&text, "net-llm");
+    assert_eq!(polish.get(3).map(String::as_str), Some("no"), "{polish:?}");
+    assert_eq!(
+        polish.get(6).map(String::as_str),
+        Some("user"),
+        "an explicit refusal is the user's own answer: {polish:?}"
+    );
+    let listener = columns(&text, "net-http-transport");
+    assert_eq!(
+        listener.get(3).map(String::as_str),
+        Some("no"),
+        "a repository file cannot grant consent: {listener:?}"
+    );
+    assert_eq!(
+        listener.get(6).map(String::as_str),
+        Some("default"),
+        "nothing in the user's files named this key: {listener:?}"
+    );
+    assert!(
+        text.contains("ignored: this repository's fathom.toml sets privacy.mcp_http_transport"),
+        "the ignored grant is said out loud: {text}"
+    );
+    for forbidden in [home.to_str().expect("utf-8"), "ghp_supersecretvalue"] {
+        assert!(
+            !text.contains(forbidden),
+            "the privacy report leaked {forbidden:?}:\n{text}"
+        );
+    }
+
+    let json = fathom(&["doctor", "--root", root.to_str().expect("utf-8"), "--json"]);
+    let parsed: serde_json::Value =
+        serde_json::from_str(&stdout(&json)).expect("doctor --json prints one JSON value");
+    assert_eq!(
+        parsed["privacy_posture"]["telemetry"].as_str(),
+        Some("none")
+    );
+    assert_eq!(
+        parsed["privacy_posture"]["consent_scope"].as_str(),
+        Some("user")
+    );
+    let rows = parsed["network_features"]
+        .as_array()
+        .expect("network features are an array");
+    assert!(
+        rows.iter().all(|row| row["consent"].is_boolean()),
+        "every row carries its runtime consent: {rows:?}"
+    );
+    let _ = std::fs::remove_dir_all(&base);
 }
 
 #[test]

@@ -1,0 +1,84 @@
+# The privacy gate (`e6.8`, reco-h7p): the shipped binary, with no network egress available.
+#
+# ADR-002 §8.3 named this job and left the connection-blocking half unmeasured, because the development
+# container had no namespace tooling. This file is that measurement. Two jobs, in the order a failure is
+# cheapest to read:
+#
+#   * `posture` — the static half (`V01`–`V07`): the dependency closure, the consent table, the source
+#     scan, and the documentation that has to keep saying the same things. Stdlib-only Python, no cargo,
+#     no network: it would pass on a plane.
+#   * `offline` — the dynamic half: build the default binary, verify an egress trap actually traps, then
+#     run ten commands twice and require the bytes to match.
+#
+# The report is uploaded as a workflow artefact rather than committed: it records one machine's trap and
+# one machine's timings, and a committed artefact would turn a measurement into a golden nobody re-runs.
+
+name: privacy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  posture:
+    name: posture (closure, consent table, sources, docs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: the static rules V01-V07
+        run: python3 tools/check_privacy.py check --verbose
+
+  offline:
+    name: default binary, egress refused
+    needs: [posture]
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: the binary users get (default features)
+        run: cargo build --locked -p fathom-cli
+
+      # The trap is proven before it is trusted. If this step goes red, the runner changed the way
+      # sandboxes work, and the `offline` job below would otherwise start reporting a clean run it never
+      # measured — which is the one failure mode worse than a failed build.
+      - name: prove the egress trap traps
+        run: python3 tools/check_privacy.py selftest
+
+      # ADR-002 §8.3's second half, next to the first: the default closure, from cargo's own resolution,
+      # against the network-capable list. `check_privacy.py check` computes the same closure from the
+      # manifests without cargo; this is the same claim from the other side.
+      - name: default binary links zero network-capable crates
+        run: |
+          cargo tree -p fathom-cli --no-default-features --features minimal -e normal --prefix none \
+            | awk '{print $1}' | sort -u > /tmp/deps.txt
+          for banned in reqwest ureq hyper rustls native-tls openssl-sys git2 libgit2-sys axum; do
+            if grep -qx "$banned" /tmp/deps.txt; then
+              echo "::error::default build links $banned — ADR-002 R6"; exit 1
+            fi
+          done
+
+      - name: run it with no network available, and compare
+        # `--json` writes the report CI keeps; the exit code is the gate. The tool prints which trap it
+        # used and why the others were rejected, so the log answers "how was this established?" without
+        # anybody reading the source.
+        run: >
+          python3 tools/check_privacy.py offline
+          --binary target/debug/fathom
+          --json artifacts/privacy-offline.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: privacy-offline
+          path: artifacts/privacy-offline.json
+          if-no-files-found: warn

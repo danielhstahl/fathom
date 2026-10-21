@@ -715,6 +715,8 @@ cargo deny check licenses advisories bans sources
 python3 tools/check_workspace.py check
 python3 tools/check_workspace.py lint
 python3 tools/check_docs.py
+python3 tools/check_privacy.py check          # V01-V07: closure, consent table, sources, docs, SBOM wiring
+python3 tools/gen_sbom.py check                # the committed SBOM and licence report match the lockfile
 ```
 
 Matrix: `linux` × `macOS` × `windows`, on `stable` and on the MSRV; `beta` allowed to fail. The
@@ -725,9 +727,12 @@ dependency on a terminal.
 The privacy job (`e6.8`, `reco-h7p`) runs the shipped binary in a network-less namespace and asserts
 zero connection attempts, and additionally runs `cargo tree -e normal -p fathom-cli --no-default-features
 --features minimal` and fails if any crate on §6's network-capable list appears. Per ADR-005's habit of
-marking claims by how they were established: the connection-blocking assertion is `e6.8`'s to write —
-this container has no network namespace tooling, so it is recorded here as a requirement with a named
-owner rather than as something measured.
+marking claims by how they were established: that assertion was `e6.8`'s to write, and it is now
+measured rather than promised — `.github/workflows/privacy.yml` builds the default binary, proves its
+egress trap actually traps (`python3 tools/check_privacy.py selftest`), then runs the binary's verbs and
+a cold index with egress refused and requires byte-identical output. Where a runner provides no user
+namespaces the job falls back to an `LD_PRELOAD` tripwire that also *counts* attempts, and the report
+names the trap it used. The page is [docs/concepts/privacy.md](../concepts/privacy.md).
 
 ### 8.4 `cargo-deny`, and why an ignore needs a signature
 

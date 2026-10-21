@@ -1,0 +1,61 @@
+# The SBOM and the licence report, generated and published per release (`e6.8`, reco-h7p).
+#
+# Two events, one generator:
+#
+#   * **every PR and every merge** — `tools/gen_sbom.py check` regenerates `sbom/` in memory and fails on
+#     a byte of difference. A committed artefact nobody re-generates is a document that lies about the
+#     release it names, which is the failure this workflow exists to prevent.
+#   * **every published release** — the two committed artefacts are attached to the release, so "what is
+#     in the binary I installed" has an answer on the download page and not only in the repository.
+#
+# The artefacts are *committed* and then attached, rather than built at release time: a release asset that
+# is generated independently of the tree it names is an artefact nobody can reproduce from the tag, and
+# `dist generate --check` owns `release.yml`, so this file is where a hand-written release step can live
+# without fighting the generator that owns the other one.
+
+name: SBOM and licence report
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  check:
+    name: the committed artefacts match the lockfile
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: regenerate and diff
+        # `cargo metadata --locked` is how a licence is read correctly; the runner has the lockfile, the
+        # index and the network, and needs none of the compile.
+        run: python3 tools/gen_sbom.py check
+
+  publish:
+    name: attach them to the release
+    if: github.event_name == 'release'
+    needs: [check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: the same check, on the tag's own tree
+        run: python3 tools/gen_sbom.py check
+      - name: upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          shopt -s nullglob
+          files=(sbom/*.cdx.json sbom/*-licenses.md)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::no SBOM or licence report in sbom/ — run `python3 tools/gen_sbom.py write`"
+            exit 1
+          fi
+          gh release upload "$TAG" "${files[@]}" --clobber
+          echo "attached: ${files[*]}"

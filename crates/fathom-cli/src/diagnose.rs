@@ -64,6 +64,7 @@ pub fn doctor(
             "hooks": hooks_stream,
             "network_features": consent,
             "privacy": privacy,
+            "privacy_posture": privacy_posture(&redactor),
             "strict": strict,
             "exit_code": code.as_i32(),
             "exit_name": code.name(),
@@ -103,7 +104,7 @@ pub fn doctor(
     tracing::debug!(features = ?features::compiled(), "build report");
 
     if privacy {
-        privacy_table();
+        privacy_table(&redactor, &layout);
     } else {
         output::line(format_args!(
             "pass --privacy for the network-feature table, or --json for the same report as data"
@@ -126,22 +127,46 @@ pub fn doctor(
     Ok(if strict { code } else { ExitCode::Ok })
 }
 
-/// The `--privacy` table, unchanged from the version `e0.7` shipped: the consent keys are a published
-/// contract (`fathom_core::privacy`) and this is where a user checks which half of the double gate is
-/// holding (ADR-002 §6.3).
-fn privacy_table() {
+/// The `--privacy` report: what this binary can reach, what the user has consented to, what it keeps
+/// locally, and the claim about what never leaves the machine (`e6.8`, ADR-002 §6.3).
+///
+/// One row per gate — compiled in, consented to — plus the verdict half the gates add up to, and then the
+/// two questions a person actually has after reading a table: *where do I write this if I want it on*,
+/// and *what is this keeping about me*. The consent keys themselves are a published contract
+/// (`fathom_core::privacy`), so this is where a user checks which half of the double gate is holding
+/// rather than finding out from an error message.
+fn privacy_table(redactor: &Redactor, layout: &Value) {
     let rows = features::privacy_table();
+    let consent = features::consent_states();
     output::line(format_args!(
-        "{:<20} {:<16} {:<10} {:<28} {}",
-        "FEATURE", "OWNER", "COMPILED", "CONSENT KEY", "OWNER TICKET"
+        "privacy: what this build can reach, and what it will not do unasked"
+    ));
+    output::line(format_args!(
+        "{:<20} {:<16} {:<9} {:<8} {:<8} {:<28} {:<8} {}",
+        "FEATURE", "OWNER", "COMPILED", "CONSENT", "STATE", "CONSENT KEY", "SET IN", "OWNER TICKET"
     ));
     for row in &rows {
+        let state = consent
+            .iter()
+            .find(|candidate| candidate.key == row.consent_key);
+        let granted = state.is_some_and(|candidate| candidate.granted);
+        // Two gates, two columns, and a verdict that names which half is holding (ADR-002 §6.3). A row
+        // that reads `no / yes` is a real state — consent left on from a build that no longer compiles
+        // the feature — and it is `off`, because code that is not in the binary cannot be switched on.
+        let verdict = match (row.compiled_in, granted) {
+            (true, true) => "ON",
+            (true, false) => "waiting",
+            (false, _) => "off",
+        };
         output::line(format_args!(
-            "{:<20} {:<16} {:<10} {:<28} {}",
+            "{:<20} {:<16} {:<9} {:<8} {:<8} {:<28} {:<8} {}",
             row.feature,
             row.owner,
             if row.compiled_in { "yes" } else { "no" },
+            if granted { "yes" } else { "no" },
+            verdict,
             row.consent_key,
+            state.map_or("default", |state| state.layer),
             row.ticket
         ));
     }
@@ -157,6 +182,49 @@ fn privacy_table() {
         } else {
             net_compiled.join(", ")
         }
+    ));
+    // "consent is off" is only actionable if the user knows which file to open, and `privacy.*` is
+    // user-scoped, so the answer is never the repository's own file (ADR-001 §4.6).
+    let files: Vec<String> = features::consent_files()
+        .iter()
+        .map(|(layer, path)| {
+            format!(
+                "{layer}={} ({})",
+                redactor.path(path),
+                if path.exists() { "exists" } else { "absent" }
+            )
+        })
+        .collect();
+    output::line(format_args!(
+        "consent is user-scoped: set `privacy.<key> = true` in {} — a repository's own fathom.toml \
+         cannot grant it, because a clone must not consent for you",
+        files.join(", ")
+    ));
+    let attempted = features::consent_the_repository_tried(&redactor.root);
+    if !attempted.is_empty() {
+        output::line(format_args!(
+            "ignored: this repository's fathom.toml sets {} — that is read and discarded; set it in \
+             your own config if you meant it",
+            attempted.join(", ")
+        ));
+    }
+    output::line(format_args!(
+        "local records: {} ({}) — read them with `fathom stats` or `fathom doctor --json`, write them \
+         out with `fathom export`, delete them by removing the directory",
+        layout["path"].as_str().unwrap_or(".fathom"),
+        if layout["present"].as_bool() == Some(true) {
+            format!(
+                "{} file(s), {} B on disk",
+                layout["entries"].as_array().map(Vec::len).unwrap_or(0),
+                layout["bytes"].as_u64().unwrap_or(0)
+            )
+        } else {
+            "nothing there yet".to_owned()
+        }
+    ));
+    output::line(format_args!(
+        "usage metrics: nothing leaves this machine — {}",
+        features::LOCAL_ONLY_SENTENCE
     ));
 }
 
@@ -420,18 +488,49 @@ fn watch_section(root: &Path) -> Value {
 /// The consent table as data — the same rows as `--privacy`, because a machine reading `doctor --json` has
 /// to be able to reach the same conclusion a human reaches from the table.
 fn consent_section() -> Vec<Value> {
+    let consent = features::consent_states();
     features::privacy_table()
         .iter()
         .map(|row| {
+            let state = consent
+                .iter()
+                .find(|candidate| candidate.key == row.consent_key);
             json!({
                 "feature": row.feature,
                 "owner": row.owner,
                 "compiled_in": row.compiled_in,
                 "consent_key": row.consent_key,
+                // Both halves of ADR-002 §6.3, because `compiled_in: true, consent: false` is the state a
+                // user who built with `--features net-llm` is in and needs named.
+                "consent": state.is_some_and(|state| state.granted),
+                "consent_layer": state.map_or("default", |state| state.layer),
                 "ticket": row.ticket,
             })
         })
         .collect()
+}
+
+/// The posture as data: what a reader needs to conclude "nothing left this machine" without reading the
+/// page (`e6.8`). The verdict is derived, not asserted — it is the list of files consent could have come
+/// from, the keys a repository tried to grant, and what is actually on disk.
+fn privacy_posture(redactor: &Redactor) -> Value {
+    json!({
+        "outbound_compiled_in": features::privacy_table()
+            .iter()
+            .filter(|row| row.compiled_in)
+            .map(|row| row.feature)
+            .collect::<Vec<_>>(),
+        "consent_scope": "user",
+        "consent_files": features::consent_files()
+            .iter()
+            .map(|(layer, path)| json!({"layer": layer, "path": redactor.path(path),
+                                        "present": path.exists()}))
+            .collect::<Vec<_>>(),
+        "consent_ignored_from_repository": features::consent_the_repository_tried(&redactor.root),
+        "telemetry": "none",
+        "local_only": features::LOCAL_ONLY_SENTENCE,
+        "proven_by": "tools/check_privacy.py (offline run of this binary, with the egress trapped)",
+    })
 }
 
 fn yes_no(value: Option<bool>) -> &'static str {

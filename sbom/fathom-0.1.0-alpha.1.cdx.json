@@ -1,0 +1,1373 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "clap@4.6.7",
+      "description": "A simple to use, efficient, and full-featured Command Line Argument Parser",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "aa8876b300ab35ba921adea3dfd70157a46249b33f95c9084ae5709785478946"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "clap",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/clap@4.6.7",
+      "type": "library",
+      "version": "4.6.7"
+    },
+    {
+      "bom-ref": "clap_complete@4.6.11",
+      "description": "Generate shell completion scripts for your clap::Command",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "037e2a1a92236d0aff7e845093f64661d6df4c02c9fcc61a60e9e1d736fa392f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "clap_complete",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/clap_complete@4.6.11",
+      "type": "library",
+      "version": "4.6.11"
+    },
+    {
+      "bom-ref": "color-eyre@0.6.5",
+      "description": "An error report handler for panics and eyre::Reports for colorful, consistent, and well formatted error reports for all kinds of errors.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e5920befb47832a6d61ee3a3a846565cfa39b331331e68a3b1d1116630f2f26d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "color-eyre",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/color-eyre@0.6.5",
+      "type": "library",
+      "version": "0.6.5"
+    },
+    {
+      "bom-ref": "crossterm@0.29.0",
+      "description": "A crossplatform terminal library for manipulating terminals.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d8b9f2e4c67f833b660cdb0a3523065869fb35570177239812ed4c905aeff87b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "crossterm",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/crossterm@0.29.0",
+      "type": "library",
+      "version": "0.29.0"
+    },
+    {
+      "bom-ref": "eyre@0.6.14",
+      "description": "Flexible concrete Error Reporting type built on std::error::Error with customizable Reports",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c08309dbcc659c5549a24ddb9b27027640641b282ef5768267c7e675558986a3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "eyre",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/eyre@0.6.14",
+      "type": "library",
+      "version": "0.6.14"
+    },
+    {
+      "bom-ref": "fallible-iterator@0.3.0",
+      "description": "Fallible iterator traits",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT/Apache-2.0"
+          }
+        }
+      ],
+      "name": "fallible-iterator",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/fallible-iterator@0.3.0",
+      "type": "library",
+      "version": "0.3.0"
+    },
+    {
+      "bom-ref": "fathom-analyze@0.1.0-alpha.1",
+      "description": "Every Fathom analysis: taxonomy, structure, dependencies, graph, risk, the attention queue, and the `insight` facade every surface reads through.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-analyze",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-analyze@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "fathom-cli@0.1.0-alpha.1",
+      "description": "The fathom binary: one process, one version, one set of feature decisions, and the exit codes CI branches on.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-cli",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-cli@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "fathom-ingest@0.1.0-alpha.1",
+      "description": "Getting facts into Fathom: git objects through gix, commit normalisation, episode segmentation, hook events and watch mode.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-ingest",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-ingest@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "fathom-mcp@0.1.0-alpha.1",
+      "description": "Fathom's MCP server: the tool surface, capability gating, approval tokens and the shared review memory an agent writes back through.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-mcp",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-mcp@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "fathom-store@0.1.0-alpha.1",
+      "description": "Fathom's SQLite index, cache and blob store: schema and migrations, analyzer manifest and cache keys, retention and the writer lease.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-store",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-store@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "fathom-tui@0.1.0-alpha.1",
+      "description": "Fathom's terminal application: event loop, focus model, keymap, responsive layout and the view inventory.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom-tui",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "true"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "workspace"
+        }
+      ],
+      "purl": "pkg:cargo/fathom-tui@0.1.0-alpha.1",
+      "type": "library",
+      "version": "0.1.0-alpha.1"
+    },
+    {
+      "bom-ref": "filetime@0.2.29",
+      "description": "Platform-agnostic accessors of timestamps in File metadata\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT/Apache-2.0"
+          }
+        }
+      ],
+      "name": "filetime",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/filetime@0.2.29",
+      "type": "library",
+      "version": "0.2.29"
+    },
+    {
+      "bom-ref": "gix@0.89.0",
+      "description": "Interact with git repositories just like git would",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2156d2e07fc3afa7632a82bf3cb0db91f995645a2852f642105c9ac9b52e1cb2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "gix",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/gix@0.89.0",
+      "type": "library",
+      "version": "0.89.0"
+    },
+    {
+      "bom-ref": "globset@0.4.20",
+      "description": "Cross platform single glob and glob set matching. Glob set matching is the\nprocess of matching one or more glob patterns against a single candidate path\nsimultaneously, and returning all of the globs that matched.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "07c34a9410465b45bd9787443bc7370f37735bad04b0f0cd57ff1a3186c98988"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "Unlicense OR MIT"
+          }
+        }
+      ],
+      "name": "globset",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/globset@0.4.20",
+      "type": "library",
+      "version": "0.4.20"
+    },
+    {
+      "bom-ref": "libsqlite3-sys@0.38.2",
+      "description": "Native bindings to the libsqlite3 library",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "libsqlite3-sys",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/libsqlite3-sys@0.38.2",
+      "type": "library",
+      "version": "0.38.2"
+    },
+    {
+      "bom-ref": "notify@8.2.0",
+      "description": "Cross-platform filesystem notification library",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4d3d07927151ff8575b7087f245456e549fea62edf0ec4e565a5ee50c8402bc3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "CC0-1.0"
+          }
+        }
+      ],
+      "name": "notify",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/notify@8.2.0",
+      "type": "library",
+      "version": "8.2.0"
+    },
+    {
+      "bom-ref": "ratatui@0.30.2",
+      "description": "A library that's all about cooking up terminal user interfaces",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3274ba0a2c5e1bcad2a2005d20f4dc59dad26b2eb0940fb094500dba4099d57d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "ratatui",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/ratatui@0.30.2",
+      "type": "library",
+      "version": "0.30.2"
+    },
+    {
+      "bom-ref": "rayon@1.12.0",
+      "description": "Simple work-stealing parallelism for Rust",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "rayon",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/rayon@1.12.0",
+      "type": "library",
+      "version": "1.12.0"
+    },
+    {
+      "bom-ref": "regex@1.13.1",
+      "description": "An implementation of regular expressions for Rust. This implementation uses\nfinite automata and guarantees linear time matching on all inputs.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "regex",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/regex@1.13.1",
+      "type": "library",
+      "version": "1.13.1"
+    },
+    {
+      "bom-ref": "rmcp@3.5.1",
+      "description": "Rust SDK for Model Context Protocol",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ab5023804cbe0304cbe06197ac16e645a0a0d0ffa2953bf735c15c2fa0213350"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "rmcp",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/rmcp@3.5.1",
+      "type": "library",
+      "version": "3.5.1"
+    },
+    {
+      "bom-ref": "rusqlite@0.40.2",
+      "description": "Ergonomic wrapper for SQLite",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "23f2a97da3e3873c73cb2a2e71b35c40ff95e0b1eefa8d72d8499a6928c3b5b3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "rusqlite",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/rusqlite@0.40.2",
+      "type": "library",
+      "version": "0.40.2"
+    },
+    {
+      "bom-ref": "rustix@1.1.5",
+      "description": "Safe Rust bindings to POSIX/Unix/Linux/Winsock-like syscalls",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+          }
+        }
+      ],
+      "name": "rustix",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/rustix@1.1.5",
+      "type": "library",
+      "version": "1.1.5"
+    },
+    {
+      "bom-ref": "serde@1.0.229",
+      "description": "A generic serialization/deserialization framework",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "serde",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/serde@1.0.229",
+      "type": "library",
+      "version": "1.0.229"
+    },
+    {
+      "bom-ref": "serde_json@1.0.154",
+      "description": "A JSON serialization file format",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e7e9cc8b1b85264074fbcc02a88680c4096b1e47df8f739dceb03bf482f04bd6"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "serde_json",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/serde_json@1.0.154",
+      "type": "library",
+      "version": "1.0.154"
+    },
+    {
+      "bom-ref": "sha2@0.10.9",
+      "description": "Pure Rust implementation of the SHA-2 hash function family\nincluding SHA-224, SHA-256, SHA-384, and SHA-512.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "sha2",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/sha2@0.10.9",
+      "type": "library",
+      "version": "0.10.9"
+    },
+    {
+      "bom-ref": "signal-hook@0.3.18",
+      "description": "Unix signal handling",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d881a16cf4426aa584979d30bd82cb33429027e42122b169753d6ef1085ed6e2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "Apache-2.0/MIT"
+          }
+        }
+      ],
+      "name": "signal-hook",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/signal-hook@0.3.18",
+      "type": "library",
+      "version": "0.3.18"
+    },
+    {
+      "bom-ref": "similar@3.2.0",
+      "description": "A diff library for Rust",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4f66ca1f7aca2474dc10c942eb22feffc897735f54cd1db90138c2fddb490987"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "similar",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/similar@3.2.0",
+      "type": "library",
+      "version": "3.2.0"
+    },
+    {
+      "bom-ref": "smallvec@1.16.3",
+      "description": "'Small vector' optimization: store up to a small number of items on the stack",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5b3dc8af474f516a851ff4bd12db780f948b9250ad37211e4eec0bccea54e01b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "smallvec",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/smallvec@1.16.3",
+      "type": "library",
+      "version": "1.16.3"
+    },
+    {
+      "bom-ref": "thiserror@1.0.69",
+      "description": "derive(Error)",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "thiserror",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/thiserror@1.0.69",
+      "type": "library",
+      "version": "1.0.69"
+    },
+    {
+      "bom-ref": "thiserror@2.0.21",
+      "description": "derive(Error)",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "thiserror",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/thiserror@2.0.21",
+      "type": "library",
+      "version": "2.0.21"
+    },
+    {
+      "bom-ref": "tokio@1.53.3",
+      "description": "An event-driven, non-blocking I/O platform for writing asynchronous I/O\nbacked applications.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ce3335fa71841cda333a58d7615b03901380ecf09d59b3296d21f8bbac0dde4e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tokio",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tokio@1.53.3",
+      "type": "library",
+      "version": "1.53.3"
+    },
+    {
+      "bom-ref": "toml_edit@0.25.17+spec-1.1.0",
+      "description": "Yet another format-preserving TOML parser.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e3641d5bbb5349a79e1020a242d251efbc546ad8048d133958323ce9c40a9c9c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "toml_edit",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/toml_edit@0.25.17+spec-1.1.0",
+      "type": "library",
+      "version": "0.25.17+spec-1.1.0"
+    },
+    {
+      "bom-ref": "tracing@0.1.44",
+      "description": "Application-level tracing for Rust.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tracing",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tracing@0.1.44",
+      "type": "library",
+      "version": "0.1.44"
+    },
+    {
+      "bom-ref": "tracing-subscriber@0.3.23",
+      "description": "Utilities for implementing and composing `tracing` subscribers.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cb7f578e5945fb242538965c2d0b04418d38ec25c79d160cd279bf0731c8d319"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tracing-subscriber",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tracing-subscriber@0.3.23",
+      "type": "library",
+      "version": "0.3.23"
+    },
+    {
+      "bom-ref": "tree-sitter@0.27.1",
+      "description": "Rust bindings to the Tree-sitter parsing library",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a5129de2ccc97808c4583d48f1fb44576d015cf241e432800572bda11ef30c3b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter@0.27.1",
+      "type": "library",
+      "version": "0.27.1"
+    },
+    {
+      "bom-ref": "tree-sitter-go@0.25.0",
+      "description": "Go grammar for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c8560a4d2f835cc0d4d2c2e03cbd0dde2f6114b43bc491164238d333e28b16ea"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-go",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-go@0.25.0",
+      "type": "library",
+      "version": "0.25.0"
+    },
+    {
+      "bom-ref": "tree-sitter-java@0.23.5",
+      "description": "Java grammar for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0aa6cbcdc8c679b214e616fd3300da67da0e492e066df01bcf5a5921a71e90d6"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-java",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-java@0.23.5",
+      "type": "library",
+      "version": "0.23.5"
+    },
+    {
+      "bom-ref": "tree-sitter-python@0.25.0",
+      "description": "Python grammar for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6bf85fd39652e740bf60f46f4cda9492c3a9ad75880575bf14960f775cb74a1c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-python",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-python@0.25.0",
+      "type": "library",
+      "version": "0.25.0"
+    },
+    {
+      "bom-ref": "tree-sitter-ruby@0.23.1",
+      "description": "Ruby grammar for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "be0484ea4ef6bb9c575b4fdabde7e31340a8d2dbc7d52b321ac83da703249f95"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-ruby",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-ruby@0.23.1",
+      "type": "library",
+      "version": "0.23.1"
+    },
+    {
+      "bom-ref": "tree-sitter-rust@0.24.2",
+      "description": "Rust grammar for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "439e577dbe07423ec2582ac62c7531120dbfccfa6e5f92406f93dd271a120e45"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-rust",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-rust@0.24.2",
+      "type": "library",
+      "version": "0.24.2"
+    },
+    {
+      "bom-ref": "tree-sitter-typescript@0.23.2",
+      "description": "TypeScript and TSX grammars for tree-sitter",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6c5f76ed8d947a75cc446d5fccd8b602ebf0cde64ccf2ffa434d873d7a575eff"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT"
+          }
+        }
+      ],
+      "name": "tree-sitter-typescript",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/tree-sitter-typescript@0.23.2",
+      "type": "library",
+      "version": "0.23.2"
+    },
+    {
+      "bom-ref": "unicode-segmentation@1.13.3",
+      "description": "This crate provides Grapheme Cluster, Word and Sentence boundaries\naccording to Unicode Standard Annex #29 rules.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "unicode-segmentation",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/unicode-segmentation@1.13.3",
+      "type": "library",
+      "version": "1.13.3"
+    },
+    {
+      "bom-ref": "unicode-width@0.2.2",
+      "description": "Determine displayed width of `char` and `str` types\naccording to Unicode Standard Annex #11 rules.\n",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "unicode-width",
+      "properties": [
+        {
+          "name": "fathom:first-party",
+          "value": "false"
+        },
+        {
+          "name": "fathom:licence-verdict",
+          "value": "allowed"
+        }
+      ],
+      "purl": "pkg:cargo/unicode-width@0.2.2",
+      "type": "library",
+      "version": "0.2.2"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "fathom@0.1.0-alpha.1",
+      "description": "Fathom: the terminal UI that keeps a human's mental model of a codebase a coding agent is writing.",
+      "licenses": [
+        {
+          "license": {
+            "expression": "MIT OR Apache-2.0"
+          }
+        }
+      ],
+      "name": "fathom",
+      "properties": [
+        {
+          "name": "fathom:build",
+          "value": "default feature set (ADR-002 \u00a76.1)"
+        },
+        {
+          "name": "fathom:cargo-lock-sha256",
+          "value": "1cb07325cbf60b4acee8cf224f6229a210765960d57ef02fac4221d7024295fb"
+        },
+        {
+          "name": "fathom:network-crates",
+          "value": "none"
+        }
+      ],
+      "type": "application",
+      "version": "0.1.0-alpha.1"
+    },
+    "tools": [
+      {
+        "name": "tools/gen_sbom.py",
+        "vendor": "fathom",
+        "version": "0.1.0-alpha.1"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:2b02b82b-26ab-57c9-92a5-7b9fb98f8ad0",
+  "specVersion": "1.5",
+  "version": 1
+}

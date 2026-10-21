@@ -75,6 +75,14 @@ uploads) require a signed-in human, and no `cargo-dist` setting changes that. Th
 the GitHub **release** a tag produces — public assets, plus the two installers. A per-PR link that needs
 no login needs an object store this project does not have; that half of the sentence belongs to `e7.4`.
 
+Two more files ride on every release, generated from the lockfile and attached by
+[`.github/workflows/sbom.yml`](../../.github/workflows/sbom.yml) (`e6.8`, **reco-h7p**):
+`fathom-<version>.cdx.json`, a CycloneDX 1.5 SBOM of what a default build links, and
+`fathom-<version>-licenses.md`, the same inventory read as licence obligations against `deny.toml`. Both
+are committed under `sbom/` and re-generated on every PR, so the asset on the release page is the same
+bytes a reviewer diffed in the pull request; `python3 tools/gen_sbom.py check` is what keeps them from
+going stale, and [privacy.md §6](privacy.md) explains what they do and do not answer.
+
 ## 2 The version, and what a tag means
 
 One number, in one place: `[workspace.package] version` in

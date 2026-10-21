@@ -17,6 +17,44 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Privacy posture, measured instead of promised (`reco-h7p`)
+
+The promise is old (`ADR-001 §7.5`); what is new is that it is now *checked* rather than asserted, and
+written down in one page. Nothing about what the binary does changed; what changed is that three of its
+sentences now have a machine behind them.
+
+* **One page.** [docs/concepts/privacy.md](docs/concepts/privacy.md), linked from the README and the docs
+  front door: the two gates, what is written locally, how to read and delete it, how each claim is
+  verified, and the four things the posture deliberately does **not** claim.
+* **`fathom doctor --privacy` answers the question a user actually asks.** The table grew a consent
+  column and a verdict next to the compile column — `off` (the code is absent), `waiting` (compiled in,
+  consent withheld, here is the key) or `ON` — plus the layer that answered (`user`, `legacy`, `default`),
+  the files consent may live in, the local records with their size, and the line
+  `usage metrics: nothing leaves this machine`. Consent a **repository** tries to grant is read,
+  discarded, and named: `ignored: this repository's fathom.toml sets privacy.advisories`. `--json` says
+  the same through `privacy_posture`, schema-covered (`schemas/doctor.schema.json`).
+* **A CI job runs the shipped binary with no network.**
+  [`.github/workflows/privacy.yml`](.github/workflows/privacy.yml) proves its egress trap actually traps
+  (`tools/check_privacy.py selftest`), then runs ten commands — including a cold `index` — with egress
+  refused and requires byte-identical output and zero connection attempts. The trap is a network
+  namespace where the runner allows one, otherwise an `LD_PRELOAD` tripwire
+  (`tools/privacy_netprobe.c`) that logs *and* refuses `connect`/`bind`/`sendto`/`getaddrinfo`; macOS
+  gets `sandbox-exec`. ADR-002 §8.3 had left this as "a requirement with a named owner rather than as
+  something measured"; that sentence is closed.
+* **The static half, `V01`–`V07`** (`python3 tools/check_privacy.py check`, stdlib-only, no cargo): the
+  default closure links nothing network-capable; the consent table is one table across Rust, the model
+  and the JSON schema; every `privacy.*` key is user-scoped and defaults to false; no `std::net` or HTTP
+  client in default-shipped Rust; no network import in a Python analysis module; the page still names
+  every gate; and the release artefacts of the next bullet exist and are wired.
+* **SBOM and licence report per release** (`python3 tools/gen_sbom.py`): a deterministic CycloneDX 1.5
+  document of everything a default build links — pinned versions, `pkg:cargo/` URLs, the SHA-256 from
+  `Cargo.lock`, declared licences — and the same inventory as obligations, with a verdict computed
+  against `deny.toml` rather than restated. Both are committed under `sbom/`, re-checked on every PR, and
+  attached to the GitHub release by [`.github/workflows/sbom.yml`](.github/workflows/sbom.yml).
+
+`tests/test_privacy_contract.py` (13 tests) runs the checker, the offline proof and the generator from
+the repo side, and fails if the page, the binary and the SBOM stop agreeing.
+
 ### One box, one comparison, and a session that never leaves the keyboard (`reco-mkc`, `reco-ifo`, `reco-mdb`, `reco-xke`)
 
 Epic 5's criterion was a whole review session — notification to signed-off artefact — without leaving the

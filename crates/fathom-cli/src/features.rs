@@ -1,9 +1,14 @@
-//! What this binary was compiled with, as data (ADR-002 §6.4).
+//! What this binary was compiled with, as data (ADR-002 §6.4), and what the user has consented to.
 //!
 //! `fathom --version` prints the resolved feature set and `fathom doctor --privacy` prints it with the
 //! consent column, so a bug report says what was built. That is the difference between a reproducible
 //! report and a folklore argument, and it is also the only way the `net-*` promise can be checked by a
 //! user rather than trusted by one.
+//!
+//! The consent half is deliberately read from the *user's* files only. `privacy.*` keys are user-scoped
+//! (ADR-001 §4.6, ADR-002 §6.3): a repository may not consent on its owner's behalf, so this module does
+//! not open the repository's `fathom.toml` for consent at all — except to say, when a clone did set one of
+//! those keys, that the setting is ignored and where the real switch lives.
 
 use fathom_core::privacy::NET_FEATURES;
 
@@ -94,3 +99,133 @@ pub fn privacy_table() -> Vec<PrivacyRow> {
         })
         .collect()
 }
+
+/// One consent key, whether the user has granted it, and where that answer came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsentState {
+    /// The `privacy.*` key.
+    pub key: &'static str,
+    /// Whether the user's own config says `true`. A repository file never contributes here (ADR-002 §6.3).
+    pub granted: bool,
+    /// The layer that decided it — `user`, `legacy`, or `default` when no user file names the key.
+    pub layer: &'static str,
+}
+
+/// The user-scoped layers `[privacy]` may live in, in precedence order, as `(layer, path)`.
+///
+/// `fathom doctor --privacy` prints these paths (redacted, as every path in that report is) because
+/// "consent is off" is only actionable if the user knows which file to open.
+#[must_use]
+pub fn consent_files() -> Vec<(&'static str, std::path::PathBuf)> {
+    let legacy_dir =
+        std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".fathom"));
+    crate::userconfig::candidates()
+        .into_iter()
+        // `userconfig::candidates()` is XDG-first, then the legacy `~/.fathom` spelling; these are the
+        // same two layer names `fathom doctor`'s config section prints for the same files.
+        .map(|path| {
+            (
+                if legacy_dir
+                    .as_deref()
+                    .is_some_and(|dir| path.starts_with(dir))
+                {
+                    "legacy"
+                } else {
+                    "user"
+                },
+                path,
+            )
+        })
+        .collect()
+}
+
+/// The `[privacy]` table of one file, as `(key, value)` pairs. An unreadable or unparseable file is no
+/// table at all — `fathom index` already reported that the config does not parse, and `doctor --privacy`
+/// is about what is switched on, not about re-reporting a broken file.
+fn privacy_table_of(path: &std::path::Path) -> Vec<(String, bool)> {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let Ok(document) = text.parse::<toml_edit::DocumentMut>() else {
+        return Vec::new();
+    };
+    let Some(table) = document.get("privacy").and_then(|item| item.as_table()) else {
+        return Vec::new();
+    };
+    table
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.to_owned(),
+                // `privacy.llm = "yes"` is not consent. An unparseable value reads as `false`, because
+                // that is the only direction that cannot leak a packet.
+                value.as_bool().unwrap_or(false),
+            )
+        })
+        .collect()
+}
+
+/// The consent state of every `privacy.*` key this build knows about.
+///
+/// One read per file, not one per `(file, key)`: the answer for three keys is two reads, not six.
+#[must_use]
+pub fn consent_states() -> Vec<ConsentState> {
+    let layers = consent_files();
+    let read: Vec<(&'static str, Vec<(String, bool)>)> = layers
+        .iter()
+        .map(|(layer, path)| (*layer, privacy_table_of(path)))
+        .collect();
+    NET_FEATURES
+        .iter()
+        .map(|feature| {
+            let key = feature
+                .consent_key
+                .strip_prefix("privacy.")
+                .unwrap_or(feature.consent_key);
+            let found = read
+                .iter()
+                .find(|(_layer, table)| table.iter().any(|(k, _)| k == key));
+            match found {
+                Some((layer, table)) => ConsentState {
+                    key: feature.consent_key,
+                    granted: table
+                        .iter()
+                        .find(|(k, _)| k == key)
+                        .is_some_and(|(_k, value)| *value),
+                    layer,
+                },
+                None => ConsentState {
+                    key: feature.consent_key,
+                    granted: false,
+                    layer: "default",
+                },
+            }
+        })
+        .collect()
+}
+
+/// Consent a *repository* tried to grant, and that this build ignores: every `privacy.*` key the
+/// repository's own `fathom.toml` sets to true.
+///
+/// This is not a hypothetical: a cloned repository that ships `privacy.advisories = true` would otherwise
+/// be a `git clone`-to-egress path one commit wide, which is the exact thing ADR-001 §4.6 forbids. Reporting it
+/// is what turns "we ignored it" into something the user can see rather than a property of code they
+/// cannot read.
+#[must_use]
+pub fn consent_the_repository_tried(root: &std::path::Path) -> Vec<String> {
+    privacy_table_of(&root.join("fathom.toml"))
+        .into_iter()
+        .filter(|(_key, value)| *value)
+        .map(|(key, _value)| format!("privacy.{key}"))
+        .filter(|key| fathom_core::privacy::is_consent_key(key))
+        .collect()
+}
+
+/// The local records this build writes, as the sentence `doctor --privacy` prints.
+///
+/// It is a claim about the *absence* of a thing, so it is worded as one: no endpoint, no identifier, no
+/// background writer, and nothing on disk that leaves the machine on its own. `tools/check_privacy.py`
+/// is what makes the claim a gate rather than a paragraph.
+pub const LOCAL_ONLY_SENTENCE: &str = "no endpoint, no identifier, no background writer: everything \
+                                      Fathom writes stays under `.fathom/` in this repository, where you \
+                                      can read it, export it and delete it";

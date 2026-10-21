@@ -62,7 +62,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 **Foundations and product** — [thesis](concepts/thesis.md) · [first run and empty states](concepts/onboarding.md) ·
 [the headless verbs](concepts/cli.md) · [config and its five layers](concepts/config.md) ·
 [path taxonomy and noise policy](concepts/paths.md) · [the fixture corpus](concepts/fixtures.md) ·
-[release and adoption](concepts/release.md)
+[privacy: no network by default](concepts/privacy.md) · [release and adoption](concepts/release.md)
 
 **What a change is** — [change classification](concepts/change-classification.md) ·
 [noise suppression](concepts/noise-suppression.md) · [folder structure](concepts/folder-structure.md) ·
@@ -102,6 +102,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | `python3 tools/gen_docs.py write\|check` | the CLI, cheatsheet, features and detector pages are **generated**: from `fathom --help` off the binary, from the keymap module, from `features.rs`, and from the detector fixtures. CI runs `check`, so a change that forgot to regenerate the docs is a red build |
 | `python3 tools/check_docs.py` | every glossary term resolves once, every plan and beads reference exists in `.plan/keymap.json`, and every relative link resolves to a file |
 | `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav |
+| `python3 tools/check_privacy.py check\|offline` | the privacy posture: the default closure, the consent table, the source scan, this page, and a run of the shipped binary with no network egress available ([privacy](concepts/privacy.md)) |
 | `python3 -m recommender.tui doc --check`, `tools/tui_tables.py check` | ADR-006's tables and the Rust TUI's test tables are the Python keymap's, generated |
 
 The rule behind all of it is one the project repeats: **a document that is copied by hand is a document that

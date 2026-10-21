@@ -70,7 +70,7 @@
     },
     "sqlite": {
       "additionalProperties": true,
-      "description": "Version, compile options and ADR-004 §4.0's capability probe.",
+      "description": "Version, compile options and ADR-004 \u00a74.0's capability probe.",
       "type": "object"
     },
     "strict": {
@@ -89,7 +89,7 @@
     },
     "hooks": {
       "type": "object",
-      "description": "The harness event stream's health, so a bug report about the stream is a bug report that already answers 'how far behind is it'. ADR-005 §3.1 requires `fathom doctor` to name every file it reads or writes, and this is the section that names the events file; the full report is `fathom hooks --json` (schemas/hooks.schema.json). Absent-key false is not possible: the section is always produced, and a stream that could not be read says so in `error`.",
+      "description": "The harness event stream's health, so a bug report about the stream is a bug report that already answers 'how far behind is it'. ADR-005 \u00a73.1 requires `fathom doctor` to name every file it reads or writes, and this is the section that names the events file; the full report is `fathom hooks --json` (schemas/hooks.schema.json). Absent-key false is not possible: the section is always produced, and a stream that could not be read says so in `error`.",
       "required": [
         "events_file",
         "offset",
@@ -104,7 +104,7 @@
       "properties": {
         "events_file": {
           "type": "string",
-          "description": "Repository-relative where it can be (ADR-002 §11.1)."
+          "description": "Repository-relative where it can be (ADR-002 \u00a711.1)."
         },
         "offset": {
           "type": "integer",
@@ -143,6 +143,76 @@
           "description": "Present instead of the counters when the stream could not be read at all."
         }
       }
+    },
+    "privacy_posture": {
+      "type": "object",
+      "description": "The `e6.8` (reco-h7p) privacy posture as data, so a machine reaches the same conclusion `--privacy` prints for a human: which outbound features are compiled into this binary, where consent could have come from (user-scoped only), what a repository file tried to grant and was ignored, and the local-only claim. Nothing here is measured from the network: the offline proof is `tools/check_privacy.py`, named in `proven_by`.",
+      "required": [
+        "outbound_compiled_in",
+        "consent_scope",
+        "consent_files",
+        "consent_ignored_from_repository",
+        "telemetry",
+        "local_only",
+        "proven_by"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "outbound_compiled_in": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The `net-*` features in this build. Empty is the default build's answer, and the strongest one."
+        },
+        "consent_scope": {
+          "const": "user",
+          "description": "`privacy.*` is user-scoped: a repository may not grant it (ADR-001 \u00a74.6)."
+        },
+        "consent_files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "layer",
+              "path",
+              "present"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "layer": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string",
+                "description": "`~`-relative where it can be, like every path in this report."
+              },
+              "present": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "consent_ignored_from_repository": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keys this repository's own `fathom.toml` set true and that this build read and discarded."
+        },
+        "telemetry": {
+          "const": "none",
+          "description": "No endpoint, no identifier, no background writer. Not a default: the only shipped state."
+        },
+        "local_only": {
+          "type": "string",
+          "description": "The sentence the text rendering prints, so the two renderings cannot disagree."
+        },
+        "proven_by": {
+          "type": "string",
+          "description": "Where the claim is checked mechanically, not asserted."
+        }
+      }
     }
   },
   "required": [
@@ -161,6 +231,7 @@
     "watch",
     "network_features",
     "privacy",
+    "privacy_posture",
     "strict",
     "exit_code",
     "exit_name",

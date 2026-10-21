@@ -89,4 +89,5 @@ shipped" has exactly one answer.
 ---
 
 **Next**: [the CLI reference](cli.md) for the verbs those features gate ·
+[privacy](../concepts/privacy.md) for what the `net-*` promise is checked by ·
 [the delta model](../concepts/delta-model.md) for the schema `schema-gen` writes.
