@@ -531,13 +531,15 @@ fn repo_label(root: &std::path::Path) -> String {
     }
 }
 
-/// What the store says about this repository, as the shell's empty states need it (`reco-1nu`).
+/// What the store says about this repository, as the shell needs it (`reco-1nu`, `reco-zv9`).
 ///
 /// The shell may not open a store (ADR-002 §5.2, lint `E01`), so the composition root looks once,
 /// before the first frame, and hands the numbers over. This is the read `fathom stats` makes with the
 /// checks left off: the shell is not diagnosing a store, it is deciding which sentence an empty pane
-/// prints — and which one matters more than it looks, because *"run `fathom index`"* over an index
-/// that already finished is a minute of an acceptance run spent walking into a dead end.
+/// prints and what its status strip may claim — and which one matters more than it looks, because
+/// *"run `fathom index`"* over an index that already finished is a minute of an acceptance run spent
+/// walking into a dead end, and `queue unknown open` beside a `fathom stats` that counted the queue is
+/// the same defect wearing a smaller hat.
 ///
 /// A number that could not be read stays `None` rather than becoming a zero: `unknown` is a value
 /// (ADR-006 §0.1), and `0 commits` printed over a store that would not open is the same lie with a
@@ -555,6 +557,19 @@ pub(crate) fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
     let Ok(store) = Store::open(&path) else {
         return fathom_tui::index::Facts::unreadable();
     };
+    // How many live episodes nobody has reviewed — the store's own count over the whole index, which is
+    // the queue, as opposed to the page of it the shell was handed. A missing `unread` key is a store
+    // in which nothing is unread, not a store that refused to say.
+    let queue_open = store
+        .review_counts()
+        .ok()
+        .map(|counts| u64::try_from(*counts.get("unread").unwrap_or(&0)).unwrap_or(0));
+    // How many commits owe an analysis — `fathom stats`' `state` line, and the difference between the
+    // strip saying `idx warm` and it saying `idx cold`. `None` only when the store would not answer.
+    let owed = store
+        .pending_derivation()
+        .ok()
+        .and_then(|pending| u64::try_from(pending.len()).ok());
     fathom_tui::index::Facts::present(
         width(store.epoch()),
         store.meta("epoch_status").ok().flatten(),
@@ -564,6 +579,8 @@ pub(crate) fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
             .and_then(|scale| u64::try_from(scale.commits).ok()),
         width(store.count_episodes(&EpisodeQuery::default())),
     )
+    .with_queue_open(queue_open)
+    .with_backlog(owed)
 }
 
 /// A binary built without a SQLite backend cannot read any store, and says so instead of reporting

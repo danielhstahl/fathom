@@ -1,0 +1,20 @@
+# known
+# ADR-006 §5.2's own line: epoch, count, queue and verdict, all read from the store by `fathom-cli`, none guessed by the shell
+
+⏺ epoch 41 · 3 412 eps · queue 7 open · idx warm
+
+# known · cold
+# the same repository with three commits owing an analysis: the verdict is a fact the store answers, and `fathom stats` prints the backlog beside it
+
+⏺ epoch 41 · 3 412 eps · queue 7 open · idx cold
+
+# known · empty queue
+# an indexed repository with nothing in it: `0 open` is the store's answer, not the shell's guess from an empty rail
+
+⏺ epoch 1 · 0 eps · queue 0 open · idx warm
+
+# unknown
+# nothing handed over — no index, an embedder, a test frame. This is the strip where `unknown` is the truth, and the only one
+
+⏺ epoch unknown · unknown eps · queue unknown open · idx unknown
+

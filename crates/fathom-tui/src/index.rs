@@ -16,6 +16,12 @@
 //! Every sentence is the join of [`Facts::summary`] (what the index holds) and [`Facts::remedy`] (what
 //! to do, or who owns what is missing), so a pane that has room for one line can print the summary and
 //! a pane that has room for three can print the whole thing — and the two cannot drift apart.
+//!
+//! The same batch answers the status strip, because the strip's four facts — the epoch, how many
+//! episodes there are, how many are open, whether the analysis is caught up — are the same six numbers
+//! seen from further off (`reco-zv9`). One read, one hand-over, two surfaces: a strip that printed
+//! `unknown` beside a `fathom stats` that printed `epoch 1 ready` was two implementations of one
+//! question, which is the thing this module was written to stop.
 
 use crate::app::format_thousands;
 
@@ -45,6 +51,11 @@ pub enum Read {
 /// Deliberately plain data: `fathom-tui` has no store handle and no ingest edge (ADR-002 §5.2), so the
 /// numbers arrive already read rather than being asked for. Every one is an `Option` — `unknown` is a
 /// value and a blank is a lie (ADR-006 §0.1).
+///
+/// Six numbers, because the status strip asks six questions about the index and every one of them is
+/// answerable from the store the CLI already opened (`reco-zv9`). The last two are the ones the strip
+/// used to print `unknown` for: the queue's depth and the analysis verdict are not guesses a pane may
+/// make, and they are not secrets the store keeps — `fathom stats` prints both.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Facts {
     /// Whether the caller could read an index.
@@ -57,6 +68,16 @@ pub struct Facts {
     pub commits: Option<u64>,
     /// Live episodes the index holds.
     pub episodes: Option<u64>,
+    /// Live episodes still open — nobody has reviewed them (`reco-zv9`).
+    ///
+    /// The store's own count over every live episode, which is not the same set as the rows the shell
+    /// happens to hold: a page of a longer index, or a filter, is fewer episodes than the queue is.
+    pub queue_open: Option<u64>,
+    /// Commits the index holds rows for and still owes an analysis (`reco-zv9`).
+    ///
+    /// `fathom stats` calls the same number "commit(s) owed an analysis". `Some(0)` is the warm case;
+    /// `None` is a caller that could not ask, which is the only honest `idx unknown` there is.
+    pub owed_analysis: Option<u64>,
 }
 
 impl Read {
@@ -83,6 +104,8 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
+            queue_open: None,
+            owed_analysis: None,
         }
     }
 
@@ -95,6 +118,8 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
+            queue_open: None,
+            owed_analysis: None,
         }
     }
 
@@ -112,7 +137,27 @@ impl Facts {
             status,
             commits,
             episodes,
+            queue_open: None,
+            owed_analysis: None,
         }
+    }
+
+    /// Hand over the queue's depth (`reco-zv9`): how many live episodes nobody has reviewed.
+    ///
+    /// Chainable rather than a fifth argument on [`Self::present`], because a bare `Option<u64>` in a
+    /// list of four bare `Option<u64>`s is a call site nobody can read and every caller of `present`
+    /// would have to be rewritten to say which one it was passing.
+    #[must_use]
+    pub fn with_queue_open(mut self, open: Option<u64>) -> Self {
+        self.queue_open = open;
+        self
+    }
+
+    /// Hand over the analysis backlog: how many commits owe one (`reco-zv9`).
+    #[must_use]
+    pub fn with_backlog(mut self, owed: Option<u64>) -> Self {
+        self.owed_analysis = owed;
+        self
     }
 
     /// A store that would not open. The sentence names `fathom doctor`, which is the verb that
@@ -125,6 +170,8 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
+            queue_open: None,
+            owed_analysis: None,
         }
     }
 
@@ -137,6 +184,8 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
+            queue_open: None,
+            owed_analysis: None,
         }
     }
 
@@ -150,6 +199,23 @@ impl Facts {
     #[must_use]
     pub fn is_building(&self) -> bool {
         self.is_present() && self.status.as_deref() == Some("building")
+    }
+
+    /// Is the analysis cache warm — does the index owe nothing? (`reco-zv9`)
+    ///
+    /// This is the strip's `idx warm` / `idx cold`, and `None` is the `unknown` beside them, which is
+    /// only allowed when the caller genuinely could not ask: no store, a store that would not open, a
+    /// store that would not answer. A building epoch is cold by definition, whatever its backlog says —
+    /// the run that would warm it has not finished. `fathom stats` prints the backlog itself.
+    #[must_use]
+    pub fn warm(&self) -> Option<bool> {
+        if !self.is_present() {
+            return None;
+        }
+        if self.is_building() {
+            return Some(false);
+        }
+        self.owed_analysis.map(|owed| owed == 0)
     }
 
     /// `index epoch 1` — with ` (` `)` around the status in the strip's form and a bare space in the

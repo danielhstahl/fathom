@@ -234,7 +234,11 @@ pub struct IndexState {
     pub episodes: Option<u64>,
     /// Episodes open in the queue.
     pub queue_open: Option<u64>,
-    /// Whether the analysis cache is warm.
+    /// Whether the analysis cache is warm — the index owes no analysis (`reco-zv9`).
+    ///
+    /// Only the store can say, so the caller says it: [`crate::index::Facts::warm`] is read from the
+    /// same handle that read the epoch. `None` is a caller with no store to ask, and prints `idx
+    /// unknown` rather than a guess.
     pub warm: Option<bool>,
     /// A converging progress estimate, as `indexing 62 % · ~14 s left (4 102 commits)`.
     pub progress: Option<String>,
@@ -954,6 +958,11 @@ impl App {
         self.model.index_facts = facts.clone();
         self.model.index.epoch = facts.epoch;
         self.model.index.episodes = facts.episodes;
+        // The two the shell cannot arrive at on its own (`reco-zv9`): the queue's depth and the
+        // analysis verdict. Both are the store's numbers, read by the party that may read it, and
+        // both were printed as `unknown` in every frame the shipped binary ever drew.
+        self.model.index.queue_open = facts.queue_open;
+        self.model.index.warm = facts.warm();
         self.timeline.set_index_facts(facts);
     }
 
@@ -1883,12 +1892,27 @@ impl App {
         }
         let mut index = self.model.index.clone();
         // `queue N open` was `unknown` in every frame the shipped binary drew, because the shell has
-        // no store handle to ask. It does not need one: the shell holds the rows, and "open" is
-        // "nobody has read it yet" (`reco-c05`, and ADR-006 §10.3's rule that an unknown is only
-        // allowed when it really is one).
-        if index.queue_open.is_none() && !self.timeline.is_empty() {
-            index.queue_open = u64::try_from(self.timeline.unread()).ok();
-        }
+        // no store handle to ask. It does not need one when it holds the whole queue: the rows it was
+        // handed, and "open" is "nobody has read it yet" (`reco-c05`, and ADR-006 §10.3's rule that an
+        // unknown is only allowed when it really is one). The count the caller read from the store takes
+        // over wherever the rows are not the queue — an empty rail, a page of a longer index, or a filter
+        // that hid rows — because a page is not the queue (`reco-zv9`), and a rail that drew nothing has
+        // no count to offer in the first place. `ranked().len()` is the denominator `unread()` was
+        // counted over, so the two numbers are always about the same set of rows.
+        let rows = u64::try_from(self.timeline.rail().ranked().len()).unwrap_or(u64::MAX);
+        let live = (rows > 0)
+            .then(|| u64::try_from(self.timeline.unread()).ok())
+            .flatten();
+        let whole_queue = self
+            .model
+            .index_facts
+            .episodes
+            .is_none_or(|total| rows >= total);
+        index.queue_open = if whole_queue {
+            live.or(index.queue_open)
+        } else {
+            index.queue_open.or(live)
+        };
         bits.extend(index.bits());
         // Is this picture current? (`reco-bpc`) The one question an ambient terminal is not allowed to
         // leave unasked, answered in the four characters the row has room for — and, when nothing is

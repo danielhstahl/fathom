@@ -17,6 +17,55 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The status strip printed `unknown` for four facts the CLI had already read from the store (`reco-zv9`)
+
+The bottom strip read:
+
+```text
+⏺ epoch unknown · unknown eps · queue unknown open · idx unknown
+```
+
+on a repository where `fathom stats` — the same binary, the same store, seconds earlier — printed
+`epoch 1 ready`, 500 commits, integrity ok and 0 commits owed an analysis. ADR-006 is right that
+`unknown` is a value; it is a value for what *cannot* be known, and all four of these could be known
+by the process that had already opened the store to read the session. ADR-006 §5.2's own mock line has
+been `⏺ epoch 41 · 3 412 eps · queue 7 open · idx warm` since it was written, and no build could print
+it: `idx warm` had no source at all, and an indexed repository with an empty queue was told
+`queue unknown open`.
+
+* **The hand-over grew the two facts the strip was missing.** `index::Facts` — the batch `fathom-cli`
+    reads before the first frame, and the same one the empty states are written from — carries
+    `queue_open` and `owed_analysis` now, read from the store the composition root already had open.
+    `fathom-tui` still opens nothing (ADR-002 §5.2, lint `E01`), and it still may not guess: a fact
+    nobody read is a `None`, and a `None` is the only thing that earns an `unknown`.
+* **The verdict is said.** `idx warm` when the index owes no analysis, `idx cold` when it owes one or
+    the epoch is still `building` — `fathom stats`' `state` line, in the four characters the strip has
+    room for, off the same `pending_derivation` read that verb makes.
+* **The queue is the index's, not the page's.** The shell still counts its own rows when those rows are
+    the whole queue, so the number moves as a reviewer reads (`reco-c05` is not reverted); where the
+    rail holds only a page of a longer index, or a filter has hidden rows, or the rail drew nothing at
+    all, the page is not the queue and the store's count is printed instead. Over an index of 600 open
+    episodes the strip says `queue 600 open` while the rail holds the 500 a page may hold and says
+    `index holds 600` doing it — two sentences about two different sets, which is the honest version of
+    one number. And `0 open` over an indexed repository with nothing in it is the store's answer, not
+    the shell's guess from an empty rail.
+* **`unknown` kept its job.** A repository with no index, a store that would not open, a binary with no
+    SQLite backend and an embedder that hands the shell nothing all still print what they mean, in
+    words the fix did not soften: no zero where the truth is that nothing was read.
+
+Because the watcher re-reads `index_facts` after every run it lands, a re-index from the frame moves the
+epoch, the count, the queue and the verdict on the same tick the rows arrive — the verdict is not a
+startup photograph.
+
+*Asserted by*: `crates/fathom-tui/tests/status_strip.rs` (8: ADR-006's line character for character,
+the cold verdict, the empty queue, one fact missing taking only its own `unknown` down, the page that
+is not the queue, and a golden pinning the known and the unknown strip together),
+`crates/fathom-tui/tests/risk_rank.rs` and `tests/layout_matrix.rs` (the live count and the pinned
+frames it draws, which did not move), and `crates/fathom-cli/tests/tui_data.rs` (3 against the built
+binary: `unknown` four times before `fathom index` and none of them after, three reviewed episodes
+three fewer open, a `building` epoch said as `idx cold`, and a 600-episode queue printed as 600 over a
+500-row page).
+
 ### `<C-r>` narrated a re-index instead of doing one, and named a ticket that had closed (`reco-j7t`)
 
 The key is bound to `index.reindex`, labelled *Re-index this repository*, offered by the palette, and listed

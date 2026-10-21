@@ -406,3 +406,161 @@ fn an_index_with_nothing_to_list_says_so_rather_than_pointing_at_the_timeline() 
     );
     std::fs::remove_dir_all(&dir).expect("clean up the fixture");
 }
+
+// --- the status strip's four facts (`reco-zv9`) ----------------------------------------------------
+
+/// The strip: the one line of the frame that starts with the epoch dot.
+#[cfg(feature = "sqlite-bundled")]
+fn strip(dir: &Path, args: &[&str]) -> String {
+    let frame = stdout(&fathom_in(dir, args));
+    frame
+        .lines()
+        .find(|line| line.trim_start().starts_with('⏺'))
+        .unwrap_or_else(|| panic!("the status strip is on the page:\n{frame}"))
+        .trim()
+        .to_owned()
+}
+
+/// The digits in one strip bit, as the number they spell: `5 000 eps` is `5000`.
+#[cfg(feature = "sqlite-bundled")]
+fn digits(bit: &str) -> u64 {
+    bit.chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .unwrap_or_else(|err| panic!("{bit:?} holds no number: {err}"))
+}
+
+/// The four facts the strip prints, from the outside: the epoch, the count, the queue and the verdict,
+/// each of them read from the store by the binary that drew the frame.
+///
+/// The defect was the opposite of a crash — a strip that said `epoch unknown · unknown eps · queue
+/// unknown open · idx unknown` on a repository `fathom stats` had just described as `epoch 1 ready`,
+/// 500 commits and 0 commits owed an analysis. Every one of those was known two frames earlier by the
+/// same process, and ADR-006 §10.3 allows `unknown` only for what cannot be known.
+///
+/// The episode count is parsed, not written down: how many episodes 500 commits segment into belongs to
+/// the boundary rules. What this test owns is that the strip *names* a number, that the queue's number
+/// is the store's own review state, and that the verdict is said.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn the_strip_prints_the_facts_the_store_knows() {
+    let dir = repository(COMMITS);
+
+    // Before the index exists every one of them genuinely is unknown, and the strip says so: this is
+    // the half the fix must not lose by printing a comfortable zero instead.
+    let bare = strip(&dir, &["--plain", "--fresh"]);
+    assert_eq!(
+        bare, "⏺ epoch unknown · unknown eps · queue unknown open · idx unknown",
+        "an unindexed repository is told the truth, not a zero"
+    );
+
+    let indexed = fathom_in(&dir, &["index", "."]);
+    assert_eq!(code(&indexed), Some(0), "{}", stderr(&indexed));
+    let known = strip(&dir, &["--plain", "--fresh"]);
+    let bits: Vec<&str> = known.split(" · ").collect();
+    assert_eq!(bits.len(), 4, "four facts, no placeholder: {known}");
+    assert!(
+        !known.contains("unknown"),
+        "`fathom stats` could name all four, so the strip may not shrug at any of them: {known}"
+    );
+    assert_eq!(
+        bits[0], "⏺ epoch 1",
+        "the epoch the store published: {known}"
+    );
+    let episodes = digits(bits[1]);
+    assert!(
+        bits[1].ends_with(" eps") && episodes > 0,
+        "the index's episode count: {known}"
+    );
+    assert!(
+        bits[2].starts_with("queue ") && bits[2].ends_with(" open"),
+        "the queue count: {known}"
+    );
+    assert_eq!(
+        digits(bits[2]),
+        episodes,
+        "a fresh index has every episode unread, so the queue is the whole index: {known}"
+    );
+    assert_eq!(bits[3], "idx warm", "nothing is owed an analysis: {known}");
+
+    // The queue is the store's review state, not a decoration: three reviewed episodes are three
+    // fewer open, in the store's own count and therefore in the strip's.
+    {
+        let path = dir.join(".fathom").join("index.sqlite3");
+        let mut store = fathom_store::spine::Store::open(&path).expect("the store opens");
+        let three: Vec<String> = store
+            .episodes(&fathom_store::episode::EpisodeQuery {
+                limit: 3,
+                ..fathom_store::episode::EpisodeQuery::default()
+            })
+            .expect("the episode read works")
+            .into_iter()
+            .map(|row| row.id)
+            .collect();
+        assert_eq!(three.len(), 3, "the index has at least three episodes");
+        for id in &three {
+            store
+                .set_review(
+                    id,
+                    fathom_store::episode::ReviewState::Read,
+                    "test",
+                    None,
+                    1_700_000_000_000,
+                )
+                .expect("stamping a marker works");
+        }
+    }
+    let read = strip(&dir, &["--plain", "--fresh"]);
+    assert_eq!(
+        digits(read.split(" · ").nth(2).unwrap_or_default()),
+        episodes - 3,
+        "three markers written, three fewer open: {read}"
+    );
+
+    // And a verdict that is not warm is said as itself: a store mid-rebuild is cold, which is the same
+    // fact `fathom stats` prints as an owed-analysis count and `<C-r>` exists to put right.
+    {
+        let path = dir.join(".fathom").join("index.sqlite3");
+        let mut store = fathom_store::spine::Store::open(&path).expect("the store opens");
+        store
+            .set_meta("epoch_status", "building")
+            .expect("the meta table takes the write");
+    }
+    let building = strip(&dir, &["--plain", "--fresh"]);
+    assert!(
+        building.ends_with("idx cold"),
+        "an index still being written is not warm: {building}"
+    );
+    std::fs::remove_dir_all(&dir).expect("clean up the fixture");
+}
+
+/// A queue longer than the largest page the shell may ask for: the strip prints the index's number
+/// while the rail holds the page it was given, because a page is not the queue (`reco-zv9`).
+///
+/// The page cap is `fathom-analyze`'s `PAGE_LIMIT_MAX` — 500 — so 600 episodes is the smallest index
+/// that separates the two counts, and the two sentences the frame prints about them are supposed to
+/// differ: the strip counts the queue, the rail says how much of it it is holding.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn a_queue_longer_than_the_page_prints_the_queue() {
+    let dir = repository(600);
+    let indexed = fathom_in(&dir, &["index", "."]);
+    assert_eq!(code(&indexed), Some(0), "{}", stderr(&indexed));
+    let frame = stdout(&fathom_in(&dir, &["--plain", "--fresh"]));
+    let line = frame
+        .lines()
+        .find(|line| line.trim_start().starts_with('⏺'))
+        .unwrap_or_else(|| panic!("the status strip is on the page:\n{frame}"))
+        .trim()
+        .to_owned();
+    assert_eq!(
+        line, "⏺ epoch 1 · 600 eps · queue 600 open · idx warm",
+        "the index holds 600 open episodes and the strip says so, page or no page:\n{frame}"
+    );
+    assert!(
+        frame.contains("index holds 600"),
+        "and the rail says how much of the 600 it is holding:\n{frame}"
+    );
+    std::fs::remove_dir_all(&dir).expect("clean up the fixture");
+}
