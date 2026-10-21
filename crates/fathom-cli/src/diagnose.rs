@@ -43,6 +43,7 @@ pub fn doctor(
     let layout = fathom_layout(&redactor);
     let watch = watch_section(root_path);
     let hooks_stream = crate::harness::doctor_json(root_path);
+    let frames = crate::verbs::frame_json(root_path);
     let consent = consent_section();
     // The code `--strict` will leave with, printed either way. It counts the untidy findings too — a store
     // holding rows for commits that no longer exist is not a broken index, but it is a thing to fix, and
@@ -65,6 +66,7 @@ pub fn doctor(
             "fathom_dir": layout,
             "watch": watch,
             "hooks": hooks_stream,
+            "frames": frames,
             "network_features": consent,
             "privacy": privacy,
             "privacy_posture": privacy_posture(&redactor),
@@ -102,6 +104,9 @@ pub fn doctor(
         output::line(format_args!("{line}"));
     }
     for line in crate::harness::doctor_lines(root_path) {
+        output::line(format_args!("{line}"));
+    }
+    for line in crate::verbs::frame_lines(root_path) {
         output::line(format_args!("{line}"));
     }
     tracing::debug!(features = ?features::compiled(), "build report");

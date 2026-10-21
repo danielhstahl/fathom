@@ -2,7 +2,7 @@
   "$id": "https://fathom.dev/schemas/doctor.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "The report that is safe to attach to a bug report: build, environment, repository, index, cache, config layers, watcher and consent table, every finding with a remedy. No config values, no absolute home paths, no URL credentials.",
+  "description": "The report that is safe to attach to a bug report: build, environment, repository, index, cache, config layers, watcher, the last shell run's own frame numbers and the consent table, every finding with a remedy. No config values, no absolute home paths, no URL credentials.",
   "properties": {
     "build": {
       "additionalProperties": true,
@@ -36,6 +36,98 @@
     "fathom_dir": {
       "additionalProperties": true,
       "type": "object"
+    },
+    "frames": {
+      "type": "object",
+      "description": "The last `fathom tui` run of this repository, measured by the shell itself (`reco-08r`): how many draws and events the loop handled, the 99th-percentile and worst draw time of the measurement window, how many of that window's draws missed ADR-002 §6's frame budget, the frame size they were drawn at, and how the loop ended. The shell prints the same numbers as one line when it exits and leaves them at `.fathom/frame-report.json`; `recorded: false` is the stated answer for a repository where no shell has run since the record existed, and `compiled_in: false` for a binary built without the shell. A measurement, not a finding: it never moves the exit code, not even under `--deep` or `--strict`.",
+      "required": [
+        "recorded"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "recorded": {
+          "type": "boolean",
+          "description": "False when there was no record to read; the numbers below are present only when true."
+        },
+        "path": {
+          "type": "string",
+          "description": "Repository-relative, like every path this report may carry (ADR-002 §11.1)."
+        },
+        "error": {
+          "type": "string",
+          "description": "Present instead of the numbers when a record exists and could not be read."
+        },
+        "compiled_in": {
+          "type": "boolean",
+          "description": "False in a binary built without the `tui` feature, which has no frame to have measured."
+        },
+        "contract": {
+          "type": "string",
+          "description": "The record's own contract id, `fathom.cli.frame/1`."
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fathom": {
+          "type": "string",
+          "description": "The version that measured them, because a budget met by one build says nothing about another."
+        },
+        "written_ms": {
+          "type": "integer"
+        },
+        "started_ms": {
+          "type": "integer",
+          "description": "The instant the screen was taken."
+        },
+        "ended_ms": {
+          "type": "integer",
+          "description": "The instant it was handed back; `ended_ms - started_ms` is how long the reviewer was in the frame."
+        },
+        "end": {
+          "type": "string",
+          "description": "How the loop ended, in the words the shell prints: `quit`, `no producer left`, `frame limit reached`, `nothing more to draw`, `signal SIGINT`."
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Draws over the whole run."
+        },
+        "events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "window_frames": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The denominator of p99_ms, worst_ms and over_budget: the window holds the last 128 draws, so a long session's percentiles are about its last frames, not all of them."
+        },
+        "budget_ms": {
+          "type": "number",
+          "description": "ADR-002 §6's frame budget, 16 ms."
+        },
+        "p99_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "worst_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "over_budget": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Draws in the window that missed the budget. The acceptance run's missing number."
+        },
+        "cols": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "features": {
       "items": {
@@ -228,6 +320,7 @@
     "cache",
     "config",
     "fathom_dir",
+    "frames",
     "watch",
     "network_features",
     "privacy",

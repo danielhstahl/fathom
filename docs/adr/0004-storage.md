@@ -151,6 +151,7 @@ distinguishable by `git status`.**
 | `.fathom/daemon.lock` | **E** | ignored | fathom daemon (e6.3), fathom watch | the writer lease: flock + pid + boot id + heartbeat (§7.1); released by *blanking*, not unlinking, so a reader never races an unlink |
 | `.fathom/daemon.sock` | **E** | ignored | fathom daemon (e6.3), fathom watch | local IPC endpoint (`fathom.daemon/1`); a repository may also be reached with no socket at all, in which case the lease and the heartbeat file below are what a client can read |
 | `.fathom/watch/status.json` | **E** | ignored | fathom watch (e1.9), fathom daemon (e6.3) | the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` and the ambient view read it, so a watcher needs no socket and no lock to be noticed |
+| `.fathom/frame-report.json` | **E** | ignored | fathom tui (reco-08r) | the last shell run's own frame numbers: draws, events, p99, worst and the over-budget count, renamed into place; `doctor` reads them, so the frame budget is measurable from the product rather than only from a harness |
 | `.fathom/tmp/` | **E** | ignored | the store | scratch space, same filesystem as the store |
 
 Required `.gitignore` stanza (§12):

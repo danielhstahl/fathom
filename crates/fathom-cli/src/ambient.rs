@@ -134,7 +134,12 @@ pub fn run(args: &AmbientArgs, globals: &Globals) -> eyre::Result<ExitCode> {
         // The same repository the pane was reading, not whatever `pwd` says: `fathom ambient --root` exists
         // so a glance can watch a second checkout, and `<Enter>` that opened the wrong one would be a
         // worse surprise than a cursor in the wrong place.
-        return crate::tui::dispatch_focus(globals, episode.as_deref(), root);
+        return crate::tui::dispatch_focus(
+            globals,
+            episode.as_deref(),
+            root,
+            crate::tui::Numbers::Line,
+        );
     }
     Ok(ExitCode::Ok)
 }

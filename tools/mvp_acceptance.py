@@ -20,6 +20,7 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 | a commit made elsewhere, noticed by an **open** TUI | `watch.detect.ms.small` | pty: commit from the harness, time until the frame changed by itself (`reco-bpc`) |
 | the TUI: open → first frame, key → visible change, RSS | `rss.tui.mib.small` | `tools/tui_session.py` over a pty |
 | the TUI: `d` → the diff pane paints, and its first hunk | `query.diff_open.ms.small`, `query.diff_first_hunk.ms.small` | same pty; the first step whose grid changed, and the first frame carrying an `@@` (`reco-0kw`) |
+| the TUI's **own** draw times: draws, events, p99, worst, over-budget | — (quoted, not gated: no published family is a draw time) | the report `fathom tui` writes to `.fathom/frame-report.json` as it exits, read back afterwards and printed under `shell_frame_report` (`reco-08r`) |
 
 Numbers that **cannot** be measured from the shipped binary are reported as blocked with the reason,
 rather than left out. The rail has no query of its own beyond the frame budget, and the search scorer
@@ -27,7 +28,10 @@ is `e5.2`, so those two families stay blocked. `cold.queue_visible.ms.small` —
 actually depends on — was blocked that way until `reco-c05` gave the worklist rows to rank; it, and
 the queue and card query families, are measured from the product now. A blocked number is a finding,
 not a gap in the report. The two diff numbers were blocked this way until `reco-0kw` wired the store
-as the diff pane's byte source; they are measured from the product now.
+as the diff pane's byte source; they are measured from the product now. The frame p99 was blocked the
+same way until `reco-08r` made the shell say its own numbers: it is quoted in `shell_frame_report`
+rather than gated, because every published budget family is a store or a keystroke latency and none of
+them is the loop's own draw time.
 """
 
 from __future__ import annotations
@@ -277,10 +281,16 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
            "query.frame_store_budget.ms.small", tui.get("visible_p95_ms"), unit="ms",
            note="measured through the pty: keystroke written, screen grid changed. The worst value "
                 f"is {tui.get('visible_worst_ms')} ms, and it is `g`, whose answer is the 250 ms "
-                "chord timeout for `gg`, not the store")
+                "chord timeout for `gg`, not the store. Not the shell's own draw time: that is in "
+                "`shell_frame_report`, which is what ADR-002 §6 budgets")
     record("TUI: peak RSS", "rss.tui.mib.small",
            round((tui.get("rss_peak_kib") or 0) / 1024.0, 2), unit="MiB",
            note="VmHWM of the TUI child, sampled after every keystroke")
+    # The shell's own numbers, from the record it wrote as it gave the screen back (`reco-08r`).
+    # This is the quantity the frame budget is written against — the loop's own draw times over its own
+    # window — where every number above is a harness measuring the process from outside a pty. Read
+    # after the session, before any other TUI run can overwrite it.
+    shell_report = read_shell_frame_report(fixture)
     # The queue's own numbers. `cold.queue_visible.ms.small` was blocked on the pane painting an
     # empty list, and the note said so; since the worklist ranks the episodes the shell was given
     # (`reco-c05`), asking for the queue is enough to get an answer. The probe asks for it with `q`
@@ -459,6 +469,20 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
                blocked_by="an open TUI drew no new frame after a commit made outside it: the frame "
                           "still has no producer (`reco-bpc`)")
 
+    not_measured = [
+        "cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms — the graph lane "
+        "is e3.2's and is not built",
+        "rss.daemon.mib — no daemon (e6.3)",
+    ]
+    if not shell_report.get("present"):
+        # A number that could not be had is a finding, not a gap. The pty's keystroke-to-visible-change
+        # is in this report either way; it is simply not the quantity the frame budget is written
+        # against, and only the shell can measure that one.
+        not_measured.insert(
+            1,
+            "frame p99 from the shell's own Report — this binary wrote no "
+            "`.fathom/frame-report.json`, so the frame numbers in this report are the pty's alone")
+
     return {
         "schema_version": 1,
         "ticket": "reco-glv",
@@ -484,15 +508,43 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
         "budget_source": "benchmarks/budgets.json",
         "samples_note": "three samples per number; p95 of three samples is the maximum, and the "
                        "report prints the samples so nobody reads p95 as a tail estimate",
+        "shell_frame_report": shell_report,
         "measured": rows,
-        "not_measured": [
-            "cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms — the graph lane "
-            "is e3.2's and is not built",
-            "frame p99 from the shell's own Report — `fathom tui` discards it; nothing in the product "
-            "prints it, so the frame numbers here come from the pty (key to visible change)",
-            "rss.daemon.mib — no daemon (e6.3)",
-        ],
+        "not_measured": not_measured,
     }
+
+
+def read_shell_frame_report(fixture: Path) -> dict:
+    """The shell's own frame report, as it left it (`reco-08r`).
+
+    `fathom tui` measures every draw against ADR-002 §6's 16 ms budget and used to throw the numbers
+    away; it now prints them as it exits and leaves them in `.fathom/frame-report.json`, which is the
+    file `fathom doctor` reads and the file this reads. Quoted verbatim rather than folded into a
+    `measured` row, because no published budget family is a *draw* time: the row that answers
+    `query.frame_store_budget.ms` is the pty's keystroke-to-visible-change, a different quantity with
+    its own honest use, and charging a draw time against a store-read budget is exactly the two
+    quantities wearing one name that this exercise is about unmixing.
+    """
+    path = fixture / ".fathom" / "frame-report.json"
+    if not path.is_file():
+        return {
+            "present": False,
+            "path": ".fathom/frame-report.json",
+            "note": "the shell wrote no frame report, so this binary is older than `reco-08r` and the "
+                    "frame numbers in this report are the pty's alone",
+        }
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as err:
+        return {"present": False, "path": ".fathom/frame-report.json", "note": f"unreadable: {err}"}
+    record["present"] = True
+    record["path"] = ".fathom/frame-report.json"
+    record["note"] = (
+        "the product's own measurement of the quantity ADR-002 §6 budgets: draws over the whole run, "
+        f"and p99/worst/over-budget over the last {record.get('window_frames')} of them at "
+        f"{record.get('cols')}x{record.get('rows')}. Printed by `fathom tui` on the way out and "
+        "repeated by `fathom doctor`, from the same file.")
+    return record
 
 
 def main() -> int:
@@ -520,6 +572,21 @@ def main() -> int:
             "ok" if row["met"] else "OVER BUDGET")
         print(f"{row['measurement'].ljust(width)} {measured:>12} {budget:>10}  {verdict}")
     print(f"\nwrote {args.out}")
+    # The frame budget line, in the product's own words (`reco-08r`). The table above measures the
+    # terminal from outside; this is the shell's own draw times, which is the quantity ADR-002 §6
+    # actually budgets, so the acceptance run quotes it rather than leaving it in the JSON.
+    shell = report["shell_frame_report"]
+    if shell.get("present"):
+        print(
+            f"the shell's own frame numbers ({shell.get('path')}): "
+            f"{shell.get('frames')} draws, {shell.get('events')} events, "
+            f"p99 {shell.get('p99_ms')} ms, worst {shell.get('worst_ms')} ms, "
+            f"{shell.get('over_budget')} of the last {shell.get('window_frames')} draws over the "
+            f"{shell.get('budget_ms')} ms budget, at {shell.get('cols')}x{shell.get('rows')}, "
+            f"ended {shell.get('end')}"
+        )
+    else:
+        print(f"the shell wrote no frame report: {shell.get('note')}")
     return 0
 
 

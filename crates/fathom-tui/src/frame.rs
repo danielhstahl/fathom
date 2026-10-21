@@ -264,18 +264,40 @@ pub enum LoopEnd {
     Signalled(&'static str),
 }
 
+impl std::fmt::Display for LoopEnd {
+    /// The way a run's ending is *said*, in the exit line and in the record (`reco-08r`).
+    ///
+    /// `Debug` would print `FrameLimit` at a reviewer; the sentence the enum's own doc comments
+    /// describe is the one worth printing, and printing it from one place is what keeps the exit line,
+    /// `fathom doctor` and the record from naming the same ending three different ways.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoopEnd::Quit => f.write_str("quit"),
+            LoopEnd::Disconnected => f.write_str("no producer left"),
+            LoopEnd::FrameLimit => f.write_str("frame limit reached"),
+            LoopEnd::Idle => f.write_str("nothing more to draw"),
+            LoopEnd::Signalled(signal) => write!(f, "signal {signal}"),
+        }
+    }
+}
+
 /// What a run is worth reporting: the numbers behind the frame-budget criterion.
+///
+/// Every one of these is a measurement of *this* run, which is why `fathom tui` prints them on the way
+/// out and `fathom doctor` repeats them afterwards (`reco-08r`): ADR-002 §6's 16 ms frame budget is a
+/// claim about the product's own draws, and a number that only exists inside a benchmark harness is a
+/// claim nothing can check from the shipped binary.
 #[derive(Debug, Clone)]
 pub struct Report {
-    /// Frames drawn.
+    /// Frames drawn, over the whole run.
     pub frames: u64,
-    /// Events applied.
+    /// Events applied, over the whole run.
     pub events: u64,
     /// The 99th-percentile draw time in the measurement window.
     pub p99: Duration,
     /// The slowest draw in the window.
     pub worst: Duration,
-    /// Draws that missed the 16 ms budget.
+    /// Draws in the window that missed the budget.
     pub over_budget: usize,
     /// How the loop ended.
     pub end: LoopEnd,
@@ -285,22 +307,50 @@ pub struct Report {
     /// either, because that depends on what was in the store when the run started. So it reports the
     /// snapshot and the fact of whether it moved, and the composition root does the writing.
     pub session: Delta,
+    /// The budget each draw was measured against ([`crate::event::FrameScheduler::BUDGET`], ADR-002 §6).
+    ///
+    /// Printed with the counts, because "0 over budget" about a run whose budget nobody said is not a
+    /// measurement a reader can check.
+    pub budget: Duration,
+    /// How many draws the window holds: `min(frames, `[`crate::event::FrameScheduler::WINDOW`]`)`.
+    ///
+    /// The percentile, the worst and the over-budget count are taken over the last this-many draws,
+    /// while [`Self::frames`] counts the whole run, so a five-thousand-frame session has to say which
+    /// of the two a number came from (`reco-08r`).
+    pub window: usize,
+    /// The size the last draws were made at, which is half of what a frame cost means: a 200×60 frame
+    /// and an 80×24 one owe the same budget and do not owe the same work.
+    pub size: (u16, u16),
 }
 
 impl Report {
-    /// A one-line summary for `fathom tui`'s exit and for `--plain`'s footer.
+    /// The run's own numbers, as the one line `fathom tui` prints on the way out (`reco-08r`).
+    ///
+    /// One line, in the order the acceptance question is asked — how many draws, how much of the budget
+    /// they missed, and what the slowest one cost — and every denominator stated next to its count, so
+    /// the line can be quoted into a bug report without also quoting what it means.
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "frames {} · events {} · p99 {:.2}ms · worst {:.2}ms · over-budget {} · {:?}",
+            "frames {} · events {} · p99 {} · worst {} · over-budget {} of the last {} draws · budget \
+             {} · {}x{} · {end}",
             self.frames,
             self.events,
-            f64::from(self.p99.as_micros() as f32) / 1000.0,
-            f64::from(self.worst.as_micros() as f32) / 1000.0,
+            milliseconds(self.p99),
+            milliseconds(self.worst),
             self.over_budget,
-            self.end
+            self.window,
+            milliseconds(self.budget),
+            self.size.0,
+            self.size.1,
+            end = self.end,
         )
     }
+}
+
+/// A duration as a person reads it: two decimals of milliseconds.
+fn milliseconds(since: Duration) -> String {
+    format!("{:.2}ms", f64::from(since.as_micros() as f32) / 1000.0)
 }
 
 /// Somewhere to put a frame.
@@ -542,6 +592,9 @@ pub fn run_loop(
         // A `run_loop` caller owns its own `App` and can snapshot it directly; only `run`, which takes
         // the screen and drops the app on the way out, reports a delta (`e1.11`).
         session: Delta::default(),
+        budget: app.scheduler.budget(),
+        window: app.scheduler.window_frames(),
+        size: app.size,
     })
 }
 
@@ -686,6 +739,11 @@ fn unit_of(task: &str) -> &'static str {
 /// The order is the whole design: install the panic hook and the signal flags *before* taking the
 /// screen, take the screen behind a [`Guard`], run, and let the [`Guard`]'s `Drop` restore it —
 /// whether the loop ended by `<C-c>`, by a panic, by the pane closing, or by falling off the end.
+///
+/// The [`Report`] is the run's own measurement of ADR-002 §6's frame budget, and the composition root
+/// is the only party that can print it or record it (`reco-08r`): a caller that drops it leaves the
+/// budget auditable only by a harness measuring the process from outside, which is a different
+/// quantity wearing the same name.
 ///
 /// # Errors
 ///

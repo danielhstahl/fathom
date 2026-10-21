@@ -46,6 +46,10 @@ mod features;
 // (ADR-002 §5.2), and hands over rows — so it lives here, beside the read it shares with `fathom ambient`.
 #[cfg(feature = "tui")]
 mod feed;
+// The shell's own frame numbers, printed on its way out and left in `.fathom/frame-report.json` for
+// `fathom doctor` to read (`reco-08r`). Gated with the shell because only the shell measures a frame.
+#[cfg(feature = "tui")]
+mod framereport;
 // The review artefact (`e5.7`): the range, the rows, the file, the exit code. The shape and the renderings
 // live in `fathom_analyze::export`; this is the half that needs a store, a git read and a ledger.
 mod export;

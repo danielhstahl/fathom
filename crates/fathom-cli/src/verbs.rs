@@ -996,8 +996,22 @@ pub struct TuiArgs {
     #[arg(long)]
     pub show_session: bool,
     /// With `--show-session`: the rows as JSON on stdout, and nothing else there.
-    #[arg(long, requires = "show_session")]
+    ///
+    /// Without it, `--json` is the same as `--stats`: the run's own frame numbers, as one object
+    /// (`reco-08r`).
+    #[arg(long, conflicts_with_all = ["show_keys", "show_theme", "list_themes"])]
     pub json: bool,
+    /// Print the run's own frame numbers — draws, events, p99, worst, over-budget — as one JSON object
+    /// on stdout when the shell gives the screen back (`reco-08r`).
+    ///
+    /// The same numbers the shell prints as one line on stderr on the way out, and the same ones it
+    /// leaves in `.fathom/frame-report.json` for `fathom doctor`; a script that wants them as data asks
+    /// for them this way instead of measuring the process from outside a pty.
+    #[arg(
+        long,
+        conflicts_with_all = ["show_keys", "show_theme", "list_themes", "show_session"]
+    )]
+    pub stats: bool,
     /// Print the theme this run would paint with, and exit, taking no terminal (`e5.6`).
     ///
     /// The face table, the measured contrast of every face against the background the theme paints, and
@@ -1273,7 +1287,14 @@ fn tui(args: &TuiArgs, globals: &Globals) -> eyre::Result<ExitCode> {
     if args.show_session {
         return crate::session::show(&std::path::PathBuf::from("."), args.json);
     }
-    crate::tui::dispatch(globals)
+    // `--json` and `--stats` both ask for the run's numbers as data, and mean the same thing once no
+    // `--show-session` has claimed `--json` for the session rows (`reco-08r`).
+    let numbers = if args.json || args.stats {
+        crate::tui::Numbers::Json
+    } else {
+        crate::tui::Numbers::Line
+    };
+    crate::tui::dispatch(globals, numbers)
 }
 
 #[cfg(not(feature = "tui"))]
@@ -1286,7 +1307,9 @@ fn open_terminal(globals: &Globals) -> eyre::Result<ExitCode> {
     // the shell at all; the runtime answer (no tty, `--plain`) is `tui`'s to make.
     #[cfg(feature = "tui")]
     {
-        crate::tui::dispatch(globals)
+        // No verb means no `--stats` either: the flag belongs to `fathom tui`, and running with no verb
+        // gets the ordinary one line on the way out (`reco-08r`).
+        crate::tui::dispatch(globals, crate::tui::Numbers::Line)
     }
     #[cfg(not(feature = "tui"))]
     {
@@ -1999,6 +2022,40 @@ pub(crate) fn watch_report_json(root: &std::path::Path) -> serde_json::Value {
         crate::watch::doctor_json(root, fathom_ingest::watch::Options::default().poll_interval)
     }
     #[cfg(not(feature = "watch"))]
+    {
+        let _ = root;
+        serde_json::json!({ "compiled_in": false })
+    }
+}
+
+/// The last shell run's frame numbers, as the lines `fathom doctor` prints (`reco-08r`).
+///
+/// Delegated the way the watcher's heartbeat is, because the module that writes the record is gated with
+/// the shell: a binary built without it has no frame to have measured, and says that rather than printing
+/// the silence.
+pub(crate) fn frame_lines(root: &std::path::Path) -> Vec<String> {
+    #[cfg(feature = "tui")]
+    {
+        crate::framereport::doctor_lines(root)
+    }
+    #[cfg(not(feature = "tui"))]
+    {
+        let _ = root;
+        vec![
+            "frames: not compiled into this build; rebuild with `--features tui` to get `fathom tui`, \
+             which is what writes the record"
+                .to_owned(),
+        ]
+    }
+}
+
+/// The same, as data.
+pub(crate) fn frame_json(root: &std::path::Path) -> serde_json::Value {
+    #[cfg(feature = "tui")]
+    {
+        crate::framereport::doctor_json(root)
+    }
+    #[cfg(not(feature = "tui"))]
     {
         let _ = root;
         serde_json::json!({ "compiled_in": false })

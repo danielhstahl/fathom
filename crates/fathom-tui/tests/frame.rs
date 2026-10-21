@@ -57,3 +57,81 @@ fn a_plain_frame_is_text_and_nothing_else() {
         "unknown is a value, not a blank (ADR-001 §7.7): {lines:?}"
     );
 }
+
+/// The run's numbers, and the run's numbers *stated* (`reco-08r`).
+///
+/// The frame budget is a claim about these numbers, and the defect this test exists for is a binary that
+/// computed them and threw them away. So the loop is driven for real, and the report is checked twice:
+/// once as data (every statistic with the denominator and the budget it was taken against) and once as
+/// the line the shell prints on the way out, which has to say the same things.
+#[test]
+fn a_run_reports_its_own_frame_budget_and_says_what_it_measured_against() {
+    use std::time::Duration;
+
+    use crossterm::event::{KeyCode, KeyModifiers};
+    use fathom_tui::app::{App, Model};
+    use fathom_tui::event::{Bus, Message};
+    use fathom_tui::frame::{HeadlessSink, LoopEnd, run_loop};
+    use fathom_tui::keymap::Keymap;
+
+    let mut app = App::new(
+        Keymap::defaults(),
+        Model::from_facade(),
+        (100, 30),
+        "fathom/pilot · main",
+    );
+    let bus = Bus::new();
+    for ch in "jjk".chars() {
+        bus.send(Message::Key(crossterm::event::KeyEvent::new(
+            KeyCode::Char(ch),
+            KeyModifiers::NONE,
+        )));
+    }
+    let mut sink = HeadlessSink {
+        frames: Vec::new(),
+        size: None,
+    };
+    let report = run_loop(&mut app, &bus, &mut sink, None, Some(1)).expect("the loop runs");
+
+    assert_eq!(report.end, LoopEnd::FrameLimit);
+    assert!(
+        report.frames >= 1,
+        "a loop that drew nothing measured nothing"
+    );
+    assert_eq!(report.events, 3);
+    assert_eq!(
+        report.budget,
+        Duration::from_millis(16),
+        "ADR-002 §6's budget travels with the number measured against it"
+    );
+    assert_eq!(report.size, (100, 30), "a frame cost is a cost at a size");
+    assert_eq!(
+        report.window,
+        usize::try_from(report.frames)
+            .unwrap_or(usize::MAX)
+            .min(fathom_tui::event::FrameScheduler::WINDOW),
+        "the window is the denominator of every statistic below it"
+    );
+    assert!(
+        report.p99 <= report.worst,
+        "a p99 above the worst draw is not a percentile"
+    );
+    assert!(report.over_budget <= report.window);
+
+    let line = report.summary();
+    for fact in [
+        "frames 1",
+        "events 3",
+        "p99 ",
+        "worst ",
+        &format!("over-budget {} of the last 1 draws", report.over_budget),
+        "budget 16.00ms",
+        "100x30",
+        "frame limit reached",
+    ] {
+        assert!(
+            line.contains(fact),
+            "the exit line is missing {fact:?}: {line}"
+        );
+    }
+}

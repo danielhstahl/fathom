@@ -1232,11 +1232,12 @@ Options:
       --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
       --json               With `--show-session`: the rows as JSON on stdout, and nothing else there
       --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --stats              Print the run's own frame numbers — draws, events, p99, worst, over-budget — as one JSON object on stdout when the shell gives the screen back (`reco-08r`)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
       --show-theme         Print the theme this run would paint with, and exit, taking no terminal (`e5.6`)
       --audit              With `--show-theme`: treat a failed contrast or separation floor as an error exit (exit 7)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --list-themes        Print every theme Fathom can see — the built-ins and the files in your theme directories — and exit, taking no terminal (`e5.6`)
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --list-themes        Print every theme Fathom can see — the built-ins and the files in your theme directories — and exit, taking no terminal (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
       --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)

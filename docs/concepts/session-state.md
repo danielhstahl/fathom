@@ -168,6 +168,12 @@ directions in `crates/fathom-tui/tests/session.rs` — the owning set is a fact 
 whole plan at two versions. If a version ever needs translating, `tui.state_version` is the marker and
 `tui.<name>` is the only namespace it governs.
 
+**No frame numbers.** What a run's draws cost is not the reviewer's posture, and it does not go near the
+store: the shell prints its own report on the way out and leaves it in `.fathom/frame-report.json` for
+`fathom doctor` to read (`reco-08r`, `crates/fathom-cli/src/framereport.rs`). Two shells on one
+repository would otherwise write over each other's measurements on the compare-and-set path, and a
+measurement that is sometimes the other process's is not a measurement.
+
 ## 8 Where to look
 
 | Question | Place |
@@ -180,3 +186,4 @@ whole plan at two versions. If a version ever needs translating, `tui.state_vers
 | The compare-and-set | `set_ui_state_if` in `crates/fathom-store/src/episode.rs` |
 | What state does to a drawn frame | `compose` in `crates/fathom-tui/src/frame.rs` |
 | `fathom tui --show-session` | `show()` in `crates/fathom-cli/src/session.rs` |
+| What a run's draws cost, and where those numbers go | `crates/fathom-cli/src/framereport.rs` |

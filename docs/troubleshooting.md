@@ -69,6 +69,7 @@ The codes you will actually meet, and the sentence each one is trying to tell yo
 | `fathom mcp serve` or `fathom check` refuses | not built yet; each refusal names its plan item | [the pipeline recipe](recipes/gate-a-pipeline.md) and [the agent recipe](recipes/ask-an-agent.md) |
 | a finding you already suppressed is back | the episode id moved and the key was derived wrong, or the config layer changed | the key is `detector:subject` and contains no episode id — so check which `fathom.toml` won |
 | the watcher fell back to polling | inotify is unavailable (network mount, container) | expected and reported: `fathom doctor` prints the backend and the OS's reason |
+| the frame feels slow | a wide rail, a big diff, a slow terminal, a loaded machine — or a real regression | `fathom tui` prints its own frame report as it exits (draws, events, p99, worst, over-budget against the 16 ms budget), and `fathom doctor` repeats the last session's from `.fathom/frame-report.json` |
 
 ## The three things that are not bugs
 

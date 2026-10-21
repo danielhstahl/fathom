@@ -529,6 +529,17 @@ impl FrameScheduler {
         self.window.iter().filter(|d| **d > self.budget).count()
     }
 
+    /// How many draws the percentiles, [`FrameScheduler::worst`] and [`FrameScheduler::over_budget`]
+    /// are taken over.
+    ///
+    /// `min(draws, `[`FrameScheduler::WINDOW`]`)`: a run of five thousand frames has a p99 that speaks
+    /// about its last 128, and a report that says "p99" without its denominator is a number a reader
+    /// cannot check (`reco-08r`).
+    #[must_use]
+    pub fn window_frames(&self) -> usize {
+        self.window.len()
+    }
+
     /// One line for the status/debug surface: `draws 41 · p99 3.1ms · worst 8.4ms · over 0`.
     #[must_use]
     pub fn summary(&self) -> String {

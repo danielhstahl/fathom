@@ -26,17 +26,31 @@ use fathom_tui::terminal::Probe;
 use crate::output;
 use crate::verbs::Globals;
 
+/// How the run's own frame numbers are wanted (`reco-08r`).
+///
+/// The shell measures every draw it makes; this enum is only about how it says so on the way out. The
+/// default is the line a reviewer reads; `Json` is what `fathom tui --stats` (or a bare `--json`) asks
+/// for, and the shape the record in `.fathom/frame-report.json` carries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Numbers {
+    /// One line on stderr, in the same voice as `fathom ambient`'s exit line.
+    Line,
+    /// One object on stdout, and nothing else there.
+    Json,
+}
+
 /// Run the shell, or print its frame as text.
 ///
 /// # Errors
 ///
 /// Whatever the shell raised, wrapped: a screen that could not be taken is an error exit, not a
 /// panic, and the terminal is already back the way it was by the time this returns.
-pub fn dispatch(globals: &Globals) -> Result<ExitCode> {
+pub fn dispatch(globals: &Globals, numbers: Numbers) -> Result<ExitCode> {
     dispatch_focus(
         globals,
         None,
         &std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+        numbers,
     )
 }
 
@@ -51,6 +65,7 @@ pub fn dispatch_focus(
     globals: &Globals,
     focus: Option<&str>,
     root: &std::path::Path,
+    numbers: Numbers,
 ) -> Result<ExitCode> {
     let (overrides, mut notices) = keymap_overrides(root);
     // What the terminal says it is (`e5.5`). Read here, at the edge, because `fathom-tui` may not
@@ -123,6 +138,17 @@ pub fn dispatch_focus(
              is a key as well (`fathom tui --show-keys`)"
                 .to_owned(),
         );
+    }
+    // The same for `--stats` asked of a run that will not draw a loop: `--plain` draws one frame as text
+    // and exits, so there is no frame budget to measure and no report to print (`reco-08r`). Saying that
+    // beats printing nothing at all and leaving the flag looking broken.
+    if plain && numbers == Numbers::Json {
+        notices.push(format!(
+            "the frame numbers were asked for as data, and a `--plain` run draws one frame and exits, \
+             so there is no loop to measure (ADR-006 §6.7); `fathom doctor` prints the last interactive \
+             run's numbers from {}",
+            crate::framereport::RELATIVE_PATH
+        ));
     }
     // In plain mode stdout is the artefact, so the complaints go to stderr with everything else the
     // user is meant to act on (ADR-002 §7.5); in the shell they belong inside the frame, where they
@@ -215,6 +241,9 @@ pub fn dispatch_focus(
         }
         return Ok(ExitCode::Ok);
     }
+    // The instant the screen was taken, read at the edge because `fathom-tui` is handed an instant and
+    // may not go and get one (ADR-002 §4.4); the record says how long the reviewer was in the frame.
+    let started_ms = crate::clock::now_millis();
     let report = run(&options).map_err(|err| {
         crate::verbs::pending(
             ExitCode::Error,
@@ -231,8 +260,26 @@ pub fn dispatch_focus(
             crate::session::save(&loaded, &report.session.entries, crate::clock::now_millis());
         crate::session::report_saved(&saved);
     }
-    // The run's own numbers are not the answer anyone asked for, so they
-    // stay in the report and out of the pipe; `fathom doctor` is where a slow frame gets reported.
+    // The run's own numbers, said and then kept (`reco-08r`). They used to be dropped here on the
+    // argument that nobody had asked for them, which left ADR-002 §6's frame budget measurable only by a
+    // harness measuring keystroke-to-visible-change from outside a pty — an honest number, and not the
+    // quantity the budget is written against. So: one line on the way out for the reviewer who was in the
+    // frame, one object on stdout for a script, and one record for `fathom doctor` to answer from later.
+    let ended_ms = crate::clock::now_millis();
+    let record = crate::framereport::record(&report, started_ms, ended_ms);
+    if let Err(why) = crate::framereport::write(root, &record) {
+        output::problem(format_args!(
+            "fathom: the run's frame numbers could not be written to {}: {why}",
+            crate::framereport::RELATIVE_PATH
+        ));
+    }
+    match numbers {
+        Numbers::Line => output::problem(format_args!("fathom: tui: {}", report.summary())),
+        Numbers::Json => {
+            let rendered = serde_json::to_string(&record).unwrap_or_else(|_| "{}".to_owned());
+            output::line(format_args!("{rendered}"));
+        }
+    }
     Ok(ExitCode::Ok)
 }
 

@@ -135,14 +135,25 @@ STORE_LAYOUT: tuple[PathSpec, ...] = (
              "per-session accounting and quarantine flags"),
     PathSpec(".fathom/quarantine/", "R", False, "ingest / recovery",
              "path-escape and oversized events, damaged artifacts, ledger entries that failed to link"),
-    PathSpec(".fathom/logs/", "R", False, "store + daemon", "rotated logs; `doctor` reads them"),
+    PathSpec(".fathom/logs/", "R", False, "store + daemon",
+             "rotated logs, and `daemon.log` — the file a detached `fathom daemon start` redirects its "
+             "child's stdout and stderr into, since a detached process with nowhere to write fails "
+             "silently; `doctor` reads them"),
     # class E — pure convenience.
-    PathSpec(".fathom/daemon.lock", "E", False, "fathom watch",
-             "the writer lease: flock + pid + boot id + heartbeat (§7.1)"),
-    PathSpec(".fathom/daemon.sock", "E", False, "fathom watch", "local IPC endpoint"),
-    PathSpec(".fathom/watch/status.json", "E", False, "fathom watch (e1.9)",
+    PathSpec(".fathom/daemon.lock", "E", False, "fathom daemon (e6.3), fathom watch",
+             "the writer lease: flock + pid + boot id + heartbeat (§7.1); released by *blanking*, not "
+             "unlinking, so a reader never races an unlink"),
+    PathSpec(".fathom/daemon.sock", "E", False, "fathom daemon (e6.3), fathom watch",
+             "local IPC endpoint (`fathom.daemon/1`); a repository may also be reached with no socket "
+             "at all, in which case the lease and the heartbeat file below are what a client can read"),
+    PathSpec(".fathom/watch/status.json", "E", False,
+             "fathom watch (e1.9), fathom daemon (e6.3)",
              "the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` "
              "and the ambient view read it, so a watcher needs no socket and no lock to be noticed"),
+    PathSpec(".fathom/frame-report.json", "E", False, "fathom tui (reco-08r)",
+             "the last shell run's own frame numbers: draws, events, p99, worst and the over-budget "
+             "count, renamed into place; `doctor` reads them, so the frame budget is measurable from "
+             "the product rather than only from a harness"),
     PathSpec(".fathom/tmp/", "E", False, "the store", "scratch space, same filesystem as the store"),
 )
 

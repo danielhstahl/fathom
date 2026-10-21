@@ -35,6 +35,12 @@ pub const DOCTOR_CONTRACT: &str = "fathom.cli.doctor/1";
 pub const INDEX_CONTRACT: &str = "fathom.cli.index/1";
 /// The `fathom export --json` contract id.
 pub const EXPORT_CONTRACT: &str = "fathom.cli.export/1";
+/// The record `fathom tui` leaves in `.fathom/frame-report.json`, and the object `fathom tui --stats`
+/// prints (`reco-08r`).
+///
+/// Not a verb payload — no schema file pins it, because it is the shell's own measurement rather than a
+/// query answer — but the same discipline applies: a consumer switches on the shape it got.
+pub const FRAME_CONTRACT: &str = "fathom.cli.frame/1";
 
 /// `fathom show <episode|rev>`: one episode, in full, from the index.
 ///

@@ -17,6 +17,49 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The shell threw away its own frame report, so the frame budget was not measurable from the product (`reco-08r`)
+
+`fathom_tui::frame::run` measures every draw it makes against ADR-002 §6's 16 ms budget and returned a
+`Report`; the binary dropped it on the floor with the comment "the run's own numbers are not the answer
+anyone asked for … `fathom doctor` is where a slow frame gets reported". `fathom doctor --deep`
+contained no frame row. So the MVP acceptance run could not answer "what was the p99 draw time of this
+session" from the product, and quoted what a pty driver had measured between a keystroke and a changed
+screen (p95 1.9 ms, worst 250.5 ms) — honest, available, and a different quantity wearing the same name.
+
+* **The shell says its numbers as it gives the screen back**, one line on stderr in the same voice as
+    `fathom ambient`'s — `fathom: tui: frames 41 · events 63 · p99 3.20ms · worst 12.40ms · over-budget
+    0 of the last 41 draws · budget 16.00ms · 132x40 · quit` — or one JSON object on stdout under
+    `fathom tui --stats`, which a bare `--json` now also means.
+* **And leaves them behind**, at `.fathom/frame-report.json` — class E like the watcher's heartbeat,
+    renamed into place so a reader never sees half a file, and read by `fathom doctor`, which now prints
+    the last session's p99 and over-budget count with the window they were taken over, the budget they
+    were measured against and the frame size they were paid at. `doctor` names the file whether or not it
+    is there (ADR-005 §3.1): "no shell has run here" and "the record could not be read" are two
+    sentences, and both beat a silence that looks like a health check.
+* **Every statistic now travels with its denominator.** `Report` gained `budget`, `window` and `size`,
+    because the percentiles are taken over the scheduler's last 128 draws while `frames` counts the whole
+    run, and a frame cost without the size it was paid at is half a number. `LoopEnd` says itself in
+    words now rather than being printed with `{:?}`.
+* **The measurement is not a finding.** A draw that missed the budget on a loaded machine is not a broken
+    index, so the section never moves `fathom doctor`'s exit code — not under `--deep`, not under
+    `--strict`. It states, and leaves the judgment where it belongs.
+* **`--plain` says what it did not measure**: a piped run draws one frame and exits, so there is no loop
+    to time, and a `--stats` asked of it explains that instead of printing nothing at all. The modes that
+    print a table and leave (`--show-keys`, `--show-theme`, `--list-themes`) conflict with the frame flags
+    in clap, so a combination that could not have measured a loop is a usage error rather than a flag that
+    quietly did nothing.
+* **The acceptance harness cites them.** `tools/mvp_acceptance.py` reads the record the shell wrote and
+    quotes it under `shell_frame_report` — the product's own numbers, beside the pty's keystroke
+    latencies and not confused with them, since no published budget family is a draw time.
+
+*Asserted by*: `crates/fathom-tui/tests/frame.rs` (5: the loop driven for real, its report checked as data
+and as the line printed), `crates/fathom-cli/src/framereport.rs` (3: the record's denominators, the
+write-and-read round trip through the lines `doctor` prints, and absent-vs-damaged as two sentences),
+`tests/test_frame_report_contract.py` (9, over a real pty on the built binary: the exit line, the
+`--stats` object, the record `fathom doctor --deep` quotes, no-record and damaged-record both stated,
+frame flags aimed at a mode with no loop refused at the door, and a `--plain --stats` that says it
+measured no loop).
+
 ### Nothing enumerated the episodes, so the rail could not be checked from a script or CI (`reco-11b`)
 
 The acceptance walkthrough reaches the reviewer's main list and says *the rail shows 213 episodes*. Nothing
