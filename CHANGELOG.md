@@ -17,6 +17,45 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The structural extractor core: Rust, Python, TypeScript, and the harness that keeps them honest (`reco-zoz`)
+
+Spike `s1` measured what six grammars can do and told the next ticket to copy the harness shape, not the
+extractors. This is the first shipped extractor, and the durable half is the harness: a corpus with
+hand-authored truth, thresholds that name the excuse categories, a committed report CI re-measures, and four
+mechanism checks that refuse a 100 % score built on silence.
+
+* **`crates/fathom-analyze/src/structure/`** extracts, per file: definitions with span and complexity proxy,
+  exported visibility, imports with resolved targets, implemented traits and inherited bases, and the two
+  states the spike argued for. `synthetic_eligible` is a *state* — a scope, its reasons (`macro_definition`,
+  `decorated`, `monkeypatch`, `synthesised_accessors`, `wildcard_reexport`, `ambient_merge`), and the only
+  sentence a surface may print about it: *may have shrunk, not shrunk*. `EdgeKind::Wildcard` is its own edge
+  kind, never a named symbol, and `dependents_of` answers "who depends on this?" as two lists — the ones that
+  named something and the ones whose contents are unknown.
+* **A file is never lost.** Every input returns a record; one with no structure returns a reason
+  (`language_unknown`, `grammar_not_compiled`, `extractor_not_shipped`, `too_large`, `not_utf8`,
+  `parse_failed`, `parser`) plus its file-level measurement. A build compiled without a grammar still answers
+  per file, because `--no-default-features --features minimal` is a binary CI ships (ADR-002 §6.5).
+* **Resolution is a bounded iteration that reports itself**: `extract.resolution.max_passes` and
+  `…max_hops` are registered config keys, every file reports `passes_used`, `converged` and
+  `truncated_chains`, and the report contains the corpus re-extracted with a bound of one so the bound is
+  shown biting rather than asserted. Per-file convergence, not corpus-wide — one file still working used to
+  make every file look unconverged.
+* **Measured, on a corpus with truth files**
+  ([`benchmarks/reports/e3-1-structure-core.json`](benchmarks/reports/e3-1-structure-core.json)): precision
+  and recall 1.000 on definitions, exports, imports and supertypes in all three languages, 12/12 synthetic
+  scopes, 8/8 wildcard edges, throughput 1 572–3 744 files/s/core against a 1 000 floor. Every language's
+  verdict is `conditions`, and the condition has a name per language: macro-written items, `@dataclass` and
+  monkeypatched methods, bundler-written modules. A truth row excused as irreducible must live in a file that
+  also demands a synthetic scope — `tests/test_structure_core_contract.py` refuses the excuse otherwise.
+* **`structure::canonical_json` is byte-identical** across runs and input order, pinned by a golden that the
+  harness's own `--snapshot` reproduces byte for byte, so `e3.2` can store this shape and diff it later.
+
+Reproduce: `cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript --example
+structure_harness -- --repo . --report benchmarks/reports/e3-1-structure-core.json`, then `--check`, then
+`cargo test -p fathom-analyze --features lang-rust,lang-python,lang-typescript --test structure_core` and
+`PYTHONPATH=src python3 -m pytest -q tests/test_structure_core_contract.py`.
+
+
 ### One writer per repository: `fathom daemon`, `fathom status`, and the lease that decides who writes (`reco-kvk`)
 
 Three TUIs and a `fathom index` used to mean four processes ready to index the same repository four times.

@@ -393,3 +393,87 @@ cargo run -p fathom-analyze --features langs-all --example s1_spike -- --sexp go
 debug build against a report written by a release one. The report is committed next to ADR-004's
 baseline and `s3`'s snapshot report for the same reason theirs are: a number nobody can re-run is
 a number nobody should plan around.
+
+---
+
+## What `e3.1` shipped, and what `e3.2` may now assume
+
+The spike was a measurement with an expiry date. This section is the shipped thing.
+
+`crates/fathom-analyze/src/structure/` extracts, per file: definitions with a span and a complexity
+proxy, exported visibility, imports with their resolved targets, implemented traits and inherited
+bases, and the two states this document argued for — `synthetic_eligible` scopes and wildcard
+dependency edges. It runs Rust, Python and TypeScript; Go, Ruby and Java are *detected* and answered
+with a named reason, because a language the extractor has not shipped is a different fact from a
+language fathom has never heard of. The measured result is
+[`benchmarks/reports/e3-1-structure-core.json`](../../benchmarks/reports/e3-1-structure-core.json), and every
+number below came out of that file rather than being typed into it.
+
+| language | definitions | exports | imports | supertypes | synthetic scopes | wildcards | verdict |
+|---|---|---|---|---|---|---|---|
+| Rust | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 1/1 | 1/1 | `conditions` |
+| Python | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 6/6 | 2/2 | `conditions` |
+| TypeScript | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 5/5 | 5/5 | `conditions` |
+
+Perfect scores on a 26-file corpus are not a claim about production repositories, and `e3.2` should
+not read them as one — they are the statement that the *mechanisms* work on cases chosen because
+they are hard, and that the harness would notice the first one to break. Each language's verdict is
+`conditions` for exactly one reason, and it is a reason with a name: macro-written items in Rust,
+`@dataclass` and monkeypatched methods in Python, bundler-written modules in TypeScript. Those rows
+are in the truth files, excused by tags declared in
+`crates/fathom-analyze/structure/thresholds.json`, and excused *only* in files that also demand a
+`synthetic_eligible` scope — `tests/test_structure_core_contract.py` refuses the excuse otherwise.
+An extractor is allowed to say it cannot enumerate a scope; what it is not allowed to do is say
+nothing.
+
+Five things the next tickets get to rely on, each with the sentence that makes it testable:
+
+* **A file is never lost.** Every input returns a record; one with no structure returns a reason
+  (`language_unknown`, `grammar_not_compiled`, `extractor_not_shipped`, `too_large`, `not_utf8`,
+  `parse_failed`, `parser`) and its file-level measurement — bytes, lines, code lines, parse errors.
+  `e3.2`'s graph may therefore count files it could not read, which is the difference between a
+  partial graph and a quietly short one.
+* **A dependency of unknown contents is an edge.** `EdgeKind::Wildcard` is its own kind, never a
+  named symbol, and `CorpusStructure::dependents_of` answers "who depends on this?" as two lists:
+  the ones that named something, and the ones whose contents are unknown. Printing only the first is
+  the bug this whole document was written to prevent.
+* **A scope that cannot be enumerated says which and why.** `synthetic_scopes` carries the scope, the
+  dotted path, and the reasons (`macro_definition`, `decorated`, `monkeypatch`,
+  `synthesised_accessors`, `wildcard_reexport`, `ambient_merge`, …), and `may_have_shrunk()` is the
+  only sentence a surface may print about it: *may have shrunk, not shrunk*.
+* **Resolution is a bounded iteration and reports itself.** `extract.resolution.max_passes` and
+  `…max_hops` are configuration keys (see [the config reference](config.md)), and every file reports
+  `passes_used`, `converged` and `truncated_chains`. The report contains the corpus re-extracted with
+  a bound of one, so the bound is shown biting rather than asserted.
+* **The bytes are stable.** `structure::canonical_json` is byte-identical across runs and across
+  input order, and the golden at
+  `crates/fathom-analyze/tests/golden/structure/core-canonical.json` is those exact bytes — the same
+  bytes `--snapshot` writes, which is why `e3.2` can store this shape and diff it a month later.
+
+## Reproducing `e3.1`
+
+```bash
+# measure, and write the committed report
+cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+    --example structure_harness -- --repo . \
+    --report benchmarks/reports/e3-1-structure-core.json
+
+# the gate: relations, mechanisms and verdicts reproduce (timings deliberately excluded)
+cargo run -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+    --example structure_harness -- --repo . \
+    --report benchmarks/reports/e3-1-structure-core.json --check
+
+# the throughput floor: 1 000 files/s/core, release only
+cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+    --example structure_harness -- --repo . --bench
+
+# the byte contract, and the corpus/model properties
+cargo test -p fathom-analyze --features lang-rust,lang-python,lang-typescript --test structure_core
+
+# the prose, the thresholds, the truth files and the report cannot drift apart
+PYTHONPATH=src python3 -m pytest -q tests/test_structure_core_contract.py
+```
+
+`--dump <language>` prints what the extractor concluded per file and `--probe <language>` prints
+symbol kinds and parse errors; the raw grammar archaeology (`--sexp`) stays spike `s1`'s, and
+`s1_spike` still does it against all six grammars. `--max-passes 1` is there to watch the bound bite.

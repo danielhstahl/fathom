@@ -122,6 +122,21 @@ required-features = ["sqlite-bundled"]
 name = "s1_spike"
 required-features = ["langs-all"]
 
+# The structural extractor's corpus harness (`e3.1`, `reco-zoz`). Gated for the same reason as
+# `s1_spike`: it links the grammars, and a default `cargo test` must not pay for three C builds. The
+# three names are exactly the languages `e3.1` ships — `e3.1b` adds the other three and this line
+# grows with them.
+# The structural extractor core's tests (`e3.1`, `reco-zoz`). Named here for the same reason as
+# `s1_spike` below: the corpus it measures is three grammars deep, and a default `cargo test` must not
+# pay for three C builds it was never asked to exercise.
+[[test]]
+name = "structure_core"
+required-features = ["lang-rust", "lang-python", "lang-typescript"]
+
+[[example]]
+name = "structure_harness"
+required-features = ["lang-rust", "lang-python", "lang-typescript"]
+
 # The Guardrail 3 calibration harness (`e4.3a`) indexes each pinned repository into a store of its own,
 # so it needs a SQLite backend to exist at all — the same spelling as the `episodes` and `ledger` test
 # targets above, and for the same reason: `cargo build -p fathom-analyze --all-targets` has to work at

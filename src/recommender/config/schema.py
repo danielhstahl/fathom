@@ -238,6 +238,12 @@ SECTIONS: dict[str, dict] = {
                          "weights behind the structure-churn score, and one switch per "
                          "finding kind. `fathom structure definition` prints these numbers as "
                          "sentences."},
+    "extract": {"title": "Structural extraction limits", "owner": "e3.1 (`reco-zoz`)",
+                "doc": "What one file may cost the structural extractor, and how far resolution may "
+                       "chase a re-export chain. Every one of these is a *bound the extractor "
+                       "reports on*, not a switch that turns a feature off: a file refused for size "
+                       "comes back with a reason and its file-level measurement, and a chain cut "
+                       "short comes back with `converged: false` rather than a guess."},
     "graph": {"title": "Graph inputs", "owner": "e3.2 (`reco-8s4`)",
               "doc": "Directories excluded from the dependency and structure graph."},
     "layers": {"title": "Layering rules", "owner": "ADR-004 §5.1 / e3.1",
@@ -1004,6 +1010,34 @@ KEY_LIST: list[Key] = [
        default=["node_modules"],
        doc="Directory names excluded from the structure/dependency graph entirely.",
        analyzer="graph.build", ticket="e3.2"),
+    # --- extract ------------------------------------------------------------
+    _k(path="extract.max_file_bytes", kind="integer", default=2_000_000, minimum=1,
+       units="bytes",
+       doc="Largest file the structural extractor will parse. Above it the file is refused with "
+           "`too_large` and still gets its file-level measurement - a refused file is never a lost "
+           "file, which is the difference between a bound and a hole in the graph. `e3.1`.",
+       analyzer="structure.extract", ticket="e3.1"),
+    _k(path="extract.complexity.max_nodes", kind="integer", default=20_000, minimum=1,
+       units="syntax nodes",
+       doc="Nodes one definition's complexity walk may visit before it stops counting. The "
+           "complexity numbers are proxies for risk, not a metric with a definition, so the walk is "
+           "bounded per definition and a truncated count is a note rather than a wrong number. "
+           "`e3.1`.",
+       analyzer="structure.extract", ticket="e3.1"),
+    _k(path="extract.resolution.max_passes", kind="integer", default=4, minimum=1,
+       units="passes",
+       doc="How many times the corpus may be re-resolved to close a re-export chain. Resolution is "
+           "a fixpoint, so the bound needs stating and reporting: the output carries "
+           "`passes_used` and `converged` per file, and a file that did not settle inside this "
+           "number says so. `e3.1`, spike `s1` finding 6.",
+       analyzer="structure.extract", ticket="e3.1"),
+    _k(path="extract.resolution.max_hops", kind="integer", default=4, minimum=1,
+       units="hops",
+       doc="How far one import may follow re-exports before the chain is called truncated. "
+           "A barrel that re-exports a barrel is normal at two hops and a cycle waiting to happen at "
+           "forty, so the walk is cut and the cut is counted per file in "
+           "`resolution.truncated_chains`. `e3.1`, spike `s1` finding 6.",
+       analyzer="structure.extract", ticket="e3.1"),
     # --- layers -------------------------------------------------------------
     _k(path="layers.<layer-name>", kind="string_list", merge="deep",
        default={"ui": ["src/ui"], "core": ["src/core"], "store": ["src/store"]},

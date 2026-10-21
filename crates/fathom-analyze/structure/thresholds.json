@@ -1,0 +1,88 @@
+{
+  "what": "The acceptance bar for `e3.1` (`reco-zoz`): the structural extractor core for Rust, Python and TypeScript, plus the four mechanisms spike `s1` handed over as non-negotiables. A language that misses a `hard` floor is not cut from the plan — it is stated as what this build does not do, in the report and in `docs/concepts/structure-extraction.md`, and the language's files come back with a reason instead of a silently thin graph.",
+  "how_thresholds_are_set": "Recall is the bar that matters for a graph, because a missing edge is an invisible dependency and an invisible dependency is the failure ADR-004's whole argument is about. Precision matters more for an export surface, because a wrong `public` is a false promise in a breaking-change report. Each floor is stated as (a) what a reviewer would notice and (b) what a grammar plus a language model can actually deliver, and `hard: true` means 'missing this makes the language unusable for `e3.2`..`e3.7` at file granularity, so it goes to the fallback rather than to a caveat'. The numbers are spike `s1`'s, deliberately: the spike measured what these grammars deliver, and re-measuring its own guess is not how this ticket should move the bar.",
+  "relations": {
+    "default": {
+      "definitions": {
+        "precision": 0.95,
+        "recall": 0.95,
+        "hard": true,
+        "mean": "A definition is one named declaration at file top level or inside a type/module container, members included, function-local declarations excluded. Missing 5 % of them means 5 % of the code has no node in the graph, and a file with no node cannot be reviewed."
+      },
+      "exports": {
+        "precision": 0.95,
+        "recall": 0.9,
+        "hard": false,
+        "mean": "One row per top-level symbol nameable from outside the declaring unit, per the language's own access rules — Rust's re-export rule, Python's `__all__`-or-underscore rule, TypeScript's `export`-plus-barrel rule. Precision is the higher bar here: a false `public` is a wrong breaking-change report, which is worse than a missing one."
+      },
+      "imports": {
+        "precision": 0.9,
+        "recall": 0.9,
+        "hard": false,
+        "mean": "One row per (file, resolved corpus file, symbol) dependency, wildcard rows included with symbol `*`. Ten percent is the price of dynamic module systems — a Python `importlib.import_module` and a TypeScript namespace import are genuinely unresolvable at file granularity."
+      },
+      "supertypes": {
+        "precision": 0.9,
+        "recall": 0.95,
+        "hard": false,
+        "mean": "One row per declared base, implemented trait or implemented interface. Recall is the higher bar: `who implements Shape?` is the question the architecture pane draws, and a missing `impl` is a hole in the shape of the system."
+      }
+    }
+  },
+  "mechanisms": {
+    "what": "The four checks in the report's `mechanisms` block, and what each one costs when it fails. These are not extra accuracy metrics — they are the four ways a clean set score can still describe a useless extractor, which is the argument spike `s1` spent its planning budget making.",
+    "synthetic_eligible": "Every scope the corpus marks must come back marked. A marked scope must never produce a 'declares nothing' assertion: the surface may say 'may have shrunk, not shrunk', and nothing stronger. Missing a scope is a fail, not a condition, because an unmarked dynamic scope is a confidently wrong answer about code that changed.",
+    "wildcard_edges": "Every `*` import in the corpus must arrive as its own edge kind, and `dependents_of` must answer 'who depends on X' by naming the wildcard files as *unknown-content dependents*. Reporting a star import as a resolved named edge, or answering 'nobody', is a fail: both are the same lie told twice.",
+    "resolution": "Resolution is a bounded iteration, and the bound is a config key, and the report says how many passes were used and whether the file converged. Non-convergence is a bug to fix, not a caveat; `--max-passes 1` exists so the bound can be shown to bite rather than asserted.",
+    "never_lost": "Every input file returns a record. A file with no structure returns a reason and its file-level measurement. Losing a file is the failure mode that turns a wrong number into an invisible one."
+  },
+  "throughput": {
+    "files_per_second_per_core_floor": 1000.0,
+    "mib_per_second_floor": 1.0,
+    "comment": "Parse-plus-extract throughput per core, release profile, measured on a deterministic 4 000-file replica of the corpus because 9 fixture files measure process startup. ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms` are paid per changed file, so files-per-second-per-core is the contract and 1 000 files/s clears a 5 000-file warm pass by three orders of magnitude. The MiB/s figure is a canary, stated second because source files are small and uneven: spike `s1` measured 5 MiB/s parse-only, and this number is parse *plus* resolution, whose cost grows with the corpus rather than the file. Both floors are enforced in a release build and exempt in a debug build, which measures bounds checks rather than the extractor. Missing a floor is a condition, never a no-go: cost is a feature-gate question (ADR-002 §6.5)."
+  },
+  "granularity": {
+    "definitions": "one row per named declaration at file top level or inside a type/module container, members included, function-local declarations excluded; a cfg-gated or conditional arm that declares a second copy of a name is the same row, because the graph is a set of names, not a count of tokens",
+    "exports": "one row per top-level symbol nameable from outside the declaring unit, per the language's own access rules",
+    "imports": "one row per (file, resolved corpus file, symbol) dependency, with symbol `*` for a dependency whose contents the file does not name",
+    "supertypes": "one row per (file, declaring symbol, base as written), kind `base`, `trait`, `interface` or `metaclass`",
+    "synthetic": "one row per (file, dotted scope) that cannot be enumerated from the file, with the reason words the extractor uses"
+  },
+  "irreducible_blind_spots": {
+    "what": "Categories the extractor cannot remove at any effort level, per language, because the information is not in the file. A run that records one of these still passes, but the verdict is `conditions`: the category is stated as a limitation rather than rounded away. Anything the corpus shows that is not listed here is a bug in the extractor, not a property of the language.",
+    "default": [],
+    "rust": [
+      "macro_definition",
+      "macro_invocation",
+      "cfg_conditional"
+    ],
+    "python": [
+      "decorated",
+      "dynamic_method",
+      "monkeypatch",
+      "runtime_registration"
+    ],
+    "typescript": [
+      "declaration_merging",
+      "ambient_merge",
+      "wildcard_reexport",
+      "side_effect_import"
+    ]
+  },
+  "irreducible_tags": {
+    "what": "The annotation tags whose *definition rows* are removed from the scored set, because the declaration is not textually in the file at all: a `macro_rules!` arm, a `@dataclass`-written `__init__`, a monkeypatched method, a webpack virtual module. This is not leniency wearing a hat — the alternative is scoring the extractor against rows no file-granularity parser can produce, which teaches it to guess. What the extractor owes instead is the honest state, and `mechanisms.synthetic_eligible` is where that debt is collected: the scope the row lives in must come back marked.",
+    "default": [],
+    "rust": [
+      "macro_generated"
+    ],
+    "python": [
+      "macro_generated",
+      "dataclass_generated",
+      "monkeypatch"
+    ],
+    "typescript": [
+      "generated_into_foreign_module"
+    ]
+  },
+  "verdict_rule": "pass: every relation at or above its floor, and no mechanism missed, and the throughput floor met in a release build. conditions: every `hard` floor met, but a soft floor missed, a row missed or found that the floors tolerate, or an irreducible blind spot recorded. fail: a `hard` floor missed, or any mechanism check missed — a mechanism is not a quality bar, it is the definition of what the output is allowed to claim."
+}

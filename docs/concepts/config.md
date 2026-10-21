@@ -358,6 +358,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `test` | e2.9 (`reco-6pl`) | What counts as a test, which test-surface findings fire, and the numbers that define 'new public logic, no new test'. The finding policy is here rather than in `[detectors]` because these findings are one definition with knobs, not a detector registry. |
 | `non_code` | e2.8 (`reco-bjd`) | Config, env, flags, migrations and CI — the surfaces a reviewer must be told about even though they are not code. |
 | `structure` | e2.3 (`reco-5fn`) | Where an episode's code landed. The thresholds that decide when a set of pairings is a moved directory, a split or a flattening, the weights behind the structure-churn score, and one switch per finding kind. `fathom structure definition` prints these numbers as sentences. |
+| `extract` | e3.1 (`reco-zoz`) | What one file may cost the structural extractor, and how far resolution may chase a re-export chain. Every one of these is a *bound the extractor reports on*, not a switch that turns a feature off: a file refused for size comes back with a reason and its file-level measurement, and a chain cut short comes back with `converged: false` rather than a guess. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
@@ -510,6 +511,10 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `structure.findings.directory_added` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `structure.findings.move_unconfirmed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
+| `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
+| `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
+| `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
+| `extract.resolution.max_hops` | `integer` | `4` | `replace` | `any` | hops | structure.extract | `e3.1` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
 | `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |

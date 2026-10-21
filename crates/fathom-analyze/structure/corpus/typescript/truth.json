@@ -1,0 +1,784 @@
+{
+ "language": "typescript",
+ "root": "index.ts",
+ "notes": "ES modules. An import of a name re-exported by a barrel resolves to the *origin* file (the barrel is a hop, recorded on the importing file as one edge with `barrel_hop`); a barrel's own export set is empty because it declares nothing. A default export is the exported name `default`, and the local name is an alias. Two `export interface Config` blocks in one file are declaration merging: one symbol, two declaration sites. A module-level binding whose initialiser is a function value is a `fn`, not a `var`. Members are excluded from the export set.",
+ "files": {
+  "index.ts": {
+   "definitions": [
+    {
+     "k": "const",
+     "n": "VERSION",
+     "t": [
+      "const"
+     ]
+    }
+   ],
+   "exports": [
+    "VERSION"
+   ],
+   "imports": [
+    {
+     "f": "shapes.ts",
+     "s": "*",
+     "t": [
+      "star_reexport",
+      "barrel"
+     ]
+    },
+    {
+     "f": "shapes.ts",
+     "s": "Circle",
+     "t": [
+      "reexport",
+      "barrel"
+     ]
+    },
+    {
+     "f": "shapes.ts",
+     "s": "Shape",
+     "t": [
+      "reexport",
+      "type_only_import",
+      "barrel"
+     ]
+    },
+    {
+     "f": "factory.ts",
+     "s": "default",
+     "t": [
+      "reexport",
+      "import_alias",
+      "barrel"
+     ]
+    },
+    {
+     "f": "geo/point.ts",
+     "s": "Point",
+     "t": [
+      "reexport",
+      "barrel",
+      "barrel_hop"
+     ]
+    }
+   ],
+   "synthetic": [
+    {
+     "scope": "",
+     "t": [
+      "wildcard_reexport"
+     ]
+    }
+   ]
+  },
+  "shapes.ts": {
+   "definitions": [
+    {
+     "k": "type",
+     "n": "Area",
+     "t": [
+      "type_alias"
+     ]
+    },
+    {
+     "k": "const",
+     "n": "PI",
+     "t": [
+      "const"
+     ]
+    },
+    {
+     "k": "enum",
+     "n": "Kind",
+     "t": [
+      "enum"
+     ]
+    },
+    {
+     "k": "interface",
+     "n": "Shape",
+     "t": [
+      "interface"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Shape.area",
+     "t": [
+      "method",
+      "interface_element",
+      "member"
+     ]
+    },
+    {
+     "k": "class",
+     "n": "Base",
+     "t": [
+      "class",
+      "abstract"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Base.area",
+     "t": [
+      "method",
+      "abstract",
+      "member"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Base.toString",
+     "t": [
+      "method",
+      "member"
+     ]
+    },
+    {
+     "k": "class",
+     "n": "Circle",
+     "t": [
+      "class",
+      "decorator"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Circle.area",
+     "t": [
+      "method",
+      "member"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Circle.radius",
+     "t": [
+      "method",
+      "accessor",
+      "member"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Circle.unit",
+     "t": [
+      "method",
+      "static",
+      "member"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "area",
+     "t": [
+      "fn"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "parse",
+     "t": [
+      "fn",
+      "overload"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "measureAll",
+     "t": [
+      "fn",
+      "async"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "handlerFor",
+     "t": [
+      "fn"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "default",
+     "t": [
+      "default_export",
+      "alias"
+     ]
+    }
+   ],
+   "exports": [
+    "Area",
+    "PI",
+    "Kind",
+    "Shape",
+    "Base",
+    "Circle",
+    "area",
+    "parse",
+    "measureAll",
+    "handlerFor",
+    "default"
+   ],
+   "imports": [
+    {
+     "f": "geo/point.ts",
+     "s": "Point",
+     "t": [
+      "single_import"
+     ]
+    },
+    {
+     "f": "geo/distance.ts",
+     "s": "distance",
+     "t": [
+      "single_import",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "factory.ts",
+     "s": "Handler",
+     "t": [
+      "type_only_import"
+     ]
+    },
+    {
+     "f": "geo/point.ts",
+     "s": "*",
+     "t": [
+      "namespace_import"
+     ]
+    },
+    {
+     "f": "legacy.ts",
+     "s": "*",
+     "t": [
+      "side_effect_import"
+     ]
+    },
+    {
+     "f": "legacy.ts",
+     "s": "sealed",
+     "t": [
+      "single_import"
+     ]
+    }
+   ],
+   "bases": [
+    {
+     "n": "Base",
+     "b": "Shape",
+     "k": "interface"
+    },
+    {
+     "n": "Circle",
+     "b": "Shape",
+     "k": "interface"
+    }
+   ],
+   "synthetic": [
+    {
+     "scope": "Circle",
+     "t": [
+      "decorated"
+     ]
+    }
+   ]
+  },
+  "geo/point.ts": {
+   "definitions": [
+    {
+     "k": "module",
+     "n": "Geo",
+     "t": [
+      "namespace"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "Geo.len",
+     "t": [
+      "fn",
+      "nested_module"
+     ]
+    },
+    {
+     "k": "interface",
+     "n": "Geo.Vec",
+     "t": [
+      "interface",
+      "nested_module"
+     ]
+    },
+    {
+     "k": "const",
+     "n": "Geo.ZERO",
+     "t": [
+      "const",
+      "nested_module"
+     ]
+    },
+    {
+     "k": "class",
+     "n": "Point",
+     "t": [
+      "class"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Point.norm",
+     "t": [
+      "method",
+      "member"
+     ]
+    },
+    {
+     "k": "type",
+     "n": "Coordinates",
+     "t": [
+      "type_alias"
+     ]
+    }
+   ],
+   "exports": [
+    "Geo",
+    "Point",
+    "Coordinates",
+    "default"
+   ],
+   "imports": []
+  },
+  "geo/index.ts": {
+   "definitions": [],
+   "exports": [],
+   "imports": [
+    {
+     "f": "geo/point.ts",
+     "s": "Point",
+     "t": [
+      "reexport",
+      "barrel"
+     ]
+    },
+    {
+     "f": "geo/point.ts",
+     "s": "Coordinates",
+     "t": [
+      "reexport",
+      "type_only_import",
+      "barrel"
+     ]
+    },
+    {
+     "f": "geo/point.ts",
+     "s": "Geo",
+     "t": [
+      "reexport",
+      "barrel"
+     ]
+    },
+    {
+     "f": "geo/distance.ts",
+     "s": "*",
+     "t": [
+      "star_reexport",
+      "barrel"
+     ]
+    }
+   ],
+   "synthetic": [
+    {
+     "scope": "",
+     "t": [
+      "wildcard_reexport"
+     ]
+    }
+   ]
+  },
+  "geo/distance.ts": {
+   "definitions": [
+    {
+     "k": "const",
+     "n": "Epsilon",
+     "t": [
+      "const"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "distance",
+     "t": [
+      "fn"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "midpoint",
+     "t": [
+      "fn"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "isClose",
+     "t": [
+      "fn"
+     ]
+    }
+   ],
+   "exports": [
+    "Epsilon",
+    "distance",
+    "midpoint",
+    "isClose"
+   ],
+   "imports": [
+    {
+     "f": "geo/point.ts",
+     "s": "Point",
+     "t": [
+      "single_import"
+     ]
+    }
+   ]
+  },
+  "factory.ts": {
+   "definitions": [
+    {
+     "k": "type",
+     "n": "Handler",
+     "t": [
+      "type_alias",
+      "generic"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "default",
+     "t": [
+      "default_export",
+      "alias"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "createAsync",
+     "t": [
+      "fn",
+      "async"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "twice",
+     "t": [
+      "fn",
+      "arrow_function"
+     ]
+    },
+    {
+     "k": "var",
+     "n": "counter",
+     "t": [
+      "var"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "tokens",
+     "t": [
+      "fn",
+      "generator"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "load",
+     "t": [
+      "fn",
+      "async"
+     ]
+    }
+   ],
+   "exports": [
+    "Handler",
+    "default",
+    "createAsync",
+    "twice",
+    "counter",
+    "tokens",
+    "load"
+   ],
+   "imports": []
+  },
+  "types.d.ts": {
+   "definitions": [
+    {
+     "k": "interface",
+     "n": "Config",
+     "t": [
+      "interface",
+      "ambient"
+     ]
+    },
+    {
+     "k": "interface",
+     "n": "Plugin",
+     "t": [
+      "interface",
+      "ambient"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Plugin.apply",
+     "t": [
+      "method",
+      "ambient",
+      "member"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "loadConfig",
+     "t": [
+      "fn",
+      "ambient"
+     ]
+    }
+   ],
+   "exports": [
+    "Config",
+    "Plugin",
+    "loadConfig"
+   ],
+   "imports": [],
+   "synthetic": [
+    {
+     "scope": "",
+     "t": [
+      "ambient_merge"
+     ]
+    }
+   ]
+  },
+  "legacy.ts": {
+   "definitions": [
+    {
+     "k": "fn",
+     "n": "sealed",
+     "t": [
+      "fn",
+      "decorator"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "log",
+     "t": [
+      "fn",
+      "decorator"
+     ]
+    },
+    {
+     "k": "module",
+     "n": "Legacy",
+     "t": [
+      "namespace"
+     ]
+    },
+    {
+     "k": "const",
+     "n": "Legacy.tag",
+     "t": [
+      "const",
+      "nested_module"
+     ]
+    },
+    {
+     "k": "class",
+     "n": "Legacy.Old",
+     "t": [
+      "class",
+      "nested_module"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "Legacy.Old.run",
+     "t": [
+      "method",
+      "decorator",
+      "member"
+     ]
+    },
+    {
+     "k": "interface",
+     "n": "Config",
+     "t": [
+      "interface",
+      "merged_declaration"
+     ]
+    },
+    {
+     "k": "class",
+     "n": "LocalOnly",
+     "t": [
+      "class"
+     ]
+    },
+    {
+     "k": "method",
+     "n": "LocalOnly.shape",
+     "t": [
+      "method",
+      "member"
+     ]
+    },
+    {
+     "k": "module",
+     "n": "'virtual:thing'",
+     "t": [
+      "module",
+      "ambient",
+      "declare_module"
+     ]
+    },
+    {
+     "k": "const",
+     "n": "'virtual:thing'.thing",
+     "t": [
+      "const",
+      "ambient",
+      "generated_into_foreign_module"
+     ]
+    }
+   ],
+   "exports": [
+    "sealed",
+    "log",
+    "Legacy",
+    "Config",
+    "ExportedAlias"
+   ],
+   "imports": [
+    {
+     "f": "shapes.ts",
+     "s": "Shape",
+     "t": [
+      "single_import"
+     ]
+    }
+   ],
+   "synthetic": [
+    {
+     "scope": "",
+     "t": [
+      "ambient_merge"
+     ]
+    }
+   ]
+  },
+  "consumer.ts": {
+   "definitions": [
+    {
+     "k": "fn",
+     "n": "use",
+     "t": [
+      "fn"
+     ]
+    },
+    {
+     "k": "fn",
+     "n": "reporter",
+     "t": [
+      "fn",
+      "arrow_function"
+     ]
+    }
+   ],
+   "exports": [
+    "use",
+    "reporter",
+    "default"
+   ],
+   "imports": [
+    {
+     "f": "shapes.ts",
+     "s": "Circle",
+     "t": [
+      "single_import",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "shapes.ts",
+     "s": "area",
+     "t": [
+      "single_import",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "shapes.ts",
+     "s": "Shape",
+     "t": [
+      "type_only_import",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "factory.ts",
+     "s": "default",
+     "t": [
+      "single_import",
+      "import_alias",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "geo/point.ts",
+     "s": "Point",
+     "t": [
+      "single_import",
+      "barrel",
+      "barrel_hop"
+     ]
+    },
+    {
+     "f": "types.d.ts",
+     "s": "Config",
+     "t": [
+      "type_only_import"
+     ]
+    },
+    {
+     "f": "legacy.ts",
+     "s": "Legacy",
+     "t": [
+      "single_import"
+     ]
+    },
+    {
+     "f": "shapes.ts",
+     "s": "*",
+     "t": [
+      "namespace_import"
+     ]
+    }
+   ]
+  }
+ },
+ "wildcard_question": {
+  "file": "shapes.ts"
+ },
+ "bases_notes": "One row per `implements` and per `extends`. `implements Shape` is kind `interface` and `extends Base` is kind `base`, because the two answer different questions — `who fulfils this contract` and `who inherits this state` — and a pane that merges them cannot tell a refactor from a subtype change. This corpus has no `extends` row, which is a gap in the corpus, not a claim about TypeScript.",
+ "synthetic_notes": "index.ts and geo/index.ts are barrels: `export * from './shapes'` means the module's export list is whatever the target exports, which no read of the barrel can enumerate (`wildcard_reexport`). types.d.ts is ambient: an `.d.ts` describes declarations that may be merged by any other `.d.ts` in the program (`ambient_merge`). legacy.ts earns `ambient_merge` for two reasons at once: two `export interface Config` blocks that TypeScript merges into one declaration, and a `declare module 'virtual:thing'` block whose contents a bundler writes into a module that has no file. consumer.ts is NOT marked: it imports names, which is a claim the file can make."
+}

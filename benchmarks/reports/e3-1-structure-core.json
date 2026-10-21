@@ -1,0 +1,1661 @@
+{
+  "_args": {
+    "repo": "."
+  },
+  "environment": {
+    "arch": "aarch64",
+    "os": "linux",
+    "profile": "release",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "what_these_numbers_are": "Definitions, exports, import edges and supertypes are exact set comparisons against hand-authored truth, inherited from spike s1 and extended for the two relations only a shipped extractor needs. They are a statement about THIS extractor, not about the grammars: s1's report is the grammar measurement, this is the implementation's."
+  },
+  "grammars": [
+    {
+      "checksum": "439e577dbe07423ec2582ac62c7531120dbfccfa6e5f92406f93dd271a120e45",
+      "crate": "tree-sitter-rust",
+      "language": "rust",
+      "version": "0.24.2"
+    },
+    {
+      "checksum": "6bf85fd39652e740bf60f46f4cda9492c3a9ad75880575bf14960f775cb74a1c",
+      "crate": "tree-sitter-python",
+      "language": "python",
+      "version": "0.25.0"
+    },
+    {
+      "checksum": "6c5f76ed8d947a75cc446d5fccd8b602ebf0cde64ccf2ffa434d873d7a575eff",
+      "crate": "tree-sitter-typescript",
+      "language": "typescript",
+      "version": "0.23.2"
+    }
+  ],
+  "languages": [
+    {
+      "blind_recovered": 0,
+      "blind_spots": [
+        {
+          "count": 3,
+          "kind": "irreducible_definition:macro_generated"
+        },
+        {
+          "count": 3,
+          "kind": "irreducible_export"
+        }
+      ],
+      "corpus": {
+        "bases": 10,
+        "bytes": 7516,
+        "definitions": 90,
+        "exports": 41,
+        "files": 10,
+        "import_edges": 24,
+        "synthetic_scopes": 1
+      },
+      "extraction": {
+        "milliseconds": 5.1846,
+        "policy": {
+          "extract.complexity.max_nodes": 20000,
+          "extract.max_file_bytes": 2000000,
+          "extract.resolution.max_hops": 4,
+          "extract.resolution.max_passes": 4
+        },
+        "policy_notices": []
+      },
+      "fallback": {
+        "cases": [
+          {
+            "expect": "language_unknown",
+            "extracted": false,
+            "file_level_bytes": 46,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "unknown",
+            "parse_errors": 0,
+            "path": "notes.unknown-lang",
+            "reason": "language_unknown",
+            "sentence": "structure unavailable: not one of the grammars fathom reads"
+          },
+          {
+            "expect": "parse_failed_or_parsed",
+            "extracted": false,
+            "file_level_bytes": 31,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "rust",
+            "parse_errors": 3,
+            "path": "broken.rs",
+            "reason": "parse_failed",
+            "sentence": "structure unavailable: the parse reported 3 errors and returned no structure"
+          },
+          {
+            "expect": "not_utf8",
+            "extracted": false,
+            "file_level_bytes": 23,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "python",
+            "parse_errors": 0,
+            "path": "not-python.py",
+            "reason": "not_utf8",
+            "sentence": "structure unavailable: the file is not text"
+          },
+          {
+            "expect": "too_large",
+            "extracted": false,
+            "file_level_bytes": 14,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "rust",
+            "parse_errors": 0,
+            "path": "big.rs",
+            "reason": "too_large",
+            "sentence": "structure unavailable: the file is larger than the 13 byte extraction limit"
+          }
+        ],
+        "every_input_returned": true,
+        "every_unreadable_still_measured": true,
+        "mean": "AC 2: an unknown or broken language yields structure unavailable plus file-level analysis, never a lost episode. `broken.rs` may parse — tree-sitter recovers — and that is the honest outcome, so it is reported rather than asserted."
+      },
+      "grammar_crate": "tree-sitter-rust",
+      "irreducible_rows": [
+        "macros.rs • fn • from_macro [macro_generated]",
+        "macros.rs • fn • left [macro_generated]",
+        "macros.rs • fn • right [macro_generated]",
+        "macros.rs • export • from_macro",
+        "macros.rs • export • left",
+        "macros.rs • export • right"
+      ],
+      "irreducible_tags": [
+        "macro_generated"
+      ],
+      "language": "rust",
+      "mechanisms": {
+        "never_lost": {
+          "extracted": 10,
+          "mean": "AC 2: every file comes back, with a reason when there is no structure. `unavailable` here is 0 for a clean corpus; the `fallback` battery below is what proves the non-zero path works.",
+          "records": 10,
+          "unavailable": 0
+        },
+        "resolution": {
+          "bound_hops": 4,
+          "bound_passes": 4,
+          "forced_one_pass": {
+            "bound": 1,
+            "mean": "the same corpus, re-extracted with `extract.resolution.max_passes = 1`. One pass is not enough to *observe* stability for any file that resolved something — a fixpoint is proved by a pass that changes nothing — so the honest report names those files instead of calling them settled. A file with nothing to resolve converged on the spot and is not listed.",
+            "non_converged": [
+              "cfg_split.rs",
+              "geo/dist.rs",
+              "geo/mod.rs",
+              "geo/point.rs",
+              "geo/private_math.rs",
+              "lib.rs",
+              "macros.rs",
+              "secret.rs",
+              "shapes.rs",
+              "traits.rs"
+            ],
+            "truncated_chains": 1
+          },
+          "mean": "s1 finding 6: resolution is iterative, so it is bounded per file and the bound is a config key. `non_converged` names the files where the bound bit; on this corpus it is empty by construction, and `--max-passes 1` makes it non-empty on purpose.",
+          "non_converged": [],
+          "passes_used_max": 2,
+          "truncated_chains": 0
+        },
+        "synthetic_eligible": {
+          "empty_files_that_assert_completeness": 0,
+          "expected": 1,
+          "found": 1,
+          "marked_beyond_the_annotation": 0,
+          "mean": "s1 finding 1: a scope a program wrote into is a scope that cannot be enumerated. `missing` is the number that matters; a marked scope never yields a 'declares nothing' assertion, which is what `scopes_that_assert_emptiness` proves.",
+          "missing": 0,
+          "scopes_that_assert_emptiness": []
+        },
+        "wildcard_edges": {
+          "expected": 1,
+          "external_star_imports": 0,
+          "found": 1,
+          "mean": "s1 finding 2: a star import is a real dependency of unknown contents. `who_depends_on` is the AC made visible — the answer must name the unknown files, never say nobody.",
+          "mislabelled_as_resolved": [],
+          "who_depends_on": {
+            "file": "shapes.rs",
+            "named": [
+              "lib.rs",
+              "traits.rs"
+            ],
+            "says_unknown": true,
+            "symbol": null,
+            "unknown": [
+              "lib.rs"
+            ]
+          }
+        }
+      },
+      "missing_definitions": [],
+      "missing_edges": [],
+      "missing_exports": [],
+      "missing_supertypes": [],
+      "missing_synthetic": [],
+      "relations": {
+        "definitions": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 87
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 38
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 23
+        },
+        "supertypes": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 10
+        }
+      },
+      "supertype_kind_mismatches": [],
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "surprising_supertypes": [],
+      "tags": [
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "associated_const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "associated_type"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "cfg_attr"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "cfg_conditional"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "dyn_trait"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "enum"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "extern_abi"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "external_trait"
+        },
+        {
+          "expected": 25,
+          "found": 25,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "impl_block"
+        },
+        {
+          "expected": 8,
+          "found": 8,
+          "recall": 1.0,
+          "tag": "import:crate_path"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:import_group"
+        },
+        {
+          "expected": 15,
+          "found": 15,
+          "recall": 1.0,
+          "tag": "import:import_use"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:import_wildcard"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "import:mod_decl_edge"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:reexport_hop"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:super_path"
+        },
+        {
+          "expected": 25,
+          "found": 25,
+          "recall": 1.0,
+          "tag": "method"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "method_default"
+        },
+        {
+          "expected": 12,
+          "found": 12,
+          "recall": 1.0,
+          "tag": "method_trait_impl"
+        },
+        {
+          "expected": 9,
+          "found": 9,
+          "recall": 1.0,
+          "tag": "mod_file"
+        },
+        {
+          "expected": 16,
+          "found": 16,
+          "recall": 1.0,
+          "tag": "module_decl"
+        },
+        {
+          "expected": 11,
+          "found": 11,
+          "recall": 1.0,
+          "tag": "nested_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "static"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "struct"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "synthetic:macro_definition"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "synthetic:macro_invocation"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "test_only"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "trait_method"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "trait_or_interface"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "type_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "unsafe"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "visibility_doc_hidden"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "visibility_private"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "visibility_pub_crate"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "where_clause"
+        }
+      ],
+      "throughput": {
+        "fixture": {
+          "bytes": 7516,
+          "edges_found": 24,
+          "files": 10,
+          "files_per_second_per_core": 2487.5368,
+          "mib_per_second": 1.783,
+          "per_file_us_p50": 402.0041,
+          "symbols_found": 91
+        },
+        "replica": {
+          "bytes": 3761876,
+          "edges_found": 0,
+          "files": 4000,
+          "files_per_second_per_core": 1562.0028,
+          "mib_per_second": 1.401,
+          "per_file_us_p50": 640.2037,
+          "symbols_found": 36400
+        }
+      },
+      "throughput_check": {
+        "enforced": true,
+        "floor_files_per_second_per_core": 1000.0,
+        "floor_mib_per_second": 1.0,
+        "mean": "the replica, measured: files per second per core is the contract because ADR-004's budgets are paid per changed file; MiB/s is reported next to spike s1's parse-only figure to show what resolution adds on top of parsing. A debug build exempts both, because a debug build measures the borrow checker.",
+        "measured_files_per_second_per_core": 1562.0028,
+        "measured_mib_per_second": 1.401,
+        "ok": true
+      },
+      "truth_bases_notes": "One row per `impl <trait> for <type>` and per `trait X: Y`, kind `trait`, because a Rust `impl` is a contract fulfilment and not an ancestry; `impl Point` (inherent) is deliberately absent, because an inherent impl adds members and changes no relationship. `impl fmt::Debug for Shape` names the base as written (`Debug`), not as resolved, because `e3.2` draws the edge and needs the name the reader will look for.",
+      "truth_notes": "The corpus is a crate root: `lib.rs` declares the module tree, so module paths are derivable. Hand-annotated against the Rust reference, not against any parser. Definitions are what a file *declares*, cfg-gated arms included (a file that declares both arms declares two definitions). Export is the crate's external surface: an item is exported if a file outside this crate could name it in a *default unix build* — which needs the item's own visibility (`pub`, not `pub(crate)`), every module on its path from the crate root being `pub`, and, for an item in a private module, a public re-export somewhere that gives it a public path. That is the reading `e3.7`'s public-API surface needs, and it is the one that makes `pub use` load-bearing: `secret::helper` is public only because `lib.rs` re-exports it. Members are excluded from the export set (top level only). Associated items of an impl for an external type are attributed to the self type's base name (`Vec.measured`), because that is what a graph node for 'method of Vec declared in this file' means.",
+      "truth_root": "lib.rs",
+      "truth_synthetic_notes": "`macros.rs` only. The file declares two `macro_rules!` and invokes both at file scope, so items exist that no token stream contains, and the honest scope is the file — a macro arm is not confined to the item it writes. No other file in this corpus earns the mark: `cfg` arms are text, `#[derive]` is an attribute the extractor can name, and marking a cfg-gated module synthetic would throw away two real definitions to describe a build-time choice.",
+      "verdict": "conditions"
+    },
+    {
+      "blind_recovered": 2,
+      "blind_spots": [
+        {
+          "count": 2,
+          "kind": "irreducible_definition:dataclass_generated"
+        },
+        {
+          "count": 2,
+          "kind": "irreducible_definition:monkeypatch"
+        }
+      ],
+      "corpus": {
+        "bases": 4,
+        "bytes": 6072,
+        "definitions": 62,
+        "exports": 28,
+        "files": 7,
+        "import_edges": 19,
+        "synthetic_scopes": 6
+      },
+      "extraction": {
+        "milliseconds": 3.1555,
+        "policy": {
+          "extract.complexity.max_nodes": 20000,
+          "extract.max_file_bytes": 2000000,
+          "extract.resolution.max_hops": 4,
+          "extract.resolution.max_passes": 4
+        },
+        "policy_notices": []
+      },
+      "fallback": {
+        "cases": [
+          {
+            "expect": "language_unknown",
+            "extracted": false,
+            "file_level_bytes": 46,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "unknown",
+            "parse_errors": 0,
+            "path": "notes.unknown-lang",
+            "reason": "language_unknown",
+            "sentence": "structure unavailable: not one of the grammars fathom reads"
+          },
+          {
+            "expect": "parse_failed_or_parsed",
+            "extracted": false,
+            "file_level_bytes": 31,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "rust",
+            "parse_errors": 3,
+            "path": "broken.rs",
+            "reason": "parse_failed",
+            "sentence": "structure unavailable: the parse reported 3 errors and returned no structure"
+          },
+          {
+            "expect": "not_utf8",
+            "extracted": false,
+            "file_level_bytes": 23,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "python",
+            "parse_errors": 0,
+            "path": "not-python.py",
+            "reason": "not_utf8",
+            "sentence": "structure unavailable: the file is not text"
+          },
+          {
+            "expect": "too_large",
+            "extracted": false,
+            "file_level_bytes": 14,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "rust",
+            "parse_errors": 0,
+            "path": "big.rs",
+            "reason": "too_large",
+            "sentence": "structure unavailable: the file is larger than the 13 byte extraction limit"
+          }
+        ],
+        "every_input_returned": true,
+        "every_unreadable_still_measured": true,
+        "mean": "AC 2: an unknown or broken language yields structure unavailable plus file-level analysis, never a lost episode. `broken.rs` may parse — tree-sitter recovers — and that is the honest outcome, so it is reported rather than asserted."
+      },
+      "grammar_crate": "tree-sitter-python",
+      "irreducible_rows": [
+        "dynamic.py • method • Slate.extra [monkeypatch]",
+        "dynamic.py • method • Shape.describe [monkeypatch]",
+        "models.py • method • Shape.__init__ [dataclass_generated]",
+        "models.py • method • Circle.__init__ [dataclass_generated]"
+      ],
+      "irreducible_tags": [
+        "dataclass_generated",
+        "macro_generated",
+        "monkeypatch"
+      ],
+      "language": "python",
+      "mechanisms": {
+        "never_lost": {
+          "extracted": 7,
+          "mean": "AC 2: every file comes back, with a reason when there is no structure. `unavailable` here is 0 for a clean corpus; the `fallback` battery below is what proves the non-zero path works.",
+          "records": 7,
+          "unavailable": 0
+        },
+        "resolution": {
+          "bound_hops": 4,
+          "bound_passes": 4,
+          "forced_one_pass": {
+            "bound": 1,
+            "mean": "the same corpus, re-extracted with `extract.resolution.max_passes = 1`. One pass is not enough to *observe* stability for any file that resolved something — a fixpoint is proved by a pass that changes nothing — so the honest report names those files instead of calling them settled. A file with nothing to resolve converged on the spot and is not listed.",
+            "non_converged": [
+              "__init__.py",
+              "cli.py",
+              "dynamic.py",
+              "models.py",
+              "registry.py",
+              "service.py",
+              "util.py"
+            ],
+            "truncated_chains": 0
+          },
+          "mean": "s1 finding 6: resolution is iterative, so it is bounded per file and the bound is a config key. `non_converged` names the files where the bound bit; on this corpus it is empty by construction, and `--max-passes 1` makes it non-empty on purpose.",
+          "non_converged": [],
+          "passes_used_max": 1,
+          "truncated_chains": 0
+        },
+        "synthetic_eligible": {
+          "empty_files_that_assert_completeness": 0,
+          "expected": 6,
+          "found": 6,
+          "marked_beyond_the_annotation": 0,
+          "mean": "s1 finding 1: a scope a program wrote into is a scope that cannot be enumerated. `missing` is the number that matters; a marked scope never yields a 'declares nothing' assertion, which is what `scopes_that_assert_emptiness` proves.",
+          "missing": 0,
+          "scopes_that_assert_emptiness": []
+        },
+        "wildcard_edges": {
+          "expected": 2,
+          "external_star_imports": 8,
+          "found": 2,
+          "mean": "s1 finding 2: a star import is a real dependency of unknown contents. `who_depends_on` is the AC made visible — the answer must name the unknown files, never say nobody.",
+          "mislabelled_as_resolved": [],
+          "who_depends_on": {
+            "file": "util.py",
+            "named": [
+              "cli.py",
+              "models.py",
+              "registry.py",
+              "service.py"
+            ],
+            "says_unknown": true,
+            "symbol": null,
+            "unknown": [
+              "service.py"
+            ]
+          }
+        }
+      },
+      "missing_definitions": [],
+      "missing_edges": [],
+      "missing_exports": [],
+      "missing_supertypes": [],
+      "missing_synthetic": [],
+      "relations": {
+        "definitions": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 58
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 28
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 19
+        },
+        "supertypes": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 4
+        }
+      },
+      "supertype_kind_mismatches": [],
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "surprising_supertypes": [],
+      "tags": [
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 12,
+          "found": 12,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "classmethod"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "conditional_def"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dataclass"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "decorated"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "decorator"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "decorator_factory"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dunder"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "dunder_all"
+        },
+        {
+          "expected": 18,
+          "found": 18,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "forward_reference"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:conditional_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:import_in_function"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:module_import"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 19,
+          "found": 19,
+          "recall": 1.0,
+          "tag": "import:relative_import"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:star_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:type_checking"
+        },
+        {
+          "expected": 23,
+          "found": 21,
+          "recall": 0.913,
+          "tag": "method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module_getattr"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "namedtuple_base"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "namedtuple_call"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "nested_class"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "not_implemented"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "override"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "private"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "property"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "staticmethod"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "subclass"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "synthetic:decorated"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "synthetic:dynamic_method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "synthetic:monkeypatch"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "synthetic:synthesised_accessors"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "type_checking"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "typeddict_base"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "var"
+        }
+      ],
+      "throughput": {
+        "fixture": {
+          "bytes": 6072,
+          "edges_found": 19,
+          "files": 7,
+          "files_per_second_per_core": 2734.2415,
+          "mib_per_second": 2.2619,
+          "per_file_us_p50": 365.7321,
+          "symbols_found": 60
+        },
+        "replica": {
+          "bytes": 4229199,
+          "edges_found": 0,
+          "files": 4004,
+          "files_per_second_per_core": 1495.2878,
+          "mib_per_second": 1.5062,
+          "per_file_us_p50": 668.7676,
+          "symbols_found": 34306
+        }
+      },
+      "throughput_check": {
+        "enforced": true,
+        "floor_files_per_second_per_core": 1000.0,
+        "floor_mib_per_second": 1.0,
+        "mean": "the replica, measured: files per second per core is the contract because ADR-004's budgets are paid per changed file; MiB/s is reported next to spike s1's parse-only figure to show what resolution adds on top of parsing. A debug build exempts both, because a debug build measures the borrow checker.",
+        "measured_files_per_second_per_core": 1495.2878,
+        "measured_mib_per_second": 1.5062,
+        "ok": true
+      },
+      "truth_bases_notes": "One row per `class X(Y)`. `NamedTuple` and `TypedDict` are recorded as bases because the corpus classes genuinely declare them, and because the consequence — the members come from the base, not the file — is exactly what the row is for; `resolved` stays absent for them since they live outside the corpus. Python's keyword form `class X(metaclass=M)` would be kind `metaclass`; this corpus has none, and saying so is better than inventing one.",
+      "truth_notes": "The corpus root is a package, so `from .models import Shape` is a relative import with a determinate target. Export is `__all__` where a module defines one, otherwise every module-level name without a leading underscore — a rule about names, not about declarations, so a re-export (`from .models import Shape` in `__init__.py`) is a definition the file does not have and an export it does not own; those land in the import relation instead. `@dataclass` writes an `__init__`, so a decorated class's generated `__init__` is annotated as a definition: the decorator is documented to do it, and whether a parser knows that is the measured question, not a thing the annotation gets to skip. A module-level binding assigned a `namedtuple(...)` call is a class. Statements inside a function body are not symbols, but imports inside a function body *are* import edges, because Python's lazy imports are load-bearing for the dependency graph.",
+      "truth_root": "__init__.py",
+      "truth_synthetic_notes": "`dynamic.py` and `models.py`. dynamic.py: a module-level `__getattr__` and a `globals()[...]` write put names in the module no file declares (`dynamic_method`), and `Shape.describe = lambda ...`, `Slate.extra = property(...)` write members into classes from the outside (`monkeypatch`); `Box`/`Movie` are a `NamedTuple` and a `TypedDict`, so their members are added by the base (`synthesised_accessors`); `Slate` carries a decorator that replaces the class (`decorated`). models.py: both dataclasses have members `@dataclass` writes (`decorated`, and `synthesised_accessors` because the decorator is known to add `__init__`/`__eq__`/`__repr__`). registry.py is deliberately NOT marked: `@register` writes a dispatch table, not members of a scope, and pretending otherwise would mark half of every Flask application unenumerable — the honest record of it is the `decorated_by:register` modifier, and the category is in `thresholds.json` under `irreducible_blind_spots.python` as `runtime_registration`.",
+      "verdict": "conditions"
+    },
+    {
+      "blind_recovered": 1,
+      "blind_spots": [
+        {
+          "count": 1,
+          "kind": "irreducible_definition:generated_into_foreign_module"
+        }
+      ],
+      "corpus": {
+        "bases": 2,
+        "bytes": 4488,
+        "definitions": 53,
+        "exports": 38,
+        "files": 9,
+        "import_edges": 25,
+        "synthetic_scopes": 5
+      },
+      "extraction": {
+        "milliseconds": 3.9998,
+        "policy": {
+          "extract.complexity.max_nodes": 20000,
+          "extract.max_file_bytes": 2000000,
+          "extract.resolution.max_hops": 4,
+          "extract.resolution.max_passes": 4
+        },
+        "policy_notices": []
+      },
+      "fallback": {
+        "cases": [
+          {
+            "expect": "language_unknown",
+            "extracted": false,
+            "file_level_bytes": 46,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "unknown",
+            "parse_errors": 0,
+            "path": "notes.unknown-lang",
+            "reason": "language_unknown",
+            "sentence": "structure unavailable: not one of the grammars fathom reads"
+          },
+          {
+            "expect": "parse_failed_or_parsed",
+            "extracted": false,
+            "file_level_bytes": 31,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "rust",
+            "parse_errors": 3,
+            "path": "broken.rs",
+            "reason": "parse_failed",
+            "sentence": "structure unavailable: the parse reported 3 errors and returned no structure"
+          },
+          {
+            "expect": "not_utf8",
+            "extracted": false,
+            "file_level_bytes": 23,
+            "file_level_code_lines": 1,
+            "file_level_lines": 0,
+            "language": "python",
+            "parse_errors": 0,
+            "path": "not-python.py",
+            "reason": "not_utf8",
+            "sentence": "structure unavailable: the file is not text"
+          },
+          {
+            "expect": "too_large",
+            "extracted": false,
+            "file_level_bytes": 14,
+            "file_level_code_lines": 1,
+            "file_level_lines": 1,
+            "language": "rust",
+            "parse_errors": 0,
+            "path": "big.rs",
+            "reason": "too_large",
+            "sentence": "structure unavailable: the file is larger than the 13 byte extraction limit"
+          }
+        ],
+        "every_input_returned": true,
+        "every_unreadable_still_measured": true,
+        "mean": "AC 2: an unknown or broken language yields structure unavailable plus file-level analysis, never a lost episode. `broken.rs` may parse — tree-sitter recovers — and that is the honest outcome, so it is reported rather than asserted."
+      },
+      "grammar_crate": "tree-sitter-typescript",
+      "irreducible_rows": [
+        "legacy.ts • const • 'virtual:thing'.thing [generated_into_foreign_module]"
+      ],
+      "irreducible_tags": [
+        "generated_into_foreign_module"
+      ],
+      "language": "typescript",
+      "mechanisms": {
+        "never_lost": {
+          "extracted": 9,
+          "mean": "AC 2: every file comes back, with a reason when there is no structure. `unavailable` here is 0 for a clean corpus; the `fallback` battery below is what proves the non-zero path works.",
+          "records": 9,
+          "unavailable": 0
+        },
+        "resolution": {
+          "bound_hops": 4,
+          "bound_passes": 4,
+          "forced_one_pass": {
+            "bound": 1,
+            "mean": "the same corpus, re-extracted with `extract.resolution.max_passes = 1`. One pass is not enough to *observe* stability for any file that resolved something — a fixpoint is proved by a pass that changes nothing — so the honest report names those files instead of calling them settled. A file with nothing to resolve converged on the spot and is not listed.",
+            "non_converged": [
+              "consumer.ts",
+              "factory.ts",
+              "geo/distance.ts",
+              "geo/index.ts",
+              "geo/point.ts",
+              "index.ts",
+              "legacy.ts",
+              "shapes.ts",
+              "types.d.ts"
+            ],
+            "truncated_chains": 6
+          },
+          "mean": "s1 finding 6: resolution is iterative, so it is bounded per file and the bound is a config key. `non_converged` names the files where the bound bit; on this corpus it is empty by construction, and `--max-passes 1` makes it non-empty on purpose.",
+          "non_converged": [],
+          "passes_used_max": 3,
+          "truncated_chains": 0
+        },
+        "synthetic_eligible": {
+          "empty_files_that_assert_completeness": 0,
+          "expected": 5,
+          "found": 5,
+          "marked_beyond_the_annotation": 0,
+          "mean": "s1 finding 1: a scope a program wrote into is a scope that cannot be enumerated. `missing` is the number that matters; a marked scope never yields a 'declares nothing' assertion, which is what `scopes_that_assert_emptiness` proves.",
+          "missing": 0,
+          "scopes_that_assert_emptiness": []
+        },
+        "wildcard_edges": {
+          "expected": 5,
+          "external_star_imports": 0,
+          "found": 5,
+          "mean": "s1 finding 2: a star import is a real dependency of unknown contents. `who_depends_on` is the AC made visible — the answer must name the unknown files, never say nobody.",
+          "mislabelled_as_resolved": [],
+          "who_depends_on": {
+            "file": "shapes.ts",
+            "named": [
+              "consumer.ts",
+              "index.ts",
+              "legacy.ts"
+            ],
+            "says_unknown": true,
+            "symbol": null,
+            "unknown": [
+              "consumer.ts",
+              "index.ts"
+            ]
+          }
+        }
+      },
+      "missing_definitions": [],
+      "missing_edges": [],
+      "missing_exports": [],
+      "missing_supertypes": [],
+      "missing_synthetic": [],
+      "relations": {
+        "definitions": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 52
+        },
+        "exports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 38
+        },
+        "imports": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 25
+        },
+        "supertypes": {
+          "f1": 1.0,
+          "false_positive": 0,
+          "missed": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "true_positive": 2
+        }
+      },
+      "supertype_kind_mismatches": [],
+      "surprising_definitions": [],
+      "surprising_edges": [],
+      "surprising_exports": [],
+      "surprising_supertypes": [],
+      "tags": [
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "abstract"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "accessor"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "alias"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "ambient"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "arrow_function"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "async"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "class"
+        },
+        {
+          "expected": 6,
+          "found": 6,
+          "recall": 1.0,
+          "tag": "const"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "declare_module"
+        },
+        {
+          "expected": 4,
+          "found": 4,
+          "recall": 1.0,
+          "tag": "decorator"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "default_export"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "enum"
+        },
+        {
+          "expected": 17,
+          "found": 17,
+          "recall": 1.0,
+          "tag": "fn"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generator"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "generic"
+        },
+        {
+          "expected": 15,
+          "found": 15,
+          "recall": 1.0,
+          "tag": "import:barrel"
+        },
+        {
+          "expected": 7,
+          "found": 7,
+          "recall": 1.0,
+          "tag": "import:barrel_hop"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:import_alias"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:namespace_import"
+        },
+        {
+          "expected": 7,
+          "found": 7,
+          "recall": 1.0,
+          "tag": "import:reexport"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "import:side_effect_import"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "import:single_import"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "import:star_reexport"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "import:type_only_import"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "interface"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "interface_element"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "member"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "merged_declaration"
+        },
+        {
+          "expected": 10,
+          "found": 10,
+          "recall": 1.0,
+          "tag": "method"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "module"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "namespace"
+        },
+        {
+          "expected": 5,
+          "found": 5,
+          "recall": 1.0,
+          "tag": "nested_module"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "overload"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "static"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "synthetic:ambient_merge"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "synthetic:decorated"
+        },
+        {
+          "expected": 2,
+          "found": 2,
+          "recall": 1.0,
+          "tag": "synthetic:wildcard_reexport"
+        },
+        {
+          "expected": 3,
+          "found": 3,
+          "recall": 1.0,
+          "tag": "type_alias"
+        },
+        {
+          "expected": 1,
+          "found": 1,
+          "recall": 1.0,
+          "tag": "var"
+        }
+      ],
+      "throughput": {
+        "fixture": {
+          "bytes": 4488,
+          "edges_found": 25,
+          "files": 9,
+          "files_per_second_per_core": 3539.8815,
+          "mib_per_second": 1.6834,
+          "per_file_us_p50": 282.4953,
+          "symbols_found": 55
+        },
+        "replica": {
+          "bytes": 2753220,
+          "edges_found": 0,
+          "files": 4005,
+          "files_per_second_per_core": 3701.1938,
+          "mib_per_second": 2.4265,
+          "per_file_us_p50": 270.1831,
+          "symbols_found": 24475
+        }
+      },
+      "throughput_check": {
+        "enforced": true,
+        "floor_files_per_second_per_core": 1000.0,
+        "floor_mib_per_second": 1.0,
+        "mean": "the replica, measured: files per second per core is the contract because ADR-004's budgets are paid per changed file; MiB/s is reported next to spike s1's parse-only figure to show what resolution adds on top of parsing. A debug build exempts both, because a debug build measures the borrow checker.",
+        "measured_files_per_second_per_core": 3701.1938,
+        "measured_mib_per_second": 2.4265,
+        "ok": true
+      },
+      "truth_bases_notes": "One row per `implements` and per `extends`. `implements Shape` is kind `interface` and `extends Base` is kind `base`, because the two answer different questions — `who fulfils this contract` and `who inherits this state` — and a pane that merges them cannot tell a refactor from a subtype change. This corpus has no `extends` row, which is a gap in the corpus, not a claim about TypeScript.",
+      "truth_notes": "ES modules. An import of a name re-exported by a barrel resolves to the *origin* file (the barrel is a hop, recorded on the importing file as one edge with `barrel_hop`); a barrel's own export set is empty because it declares nothing. A default export is the exported name `default`, and the local name is an alias. Two `export interface Config` blocks in one file are declaration merging: one symbol, two declaration sites. A module-level binding whose initialiser is a function value is a `fn`, not a `var`. Members are excluded from the export set.",
+      "truth_root": "index.ts",
+      "truth_synthetic_notes": "index.ts and geo/index.ts are barrels: `export * from './shapes'` means the module's export list is whatever the target exports, which no read of the barrel can enumerate (`wildcard_reexport`). types.d.ts is ambient: an `.d.ts` describes declarations that may be merged by any other `.d.ts` in the program (`ambient_merge`). legacy.ts earns `ambient_merge` for two reasons at once: two `export interface Config` blocks that TypeScript merges into one declaration, and a `declare module 'virtual:thing'` block whose contents a bundler writes into a module that has no file. consumer.ts is NOT marked: it imports names, which is a claim the file can make.",
+      "verdict": "conditions"
+    }
+  ],
+  "policy": {
+    "extract.complexity.max_nodes": 20000,
+    "extract.max_file_bytes": 2000000,
+    "extract.resolution.max_hops": 4,
+    "extract.resolution.max_passes": 4
+  },
+  "summary": {
+    "conditions": [
+      "rust",
+      "python",
+      "typescript"
+    ],
+    "corpus_bytes": 18076,
+    "corpus_files": 26,
+    "fail": [],
+    "pass": [],
+    "report": "benchmarks/reports/e3-1-structure-core.json"
+  },
+  "thresholds": {
+    "granularity": {
+      "definitions": "one row per named declaration at file top level or inside a type/module container, members included, function-local declarations excluded; a cfg-gated or conditional arm that declares a second copy of a name is the same row, because the graph is a set of names, not a count of tokens",
+      "exports": "one row per top-level symbol nameable from outside the declaring unit, per the language's own access rules",
+      "imports": "one row per (file, resolved corpus file, symbol) dependency, with symbol `*` for a dependency whose contents the file does not name",
+      "supertypes": "one row per (file, declaring symbol, base as written), kind `base`, `trait`, `interface` or `metaclass`",
+      "synthetic": "one row per (file, dotted scope) that cannot be enumerated from the file, with the reason words the extractor uses"
+    },
+    "how_thresholds_are_set": "Recall is the bar that matters for a graph, because a missing edge is an invisible dependency and an invisible dependency is the failure ADR-004's whole argument is about. Precision matters more for an export surface, because a wrong `public` is a false promise in a breaking-change report. Each floor is stated as (a) what a reviewer would notice and (b) what a grammar plus a language model can actually deliver, and `hard: true` means 'missing this makes the language unusable for `e3.2`..`e3.7` at file granularity, so it goes to the fallback rather than to a caveat'. The numbers are spike `s1`'s, deliberately: the spike measured what these grammars deliver, and re-measuring its own guess is not how this ticket should move the bar.",
+    "irreducible_blind_spots": {
+      "default": [],
+      "python": [
+        "decorated",
+        "dynamic_method",
+        "monkeypatch",
+        "runtime_registration"
+      ],
+      "rust": [
+        "macro_definition",
+        "macro_invocation",
+        "cfg_conditional"
+      ],
+      "typescript": [
+        "declaration_merging",
+        "ambient_merge",
+        "wildcard_reexport",
+        "side_effect_import"
+      ],
+      "what": "Categories the extractor cannot remove at any effort level, per language, because the information is not in the file. A run that records one of these still passes, but the verdict is `conditions`: the category is stated as a limitation rather than rounded away. Anything the corpus shows that is not listed here is a bug in the extractor, not a property of the language."
+    },
+    "irreducible_tags": {
+      "default": [],
+      "python": [
+        "macro_generated",
+        "dataclass_generated",
+        "monkeypatch"
+      ],
+      "rust": [
+        "macro_generated"
+      ],
+      "typescript": [
+        "generated_into_foreign_module"
+      ],
+      "what": "The annotation tags whose *definition rows* are removed from the scored set, because the declaration is not textually in the file at all: a `macro_rules!` arm, a `@dataclass`-written `__init__`, a monkeypatched method, a webpack virtual module. This is not leniency wearing a hat — the alternative is scoring the extractor against rows no file-granularity parser can produce, which teaches it to guess. What the extractor owes instead is the honest state, and `mechanisms.synthetic_eligible` is where that debt is collected: the scope the row lives in must come back marked."
+    },
+    "mechanisms": {
+      "never_lost": "Every input file returns a record. A file with no structure returns a reason and its file-level measurement. Losing a file is the failure mode that turns a wrong number into an invisible one.",
+      "resolution": "Resolution is a bounded iteration, and the bound is a config key, and the report says how many passes were used and whether the file converged. Non-convergence is a bug to fix, not a caveat; `--max-passes 1` exists so the bound can be shown to bite rather than asserted.",
+      "synthetic_eligible": "Every scope the corpus marks must come back marked. A marked scope must never produce a 'declares nothing' assertion: the surface may say 'may have shrunk, not shrunk', and nothing stronger. Missing a scope is a fail, not a condition, because an unmarked dynamic scope is a confidently wrong answer about code that changed.",
+      "what": "The four checks in the report's `mechanisms` block, and what each one costs when it fails. These are not extra accuracy metrics — they are the four ways a clean set score can still describe a useless extractor, which is the argument spike `s1` spent its planning budget making.",
+      "wildcard_edges": "Every `*` import in the corpus must arrive as its own edge kind, and `dependents_of` must answer 'who depends on X' by naming the wildcard files as *unknown-content dependents*. Reporting a star import as a resolved named edge, or answering 'nobody', is a fail: both are the same lie told twice."
+    },
+    "relations": {
+      "default": {
+        "definitions": {
+          "hard": true,
+          "mean": "A definition is one named declaration at file top level or inside a type/module container, members included, function-local declarations excluded. Missing 5 % of them means 5 % of the code has no node in the graph, and a file with no node cannot be reviewed.",
+          "precision": 0.95,
+          "recall": 0.95
+        },
+        "exports": {
+          "hard": false,
+          "mean": "One row per top-level symbol nameable from outside the declaring unit, per the language's own access rules — Rust's re-export rule, Python's `__all__`-or-underscore rule, TypeScript's `export`-plus-barrel rule. Precision is the higher bar here: a false `public` is a wrong breaking-change report, which is worse than a missing one.",
+          "precision": 0.95,
+          "recall": 0.9
+        },
+        "imports": {
+          "hard": false,
+          "mean": "One row per (file, resolved corpus file, symbol) dependency, wildcard rows included with symbol `*`. Ten percent is the price of dynamic module systems — a Python `importlib.import_module` and a TypeScript namespace import are genuinely unresolvable at file granularity.",
+          "precision": 0.9,
+          "recall": 0.9
+        },
+        "supertypes": {
+          "hard": false,
+          "mean": "One row per declared base, implemented trait or implemented interface. Recall is the higher bar: `who implements Shape?` is the question the architecture pane draws, and a missing `impl` is a hole in the shape of the system.",
+          "precision": 0.9,
+          "recall": 0.95
+        }
+      }
+    },
+    "throughput": {
+      "comment": "Parse-plus-extract throughput per core, release profile, measured on a deterministic 4 000-file replica of the corpus because 9 fixture files measure process startup. ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms` are paid per changed file, so files-per-second-per-core is the contract and 1 000 files/s clears a 5 000-file warm pass by three orders of magnitude. The MiB/s figure is a canary, stated second because source files are small and uneven: spike `s1` measured 5 MiB/s parse-only, and this number is parse *plus* resolution, whose cost grows with the corpus rather than the file. Both floors are enforced in a release build and exempt in a debug build, which measures bounds checks rather than the extractor. Missing a floor is a condition, never a no-go: cost is a feature-gate question (ADR-002 §6.5).",
+      "files_per_second_per_core_floor": 1000.0,
+      "mib_per_second_floor": 1.0
+    },
+    "verdict_rule": "pass: every relation at or above its floor, and no mechanism missed, and the throughput floor met in a release build. conditions: every `hard` floor met, but a soft floor missed, a row missed or found that the floors tolerate, or an irreducible blind spot recorded. fail: a `hard` floor missed, or any mechanism check missed — a mechanism is not a quality bar, it is the definition of what the output is allowed to claim.",
+    "what": "The acceptance bar for `e3.1` (`reco-zoz`): the structural extractor core for Rust, Python and TypeScript, plus the four mechanisms spike `s1` handed over as non-negotiables. A language that misses a `hard` floor is not cut from the plan — it is stated as what this build does not do, in the report and in `docs/concepts/structure-extraction.md`, and the language's files come back with a reason instead of a silently thin graph."
+  },
+  "throughput": [
+    {
+      "corpora": {
+        "fixture": {
+          "bytes": 7516,
+          "edges_found": 24,
+          "files": 10,
+          "files_per_second_per_core": 2487.5368,
+          "mib_per_second": 1.783,
+          "per_file_us_p50": 402.0041,
+          "symbols_found": 91
+        },
+        "replica": {
+          "bytes": 3761876,
+          "edges_found": 0,
+          "files": 4000,
+          "files_per_second_per_core": 1562.0028,
+          "mib_per_second": 1.401,
+          "per_file_us_p50": 640.2037,
+          "symbols_found": 36400
+        }
+      },
+      "language": "rust"
+    },
+    {
+      "corpora": {
+        "fixture": {
+          "bytes": 6072,
+          "edges_found": 19,
+          "files": 7,
+          "files_per_second_per_core": 2734.2415,
+          "mib_per_second": 2.2619,
+          "per_file_us_p50": 365.7321,
+          "symbols_found": 60
+        },
+        "replica": {
+          "bytes": 4229199,
+          "edges_found": 0,
+          "files": 4004,
+          "files_per_second_per_core": 1495.2878,
+          "mib_per_second": 1.5062,
+          "per_file_us_p50": 668.7676,
+          "symbols_found": 34306
+        }
+      },
+      "language": "python"
+    },
+    {
+      "corpora": {
+        "fixture": {
+          "bytes": 4488,
+          "edges_found": 25,
+          "files": 9,
+          "files_per_second_per_core": 3539.8815,
+          "mib_per_second": 1.6834,
+          "per_file_us_p50": 282.4953,
+          "symbols_found": 55
+        },
+        "replica": {
+          "bytes": 2753220,
+          "edges_found": 0,
+          "files": 4005,
+          "files_per_second_per_core": 3701.1938,
+          "mib_per_second": 2.4265,
+          "per_file_us_p50": 270.1831,
+          "symbols_found": 24475
+        }
+      },
+      "language": "typescript"
+    }
+  ],
+  "ticket": {
+    "available_languages": [
+      "rust",
+      "python",
+      "typescript"
+    ],
+    "corpus": "crates/fathom-analyze/structure/corpus",
+    "extractor": "crates/fathom-analyze/src/structure/",
+    "harness": "crates/fathom-analyze/examples/structure_harness.rs",
+    "id": "reco-zoz",
+    "inherited_from": "crates/fathom-analyze/spike/s1 (corpus and truth, extended with bases and synthetic)",
+    "plan_key": "e3.1",
+    "reproduce": "cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript --example structure_harness -- --repo . --report benchmarks/reports/e3-1-structure-core.json",
+    "schema_version": 1,
+    "thresholds": "crates/fathom-analyze/structure/thresholds.json",
+    "title": "structural extractor core: rust, python, typescript, and the corpus harness"
+  },
+  "verdicts": {
+    "python": "conditions",
+    "rust": "conditions",
+    "typescript": "conditions"
+  }
+}

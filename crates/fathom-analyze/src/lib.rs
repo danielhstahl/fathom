@@ -56,6 +56,12 @@ pub mod scope;
 /// The one search box (`e5.2`, `reco-mkc`): the corpus of every kind of thing a reviewer searches for, the
 /// deterministic scorer, and the filter grammar. The store owns the document; this owns the ranking.
 pub mod search;
+/// The per-file structural model (`e3.1`, `reco-zoz`): definitions, exports, imports and their
+/// resolved targets, implemented traits and inherited bases, the scopes that cannot be enumerated and
+/// the wildcard edges, for the three grammars the `e0.12` checkpoint put first. Always compiled; the
+/// grammars themselves are behind ADR-002 §6.5's `lang-*` features, and a file whose grammar is
+/// absent comes back saying so rather than coming back missing.
+pub mod structure;
 
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

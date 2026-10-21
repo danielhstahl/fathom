@@ -100,6 +100,34 @@ jobs:
       - name: "spike s1: the harness itself builds with every grammar"
         run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
 
+  structure-core:
+    name: structural extractor core reproduces (three languages)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: "e3.1: the committed accuracy-and-mechanism report reproduces"
+        # `e3.1` (`reco-zoz`) is the extractor spike `s1` decided the shape of. `--check` compares
+        # every relation count, the four mechanism checks (synthetic scopes, wildcard edges, the
+        # resolution bound including the forced-one-pass demonstration, and the fallback battery)
+        # and the verdicts, and never throughput: a busy runner is not a regression, and a debug
+        # build measures the borrow checker rather than the grammar.
+        run: >
+          cargo run --locked -p fathom-analyze --features lang-rust,lang-python,lang-typescript
+          --example structure_harness -- --repo .
+          --report benchmarks/reports/e3-1-structure-core.json --check
+      - name: "e3.1: the byte contract and the corpus properties"
+        # The golden canonical-JSON file (AC 6) and the model properties. Gated behind the three
+        # grammars in `Cargo.toml`, so this step names them; a default `cargo test` does not pay for
+        # three C builds it was never asked to exercise (ADR-002 §6.5).
+        run: >
+          cargo test --locked -p fathom-analyze
+          --features lang-rust,lang-python,lang-typescript --test structure_core
+      - name: "e3.1: the harness builds with every grammar `e3.1b` will need"
+        run: cargo build --locked -p fathom-analyze --features langs-all --example structure_harness
+
   g3-calibration:
     name: Guardrail 3 calibration reproduces (three real repositories)
     runs-on: ubuntu-latest

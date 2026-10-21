@@ -1376,6 +1376,73 @@
       "x-fathom-owner": "ADR-003 / e1.3",
       "x-fathom-section-title": "Episode segmentation"
     },
+    "extract": {
+      "additionalProperties": false,
+      "description": "What one file may cost the structural extractor, and how far resolution may chase a re-export chain. Every one of these is a *bound the extractor reports on*, not a switch that turns a feature off: a file refused for size comes back with a reason and its file-level measurement, and a chain cut short comes back with `converged: false` rather than a guess.",
+      "properties": {
+        "complexity": {
+          "additionalProperties": false,
+          "description": "Nodes one definition's complexity walk may visit before it stops counting. The complexity numbers are proxies for risk, not a metric with a definition, so the walk is bounded per definition and a truncated count is a note rather than a wrong number. `e3.1`.",
+          "properties": {
+            "max_nodes": {
+              "default": 20000,
+              "description": "Nodes one definition's complexity walk may visit before it stops counting. The complexity numbers are proxies for risk, not a metric with a definition, so the walk is bounded per definition and a truncated count is a note rather than a wrong number. `e3.1`.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "structure.extract",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e3.1",
+              "x-fathom-units": "syntax nodes"
+            }
+          },
+          "type": "object"
+        },
+        "max_file_bytes": {
+          "default": 2000000,
+          "description": "Largest file the structural extractor will parse. Above it the file is refused with `too_large` and still gets its file-level measurement - a refused file is never a lost file, which is the difference between a bound and a hole in the graph. `e3.1`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "structure.extract",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.1",
+          "x-fathom-units": "bytes"
+        },
+        "resolution": {
+          "additionalProperties": false,
+          "description": "How many times the corpus may be re-resolved to close a re-export chain. Resolution is a fixpoint, so the bound needs stating and reporting: the output carries `passes_used` and `converged` per file, and a file that did not settle inside this number says so. `e3.1`, spike `s1` finding 6.",
+          "properties": {
+            "max_hops": {
+              "default": 4,
+              "description": "How far one import may follow re-exports before the chain is called truncated. A barrel that re-exports a barrel is normal at two hops and a cycle waiting to happen at forty, so the walk is cut and the cut is counted per file in `resolution.truncated_chains`. `e3.1`, spike `s1` finding 6.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "structure.extract",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e3.1",
+              "x-fathom-units": "hops"
+            },
+            "max_passes": {
+              "default": 4,
+              "description": "How many times the corpus may be re-resolved to close a re-export chain. Resolution is a fixpoint, so the bound needs stating and reporting: the output carries `passes_used` and `converged` per file, and a file that did not settle inside this number says so. `e3.1`, spike `s1` finding 6.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-analyzer": "structure.extract",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e3.1",
+              "x-fathom-units": "passes"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e3.1 (`reco-zoz`)",
+      "x-fathom-section-title": "Structural extraction limits"
+    },
     "graph": {
       "additionalProperties": false,
       "description": "Directories excluded from the dependency and structure graph.",
@@ -3963,6 +4030,10 @@
       "episode": {
         "owner": "ADR-003 / e1.3",
         "title": "Episode segmentation"
+      },
+      "extract": {
+        "owner": "e3.1 (`reco-zoz`)",
+        "title": "Structural extraction limits"
       },
       "graph": {
         "owner": "e3.2 (`reco-8s4`)",
