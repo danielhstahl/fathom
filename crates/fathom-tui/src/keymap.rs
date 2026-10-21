@@ -1356,8 +1356,10 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::List, "L", "list.bot_visible");
     bind(Mode::List, "M", "list.mid_visible");
     bind(Mode::List, "gg", "list.first");
+    bind(Mode::List, "h", "drill.out");
     bind(Mode::List, "j", "list.down");
     bind(Mode::List, "k", "list.up");
+    bind(Mode::List, "l", "drill.in");
     bind(Mode::Body, "<C-d>", "list.half_down");
     bind(Mode::Body, "<C-f>", "list.page_down");
     bind(Mode::Body, "<C-u>", "list.half_up");
@@ -1373,8 +1375,10 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Body, "<Up>", "list.scroll_up");
     bind(Mode::Body, "G", "list.last");
     bind(Mode::Body, "gg", "list.first");
+    bind(Mode::Body, "h", "drill.out");
     bind(Mode::Body, "j", "list.scroll_down");
     bind(Mode::Body, "k", "list.scroll_up");
+    bind(Mode::Body, "l", "drill.in");
     // `queue` adds no bindings of its own: it inherits the shared motion set.
     // `timeline` adds no bindings of its own: it inherits the shared motion set.
     bind(Mode::Diff, "E", "diff.open_editor");
@@ -1451,6 +1455,44 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     table
 }
 
+/// Where a configuration line was read from, so a report can name the file and line to fix (`e5.4`).
+///
+/// A refusal that says *what* is wrong and not *where* sends a reviewer to `--show-keys` and a scroll
+/// through their own `fathom.toml`. The composition root owns the file name and the byte offsets
+/// (`ADR-002 §4.5` — a crate below the CLI reads no configuration), so it hands this over and the
+/// keymap only has to repeat it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    /// The file, as the reviewer would write it.
+    pub file: String,
+    /// The 1-based line the key sits on.
+    pub line: usize,
+}
+
+impl Source {
+    /// One line of one file.
+    #[must_use]
+    pub fn new(file: impl Into<String>, line: usize) -> Self {
+        Source {
+            file: file.into(),
+            line,
+        }
+    }
+}
+
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.file, self.line)
+    }
+}
+
+/// The source of each line of `keys.overrides`, keyed by `(mode as written, chord)`.
+///
+/// The chord is `""` for a problem with the mode line itself (`[keys.overrides.nomode]`), which is
+/// the only class of problem that is not about one key. Missing entries are the normal case: a test,
+/// an embedder and `Keymap::defaults()` have no file to name.
+pub type Sources = BTreeMap<(String, String), Source>;
+
 /// One line of `keys.overrides` (`e0.8`'s spelling: `keys.overrides.<mode>.<binding> = "id"`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Override {
@@ -1460,6 +1502,8 @@ pub struct Override {
     pub chord: String,
     /// `None` is an unbind: the ADR's `""` or a removed key.
     pub action: Option<String>,
+    /// Where this line was read from, when there is a file to name (`e5.4`).
+    pub source: Option<Source>,
 }
 
 /// The config layers reduced to what the keymap needs: `mode -> chord -> action`.
@@ -1473,17 +1517,36 @@ pub type OverrideTables = BTreeMap<String, BTreeMap<String, String>>;
 /// silently ignored binding.
 #[must_use]
 pub fn overrides_from(tables: &OverrideTables) -> (Vec<Override>, Vec<String>) {
+    overrides_from_in(tables, &Sources::new())
+}
+
+/// The same reduction, with the file and line of every line of the table (`e5.4`).
+///
+/// The point is the report, not the parse: `ADR-006 §8.3` says a refused override is reported rather
+/// than guessed past, and a reviewer with 40 lines of `[keys.overrides]` cannot act on "mode 'listt'
+/// is unknown" without being told which line to delete.
+#[must_use]
+pub fn overrides_from_in(
+    tables: &OverrideTables,
+    sources: &Sources,
+) -> (Vec<Override>, Vec<String>) {
     let mut out = Vec::new();
     let mut problems = Vec::new();
+    let at = |mode: &str, chord: &str| -> String {
+        sources
+            .get(&(mode.to_owned(), chord.to_owned()))
+            .map_or_else(String::new, |source| format!(" — fix at {source}"))
+    };
     for (mode_name, binds) in tables {
         let Some(mode) = Mode::from_name(mode_name) else {
             problems.push(format!(
-                "keys.overrides.{mode_name}: unknown mode (known: {})",
+                "keys.overrides.{mode_name}: unknown mode (known: {}){}",
                 Mode::PRECEDENCE
                     .iter()
                     .map(|m| m.name())
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(", "),
+                at(mode_name, "")
             ));
             continue;
         };
@@ -1496,6 +1559,7 @@ pub fn overrides_from(tables: &OverrideTables) -> (Vec<Override>, Vec<String>) {
                 } else {
                     Some(action.clone())
                 },
+                source: sources.get(&(mode_name.clone(), chord.clone())).cloned(),
             });
         }
     }
@@ -1512,6 +1576,8 @@ pub struct Refusal {
     pub chord: String,
     /// Which of the four classes this is.
     pub kind: RefusalKind,
+    /// The file and line to fix, when the override came from a file (`e5.4`).
+    pub source: Option<Source>,
 }
 
 /// The four ways a `keys.overrides` entry can be wrong (ADR-006 §8.3).
@@ -1544,7 +1610,7 @@ impl Refusal {
     }
 
     /// The sentence for the report `fathom config get keys.overrides` prints and for the help
-    /// overlay's conflict section.
+    /// overlay's conflict section, ending in the file and line to fix when there is one (`e5.4`).
     #[must_use]
     pub fn message(&self) -> String {
         let kind = match &self.kind {
@@ -1569,7 +1635,10 @@ impl Refusal {
                 self.mode.name()
             ),
         };
-        format!("{}: {kind}", self.path())
+        match &self.source {
+            Some(source) => format!("{}: {kind} — fix at {source}", self.path()),
+            None => format!("{}: {kind}", self.path()),
+        }
     }
 }
 
@@ -1973,6 +2042,7 @@ fn override_problem(ov: &Override) -> Option<Refusal> {
         mode: ov.mode,
         chord: ov.chord.clone(),
         kind,
+        source: ov.source.clone(),
     };
     if !action_exists(id) {
         return Some(refusal(RefusalKind::UnknownAction { action: id.clone() }));

@@ -101,8 +101,18 @@ impl Link {
 /// only thing in a fuzzy list that tells you whether you are about to open an episode or a lockfile. The
 /// preview answers *why this matched* per token, which is the difference between a fuzzy list and a fuzzy
 /// hunch.
+///
+/// `window` is `(first hit, how many to print)`. The box scores [`RESULT_LIMIT`] hits and prints the ones
+/// that fit under the cursor, which is what makes the list scrollable and what the list motions in
+/// [`crate::app::App::dispatch`] move — a result list the reviewer can page through and a result list whose
+/// cursor walks off the bottom of the pane are not the same product (`e5.4`'s motion parity).
 #[must_use]
-pub fn rows(index: &Index, query: &Query, limit: usize) -> (Vec<String>, Vec<String>, Report) {
+pub fn rows(
+    index: &Index,
+    query: &Query,
+    limit: usize,
+    window: (usize, usize),
+) -> (Vec<String>, Vec<String>, Report) {
     let report = index.search(query, limit);
     if report.hits.is_empty() {
         return (empty_results(&report), why_lines(&report, None), report);
@@ -115,7 +125,7 @@ pub fn rows(index: &Index, query: &Query, limit: usize) -> (Vec<String>, Vec<Str
         report.micros
     )];
     let mut group = None;
-    for hit in &report.hits {
+    for hit in report.hits.iter().skip(window.0).take(window.1.max(1)) {
         if group != Some(hit.kind) {
             group = Some(hit.kind);
             let count = report
@@ -128,6 +138,20 @@ pub fn rows(index: &Index, query: &Query, limit: usize) -> (Vec<String>, Vec<Str
         results.push(row(hit));
     }
     (results, why_lines(&report, report.hits.first()), report)
+}
+
+/// Which slice of the hits a pane of `visible` rows shows, given the cursor.
+///
+/// The cursor is kept inside the window rather than the window kept at a round offset, because a cursor that
+/// walks off the bottom is indistinguishable from a list that ran out — and the whole point of the row's
+/// `>` marker is that it is on screen.
+#[must_use]
+pub fn window(cursor: usize, visible: usize) -> (usize, usize) {
+    let visible = visible.max(1);
+    if cursor < visible {
+        return (0, visible);
+    }
+    (cursor - visible + 1, visible)
 }
 
 /// The rows for an empty box: what a query is made of, and the last few the reviewer typed.
@@ -154,7 +178,11 @@ pub fn blank(recent: &[String], index: Option<&Index>) -> (Vec<String>, Vec<Stri
         }
     }
     let mut why = vec!["what a query is made of".to_owned()];
-    why.extend(FILTERS.iter().map(|(token, meaning)| format!("{token} {meaning}")));
+    why.extend(
+        FILTERS
+            .iter()
+            .map(|(token, meaning)| format!("{token} {meaning}")),
+    );
     if index.is_some() {
         why.push(String::new());
         why.push("↑ walks the last searches · Enter opens the top row".to_owned());
@@ -221,7 +249,11 @@ fn empty_results(report: &Report) -> Vec<String> {
         lines.extend(wrap(note, 44).take(4).map(|line| format!("! {line}")));
     }
     for gap in &report.gaps {
-        lines.extend(wrap(&gap.because, 44).take(4).map(|line| format!("! {line}")));
+        lines.extend(
+            wrap(&gap.because, 44)
+                .take(4)
+                .map(|line| format!("! {line}")),
+        );
     }
     if lines.len() == 1 {
         lines.push("try a shorter word, or drop a filter".to_owned());

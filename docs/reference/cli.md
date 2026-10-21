@@ -52,6 +52,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`tui`](#fathom-tui)** | Print the terminal UI's keymap, or open the UI itself | shipped | [*cheatsheet*](cheatsheet.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`open`](#fathom-open)** | Open an episode's file at its line in $EDITOR — jump out, do not read around it (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
 | **[`difftool`](#fathom-difftool)** | Show one file's two sides in your own difftool — difftastic, meld, kdiff3, vim -d (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
+| **[`cmp`](#fathom-cmp)** | Compare any two episodes or revisions: the composed delta over a range (e5.3) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*delta*](../concepts/delta.md) |
+| **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
 <!-- END GENERATED: verbs -->
 
 ## Global flags
@@ -1054,6 +1056,80 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.difftool -->
+
+## `fathom cmp`
+
+Any two episodes or revisions, side by side in one answer: the delta **composed over the range between**
+them, from the same episode documents `fathom analyze` prints — not a second diff engine
+([the delta model](../concepts/delta.md)). The endpoints are the same handles every verb takes, so a
+comparison is written the way it was found: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`.
+`--save NAME` keeps it, `--note` says why, and the name is then a spec in the next process, in the shell's
+`,` palette, and in `fathom cmp NAME` ([the shell's scope rules](../adr/0006-tui.md)).
+
+<!-- BEGIN GENERATED: help.cmp -->
+```text
+Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
+
+Usage: fathom cmp [OPTIONS] [SPEC]
+
+Arguments:
+  [SPEC]  The comparison: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`, or a saved name
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the comparison as one JSON line on stdout (`fathom.compare/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --save <NAME>        Keep this comparison under a name, so the next person says `since-the-refactor` instead of typing the endpoints
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --note <NOTE>        Why the name exists, kept with it
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list               List the saved comparisons and exit
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.cmp -->
+
+## `fathom search`
+
+The same box `/` is in the shell, in a pipe: one query over episodes, paths, symbols, dependencies and
+findings, ranked by the scorer the shell uses, with the filter grammar (`author:`, `since:`, `risk>`,
+`path:`, `dep:`) and the same list of what it could not read. A kind the build cannot search is named in
+the report rather than left out, because "nothing matched" and "nothing was searched" are different
+sentences ([the rail and the box](../concepts/timeline.md)). `--save NAME` keeps a query for the palette;
+`--list` prints what this repository has.
+
+<!-- BEGIN GENERATED: help.search -->
+```text
+Search the whole index from one box, in the shell's own ranking (`e5.2`)
+
+Usage: fathom search [OPTIONS] [QUERY]...
+
+Arguments:
+  [QUERY]...  The query, with the same filter tokens `/` takes (`author:`, `since:`, `risk>`, `path:`, `dep:`, …)
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the report as one JSON line on stdout (`fathom.search/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <LIMIT>      How many hits to print [default: 20]
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --save <NAME>        Keep this query under a name, so the `,` palette can offer it again
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list               List the saved searches and exit
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.search -->
 
 ---
 

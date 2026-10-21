@@ -494,7 +494,9 @@ fn an_episode_read_alone_is_measured_the_way_a_page_read_measures_it() {
     let out = fathom_in(&dir, &["why", &rev(1)]);
     assert_eq!(code(&out), Some(0), "{}", stderr(&out));
     let rows = table(&stdout(&out));
-    let ratio = rows.get("test_ratio").expect("test_ratio is still accounted for");
+    let ratio = rows
+        .get("test_ratio")
+        .expect("test_ratio is still accounted for");
     assert!(
         ratio.contains("neither logic nor tests arrived"),
         "a docs-only episode has nothing new to cover, and says so:\n{ratio}"

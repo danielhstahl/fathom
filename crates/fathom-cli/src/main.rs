@@ -20,6 +20,10 @@ mod analyze;
 // it is missing instead (ADR-002 §6.1).
 #[cfg(feature = "tui")]
 mod ambient;
+// The comparison of two endpoints (`e5.3`, `reco-ifo`): the endpoint resolution, the span between them and
+// the saved-comparison rows. The composition itself is `fathom_analyze::compare`; this is the half that
+// needs a store and a git read (ADR-002 §4.3).
+mod compare;
 // Who wrote it, and how to tell Fathom it got it wrong (`e4.1`): the write path for a correction, which
 // needs the store, so it lives above the classifier and below the verb table (ADR-002 §4.3).
 mod attribution;
@@ -59,9 +63,8 @@ mod queue;
 mod review;
 mod sanitize;
 // The corpus the one search box reads (`reco-mkc`): the store and manifest reads the shell is not allowed
-// to make for itself (ADR-002 §5.2), made here and handed over as an index. Gated with the shell because
-// nothing else draws a search box.
-#[cfg(feature = "tui")]
+// to make for itself (ADR-002 §5.2), made here and handed over as an index — and the same corpus the
+// headless `fathom search` scores, which is why the module is not gated with the shell.
 mod search;
 // The episode boundary knobs are configuration, and configuration is read here and nowhere else below the
 // CLI (ADR-002 §4.5). The module is unconditional because `fathom index` needs it in every build that can

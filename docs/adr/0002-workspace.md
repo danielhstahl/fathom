@@ -215,7 +215,7 @@ cheapest way to keep them agreeing is to develop on the floor. CI then proves th
 
 > **IO-free by choice, not by accident.** Analysis reads through `fathom-ingest` and `fathom-store` and is a pure function of (input, config), which is what makes golden tests and ADR-004 §5's cache keys mean something. Four teams share this crate; the module ownership split is in §9.
 
-> `insight` and `export` are the only modules `fathom-tui` and `fathom-mcp` may import (§5).
+> `insight` and `export` are the narrow waist every surface reads through; `fathom-tui` may also name `search` and `compare` (§5.3), and `fathom-mcp` may not.
 
 **`fathom-fixtures`** (L3, dev) — Deterministic fixture construction: synthetic agent-driven git repositories, hook-event streams, config files, the golden scenario corpus, a fixed `Clock`, and budget-scenario builders. Dev-dependencies only — never in a release build.
 
@@ -356,7 +356,7 @@ That is lint `W1` on `fathom-core`, `fathom-analyze`, `fathom-tui` and `fathom-m
 | # | Rule | Enforced by |
 |---|---|---|
 | **R1** | Crate edges follow `cli -> {tui,mcp} -> analyze -> ingest -> store -> core`; an `uphill` import fails CI. | `lint` → `E01`, `E02`, `E03`, `E04` |
-| **R2** | `fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`, and only *read* what those hand back: a surface that composes, ranks or classifies is a second analysis (`M03`). | `lint` → `M02`, `M03` |
+| **R2** | `fathom-tui` and `fathom-mcp` name `fathom-analyze` only through its façades — `insight` and `export`, plus `search` and `compare` for the shell — and only *read* what those hand back: a surface that composes, ranks or classifies is a second analysis (`M03`). | `lint` → `M02`, `M03` |
 | **R3** | `fathom-core` has zero IO, zero `unsafe`, no wall clock and no default features. | `lint` → `W1`, `W2`, `P02`, `F02` |
 | **R4** | `unsafe` appears only in `fathom-store/src/raw/` and only under `cfg(feature = "mmap")`. | `lint` → `P02`, `P03`, `P04` |
 | **R5** | Library crates declare `default = []`. Only `fathom-cli` has default features, and they are the shipped product. | `lint` → `F02`, `F03`, `H01` |
@@ -403,6 +403,15 @@ Lint `M02` enforces this at the *path* level: `use fathom_analyze::detectors::x;
 fails CI with the reason in the message. When a view genuinely needs something the façade does not
 expose, the façade gains a method — in a PR that `analyze-insight` reviews — and that review is cheap
 because the façade is small.
+
+**e5.2 and e5.3 widened the shell's list by two, and only by two.** `fathom-tui` may also name
+`fathom_analyze::search` and `fathom_analyze::compare`. Both are the same shape of permission, and neither
+is a licence to analyse: the `/` box *scores* a corpus the composition root read and handed over
+(`Options::search`), because the scoring function has to be the one `fathom search` uses or the two surfaces
+rank a query differently; the palette *decodes* the session rows a named comparison is stored under,
+because a second spelling of that key is a saved comparison that survives a restart by accident. Neither
+module is opened, paged or built inside the shell — `M03` still stands, and the corpus and the composed
+delta still arrive as finished answers from `fathom-cli`. `fathom-mcp`'s list is unchanged.
 
 
 ---

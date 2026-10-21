@@ -17,6 +17,32 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### One box, one comparison, and a session that never leaves the keyboard (`reco-mkc`, `reco-ifo`, `reco-mdb`, `reco-xke`)
+
+Epic 5's criterion was a whole review session — notification to signed-off artefact — without leaving the
+keyboard. What shipped is less a list of features than the removal of four reasons to reach for the mouse:
+
+* **One search box.** `/` in the TUI and `fathom search` in the shell read the same corpus — episodes with
+  their intent text, the paths they touched, the dependencies the manifests name, the findings raised — and
+  score it with three rungs per token (word-start, anywhere, subsequence, so `fathstor` finds
+  `fathom-store`), deterministic down to the tie-break and pinned by a golden file. The filter grammar
+  (`author: since: until: risk> risk< kind: path: dep: finding:`) is printed in the box itself, and a token
+  the build cannot honour is kept as text and *said* rather than dropped. Symbols are a stated gap, not a
+  silent one; `reco-6sw` wires them when the extractor of `e3.1` exists.
+* **`fathom cmp`, and `m` then `c`.** A comparison is the composed delta over the span between two endpoints,
+  not two diffs: `HEAD~9..HEAD`, `main@1a2b3c..feat/x@9f8e7d`, or a name somebody saved with
+  `fathom cmp --save since-the-refactor`. `c` opens it as a panel over the view you were in, and `fathom cmp`
+  prints the same lines, so the shell and the script cannot disagree.
+* **One widget, two shapes.** `,` is the palette and `/` is search; they share the field, the history, the
+  scorer and — the part that mattered — the motion. Every list, both boxes and the comparison panel now move
+  with one implementation, so `M` means "middle of what is on screen" in all of them.
+* **A refused keybinding says where to fix it.** All four keymap conflicts (unknown mode, unknown action, an
+  action in a mode that cannot take it, a shadowed reserved key) now print `file:line` — at startup, in
+  `--plain` notices, and from `fathom tui conflicts`.
+
+Measured by two arc tests that press the session in order: `crates/fathom-tui/tests/session_arc.rs` and
+`crates/fathom-cli/tests/session_arc.rs`. `h`/`l` drill out and in in list and body modes while they were there.
+
 ### The exits out of the reader: `fathom open`, `fathom difftool`, and links that only appear when asked for (`reco-dmw`)
 
 Fathom is a reader, and a refusal to be an editor is only worth having if going *out* is good. Two verbs and

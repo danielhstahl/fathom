@@ -436,16 +436,28 @@ fn a_locked_or_generated_file_under_a_ci_path_is_ranked_as_what_it_is() {
     // this rung the compiled lock was charged the CI weight — the axis whose printed sentence is "an
     // operator must act on it" — and that single claim was the largest contribution to the bump's score.
     assert_eq!(
-        classify(".github/workflows/issue-triage.lock.yml", "unknown", "unknown"),
+        classify(
+            ".github/workflows/issue-triage.lock.yml",
+            "unknown",
+            "unknown"
+        ),
         Surface::Dependency,
         "a lock is a lock, wherever it sits: the pins are the change"
     );
     assert_eq!(
-        classify(".github/workflows/dependabot-triage.lock.yaml", "unknown", "unknown"),
+        classify(
+            ".github/workflows/dependabot-triage.lock.yaml",
+            "unknown",
+            "unknown"
+        ),
         Surface::Dependency
     );
     assert_eq!(
-        classify(".github/workflows/agentics.generated.yml", "unknown", "unknown"),
+        classify(
+            ".github/workflows/agentics.generated.yml",
+            "unknown",
+            "unknown"
+        ),
         Surface::Generated,
         "a file that says `generated` in its name is derived elsewhere, not hand-edited pipeline"
     );
@@ -474,7 +486,11 @@ fn a_locked_or_generated_file_under_a_ci_path_is_ranked_as_what_it_is() {
 
     // The same claim made by the stored taxonomy instead of by the name outranks the directory too.
     assert_eq!(
-        classify(".github/workflows/agentics-maintenance.yml", "generated", "informative"),
+        classify(
+            ".github/workflows/agentics-maintenance.yml",
+            "generated",
+            "informative"
+        ),
         Surface::Generated
     );
     assert_eq!(

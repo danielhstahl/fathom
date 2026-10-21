@@ -59,13 +59,18 @@ struct Row {
 }
 
 fn row_strategy() -> impl Strategy<Value = Row> {
-    (0usize..POOL.len(), 0usize..4, 0usize..3, any::<bool>())
-        .prop_map(|(first, width, findings, gap)| {
+    (0usize..POOL.len(), 0usize..4, 0usize..3, any::<bool>()).prop_map(
+        |(first, width, findings, gap)| {
             let files = (0..=width)
                 .map(|offset| {
                     let path = POOL[(first + offset) % POOL.len()].to_owned();
                     let change = CHANGES[(first + offset) % CHANGES.len()].to_owned();
-                    (path, change, 1 + ((first + offset) % 7) as i64, (offset % 5) as i64)
+                    (
+                        path,
+                        change,
+                        1 + ((first + offset) % 7) as i64,
+                        (offset % 5) as i64,
+                    )
                 })
                 .collect();
             Row {
@@ -74,7 +79,8 @@ fn row_strategy() -> impl Strategy<Value = Row> {
                 findings,
                 gap,
             }
-        })
+        },
+    )
 }
 
 /// Give the span its ordinals, oldest first — the order [`Comparison::compose`] is promised.
@@ -323,7 +329,10 @@ fn a_file_added_then_deleted_comes_out_deleted() {
     let range = Delta::of(&added).merged(&Delta::of(&deleted));
     let file = &range.files[0];
     assert_eq!(file.path, "src/gone.rs");
-    assert_eq!(file.change, "deleted", "the tree's state at the right endpoint");
+    assert_eq!(
+        file.change, "deleted",
+        "the tree's state at the right endpoint"
+    );
     assert_eq!(file.add, 12);
     assert_eq!(file.del, 12);
 }
@@ -337,8 +346,14 @@ fn one_findings_kind_seen_thrice_is_one_finding_seen_three_times() {
         gap: false,
     };
     let items = contributions(&[
-        Row { seq: 0, ..item.clone() },
-        Row { seq: 0, ..item.clone() },
+        Row {
+            seq: 0,
+            ..item.clone()
+        },
+        Row {
+            seq: 0,
+            ..item.clone()
+        },
         Row { seq: 0, ..item },
     ]);
     let range = Delta::compose(&items);
@@ -348,7 +363,11 @@ fn one_findings_kind_seen_thrice_is_one_finding_seen_three_times() {
         "three kinds, each raised by every episode"
     );
     let counts: Vec<usize> = range.finding_seen.values().copied().collect();
-    assert_eq!(counts, vec![3, 3, 3], "and the count is the fact that carries");
+    assert_eq!(
+        counts,
+        vec![3, 3, 3],
+        "and the count is the fact that carries"
+    );
 }
 
 #[test]
@@ -404,7 +423,12 @@ fn two_endpoints_on_one_branch_are_named_as_one_walk() {
         endpoint("a1b2c3", 4, "main"),
         endpoint("d4e5f6", 9, "main"),
     );
-    assert_eq!(made.lineage, Lineage::Same { lineage: "main".into() });
+    assert_eq!(
+        made.lineage,
+        Lineage::Same {
+            lineage: "main".into()
+        }
+    );
     assert_eq!(made.from.label(), "main@a1b2c300");
     assert!(
         made.notes
@@ -506,7 +530,10 @@ fn a_unioned_figure_prints_every_value_it_took_and_the_comparison_says_why() {
         findings: 0,
         gap: false,
     });
-    for (item, value) in [(&mut first, "two lines"), (&mut second, "nine hundred lines")] {
+    for (item, value) in [
+        (&mut first, "two lines"),
+        (&mut second, "nine hundred lines"),
+    ] {
         let section = &mut item
             .delta
             .sections
@@ -524,7 +551,10 @@ fn a_unioned_figure_prints_every_value_it_took_and_the_comparison_says_why() {
         .find(|section| section.id == SectionId::What.as_str())
         .expect("the section survived the merge");
     let text = serde_json::to_string(&section.figures).unwrap();
-    assert!(text.contains("two lines") && text.contains("nine hundred lines"), "{text}");
+    assert!(
+        text.contains("two lines") && text.contains("nine hundred lines"),
+        "{text}"
+    );
     assert!(!range.union_parts.is_empty());
 
     let made = Comparison::compose(
@@ -543,7 +573,9 @@ fn a_unioned_figure_prints_every_value_it_took_and_the_comparison_says_why() {
 
 #[test]
 fn a_union_longer_than_the_cap_says_how_many_it_left_out() {
-    assert!(VALUE_CAP >= 2, "the cap exists to bound a line, not a page");
+    // Checked at compile time on purpose: a fixture that builds `VALUE_CAP + 3` items is only a test of
+    // truncation if the cap is a cap, and a runtime assert would pass a build where it is 1.
+    const _: () = assert!(VALUE_CAP >= 2, "the cap exists to bound a line, not a page");
     let mut items = Vec::new();
     for index in 0..(VALUE_CAP + 3) {
         let mut item = contribution(&Row {
@@ -563,11 +595,7 @@ fn a_union_longer_than_the_cap_says_how_many_it_left_out() {
         }
         items.push(item);
     }
-    let made = Comparison::compose(
-        endpoint("a", 1, "main"),
-        endpoint("b", 9, "main"),
-        &items,
-    );
+    let made = Comparison::compose(endpoint("a", 1, "main"), endpoint("b", 9, "main"), &items);
     let printed = made.render().join("\n");
     assert!(
         printed.contains(&format!("(+{} more)", VALUE_CAP + 3 - VALUE_CAP)),
@@ -615,11 +643,19 @@ fn a_saved_comparison_is_a_session_row_and_comes_back_by_name() {
     // And the palette's listing is a prefix scan over the same rows, which is why the value is a spec and
     // not a blob: a reviewer can hand-edit it in the store.
     assert_eq!(
-        compare::saved_name("compare.saved.since-the-refactor"),
+        compare::saved_name("tui.compare.saved.since-the-refactor"),
         Some("since-the-refactor")
     );
-    assert_eq!(compare::saved_name("compare.saved."), None);
+    assert_eq!(compare::saved_name("tui.compare.saved."), None);
     assert_eq!(compare::saved_name("tui.view"), None);
+    // The prefix is not a style choice (`e5.3`, `e5.4`): `fathom_tui::session::owns` decides which rows a
+    // run is *given*, and a row outside that namespace is a row the shell never sees — a saved comparison
+    // the palette cannot list is a saved comparison that does not exist.
+    assert!(
+        compare::SAVED_PREFIX.starts_with("tui."),
+        "saved comparisons have to live in the namespace the session loader hands the shell: {}",
+        compare::SAVED_PREFIX
+    );
 }
 
 #[test]

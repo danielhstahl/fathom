@@ -173,6 +173,64 @@ pub enum Verb {
     Open(OpenArgs),
     /// Show one file's two sides in your own difftool — difftastic, meld, kdiff3, `vim -d` (`e5.8`)
     Difftool(DifftoolArgs),
+    /// Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
+    Cmp(CmpArgs),
+    /// Search the whole index from one box, in the shell's own ranking (`e5.2`)
+    Search(SearchArgs),
+}
+
+/// `fathom cmp` — compare two endpoints (`e5.3`, `reco-ifo`).
+///
+/// One argument, which is either a spec — `<from>..<to>`, git's own "from `a` up to `b`" — or a name saved
+/// with `--save`. The spec is deliberately shareable: it is the line a reviewer pastes into a message, and
+/// `branch@rev` on either side is what makes a cross-branch comparison mean one thing to the next reader.
+#[derive(Args, Debug)]
+pub struct CmpArgs {
+    /// The comparison: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`, or a saved name.
+    pub spec: Option<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the comparison as one JSON line on stdout (`fathom.compare/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Keep this comparison under a name, so the next person says `since-the-refactor` instead of typing
+    /// the endpoints.
+    #[arg(long, value_name = "NAME")]
+    pub save: Option<String>,
+    /// Why the name exists, kept with it.
+    #[arg(long, requires = "save")]
+    pub note: Option<String>,
+    /// List the saved comparisons and exit.
+    #[arg(long = "list")]
+    pub list: bool,
+}
+
+/// `fathom search` — the one search box, headless (`e5.2`, `reco-mkc`).
+///
+/// The same corpus, the same scorer and the same filter grammar the `/` overlay runs, for the two cases the
+/// overlay cannot serve: a script that wants hits as JSON, and a reviewer in a terminal with no index
+/// open yet who wants the answer without taking a screen. `/` and this verb cannot drift, because they are
+/// the same [`fathom_analyze::search::Index`] question.
+#[derive(Args, Debug)]
+pub struct SearchArgs {
+    /// The query, with the same filter tokens `/` takes (`author:`, `since:`, `risk>`, `path:`, `dep:`, …).
+    pub query: Vec<String>,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the report as one JSON line on stdout (`fathom.search/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// How many hits to print.
+    #[arg(long, default_value_t = 20)]
+    pub limit: usize,
+    /// Keep this query under a name, so the `,` palette can offer it again.
+    #[arg(long, value_name = "NAME")]
+    pub save: Option<String>,
+    /// List the saved searches and exit.
+    #[arg(long)]
+    pub list: bool,
 }
 
 /// `fathom index`
@@ -937,6 +995,8 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
             args.keep,
             args.json,
         ),
+        Some(Verb::Cmp(args)) => crate::compare::run(args),
+        Some(Verb::Search(args)) => crate::search::run(args),
     }
 }
 

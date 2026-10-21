@@ -19,7 +19,7 @@ use eyre::Result;
 use fathom_core::exit::ExitCode;
 use fathom_core::time::Clock as _;
 use fathom_tui::frame::{Options, render_plain, run};
-use fathom_tui::keymap::{Keymap, Override, OverrideTables, overrides_from};
+use fathom_tui::keymap::{Keymap, Override, OverrideTables, Source, Sources, overrides_from_in};
 use fathom_tui::terminal::Probe;
 
 use crate::output;
@@ -66,10 +66,7 @@ pub fn dispatch_focus(
     notices.extend(theme_notices);
     // What the index holds, read once, before the first frame: the empty states need it (`reco-1nu`) and
     // the rail's first page is asked for in the same terms, so the two cannot disagree about the epoch.
-    let index = index_facts(&root);
-    // Read before the frame's own facts are moved into the shell, because the search corpus needs the same
-    // facts the empty states print — the two must not disagree about whether there is an index at all.
-    let index_facts = index.clone();
+    let index = index_facts(root);
     // The index's own episode count, taken before `index` moves into the frame: the retrospective's
     // coverage line is a share of the index, and a denominator the shell cannot read has to be handed
     // over here (`e4.5`).
@@ -78,15 +75,15 @@ pub fn dispatch_focus(
     // object the database would not serve. The shell's notice list is where a reviewer meets this without
     // leaving the frame — the status line counts the notices, `?` holds the list with the remedy for each —
     // and it is the same list `fathom doctor` prints, from the same `HealthNotice` values.
-    notices.extend(crate::state::repository_notices(&root));
+    notices.extend(crate::state::repository_notices(root));
     // ... and what the store recorded about commits the object database would not serve, which is the same
     // sentence `fathom doctor` prints and the reason the frame's count is not zero on a damaged clone.
-    notices.extend(crate::state::unreadable_notices(&root));
+    notices.extend(crate::state::unreadable_notices(root));
     // The session (`e1.11`): read before the shell starts, so the reviewer's cursor, filter and layout
     // are in the first frame rather than two keystrokes away, and written back only if the reviewer
     // changed something. `--fresh` still reads it — so that a fresh run that *does* change something can
     // write against what is really stored — it just does not apply what it read.
-    let loaded = crate::session::load(&root, crate::clock::now_millis());
+    let loaded = crate::session::load(root, crate::clock::now_millis());
     for warning in &loaded.warnings {
         notices.push(warning.clone());
     }
@@ -129,8 +126,13 @@ pub fn dispatch_focus(
     // In plain mode stdout is the artefact, so the complaints go to stderr with everything else the
     // user is meant to act on (ADR-002 §7.5); in the shell they belong inside the frame, where they
     // stay visible after a notice would otherwise have timed out.
-    let (queue_reasons, queue_notices) = dismiss_reasons(&root);
+    let (queue_reasons, queue_notices) = dismiss_reasons(root);
     notices.extend(queue_notices);
+    // Whether the reviewer still wants the hint line (`e5.4`), and the notice when the file said something
+    // that was not a yes or a no. Read here because `fathom-tui` may not read configuration
+    // (ADR-002 §4.5), and `ui.hints` is configuration.
+    let (hints, hint_notices) = hints_enabled(root);
+    notices.extend(hint_notices);
     let frame_notices = if plain {
         Vec::new()
     } else {
@@ -139,7 +141,7 @@ pub fn dispatch_focus(
     let options = Options {
         alt_screen: !globals.no_alt_screen,
         overrides,
-        repo_label: repo_label(&root),
+        repo_label: repo_label(root),
         // No forced size: the terminal answers for itself. `--plain` at 80 columns is the smallest
         // promised layout (ADR-002 §3), which is the one worth piping.
         size: None,
@@ -155,7 +157,7 @@ pub fn dispatch_focus(
         // spine — identity, authorship, scale, paths, session/turn and review state are all rows the
         // index already writes — and hands the rail rows instead of an apology. `None` is still what an
         // unindexed repository gets, and the rail says which of the two it is looking at.
-        episodes: crate::episodes::load(&root, &index),
+        episodes: crate::episodes::load(root, &index),
         // ...and the shell is told what the index *does* hold, in the same breath, because it cannot go
         // and look (`reco-1nu`): an empty pane over a finished index must not send the reviewer to
         // `fathom index`, which is already done and changes nothing.
@@ -167,8 +169,13 @@ pub fn dispatch_focus(
         // ...and the search box gets its corpus the same way (`reco-mkc`): `/` is the one interaction whose
         // answer must be ready before the reviewer stops typing, so the read happens once here, at startup,
         // and the shell scores against what it was handed instead of going to the store per keystroke.
-        search: crate::search::index(&root, &index_facts),
-        patches: crate::patches::provider(&root),
+        search: crate::search::index(root),
+        // ...and `c` gets its composition the same way (`reco-ifo`): the shell asks for a spec and is
+        // handed the lines, because composing a range is a store read and the shell may not make one.
+        compare: crate::compare::provider(root),
+        // The hint line, decided above while there was still somewhere to put a complaint about it.
+        hints,
+        patches: crate::patches::provider(root),
         mouse,
         lines: globals.lines,
         term: probe,
@@ -177,8 +184,8 @@ pub fn dispatch_focus(
         // reviewing, which extra reasons this repository ships, how many episodes the index holds, and
         // the acts already in the ledger — read here, at the edge, because the shell opens nothing.
         queue: crate::queue::setup(
-            &root,
-            &crate::queue::actor(&root),
+            root,
+            &crate::queue::actor(root),
             &queue_reasons,
             index_total,
         ),
@@ -272,8 +279,13 @@ pub fn show_keys() -> Result<ExitCode> {
 /// A missing table is the normal case and says nothing; a table that names an unknown mode or an
 /// unknown action is reported by [`fathom_tui::keymap::Keymap::problems`] once the keymap is
 /// merged, and the shell shows those in the help overlay and on stderr.
+///
+/// Every line keeps its `file:line` (`e5.4`): the refusal is only actionable if the reviewer can get
+/// to the line, and `toml_edit` has already recorded where each key started, so the cost of saying it
+/// is counting newlines.
 fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
-    let text = match std::fs::read_to_string(root.join("fathom.toml")) {
+    let path = root.join("fathom.toml");
+    let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
         // No file, no overrides: an unconfigured repository is the default keymap (ADR-006 §8.3).
         Err(_) => return (Vec::new(), Vec::new()),
@@ -289,6 +301,10 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
             );
         }
     };
+    let file = path.display().to_string();
+    let source_of = |mode: &str, chord: &str| -> Option<Source> {
+        keymap_line(&text, mode, chord).map(|line| Source::new(file.clone(), line))
+    };
     let Some(section) = document
         .get("keys")
         .and_then(toml_edit::Item::as_table)
@@ -298,8 +314,13 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
         return (Vec::new(), Vec::new());
     };
     let mut tables: OverrideTables = OverrideTables::new();
+    let mut sources: Sources = Sources::new();
     let mut notices = Vec::new();
     for (mode, binds) in section {
+        if let Some(source) = source_of(mode, "") {
+            // Keyed by the empty chord: this is the line a mode the registry does not know was typed on.
+            sources.insert((mode.to_owned(), String::new()), source);
+        }
         let Some(binds) = binds.as_table() else {
             notices.push(format!(
                 "keys.overrides.{mode} is not a table of chord = action"
@@ -308,6 +329,9 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
         };
         let mut entry = BTreeMap::new();
         for (chord, action) in binds {
+            if let Some(source) = source_of(mode, chord) {
+                sources.insert((mode.to_owned(), chord.to_owned()), source);
+            }
             let Some(action) = action.as_str() else {
                 notices.push(format!(
                     "keys.overrides.{mode}.{chord} must be a string (\"\" unbinds it)"
@@ -318,9 +342,81 @@ fn keymap_overrides(root: &std::path::Path) -> (Vec<Override>, Vec<String>) {
         }
         tables.insert(mode.to_owned(), entry);
     }
-    let (overrides, problems) = overrides_from(&tables);
+    let (overrides, problems) = overrides_from_in(&tables, &sources);
     notices.extend(problems);
     (overrides, notices)
+}
+
+/// The line a `keys.overrides` key was written on, so a refusal can name the file and line to fix.
+///
+/// `toml_edit` 0.25 does not hand out spans for keys parsed from a string — `Key::span()` is `None`
+/// for every key of a document read with `DocumentMut::from_str` — and the criterion will not be met
+/// by a report that says which key is wrong but not where it is. So the file is scanned the way a
+/// person would scan it: find `[keys.overrides.<mode>]`, then find the `chord = …` line inside that
+/// section, before the next header. An override written any other way (an inline table, a dotted
+/// key) is reported with no line rather than with a wrong one.
+#[must_use]
+fn keymap_line(text: &str, mode: &str, chord: &str) -> Option<usize> {
+    let quoted = format!("\"{chord}\"");
+    let mut header: Option<usize> = None;
+    for (number, line) in text.lines().enumerate() {
+        let at = number + 1;
+        let trimmed = line.trim();
+        if let Some(path) = trimmed
+            .strip_prefix('[')
+            .and_then(|rest| rest.strip_suffix(']'))
+            .filter(|_| !trimmed.starts_with("[["))
+        {
+            let parts: Vec<String> = path.split('.').map(unquote).collect();
+            let in_section = match mode {
+                "" => {
+                    parts.first().is_some_and(|head| head == "keys")
+                        && parts.get(1).is_some_and(|head| head == "overrides")
+                }
+                mode => {
+                    parts.first().is_some_and(|head| head == "keys")
+                        && parts.get(1).is_some_and(|head| head == "overrides")
+                        && parts.get(2).is_some_and(|named| named == mode)
+                }
+            };
+            if in_section {
+                if header.is_none() {
+                    header = Some(at);
+                }
+            } else if header.is_some() {
+                // A header outside the section ends it; nothing below can be the line.
+                header = None;
+                if chord.is_empty() {
+                    continue;
+                }
+            }
+            continue;
+        }
+        if header.is_none() || chord.is_empty() {
+            continue;
+        }
+        let Some((key, _)) = trimmed.split_once('=') else {
+            continue;
+        };
+        let key = unquote(key.trim());
+        if key == chord || key == quoted {
+            return Some(at);
+        }
+    }
+    header
+}
+
+/// A TOML key without its quotes, if it had any.
+fn unquote(key: &str) -> String {
+    let key = key.trim();
+    key.strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+        .or_else(|| {
+            key.strip_prefix('\'')
+                .and_then(|rest| rest.strip_suffix('\''))
+        })
+        .unwrap_or(key)
+        .to_owned()
 }
 
 /// `queue.dismiss_reasons` from the repository's own `fathom.toml` (`e4.5`, `reco-wsj`).
@@ -361,6 +457,39 @@ pub(crate) fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<Strin
         }
     }
     (out, notices)
+}
+
+/// `ui.hints` from the repository's own `fathom.toml` (`e5.4`: the hint line can be disabled).
+///
+/// Present-and-true is the default, because the line is there for the reviewer who has not learned the keys
+/// yet; the reviewer who has says so with one line in the file. A value that is not `true`/`false` is a
+/// notice and the default, the same rule every other key in this file follows — a configuration line that
+/// silently did nothing is worse than one that refuses.
+pub(crate) fn hints_enabled(root: &std::path::Path) -> (bool, Vec<String>) {
+    let Ok(text) = std::fs::read_to_string(root.join("fathom.toml")) else {
+        return (true, Vec::new());
+    };
+    let Ok(document) = text.parse::<toml_edit::DocumentMut>() else {
+        // `keymap_overrides` already said the file does not parse; saying it twice in two voices is noise.
+        return (true, Vec::new());
+    };
+    let Some(hints) = document
+        .get("ui")
+        .and_then(toml_edit::Item::as_table)
+        .and_then(|ui| ui.get("hints"))
+    else {
+        return (true, Vec::new());
+    };
+    match hints.as_bool() {
+        Some(enabled) => (enabled, Vec::new()),
+        None => (
+            true,
+            vec![format!(
+                "{}: ui.hints must be `true` or `false`; the hint line is on",
+                root.join("fathom.toml").display()
+            )],
+        ),
+    }
 }
 
 /// The tab bar's right-hand label: `pilot · main`, or what is honestly known instead.

@@ -131,19 +131,27 @@ pub struct Saved {
     pub created_utc: Option<i64>,
 }
 
-/// The session-state key a saved comparison lives under.
+/// The session key a saved comparison lives under.
 ///
 /// A prefix and a name rather than one blob of JSON in one row, because the session table is a key/value
 /// table (`ADR-004 §4.7`'s `session_state`), because a reviewer may edit one line of it without a parser,
 /// and because the palette listing is then a prefix scan like every other session read.
+///
+/// Under `tui.` for the same reason [`crate::search::history::SAVED_PREFIX`] is: `tui.` is the namespace
+/// the session loader hands the shell (`fathom_tui::session::owns`), and a row outside it is a row the
+/// shell is never given — a saved comparison the palette cannot see is a saved comparison that does not
+/// exist.
 pub fn saved_key(name: &str) -> String {
-    format!("compare.saved.{name}")
+    format!("{SAVED_PREFIX}{name}")
 }
+
+/// The session-key prefix saved comparisons live under.
+pub const SAVED_PREFIX: &str = "tui.compare.saved.";
 
 /// Whether a session key is a saved comparison, and the name it carries.
 #[must_use]
 pub fn saved_name(key: &str) -> Option<&str> {
-    key.strip_prefix("compare.saved.")
+    key.strip_prefix(SAVED_PREFIX)
         .filter(|name| !name.is_empty())
 }
 
@@ -564,9 +572,7 @@ fn merge_sections(
                 label,
                 value,
                 known,
-                reason: parts
-                    .iter()
-                    .find_map(|figure| figure.reason.clone()),
+                reason: parts.iter().find_map(|figure| figure.reason.clone()),
                 raw,
                 confidence: parts
                     .iter()
@@ -594,7 +600,9 @@ fn merge_sections(
             state,
             figures,
             remainder: Some(
-                a.remainder.unwrap_or(0).saturating_add(b.remainder.unwrap_or(0)),
+                a.remainder
+                    .unwrap_or(0)
+                    .saturating_add(b.remainder.unwrap_or(0)),
             )
             .filter(|dropped| *dropped > 0),
             gap,
@@ -617,9 +625,7 @@ fn merge_findings(left: &[Finding], right: &[Finding]) -> Vec<Finding> {
             out.push(finding.clone());
         }
     }
-    out.sort_by(|left, right| {
-        (&left.kind, &left.subject).cmp(&(&right.kind, &right.subject))
-    });
+    out.sort_by(|left, right| (&left.kind, &left.subject).cmp(&(&right.kind, &right.subject)));
     out
 }
 
@@ -728,7 +734,10 @@ impl Comparison {
             from,
             to,
             lineage,
-            episodes: items.iter().map(|item| item.delta.episode.id.clone()).collect(),
+            episodes: items
+                .iter()
+                .map(|item| item.delta.episode.id.clone())
+                .collect(),
             delta,
             notes,
         }

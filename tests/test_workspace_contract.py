@@ -116,10 +116,23 @@ def test_the_two_forbidden_edges_are_really_forbidden():
 
 
 def test_the_facade_is_the_only_door_the_surfaces_may_use():
-    """§5.3 / R2: the TUI and the MCP server name `fathom_analyze` only through insight/export."""
-    for consumer in ("fathom-tui", "fathom-mcp"):
-        prefixes = M.IMPORT_FACADES[consumer]["fathom-analyze"]
-        assert sorted(p.split("::")[1] for p in prefixes) == ["export", "insight"]
+    """§5.3 / R2: the surfaces name `fathom_analyze` only through its façades, and the shell's list is
+    exactly two wider than the agent's — no more.
+
+    `insight` and `export` are the narrow waist every surface reads through. `e5.2` and `e5.3` gave
+    `fathom-tui` two more, and this test is where the widening is bounded: `/` scores the corpus the
+    composition root read (it must be `fathom_analyze::search`'s scorer or the shell and the pipe rank a
+    query differently), and the palette decodes the session key a saved comparison lives under (a second
+    spelling of that key is a format with two owners). Neither is a licence to analyse: `M03` still forbids
+    a surface that composes, ranks or classifies for itself, and `fathom-mcp`'s list is deliberately
+    unchanged.
+    """
+    assert sorted(
+        p.split("::")[1] for p in M.IMPORT_FACADES["fathom-mcp"]["fathom-analyze"]
+    ) == ["export", "insight"]
+    assert sorted(
+        p.split("::")[1] for p in M.IMPORT_FACADES["fathom-tui"]["fathom-analyze"]
+    ) == ["compare", "export", "insight", "search"]
     modules = {m for _c, m, _t in M.FACADE_MODULES}
     assert modules == {"insight", "export"}
 

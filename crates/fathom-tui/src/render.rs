@@ -203,7 +203,7 @@ pub enum Hit<'a> {
 #[must_use]
 pub fn frame_plan(app: &App, view_id: ViewId, cols: usize, rows: usize) -> FramePlan {
     let view = View::by_id(view_id);
-    let fit = layout::fit(view_id, cols as u16, rows as u16);
+    let fit = layout::fit_chosen(view_id, cols as u16, rows as u16, &app.forced_steps());
     let refused = fit.state == FitState::Refused;
     let applied = fit.applied.clone();
     let gone = |id: &str| applied.iter().any(|a| a == id);
@@ -421,6 +421,7 @@ pub fn frame_styled(app: &App) -> Vec<StyledLine> {
         Some(Overlay::Help) => help(&mut grid, app),
         Some(Overlay::Palette) => palette(&mut grid, app),
         Some(Overlay::Filter) => filters(&mut grid, app),
+        Some(Overlay::Compare) => compare(&mut grid, app),
         Some(Overlay::Reason | Overlay::Snooze | Overlay::Note) => {}
         Some(Overlay::Search) => {
             // The search overlay borrows the frame (§1) and brings its own query row; the live
@@ -627,7 +628,8 @@ fn help(grid: &mut Grid, app: &App) {
     );
 }
 
-/// The `,` palette: every action, with the key it has right now.
+/// The `,` palette: every action, with the key it has right now, and the searches and comparisons the
+/// reviewer gave names to.
 fn palette(grid: &mut Grid, app: &App) {
     let (cols, rows) = (grid.cols, grid.rows);
     let height = 14.min(rows.saturating_sub(1)).max(4);
@@ -636,25 +638,29 @@ fn palette(grid: &mut Grid, app: &App) {
     let shown: Vec<String> = entries
         .iter()
         .take(height.saturating_sub(4))
-        .map(|(_id, label, keys)| {
-            let key = if keys.is_empty() {
-                "(palette only)"
-            } else {
-                keys.as_str()
-            };
+        .map(|row| {
+            let key = row.right();
             format!(
                 "{:<width$} {key}",
-                truncate(label, width.saturating_sub(16).max(12)),
+                truncate(&row.label(), width.saturating_sub(16).max(12)),
                 width = width.saturating_sub(16).max(12)
             )
         })
         .collect();
+    let saved = app.saved_searches.len() + app.saved_comparisons.len();
     let mut lines = vec![format!(",{}▏", app.prompt)];
     lines.extend(shown);
     lines.push(format!(
-        "{} of {} commands · Enter runs it · Esc closes",
+        "{} of {} · Enter runs it · Esc closes",
         (app.palette_row + 1).min(entries.len()),
-        entries.len()
+        if saved == 0 {
+            "commands".to_owned()
+        } else {
+            format!(
+                "{} commands + {saved} saved",
+                entries.len().saturating_sub(saved)
+            )
+        }
     ));
     draw_panel(
         grid,
@@ -666,6 +672,44 @@ fn palette(grid: &mut Grid, app: &App) {
             title: "commands — every action in the registry, with its current key",
             lines: &lines,
             selection: Some(app.palette_row),
+        },
+    );
+}
+
+/// The `c` panel: one comparison, the pair it is between, and the scroll the list motions move.
+///
+/// A comparison is a document with a header, not a list of things to select, so the panel has a scroll and
+/// no cursor — the same shape the diff pane's body has, for the same reason. The spec is in the title so
+/// that scrolling down cannot lose the reader the pair the answer belongs to (`e5.3`).
+fn compare(grid: &mut Grid, app: &App) {
+    let (cols, rows) = (grid.cols, grid.rows);
+    let height = (rows.saturating_sub(2)).clamp(6, 30);
+    let width = 96.min(cols).max(32);
+    let body = app.compare_panel.window(height.saturating_sub(3));
+    let drawn = height.saturating_sub(3).max(1);
+    let at_bottom = app.compare_panel.scroll >= app.compare_panel.max_scroll(drawn);
+    let mut lines = body;
+    lines.push(format!(
+        "{}–{} of {} lines · j/k · <C-d>/<C-u> · Esc close{}",
+        app.compare_panel.scroll + 1,
+        app.compare_panel.scroll + drawn.min(app.compare_panel.lines.len()),
+        app.compare_panel.lines.len(),
+        if at_bottom { "s · bottom" } else { "s" }
+    ));
+    let title = format!(
+        "compare {} — the composed delta between the two endpoints",
+        app.compare_panel.spec
+    );
+    draw_panel(
+        grid,
+        Panel {
+            x: cols.saturating_sub(width) / 2,
+            y: rows.saturating_sub(height + 1),
+            width,
+            height,
+            title: &title,
+            lines: &lines,
+            selection: None,
         },
     );
 }

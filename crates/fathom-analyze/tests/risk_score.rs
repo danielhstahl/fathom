@@ -261,8 +261,7 @@ fn a_score_prints_every_feature_its_weight_and_its_contribution() {
     assert!(
         !strict.flagged,
         "the same score at τ 55 routes differently: {} vs {}",
-        strict.score,
-        scored.score
+        strict.score, scored.score
     );
 }
 

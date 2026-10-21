@@ -25,7 +25,7 @@ use crate::diff::{self, DiffView};
 use crate::diff::{Env, Handoff};
 use crate::event::{Button, FrameScheduler, MouseMsg, Scroll};
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
-use crate::layout::{Fit, FitState, fit};
+use crate::layout::{Fit, FitState, Step as Chrome, fit_chosen};
 use crate::style::StyledLine;
 use crate::timeline::{self, Episode, Timeline};
 use crate::views::{Pane, Role, View, ViewId, view};
@@ -117,6 +117,9 @@ pub enum Overlay {
     /// `f` (`review.flag`) — one line of text, because a flag without a note is a notification nobody
     /// can act on (`e4.5`).
     Note,
+    /// `c` (`compare.with_mark`) — the composed delta between two endpoints, and the saved comparisons'
+    /// destination (`e5.3`, `reco-ifo`). A borrowed frame like `/`: the view behind keeps its selection.
+    Compare,
 }
 
 impl Overlay {
@@ -124,7 +127,7 @@ impl Overlay {
     #[must_use]
     pub const fn mode(self) -> Mode {
         match self {
-            Overlay::Help | Overlay::Reason | Overlay::Snooze => Mode::Pick,
+            Overlay::Help | Overlay::Reason | Overlay::Snooze | Overlay::Compare => Mode::Pick,
             Overlay::Palette | Overlay::Search | Overlay::Filter | Overlay::Note => Mode::Prompt,
         }
     }
@@ -140,6 +143,83 @@ impl Overlay {
             Overlay::Reason => "dismiss reason",
             Overlay::Snooze => "snooze condition",
             Overlay::Note => "flag note",
+            Overlay::Compare => "comparison",
+        }
+    }
+}
+
+/// One row of the `,` palette: an action, or something the reviewer saved and wants back.
+///
+/// The palette was a list of `&'static str` ids for as long as every row was an action in the registry.
+/// A saved search and a saved comparison are not dispatchable ids — one is a query, the other a spec — so
+/// the row is a sum type now and `<Enter>` says which half it is running (`e5.4`, which is also what
+/// `e5.3`'s "saved comparisons appear in the command palette" criterion was waiting on).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaletteRow {
+    /// An action in the registry, dispatched by id.
+    Action {
+        /// The stable id [`App::dispatch`] takes.
+        id: &'static str,
+        /// The label the row prints.
+        label: &'static str,
+        /// The key that does it today, after the reviewer's own overrides.
+        keys: String,
+    },
+    /// A search the reviewer named.
+    SavedSearch {
+        /// The name, which is what the row prints.
+        name: String,
+        /// The query `<Enter>` runs, through the same deep-link path `/` uses.
+        query: String,
+    },
+    /// A comparison the reviewer named.
+    SavedComparison {
+        /// The name, which is what the row prints.
+        name: String,
+        /// The spec `<Enter>` composes.
+        spec: String,
+        /// Why the name exists; the row's second line.
+        note: String,
+    },
+}
+
+impl PaletteRow {
+    /// The left column: what the row is called.
+    #[must_use]
+    pub fn label(&self) -> String {
+        match self {
+            PaletteRow::Action { label, .. } => (*label).to_owned(),
+            PaletteRow::SavedSearch { name, .. } => format!("saved search · {name}"),
+            PaletteRow::SavedComparison { name, .. } => format!("saved comparison · {name}"),
+        }
+    }
+
+    /// The right column: the key for an action, the query or spec for a saved row.
+    ///
+    /// One column, because the palette has one and a saved row has no key — showing it the key's space is
+    /// what tells the reviewer that this row is not a command they can bind.
+    #[must_use]
+    pub fn right(&self) -> String {
+        match self {
+            PaletteRow::Action { keys, .. } => {
+                if keys.is_empty() {
+                    "(palette only)".to_owned()
+                } else {
+                    keys.clone()
+                }
+            }
+            PaletteRow::SavedSearch { query, .. } => query.clone(),
+            PaletteRow::SavedComparison { spec, .. } => spec.clone(),
+        }
+    }
+
+    /// Whether this row is an action in the registry — the question the parity test between the action
+    /// table and the palette asks.
+    #[must_use]
+    pub fn action_id(&self) -> Option<&'static str> {
+        match self {
+            PaletteRow::Action { id, .. } => Some(*id),
+            _ => None,
         }
     }
 }
@@ -287,6 +367,44 @@ impl Model {
     }
 }
 
+/// How many palette rows the overlay draws, and therefore what one page of the palette is (`e5.4`).
+///
+/// Kept next to [`motion_target`] rather than beside the renderer because the two have to agree: a page
+/// that means "ten rows" to the cursor and "the panel's height" to the drawing is a `page_down` that
+/// leaves rows unread between the jumps.
+const PALETTE_PAGE: usize = 10;
+
+/// The one cursor arithmetic every list in this shell answers to (`e5.4`'s "shared implementation").
+///
+/// Eleven action ids, one row index in, one row index out, clamped to what the list has. The palette and
+/// the search overlay go through here; the panes already moved through one dispatch arm for every view,
+/// with the one deliberate difference that `H`/`M`/`L` in a *scrolling* pane are relative to the top of
+/// its window (`App::scroll_of`) rather than to the cursor, because in a pane the window is on screen and
+/// in an overlay the window follows the cursor. Everything else — what a page is, what `G` means, what
+/// happens at the last row — is this function, so that `j` cannot mean one thing in the queue and
+/// another thing in a result list.
+#[must_use]
+pub fn motion_target(action: &str, here: usize, page: usize, count: usize) -> usize {
+    if count == 0 {
+        return 0;
+    }
+    let last = count - 1;
+    let page = page.max(1);
+    let next = match action {
+        "list.down" => here.saturating_add(1),
+        "list.up" => here.saturating_sub(1),
+        "list.first" | "list.top_visible" => 0,
+        "list.last" => usize::MAX,
+        "list.mid_visible" => here.saturating_add(page / 2),
+        "list.bot_visible" | "list.page_down" => here.saturating_add(page),
+        "list.page_up" => here.saturating_sub(page),
+        "list.half_down" => here.saturating_add(page / 2),
+        "list.half_up" => here.saturating_sub(page / 2),
+        _ => here,
+    };
+    next.min(last)
+}
+
 /// The whole application state at one instant.
 #[derive(Debug)]
 pub struct App {
@@ -327,9 +445,41 @@ pub struct App {
     /// an already-built index and scores against that. `None` is a repository with no index or a binary with
     /// no backend, and `/` says which rather than accepting a query into a black hole.
     pub search: Option<std::sync::Arc<fathom_analyze::search::Index>>,
+    /// Who can turn a comparison spec into lines, if anyone (`e5.3`, `reco-ifo`).
+    ///
+    /// The same arrangement as [`App::patches`], for the same reason: composing a range means reading the
+    /// index, and the shell may not (`ADR-002 §5.2`). `None` is a build with no index, and `c` says so
+    /// instead of drawing an empty panel.
+    pub compare: Option<crate::compare::Provider>,
+    /// What the comparison panel holds: the spec it was asked for, the lines, and how far it is scrolled.
+    pub compare_panel: crate::compare::Panel,
+    /// The comparisons this repository has names for, in the palette's order (`e5.3`).
+    ///
+    /// Decoded from the session rows by [`crate::session::restore`] with `fathom_analyze::compare`'s own
+    /// key spelling, so the format has one owner and a saved comparison written by `fathom cmp --save` is
+    /// the same thing here as it is there.
+    pub saved_comparisons: Vec<fathom_analyze::compare::Saved>,
+    /// The searches this repository has names for, in the palette's order (`e5.2`, `e5.4`).
+    pub saved_searches: Vec<fathom_analyze::search::history::SavedSearch>,
+    /// Session rows the shell was handed but does not own (`e5.4`).
+    ///
+    /// Re-emitted verbatim by [`crate::session::snapshot`] so the run's write-back cannot delete a row it
+    /// never wrote — see [`crate::session::INHERITED`] for why that is not a theoretical problem.
+    pub inherited: Vec<(String, String)>,
+    /// Whether the bottom hint line is drawn (`e5.4`: it can be disabled).
+    ///
+    /// A reviewer who has learned the keys asked for the row back, so the flag is not a style choice —
+    /// [`crate::layout::fit_chosen`] is given the hint step as already sold, which is what makes the row
+    /// free for content everywhere the frame does arithmetic with it.
+    pub hints: bool,
     /// The last report `/` produced, so that the rows on screen and the row `<Enter>` opens are the same
     /// answer to the same query — and so the strip can repeat what the corpus said about itself.
     pub search_report: Option<fathom_analyze::search::Report>,
+    /// Which slice of the hits the results pane is drawing: `(first hit, how many)`.
+    ///
+    /// Kept on the app rather than recomputed by the renderer, because the row under the cursor has to be
+    /// inside it and the list motions have to move the window with the cursor (`e5.4`).
+    pub search_window: (usize, usize),
     /// The reviewer's recent searches, newest first (`e1.11`: `↑` in an empty box walks them).
     pub recent_searches: Vec<String>,
     /// Which of the recent searches `↑`/`↓` have walked to, so the cycle continues instead of oscillating.
@@ -535,8 +685,15 @@ impl App {
             model,
             diff: DiffView::new(),
             patches: None,
+            compare: None,
+            compare_panel: crate::compare::Panel::default(),
+            saved_comparisons: Vec::new(),
+            saved_searches: Vec::new(),
+            inherited: Vec::new(),
+            hints: true,
             search: None,
             search_report: None,
+            search_window: (0, crate::search::RESULT_LIMIT),
             recent_searches: Vec::new(),
             recent_step: 0,
             diff_episode: None,
@@ -558,7 +715,7 @@ impl App {
             toast_frames: 0,
             notices: Vec::new(),
             size,
-            fit: fit(ViewId::Queue, size.0, size.1),
+            fit: fit_chosen(ViewId::Queue, size.0, size.1, &[]),
             mouse: false,
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
@@ -2239,13 +2396,39 @@ impl App {
     /// [`App::set_view`], which would spend the reviewer's zoom and pane position to do it.
     pub(crate) fn refit(&mut self) {
         let before = self.fit.clone();
-        self.fit = fit(self.view, self.size.0, self.size.1);
+        self.fit = fit_chosen(self.view, self.size.0, self.size.1, &self.forced_steps());
         if before.state != self.fit.state
             && before.state != FitState::Refused
             && let Some(first) = self.fit.dropped().first()
         {
             self.toast(format!("layout degraded: {}", first));
         }
+    }
+
+    /// Turn the hint line on or off, and ask the ladder again (`e5.4`).
+    ///
+    /// There is no key for this, on purpose: it is a setting a reviewer sets once (`ui.hints`), not a thing
+    /// to flick while reading. The setter exists because the answer changes every row computation the frame
+    /// does — assigning the field and hoping the next resize notices is how a `--plain` frame ends up one
+    /// row shorter than the frame it was drawn into.
+    pub fn set_hints(&mut self, enabled: bool) {
+        if self.hints == enabled {
+            return;
+        }
+        self.hints = enabled;
+        self.refit();
+    }
+
+    /// The ladder steps the reviewer sold, rather than the terminal (`e5.4`).
+    ///
+    /// One for now — the hint line — and it goes into [`crate::layout::fit_chosen`] instead of into a
+    /// draw-time `if` so that every row computation in the frame agrees that the row is free.
+    #[must_use]
+    pub fn forced_steps(&self) -> Vec<Chrome> {
+        if self.hints {
+            return Vec::new();
+        }
+        vec![Chrome::Hint]
     }
 
     /// A transient line for the hint row.
@@ -2435,6 +2618,8 @@ impl App {
                     self.timeline.editor_move(next, len);
                 } else if self.overlay == Some(Overlay::Search) && self.walk_recent(1) {
                     self.refresh_search();
+                } else if self.overlay == Some(Overlay::Search) {
+                    self.search_motion("list.down");
                 } else {
                     self.palette_row += 1;
                 }
@@ -2446,6 +2631,8 @@ impl App {
                     self.timeline.editor_move(next, len);
                 } else if self.overlay == Some(Overlay::Search) && self.walk_recent(-1) {
                     self.refresh_search();
+                } else if self.overlay == Some(Overlay::Search) {
+                    self.search_motion("list.up");
                 } else {
                     self.palette_row = self.palette_row.saturating_sub(1);
                 }
@@ -2460,6 +2647,43 @@ impl App {
             }
             "prompt.submit" => self.submit_prompt(),
             "pick.choose" => self.submit_prompt(),
+            // The palette is a list like every other surface, and it answers the same motion ids
+            // (`e5.4`): a reviewer who found the palette by typing `,` and has `j`/`k` in their fingers
+            // must be able to walk to the row they want without the arrow keys, and `g`/`G`/`<C-d>` have
+            // to mean the same thing here as they do in the queue. `Mode::Pick` binds only `j`/`k`, so the
+            // rest arrive by action id — from the palette itself, which is the same door as a keystroke
+            // for this arithmetic.
+            action @ ("list.down" | "list.up" | "list.first" | "list.last" | "list.page_down"
+            | "list.page_up" | "list.half_down" | "list.half_up" | "list.top_visible"
+            | "list.mid_visible" | "list.bot_visible")
+                if self.overlay == Some(Overlay::Palette) =>
+            {
+                let count = self.palette_rows().len();
+                // A page is what the panel draws, not what the registry holds: the drawn window is about
+                // ten rows whether the registry has 60 actions or 600.
+                let page = count.min(PALETTE_PAGE);
+                self.palette_row = motion_target(action, self.palette_row, page, count);
+            }
+            // The comparison panel is a document, and it answers the same motion actions every other list
+            // does (`e5.4`'s shared implementation). `Mode::Pick` binds only `j`/`k`/arrows to them, so
+            // `G`, `<C-d>` and the rest arrive through the palette — which is the same door as a keystroke
+            // for the arithmetic, and the reason there is one arithmetic.
+            action @ ("list.down" | "list.up" | "list.first" | "list.last" | "list.page_down"
+            | "list.page_up" | "list.half_down" | "list.half_up" | "list.top_visible"
+            | "list.mid_visible" | "list.bot_visible")
+                if self.overlay == Some(Overlay::Compare) =>
+            {
+                self.compare_motion(action);
+            }
+            // The search overlay's results are a list too (`e5.4`): the same eleven actions move its
+            // cursor, whether the keystroke was `<Down>` or a palette row.
+            action @ ("list.down" | "list.up" | "list.first" | "list.last" | "list.page_down"
+            | "list.page_up" | "list.half_down" | "list.half_up" | "list.top_visible"
+            | "list.mid_visible" | "list.bot_visible")
+                if self.overlay == Some(Overlay::Search) =>
+            {
+                self.search_motion(action);
+            }
             "list.down"
                 if matches!(self.overlay, Some(Overlay::Reason) | Some(Overlay::Snooze)) =>
             {
@@ -2615,16 +2839,25 @@ impl App {
                 }
             }
             "compare.mark" => {
-                self.scope.mark = Some(
-                    self.scope
-                        .episode
-                        .clone()
-                        .unwrap_or_else(|| "marked: no episode in scope".to_owned()),
-                );
-                self.toast(
-                    "marked — `c` compares against it (e5.3 owns the comparison)".to_string(),
-                );
+                let Some(id) = self
+                    .scope
+                    .episode
+                    .clone()
+                    .or_else(|| self.timeline.selected().map(|episode| episode.id.clone()))
+                else {
+                    self.toast(
+                        "nothing to mark — `j`/`k` choose an episode, then `m`, then `c` against it"
+                            .to_owned(),
+                    );
+                    return;
+                };
+                self.scope.mark = Some(id.clone());
+                self.toast(format!(
+                    "marked {} — `c` compares the live scope against it (`e5.3`)",
+                    crate::search::short_id(&id)
+                ));
             }
+            "compare.with_mark" => self.compare_with_mark(),
             "index.reindex" => {
                 self.model.index.progress = Some(
                     "indexing 0 % · unknown left (no store handle \
@@ -2901,68 +3134,96 @@ impl App {
         match self.overlay {
             Some(Overlay::Palette) => {
                 let entries = self.palette_rows();
-                if let Some((id, _label, _keys)) = entries.get(self.palette_row) {
-                    let id = (*id).to_owned();
-                    self.overlay = None;
-                    self.prompt.clear();
-                    self.dispatch(&id);
-                }
-            }
-            Some(Overlay::Search) => {
-                let query = self.prompt.trim().to_owned();
-                if query.is_empty() {
-                    self.toast("an empty query searches for nothing — type a word, or `<Esc>`");
+                let Some(row) = entries.get(self.palette_row).cloned() else {
                     return;
-                }
-                let target = self
-                    .search_report
-                    .as_ref()
-                    .and_then(|report| report.hits.get(self.palette_row))
-                    .map(crate::search::Link::target);
-                // The query survives the field that held it (`e1.11`): the next session starts from the
-                // reviewer's last question rather than from an empty box, and `--show-session` can say
-                // what was asked.
-                self.last_search = Some(query.clone());
-                self.remember_search(&query);
+                };
                 self.overlay = None;
                 self.prompt.clear();
-                match target {
-                    Some(crate::search::Link::Timeline { episode, label }) => {
-                        self.overlay = None;
-                        self.view = ViewId::Timeline;
-                        if self.timeline.select_id(&episode) {
-                            self.toast(format!("{} — jumped from the search", crate::search::clip(&label, 32)));
-                        } else {
-                            // The hit came from the corpus and the rail does not hold it: the two reads
-                            // disagree about which episodes exist, and the reviewer is told which one the
-                            // rail is missing rather than left on the wrong row.
-                            self.toast(format!(
-                                "`{}` is not in the rail's page — `fathom show {}` prints it, and `F` \
-                                 widens the rail",
-                                crate::search::clip(&label, 32),
-                                crate::search::short_id(&episode)
-                            ));
-                        }
+                match row {
+                    PaletteRow::Action { id, .. } => self.dispatch(id),
+                    // A saved search is the query, run. Not "open `/` with the text in it": the reviewer
+                    // already knows what they are asking, and the row they chose is the answer (`e5.4`).
+                    PaletteRow::SavedSearch { query, .. } => {
+                        self.prompt = query;
+                        // The palette's cursor is not the result's cursor: leaving it where the reviewer
+                        // stopped in the command list would make `<Enter>` on a saved search run the
+                        // query and then follow whatever hit happened to sit at that index.
+                        self.palette_row = 0;
+                        self.refresh_search();
+                        self.submit_search();
                     }
-                    Some(crate::search::Link::Structure { path }) => {
-                        self.view = ViewId::Structure;
-                        self.toast(format!("{path} — the structure view lists what touched it"));
+                    PaletteRow::SavedComparison { spec, name, .. } => {
+                        self.open_compare(&spec);
+                        self.toast(format!("saved comparison `{name}` — {spec}"));
                     }
-                    Some(crate::search::Link::Dependencies { name }) => {
-                        self.view = ViewId::Deps;
-                        self.toast(format!("{name} — the dependency view has the manifest that names it"));
-                    }
-                    Some(crate::search::Link::Say { reason }) => self.toast(reason),
-                    // No corpus, so nothing was scored: the box said so in its own pane, and `<Enter>`
-                    // repeats it rather than pretending the empty list was a result.
-                    None => self.toast(
-                        "nothing was searched — this repository has no index for `/` to read \
-                         (`fathom index`)"
-                            .to_owned(),
-                    ),
                 }
             }
+            Some(Overlay::Search) => self.submit_search(),
             _ => self.drill_in(),
+        }
+    }
+
+    /// `<Enter>` in the `/` box: go where the row under the cursor owns (`e5.2`).
+    ///
+    /// Split out from [`App::submit_prompt`] so the palette's saved-search rows run through exactly this
+    /// path — one deep-link rule, two ways to ask (`e5.4`).
+    fn submit_search(&mut self) {
+        let query = self.prompt.trim().to_owned();
+        if query.is_empty() {
+            self.toast("an empty query searches for nothing — type a word, or `<Esc>`");
+            return;
+        }
+        let target = self
+            .search_report
+            .as_ref()
+            .and_then(|report| report.hits.get(self.palette_row))
+            .map(crate::search::Link::target);
+        // The query survives the field that held it (`e1.11`): the next session starts from the
+        // reviewer's last question rather than from an empty box, and `--show-session` can say
+        // what was asked.
+        self.last_search = Some(query.clone());
+        self.remember_search(&query);
+        self.overlay = None;
+        self.prompt.clear();
+        match target {
+            Some(crate::search::Link::Timeline { episode, label }) => {
+                self.overlay = None;
+                self.view = ViewId::Timeline;
+                if self.timeline.select_id(&episode) {
+                    self.toast(format!(
+                        "{} — jumped from the search",
+                        crate::search::clip(&label, 32)
+                    ));
+                } else {
+                    // The hit came from the corpus and the rail does not hold it: the two reads
+                    // disagree about which episodes exist, and the reviewer is told which one the
+                    // rail is missing rather than left on the wrong row.
+                    self.toast(format!(
+                        "`{}` is not in the rail's page — `fathom show {}` prints it, and `F` \
+                         widens the rail",
+                        crate::search::clip(&label, 32),
+                        crate::search::short_id(&episode)
+                    ));
+                }
+            }
+            Some(crate::search::Link::Structure { path }) => {
+                self.view = ViewId::Structure;
+                self.toast(format!("{path} — the structure view lists what touched it"));
+            }
+            Some(crate::search::Link::Dependencies { name }) => {
+                self.view = ViewId::Deps;
+                self.toast(format!(
+                    "{name} — the dependency view has the manifest that names it"
+                ));
+            }
+            Some(crate::search::Link::Say { reason }) => self.toast(reason),
+            // No corpus, so nothing was scored: the box said so in its own pane, and `<Enter>`
+            // repeats it rather than pretending the empty list was a result.
+            None => self.toast(
+                "nothing was searched — this repository has no index for `/` to read \
+                 (`fathom index`)"
+                    .to_owned(),
+            ),
         }
     }
 
@@ -2977,7 +3238,9 @@ impl App {
         let (results, preview) = match (&index, text.trim().is_empty()) {
             (Some(index), false) => {
                 let query = crate::search::query(&text, self.timeline.now());
-                let (rows, why, report) = crate::search::rows(index, &query, crate::search::RESULT_LIMIT);
+                let window = self.search_window;
+                let (rows, why, report) =
+                    crate::search::rows(index, &query, crate::search::RESULT_LIMIT, window);
                 self.search_report = Some(report);
                 (rows, why)
             }
@@ -2990,15 +3253,133 @@ impl App {
                 crate::search::blank(&self.recent_searches, None)
             }
         };
-        self.palette_row = self
-            .palette_row
-            .min(self.search_report.as_ref().map_or(0, |report| report.hits.len()));
+        let hits = self
+            .search_report
+            .as_ref()
+            .map_or(0, |report| report.hits.len());
+        self.palette_row = self.palette_row.min(hits);
+        // The window follows the cursor after the clamp, so a query that got shorter does not leave the
+        // cursor pointing at a row that is no longer drawn.
+        self.search_window = crate::search::window(self.palette_row, self.search_visible());
         self.model
             .rows
             .insert((ViewId::Search, "results".to_owned()), results);
         self.model
             .rows
             .insert((ViewId::Search, "preview".to_owned()), preview);
+    }
+
+    /// How many result rows the search overlay has room for, at this frame's size.
+    ///
+    /// Asked of the renderer's own plan rather than guessed, because the answer is the one number the
+    /// results pane and the cursor must agree on (`e5.4`'s motion parity is worth nothing if the window
+    /// is a guess).
+    #[must_use]
+    pub fn search_visible(&self) -> usize {
+        let plan = crate::render::frame_plan(
+            self,
+            ViewId::Search,
+            usize::from(self.size.0),
+            usize::from(self.size.1),
+        );
+        // One row is the count line the pane leads with.
+        plan.body_rows.saturating_sub(1).max(4)
+    }
+
+    /// Move the search overlay's result cursor with the shared motion arithmetic (`e5.4`).
+    ///
+    /// The same eleven actions every list answers to, on the same index the arrow keys move: one
+    /// arithmetic, whichever pane holds focus — or, in this case, whichever overlay owns the keyboard.
+    pub fn search_motion(&mut self, action: &str) {
+        let count = self
+            .search_report
+            .as_ref()
+            .map_or(0, |report| report.hits.len());
+        if count == 0 {
+            return;
+        }
+        let page = self.search_visible().max(1);
+        self.palette_row = motion_target(action, self.palette_row, page, count);
+        self.refresh_search();
+    }
+
+    /// Scroll the comparison panel with the shared motion arithmetic (`e5.3`, `e5.4`).
+    ///
+    /// A comparison is a document rather than a list of things to select, so the scroll offset *is* the
+    /// cursor: `first` and `last` are the top and bottom of the answer, and the page steps are the pane's
+    /// own height. That is the same arithmetic every list does — one rung of `motion_target` and a clamp
+    /// to the last line that can be shown — rather than a second opinion about what `M` means, which is
+    /// the difference the ticket asked for: three surfaces with the same eleven actions and one
+    /// implementation of them (`tests/motion_parity.rs`).
+    pub fn compare_motion(&mut self, action: &str) {
+        let page = self.compare_height();
+        let count = self.compare_panel.lines.len();
+        if count == 0 {
+            return;
+        }
+        self.compare_panel.scroll = motion_target(action, self.compare_panel.scroll, page, count)
+            .min(self.compare_panel.max_scroll(page));
+    }
+
+    /// How many lines the comparison panel has room for.
+    #[must_use]
+    pub fn compare_height(&self) -> usize {
+        usize::from(self.size.1).saturating_sub(6).max(6)
+    }
+
+    /// `c`: the live scope against the mark, in the panel (`e5.3`).
+    ///
+    /// Either half missing is a message, not an empty panel: `m` then `c` is the gesture, and the second
+    /// half of it before the first is the common mistake.
+    pub fn compare_with_mark(&mut self) {
+        let live = self
+            .scope
+            .episode
+            .clone()
+            .or_else(|| self.timeline.selected().map(|episode| episode.id.clone()))
+            .or_else(|| self.queue_selected().map(|episode| episode.id.clone()));
+        let (Some(mark), Some(current)) = (self.scope.mark.clone(), live) else {
+            self.toast(
+                "compare needs two endpoints — `m` marks one, `j`/`k` to the other, then `c`",
+            );
+            return;
+        };
+        if mark == current {
+            self.toast(format!(
+                "both endpoints are the same episode ({}) — `m` marks a different one",
+                crate::search::short_id(&mark)
+            ));
+            return;
+        }
+        self.open_compare(&format!("{mark}..{current}"));
+    }
+
+    /// Ask the comparison provider and float the answer (`e5.3`).
+    ///
+    /// A refusal is drawn in the panel rather than toasted and dropped: the reason a comparison could not
+    /// be made is several lines long (no index, no episode, a malformed range) and a toast is one.
+    pub fn open_compare(&mut self, spec: &str) {
+        let Some(provider) = self.compare.clone() else {
+            self.compare_panel = crate::compare::Panel::refused(
+                spec,
+                "no comparison provider — this binary has no index to compose a range from. \
+                 `fathom index`, then `fathom cmp <a>..<b>` prints the same answer in a shell.",
+            );
+            self.overlay = Some(Overlay::Compare);
+            return;
+        };
+        match provider.0.compare(spec) {
+            Ok(lines) => {
+                self.compare_panel = crate::compare::Panel::answered(spec, lines);
+                self.toast(format!("comparing {spec}"));
+            }
+            Err(why) => {
+                let reason = why.to_string();
+                self.compare_panel = crate::compare::Panel::refused(spec, &reason);
+                self.toast(reason);
+            }
+        }
+        self.overlay = Some(Overlay::Compare);
     }
 
     /// Record `query` as the most recent search, newest first, bounded (`e1.11`).
@@ -3035,21 +3416,87 @@ impl App {
         true
     }
 
-    /// The palette's filtered rows: `(id, label, keys)`, filtered by a substring of the query.
+    /// The palette's filtered rows: every action in the registry that matches, then the saved searches
+    /// and comparisons, in the search box's own order.
     ///
-    /// Scoring and fuzzy ordering are `e5.4`'s (ADR-006 §11 defers them with a reason); what the
-    /// shell provides is that the list is *complete* and that each row's key is the key the
-    /// resolver will actually honour.
+    /// The filter is `fathom_analyze::search`'s scorer, not a substring (`e5.4`): `fo` has to find "Focus
+    /// next pane" the way `ep` finds an episode, and the reason it is the *same* scorer as `/` is that a
+    /// reviewer learns one fuzzy behaviour, not two. The tie-break is [`score::compare_labels`], so palette
+    /// order and search order cannot drift into disagreeing about `finding 2` and `finding 12`.
+    ///
+    /// An empty query keeps the registry's order, which is the order the ADR prints and the order the help
+    /// overlay lists — a reordering of the untouched list would be a reordering of the documentation.
     #[must_use]
-    pub fn palette_rows(&self) -> Vec<(&'static str, &'static str, String)> {
+    pub fn palette_rows(&self) -> Vec<PaletteRow> {
+        use fathom_analyze::search::score::{self, Field};
+
         let query = self.prompt.trim().to_lowercase();
-        self.keymap
-            .palette_entries()
-            .into_iter()
-            .filter(|(id, label, _keys)| {
-                query.is_empty() || label.to_lowercase().contains(&query) || id.contains(&query)
-            })
-            .collect()
+        let score = |label: &str| -> Option<i64> {
+            if query.is_empty() {
+                return Some(0);
+            }
+            let hay = label.to_lowercase();
+            let starts = score::word_starts_of(&hay);
+            let mut total = 0i64;
+            for token in query.split_whitespace() {
+                // One missing token means the row does not answer the question, which is the same rule
+                // `Index::search` applies to a corpus row.
+                total += score::field_score(token, &hay, Field::Name, &starts)?.score;
+            }
+            Some(total)
+        };
+        let mut scored: Vec<(i64, String, PaletteRow)> = Vec::new();
+        for (id, label, keys) in self.keymap.palette_entries() {
+            if let Some(points) = score(label) {
+                scored.push((
+                    points,
+                    label.to_owned(),
+                    PaletteRow::Action { id, label, keys },
+                ));
+            }
+        }
+        for saved in &self.saved_searches {
+            let label = format!("saved search {} {}", saved.name, saved.query);
+            if let Some(points) = score(&label) {
+                scored.push((
+                    points,
+                    label,
+                    PaletteRow::SavedSearch {
+                        name: saved.name.clone(),
+                        query: saved.query.clone(),
+                    },
+                ));
+            }
+        }
+        for saved in &self.saved_comparisons {
+            let label = format!(
+                "saved comparison {} {} {}",
+                saved.name, saved.spec, saved.note
+            );
+            if let Some(points) = score(&label) {
+                scored.push((
+                    points,
+                    label,
+                    PaletteRow::SavedComparison {
+                        name: saved.name.clone(),
+                        spec: saved.spec.clone(),
+                        note: saved.note.clone(),
+                    },
+                ));
+            }
+        }
+        // An empty query keeps the registry's order, which is the order the ADR prints and the help
+        // overlay lists — a reordering of the untouched list would be a reordering of the documentation.
+        if !query.is_empty() {
+            scored.sort_by(
+                |(left_points, left_label, _), (right_points, right_label, _)| {
+                    right_points
+                        .cmp(left_points)
+                        .then_with(|| score::compare_labels(left_label, right_label))
+                },
+            );
+        }
+        scored.into_iter().map(|(_points, _, row)| row).collect()
     }
 }
 

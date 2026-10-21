@@ -109,7 +109,9 @@ pub fn from_store(store: &Store, lend: &Lend) -> Result<Corpus, Error> {
             row.summary.clone(),
             body,
             (!row.author_name.is_empty()).then(|| row.author_name.clone()),
-            Some(Timestamp::from_unix_micros(row.last_utc.saturating_mul(1_000))),
+            Some(Timestamp::from_unix_micros(
+                row.last_utc.saturating_mul(1_000),
+            )),
             delta.risk.as_ref().map(|risk| risk.score),
         );
         entry.paths = paths.get(&row.id).cloned().unwrap_or_default();
@@ -141,10 +143,7 @@ pub fn from_store(store: &Store, lend: &Lend) -> Result<Corpus, Error> {
         corpus.push(Entry::path(
             path,
             Some(newest),
-            format!(
-                "{episodes} episode{}",
-                if episodes == 1 { "" } else { "s" }
-            ),
+            format!("{episodes} episode{}", if episodes == 1 { "" } else { "s" }),
             Some(Timestamp::from_unix_micros(last_utc.saturating_mul(1_000))),
         ));
     }

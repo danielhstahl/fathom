@@ -46,12 +46,12 @@ pub mod narrative;
 pub mod queue;
 /// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
 pub mod risk;
-/// The one search box (`e5.2`, `reco-mkc`): the corpus of every kind of thing a reviewer searches for, the
-/// deterministic scorer, and the filter grammar. The store owns the document; this owns the ranking.
-pub mod search;
 /// The declared scope of an episode, measured against the paths the change touched (`e4.2`). The
 /// scope-creep detector is `e4.3`'s; this is the input it reads.
 pub mod scope;
+/// The one search box (`e5.2`, `reco-mkc`): the corpus of every kind of thing a reviewer searches for, the
+/// deterministic scorer, and the filter grammar. The store owns the document; this owns the ranking.
+pub mod search;
 
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

@@ -83,6 +83,19 @@ pub const READ_VALUE: &str = "read";
 /// is what lets two fathoms, a daemon and a future `fathom store prune --state` share one table.
 pub const PREFIXES: [&str; 3] = ["tui.", "timeline.", "unread:"];
 
+/// Session rows the shell **lists but does not own** (`e5.4`).
+///
+/// Another verb wrote them — `fathom cmp --save`, `fathom search --save` — into the `tui.` namespace the
+/// shell is allowed to read and write, and `fathom-cli`'s write-back removes any row a run read and did
+/// not write back. That removal is correct for a filter a reviewer cleared and destructive for a saved
+/// row: open the shell once after saving and the row would be gone, with nothing on screen to explain it,
+/// which is exactly how "saved comparisons survive restarts" dies. So the shell carries them ([`App::inherited`])
+/// and puts them back untouched.
+pub const INHERITED: [&str; 2] = [
+    fathom_analyze::search::history::SAVED_PREFIX,
+    fathom_analyze::compare::SAVED_PREFIX,
+];
+
 /// Tabs restored: the tab bar runs out of labels at nine (ADR-006 §5.0).
 pub const MAX_TABS: usize = 9;
 /// Rows in the read/unread set. A reviewer who opened 4 000 episodes is not going to be told which
@@ -183,6 +196,10 @@ pub fn snapshot(app: &App) -> Vec<(String, String)> {
     }
     for (key, value) in app.timeline.session().entries() {
         rows.push((key, value));
+    }
+    // The rows this run was handed and does not own, put back exactly as they arrived (`INHERITED`).
+    for (key, value) in &app.inherited {
+        rows.push((key.clone(), value.clone()));
     }
     for id in app.opened.iter().rev().take(MAX_READ) {
         rows.push((format!("{READ_PREFIX}{}", esc(id)), READ_VALUE.to_owned()));
@@ -300,10 +317,27 @@ pub fn restore(app: &mut App, entries: &[(String, String)]) -> Restored {
     // reviewer who searched for three things this morning is not looking for the third one.
     app.recent_searches = fathom_analyze::search::history::recent(entries);
     if !app.recent_searches.is_empty() {
-        out.applied.push(format!(
-            "{} recent searches",
-            app.recent_searches.len()
-        ));
+        out.applied
+            .push(format!("{} recent searches", app.recent_searches.len()));
+    }
+
+    // The named rows: searches and comparisons a reviewer (or `fathom cmp --save`) gave a name to, and
+    // the rows behind them, kept verbatim so the write-back leaves them alone (`INHERITED`).
+    app.saved_searches = fathom_analyze::search::history::saved(entries);
+    app.saved_comparisons = fathom_analyze::compare::saved_from_session(entries);
+    app.inherited = entries
+        .iter()
+        .filter(|(key, _)| {
+            INHERITED
+                .iter()
+                .any(|prefix| key.starts_with(*prefix) && key.len() > prefix.len())
+        })
+        .cloned()
+        .collect();
+    let named = app.saved_searches.len() + app.saved_comparisons.len();
+    if named > 0 {
+        out.applied
+            .push(format!("{named} saved searches and comparisons"));
     }
 
     let ids: Vec<String> = entries

@@ -46,6 +46,7 @@ fn bound(mode: Mode, chord: &str, action: &str) -> Override {
         mode,
         chord: chord.to_owned(),
         action: Some(action.to_owned()),
+        source: None,
     }
 }
 
@@ -54,6 +55,7 @@ fn unbound(mode: Mode, chord: &str) -> Override {
         mode,
         chord: chord.to_owned(),
         action: None,
+        source: None,
     }
 }
 

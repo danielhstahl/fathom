@@ -366,7 +366,13 @@ impl Corpus {
     }
 
     /// Record a source the assembler could not fill.
-    pub fn gap(&mut self, kind: Kind, state: &str, because: impl Into<String>, owner: &'static str) {
+    pub fn gap(
+        &mut self,
+        kind: Kind,
+        state: &str,
+        because: impl Into<String>,
+        owner: &'static str,
+    ) {
         self.gaps.push(Gap {
             kind,
             state: state.to_owned(),
@@ -460,7 +466,12 @@ fn assign_ranks(rows: &mut [Row]) {
 }
 
 /// Record one field's letters in a row's letter sets.
-fn mark(letters: &mut [score::Letters; score::FIELD_COUNT], anywhere: &mut score::Letters, field: Field, text: &str) {
+fn mark(
+    letters: &mut [score::Letters; score::FIELD_COUNT],
+    anywhere: &mut score::Letters,
+    field: Field,
+    text: &str,
+) {
     let set = score::Letters::of(text);
     letters[field.index()] = set;
     anywhere.join(set);
@@ -608,7 +619,9 @@ impl Index {
         let scored = matched.len();
         // Score descending, then the rank: which *is* kind, label and id, so this is
         // [`score::compare_hits`] with the comparison keys compiled ahead of time.
-        matched.sort_unstable_by(|left, right| right.0.cmp(&left.0).then_with(|| left.2.cmp(&right.2)));
+        matched.sort_unstable_by(|left, right| {
+            right.0.cmp(&left.0).then_with(|| left.2.cmp(&right.2))
+        });
         let truncated = matched.len() > limit;
         matched.truncate(limit);
         let hits: Vec<Hit> = matched
@@ -693,12 +706,7 @@ impl Index {
             )
         };
         if self.rows.len() < PARALLEL_SCAN {
-            return self
-                .rows
-                .iter()
-                .enumerate()
-                .map(judge)
-                .collect::<Vec<_>>();
+            return self.rows.iter().enumerate().map(judge).collect::<Vec<_>>();
         }
         use rayon::prelude::*;
         self.rows
@@ -820,10 +828,7 @@ impl Index {
             let Some((found, _field, text)) = best else {
                 continue;
             };
-            if !matched
-                .iter()
-                .any(|seen| seen == found.field.as_str())
-            {
+            if !matched.iter().any(|seen| seen == found.field.as_str()) {
                 matched.push(found.field.as_str().to_owned());
             }
             if snippet.is_empty()

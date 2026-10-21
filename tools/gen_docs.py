@@ -473,6 +473,10 @@ VERB_DOCS = {
                  "one file's two sides, in your own difftool"),
     "tui": (["docs/reference/cheatsheet.md", "docs/adr/0006-tui.md"],
             "the keymap, the session state and the theme in force"),
+    "cmp": (["docs/adr/0006-tui.md", "docs/concepts/delta.md"],
+            "the composed delta between any two episodes or revisions"),
+    "search": (["docs/adr/0006-tui.md", "docs/concepts/timeline.md"],
+               "one fuzzy box over episodes, paths, symbols, dependencies and findings"),
 }
 
 

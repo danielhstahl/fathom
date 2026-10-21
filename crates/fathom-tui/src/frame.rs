@@ -163,6 +163,18 @@ pub struct Options {
     /// provider on the shipped binary — and `d` asks it. `None` is a build with no index behind the
     /// pane, and the pane says exactly that instead of drawing an empty rectangle.
     pub patches: Option<crate::diff::Provider>,
+    /// Who composes a comparison for `c`, if anyone (`e5.3`, `reco-ifo`).
+    ///
+    /// The same inversion as [`Self::patches`], one question further along: composing a range means reading
+    /// the index and running the insight façade per episode, and the shell may not (`ADR-002 §5.2`). The
+    /// provider hands back the lines `fathom cmp` prints, so the shell and the script cannot tell two
+    /// stories about one comparison. `None` is a build with no index, and `c` says so.
+    pub compare: Option<crate::compare::Provider>,
+    /// Whether the bottom hint line is drawn (`e5.4`: it can be disabled).
+    ///
+    /// `false` is not a cosmetic switch: it is passed to [`crate::layout::fit_chosen`] as the hint step
+    /// already sold, so the row it held goes to content in every computation the frame does with rows.
+    pub hints: bool,
     /// Take the mouse: click to select, wheel to scroll (`e5.5`, ADR-006 §10.1).
     ///
     /// Off by default and never turned on by a guess, because capture takes the terminal's own text
@@ -212,6 +224,8 @@ impl Default for Options {
             session: Vec::new(),
             search: None,
             patches: None,
+            compare: None,
+            hints: true,
             mouse: false,
             lines: false,
             term: crate::terminal::Probe::unknown(),
@@ -627,6 +641,10 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // straight into the diff view gets a loaded pane, not an empty one (`reco-0kw`).
     app.search = options.search.clone();
     app.patches = options.patches.clone();
+    // ...and the same for `c` (`e5.3`): a provider the palette's saved comparisons and the `c` keystroke
+    // both ask, installed before `prime` so a resumed session that opens on a comparison can answer.
+    app.compare = options.compare.clone();
+    app.set_hints(options.hints);
     // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
     // session that resumes straight into the queue must be able to disposition from the first keystroke,
     // with the vocabulary and the actor that belong to this repository (`e4.5`, `reco-wsj`).
@@ -765,8 +783,18 @@ pub fn render_plain(options: &Options) -> Vec<String> {
         options.repo_label.clone(),
     );
     app.notices = options.notices.clone();
+    // The startup report the interactive path makes, made here too (`e5.4`): a refused keymap line is
+    // a fact about the frame the reviewer is about to read, and `--plain` is the same contract, not a
+    // smaller one. The line mode prints these as `notice · …` lines; the grid shows them under `?`.
+    for problem in app.keymap.problems() {
+        app.notices.push(problem);
+    }
     app.search = options.search.clone();
     app.patches = options.patches.clone();
+    // The same for a piped frame: `--plain` promises the frame the terminal would have been given, and
+    // that frame answers `c` (`e5.3`).
+    app.compare = options.compare.clone();
+    app.set_hints(options.hints);
     // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
     // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
     app.queue = options.queue.state();

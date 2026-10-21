@@ -20,7 +20,11 @@ use fathom_tui::views::ViewId;
 /// A corpus in the shapes `search::corpus` builds from a real index: an episode with its intent text, a
 /// path with its episode count, a dependency with its manifest, a finding with its subject.
 fn corpus() -> Corpus {
-    let day = |ago: i64| Some(Timestamp::from_unix_micros(1_760_000_000_000_000 - ago * 86_400_000_000));
+    let day = |ago: i64| {
+        Some(Timestamp::from_unix_micros(
+            1_760_000_000_000_000 - ago * 86_400_000_000,
+        ))
+    };
     let mut corpus = Corpus::new();
     corpus.documents = 5;
     // The same gap `search::corpus` declares for a real index: symbols are a kind the scorer can rank and
@@ -45,7 +49,12 @@ fn corpus() -> Corpus {
         "3 episodes",
         day(1),
     ));
-    corpus.push(Entry::dependency("serde", "cargo", Some("Cargo.toml".to_owned()), None));
+    corpus.push(Entry::dependency(
+        "serde",
+        "cargo",
+        Some("Cargo.toml".to_owned()),
+        None,
+    ));
     corpus.push(Entry::finding(
         "new-cycle",
         "store→core",
@@ -103,7 +112,9 @@ fn an_empty_box_answers_with_the_grammar_and_the_last_searches() {
         preview.iter().any(|line| line.starts_with("author:")),
         "the filter grammar is printed where the query is typed: {preview:?}"
     );
-    for token in ["kind:", "path:", "dep:", "finding:", "since:", "until:", "risk>", "risk<"] {
+    for token in [
+        "kind:", "path:", "dep:", "finding:", "since:", "until:", "risk>", "risk<",
+    ] {
         assert!(
             preview.iter().any(|line| line.starts_with(token)),
             "`{token}` is a filter the parser honours and the box does not list it: {preview:?}"
@@ -183,7 +194,11 @@ fn enter_opens_the_view_that_owns_the_hit() {
         "the top row is the episode"
     );
     app.dispatch("prompt.submit");
-    assert_eq!(app.view, ViewId::Timeline, "an episode opens where episodes are read");
+    assert_eq!(
+        app.view,
+        ViewId::Timeline,
+        "an episode opens where episodes are read"
+    );
     assert_eq!(app.overlay, None, "and the box is gone");
 
     // A path hit belongs to the structure view, not the timeline.
@@ -206,7 +221,11 @@ fn enter_opens_the_view_that_owns_the_hit() {
         dep.feed_key(&ch.to_string(), std::time::Instant::now());
     }
     dep.dispatch("prompt.submit");
-    assert_eq!(dep.view, ViewId::Deps, "a dependency opens in the deps view");
+    assert_eq!(
+        dep.view,
+        ViewId::Deps,
+        "a dependency opens in the deps view"
+    );
 }
 
 #[test]
@@ -252,9 +271,7 @@ fn nothing_that_matches_says_why_in_the_box_that_asked() {
         report.gaps
     );
     assert!(
-        preview(&app)
-            .iter()
-            .any(|line| line.contains("symbol")),
+        preview(&app).iter().any(|line| line.contains("symbol")),
         "the gap reaches the preview pane too: {:?}",
         preview(&app)
     );

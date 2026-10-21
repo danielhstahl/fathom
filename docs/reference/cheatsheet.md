@@ -130,8 +130,8 @@ mode has to be live (§4).
 | Group | Key | Does | Live in |
 |---|---|---|---|
 | **Move around** | `<C-c>` | Quit Fathom | global |
-| **Move around** | `<Enter>` `<Right>` | Drill in (follow selection / evidence) | `list`, `body` |
-| **Move around** | `<Esc>` `<Left>` | Up one level (pop the drill stack) | `list`, `body` |
+| **Move around** | `<Enter>` `<Right>` `l` | Drill in (follow selection / evidence) | `list`, `body` |
+| **Move around** | `<Esc>` `<Left>` `h` | Up one level (pop the drill stack) | `list`, `body` |
 | **Move around** | `<C-o>` | Back to the previous place (drill history) | global |
 | **Move around** | `<C-w>l` `<Tab>` | Focus next pane | global |
 | **Move around** | `<C-w>h` `<S-Tab>` | Focus previous pane | global |
@@ -296,8 +296,10 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `list` | `L` | `list.bot_visible` | Last visible row |
 | `list` | `M` | `list.mid_visible` | Middle visible row |
 | `list` | `gg` | `list.first` | First row |
+| `list` | `h` | `drill.out` | Up one level (pop the drill stack) |
 | `list` | `j` | `list.down` | Move down one row |
 | `list` | `k` | `list.up` | Move up one row |
+| `list` | `l` | `drill.in` | Drill in (follow selection / evidence) |
 | `body` | `<C-d>` | `list.half_down` | Half page down |
 | `body` | `<C-f>` | `list.page_down` | Page down |
 | `body` | `<C-u>` | `list.half_up` | Half page up |
@@ -313,8 +315,10 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `body` | `<Up>` | `list.scroll_up` | Scroll one line up |
 | `body` | `G` | `list.last` | Last row |
 | `body` | `gg` | `list.first` | First row |
+| `body` | `h` | `drill.out` | Up one level (pop the drill stack) |
 | `body` | `j` | `list.scroll_down` | Scroll one line down |
 | `body` | `k` | `list.scroll_up` | Scroll one line up |
+| `body` | `l` | `drill.in` | Drill in (follow selection / evidence) |
 | `queue` | `r` | `queue.retrospect` | Queue: what you skipped, and why |
 | `timeline` | — | — | inherits the shared motion set: no view-local bindings |
 | `diff` | `=` | `diff.ws_toggle` | Diff: ignore whitespace |
@@ -418,8 +422,8 @@ makes "unbound" different from "unreachable".
 | `diff.split_toggle` | Diff: split / unified | view | `\` | yes | `diff` | `e1.7` |
 | `diff.word_toggle` | Diff: word-diff on / off | view | `W` | yes | `diff` | `e1.7` |
 | `diff.ws_toggle` | Diff: ignore whitespace | view | `=` | yes | `diff` | `e1.7` |
-| `drill.in` | Drill in (follow selection / evidence) | frame | `<Enter>` `<Right>` | yes | `list`, `body` | `e1.5` |
-| `drill.out` | Up one level (pop the drill stack) | frame | `<Esc>` `<Left>` | yes | `list`, `body` | `e1.5` |
+| `drill.in` | Drill in (follow selection / evidence) | frame | `<Enter>` `<Right>` `l` | yes | `list`, `body` | `e1.5` |
+| `drill.out` | Up one level (pop the drill stack) | frame | `<Esc>` `<Left>` `h` | yes | `list`, `body` | `e1.5` |
 | `filter.clear` | Clear all filters | scope | — | yes | `global` | `e1.6` |
 | `filter.edit` | Edit filters (author, area, state, date) | scope | `F` | yes | `global` | `e1.6` |
 | `goto.first_unread` | Jump to first unread episode | scope | — | yes | `global` | `e1.6` |

@@ -279,16 +279,26 @@ pub struct Fit {
     pub state: FitState,
     /// Columns and rows still short after everything — a stated partial, not a clipped frame.
     pub deficit: (u16, u16),
+    /// Steps the *reviewer* sold, not the ladder (`e5.4`: the hint line may be turned off).
+    ///
+    /// They are in [`Fit::applied`] as well, because the row arithmetic has to see that chrome gone;
+    /// they are kept apart here because the degraded notice must never blame a squeeze for a decision.
+    /// A reviewer who switched the hint line off is not a terminal that ran out of rows.
+    pub chosen: Vec<String>,
 }
 
 impl Fit {
     /// What left the frame, in the order the ladder sold it, in this view's own numbers.
+    ///
+    /// Chrome the reviewer gave up is not in here (`e5.4`): this list is what the frame had to sell to
+    /// fit, and a notice that reported a choice as a loss would train a reviewer to distrust notices.
     #[must_use]
     pub fn dropped(&self) -> Vec<String> {
         let view = crate::views::view(self.view);
         let mut out: Vec<String> = LADDER
             .iter()
             .filter(|s| self.applied.iter().any(|a| a == s.id()))
+            .filter(|s| !self.chosen.iter().any(|c| c == s.id()))
             .map(|s| s.what_for(view))
             .collect();
         if self.applied.iter().any(|a| a == FALLBACK) {
@@ -433,25 +443,47 @@ pub fn floor_rows(view: &View) -> u16 {
 /// ADR-006 §6.2's per-view table is its output.
 #[must_use]
 pub fn fit(view_id: ViewId, cols: u16, rows: u16) -> Fit {
+    fit_chosen(view_id, cols, rows, &[])
+}
+
+/// The same question, with chrome the reviewer gave up first (`e5.4`).
+///
+/// `chosen` is the part of the ladder a person sold rather than the terminal: the hint line is the one
+/// step a learned reviewer stops reading, and ADR-006 §6.1 already puts it first in the order. Asking
+/// the ladder with it already gone is the whole difference between a switch and a lie — every row
+/// computation downstream (`chrome_rows`, `pane_widths`, the renderer's own budget) reads
+/// [`Fit::applied`], so a step listed only in a UI flag would free the row on screen and not in the
+/// arithmetic, and the pane would be one row shorter than the frame it was drawn into.
+#[must_use]
+pub fn fit_chosen(view_id: ViewId, cols: u16, rows: u16, chosen: &[Step]) -> Fit {
     let view = crate::views::view(view_id);
     let mut out = Fit {
         view: view_id,
         cols,
         rows,
-        applied: Vec::new(),
+        applied: chosen.iter().map(|step| step.id().to_owned()).collect(),
         state: FitState::Complete,
         deficit: (0, 0),
+        chosen: chosen.iter().map(|step| step.id().to_owned()).collect(),
     };
-    let need_c = i32::from(min_cols_view(view)) - i32::from(cols);
-    let need_r = i32::from(view.min_rows) - i32::from(rows);
+    let mut need_c = i32::from(min_cols_view(view)) - i32::from(cols);
+    let mut need_r = i32::from(view.min_rows) - i32::from(rows);
+    // A step the reviewer already sold has bought its rows and columns back before the ladder was asked,
+    // so the ladder must not sell it twice and must not count what it buys as still missing.
+    for step in chosen {
+        let (saved_c, saved_r) = step.recover(view);
+        need_c -= i32::from(saved_c);
+        need_r -= i32::from(saved_r);
+    }
     if need_c <= 0 && need_r <= 0 {
         return out;
     }
-    let mut need_c = need_c;
-    let mut need_r = need_r;
     for step in &LADDER {
         if need_c <= 0 && need_r <= 0 {
             break;
+        }
+        if chosen.iter().any(|step_id| step_id.id() == step.id()) {
+            continue;
         }
         let (saved_c, saved_r) = step.recover(view);
         if (saved_c > 0 && need_c > 0) || (saved_r > 0 && need_r > 0) {

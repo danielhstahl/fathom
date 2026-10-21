@@ -369,8 +369,22 @@ const fn is_separator(byte: u8) -> bool {
     byte.is_ascii_whitespace()
         || matches!(
             byte,
-            b'/' | b'\\' | b'-' | b'_' | b'.' | b':' | b'(' | b')' | b'[' | b']' | b',' | b';' | b'@'
-                | b'+' | b'#' | b'\'' | b'"'
+            b'/' | b'\\'
+                | b'-'
+                | b'_'
+                | b'.'
+                | b':'
+                | b'('
+                | b')'
+                | b'['
+                | b']'
+                | b','
+                | b';'
+                | b'@'
+                | b'+'
+                | b'#'
+                | b'\''
+                | b'"'
         )
 }
 
@@ -481,7 +495,10 @@ fn digits(bytes: &[u8], from: usize) -> usize {
 
 /// Drop leading zeros, which are not part of the number.
 fn trim_zeros(digits: &[u8]) -> &[u8] {
-    let first = digits.iter().position(|digit| *digit != b'0').unwrap_or(digits.len());
+    let first = digits
+        .iter()
+        .position(|digit| *digit != b'0')
+        .unwrap_or(digits.len());
     &digits[first..]
 }
 
@@ -527,8 +544,8 @@ mod tests {
             "Époque",
         ];
         let tokens = [
-            "", "a", "e", "s", "epoch", "store", "read", "fathstor", "ep", "12", "2", "z", "é", "arrow",
-            "→", "Époque", "r→",
+            "", "a", "e", "s", "epoch", "store", "read", "fathstor", "ep", "12", "2", "z", "é",
+            "arrow", "→", "Époque", "r→",
         ];
         for field in fields {
             let letters = Letters::of(field);

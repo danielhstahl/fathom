@@ -432,6 +432,7 @@ fn the_help_overlay_shows_the_override_instead_of_the_default() {
         mode: Mode::Global,
         chord: "x".to_owned(),
         action: Some("view.timeline".to_owned()),
+        source: None,
     }]);
     let mut app = App::new(
         keymap,
@@ -470,10 +471,9 @@ fn the_palette_filters_and_runs_the_row_under_the_cursor() {
         all
     );
     assert!(
-        filtered.iter().all(|(id, label, _)| {
-            let _ = id;
-            label.to_lowercase().contains("timelin") || id.contains("timelin")
-        }),
+        filtered
+            .iter()
+            .all(|row| row.label().to_lowercase().contains("timelin")),
         "{filtered:?}"
     );
     app.dispatch("prompt.submit");

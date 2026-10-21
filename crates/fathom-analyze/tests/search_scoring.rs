@@ -56,7 +56,11 @@ const DAY: i64 = 86_400_000_000;
 fn corpus() -> Corpus {
     let mut corpus = Corpus::new();
     corpus.documents = 14;
-    let day = |ago: i64| Some(Timestamp::from_unix_micros(1_760_000_000_000_000 - ago * DAY));
+    let day = |ago: i64| {
+        Some(Timestamp::from_unix_micros(
+            1_760_000_000_000_000 - ago * DAY,
+        ))
+    };
 
     let mut epoch = Entry::episode(
         "e8f1a2c3d4",
@@ -230,8 +234,12 @@ fn the_ranking_is_the_golden_one() {
         eprintln!("wrote {}", path.display());
         return;
     }
-    let expected = std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("no golden file at {}; write it with FATHOM_GOLDEN=write", path.display()));
+    let expected = std::fs::read_to_string(&path).unwrap_or_else(|_| {
+        panic!(
+            "no golden file at {}; write it with FATHOM_GOLDEN=write",
+            path.display()
+        )
+    });
     assert_eq!(
         expected, made,
         "the ranking moved; review it and re-bless with FATHOM_GOLDEN=write"
@@ -361,27 +369,23 @@ fn every_rung_pays_what_it_promised() {
         Some(score::W_BODY_SUB),
         "`tore` is inside a body word"
     );
-    assert!(score_of("epch").is_some(), "the subsequence rung still answers");
+    assert!(
+        score_of("epch").is_some(),
+        "the subsequence rung still answers"
+    );
 }
 
 #[test]
 fn filters_narrow_and_free_text_ranks() {
     let index = corpus().index();
     let report = index.search(&Query::parse("author:stahl risk>60", now()), 50);
-    let authors: Vec<&str> = report
-        .hits
-        .iter()
-        .map(|hit| hit.id.as_str())
-        .collect();
+    let authors: Vec<&str> = report.hits.iter().map(|hit| hit.id.as_str()).collect();
     assert!(authors.contains(&"e8f1a2c3d4"));
     assert!(
         !authors.contains(&"99887766aa"),
         "ravi is not stahl, and the risk filter alone would have let the row through"
     );
-    assert!(
-        !authors.contains(&"3c4d5e6f70"),
-        "35 is not above 60"
-    );
+    assert!(!authors.contains(&"3c4d5e6f70"), "35 is not above 60");
     for hit in &report.hits {
         assert!(hit.risk.is_none_or(|risk| risk >= 60));
     }
@@ -441,7 +445,14 @@ fn a_limit_that_would_dump_the_corpus_is_clamped_and_said() {
 fn a_snippet_never_becomes_a_file_dump() {
     let mut corpus = Corpus::new();
     let long = "one ".repeat(500);
-    corpus.push(Entry::episode("long", "a very long intent", &long, None, None, None));
+    corpus.push(Entry::episode(
+        "long",
+        "a very long intent",
+        &long,
+        None,
+        None,
+        None,
+    ));
     let index = corpus.index();
     let report = index.search(&Query::parse("one", now()), 10);
     let hit = report.hits.first().expect("the row matched");
@@ -504,8 +515,8 @@ fn big_corpus(episodes: usize) -> Corpus {
     let mut corpus = Corpus::new();
     corpus.documents = episodes as i64;
     let words = [
-        "epoch", "store", "delta", "queue", "graph", "deps", "risk", "test", "lock", "render", "cache",
-        "patch",
+        "epoch", "store", "delta", "queue", "graph", "deps", "risk", "test", "lock", "render",
+        "cache", "patch",
     ];
     for index in 0..episodes {
         let word = words[index % words.len()];
@@ -637,7 +648,6 @@ fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
     );
 }
 
-
 #[test]
 fn the_order_the_index_returns_is_the_order_the_scorer_states() {
     // `score::compare_hits` is the written law of the tie-break; the index is the thing that runs. This is
@@ -653,7 +663,10 @@ fn the_order_the_index_returns_is_the_order_the_scorer_states() {
             .collect();
         let mut stated = keys.clone();
         stated.sort_unstable_by(|left, right| score::compare_hits(*left, *right));
-        assert_eq!(keys, stated, "the hits for `{text}` are not in the order the scorer states");
+        assert_eq!(
+            keys, stated,
+            "the hits for `{text}` are not in the order the scorer states"
+        );
     }
 }
 
@@ -662,7 +675,11 @@ fn a_numbered_label_sorts_like_a_list_and_not_like_a_dictionary() {
     // Three screenshots, one query, one score each: the whole ranking is the tie-break, which is where
     // `capture 12.png` either lands after `capture 2.png` (a list) or in front of it (a dictionary).
     let mut corpus = Corpus::new();
-    for name in ["shots/capture 100.png", "shots/capture 2.png", "shots/capture 12.png"] {
+    for name in [
+        "shots/capture 100.png",
+        "shots/capture 2.png",
+        "shots/capture 12.png",
+    ] {
         corpus.push(Entry::path(name, None, "3 episodes", Some(now())));
     }
     corpus.documents = 3;

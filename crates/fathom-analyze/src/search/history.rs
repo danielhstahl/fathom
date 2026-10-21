@@ -37,7 +37,6 @@ pub const HISTORY_MAX: usize = 10;
 /// How many characters of a query a saved search keeps (the same bound `e1.11` puts on a remembered query).
 pub const QUERY_MAX: usize = 120;
 
-
 /// The recent searches, newest first, out of the session rows.
 #[must_use]
 pub fn recent(entries: &[(String, String)]) -> Vec<String> {
@@ -103,7 +102,8 @@ pub fn recent_entry(entries: &[(String, String)], query: &str) -> (String, Strin
 /// The name a saved search carries, out of a session key.
 #[must_use]
 pub fn saved_name(key: &str) -> Option<&str> {
-    key.strip_prefix(SAVED_PREFIX).filter(|name| !name.is_empty())
+    key.strip_prefix(SAVED_PREFIX)
+        .filter(|name| !name.is_empty())
 }
 
 /// One saved search: the name the reviewer gave it and the query behind it.
@@ -186,7 +186,9 @@ mod tests {
     fn a_history_value_round_trips_through_the_reader_it_written_for() {
         // The shell writes with `history_value` and reads with `recent`. Those are one contract, and the
         // failure mode of breaking it is a search history that quietly shrinks to nothing.
-        let queries = ["epoch store", "risk>60", "epoch"].map(String::from).to_vec();
+        let queries = ["epoch store", "risk>60", "epoch"]
+            .map(String::from)
+            .to_vec();
         let value = history_value(&queries);
         assert_eq!(
             recent(&[(HISTORY_KEY.to_owned(), value)]),

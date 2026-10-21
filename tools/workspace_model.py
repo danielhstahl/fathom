@@ -277,7 +277,8 @@ CRATES: tuple[Crate, ...] = (
             "`fathom-store` and is a pure function of (input, config), which is what makes golden tests "
             "and ADR-004 §5's cache keys mean something. Four teams share this crate; the module "
             "ownership split is in §9.",
-            "`insight` and `export` are the only modules `fathom-tui` and `fathom-mcp` may import (§5).",
+            "`insight` and `export` are the narrow waist every surface reads through; `fathom-tui` may "
+            "also name `search` and `compare` (§5.3), and `fathom-mcp` may not.",
         ),
     ),
     Crate(
@@ -457,7 +458,17 @@ FORBIDDEN_EDGES: tuple[tuple[str, str, str], ...] = (
 #: because it *is* the shared vocabulary.
 IMPORT_FACADES: dict[str, dict[str, tuple[str, ...]]] = {
     "fathom-tui": {
-        "fathom-analyze": ("fathom_analyze::insight", "fathom_analyze::export"),
+        # `insight` and `export` are the narrow waist (ADR-002 §5.3). `search` and `compare` were added by
+        # e5.2 and e5.3 for one reason each: the `/` box scores a corpus the composition root read, and the
+        # shell lists the session rows a saved comparison is stored under. Both are *reads of a finished
+        # answer* — the shell may score a corpus it was handed and decode a key it was handed, and `M03`
+        # is the lint that keeps it from becoming a second analysis that builds its own.
+        "fathom-analyze": (
+            "fathom_analyze::insight",
+            "fathom_analyze::export",
+            "fathom_analyze::search",
+            "fathom_analyze::compare",
+        ),
     },
     "fathom-mcp": {
         "fathom-analyze": ("fathom_analyze::insight", "fathom_analyze::export"),
@@ -851,9 +862,9 @@ def rules_rows() -> list[tuple[str, str]]:
     return [
         ("R1", "Crate edges follow `cli -> {tui,mcp} -> analyze -> ingest -> store -> core`; an "
                "`uphill` import fails CI."),
-        ("R2", "`fathom-tui` and `fathom-mcp` name `fathom-analyze` only through `insight` and `export`, "
-               "and only *read* what those hand back: a surface that composes, ranks or classifies is a "
-               "second analysis (`M03`)."),
+        ("R2", "`fathom-tui` and `fathom-mcp` name `fathom-analyze` only through its façades — `insight` "
+               "and `export`, plus `search` and `compare` for the shell — and only *read* what those hand "
+               "back: a surface that composes, ranks or classifies is a second analysis (`M03`)."),
         ("R3", "`fathom-core` has zero IO, zero `unsafe`, no wall clock and no default features."),
         ("R4", "`unsafe` appears only in `fathom-store/src/raw/` and only under `cfg(feature = \"mmap\")`."),
         ("R5", "Library crates declare `default = []`. Only `fathom-cli` has default features, and they "

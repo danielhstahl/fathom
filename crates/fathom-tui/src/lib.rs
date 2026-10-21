@@ -6,10 +6,13 @@
 //!
 //! Two rules make this crate's shape, both of them boundary rather than style:
 //!
-//! 1. **No store handle, no self-computed score.** The TUI reads `fathom_analyze::insight` and nothing
-//!    else, because a view that runs its own query is how the human and the MCP server end up with two
-//!    different ideas of the same list — ADR-001 §7.10, which is a bug with a severity, not a smell.
+//! 1. **No store handle, no self-computed score.** The TUI reads `fathom_analyze::insight` — and, since
+//!    `e5.2`'s search box, `fathom_analyze::search` for a corpus the composition root already read — and
+//!    nothing else, because a view that runs its own query is how the human and the MCP server end up with
+//!    two different ideas of the same list — ADR-001 §7.10, which is a bug with a severity, not a smell.
 //!    Lint `M02` enforces the path, and `E01` refuses the `fathom-store` edge the layering would allow.
+//!    What the search exception may not become is a licence: the shell may *score* a corpus it was handed
+//!    and may not build one, and `M03` is the lint that keeps the difference real.
 //!    The risk numbers the rail and the queue print arrived the same way `reco-c05` found everything
 //!    else: `fathom-cli` reads the spine, asks `fathom_analyze::risk` for the ranking, and hands the
 //!    shell the value and its reasons in the row. Nothing here sorts or scores an episode from its own
@@ -27,6 +30,9 @@
 pub mod ambient;
 pub mod app;
 pub mod colour;
+/// Compare mode's shell side (`e5.3`, `reco-ifo`): the provider that answers a spec, and the panel `c`
+/// draws the answer into. The composition itself is `fathom_analyze::compare`'s.
+pub mod compare;
 pub mod diff;
 /// Every pane's empty state, as one batch of copy (`e5.9`, ADR-006 §10.3).
 pub mod empty;

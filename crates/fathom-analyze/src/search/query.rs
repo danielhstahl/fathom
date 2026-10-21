@@ -154,8 +154,9 @@ impl Query {
         if !known || value.is_empty() {
             // Not a filter this build knows. Keep it as text and say so once, with the vocabulary.
             if known && value.is_empty() {
-                self.unknown
-                    .push(format!("`{word}` names a filter with no value — dropped as text"));
+                self.unknown.push(format!(
+                    "`{word}` names a filter with no value — dropped as text"
+                ));
             } else if word.contains(':') || word.contains('>') || word.contains('<') {
                 self.unknown.push(format!(
                     "`{word}` is not a filter this build knows — searched as text. Filters: {} \
@@ -175,9 +176,9 @@ impl Query {
             "kind" => self.filters.push(Filter::Kind(value.to_lowercase())),
             "since" => match parse_when(value, now) {
                 Ok(Some(at)) => self.filters.push(Filter::Since(at)),
-                Ok(None) => self
-                    .notes
-                    .push(format!("`since:{value}` means any date, so it filtered nothing")),
+                Ok(None) => self.notes.push(format!(
+                    "`since:{value}` means any date, so it filtered nothing"
+                )),
                 Err(why) => self.unknown.push(why),
             },
             "until" => match parse_when(value, now) {
@@ -187,9 +188,9 @@ impl Query {
                     self.filters
                         .push(Filter::Until(at.day_start().shift_days(1)));
                 }
-                Ok(None) => self
-                    .notes
-                    .push(format!("`until:{value}` means any date, so it filtered nothing")),
+                Ok(None) => self.notes.push(format!(
+                    "`until:{value}` means any date, so it filtered nothing"
+                )),
                 Err(why) => self.unknown.push(why),
             },
             "risk" => {
@@ -319,9 +320,9 @@ mod tests {
 
     fn now() -> Timestamp {
         // 2026-10-14T12:00:00Z, a Wednesday, so the relative forms land on days that are easy to name.
-        Timestamp::from_unix_micros(fathom_core::time::days_from_civil(2026, 10, 14)
-            * MICROS_PER_DAY
-            + 12 * 3_600_000_000)
+        Timestamp::from_unix_micros(
+            fathom_core::time::days_from_civil(2026, 10, 14) * MICROS_PER_DAY + 12 * 3_600_000_000,
+        )
     }
 
     #[test]
