@@ -201,24 +201,25 @@ Corpus: 500 commits, size class **small**. Binary profile `release`, `git versio
 
 | measurement | budget | budget value | measured | verdict |
 |---|---|---:|---:|---|
-| cold index of the 500-commit agent fixture | `cold.index.ms.small` | 1,500 ms | 412.5 | met |
-| peak RSS of `fathom index` | `rss.cold_index.peak_mib.small` | 300 MiB | 20.5 | met |
-| store bytes per commit, spine tables only | `store.bytes_per_commit_spine.small` | 4,096 bytes | 3,358 | met |
-| store file size | `store.size.mib.small` | 400 MiB | 2.25 | met |
-| warm re-index after one new commit | `warm.reindex.ms.small` | 150 ms | 52.0 | met |
-| re-index with nothing new | `warm.reindex.noop.ms.small` | 10 ms | 49.2 | **over budget** |
-| commit made elsewhere, noticed by `fathom watch` | `watch.detect.ms.small` | 1,000 ms | 161.5 | met |
-| TUI: keystroke to a changed screen (p95, excluding the `g` chord) | `query.frame_store_budget.ms.small` | 8 ms | 2.3 | met |
-| TUI: peak RSS | `rss.tui.mib.small` | 120 MiB | 9.89 | met |
-| TUI: the queue answers with episodes | `cold.queue_visible.ms.small` | 3,000 ms | — | blocked — the shell hands the queue and the rail no episodes at all (`fathom-cli` passes `episodes: None`; `insight::episodes` is e2.11) |
-| TUI: queue query | `query.queue.ms.small` | 8 ms | — | blocked — no queue is ever populated: the frame has no store→view path |
-| TUI: timeline rail query | `query.timeline.ms.small` | 8 ms | — | blocked — no timeline rail is ever populated: the frame has no store→view path |
-| TUI: episode card query | `query.card.ms.small` | 50 ms | — | blocked — no episode card is ever populated: the frame has no store→view path |
-| TUI: search query | `query.search.ms.small` | 30 ms | — | blocked — no search is ever populated: the frame has no store→view path |
-| TUI: `d` to the diff pane painting its tree | `query.diff_open.ms.small` | 120 ms | 4.5 | met |
-| TUI: `d` to the first hunk on screen | `query.diff_first_hunk.ms.small` | 40 ms | 5.0 | met |
+| cold index of the 500-commit agent fixture | `cold.index.ms.small` | 1,500 ms | 467.6 | met |
+| peak RSS of `fathom index` | `rss.cold_index.peak_mib.small` | 300 MiB | 26.0 | met |
+| store bytes per commit, spine tables only | `store.bytes_per_commit_spine.small` | 4,096 bytes | 4,333 | **over budget** |
+| store file size | `store.size.mib.small` | 400 MiB | 2.71 | met |
+| warm re-index after one new commit | `warm.reindex.ms.small` | 150 ms | 87.7 | met |
+| re-index with nothing new | `warm.reindex.noop.ms.small` | 10 ms | 2.0 | met |
+| commit made elsewhere, noticed by `fathom watch` | `watch.detect.ms.small` | 1,000 ms | 161.7 | met |
+| TUI: keystroke to a changed screen (p95, excluding the `g` chord) | `query.frame_store_budget.ms.small` | 8 ms | 9.8 | **over budget** |
+| TUI: peak RSS | `rss.tui.mib.small` | 120 MiB | 26.68 | met |
+| TUI: the queue answers with a ranked worklist | `cold.queue_visible.ms.small` | 3,000 ms | 3.4 | met |
+| TUI: `j` walks the ranked queue | `query.queue.ms.small` | 8 ms | 3.0 | met |
+| TUI: `w` explains why the selected episode ranks where it does | `query.card.ms.small` | 50 ms | 3.4 | met |
+| TUI: timeline rail query | `query.timeline.ms.small` | 8 ms | — | blocked — the rail has no query of its own beyond the frame budget (query.frame_store_budget.ms.small): it lists the index in the index's order |
+| TUI: search query | `query.search.ms.small` | 30 ms | — | blocked — search has no scorer yet — `/` says so, and the matcher is `e5.2` |
+| TUI: `d` to the diff pane painting its tree | `query.diff_open.ms.small` | 120 ms | 3.7 | met |
+| TUI: `d` to the first hunk on screen | `query.diff_first_hunk.ms.small` | 40 ms | 4.4 | met |
+| commit made elsewhere, noticed by an open TUI | `watch.detect.ms.small` | 1,000 ms | 302.5 | met |
 
-Declared but not measurable at all from this build: cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms — the graph lane is e3.2's and is not built; frame p99 from the shell's own Report — `fathom tui` discards it; nothing in the product prints it, so the frame numbers here come from the pty (key to visible change); rss.daemon.mib — no daemon (e6.3).
+Declared but not measurable at all from this build: cold.graph.ms / warm.graph.marginal.ms / graph.materialise_revision.ms — the graph lane is e3.2's and is not built; rss.daemon.mib — no daemon (e6.3).
 
 <!-- END GENERATED: budgets -->
 
@@ -276,10 +277,12 @@ The P2s are the spine not quite joined up: the status strip prints four `unknown
 answers (two of them — `epoch` and the episode count — stopped being `unknown` when the composition root
 started telling the shell both), a rewritten history leaves the
 index counting dead commits, no verb enumerates episodes headlessly, `fathom tui` discards its own frame
-report, and the noop re-index costs 5× its budget. Three more on that list have since closed: an open TUI
-notices a commit made next door (`reco-bpc`), `<C-r>` re-indexes through the producer the CLI owns instead
-of narrating that it cannot (`reco-j7t` — it now shows the run's own counters on the status line while it
-goes), and the space bar reaches a prompt (`reco-q45`). The P3s are
+report, and a re-index with nothing new costs 5× its budget. Four more on that list have since closed: an
+open TUI notices a commit made next door (`reco-bpc`), `<C-r>` re-indexes through the producer the CLI owns
+instead of narrating that it cannot (`reco-j7t` — it now shows the run's own counters on the status line
+while it goes), the space bar reaches a prompt (`reco-q45`), and a warm re-index with nothing new no longer
+walks the history to find out (`reco-7tc` — the row above is 2 ms of run time where it measured 49, and
+the walk, the analyses and the episode rebuild are now skipped when no ref moved). The P3s are
 honest little cruelties: toasts that evict the hint line forever, keys that are silent when they
 should say why they cannot apply, and a `g` that answers 250 ms late with nothing to say it is
 waiting.
@@ -294,5 +297,13 @@ waiting.
   what the cast shows. The first P1 above has since split that sentence in two: the rail's *rows* come
   from the spine and are there now, and the ranked, risk-scored, delta-carrying frame this walkthrough
   asked for still waits on `e2.11` and `e4.4`.
-* Not a fair machine. Every timing here is one laptop, three samples, warm page cache, debug
-  features off. The budgets' own CI gate (`e0.11`) is where these numbers become promises.
+* Not everything in that table is met, and the rows that are not belong to no ticket in this walkthrough.
+  `store.bytes_per_commit_spine.small` is 4,333 bytes against a 4,096 budget on the deterministic fixture —
+  byte-identical run to run, so that is a spine that grew, not a noisy box, and `make bench-check` fails on
+  it until somebody owns it. The keystroke p95 is the worst of three pty samples and moved by a factor of
+  two between runs of the same binary here, while the rail's own per-keystroke store numbers stayed under
+  3 ms; believe the second one more.
+* Not a fair machine. Every timing here is one machine, three samples, warm page cache, debug
+  features off — the `environment` block of `benchmarks/reports/e1-12-mvp-acceptance.json` names which
+  machine, and it is not the CI box. The budgets' own CI gate (`e0.11`) is where these numbers become
+  promises.

@@ -13,7 +13,7 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 |---|---|---|
 | cold index of the 500-commit fixture | `cold.index.ms.small` | `fathom index` into a fresh store, 3 runs |
 | re-index after one new commit | `warm.reindex.ms.small` | commit, then `fathom index`, 3 runs |
-| re-index with nothing new | `warm.reindex.noop.ms.small` | `fathom index` twice in a row |
+| re-index with nothing new | `warm.reindex.noop.ms.small` | `fathom index` twice in a row, timed as the run's own store-side `elapsed_ms` |
 | store size per commit | `store.bytes_per_commit_spine.small` | `stat` the store after the cold run |
 | peak RSS of the index process | `rss.cold_index.peak_mib.small` | `VmHWM` of the child |
 | a commit made elsewhere, noticed by the watcher | `watch.detect.ms.small` | `fathom watch --json`, one commit, time to the line |
@@ -113,6 +113,27 @@ def run_timed(argv: list[str], cwd: Path, *, fresh: Path | None = None) -> tuple
     return (time.monotonic() - started) * 1000.0, peak
 
 
+def run_timed_json(argv: list[str], cwd: Path) -> tuple[float, float | None]:
+    """Run a verb that answers with JSON, returning (wall ms, the run's own `elapsed_ms`).
+
+    Two clocks, because they answer two questions. The wall is what a human waits for, from fork to exit:
+    it carries the toll every verb pays — process start, `Repository::discover`, `Store::open` — which for a
+    no-op re-index is several times the size of all the work there is to do. The run's own `elapsed_ms` is
+    what the indexer did, and it is the basis ADR-004 §13 measured its budgets on ("warm store-side p50",
+    §13.5) and the basis the `ctrl-r` this budget is written for actually pays, since that re-index happens
+    inside a process that is already running (`reco-7tc`).
+
+    `None` for the second if the verb printed no JSON: an absence that is reported, not a zero.
+    """
+    started = time.monotonic()
+    proc = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+    wall = (time.monotonic() - started) * 1000.0
+    try:
+        return wall, float(json.loads(proc.stdout)["elapsed_ms"])
+    except (ValueError, KeyError, TypeError):
+        return wall, None
+
+
 # The store holds more than the spine: the analyse cache and the session rows live in the same file,
 # and `store.bytes_per_commit_spine` is a claim about the spine alone. The split is measured, not
 # assumed, because a budget checked against the wrong half of a file is not a check.
@@ -195,7 +216,8 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
         cold_rss = max(cold_rss, rss)
     record("cold index of the 500-commit agent fixture", "cold.index.ms.small", round(p95(cold), 1),
            unit="ms", samples=cold,
-           note="three cold runs, each into a deleted store; the machine is one laptop, not the CI box")
+           note="three cold runs, each into a deleted store; one machine, three samples — what machine "
+                "it was is in the report's own `environment` block, not in this sentence")
     record("peak RSS of `fathom index`", "rss.cold_index.peak_mib.small",
            round(cold_rss / 1024.0, 1), unit="MiB",
            note="VmHWM of the index child; the graph lane is not built yet, so this is the spine alone")
@@ -229,12 +251,22 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
            unit="ms", samples=warm,
            note="the new commit carries the fixture's trailers, so segmentation has work to do too")
 
-    noop = []
+    noop, noop_wall = [], []
     for _ in range(3):
-        ms, _rss = run_timed([str(binary), "index"], fixture)
-        noop.append(ms)
-    record("re-index with nothing new", "warm.reindex.noop.ms.small", round(p95(noop), 1),
-           unit="ms", samples=noop)
+        wall, elapsed = run_timed_json([str(binary), "index", "--json"], fixture)
+        noop_wall.append(wall)
+        if elapsed is not None:
+            noop.append(elapsed)
+    record("re-index with nothing new", "warm.reindex.noop.ms.small",
+           round(p95(noop), 1) if noop else None, unit="ms", samples=noop,
+           blocked_by=None if noop else
+           "`fathom index --json` printed no `elapsed_ms`, so the store-side no-op time could not be read",
+           note=f"the run's own `elapsed_ms`, store-side: the ref comparison, the worktree pass and the "
+                "tallies, with the walk, the analysis pass and the episode rebuild skipped (`reco-7tc`). "
+                f"The same runs timed fork to exit are {round(p95(noop_wall), 1)} ms "
+                f"({', '.join(str(round(w, 1)) for w in noop_wall)}), of which the process start, "
+                "`Repository::discover` and `Store::open` are the larger half — a toll every verb pays, and "
+                "the reason `warm.reindex.noop.ms` is measured store-side like §13's rows are")
 
     # --- watch: a commit made in another terminal, noticed by the watcher
     detect = []

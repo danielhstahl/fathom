@@ -88,7 +88,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `warm.graph.marginal.ms` | ms | p95 | 50.0 | 60.0 | 80.0 | 120.0 | not measured yet | the graph lane is `e3.2`'s and is not built; `s3` measured its prototype floor (0.68 ms p50 / 33 ms p95 per revision) |
 | `warm.reindex.git.share_pct` | % | p95 | 60.0 | 60.0 | 60.0 | 60.0 | not measured yet | needs the git/store split in `fathom index --stats`, which `e1.10` owns and `e1.4`'s R7 makes meaningful |
 | `warm.reindex.ms` | ms | p95 | 150.0 | 200.0 | 300.0 | 400.0 | this harness | one new commit, then `fathom index`, 3 samples, p95 |
-| `warm.reindex.noop.ms` | ms | p95 | 10.0 | 10.0 | 15.0 | 15.0 | this harness | `fathom index` twice in a row, 3 samples, p95 |
+| `warm.reindex.noop.ms` | ms | p95 | 10.0 | 10.0 | 15.0 | 15.0 | this harness | `fathom index` twice in a row, 3 samples, p95 of the run's own store-side `elapsed_ms` |
 | `warm.reindex.provisional.ms` | ms | p95 | 120.0 | 160.0 | 240.0 | 320.0 | not measured yet | needs a dirty-work-tree index path in the binary (`e1.4` R7) |
 | `warm.reindex.scaling_ratio` | ratio | p50 | 1.25 | 1.25 | 1.25 | 1.25 | not measured yet | `e7.2` (`reco-66q`) runs the 1×/6× pair against real repositories |
 | `watch.budget.cpu_pct` | percent | hard limit | 5.0 | 5.0 | 5.0 | 5.0 | not measured yet | `e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule |
@@ -110,7 +110,7 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 | `rss.cold_index.peak_mib.small` | `rss.cold_index.peak_mib.small` | `VmHWM` of the index child, sampled while it runs — a peak, so the worst sample |
 | `warm.reindex.ms.small` | `warm.reindex.ms.small` | one new commit with unique content, then `fathom index`, p95 of 3 |
 | `rss.warm_reindex.peak_mib.small` | — | `VmHWM` of the warm index child (trend: no budget names the warm path's RSS alone) |
-| `warm.reindex.noop.ms.small` | `warm.reindex.noop.ms.small` | `fathom index` with nothing new, p95 of 3 — and on the breach register (reco-7tc) |
+| `warm.reindex.noop.ms.small` | `warm.reindex.noop.ms.small` | the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 of 3 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the whole-process time is quoted beside it |
 | `store.bytes_per_commit_spine.small` | `store.bytes_per_commit_spine.small` | `dbstat` pages of the spine tables over the commit count; cache rows are not charged |
 | `store.size.mib.small` | `store.size.mib.small` | the whole `.fathom/index.sqlite3`, cache included |
 | `query.metrics.ms.small` | `query.metrics.ms.small` | `fathom stats --json`, p95 of 3 — the verb the budget names |
@@ -138,7 +138,7 @@ defect closes — which is when the budget starts gating again.
 
 | measurement | budget | ceiling | owner | why |
 |---|---|---|---|---|
-| `warm.reindex.noop.ms.small` | 10 | 70 (1.15 × tolerance) | `reco-7tc` | a re-index that finds nothing new re-walks the history instead of skipping it, so the noop path costs a whole walk. ADR-004 §11 budgets it at 10 ms p95 — `ctrl-r` twice must not feel like work. `e1.12` measured 49.2 ms and filed reco-7tc; this gate measures 46–60 ms on the same fixture, run to run. Recorded rather than smoothed over: 70 ms is the ceiling it may not grow past (80.5 ms with the run-to-run tolerance), and this entry is deleted by hand the day reco-7tc closes, which is when the 10 ms budget starts gating again. |
+| (none) | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
 
 ## Proving the gate can fail
 

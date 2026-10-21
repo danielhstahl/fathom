@@ -17,6 +17,68 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A warm re-index with nothing new re-walked the history; now the refs answer it (`reco-7tc`)
+
+`fathom index` on a repository whose `HEAD` already had a row cost 48–58 ms — five times
+`warm.reindex.noop.ms.small` (10 ms p95), and about the same as a run that *had* a new commit to process,
+which is how you can tell a walk is being repeated rather than skipped. Inside the run it was: ~6 ms
+walking 500 commits the store already held, and ~48 ms re-segmenting every episode and writing the rows
+back identical. The breach sat on the register in `benchmarks/baselines/perf-gate.json` with a 70 ms
+ceiling and this ticket as its owner, so it could not grow quietly; this is the day the entry came off.
+
+* **The refs are asked first, and for the no-op they are the whole answer.** `index::run`
+    (`crates/fathom-analyze/src/index.rs`) now opens with `nothing_new`: every ref is compared with the snapshot the store already
+    holds, and when they agree, `HEAD` has a commit row of its own, and no commit is owed a derivation,
+    the walk, the analysis pass and the episode rebuild are skipped instead of repeated. The run's own
+    time went 53 ms → 2 ms on the 500-commit fixture.
+* **Five things refuse to be quiet**, each for its own reason: a `--refresh` or `--rebuild` pass, which
+    exists to re-measure the cache; a `HEAD` with no commit row of its own, so an unborn branch still says
+    so in its own words; any ref that moved, vanished or was never snapshotted — **including a branch off
+    to one side**, which changes what is reachable while `HEAD` sits perfectly still; a correction to an
+    attribution (`reco-w7q`), which moves no ref at all and changes only what the store should *say* about
+    commits it has already indexed, so the write that stores or forgets one now drops the store's own ref
+    snapshot and the next run re-derives what the label means; and an input the rebuild reads that git cannot
+    see — a harness stream that is not the one the last rebuild read (`e4.2`), or a `[episode]`/`[intent]`
+    block that was edited. Both appear, vanish and grow without git noticing anything, so the run that
+    rebuilt leaves a *witness* of what it was handed in `meta` and the next run has to match it; that is also
+    why an agent-driven repository — the one this whole project is about, and the one that always has a stream
+    — still gets the no-op instead of being written off by a blanket refusal. And a run that stopped early
+    unsnapshots the refs, because a store whose refs say "nothing moved" while its episodes say "an analysis
+    is missing" is a store that would skip finishing its own work.
+* **A quiet run still reads the worktree** — §6.4's provisional records of a dirty file are unchanged —
+    still stamps a run left `running` by a dead process as crashed, and prints the intent tallies the
+    *store* holds rather than zeroes for a step that did not run. It opens no `index_run` row: that table
+    is the history of the runs that walked, and a pass that walked nothing has no numbers to add to it.
+* **The verb says which of the two it was**: `.fathom/index.sqlite3: nothing new — HEAD 231528d is indexed
+    and no ref has moved, 2 ms`; `--json` gained `nothing_new` (and `schemas/index.schema.json` with it)
+    so `commits.walked: 0` reads as a quiet run or as an empty repository without guessing; `--stats`
+    says `warm run, nothing new: 0 commit(s) walked`.
+* **The no-op is measured store-side, and every page that prints it says so.** `warm.reindex.noop.ms`
+    descends from ADR-004 §13.3's prototype row — 4.8 ms, store-side, like the `warm.reindex.scaling_ratio`
+    rationale spells out — and the sentence that budgeted it is "`ctrl-r` twice must not feel like work",
+    which is a re-index inside a process that is already running. Charged against the whole *process* the
+    same budget is unreachable for any verb: of the 16.2 ms a no-op `fathom index` takes fork to exit, 14
+    ms is fork, dyld, `Repository::discover` and `Store::open` — the toll every verb pays, and more than
+    the budget before the run has decided anything. So `tools/perf_gate.py` and `tools/mvp_acceptance.py`
+    gate the run's own `elapsed_ms` and quote the whole-process number beside it, in the same note, so the
+    basis changed and nothing was hidden.
+* **The register entry is gone and the baseline moved with it** — `warm.reindex.noop.ms.small` re-blessed
+    at 2.0 ms, and that row only: the same box measures eight unrelated rows red against the bless of
+    `89f7198` (store bytes per commit over its own budget among them), and blessing those would have made
+    the gate agree with a regression instead of catching one.
+
+*Asserted by*: `crates/fathom-analyze/tests/incremental_index.rs` (the no-op's counters — no lookups
+anywhere, the walk never ran, the tallies still the store's; a quiet run that still reads a dirty
+worktree; a moved ref that is never quiet although `HEAD` sat still; a correction that is never quiet
+although nothing moved at all; a stream that is quiet when it has not moved and is not quiet when it went
+away; a `--refresh` that never is; and an ignored `--release --ignored` check of the 500-commit fixture
+against the published budget), `crates/fathom-analyze/tests/episodes.rs`, `tests/intent.rs` and
+`crates/fathom-cli/tests/intent.rs` (the three tests that found this ticket's first wrong answers:
+relabelling a commit and relabelling it back once the correction is forgotten, a stream the repository
+outlived, and a `fathom.toml` that was removed between two runs), `python3 tools/perf_gate.py --check` on that same fixture (the CI
+measurement, now green at 2 ms against 10 ms), and the regenerated
+`benchmarks/reports/e1-12-mvp-acceptance.json` row.
+
 ### The shell threw away its own frame report, so the frame budget was not measurable from the product (`reco-08r`)
 
 `fathom_tui::frame::run` measures every draw it makes against ADR-002 §6's 16 ms budget and returned a

@@ -413,7 +413,11 @@ def render_markdown() -> str:
                     format(float(entry.get("tolerance", 1.25)), "g"), entry.get("owner", "?"),
                     entry.get("why", "").replace("|", "\\|")))
         else:
-            lines.append("| (none) | — | — | — | every measured number is inside its budget |")
+            # The register can only speak for what it holds. Claiming "every measured number is inside its
+            # budget" from an empty register is a claim about the last gate run, and the last gate run is
+            # not in this file — `make bench-check` is where that verdict lives.
+            lines.append("| (none) | — | — | — | nothing is on the register; "
+                         "`make bench-check` is the word on what is inside its budget |")
 
     lines += [
         "",

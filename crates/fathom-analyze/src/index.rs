@@ -279,6 +279,13 @@ pub struct Report {
     pub commits_considered: usize,
     /// The spine's own numbers, kept whole: rows written, per-commit failures, notices, truncation.
     pub spine: RunReport,
+    /// The run found nothing to do and skipped the walk, the analyses and the episode rebuild instead of
+    /// repeating them (`reco-7tc`).
+    ///
+    /// What it means for the other fields: `commits_walked` is `0` because nothing was walked, not because
+    /// the repository has no history, and [`Report::episodes`] is the store's own tally rather than a step
+    /// this run performed. Nothing was written, so nothing is counted.
+    pub quiet: bool,
     /// What the episode step did (`e1.3`); all zeroes when `Options::episodes` is off.
     pub episodes: crate::episodes::Report,
     /// Per-analyzer counters for *this run*, keyed by analyzer id.
@@ -426,6 +433,13 @@ pub fn run(
     let now = options.now.ok_or(Error::InvalidRequest {
         why: "an index run must be given the instant to stamp its rows with; the clock belongs to the CLI",
     })?;
+
+    // 0. The no-op check, before anything is read or written (`reco-7tc`). See [`nothing_new`] for why the
+    //    refs are allowed to answer "is this fresh?" on their own, and for the four things that refuse.
+    if nothing_new(repo, store, options)? {
+        return quiet_report(repo, store, options, now, started);
+    }
+
     store.flush_counters(now)?;
     let before = store.counters("cache.")?;
 
@@ -610,6 +624,18 @@ pub fn run(
         store.finish_run(run, now, &stats)?;
     }
 
+    // The witness the next no-op check reads (`reco-7tc`). A run that stopped early is the interesting one:
+    // it may have stopped between the walk and the rebuild, and a store whose refs say "nothing has moved"
+    // while its episodes say "an analysis is missing" is a store that would skip finishing its own work.
+    // Such a run unsnapshots the refs, which is the one sentence the no-op check cannot answer from.
+    match interrupted {
+        Some(_) => store.forget_ref_snapshot()?,
+        None if options.episodes => {
+            store.set_meta(REBUILD_WITNESS_KEY, &rebuild_witness(options))?;
+        }
+        None => {}
+    }
+
     // 5. Counters, flushed and read back, so what `--stats` prints is what is in the database rather than a
     //    parallel set collected for the console. The delta, because a run reports what *it* did.
     store.flush_counters(now)?;
@@ -634,6 +660,175 @@ pub fn run(
         reason: interrupted,
         failures,
         elapsed: started.elapsed(),
+        quiet: false,
+    })
+}
+
+/// Whether this run has nothing to do — and the `HEAD` that says so (`reco-7tc`).
+///
+/// ADR-004 §11 calls the no-op re-index "the resume path's floor", and every path whose common case *is* the
+/// no-op — the watcher's debounce-and-index loop, a CI preflight asking "is this fresh?", a script that runs
+/// `fathom index` before reading the store — was paying a whole history walk and a whole episode rebuild to
+/// discover that nothing had moved. The refs answer that question without the walk: when every ref says what
+/// the store's last snapshot said, and `HEAD` has a commit row of its own, and no commit is owed a
+/// derivation, then the walk would emit commits the spine already has, the analysis pass would look up
+/// nothing, and the episode rebuild would write back the rows it had just read. So all three are skipped.
+///
+/// Five things refuse, each for its own reason:
+///
+/// * a run asked to look at everything (`--refresh`, `--rebuild`): that pass exists to re-measure the cache,
+///   and skipping the walk would make it silently mean something else;
+/// * a `HEAD` with no commit row of its own — including an unborn branch, where there is no state to be quiet
+///   about and the ordinary path is the one that says so;
+/// * refs that moved, moved away, or were never snapshotted — or were deliberately unsnapshotted: a
+///   correction to an attribution (`reco-w7q`) changes what the store should say about commits it has already
+///   indexed without moving any ref, so the write that stores one drops the snapshot the refs would have
+///   answered from. Either way there is no snapshot to answer from, which is the right answer rather than a
+///   bug to work around;
+/// * an input the rebuild reads that no ref describes: a harness stream that is not the one the last rebuild
+///   read (`e4.2`), or a `[episode]`/`[intent]` block that was edited (`reco-w7q`'s corrections are the third,
+///   and they are handled by dropping the snapshot above). [`rebuild_witness`] spells all three out, because
+///   the honest statement of the quiet path is not "the refs did not move" but "nothing the rebuild would
+///   have read has moved", and a stream that appears, disappears or grows is exactly such a change. A store
+///   that cannot say *which* stream and *which* rules the intents were computed from has to rebuild, which is
+///   the same reason it has to walk when a ref moved;
+/// * commits the store still owes an analysis for (§9.2) — the residue of a run that was killed or stopped out
+///   of its unit budget, and exactly the work the next run exists to finish.
+///
+/// A dirty worktree is **not** a reason to refuse: a working file is a fact about the working tree, the refs
+/// say nothing about it, and §6.4's provisional records are still produced on the quiet path.
+fn nothing_new(repo: &Repository, store: &Store, options: &Options) -> Result<bool, Error> {
+    if options.refresh || options.scope != Scope::NewCommits {
+        return Ok(false);
+    }
+    let Some(head) = repo.head_oid()? else {
+        return Ok(false);
+    };
+    let hex = head.hex();
+    // "The refs match the snapshot" is only the same statement as "nothing new" if the snapshot describes a
+    // repository this store actually holds rows for.
+    if store.indexed_oids(&[hex])?.is_empty() {
+        return Ok(false);
+    }
+    let stored: BTreeSet<(String, String, String)> = store
+        .ref_tips()?
+        .into_iter()
+        .map(|tip| (tip.name, tip.oid, tip.kind))
+        .collect();
+    let current: BTreeSet<(String, String, String)> = ref_tip_rows(repo)?
+        .into_iter()
+        .map(|(name, oid, kind)| (name, oid, kind.to_owned()))
+        .collect();
+    if stored != current {
+        return Ok(false);
+    }
+    // The changes no ref reports, in one comparison: the stream and the configuration the last rebuild read,
+    // against the ones this run was handed. Same witness means the intent the episodes carry was computed
+    // from exactly these inputs; no witness, or a different one, means the rebuild has to run.
+    if store.meta(REBUILD_WITNESS_KEY)?.as_deref() != Some(rebuild_witness(options).as_str()) {
+        return Ok(false);
+    }
+    // The other half of "nothing": a run that was killed or stopped out of its unit budget left commits owed
+    // an analysis, and finishing them is exactly what the next run is for (§9.2).
+    Ok(store.pending_derivation()?.is_empty())
+}
+
+/// The `meta` key holding the [`rebuild_witness`] of the run that last rebuilt the episodes (`reco-7tc`).
+///
+/// It is written by the run that read the inputs rather than by whatever changes them, for the reason every
+/// generation counter in this codebase is bumped at one place: a witness the reader could forget to record is
+/// a no-op check that silently stops noticing the change.
+const REBUILD_WITNESS_KEY: &str = "index.rebuild_witness";
+
+/// What a run was handed that git cannot report, on one line (`reco-7tc`).
+///
+/// Two inputs, both outside the object database. The **harness stream** is counted, not hashed, and `"none"`
+/// is a different answer from `"stream=0+0-0"` in the same way `fathom index --json` prints an events file
+/// that does not exist: "no stream" and "a stream that said nothing" are different reasons for the same empty
+/// intent tally. The **rules** — the `[episode]` and `[intent]` blocks, which the CLI hands over as values
+/// (ADR-002 §4.5) — are rendered through `Debug` and hashed, because the witness only has to *change* when a
+/// rule changes and a rendered form a refactor can survive silently is the worse failure. A `Rules` field that
+/// is added without appearing in its own `Debug` output is invisible here, which is the trade this makes; the
+/// three tests named in the CHANGELOG's entry for `reco-7tc` are what catch it.
+fn rebuild_witness(options: &Options) -> String {
+    let stream = options.hooks.as_ref().map_or_else(
+        || "stream=none".to_string(),
+        |ledger| {
+            format!(
+                "stream={}+{}-{}",
+                ledger.turns.len(),
+                ledger.opened,
+                ledger.trimmed
+            )
+        },
+    );
+    format!(
+        "{stream} rules={}",
+        digest(&format!("{:?}", options.segment))
+    )
+}
+
+/// Twelve hex characters of SipHash, enough to notice a change and short enough to live in `meta`.
+///
+/// `DefaultHasher`'s algorithm is a Rust-internal detail that changes across toolchains, which costs one
+/// unnecessary rebuild the first time a store is opened by a new compiler — the loud direction to fail.
+fn digest(text: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    format!("{:012x}", hasher.finish())
+}
+
+/// The report of a run that had nothing to do (`reco-7tc`), built without walking anything.
+///
+/// It opens no `index_run` row. That table is the history of the runs that walked — `fathom stats`' "last
+/// run" line, `fathom doctor`'s crashed-run report, the resume query's idea of which run wrote which commit
+/// — and a pass that walked nothing and wrote nothing has no numbers to add there. It does run the recovery
+/// stamp, because that is the one piece of bookkeeping a no-op can legitimately do: a run left `running` by a
+/// process that died is still a lie the first time anyone looks, and this is the first time anyone looks.
+fn quiet_report(
+    repo: &Repository,
+    store: &mut Store,
+    options: &Options,
+    now: i64,
+    started: Instant,
+) -> Result<Report, Error> {
+    store.recover_runs(now)?;
+    store.flush_counters(now)?;
+    let before = store.counters("cache.")?;
+
+    // The worktree pass is the only reading a quiet run still owes: the provisional records of §6.4 describe
+    // the working tree, which no ref describes, and they are cheap when the tree is clean.
+    let (worktree, worktree_skipped) = if options.worktree == Worktree::Ignore || triggered(options)
+    {
+        (Vec::new(), Vec::new())
+    } else {
+        analyse_worktree(repo, store, options, now)?
+    };
+
+    store.flush_counters(now)?;
+    let delta = delta(&before, &store.counters("cache.")?);
+    let episodes = crate::episodes::tally(store)?;
+    Ok(Report {
+        kind: RunKind::Warm,
+        commits_walked: 0,
+        commits_new: 0,
+        commits_considered: 0,
+        spine: RunReport::default(),
+        // The store's own tally, because a rebuild did not run to produce a fresh one. Printing zeroes here
+        // would be printing a sentence about the repository that is not true of it.
+        episodes,
+        analyzers: ANALYZED
+            .iter()
+            .map(|id| ((*id).to_owned(), stats_of(&delta, id)))
+            .collect(),
+        worktree,
+        worktree_skipped,
+        interrupted: false,
+        reason: None,
+        failures: Vec::new(),
+        elapsed: started.elapsed(),
+        quiet: true,
     })
 }
 
@@ -677,8 +872,19 @@ fn delta(before: &BTreeMap<String, i64>, after: &BTreeMap<String, i64>) -> BTree
 /// cite?" and a notes ref is not one. `HEAD` gets its own row, detached or not, because a detached `HEAD`
 /// is exactly the state an episode lineage has to survive.
 fn snapshot_refs(repo: &Repository, store: &mut Store, now: i64) -> Result<(), Error> {
+    store.replace_ref_tips(&ref_tip_rows(repo)?, now)?;
+    Ok(())
+}
+
+/// Every ref the repository names right now, as the `(name, target oid, kind)` rows [`Store::replace_ref_tips`]
+/// stores — extracted so that the no-op check compares exactly what the snapshot writes, rather than an
+/// approximation of it that could drift into saying a ref moved when it did not (`reco-7tc`).
+///
+/// The three skipped `kind`s are the same three `snapshot_refs` has always skipped; see its comment for why a
+/// notes ref is not an answer to "is this commit still reachable from a name a human would cite?".
+fn ref_tip_rows(repo: &Repository) -> Result<Vec<(String, String, &'static str)>, Error> {
     use fathom_ingest::repo::{RefFilter, RefKind, RefTarget};
-    let mut tips: Vec<(String, String, &str)> = Vec::new();
+    let mut tips: Vec<(String, String, &'static str)> = Vec::new();
     for reference in repo.refs(RefFilter::All)? {
         let kind = match reference.kind {
             RefKind::Branch => "branch",
@@ -696,8 +902,7 @@ fn snapshot_refs(repo: &Repository, store: &mut Store, now: i64) -> Result<(), E
     if let Some(head) = repo.head_oid()? {
         tips.push(("HEAD".to_owned(), head.hex(), "head"));
     }
-    store.replace_ref_tips(&tips, now)?;
-    Ok(())
+    Ok(tips)
 }
 
 /// The spine's counters, from its [`RunReport`].

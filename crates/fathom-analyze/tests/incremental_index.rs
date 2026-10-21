@@ -152,16 +152,28 @@ fn a_run_with_nothing_new_looks_up_nothing_and_computes_nothing() {
     // §6.1 R1's other half, and the shape `warm.reindex.noop.ms.small` is written for. A warm run with no
     // new commit must not fall back to "check everything": zero lookups is the claim, and a driver that
     // re-walked the history to discover nothing had changed would report hundreds here.
+    //
+    // Since `reco-7tc` the claim is stronger than "the analyses looked up nothing": the *walk* is skipped
+    // too, because the refs already answered the question the walk was about to ask. `ingest.normalize`
+    // therefore reports no lookups at all rather than one per commit — the spine was never asked.
     let fixture = repository("noop", 6);
     let store = store_path(&fixture);
-    index(&store, fixture.path(), &options());
+    let first = index(&store, fixture.path(), &options());
 
     let again = index(&store, fixture.path(), &options());
+    assert!(again.quiet, "the second run had nothing to do and said so");
     assert_eq!(again.kind, fathom_ingest::ingest::RunKind::Warm);
+    assert_eq!(again.commits_walked, 0, "the history was not walked");
     assert_eq!(again.commits_new, 0);
     assert_eq!(
         again.commits_considered, 0,
         "no commit was looked at for analysis"
+    );
+    assert!(
+        again.elapsed < first.elapsed,
+        "and it was quicker for it: {:?} against {:?}",
+        again.elapsed,
+        first.elapsed
     );
     for id in ["diff.per_file", "structure.delta"] {
         let stats = &again.analyzers[id];
@@ -176,7 +188,232 @@ fn a_run_with_nothing_new_looks_up_nothing_and_computes_nothing() {
         );
     }
     let spine = &again.analyzers["ingest.normalize"];
-    assert_eq!((spine.lookups, spine.hits, spine.cold), (6, 6, 0));
+    assert_eq!((spine.lookups, spine.hits, spine.cold), (0, 0, 0));
+    // The tallies the CLI prints are the store's, not zeroes for a step that did not run: `0 recorded, 0
+    // none recorded` over a repository with episodes in it would be a sentence that is not true of it.
+    assert_eq!(
+        again.episodes.episodes, first.episodes.episodes,
+        "the quiet run reports the episodes the store holds"
+    );
+    assert_eq!(
+        again.episodes.intent_absent, first.episodes.intent_absent,
+        "including what they say about intent"
+    );
+}
+
+#[test]
+fn a_quiet_run_still_reads_the_worktree_because_no_ref_describes_it() {
+    // §6.4's provisional records survive the short-circuit: a dirty file is a fact about the working tree,
+    // and the refs are silent about the working tree. Skipping the walk must not silently drop the answer
+    // `warm.reindex.provisional.ms` is a budget for.
+    let fixture = repository("quiet-worktree", 4);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+    fixture.dirty(
+        "src/main.rs",
+        "// uncommitted while nothing else moved\nfn quiet_dirty() -> u32 { 4 }\n",
+    );
+
+    let quiet = index(&store, fixture.path(), &options());
+    assert!(
+        quiet.quiet,
+        "no commit and no ref moved: {} new, {} walked",
+        quiet.commits_new, quiet.commits_walked
+    );
+    assert_eq!(
+        quiet.worktree.len(),
+        1,
+        "and the dirty path was still analysed: {:?}",
+        quiet.worktree
+    );
+}
+
+#[test]
+fn a_ref_that_moved_is_never_quiet_even_when_head_did_not_move() {
+    // The comparison is between every ref and the snapshot, not just `HEAD`: a branch that moved somewhere
+    // else changes which commits are reachable, which is what the episode lineage and `--prune` read. A
+    // short-circuit keyed on `HEAD` alone would call this repository unchanged.
+    let fixture = repository("quiet-ref", 5);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+
+    git(fixture.path(), &["branch", "elsewhere", "HEAD~2"]);
+
+    let moved = index(&store, fixture.path(), &options());
+    assert!(!moved.quiet, "a new ref is a change the store has not seen");
+    assert_eq!(moved.commits_new, 0, "even though no commit is new");
+    assert!(
+        moved.commits_walked > 0,
+        "and the walk ran, which is what stamped the new ref into the snapshot"
+    );
+
+    // Now that the snapshot knows about it, the next run is quiet again.
+    assert!(index(&store, fixture.path(), &options()).quiet);
+}
+
+#[test]
+fn a_correction_is_a_change_no_ref_can_report() {
+    // A correction moves no commit and no ref: it changes what the store should *say* about commits it has
+    // already indexed (`reco-w7q`). The run that honours it is the episode rebuild the quiet path skips, so
+    // the write that stores one drops the ref snapshot it would otherwise answer from — and the store is
+    // quiet again after the run that read it.
+    let fixture = repository("quiet-correction", 4);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+    assert!(
+        index(&store, fixture.path(), &options()).quiet,
+        "warm before the correction"
+    );
+
+    Store::open(&store)
+        .expect("the store opens")
+        .set_attribution_correction(
+            &fathom_store::episode::AttributionCorrection {
+                identity: "identity:claude@example.invalid".to_string(),
+                kind: "human".to_string(),
+                agent: String::new(),
+                note: "that was me driving".to_string(),
+                created_utc: NOW,
+            },
+            NOW,
+        )
+        .expect("storing a correction");
+
+    let after = index(&store, fixture.path(), &options());
+    assert!(
+        !after.quiet,
+        "no ref moved, and the run is not quiet anyway: the correction has to be read"
+    );
+    assert!(after.commits_walked > 0, "so the walk ran");
+    assert!(
+        index(&store, fixture.path(), &options()).quiet,
+        "and the store is quiet again once it has been"
+    );
+}
+
+#[test]
+fn a_stream_that_did_not_move_is_still_quiet() {
+    // The repository this ticket is *about* is the agent-driven one, which is the one that has a harness
+    // stream. Refusing to be quiet whenever a stream exists would have fixed the correctness hole and left
+    // the budget broken, so the check is about the stream the last rebuild read, not about there being one.
+    let fixture = repository("quiet-stream", 4);
+    let store = store_path(&fixture);
+    let with_stream = index::Options {
+        hooks: Some(fathom_ingest::hooks::Ledger::new()),
+        ..options()
+    };
+    index(&store, fixture.path(), &with_stream);
+    assert!(
+        index(&store, fixture.path(), &with_stream).quiet,
+        "a stream the last rebuild already read is not a change"
+    );
+
+    // And the other way round: no stream at all is a different answer, not the same absence.
+    let no_stream = index(&store, fixture.path(), &options());
+    assert!(
+        !no_stream.quiet,
+        "the stream disappearing is what `e4.2`'s fallback is for"
+    );
+}
+
+#[test]
+fn an_edited_rule_is_not_a_quiet_change() {
+    // `fathom.toml` is a third input no ref describes: `[episode]` arrives as `Rules`, the rebuild reads
+    // them, and the repository has not moved. The witness the last rebuild left behind is what notices — the
+    // library-level twin of the config test in `crates/fathom-cli/tests/intent.rs`.
+    let fixture = repository("quiet-rules", 4);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+    assert!(index(&store, fixture.path(), &options()).quiet);
+
+    let edited = index::Options {
+        segment: fathom_ingest::segment::Rules {
+            gap_millis: 999_000,
+            ..fathom_ingest::segment::Rules::default()
+        },
+        ..options()
+    };
+    assert!(
+        !index(&store, fixture.path(), &edited).quiet,
+        "the store rebuilt with different rules than these"
+    );
+    assert!(
+        index(&store, fixture.path(), &edited).quiet,
+        "quiet again once it has rebuilt with the rules it was handed"
+    );
+}
+
+#[test]
+fn a_refresh_is_never_quiet() {
+    // `--refresh` is the pass that re-measures the cache; a short-circuit that answered it from the ref
+    // comparison would report a refresh that looked at nothing and called it a refresh.
+    let fixture = repository("quiet-refresh", 4);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+
+    let refresh = index(
+        &store,
+        fixture.path(),
+        &index::Options {
+            scope: Scope::Everything,
+            refresh: true,
+            ..options()
+        },
+    );
+    assert!(!refresh.quiet, "a refresh walks, whatever the refs say");
+    assert!(refresh.commits_walked > 0);
+    assert!(
+        refresh.analyzers["diff.per_file"].lookups > 0,
+        "and looks every analysis it holds: {:?}",
+        refresh.analyzers["diff.per_file"]
+    );
+}
+
+#[test]
+#[ignore = "builds a 500-commit repository and measures wall clock; run with --release --ignored"]
+fn a_reindex_with_nothing_new_fits_the_noop_budget() {
+    // The acceptance criterion, in the only build the budget means anything for, and on the clock the budget
+    // is written against: the run's own store-side time, which is what `ctrl-r` inside a running shell pays
+    // and what ADR-004 §13 measured the prototype at (4.8 ms flat). `reco-7tc` filed this because the number
+    // was 49 ms — a whole walk plus a whole episode rebuild, repeated for an answer the refs already had.
+    let fixture = repository("noop-budget", 500);
+    let store = store_path(&fixture);
+    index(&store, fixture.path(), &options());
+
+    let quiet = index(&store, fixture.path(), &options());
+    let elapsed = quiet.elapsed.as_millis();
+    let limit = budget("warm.reindex.noop.ms.small");
+    eprintln!("no-op re-index of the 500-commit fixture: {elapsed} ms against a {limit} ms p95");
+    assert!(quiet.quiet, "and it was quiet for the right reason");
+    assert_eq!(
+        quiet.commits_walked, 0,
+        "the walk did not run, so the number cannot be the walk's"
+    );
+    assert!(
+        elapsed < limit,
+        "no-op re-index of the 500-commit fixture took {elapsed} ms, over its {limit} ms budget"
+    );
+}
+
+/// Run `git` in `dir` and say what failed when it did not.
+fn git(dir: &std::path::Path, args: &[&str]) {
+    let made = std::process::Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("GIT_AUTHOR_NAME", "mira")
+        .env("GIT_AUTHOR_EMAIL", "mira@example.invalid")
+        .env("GIT_COMMITTER_NAME", "mira")
+        .env("GIT_COMMITTER_EMAIL", "mira@example.invalid")
+        .output()
+        .expect("git is on PATH");
+    assert!(
+        made.status.success(),
+        "`git {}` failed: {}",
+        args.join(" "),
+        String::from_utf8_lossy(&made.stderr)
+    );
 }
 
 #[test]

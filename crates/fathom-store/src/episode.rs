@@ -946,6 +946,43 @@ impl Store {
             .map_err(|err| corrupt("reading episode authors", &err))
     }
 
+    /// The live episodes grouped by their two intent columns, counted.
+    ///
+    /// This is the cheap half of what an episode rebuild tallies: a run that found nothing to index has
+    /// re-segmented nothing, and the intent numbers it prints are the ones the store already holds rather
+    /// than a page of zeroes for a step that did not run (`reco-7tc`).
+    ///
+    /// The two columns come back as the text they are stored as rather than as a verdict, on purpose: what
+    /// `intent_state = 'digest-only'` *means* belongs to the crate that publishes the spelling
+    /// (`fathom-ingest::intent`), and a store that answered "absent" here would be a second place to decide
+    /// it. Grouped in one pass because four `COUNT`s would be four scans to say one sentence.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn episode_intent_counts(&self) -> Result<Vec<(String, String, i64)>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT intent_state, intent_source, COUNT(*) FROM episode
+                 WHERE live = 1
+                 GROUP BY intent_state, intent_source
+                 ORDER BY intent_state, intent_source",
+            )
+            .map_err(|err| corrupt("reading the episode intent tallies", &err))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            })
+            .map_err(|err| corrupt("reading the episode intent tallies", &err))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("reading the episode intent tallies", &err))
+    }
+
     /// The paths the given episodes touched, as `episode id → paths`, sorted and deduplicated.
     ///
     /// This is a *join*, not a stored column: the store records paths per commit (`git_commit_file`)
@@ -1153,6 +1190,10 @@ impl Store {
     /// This is what `fathom attribution correct` writes, and what the next index run reads back into
     /// `fathom_ingest::attribute::Policy::corrections` so the label moves for the commits that match it.
     ///
+    /// It also drops the store's ref snapshot ([`Store::forget_ref_snapshot`]): a correction changes what the
+    /// store should say about commits it has already indexed, which is a change no ref reports, and a warm
+    /// run that could answer "nothing moved" from the snapshot would never re-derive the label.
+    ///
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] if the write fails.
@@ -1176,7 +1217,7 @@ impl Store {
                 ],
             )
             .map_err(|err| corrupt("writing an attribution correction", &err))?;
-        Ok(())
+        self.forget_ref_snapshot()
     }
 
     /// Every stored correction, ordered by identity so a run's policy is reproducible.
@@ -1223,6 +1264,8 @@ impl Store {
                 params![identity],
             )
             .map_err(|err| corrupt("forgetting an attribution correction", &err))?;
+        // As above: forgetting a correction moves the same label, in the other direction.
+        self.forget_ref_snapshot()?;
         Ok(removed > 0)
     }
 

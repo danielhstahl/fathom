@@ -108,7 +108,8 @@ COVERAGE: dict[str, tuple[str, str]] = {
     "cold.graph.ms": ("not measured yet", "the graph lane is `e3.2`'s and is not built; `s3` measured its write half"),
     # --- warm re-index ----------------------------------------------------------------
     "warm.reindex.ms": ("this harness", "one new commit, then `fathom index`, 3 samples, p95"),
-    "warm.reindex.noop.ms": ("this harness", "`fathom index` twice in a row, 3 samples, p95"),
+    "warm.reindex.noop.ms": ("this harness", "`fathom index` twice in a row, 3 samples, p95 of the "
+                                            "run's own store-side `elapsed_ms`"),
     "warm.reindex.provisional.ms": ("not measured yet", "needs a dirty-work-tree index path in the binary (`e1.4` R7)"),
     "warm.reindex.git.share_pct": ("not measured yet",
                                    "needs the git/store split in `fathom index --stats`, which "
@@ -194,7 +195,9 @@ def measurement_plan() -> list[dict]:
         {"id": "rss.warm_reindex.peak_mib.small", "budget": None,
          "how": "`VmHWM` of the warm index child (trend: no budget names the warm path's RSS alone)"},
         {"id": "warm.reindex.noop.ms.small", "budget": "warm.reindex.noop.ms.small",
-         "how": "`fathom index` with nothing new, p95 of 3 — and on the breach register (reco-7tc)"},
+         "how": "the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 "
+                "of 3 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the "
+                "whole-process time is quoted beside it"},
         {"id": "store.bytes_per_commit_spine.small", "budget": "store.bytes_per_commit_spine.small",
          "how": "`dbstat` pages of the spine tables over the commit count; cache rows are not charged"},
         {"id": "store.size.mib.small", "budget": "store.size.mib.small",
@@ -364,6 +367,30 @@ class Harness:
 
     def fathom(self, *args: str, **kwargs) -> tuple[float, int]:
         return self.run([self.binary, *args], **kwargs)
+
+    def fathom_store_side(self, *args: str) -> tuple[float, float | None]:
+        """Run a verb with `--json`; return (process wall ms, the run's own `elapsed_ms`).
+
+        Two clocks for one process, because they answer two questions. The wall is what a human waits for;
+        `elapsed_ms` is what the indexer *did*, printed by the verb itself (`Report::elapsed`), and it is the
+        quantity the re-index budgets describe — ADR-004 §13.3's prototype rows are store-side times, and
+        `warm.reindex.scaling_ratio` says "store-side p50" in its own rationale. The difference between them
+        is fork, dyld, `Repository::discover` and `Store::open`: a fixed toll every verb pays, which for a
+        no-op re-index is larger than all of its work (`reco-7tc`).
+
+        Returns `None` for the store-side number if the verb printed no JSON — reported as blocked rather
+        than guessed at.
+        """
+        argv = [str(part) for part in [self.binary, *args, "--json"]]
+        for sibling in self.fixture.glob(".fathom/index.sqlite3-*"):
+            sibling.unlink()
+        started = time.monotonic()
+        proc = subprocess.run(argv, cwd=self.fixture, capture_output=True, text=True)
+        wall = (time.monotonic() - started) * 1000.0
+        try:
+            return wall, float(json.loads(proc.stdout)["elapsed_ms"])
+        except (ValueError, KeyError, TypeError):
+            return wall, None
 
     def commit_one(self, index: int) -> None:
         """One new commit with unique content, so a warm re-index is the warm case and not the noop."""
@@ -574,13 +601,27 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                        None, None, how="VmHWM of the warm index child (trend: no RSS budget names the warm path alone)",
                        scaled=False))
 
-    noop = []
+    noop, noop_wall = [], []
     for _ in range(harness.samples):
-        ms, _rss = harness.fathom("index")
-        noop.append(ms)
-    record(Measurement("warm.reindex.noop.ms.small", "ms", round(p95(noop), 1),
-                       "warm.reindex.noop.ms.small", noop,
-                       how="`fathom index` with nothing new: `ctrl-r` twice must not feel like work"))
+        wall, elapsed = harness.fathom_store_side("index")
+        noop_wall.append(wall)
+        if elapsed is not None:
+            noop.append(elapsed)
+    record(Measurement(
+        "warm.reindex.noop.ms.small", "ms",
+        round(p95(noop), 1) if noop else None,
+        "warm.reindex.noop.ms.small", noop,
+        blocked_by=None if noop else "`fathom index --json` printed no `elapsed_ms`, so the store-side "
+                                     "no-op time could not be read",
+        # The basis, stated because the two clocks in one process answer different questions and the
+        # baseline stores exactly one of them. `reco-7tc` skipped the walk, the analyses and the episode
+        # rebuild; what is left is the ref comparison, the worktree pass and the tallies, and the process
+        # around it is now several times larger than the work inside it.
+        how=("the run's own store-side `elapsed_ms` from `fathom index --json` — like §13.3's prototype "
+             "rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is "
+             "written for, which re-indexes inside a process already running. The same "
+             f"{len(noop_wall)} runs timed fork to exit are {round(p95(noop_wall), 1)} ms, which is the "
+             "toll every verb pays: process start, `Repository::discover`, `Store::open`")))
 
     # --- size on disk ----------------------------------------------------------------------
     commits = int(M.git(fixture, "rev-list", "--all", "--count"))

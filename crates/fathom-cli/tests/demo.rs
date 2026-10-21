@@ -148,8 +148,9 @@ fn a_clean_machine_goes_from_nothing_to_a_frame_in_under_a_minute() {
 }
 
 /// Warm is not cold. The second run must not re-unpack or re-index: a demo that re-did its work on every
-/// invocation would be indistinguishable from one that indexes in the foreground forever, and `0 new` is
-/// the same report a real repository gives on a second `fathom index`.
+/// invocation would be indistinguishable from one that indexes in the foreground forever, and the sentence
+/// it prints is the one any already-indexed repository prints (`reco-7tc`) — `nothing new`, in its own
+/// words, rather than a walk that counted zero.
 #[test]
 #[cfg(feature = "sqlite-bundled")]
 fn a_second_demo_run_reuses_the_index_and_says_so_in_the_same_words_as_any_reindex() {
@@ -158,7 +159,7 @@ fn a_second_demo_run_reuses_the_index_and_says_so_in_the_same_words_as_any_reind
     let out = machine.run(&["--demo", "--plain"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     assert!(
-        stderr(&out).contains("0 new"),
+        stderr(&out).contains("nothing new"),
         "the second run indexed again:\n{}",
         stderr(&out)
     );

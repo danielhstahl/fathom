@@ -1488,15 +1488,33 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
             }
         };
         let added = report.spine.commits_written;
-        say(format_args!(
-            "{}: {}{} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
-            store_path.display(),
-            if args.rebuild { "rebuild: " } else { "" },
-            report.commits_walked,
-            added,
-            report.computed(),
-            report.elapsed.as_millis()
-        ));
+        if report.quiet {
+            // The no-op said by itself (`reco-7tc`). A run that took 3 ms instead of 55 does not look like a
+            // run that walked the history, and a line that read "0 commit(s) walked" in a repository with 500
+            // of them would be a sentence about the report rather than about the repository.
+            say(format_args!(
+                "{}: nothing new — HEAD {} is indexed and no ref has moved, {} ms",
+                store_path.display(),
+                short_oid(
+                    &repository
+                        .head_oid()
+                        .ok()
+                        .flatten()
+                        .map_or_else(String::new, |oid| oid.hex()),
+                ),
+                report.elapsed.as_millis()
+            ));
+        } else {
+            say(format_args!(
+                "{}: {}{} commit(s) walked, {} new, {} analyse unit(s) computed in {} ms",
+                store_path.display(),
+                if args.rebuild { "rebuild: " } else { "" },
+                report.commits_walked,
+                added,
+                report.computed(),
+                report.elapsed.as_millis()
+            ));
+        }
         // The intent tally, on the same line the run reports (`e4.2`). Every bucket is printed, including
         // the empty one and the "nothing recorded" one: the ticket's rule is that missing intent is a state,
         // and a state that only appears when it is non-empty is a state a reviewer never learns to read.
@@ -1589,6 +1607,12 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     })
 }
 
+/// The seven-character prefix every verb here prints a commit id as, spelled once.
+#[cfg(feature = "sqlite-bundled")]
+fn short_oid(oid: &str) -> String {
+    oid.chars().take(7).collect()
+}
+
 /// The `--prune` result, in the lines the plain report has room for.
 ///
 /// Three cases, and the third is the one a report is tempted to print as the second: something went, nothing
@@ -1667,6 +1691,10 @@ fn json_report(
         "epoch": epoch,
         "kind": report.kind.as_str(),
         "elapsed_ms": report.elapsed.as_millis(),
+        // The run compared the refs and skipped the walk, the analyses and the episode rebuild (`reco-7tc`).
+        // Printed every run rather than only on a quiet one, so that `commits.walked: 0` can be read as "a
+        // quiet run" or as "an empty repository" without having to guess which.
+        "nothing_new": report.quiet,
         "commits": {
             "walked": report.commits_walked,
             "new": report.commits_new,
@@ -1775,9 +1803,10 @@ fn misses(stats: &fathom_analyze::index::AnalyzerStats) -> i64 {
 #[cfg(feature = "sqlite-bundled")]
 fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) {
     output::line(format_args!(
-        "{} — {} run, {} commit(s) walked, {} looked up, {} ms",
+        "{} — {} run, {}{} commit(s) walked, {} looked up, {} ms",
         store.display(),
         report.kind.as_str(),
+        if report.quiet { "nothing new: " } else { "" },
         report.commits_walked,
         report.commits_considered,
         report.elapsed.as_millis()

@@ -832,6 +832,25 @@ impl Store {
             .map_err(|err| corrupt("writing the ref snapshot", &err))
     }
 
+    /// Drop the ref snapshot, so the next run cannot answer "nothing moved" from it (`reco-7tc`).
+    ///
+    /// Some changes are not ref movements. A correction to an attribution leaves every commit exactly where
+    /// it is and changes only what the store should *say* about it; a rewritten correction does the same.
+    /// The warm no-op check reads the snapshot to decide that nothing moved, so it would be holding a true
+    /// fact and drawing a wrong conclusion. The write that stores or removes such a fact calls this, and
+    /// calls it here rather than in the verb, for the reason every other write in this crate happens in one
+    /// place: a bump with one call site cannot be forgotten at the others.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the delete fails.
+    pub fn forget_ref_snapshot(&mut self) -> Result<(), Error> {
+        self.conn
+            .execute("DELETE FROM ref_tip", [])
+            .map(|_| ())
+            .map_err(|err| corrupt("clearing the ref snapshot", &err))
+    }
+
     /// Which of `oids` already have a commit row — the resume and idempotency query, one lookup per run.
     ///
     /// # Errors

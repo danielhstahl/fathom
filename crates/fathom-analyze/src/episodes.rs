@@ -145,6 +145,43 @@ pub fn rebuild(
     })
 }
 
+/// The intent tallies of the episodes the store already holds, with no segmentation and no writes.
+///
+/// This is what a quiet run prints in the four places a rebuild's tallies are printed (`reco-7tc`). Read
+/// from the rows the last rebuild wrote rather than reported as zeroes: the four numbers describe the
+/// index, which is what a rebuild's tallies describe too, and a run that skipped the episode step and then
+/// printed `0 recorded, 0 none recorded` about a repository with two hundred episodes in it would be
+/// saying something that is not true.
+///
+/// `inserted`, `updated`, `relinked`, `retired` and `members` stay zero because they count *writes*, and this
+/// run wrote nothing.
+///
+/// # Errors
+///
+/// [`Error::Store`] if the read fails.
+pub fn tally(store: &Store) -> Result<Report, Error> {
+    use fathom_ingest::intent::{Source, State};
+    let mut report = Report::default();
+    for (state, source, count) in store.episode_intent_counts()? {
+        let count = usize::try_from(count).unwrap_or(usize::MAX);
+        report.episodes = report.episodes.saturating_add(count);
+        match State::parse(&state) {
+            State::Recorded => {
+                report.intent_recorded = report.intent_recorded.saturating_add(count);
+                if matches!(
+                    Source::parse(&source),
+                    Source::HookPrompt | Source::HookIntent | Source::HookPlan
+                ) {
+                    report.intent_from_hook = report.intent_from_hook.saturating_add(count);
+                }
+            }
+            State::Digest => report.intent_digest = report.intent_digest.saturating_add(count),
+            State::Absent => report.intent_absent = report.intent_absent.saturating_add(count),
+        }
+    }
+    Ok(report)
+}
+
 /// The harness's statement about the turn an episode belongs to, if there is one.
 ///
 /// The episode's own turn id wins when a trailer named one — that is the writer's own statement, and
