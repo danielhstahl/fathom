@@ -22,6 +22,8 @@ what a machine reads.
 | `fathom stats [ROOT] [--json]` | repo scale, index state, cache hit rate | [`stats.schema.json`](../../schemas/stats.schema.json) |
 | `fathom doctor [--root R] [--privacy] [--deep] [--strict] [--json]` | the build, the environment, the repository and the index — each finding with a remedy | [`doctor.schema.json`](../../schemas/doctor.schema.json) |
 | `fathom export [--format md\|html\|json] [--out STEM] [--episodes RANGE] [--root R] [--stdout] [--strict] [--json]` | the **review artefact** — one record (summary card, narrative, dependency and architecture deltas, findings with evidence, the operator-action checklist, the sign-off block and the gap list) written as markdown, HTML or JSON, byte-identical when re-exported | [`export.schema.json`](../../schemas/export.schema.json), documented in [the review artefact](export-artefact.md) |
+| `fathom status [ROOT] [--socket PATH] [--index] [--json]` | **who is keeping this index current** — the daemon's pid, uptime, hook offset, queue counters and measured CPU share, or, when nothing is running, the lease and heartbeat it fell back to and the endpoint it would have used | [`status.schema.json`](../../schemas/status.schema.json), documented in [the watch daemon](watch-daemon.md) |
+| `fathom daemon start [--foreground] [--socket PATH] [--cpu-share-pct N] [--json]` / `fathom daemon stop` | start and stop the **one writer per repository**: the lease, the socket, the budgeted indexing loop | [the watch daemon](watch-daemon.md) |
 | `fathom hooks [ROOT] [--check] [--replay] [--tail] [--max N] [--trailer S:T] [--strict] [--json]` | the harness event stream: lag, durable offset, counts by type, why each refused line was refused, and a deterministic replay | [`hooks.schema.json`](../../schemas/hooks.schema.json) |
 
 `fathom analyze` takes an episode id or anything
@@ -53,6 +55,13 @@ with `ok: false` — a diagnostic that exits non-zero in a script is a script th
 `fathom index --watch` is `fathom watch` after an index pass: one command for a script that wants "index,
 then keep this fresh". A binary built without the `watch` feature says so with `FEATURE_ABSENT` rather than
 indexing and pretending.
+
+`fathom index`, `fathom watch` and `fathom ambient` all ask the daemon first when one is serving
+([the watch daemon](watch-daemon.md)): who writes is a fact about a lock, not about which binary you ran
+(ADR-004 §7.1). A deferred `fathom index --json` is `fathom.cli.index.deferred/1` and not
+`fathom.cli.index/1`, because the timings, cache table and segmentation of a run report belong to a run this
+process did not perform. `--rebuild`, `--refresh` and `--stats` still do the work here: a rebuild moves the
+writer epoch, which is not a request anybody else can make on your behalf.
 
 ## Exit codes
 

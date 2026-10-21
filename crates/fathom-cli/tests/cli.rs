@@ -310,6 +310,16 @@ fn repository() -> std::path::PathBuf {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("create the fixture directory");
     git(&dir, &["init", "-q", "--initial-branch=main"]);
+    // A real repository ignores `.fathom/` — ADR-004 §12's stanza, written by `fathom init` — and this fixture
+    // was not a real repository until it did. The failure that made this obvious is worth keeping in the
+    // comment: a running watcher renames `.fathom/watch/status.json.tmp` into place, and a `git add -A` that
+    // listed the tmp path a moment earlier dies when it finds the file gone. Nothing about the watcher is
+    // wrong there; an unignored derived directory in the working tree is. Kept in `.git/info/exclude` rather
+    // than a committed `.gitignore` so the fixture's commits stay the three-file history every assertion here
+    // counts on.
+    let exclude = dir.join(".git").join("info").join("exclude");
+    std::fs::create_dir_all(exclude.parent().expect("git created info/")).expect("info/");
+    std::fs::write(&exclude, ".fathom/\n").expect("write the local exclude");
     for n in 0..3 {
         std::fs::write(dir.join("src.rs"), format!("fn f{n}() -> u32 {{ {n} }}\n"))
             .expect("write the fixture file");
@@ -516,7 +526,17 @@ fn a_commit_made_in_another_terminal_is_named_and_indexed() {
     let _ = child.wait();
 
     let change = &named["last_change"];
-    assert_eq!(change["name"].as_str(), Some("HEAD"), "{change}");
+    // Either name is the news. A commit on `main` moves `refs/heads/main` and moves `HEAD` *because* of it,
+    // and which of the two the watcher reports last is the notifier's ordering, not a property of the commit;
+    // pinning one of them made this fail whenever the machine was busy and both arrived in one tick. What the
+    // criterion asks is that the watcher named the ref move, so that is what is asserted.
+    assert!(
+        matches!(
+            change["name"].as_str(),
+            Some("HEAD") | Some("refs/heads/main")
+        ),
+        "the watcher has to name the ref the commit moved: {change}"
+    );
     assert_eq!(change["kind"].as_str(), Some("moved"), "{change}");
     assert_ne!(
         change["from"].as_str(),
@@ -738,6 +758,10 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["cmp", "--help"],
         vec!["search", "--help"],
         vec!["watch", "--help"],
+        vec!["daemon", "--help"],
+        vec!["daemon", "start", "--help"],
+        vec!["daemon", "stop", "--help"],
+        vec!["status", "--help"],
         vec!["ambient", "--help"],
         vec!["mcp", "--help"],
         vec!["mcp", "serve", "--help"],

@@ -17,6 +17,63 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### One writer per repository: `fathom daemon`, `fathom status`, and the lease that decides who writes (`reco-kvk`)
+
+Three TUIs and a `fathom index` used to mean four processes ready to index the same repository four times.
+Now one process per repository takes the writer lease, watches, tails the harness stream and indexes on a
+budget, and the other verbs are clients of it — which is ADR-004 §7.1's rule ("who writes is a fact about a
+lock, not a fact about which binary you ran") turned into code, a socket protocol and a status page.
+
+* **The lease is a storage primitive, so it lives in `fathom-store`** (`crates/fathom-store/src/lease.rs`):
+  `flock(2)` on `.fathom/daemon.lock` plus a JSON record `{pid, boot_id, pid_start, started_utc_ms, socket,
+  writer_epoch, build, root}`. Staleness is decided by four probes rather than by a timer where a probe exists
+  — the flock, the pid, the boot id, the pid's start time — with the heartbeat age (`daemon.lease_stale_s`,
+  default 120 s) as the least-trusted last resort for a process alive but wedged. Every stale lease is broken
+  **with a sentence**: the notice says whose claim it was, which probe said it was dead, and what the new epoch
+  is. A second `fathom daemon start` refuses and names the holder instead of starting a second writer.
+* **`fathom daemon start|stop`, `--foreground` included**, so a supervisor can supervise it
+  (`crates/fathom-cli/src/daemon.rs`). Without `--foreground` the parent re-executes detached, waits for the
+  socket to answer, and leaves a log at `.fathom/logs/daemon.log` for the failure a detached process would
+  otherwise swallow. `stop`, Ctrl-C, SIGTERM, `--deadline` and `--max-cycles` all take the one exit path:
+  finish the pass, checkpoint, blank the lease, remove the socket.
+* **`fathom.daemon/1`**, one request per connection over a unix socket (`hello`, `status`, `index`, `stop`),
+  with the endpoint resolved by one function every client and the daemon share — repository-local
+  `.fathom/daemon.sock`, then a digest-named `$XDG_RUNTIME_DIR` path when the repository path will not fit in
+  `sockaddr_un`, then `$TMPDIR`. A socket file whose listener died is replaced, and staleness is decided by
+  asking the path (`listen(2)`), not by a heuristic. **Windows named pipes resolve but do not bind**: binding
+  needs FFI, this workspace forbids `unsafe_code`, so a Windows daemon runs with the lease and the heartbeat
+  and says in `daemon.socket.reason` that it has no endpoint.
+* **Coalescing, counted.** The queue keys on the *asker*, so three TUIs asking for the same thing are one
+  request, a TUI that polls does not grow the queue, and `fathom status` can say who has been asking. The
+  counters are the acceptance criterion: `pushed`, `coalesced`, `shed`, `served`, `depth`, `high_water`.
+  A queue at its bound refuses new askers *with a reason* rather than growing.
+* **The CPU budget is measured and paid, not configured and hoped for.** User+system CPU from `/proc/self/stat`
+  over a rolling window; over the share the loop owes time and sleeps before taking more work, so
+  `cpu.slept_ms` and `cpu.over_windows` are the visible price. Where there is no process CPU clock the number
+  is still printed, from busy wall time, labelled `cpu.source: "estimate"` as the upper bound it is. A client
+  heard recently shrinks the work slice to the yield slice, because the criterion is that the TUI stays
+  responsive and not merely that the daemon stays under budget.
+* **Back-pressure on the harness stream instead of loss**: at most `hook-bytes` per pass, stopped at a whole
+  line boundary because a torn tail is not a readable event, with the unread remainder reported as
+  `hooks.lag_bytes` — lag you can see rather than events quietly dropped (ADR-005 §6.5).
+* **`fathom index`, `fathom watch` and `fathom ambient` ask first.** A deferred `fathom index --json` is the
+  distinct contract `fathom.cli.index.deferred/1` carrying the daemon's own words, because the timings, cache
+  table and segmentation of a run report belong to a run this process did not perform. `--rebuild`,
+  `--refresh`, `--stats` and `--watch` stay local, each for its own stated reason. `fathom watch --json` gained
+  an `indexer` field so a machine can tell "this process indexed" from "the daemon did".
+* **`fathom status --json`** (`schemas/status.schema.json`, `fathom.cli.status/1`) reports pid, uptime, the
+  hook offset, queue depth and cache stats — and, when nothing is running, says so with a stated
+  `daemon.source` of `daemon` / `lease` / `heartbeat` / `none`, each demotion a finding with a remedy. A stale
+  lease is exit `12`; a repository that is merely idle is `0`, because one code cannot mean both "fine" and
+  "nobody is home". `daemon.running` is the field to branch on.
+
+Proof: `crates/fathom-ingest/tests/daemon.rs` (21 tests) drives the real loop, socket, protocol and
+coalescing with a scripted worker — including *three TUIs and a CLI make one indexing pass*, asserted with
+the counters; and `crates/fathom-cli/tests/daemon.rs` (7 tests) drives the real binary against a real
+repository, so the clean stop, the SIGTERM and the restarted epoch are checked where a process boundary can
+still see them. The design, the three places it departs from ADR-004 §7's letter, and what it deliberately
+does not do are in [docs/concepts/watch-daemon.md](docs/concepts/watch-daemon.md).
+
 ### Privacy posture, measured instead of promised (`reco-h7p`)
 
 The promise is old (`ADR-001 §7.5`); what is new is that it is now *checked* rather than asserted, and

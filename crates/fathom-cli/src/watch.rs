@@ -215,10 +215,39 @@ fn classify<E: Diagnosable + std::fmt::Display, F: Fn(fathom_core::error::ErrorC
     JobError::Transient(text)
 }
 
+/// The watcher's job, which is either this process's own index or a daemon's pass asked over a socket.
+///
+/// An enum rather than a `Box<dyn Job>`: [`Job`] is `fathom-ingest`'s trait, and `impl Job for
+/// Box<dyn Job>` would be an impl of a foreign trait for a foreign type — the orphan rule says no, and
+/// the alternative (making the daemon's client live in `fathom-ingest`) is the layering violation this
+/// split exists to avoid (`e6.3`). Two variants is the honest shape anyway: there are exactly two ways
+/// for a `fathom watch` to have its work done.
+enum JobKind {
+    /// This process indexes, through [`IndexJob`]. The behaviour of every previous release.
+    Direct(IndexJob),
+    /// A daemon indexes, and this process asks (`fathom_ingest::daemon`).
+    Asked(crate::daemon::Asked),
+}
+
+impl Job for JobKind {
+    fn refresh(
+        &mut self,
+        interest: &Interest,
+        progress: &mut dyn FnMut(Progress),
+    ) -> Result<Progress, JobError> {
+        match self {
+            JobKind::Direct(job) => job.refresh(interest, progress),
+            JobKind::Asked(asked) => asked.refresh(interest, progress),
+        }
+    }
+}
 /// What arrives at stdout, once per state change rather than once per tick.
 struct Printer {
     json: bool,
     quiet: bool,
+    /// Who is doing the indexing this watcher is reporting on — this process, or a daemon asked over its
+    /// socket (`e6.3`). Printed, because the difference is a fact about the repository.
+    indexer: &'static str,
     /// The last thing printed, so a state that is merely still true is not printed forty times a second.
     last: Cell<Option<(String, String, usize)>>,
 }
@@ -248,7 +277,10 @@ impl Printer {
             return;
         }
         if self.json {
-            output::line(format_args!("{}", crate::watch::status_json(status, None)));
+            output::line(format_args!(
+                "{}",
+                crate::watch::status_json_indexed_by(status, None, self.indexer)
+            ));
             return;
         }
         if self.quiet {
@@ -314,21 +346,50 @@ pub fn run(args: &WatchArgs) -> eyre::Result<ExitCode> {
         }
     }
 
-    let mut job = IndexJob {
-        root: root.to_path_buf(),
-        store_path: store_path.clone(),
-        chunk_units: args.chunk_units,
-        // One cycle of watch work gets at most one poll interval of indexing, so a huge backlog is taken in
-        // slices the size of the watcher's own budget rather than in one long block.
-        chunk_deadline: Some(
-            Instant::now() + options.poll_interval.max(Duration::from_millis(250)),
-        ),
-        store_compiled: cfg!(feature = "sqlite-bundled"),
-        index_worktree: options.index_worktree,
+    // One process per repository does the indexing (`e6.3`): when a daemon is serving this
+    // repository, this watcher asks it for each pass instead of doing a second copy of the same
+    // work in a second process. Everything above is unchanged either way, which is the point of the
+    // [`Job`] seam — the debounce, the guards, the printed states and the status file are the same,
+    // and only the thing that reads commits differs. A daemon that answers and then refuses is a
+    // `Transient` job failure, so the watcher keeps running and asks again rather than giving up.
+    let daemon = crate::daemon::health(root, None);
+    if let Some(health) = &daemon
+        && !args.json
+        && !args.quiet
+    {
+        output::line(format_args!(
+            "  {}",
+            crate::daemon::delegation_note(health, &crate::daemon::endpoint(root, None))
+        ));
+    }
+    let mut job = if daemon.is_some() {
+        JobKind::Asked(crate::daemon::Asked::new(
+            root,
+            "fathom watch",
+            crate::daemon::ASK_WAIT,
+        ))
+    } else {
+        JobKind::Direct(IndexJob {
+            root: root.to_path_buf(),
+            store_path: store_path.clone(),
+            chunk_units: args.chunk_units,
+            // One cycle of watch work gets at most one poll interval of indexing, so a huge backlog
+            // is taken in slices the size of the watcher's own budget rather than in one long block.
+            chunk_deadline: Some(
+                Instant::now() + options.poll_interval.max(Duration::from_millis(250)),
+            ),
+            store_compiled: cfg!(feature = "sqlite-bundled"),
+            index_worktree: options.index_worktree,
+        })
     };
     let printer = Printer {
         json: args.json,
         quiet: args.quiet,
+        indexer: if daemon.is_some() {
+            crate::watch::DAEMON_INDEXER
+        } else {
+            crate::watch::LOCAL_INDEXER
+        },
         last: Cell::new(None),
     };
     // `--once` stops the moment the first run reports itself done: it is `fathom index` with the watcher's
@@ -360,7 +421,7 @@ pub fn run(args: &WatchArgs) -> eyre::Result<ExitCode> {
     if args.json {
         output::line(format_args!(
             "{}",
-            status_json(&watch.status(), Some(reason.summary()))
+            status_json_indexed_by(&watch.status(), Some(reason.summary()), printer.indexer,)
         ));
     }
     match reason {
@@ -401,6 +462,25 @@ pub fn status_path(store_path: &Path) -> PathBuf {
 /// [`Status`]'s serde shape, for the same reason `fathom index --json`'s shape is assembled in `verbs.rs`:
 /// a renamed internal field must not silently rename what `reco-8bx` reads.
 pub fn status_json(status: &Status, stop: Option<String>) -> serde_json::Value {
+    status_json_indexed_by(status, stop, LOCAL_INDEXER)
+}
+
+/// This process did the work (`e6.3`): the watcher's own index run, the store opened here, the cache filled
+/// here. The other value is [`DAEMON_INDEXER`].
+pub const LOCAL_INDEXER: &str = "this process";
+/// The work was asked of the daemon over its socket, and this process only waited for the answer (`e6.3`).
+/// A machine reading `fathom watch --json` cannot otherwise tell the two apart: the counters look identical,
+/// and which process held the writer lease is exactly the fact ADR-004 §7.1 cares about.
+pub const DAEMON_INDEXER: &str = "daemon";
+
+/// The watcher's state as one JSON document, with the one fact only the verb knows stamped on it: who
+/// indexed. Additive on purpose — everything above [`status_json`]'s warning is unchanged for `reco-8bx`.
+#[must_use]
+pub fn status_json_indexed_by(
+    status: &Status,
+    stop: Option<String>,
+    indexer: &str,
+) -> serde_json::Value {
     let notices: Vec<serde_json::Value> = status
         .notices
         .iter()
@@ -415,6 +495,7 @@ pub fn status_json(status: &Status, stop: Option<String>) -> serde_json::Value {
     let mut value = serde_json::json!({
         "pid": std::process::id(),
         "watcher": format!("fathom {}", crate::features::VERSION),
+        "indexer": indexer,
         "git_dir": status.git_dir,
         "phase": status.phase.as_str(),
         "phase_summary": status.phase.summary(),
@@ -465,7 +546,11 @@ pub fn status_json(status: &Status, stop: Option<String>) -> serde_json::Value {
 }
 
 /// Write the heartbeat by rename, so a reader never observes a half-written file.
-fn write_status(path: &Path, status: &Status) {
+///
+/// `pub(crate)` because the daemon has a heartbeat to write too (`e6.3`): a reader that can ask a daemon
+/// over a socket can also read this file when there is no socket, and both writers must leave the same shape
+/// or `fathom doctor` is comparing two different documents.
+pub(crate) fn write_status(path: &Path, status: &Status) {
     let value = status_json(status, None);
     let rendered = match serde_json::to_string(&value) {
         Ok(text) => text,

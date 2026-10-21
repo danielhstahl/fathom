@@ -49,6 +49,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`watch`](#fathom-watch)** | Watch the repository and index as it changes | shipped | [*run-beside-the-agent*](../recipes/run-beside-the-agent.md) · [*session-state*](../concepts/session-state.md) |
 | **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
+| **[`daemon`](#fathom-daemon)** | The one process per repository that watches, tails the harness stream and indexes (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
+| **[`status`](#fathom-status)** | Who is keeping this index current, what it costs, and what is left (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
 | **[`tui`](#fathom-tui)** | Print the terminal UI's keymap, or open the UI itself | shipped | [*cheatsheet*](cheatsheet.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`open`](#fathom-open)** | Open an episode's file at its line in $EDITOR — jump out, do not read around it (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
 | **[`difftool`](#fathom-difftool)** | Show one file's two sides in your own difftool — difftastic, meld, kdiff3, vim -d (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
@@ -860,6 +862,187 @@ Options:
   -V, --version                      Print version
 ```
 <!-- END GENERATED: help.watch -->
+
+## `fathom status`
+
+Who is keeping this index current, what it costs, and what is left — the headless half of
+[the watch daemon](../concepts/watch-daemon.md). With a daemon running it is that process's own health
+document (pid, uptime, protocol, the queue's `pushed`/`coalesced`/`shed`/`served`, the measured CPU share
+against its budget, the harness stream's offset and lag, the pass counters by origin); without one it is the
+writer lease and the watcher's heartbeat instead, with `daemon.source` saying which of the four things the
+answer is (`daemon`, `lease`, `heartbeat`, `none`). `--index` asks for a pass first and reports what that pass
+did, which is why the health document describes the state *after* it. Exits `12` for a lease left behind by a
+writer that is gone, and `0` for a repository that is merely idle: `daemon.running` is the field to branch on.
+
+<!-- BEGIN GENERATED: help.status -->
+```text
+Who is keeping this index current, what it costs, and what is left (`e6.3`)
+
+Usage: fathom status [OPTIONS] [ROOT]
+
+Arguments:
+  [ROOT]  The repository to report on [default: .]
+
+Options:
+      --json               Print the report as one JSON line (machine contract `fathom.cli.status/1`)
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --index              Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.status -->
+
+## `fathom daemon`
+
+The one writer per repository: it takes the writer lease, watches, tails the harness stream and indexes on a
+budget, and answers the other verbs over a local socket instead of each of them starting a second copy of the
+same work (ADR-004 §7.1). Bare `fathom daemon` is a status report; `start` and `stop` are the two things a
+supervisor needs. `--foreground` runs it in this process, which is the form systemd, a container `init` and a
+CI step want — stdout stays attached and SIGTERM leaves by the same path `fathom daemon stop` uses. A second
+`start` refuses and names the holder rather than starting a second writer.
+
+<!-- BEGIN GENERATED: help.daemon -->
+```text
+The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
+
+Usage: fathom daemon [OPTIONS] [COMMAND]
+
+Commands:
+  start   Take the writer lease and watch this repository from this process, or from a detached one
+  stop    Ask the daemon to finish its pass, checkpoint and release the lease
+  status  The daemon's own health report (`fathom status` is the same question at the top level)
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.daemon -->
+
+### `fathom daemon start`
+
+The budget flags are the ticket's: `--cpu-share-pct` is the ceiling the loop is measured against (25 % of one
+core by default, 5 % is the watcher's quiet number), `--slice` and `--yield-slice` are the work it takes per
+pass while nothing is asking and while a client has just been heard, `--queue-depth` bounds how many distinct
+askers may wait before new ones are refused with a reason, and `--hook-bytes` caps the harness stream read per
+pass — the lag it produces is reported as `hooks.lag_bytes` rather than dropped (ADR-005 §6.5). Without
+`--foreground` the parent re-executes detached and waits for the socket to answer before printing.
+
+<!-- BEGIN GENERATED: help.daemon.start -->
+```text
+Take the writer lease and watch this repository from this process, or from a detached one
+
+Usage: fathom daemon start [OPTIONS]
+
+Options:
+      --plain                          Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>                    The repository to watch and index [default: .]
+      --json                           Print the health document as JSON instead of lines, and print it once the first pass has run
+      --no-alt-screen                  Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                          Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --quiet                          Print nothing but the health document; the heartbeat file is still written
+      --foreground                     Run in this process, so a supervisor can supervise it (`e6.3`, ADR-004 §7.1)
+      --mouse                          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                          With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --socket <PATH>                  Where to listen, instead of the endpoint derived from the repository (ADR-004 §7.2)
+      --theme <NAME|PATH>              Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --require-socket                 Refuse to start rather than run with no IPC endpoint
+      --progress                       print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --supervisor <SUPERVISOR>        Who is supervising this daemon, recorded in the health document (`systemd`, `docker`, `ci`)
+      --cpu-share-pct <CPU_SHARE_PCT>  The CPU ceiling, as a percent of one core. 25 is ADR-004 §7.2's background default [default: 25]
+      --no-progress                    never print the index's progress row, even on a terminal
+      --slice <SLICE>                  Analysis units per pass while nothing is talking to the daemon [default: 2000]
+      --yield-slice <YIELD_SLICE>      Analysis units per pass while a foreground client has just been heard — the yield slice [default: 50]
+      --queue-depth <QUEUE_DEPTH>      How many distinct index requests may wait before new ones are refused rather than queued [default: 64]
+      --hook-bytes <HOOK_BYTES>        Harness-stream bytes per pass — the back-pressure knob of ADR-005 §6.5 [default: 1048576]
+      --backend <BACKEND>              Which change source to use: `auto`, `notify` or `poll`. The daemon is a watcher, so it takes the watcher's flags for the same meaning [default: auto]
+      --interval-ms <INTERVAL_MS>      The debounced polling interval in milliseconds
+      --debounce-ms <DEBOUNCE_MS>      The quiescence window in milliseconds
+      --heartbeat-ms <HEARTBEAT_MS>    The liveness beat in milliseconds, for the heartbeat file and the lease
+      --worktree                       Also re-index uncommitted paths when only git's index moved
+      --no-status-file                 Do not write `.fathom/watch/status.json`
+      --deadline <DEADLINE>            Stop after this many seconds — the supervisor's `TimeoutStopSec` seam and a test's
+      --max-cycles <MAX_CYCLES>        Stop after this many loop passes. A test seam, and the way to use the daemon as a one-shot indexer
+  -h, --help                           Print help (see more with '--help')
+  -V, --version                        Print version
+```
+<!-- END GENERATED: help.daemon.start -->
+
+### `fathom daemon stop`
+
+Finish the current pass, checkpoint the store, blank the lease record, remove the socket, exit 0. This is the
+same exit path Ctrl-C and SIGTERM take; the difference is only who asks.
+
+<!-- BEGIN GENERATED: help.daemon.stop -->
+```text
+Ask the daemon to finish its pass, checkpoint and release the lease
+
+Usage: fathom daemon stop [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository whose daemon to stop [default: .]
+      --json               Print the outcome as one JSON line (`fathom.cli.daemon.stop/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --reason <REASON>    Who is asking, recorded in the daemon's last line [default: "fathom daemon stop"]
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.daemon.stop -->
+
+### `fathom daemon status`
+
+The same report as `fathom status`, reachable as a subverb so `fathom daemon` and `fathom daemon status`
+cannot disagree about which repository or which endpoint was asked.
+
+<!-- BEGIN GENERATED: help.daemon.status -->
+```text
+The daemon's own health report (`fathom status` is the same question at the top level)
+
+Usage: fathom daemon status [OPTIONS] [ROOT]
+
+Arguments:
+  [ROOT]  The repository to report on [default: .]
+
+Options:
+      --json               Print the report as one JSON line (machine contract `fathom.cli.status/1`)
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --index              Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.daemon.status -->
 
 ## `fathom ambient`
 

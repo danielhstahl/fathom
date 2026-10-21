@@ -39,6 +39,12 @@ mod fixture {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("create the fixture directory");
         git(&dir, &["init", "-q", "--initial-branch=main"]);
+        // A real repository ignores `.fathom/` (ADR-004 §12); a fixture that does not turns a watcher's or a
+        // daemon's atomic rename into a `git add -A` that died on a path it had just listed. Local exclude, so
+        // no commit content changes.
+        let exclude = dir.join(".git").join("info").join("exclude");
+        std::fs::create_dir_all(exclude.parent().expect("git created info/")).expect("info/");
+        std::fs::write(&exclude, ".fathom/\n").expect("write the local exclude");
         for n in 0..3 {
             std::fs::write(
                 dir.join(format!("src{n}.rs")),
@@ -173,6 +179,46 @@ fn show_stats_and_doctor_conform_to_their_schemas() {
     assert!(
         report["sqlite"]["capabilities"]["STRICT"].as_bool() == Some(true),
         "the capability probe ran: {report}"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// `fathom status` with no daemon running — the shape a script meets most often, and the one where the verb
+/// has to say "nothing is watching, here is the endpoint it would use" instead of printing zeros. The live
+/// daemon's document is checked in `tests/daemon.rs`, which starts a real one.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn status_json_conforms_to_its_schema() {
+    let dir = fixture::repository("status");
+    let root = dir.to_str().unwrap();
+    assert_eq!(fixture::code(&fixture::fathom(&["index", root], &dir)), 0);
+
+    let out = fixture::fathom(&["status", root, "--json"], &dir);
+    assert_eq!(fixture::code(&out), 0, "{}", fixture::stderr(&out));
+    let report = round_trip("status.schema.json", &out);
+    assert_eq!(report["daemon"]["source"].as_str(), Some("none"));
+    assert_eq!(report["daemon"]["running"].as_bool(), Some(false));
+    assert!(
+        report["daemon"]["lease"]["path"].is_string(),
+        "the lease is reported even when it is free: {report}"
+    );
+    assert!(
+        report["diagnostics"]
+            .as_array()
+            .is_some_and(|rows| !rows.is_empty()),
+        "an absent daemon is a finding with a remedy, not a blank: {report}"
+    );
+    assert_eq!(
+        report["diagnostics"][0]["remedy"]
+            .as_str()
+            .is_some_and(|remedy| remedy.contains("fathom daemon start")),
+        true,
+        "the remedy names the verb that starts one: {report}"
+    );
+    assert_eq!(
+        report["index"]["commits"].as_u64(),
+        Some(3),
+        "the index half comes from the same gatherer `fathom stats` uses: {report}"
     );
     std::fs::remove_dir_all(&dir).ok();
 }
@@ -324,6 +370,7 @@ fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
         "doctor.schema.json",
         "export.schema.json",
         "hooks.schema.json",
+        "status.schema.json",
     ] {
         let schema = Schema::load(name);
         let document = &schema.document;
@@ -429,6 +476,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
             "index.schema.json",
             "show.schema.json",
             "stats.schema.json",
+            "status.schema.json",
         ]
     );
 }

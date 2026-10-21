@@ -85,7 +85,13 @@ rusqlite = { version = "0.40", default-features = false }
 # self-contained on all three OSes; `sqlite-system` exists for distro packagers and is the unbundled
 # link, which is why rusqlite itself is gated — see crates/fathom-store/Cargo.toml.
 libsqlite3-sys = { version = "0.38", features = ["bundled"] }
-rustix = { version = "1", default-features = false, features = ["fs", "process", "termios"] }
+# `std` is rustix's default feature and it is switched back on here deliberately, not left to accident:
+# with `default-features = false` and no `std`, rustix polyfills `AsFd` from its own `no_std` types and a
+# plain `std::fs::File` does not satisfy it — so a lease that wants a descriptor (`e6.3`, ADR-004 §7.1)
+# only compiles when some *other* crate in the graph happens to unify `std` on. Naming the feature here
+# is what makes `cargo check -p fathom-store` alone and `cargo build --workspace` compile rustix the same
+# way, which is the §6.1 argument about default features, applied to a feature somebody else turned on.
+rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "termios"] }
 fallible-iterator = { version = "0.3" }
 
 # --- L2: the outside door ------------------------------------------------------------------------

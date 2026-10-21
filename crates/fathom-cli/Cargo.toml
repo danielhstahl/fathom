@@ -31,6 +31,13 @@ clap.workspace = true
 clap_complete.workspace = true
 eyre.workspace = true
 color-eyre.workspace = true
+# The daemon's stop flags (`e6.3`): `signal-hook`'s flag API is the only async-signal-safe way to turn a
+# signal into an `AtomicBool` without `unsafe`, and the crate is already in the shipped binary through
+# `crossterm` (ADR-002 §6.2) — so this makes an existing vendor a *direct* dependency, which §9's table
+# has to show, and it is gated with `watch` because nothing else in the binary listens for a signal.
+signal-hook = { workspace = true, optional = true }
+# `setsid`, for the detached `fathom daemon start`; already in the shipped closure through `fathom-store`.
+rustix = { workspace = true, optional = true }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 serde.workspace = true
@@ -51,7 +58,7 @@ fathom-mcp = { workspace = true, optional = true }
 default = ["tui", "mcp", "watch", "sqlite-bundled", "langs-all", "deps-all"]
 tui = ["dep:fathom-tui"]
 mcp = ["dep:fathom-mcp"]
-watch = ["fathom-ingest/watch"]
+watch = ["fathom-ingest/watch", "dep:signal-hook", "dep:rustix"]
 sqlite-bundled = ["fathom-store/sqlite-bundled", "fathom-analyze/sqlite-bundled"]
 langs-all = ["fathom-analyze/langs-all"]
 # Every dependency ecosystem (`e2.5`). On by default for the same reason `langs-all` is: a review tool that

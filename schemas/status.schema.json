@@ -1,0 +1,326 @@
+{
+  "$id": "https://fathom.dev/schemas/status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fathom status --json",
+  "description": "Who is keeping this repository's index current, what it costs, and what is left to do: the headless answer behind `fathom daemon`'s health, ADR-004 §7.1's client fallback chain, and the same index and cache sections `fathom stats` prints. Owner: `e6.3`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "root",
+    "daemon",
+    "repository",
+    "index",
+    "cache",
+    "degraded",
+    "exit_code",
+    "exit_name",
+    "diagnostics"
+  ],
+  "properties": {
+    "contract": {
+      "const": "fathom.cli.status/1"
+    },
+    "root": {
+      "type": "string"
+    },
+    "daemon": {
+      "type": "object",
+      "description": "The `daemon` section: what a live daemon said about itself over the socket, or what the client reconstructed from the lease file and the watcher's heartbeat when nothing answered. The two halves are separated by `source`, which is the whole point of the field: a live process, a dead process's lock, a dead watcher's last note and nothing at all are four different facts. A running daemon's own keys are governed by the socket protocol id it reports in `protocol` (`fathom.daemon/1`), not by this schema — they are listed here because the human printer reads them, and they are `additionalProperties: true` so a daemon can grow without breaking a client.",
+      "additionalProperties": true,
+      "required": [
+        "source",
+        "running"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "daemon",
+            "lease",
+            "heartbeat",
+            "none"
+          ],
+          "description": "Where this section came from. `daemon` means a live process answered; anything else means the client read a file a process left, and says which."
+        },
+        "running": {
+          "type": "boolean",
+          "description": "`true` exactly when `source` is `daemon`. A script that wants to know whether anything is watching reads this and not a zero."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "The socket protocol the answering daemon speaks."
+        },
+        "protocol_version": {
+          "type": "integer"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "build": {
+          "type": "string"
+        },
+        "started_utc_ms": {
+          "type": "integer"
+        },
+        "stamp_utc_ms": {
+          "type": "integer"
+        },
+        "uptime_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cycles": {
+          "type": "integer"
+        },
+        "supervisor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shutdown": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Set only while the daemon is leaving: the reason it is finishing, so a client that raced the exit can tell a stop from a crash."
+        },
+        "repository": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "lease": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The writer lease: its path, whether a live process holds it, the holder's record when there is one, and `broken` when a dead holder's claim was taken over (ADR-004 §7.1)."
+        },
+        "socket": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The IPC endpoint: kind, path, whether anything is listening, and `reason` when there is no endpoint on this platform or path."
+        },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The budgeted background indexing: configured share, measured share, the window it was measured over, how many windows went over, how long the loop slept to pay for them, and whether a foreground client was recently heard.",
+          "required": [
+            "budget_share",
+            "measured_share",
+            "window_ms",
+            "source"
+          ],
+          "properties": {
+            "budget_share": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "measured_share": {
+              "type": "number",
+              "minimum": 0
+            },
+            "window_ms": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "proc",
+                "estimate"
+              ],
+              "description": "`proc` is user+system CPU the kernel charged the process; `estimate` is busy wall time, which is an upper bound and is labelled as one."
+            },
+            "over_windows": {
+              "type": "integer"
+            },
+            "slept_ms": {
+              "type": "integer"
+            },
+            "slice_units": {
+              "type": "integer"
+            },
+            "foreground": {
+              "type": "boolean"
+            }
+          }
+        },
+        "queue": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The request queue and the counters that make \"three TUIs and a CLI made one pass\" an assertion: pushed, coalesced, shed, served, depth, bound, high water.",
+          "required": [
+            "depth",
+            "bound",
+            "pushed",
+            "coalesced",
+            "shed",
+            "served"
+          ],
+          "properties": {
+            "depth": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bound": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pushed": {
+              "type": "integer"
+            },
+            "coalesced": {
+              "type": "integer"
+            },
+            "shed": {
+              "type": "integer"
+            },
+            "served": {
+              "type": "integer"
+            }
+          }
+        },
+        "hooks": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The ADR-005 event stream as the daemon reads it: the durable offset, bytes still unread (the lag the cap produces rather than drops), and the back-pressure state.",
+          "required": [
+            "offset",
+            "lag_bytes"
+          ],
+          "properties": {
+            "offset": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "lag_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "passes": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Indexing passes: how many, how many clients they settled, and the requests grouped by origin — the counters the ticket's first criterion is asserted with.",
+          "required": [
+            "count",
+            "clients_served",
+            "clients_refused",
+            "requests_by_origin"
+          ],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clients_served": {
+              "type": "integer"
+            },
+            "clients_refused": {
+              "type": "integer"
+            },
+            "requests_by_origin": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "watch": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The watcher's own state machine: phase, backend, debounce, what it is waiting for."
+        },
+        "heartbeat": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Only when nothing answered: the last status file a `fathom watch` or daemon wrote, with the age read off the file's own mtime. A dead process's note, labelled as one."
+        },
+        "pass": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Only with `--index`: the daemon's answer to the pass this verb asked for — whether it settled, and what the pass read."
+        }
+      }
+    },
+    "repository": {
+      "$ref": "common.schema.json#/$defs/repository"
+    },
+    "index": {
+      "$ref": "common.schema.json#/$defs/index"
+    },
+    "cache": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/cache"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "degraded": {
+      "type": "boolean"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "exit_name": {
+      "type": "string"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/finding"
+      }
+    }
+  },
+  "x-fathom-contract": "fathom.cli.status/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the verb answered; a daemon running or absent is both OK, and `daemon.running` says which"
+    },
+    {
+      "code": 1,
+      "name": "ERROR",
+      "when": "a rejected argument value, or a report that could not be rendered"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line (bad flag, unknown verb, missing argument)"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "--root is not a git repository"
+    },
+    {
+      "code": 9,
+      "name": "FEATURE_ABSENT",
+      "when": "the binary was built without the `watch` feature, which is what carries the daemon"
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "the index is missing, stale or mid-rebuild, or the writer lease on disk belongs to a writer that is gone"
+    }
+  ]
+}

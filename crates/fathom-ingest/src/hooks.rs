@@ -2922,7 +2922,27 @@ impl Reader {
     /// # Errors
     ///
     /// An I/O failure reading the file. A *malformed* line is never an error here; it is a line.
-    pub fn scan<F: FnMut(&Scanned)>(&self, from: u64, mut on_line: F) -> Result<Scan, String> {
+    pub fn scan<F: FnMut(&Scanned)>(&self, from: u64, on_line: F) -> Result<Scan, String> {
+        self.scan_within(from, None, on_line)
+    }
+
+    /// [`scan`](Self::scan), with a cap on how many bytes one pass may consume.
+    ///
+    /// The cap is the daemon's back-pressure (`e6.3`): a harness that appends faster than the daemon may
+    /// read makes the *lag* grow instead of making the daemon's cycle time grow, and the lag is a number
+    /// on a status page rather than a surprise in a budget. Stopping happens only at a line boundary, so
+    /// a capped pass still leaves the cursor on a byte the next pass can pick up, and a torn tail is
+    /// reported exactly as it would be by an uncapped pass that reached it.
+    ///
+    /// # Errors
+    ///
+    /// As [`scan`](Self::scan).
+    pub fn scan_within<F: FnMut(&Scanned)>(
+        &self,
+        from: u64,
+        within: Option<u64>,
+        mut on_line: F,
+    ) -> Result<Scan, String> {
         let mut scan = Scan {
             size_bytes: self.size(),
             consumed_to: from.min(self.size()),
@@ -2958,7 +2978,7 @@ impl Reader {
         let mut line_start = from;
         let mut line_bytes = 0u64;
         let mut overflowed = false;
-        loop {
+        'pass: loop {
             let read = file
                 .read(&mut buffer)
                 .map_err(|err| format!("{}: {err}", self.events.display()))?;
@@ -2998,6 +3018,12 @@ impl Reader {
                         line_start = position;
                         line_bytes = 0;
                         overflowed = false;
+                        // The cap is checked here and only here: a full line has just been consumed, so
+                        // stopping is always resumable. Stopping in the middle of a line would leave the
+                        // cursor somewhere the next pass cannot pick up from without buffering.
+                        if within.is_some_and(|cap| position - from >= cap) {
+                            break 'pass;
+                        }
                         rest = &after[1.min(after.len())..];
                     }
                     None => {
@@ -3030,6 +3056,24 @@ impl Reader {
     /// A [`String`] describing the I/O failure, when the events file or the quarantine cannot be read or
     /// written.
     pub fn read_after(&self, cursor: &mut Cursor, now_ms: i64) -> Result<Batch, String> {
+        self.read_after_within(cursor, now_ms, None)
+    }
+
+    /// [`read_after`](Self::read_after), capped at `within` bytes of complete lines.
+    ///
+    /// This is the form the daemon runs: the cursor advances by at most `within` bytes per pass, so one
+    /// cycle of a long-lived process is bounded no matter what the harness wrote while it was busy. What
+    /// was not read is not lost — it is the lag, and `fathom status` prints it.
+    ///
+    /// # Errors
+    ///
+    /// As [`read_after`](Self::read_after).
+    pub fn read_after_within(
+        &self,
+        cursor: &mut Cursor,
+        now_ms: i64,
+        within: Option<u64>,
+    ) -> Result<Batch, String> {
         let mut batch = Batch::default();
         let mut quarantine =
             Quarantine::new(self.quarantine_path(), self.limits.quarantine_records);
@@ -3066,7 +3110,7 @@ impl Reader {
         // The accepted high-water mark *before* this pass: the sequence-gap test below measures from here,
         // because the loop moves `cursor.last_seq` as it goes.
         let seq_before = cursor.last_seq;
-        let scan = self.scan(cursor.offset, |scanned| {
+        let scan = self.scan_within(cursor.offset, within, |scanned| {
             self.consume(scanned, cursor, &mut batch, &mut rejected);
         })?;
         batch.lines = scan.lines;

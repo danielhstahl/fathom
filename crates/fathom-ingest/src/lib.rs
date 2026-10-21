@@ -76,3 +76,9 @@ pub mod state;
 // the feature it wanted, which is the published contract for a missing compile-time capability.
 #[cfg(any(feature = "watch", feature = "watch-poll"))]
 pub mod watch;
+
+/// The watch daemon: the one process per repository that watches, tails the harness stream and indexes,
+/// while every other process asks it over a local socket instead of doing it itself (ADR-004 §7.1–§7.2,
+/// `e6.3` / `reco-kvk`). Gated with [`watch`] because a daemon that cannot watch has nothing to do.
+#[cfg(any(feature = "watch", feature = "watch-poll"))]
+pub mod daemon;

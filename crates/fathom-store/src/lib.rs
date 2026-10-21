@@ -57,3 +57,8 @@ pub mod search;
 /// to mirror into is the same non-thing a document table without SQLite is.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod ledger;
+
+/// The writer lease: `flock` + a record + a heartbeat, so "who writes this store" is decided by a lock
+/// rather than by which binary was invoked (ADR-004 §7.1, `e6.3` / `reco-kvk`). Not SQLite-gated: a
+/// lease is a file, and a daemon that cannot open a store still has to find out whether it is the writer.
+pub mod lease;

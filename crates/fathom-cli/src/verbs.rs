@@ -167,6 +167,10 @@ pub enum Verb {
     Ambient(AmbientArgs),
     /// Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
     Hooks(HooksArgs),
+    /// The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
+    Daemon(DaemonArgs),
+    /// Who is keeping this index current, what it costs, and what is left (`e6.3`)
+    Status(StatusArgs),
     /// Print the terminal UI's keymap, or open the UI itself
     Tui(TuiArgs),
     /// Open an episode's file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
@@ -676,6 +680,153 @@ pub struct AmbientArgs {
     pub self_check: bool,
 }
 
+/// `fathom daemon` — the single-instance watcher, started, stopped or asked (`e6.3`, ADR-004 §7.1).
+///
+/// The subverbs are the three things a person does with a daemon. With none, `fathom daemon` is
+/// `fathom daemon status`, because the question asked most often is "is it running", and a verb that made
+/// you remember the subverb would be answered by `ps` instead.
+#[derive(Args, Debug)]
+pub struct DaemonArgs {
+    /// What to do with the daemon; bare `fathom daemon` reports on it.
+    #[command(subcommand)]
+    pub action: Option<DaemonAction>,
+}
+
+/// What to do with the daemon.
+#[derive(Subcommand, Debug)]
+pub enum DaemonAction {
+    /// Take the writer lease and watch this repository from this process, or from a detached one
+    Start(DaemonStartArgs),
+    /// Ask the daemon to finish its pass, checkpoint and release the lease
+    Stop(DaemonStopArgs),
+    /// The daemon's own health report (`fathom status` is the same question at the top level)
+    Status(StatusArgs),
+}
+
+/// `fathom daemon start`.
+///
+/// Every budget flag is a *ceiling*, not a target, and the daemon enforces it by measuring its own process
+/// CPU and sleeping when it has spent more than it is allowed (`fathom_ingest::daemon::Budget`). The
+/// defaults are ADR-004 §7.2's: a quarter of one core for the background writer, with a work slice small
+/// enough that a TUI attached to the same store gets its input back in well under the ticket's 150 ms.
+#[derive(Args, Debug)]
+pub struct DaemonStartArgs {
+    /// The repository to watch and index.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the health document as JSON instead of lines, and print it once the first pass has run.
+    #[arg(long)]
+    pub json: bool,
+    /// Print nothing but the health document; the heartbeat file is still written.
+    #[arg(long)]
+    pub quiet: bool,
+    /// Run in this process, so a supervisor can supervise it (`e6.3`, ADR-004 §7.1).
+    ///
+    /// This is the form systemd, a container `init` and a CI step want: stdout and stderr stay attached, and
+    /// the process leaves on SIGTERM the same way it leaves on `fathom daemon stop`. Without it, `start`
+    /// spawns the detached form and waits for its socket to answer.
+    #[arg(long)]
+    pub foreground: bool,
+    /// Detach into a new session (`setsid`), so a terminal's Ctrl-C cannot reach the daemon later.
+    ///
+    /// Not a flag a person types: `fathom daemon start` sets it when it re-executes itself in the
+    /// background, and it only means anything together with `--foreground`.
+    #[arg(long, hide = true)]
+    pub detach: bool,
+    /// Where to listen, instead of the endpoint derived from the repository (ADR-004 §7.2).
+    #[arg(long, value_name = "PATH")]
+    pub socket: Option<String>,
+    /// Refuse to start rather than run with no IPC endpoint.
+    ///
+    /// Off by default, because a filesystem that cannot host a socket (an SMB share, some container bind
+    /// mount) is a reason to publish less, not a reason to have no daemon: the lease and the heartbeat file
+    /// still answer `fathom status`.
+    #[arg(long)]
+    pub require_socket: bool,
+    /// Who is supervising this daemon, recorded in the health document (`systemd`, `docker`, `ci`).
+    #[arg(long)]
+    pub supervisor: Option<String>,
+    /// The CPU ceiling, as a percent of one core. 25 is ADR-004 §7.2's background default.
+    #[arg(long, default_value_t = 25)]
+    pub cpu_share_pct: u32,
+    /// Analysis units per pass while nothing is talking to the daemon.
+    #[arg(long, default_value_t = 2_000)]
+    pub slice: usize,
+    /// Analysis units per pass while a foreground client has just been heard — the yield slice.
+    #[arg(long, default_value_t = 50)]
+    pub yield_slice: usize,
+    /// How many distinct index requests may wait before new ones are refused rather than queued.
+    #[arg(long, default_value_t = 64)]
+    pub queue_depth: usize,
+    /// Harness-stream bytes per pass — the back-pressure knob of ADR-005 §6.5.
+    #[arg(long, default_value_t = 1_048_576)]
+    pub hook_bytes: u64,
+    /// Which change source to use: `auto`, `notify` or `poll`. The daemon is a watcher, so it takes the
+    /// watcher's flags for the same meaning.
+    #[arg(long, default_value = "auto")]
+    pub backend: String,
+    /// The debounced polling interval in milliseconds.
+    #[arg(long)]
+    pub interval_ms: Option<u64>,
+    /// The quiescence window in milliseconds.
+    #[arg(long)]
+    pub debounce_ms: Option<u64>,
+    /// The liveness beat in milliseconds, for the heartbeat file and the lease.
+    #[arg(long)]
+    pub heartbeat_ms: Option<u64>,
+    /// Also re-index uncommitted paths when only git's index moved.
+    #[arg(long)]
+    pub worktree: bool,
+    /// Do not write `.fathom/watch/status.json`.
+    #[arg(long)]
+    pub no_status_file: bool,
+    /// Stop after this many seconds — the supervisor's `TimeoutStopSec` seam and a test's.
+    #[arg(long)]
+    pub deadline: Option<u64>,
+    /// Stop after this many loop passes. A test seam, and the way to use the daemon as a one-shot indexer.
+    #[arg(long)]
+    pub max_cycles: Option<u64>,
+}
+
+/// `fathom daemon stop`.
+#[derive(Args, Debug)]
+pub struct DaemonStopArgs {
+    /// The repository whose daemon to stop.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the outcome as one JSON line (`fathom.cli.daemon.stop/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Ask the daemon at this endpoint instead of the derived one.
+    #[arg(long, value_name = "PATH")]
+    pub socket: Option<String>,
+    /// Who is asking, recorded in the daemon's last line.
+    #[arg(long, default_value = "fathom daemon stop")]
+    pub reason: String,
+}
+
+/// `fathom status` — the daemon's health, and the store's state, in one report (`e6.3`).
+///
+/// The read-only verb: it never indexes unless asked (`--index`), never takes a lease, and exits with the
+/// code the *store* half of the report deserves (ADR-004 §7.4's degraded-read codes), so a monitoring script
+/// can branch on the index being stale without parsing prose.
+#[derive(Args, Debug)]
+pub struct StatusArgs {
+    /// The repository to report on.
+    #[arg(default_value = ".")]
+    pub root: String,
+    /// Print the report as one JSON line (machine contract `fathom.cli.status/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Ask the daemon at this endpoint instead of the derived one.
+    #[arg(long, value_name = "PATH")]
+    pub socket: Option<String>,
+    /// Ask for a pass and wait for it, then report the state after it — the way to make `fathom status`
+    /// mean "up to date" rather than "as of whenever".
+    #[arg(long)]
+    pub index: bool,
+}
+
 /// `fathom hooks`
 ///
 /// The stream is the harness's, and this verb only reads it (or rebuilds its own offset): nothing here
@@ -974,6 +1125,8 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Watch(args)) => watch(args),
         Some(Verb::Ambient(args)) => ambient(args, globals),
         Some(Verb::Hooks(args)) => crate::harness::run(args),
+        Some(Verb::Daemon(args)) => daemon(args),
+        Some(Verb::Status(args)) => status(args),
         Some(Verb::Tui(args)) => tui(args, globals),
         Some(Verb::Open(args)) => crate::open::open(
             &args.root,
@@ -1092,6 +1245,22 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
 
     let root = std::path::Path::new(&args.root);
     let repository = Repository::discover(root).map_err(failed)?;
+    // One process per repository does the watching and the indexing (`e6.3`, ADR-004 §7.1): when a daemon is
+    // serving this repository, this command asks it for the pass and reports what that pass did, rather than
+    // a second process writing a second copy of the same work for no reader's benefit. Four flags are
+    // exempt, and each exemption is a different reason: `--rebuild` advances the analysis epoch, which is an
+    // explicit act rather than a catch-up; `--refresh` is the pass that *measures* the cache and has to be
+    // this process's own work to mean anything; `--stats` asks about this process's read of the cache table;
+    // `--watch` is asking to become the watcher itself.
+    #[cfg(feature = "watch")]
+    if !args.rebuild
+        && !args.refresh
+        && !args.stats
+        && !args.watch
+        && let Some(reply) = crate::daemon::ask_for_pass(root, "fathom index")
+    {
+        return index_by_daemon(args, &reply);
+    }
     let store_path = index::default_store_path(root);
     // Containment first, before anything is created: a clone whose `.fathom` is a symlink must be refused
     // rather than written through (`e7.8`, threat model F-1).
@@ -1473,6 +1642,74 @@ fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) 
             }
         ));
     }
+}
+
+/// `fathom index`, deferred to a daemon (`e6.3`).
+///
+/// The report is a different document from `fathom.cli.index/1` on purpose: the fields a run report carries
+/// — this process's own timings, the cache table, the segmentation — belong to a run this process did not
+/// perform, and inventing them for a pass somebody else ran would be the kind of near-miss value this
+/// repository treats as a bug. The daemon's own words are carried verbatim and the contract name says so.
+#[cfg(feature = "watch")]
+fn index_by_daemon(args: &IndexArgs, reply: &serde_json::Value) -> eyre::Result<ExitCode> {
+    if args.json {
+        output::line(format_args!(
+            "{}",
+            serde_json::json!({
+                "contract": "fathom.cli.index.deferred/1",
+                "delegated": true,
+                "daemon": reply,
+            })
+        ));
+    } else if !args.quiet {
+        output::line(format_args!(
+            "index: {}",
+            crate::daemon::describe_pass(reply)
+        ));
+    }
+    Ok(ExitCode::Ok)
+}
+
+/// `fathom daemon` and `fathom status`, when the watcher is compiled in (`e6.3`).
+///
+/// The gate is the `watch` feature rather than a runtime check for the same reason `fathom watch`'s is: the
+/// daemon *is* a watcher with an endpoint, and a binary built without `watch` does not contain the change
+/// source at all. `fathom status` is gated with it because the honest report of a build that cannot watch is
+/// "this binary cannot answer that" (ADR-002 §6.1, §7.3).
+#[cfg(feature = "watch")]
+fn daemon(args: &DaemonArgs) -> eyre::Result<ExitCode> {
+    match args.action.as_ref() {
+        Some(DaemonAction::Status(status)) => crate::daemon::status(status),
+        // Bare `fathom daemon` is a status report. The repository it reports on is the one underfoot,
+        // because the subverb-less form has nowhere to carry a `--root`, and inventing one there and
+        // only there would be a flag whose position changes its meaning.
+        None => crate::daemon::status(&StatusArgs {
+            root: ".".to_owned(),
+            json: false,
+            socket: None,
+            index: false,
+        }),
+        Some(DaemonAction::Start(start)) => crate::daemon::start(start),
+        Some(DaemonAction::Stop(stop)) => crate::daemon::stop(stop),
+    }
+}
+
+/// `fathom daemon` without the watcher: the exit code that means "rebuild differently" (§6.1).
+#[cfg(not(feature = "watch"))]
+fn daemon(_args: &DaemonArgs) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom daemon", "watch"))
+}
+
+/// `fathom status` (`e6.3`).
+#[cfg(feature = "watch")]
+fn status(args: &StatusArgs) -> eyre::Result<ExitCode> {
+    crate::daemon::status(args)
+}
+
+/// The same, in a binary that cannot watch.
+#[cfg(not(feature = "watch"))]
+fn status(_args: &StatusArgs) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom status", "watch"))
 }
 
 /// `fathom watch`, run by `fathom index --watch` with the index verb's own root and output choice.

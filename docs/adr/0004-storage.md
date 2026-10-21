@@ -147,10 +147,10 @@ distinguishable by `git status`.**
 | `.fathom/events.idx.json` | **R** | ignored | fathom reindex | derived sidecar index; never authoritative (ADR-005 §3.4) |
 | `.fathom/sessions.json` | **R** | ignored | harness ingest | per-session accounting and quarantine flags |
 | `.fathom/quarantine/` | **R** | ignored | ingest / recovery | path-escape and oversized events, damaged artifacts, ledger entries that failed to link |
-| `.fathom/logs/` | **R** | ignored | store + daemon | rotated logs; `doctor` reads them |
-| `.fathom/daemon.lock` | **E** | ignored | fathom watch | the writer lease: flock + pid + boot id + heartbeat (§7.1) |
-| `.fathom/daemon.sock` | **E** | ignored | fathom watch | local IPC endpoint |
-| `.fathom/watch/status.json` | **E** | ignored | fathom watch (e1.9) | the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` and the ambient view read it, so a watcher needs no socket and no lock to be noticed |
+| `.fathom/logs/` | **R** | ignored | store + daemon | rotated logs, and `daemon.log` — the file a detached `fathom daemon start` redirects its child's stdout and stderr into, since a detached process with nowhere to write fails silently; `doctor` reads them |
+| `.fathom/daemon.lock` | **E** | ignored | fathom daemon (e6.3), fathom watch | the writer lease: flock + pid + boot id + heartbeat (§7.1); released by *blanking*, not unlinking, so a reader never races an unlink |
+| `.fathom/daemon.sock` | **E** | ignored | fathom daemon (e6.3), fathom watch | local IPC endpoint (`fathom.daemon/1`); a repository may also be reached with no socket at all, in which case the lease and the heartbeat file below are what a client can read |
+| `.fathom/watch/status.json` | **E** | ignored | fathom watch (e1.9), fathom daemon (e6.3) | the watcher's heartbeat: phase, backend, counters and pid, renamed into place; `doctor` and the ambient view read it, so a watcher needs no socket and no lock to be noticed |
 | `.fathom/tmp/` | **E** | ignored | the store | scratch space, same filesystem as the store |
 
 Required `.gitignore` stanza (§12):

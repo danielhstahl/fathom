@@ -98,6 +98,11 @@ mod session;
 #[cfg(feature = "tui")]
 mod theme;
 mod verbs;
+// The watch daemon and `fathom status` (`e6.3`): the worker the daemon indexes with, the process
+// management around `--foreground`, and the report. The loop itself is `fathom_ingest::daemon`; this
+// is the half that needs the indexer, the clock and the store, which is why it is here (ADR-002 §4.3).
+#[cfg(feature = "watch")]
+mod daemon;
 #[cfg(feature = "watch")]
 mod watch;
 mod why;

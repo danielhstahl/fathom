@@ -417,6 +417,19 @@ impl Reader {
             );
             index_here = false;
         }
+        // A daemon is a watcher with an endpoint (`e6.3`), and the heartbeat above is exactly the fallback
+        // a reader uses when there is no endpoint to ask. But a daemon started with `--no-status-file`
+        // writes no heartbeat, and a pane that began indexing behind that daemon would be a second writer
+        // of the same store: the socket is the authoritative question, so it is asked second rather than
+        // never.
+        #[cfg(feature = "watch")]
+        if index_here && crate::daemon::serving(root) {
+            index_here = false;
+            index_note = Some(
+                "a daemon is serving this repository, so this pane asks it instead of writing the index                  itself; `fathom status` is the report"
+                    .to_owned(),
+            );
+        }
         if !cfg!(all(feature = "watch", feature = "sqlite-bundled")) && index_here {
             index_here = false;
             notes.push(
