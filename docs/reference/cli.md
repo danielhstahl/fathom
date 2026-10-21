@@ -110,6 +110,11 @@ is not, so a log gets one line per update and a pipe gets none.
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -195,6 +200,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -227,6 +233,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -260,6 +267,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -291,6 +299,7 @@ Options:
       --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress          never print the index's progress row, even on a terminal
+      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                 Print help (see more with '--help')
   -V, --version              Print version
 ```
@@ -315,6 +324,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -342,6 +352,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -377,6 +388,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -400,6 +412,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -430,6 +443,7 @@ Options:
       --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress          never print the index's progress row, even on a terminal
+      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                 Print help (see more with '--help')
   -V, --version              Print version
 ```
@@ -454,6 +468,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -478,6 +493,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -501,6 +517,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -536,6 +553,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -572,6 +590,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -609,6 +628,7 @@ Options:
       --json               Print the report as JSON on stdout, and nothing else there
       --no-progress        never print the index's progress row, even on a terminal
       --fail-on-findings   Exit 7 when anything was found, so a CI step can gate on it
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -646,6 +666,7 @@ Options:
       --weights              Print the feature names this build can score, and stop
       --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress          never print the index's progress row, even on a terminal
+      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                 Print help (see more with '--help')
   -V, --version              Print version
 ```
@@ -675,6 +696,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -701,6 +723,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -732,6 +755,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -765,6 +789,7 @@ Options:
       --strict               Exit 7 while the artefact's checklist still has an open item — the form a CI gate wants
       --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress          never print the index's progress row, even on a terminal
+      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                 Print help (see more with '--help')
   -V, --version              Print version
 ```
@@ -795,6 +820,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -817,6 +843,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -855,6 +882,7 @@ Options:
       --progress                     print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --chunk-units <CHUNK_UNITS>    Analysis units per index chunk — the watcher's slice of the CPU [default: 2000]
       --no-progress                  never print the index's progress row, even on a terminal
+      --no-watch                     Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --worktree                     Also re-index uncommitted paths when only the index moved
       --no-status-file               Do not write `.fathom/watch/status.json`
       --quiet                        Print nothing to stdout but errors; the state machine still goes to the status file
@@ -895,6 +923,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -930,6 +959,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -967,6 +997,7 @@ Options:
       --supervisor <SUPERVISOR>        Who is supervising this daemon, recorded in the health document (`systemd`, `docker`, `ci`)
       --cpu-share-pct <CPU_SHARE_PCT>  The CPU ceiling, as a percent of one core. 25 is ADR-004 §7.2's background default [default: 25]
       --no-progress                    never print the index's progress row, even on a terminal
+      --no-watch                       Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --slice <SLICE>                  Analysis units per pass while nothing is talking to the daemon [default: 2000]
       --yield-slice <YIELD_SLICE>      Analysis units per pass while a foreground client has just been heard — the yield slice [default: 50]
       --queue-depth <QUEUE_DEPTH>      How many distinct index requests may wait before new ones are refused rather than queued [default: 64]
@@ -1008,6 +1039,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -1039,6 +1071,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -1079,6 +1112,7 @@ Options:
       --progress                   print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress                never print the index's progress row, even on a terminal
       --width <WIDTH>              Render at this width instead of the terminal's — for a pipe, a test, or a tmux status line
+      --no-watch                   Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --self-check                 Run to the deadline and print what the pane cost: polls, redraws and this process's own CPU share. Exits `11` if it blew the budget of 1 % of a core
   -h, --help                       Print help (see more with '--help')
   -V, --version                    Print version
@@ -1118,6 +1152,7 @@ Options:
       --progress                print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --strict                  Exit 7 when the stream is not healthy — the form a CI gate wants
       --no-progress             never print the index's progress row, even on a terminal
+      --no-watch                Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                    Print help (see more with '--help')
   -V, --version                 Print version
 ```
@@ -1152,6 +1187,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -1195,6 +1231,7 @@ Options:
       --json                      Print the decision as JSON on stdout, and nothing else there
       --progress                  print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress               never print the index's progress row, even on a terminal
+      --no-watch                  Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help                      Print help (see more with '--help')
   -V, --version                   Print version
 ```
@@ -1235,6 +1272,7 @@ Options:
       --json               Print the decision as JSON on stdout, and nothing else there
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -1272,6 +1310,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
@@ -1309,6 +1348,7 @@ Options:
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```

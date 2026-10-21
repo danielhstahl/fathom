@@ -125,7 +125,8 @@ pub struct Options {
     /// The episodes the timeline starts with, if the caller has them.
     ///
     /// A batch, not a store handle: `fathom-cli` reads the index (or a worker pushes
-    /// [`crate::event::WorkerMsg`]), and the rail draws what it was given. Since `reco-wzt` the shipped
+    /// [`crate::event::WorkerMsg`], or a watcher hands a fresh batch over through [`Self::watch`]), and the
+    /// rail draws what it was given. Since `reco-wzt` the shipped
     /// binary does have them on any indexed repository — `fathom-cli`'s `episodes` module builds the
     /// batch from the spine — and `None` is left for what genuinely has none: no index, an index that
     /// would not open, an epoch with no live episodes. The rail prints which of those it is looking at
@@ -206,6 +207,16 @@ pub struct Options {
     /// `--plain` path and every embedder keep compiling, and none of them silently pretend to have written
     /// a sign-off.
     pub queue: crate::queue::Setup,
+    /// What keeps this frame current, and what it says when nothing does (`reco-bpc`).
+    ///
+    /// The frame has no producer of its own — no store handle, no git, no indexer, and no business having
+    /// one (ADR-002 §5.2, lint `E01`) — so the composition root installs one here, in the same shape it
+    /// installed [`Self::patches`] and [`Self::compare`] in. `None` is not a third state and must not be
+    /// painted as one: it is a caller with no opinion (a test frame, an embedder, a `--plain` run that
+    /// draws one frame and exits), and the frame prints nothing about its own freshness in that case.
+    /// A shipped shell always has an answer to give, and [`crate::watch::Source`] is the pair of answers
+    /// it is allowed to give.
+    pub watch: Option<crate::watch::Source>,
 }
 
 impl Default for Options {
@@ -231,6 +242,7 @@ impl Default for Options {
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
             queue: crate::queue::Setup::default(),
+            watch: None,
         }
     }
 }
@@ -436,6 +448,12 @@ pub fn run_loop(
             scheduler.note_event();
             apply(app, message);
         }
+        // A tickless loop is not a deaf one (`reco-bpc`). The frame has no producer of its own, so the
+        // composition root installs one; this is the only moment it can be asked, and it is a moment the
+        // loop already pays for — the same wake-up that notices `<C-c>`. A watcher that saw nothing answers
+        // `None` for the price of a few `stat`s and no frame is drawn for it, which is what keeps an idle
+        // frame idle instead of turning the watcher into a second timer.
+        let moved = app.watch.as_ref().and_then(|source| source.poll());
         if let Some(signals) = signals
             && let Some(signal) = signals.take()
         {
@@ -448,6 +466,10 @@ pub fn run_loop(
             break 'outer end;
         }
         let mut flushed = false;
+        if let Some(update) = moved.filter(|update| !update.is_empty()) {
+            apply_update(app, update);
+            flushed = true;
+        }
         // An external program was asked for: `$EDITOR` does not work inside a raw-mode alternate
         // screen, so the sink hands the terminal back, the child runs, and the frame is redrawn. One
         // per iteration, because a queue of editors is a queue of surprises.
@@ -597,6 +619,46 @@ pub fn apply(app: &mut App, message: Message) {
     }
 }
 
+/// Apply one watcher's update: the rows, the index's numbers, and the sentence that says why the frame
+/// moved under the reviewer's hands (`reco-bpc`).
+///
+/// Separate from [`apply`] on purpose: a watcher is not on the bus, because there is no producer to send
+/// on its behalf — the loop asks it, on the wake-ups it already takes. Everything in an [`Update`][crate::watch::Update]
+/// is optional, and each absent field is a different sentence: new rows are the rail's own load report
+/// (which is also what re-attaches a cursor the rows moved out from under), new numbers are the index's
+/// summary, and a note from the producer is whatever it needs said about a run that did not go cleanly.
+///
+/// The reviewer's place is kept: the rail re-attaches to the episode it was on, and the only thing that
+/// moves unasked is the picture of what the repository now holds.
+pub fn apply_update(app: &mut App, update: crate::watch::Update) {
+    if let Some(facts) = &update.index {
+        app.set_index_facts(facts);
+    }
+    let mut said: Option<String> = None;
+    if let Some(batch) = update.episodes {
+        let before = app.timeline.len();
+        let grew = u64::try_from(batch.len().saturating_sub(before)).unwrap_or(u64::MAX);
+        // A `next-index` snooze is stamped against the epoch the rows came from, so the table that decides
+        // whether one has released moves with the rows it was computed from.
+        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        let line = app.timeline.load(batch);
+        said = Some(match update.new_commits.or(Some(grew)) {
+            Some(n) if n > 0 => format!("{} new · {line}", crate::app::format_thousands(n)),
+            _ => line,
+        });
+    } else if let Some(facts) = &update.index {
+        said = Some(format!("the index moved · {}", facts.summary()));
+    }
+    if let Some(note) = update.note {
+        app.toast(note);
+    } else if let Some(line) = said {
+        app.toast(line);
+    }
+    // The loop owns the scheduler, not this function: say that the frame has to be drawn rather than
+    // drawing it, which is the same contract [`App::repaint`] is.
+    app.repaint = true;
+}
+
 /// What a task's units are called, for the progress row (`e5.9`).
 ///
 /// A worker names its task and nothing else, and `decoding 82 % · ~3 s left · 412 / 500 units` reads
@@ -738,6 +800,17 @@ pub fn run(options: &Options) -> Result<Report, Error> {
 /// before it can be checked, and what came back is reported against them.
 fn prime(app: &mut App, options: &Options) -> Restored {
     app.timeline.set_now(options.now);
+    // What the frame claims about its own freshness, installed before anything is drawn (`reco-bpc`). A
+    // watcher is only ever polled; a snapshot is said, in the status line and again in the notice list,
+    // because "this picture is not moving, and this is what would move it" is the difference between a
+    // limitation and a lie.
+    if let Some(source) = &options.watch {
+        let admits = !source.is_live();
+        app.watch = Some(source.clone());
+        if admits {
+            app.notices.push(source.sentence());
+        }
+    }
     let mut loaded = String::new();
     if let Some(batch) = &options.episodes {
         // Kept for the toast line: "500 episodes from index epoch 1 (ready) · index holds 4 000" is the

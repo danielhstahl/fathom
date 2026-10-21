@@ -40,6 +40,11 @@ mod drift;
 #[cfg(feature = "tui")]
 mod episodes;
 mod features;
+// The producer that feeds an open frame (`reco-bpc`): the cheap probe, the index slice and the re-read that
+// make a shell notice a commit made in another terminal. It reads git and the store, which the shell may not
+// (ADR-002 §5.2), and hands over rows — so it lives here, beside the read it shares with `fathom ambient`.
+#[cfg(feature = "tui")]
+mod feed;
 // The review artefact (`e5.7`): the range, the rows, the file, the exit code. The shape and the renderings
 // live in `fathom_analyze::export`; this is the half that needs a store, a git read and a ledger.
 mod export;
@@ -138,6 +143,7 @@ fn run() -> ExitCode {
         mouse: cli.mouse,
         lines: cli.lines,
         theme: cli.theme,
+        no_watch: cli.no_watch,
     };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching

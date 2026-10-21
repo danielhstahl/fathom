@@ -17,6 +17,49 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### An open TUI was a photograph of a moving repository: nothing fed the frame (`reco-bpc`)
+
+The product premise is physical — fathom sits in a second terminal in ambient mode while an agent works in
+the first. The frame in that second terminal had no producer: `frame::Options` documented a worker that
+would push rows, and nothing anywhere constructed one, so a walkthrough that rewrote five commits while the
+TUI was open watched a strip that never moved. Detection was never the missing part — `fathom watch` notices
+a commit made elsewhere in ~160 ms — the frame just had nobody to tell. A frozen rail reads as a quiet
+repository, which is the worst possible misreading of a repository that is not quiet.
+
+* **`fathom_tui::watch` is the seam that was missing**: a `Watcher` the frame asks *has anything moved?*
+    and an `Update` in the only shapes the shell may draw — a batch of episodes and the index's numbers.
+    Like `FrameSink`, `diff::Provider` and `compare::Provider` it is a trait the composition root
+    implements, because the shell still opens no store, reads no git and runs no indexer (ADR-002 §5.2,
+    lint `E01`); `fathom-cli` probes, indexes, re-reads, and hands rows over.
+* **The loop stays tickless** (ADR-006 §0.1). The watcher is asked on the wake-ups the loop already takes
+    for `<C-c>` — no timer, no second thread, no new wake-up budget — and a watcher that answers `None`
+    draws nothing, which is what keeps an idle frame an idle process. The probe is the same one
+    `fathom ambient` runs (four `stat`s and one ref read, throttled to a 400 ms look), and `.git` moving
+    for a reason that changes nothing a frame draws — `git status` refreshing the index — is deliberately
+    not a reason to re-read.
+* **One writer per repository, the same rule the glance pane keeps.** When a `fathom watch` heartbeat is
+    beating or a daemon is serving, the frame reads the index and does not write it, and says which it is
+    doing; otherwise it runs the very same `IndexJob` `fathom watch` runs, in one bounded slice per look.
+    The re-read is `index_facts` + `episodes::load` together, so the strip's numbers and the rail's rows
+    cannot disagree about the epoch they came from, and the reviewer's cursor stays where it was while the
+    rows move under it.
+* **A frame that cannot watch now says so**, in the frame: `snapshot · nothing is indexed yet` in the
+    status line, and the whole sentence — limitation *and* remedy — in the notice list under `?`. That is
+    the other half of the acceptance criterion, and `--no-watch` makes it reachable on purpose: a still
+    picture that admits it is still is a limitation, and one that does not is a lie about the repository.
+* **`<C-r>` answers**, with a watcher installed: it re-reads the repository now instead of printing a
+    placeholder progress row that promised someone else would get to it eventually.
+* **And the number is gated on the frame, not just on the watcher.** `tools/mvp_acceptance.py` now commits
+    from the harness and times until an open TUI's grid changes with the reviewer pressing nothing, against
+    `watch.detect.ms.small` (1 000 ms): **210–330 ms** measured through the pty on the machine this was
+    written on, debug profile, at the shipped 400 ms poll.
+
+Asserted by `crates/fathom-tui/tests/watch.rs` (11 tests: the frame changing on a scripted producer, the
+cursor surviving rows that moved, `None` drawing nothing, `snapshot` and its remedy, `live` saying nothing
+more, `<C-r>` on both branches), `tests/test_tui_watch_contract.py` (5 tests that drive the shipped binary
+over a pty, commit from this process, and assert the grid moved inside the budget — plus the `--no-watch`
+and never-indexed branches), and the pty measurement above.
+
 ### The space bar went to the keymap instead of the field, so no documented query could be typed (`reco-q45`)
 
 `e1.12`'s own acceptance script types `DROP COLUMN` into `/`, and the box filled with `DROPCOLUMN` —

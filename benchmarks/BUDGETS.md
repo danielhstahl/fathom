@@ -92,7 +92,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `warm.reindex.provisional.ms` | ms | p95 | 120.0 | 160.0 | 240.0 | 320.0 | not measured yet | needs a dirty-work-tree index path in the binary (`e1.4` R7) |
 | `warm.reindex.scaling_ratio` | ratio | p50 | 1.25 | 1.25 | 1.25 | 1.25 | not measured yet | `e7.2` (`reco-66q`) runs the 1×/6× pair against real repositories |
 | `watch.budget.cpu_pct` | percent | hard limit | 5.0 | 5.0 | 5.0 | 5.0 | not measured yet | `e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule |
-| `watch.detect.ms` | ms | p95 | 1,000.0 | 1,000.0 | 1,500.0 | 2,000.0 | `tools/mvp_acceptance.py` | a commit made elsewhere, timed to the line `fathom watch --json` prints |
+| `watch.detect.ms` | ms | p95 | 1,000.0 | 1,000.0 | 1,500.0 | 2,000.0 | `tools/mvp_acceptance.py` | a commit made elsewhere, timed to the line `fathom watch --json` prints, and to the grid of an open TUI changing by itself (`reco-bpc`) |
 | `watch.idle_cpu.pct` | percent | p95 | 1.0 | 1.0 | 1.0 | 1.0 | not measured yet | `e1.9`'s own gate; the watcher needs a quiet-window sampler |
 | `write.batch.ms` | ms | cap | 50.0 | 50.0 | 50.0 | 50.0 | not measured yet | a commit-interval cap, not a latency: `e1.2`'s writer commits at 50 ms and its own tests hold the timer |
 | `write.batch_rows` | rows | cap | 5,000.0 | 5,000.0 | 5,000.0 | 5,000.0 | criterion | `write.batch_rows/one_batch_at_the_cap`: one 5 000-row transaction, rows/s |

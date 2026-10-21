@@ -32,7 +32,9 @@ Output:
               each chunk. Play it back with `asciinema play` or asciinema.org.
   * `--log`   the same bytes with a caption line per step, as plain text (screen-scrapeable).
   * `--steps` per-step wall-clock timings, so "time to first orientation" is a measured number
-              rather than a claim in a document.
+              rather than a claim in a document. A `shell` step also reports `shell_ms` — how long the
+              outside command itself took — so a step that commits and then waits for the TUI to notice
+              can be read as a detection latency rather than as a commit plus one (`reco-bpc`).
 
 Nothing here is product code: no store, no repository, no frame knowledge. The TUI is a subprocess
 behaving exactly as it does for a person.
@@ -390,6 +392,7 @@ def main() -> int:
     timings: list[dict] = []
     command_output: list[dict] = []
     first_paint_ms: float | None = None
+    shell_ms: float | None = None
     command = [binary, "tui"]
     if args.no_alt_screen:
         command.append("--no-alt-screen")
@@ -430,13 +433,21 @@ def main() -> int:
         _ = settled
         for index, step in enumerate(steps, start=1):
             began = time.monotonic()
+            shell_ms = None
             note = step.get("note", "")
             if raw:
                 raw.write(b"\n\n=== step %d: %s ===\n" % (index, note.encode()))
                 raw.flush()
             if "shell" in step:
+                began_shell = time.monotonic()
                 finished = subprocess.run(step["shell"], shell=True, check=False, cwd=args.root,
                                           capture_output=True, text=True)
+                # How long the outside command took, recorded separately: a step that commits in another
+                # terminal and then waits for the TUI to notice is measuring two things, and the ticket's
+                # budget is about the second one alone (`reco-bpc`). Subtracting this from `visible_ms`
+                # is what turns "the screen changed 400 ms after I started committing" into a detection
+                # latency.
+                shell_ms = round((time.monotonic() - began_shell) * 1000, 1)
                 if finished.stdout.strip():
                     command_output.append({"step": index, "stdout": finished.stdout.strip()})
                 if finished.stderr.strip():
@@ -467,6 +478,7 @@ def main() -> int:
                 "keys": step.get("keys"),
                 "at_s": round(began - recorder.started, 3),
                 "elapsed_s": round(time.monotonic() - began, 3),
+                "shell_ms": shell_ms,
                 "paint_ms": round((painted - began) * 1000, 1) if painted else None,
                 "visible_ms": round((changed - began) * 1000, 1) if changed else None,
                 "until_ms": round((found - began) * 1000, 1) if found else None,

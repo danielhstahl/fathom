@@ -451,6 +451,13 @@ pub struct App {
     /// index, and the shell may not (`ADR-002 §5.2`). `None` is a build with no index, and `c` says so
     /// instead of drawing an empty panel.
     pub compare: Option<crate::compare::Provider>,
+    /// What keeps this frame current, and what it admits when nothing does (`reco-bpc`).
+    ///
+    /// Installed by the composition root through [`crate::frame::Options::watch`]. `None` is a caller with
+    /// no opinion — a test frame, an embedder, a `--plain` run — and the frame says nothing about its own
+    /// freshness rather than guessing. A live source is polled by the loop on the wake-ups it already takes;
+    /// a snapshot says so in the status line, in the words [`crate::watch::Source::bit`] gives it.
+    pub watch: Option<crate::watch::Source>,
     /// What the comparison panel holds: the spec it was asked for, the lines, and how far it is scrolled.
     pub compare_panel: crate::compare::Panel,
     /// The comparisons this repository has names for, in the palette's order (`e5.3`).
@@ -686,6 +693,7 @@ impl App {
             diff: DiffView::new(),
             patches: None,
             compare: None,
+            watch: None,
             compare_panel: crate::compare::Panel::default(),
             saved_comparisons: Vec::new(),
             saved_searches: Vec::new(),
@@ -1840,6 +1848,13 @@ impl App {
             index.queue_open = u64::try_from(self.timeline.unread()).ok();
         }
         bits.extend(index.bits());
+        // Is this picture current? (`reco-bpc`) The one question an ambient terminal is not allowed to
+        // leave unasked, answered in the four characters the row has room for — and, when nothing is
+        // keeping the frame up to date, saying so rather than letting a frozen rail read as a quiet
+        // repository. Only said when the caller had an opinion to give.
+        if let Some(source) = &self.watch {
+            bits.push(source.bit());
+        }
         // `e5.5`'s half of ADR-001 §7.2: everything the shell noticed about this terminal, this
         // session or this keymap is counted here, and the full list is one `?` away. A status line
         // that could hide a notice is how "degraded, and we did not say" happens.
@@ -2864,6 +2879,24 @@ impl App {
             }
             "compare.with_mark" => self.compare_with_mark(),
             "index.reindex" => {
+                // `<C-r>` asks the one party that can answer: the watcher the composition root installed
+                // (`reco-bpc`). Where there is one, this is a real re-read of a real repository, and the
+                // toast says what came back instead of what a placeholder would say.
+                if let Some(source) = &self.watch {
+                    if !source.is_live() {
+                        // A snapshot cannot be refreshed by wishing, and the sentence that says what would
+                        // move it is the one the frame already carries.
+                        self.toast(source.sentence());
+                        return;
+                    }
+                    match source.refresh() {
+                        Some(update) => crate::frame::apply_update(self, update),
+                        None => {
+                            self.toast("the repository was re-read — nothing had moved".to_owned())
+                        }
+                    }
+                    return;
+                }
                 self.model.index.progress = Some(
                     "indexing 0 % · unknown left (no store handle \
                                                   in the shell — e1.4 owns the worker)"

@@ -73,6 +73,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -153,6 +158,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -214,6 +224,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -282,6 +297,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -356,6 +376,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -414,6 +439,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -485,6 +515,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -559,6 +594,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -642,6 +682,11 @@ Options:
       --fail-on-findings
           Exit 7 when anything was found, so a CI step can gate on it
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -719,6 +764,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -768,6 +818,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -835,6 +890,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -919,6 +979,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -997,6 +1062,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -1077,6 +1147,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -1147,6 +1222,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -1220,6 +1300,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -1308,6 +1393,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
       --worktree
           Also re-index uncommitted paths when only the index moved
 
@@ -1372,6 +1462,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -1454,6 +1549,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
       --slice <SLICE>
           Analysis units per pass while nothing is talking to the daemon
@@ -1567,6 +1667,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -1631,6 +1736,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -1710,6 +1820,11 @@ Options:
       --width <WIDTH>
           Render at this width instead of the terminal's — for a pipe, a test, or a tmux status line
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
       --self-check
           Run to the deadline and print what the pane cost: polls, redraws and this process's own CPU share. Exits `11` if it blew the budget of 1 % of a core
 
@@ -1767,6 +1882,11 @@ Options:
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
 
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -1816,6 +1936,11 @@ Options:
           Never print the index's progress row, even on a terminal (`e5.9`).
           
           The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
 
   -h, --help
           Print help (see a summary with '-h')

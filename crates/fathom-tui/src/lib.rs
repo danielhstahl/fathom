@@ -57,5 +57,8 @@ pub mod text;
 pub mod theme;
 pub mod timeline;
 pub mod views;
+/// How an open frame learns the repository moved (`reco-bpc`): the watcher the composition root installs,
+/// the update it hands over, and the two states the frame is allowed to claim about its own freshness.
+pub mod watch;
 /// The Queue view's ranked worklist (`reco-c05`): a list, not a scorer.
 pub mod worklist;

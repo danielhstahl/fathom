@@ -139,7 +139,7 @@ COVERAGE: dict[str, tuple[str, str]] = {
     "query.metrics.ms": ("this harness", "`fathom stats --json`, 3 samples, p95 — the verb the budget names"),
     "query.frame_store_budget.ms": ("criterion", "`count_episodes` and `episode_paths` over a warm 1 000-commit store"),
     # --- watching ---------------------------------------------------------------------
-    "watch.detect.ms": ("`tools/mvp_acceptance.py`", "a commit made elsewhere, timed to the line `fathom watch --json` prints"),
+    "watch.detect.ms": ("`tools/mvp_acceptance.py`", "a commit made elsewhere, timed to the line `fathom watch --json` prints, and to the grid of an open TUI changing by itself (`reco-bpc`)"),
     "watch.idle_cpu.pct": ("not measured yet", "`e1.9`'s own gate; the watcher needs a quiet-window sampler"),
     "watch.budget.cpu_pct": ("not measured yet",
                              "`e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule"),

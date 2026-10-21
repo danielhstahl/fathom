@@ -14,6 +14,7 @@
 
 use std::collections::BTreeMap;
 use std::io::IsTerminal as _;
+use std::time::Duration;
 
 use eyre::Result;
 use fathom_core::exit::ExitCode;
@@ -133,6 +134,18 @@ pub fn dispatch_focus(
     // (ADR-002 §4.5), and `ui.hints` is configuration.
     let (hints, hint_notices) = hints_enabled(root);
     notices.extend(hint_notices);
+    // What keeps this frame current (`reco-bpc`). The shell has no store handle, no git and no indexer, so
+    // it is handed a watcher — or handed the sentence that says why nothing will move this picture. A piped
+    // frame draws one frame and exits, so it has nothing to keep current and says nothing about it: the
+    // question a `--plain` run answers is "what is true now", not "what will still be true in a minute".
+    let watch = (!plain).then(|| {
+        crate::feed::source(
+            root,
+            &index,
+            !globals.no_watch,
+            Duration::from_millis(crate::feed::DEFAULT_POLL_MS),
+        )
+    });
     let frame_notices = if plain {
         Vec::new()
     } else {
@@ -189,6 +202,7 @@ pub fn dispatch_focus(
             &queue_reasons,
             index_total,
         ),
+        watch,
     };
     if plain {
         for notice in &notices {

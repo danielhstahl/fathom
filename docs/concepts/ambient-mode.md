@@ -114,6 +114,15 @@ showing you a pane that is quietly behind; `--no-index` says so on stderr and re
 A stale ambient pane is worse than none, so the index epoch and "last run" are on the face of it:
 `epoch 41 · warm · 3 412 eps · 0:03 ago` is a claim you can disbelieve at a glance.
 
+The **full view keeps itself current the same way** (`reco-bpc`). A `fathom` shell left open beside an agent
+watches its repository on the same 400 ms probe the glance pane uses, and a commit made in the other
+terminal appears by itself — the strip gains the episode, `+N new` says what just arrived, and the status
+line carries `live` to say the picture is moving. It obeys the same one-writer rule: with a watcher alive or
+a daemon serving, the shell only reads, and says whose work it is reading. When nothing can watch — nothing
+indexed yet, `--no-watch`, a binary built without the indexer — the status line says
+`snapshot · <why>` and `?` carries the remedy, because a still rail in a repository that is not still is the
+one reading of this view you must never be able to trust by accident.
+
 The tmux shape that has worked, as one line:
 
 ```bash

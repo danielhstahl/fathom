@@ -17,6 +17,7 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 | store size per commit | `store.bytes_per_commit_spine.small` | `stat` the store after the cold run |
 | peak RSS of the index process | `rss.cold_index.peak_mib.small` | `VmHWM` of the child |
 | a commit made elsewhere, noticed by the watcher | `watch.detect.ms.small` | `fathom watch --json`, one commit, time to the line |
+| a commit made elsewhere, noticed by an **open** TUI | `watch.detect.ms.small` | pty: commit from the harness, time until the frame changed by itself (`reco-bpc`) |
 | the TUI: open → first frame, key → visible change, RSS | `rss.tui.mib.small` | `tools/tui_session.py` over a pty |
 | the TUI: `d` → the diff pane paints, and its first hunk | `query.diff_open.ms.small`, `query.diff_first_hunk.ms.small` | same pty; the first step whose grid changed, and the first frame carrying an `@@` (`reco-0kw`) |
 
@@ -406,6 +407,57 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
                unit="ms", blocked_by="no `@@` hunk header reached the screen within 3 s of `d` — "
                                       "check the decode path (`e1.8`) and the byte source "
                                       "(`reco-0kw`)")
+
+    # --- the open frame: a commit made in another terminal, noticed without a keystroke (`reco-bpc`)
+    # ADR-001 and ADR-006 §1 put fathom in a second terminal while an agent works in the first, and a
+    # frame that never changes there is worse than none — a frozen rail reads as a quiet repository.
+    # This is the watcher's own budget measured on the surface the premise is about: the reviewer presses
+    # nothing, and the picture moves by itself or says why it cannot.
+    noticed = []
+    frame_script = Path("/tmp") / f"reco-bpc-{os.getpid()}.json"
+    frame_steps_file = Path("/tmp") / f"reco-bpc-steps-{os.getpid()}.json"
+    commit = (
+        "mkdir -p src/harbour; "
+        "printf 'def notice_{index}(): return \"{token}-n{index}\"\\n' "
+        "> src/harbour/notice_{index}.py; git add -A; "
+        "git -c user.name=mira -c user.email=mira@example.invalid commit -q "
+        "-m 'watch probe, made next door {index}' "
+        "-m 'Agent-Session: accept-01{index}' -m 'Agent-Turn: 1'"
+    )
+    for index in range(3):
+        # The `shell` step is the other terminal. Its own duration comes out of the time to the frame, so
+        # what is timed is the noticing and not the `git commit` that caused it.
+        frame_script.write_text(json.dumps({
+            "title": "reco-bpc — the open frame notices a commit made next door",
+            "steps": [
+                {"keys": "t", "note": "open the timeline", "settle": 0.5},
+                {"shell": commit.format(index=index, token=token),
+                 "note": "commit in the other terminal", "hold": 2.0},
+                {"keys": "<C-c>", "note": "quit", "settle": 0.3},
+            ],
+        }), encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "tools" / "tui_session.py"), "--root",
+                        str(fixture), "--binary", str(binary), "--script", str(frame_script),
+                        "--steps", str(frame_steps_file)], check=True, stdout=subprocess.DEVNULL)
+        probe = json.loads(frame_steps_file.read_text())
+        step = next((s for s in probe["steps"]
+                     if s.get("note") == "commit in the other terminal"), None)
+        if step and step.get("visible_ms") is not None:
+            noticed.append(max(0.0, step["visible_ms"] - (step.get("shell_ms") or 0.0)))
+    frame_steps_file.unlink(missing_ok=True)
+    frame_script.unlink(missing_ok=True)
+    if noticed:
+        record("commit made elsewhere, noticed by an open TUI", "watch.detect.ms.small",
+               round(p95(noticed), 1), unit="ms", samples=noticed,
+               note="through the pty with the reviewer pressing nothing: `git commit` in another "
+                    "process until the open frame's grid changed, minus the time the commit itself "
+                    "took — the watcher's own budget, on the surface the ambient premise is about "
+                    "(`reco-bpc`)")
+    else:
+        record("commit made elsewhere, noticed by an open TUI", "watch.detect.ms.small", None,
+               unit="ms",
+               blocked_by="an open TUI drew no new frame after a commit made outside it: the frame "
+                          "still has no producer (`reco-bpc`)")
 
     return {
         "schema_version": 1,

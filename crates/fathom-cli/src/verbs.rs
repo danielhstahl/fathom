@@ -96,6 +96,14 @@ pub struct Cli {
         help = "never print the index's progress row, even on a terminal"
     )]
     pub no_progress: bool,
+    /// Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+    ///
+    /// An open shell watches its repository by default, so a commit made in another terminal arrives by
+    /// itself. This turns that off, and the frame then says `snapshot` and what would move it rather than
+    /// letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper,
+    /// is to run `fathom watch` in a second terminal and let it own the indexing.
+    #[arg(long = "no-watch", global = true)]
+    pub no_watch: bool,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
@@ -118,6 +126,8 @@ pub struct Globals {
     pub progress: bool,
     /// `--no-progress`: the index's progress row, forced off (`e5.9`).
     pub no_progress: bool,
+    /// `--no-watch`: an open frame does not watch the repository (`reco-bpc`).
+    pub no_watch: bool,
     /// Review the bundled miniature instead of the repository underfoot (`e5.9`).
     ///
     /// Resolved before the verb runs, because the answer is a directory to `chdir` into: every verb after

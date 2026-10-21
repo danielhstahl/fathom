@@ -339,14 +339,17 @@ struct Top {
 }
 
 /// A file's mtime and length, or "there is no such file".
-#[derive(Default, PartialEq, Eq)]
-struct Stamp {
+///
+/// `pub(crate)` because `fathom tui`'s own watcher asks the same question with the same cheap probe
+/// (`reco-bpc`); two copies of "what moved" is two answers that can drift.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub(crate) struct Stamp {
     exists: bool,
     modified: u64,
     len: u64,
 }
 
-fn stamp(path: &Path) -> Stamp {
+pub(crate) fn stamp(path: &Path) -> Stamp {
     let Ok(meta) = std::fs::metadata(path) else {
         return Stamp::default();
     };
@@ -362,12 +365,66 @@ fn stamp(path: &Path) -> Stamp {
 }
 
 /// The cheap probe's answer: sizes, mtimes and `HEAD`, and nothing parsed.
-#[derive(Default, PartialEq, Eq)]
-struct Signature {
+///
+/// `pub(crate)` for the same reason [`stamp`] is: the shell's watcher and the glance pane's reader are one
+/// probe with two callers.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub(crate) struct Signature {
     store: Stamp,
     heartbeat: Stamp,
     git_dir: Stamp,
     head: String,
+}
+
+impl Signature {
+    /// The `HEAD` the probe read: an oid, or empty when there was no head to read.
+    #[must_use]
+    pub(crate) fn head(&self) -> &str {
+        &self.head
+    }
+
+    /// Is `HEAD` itself what moved — the one change that means the index is now behind the work?
+    #[must_use]
+    pub(crate) fn head_moved(&self, before: &Signature) -> bool {
+        self.head != before.head
+    }
+
+    /// Is there anything a re-read could put on screen that was not there? `HEAD` moved, or somebody
+    /// wrote the store.
+    ///
+    /// Deliberately *not* a whole-struct compare: `.git` moves for reasons that change nothing a frame
+    /// draws — `git status` refreshing the index, a stash, a fetch of a branch nobody is looking at — and
+    /// a watcher that re-read 500 episodes and toasted about it on every one of those is a watcher that
+    /// was never asked to be the interesting kind.
+    #[must_use]
+    pub(crate) fn worth_reading(&self, before: &Signature) -> bool {
+        self.head != before.head || self.store != before.store
+    }
+}
+
+/// The cheap probe, run against one repository: four `stat`s and one ref read, and nothing parsed.
+///
+/// Shared by the glance pane and by `fathom tui`'s watcher (`reco-bpc`) because both need the same answer
+/// at the same price, and because the price is the whole reason either is allowed to ask.
+pub(crate) fn probe(root: &Path, store_path: &Path, heartbeat: &Path) -> Signature {
+    let repository = fathom_ingest::repo::Repository::discover(root).ok();
+    let (head, git_dir) = match &repository {
+        Some(repo) => (
+            repo.head_oid()
+                .ok()
+                .flatten()
+                .map(|oid| oid.to_string())
+                .unwrap_or_default(),
+            stamp(repo.git_dir()),
+        ),
+        None => (String::new(), Stamp::default()),
+    };
+    Signature {
+        store: stamp(store_path),
+        heartbeat: stamp(heartbeat),
+        git_dir,
+        head,
+    }
 }
 
 /// Who reads the pane's facts, and how often it is allowed to.
@@ -392,13 +449,22 @@ struct Reader {
     job: Job,
 }
 
+/// Where the watcher's heartbeat lives for one repository: beside its store, in `.fathom/watch/`.
+///
+/// `pub(crate)` because `fathom tui`'s watcher reads the same file to decide whether it is the one allowed
+/// to index (`reco-bpc`), and two spellings of a path is two places a layout can move without one noticing.
+#[must_use]
+pub(crate) fn heartbeat_path(store_path: &Path) -> PathBuf {
+    store_path.parent().map_or_else(
+        || PathBuf::from("watch-status.json"),
+        |dir| dir.join("watch").join("status.json"),
+    )
+}
+
 impl Reader {
     fn open(root: &Path, args: &AmbientArgs, poll: Duration) -> eyre::Result<Reader> {
         let store_path = crate::session::store_path(root);
-        let heartbeat = store_path.parent().map_or_else(
-            || PathBuf::from("watch-status.json"),
-            |dir| dir.join("watch").join("status.json"),
-        );
+        let heartbeat = heartbeat_path(&store_path);
         let now = stamp(&heartbeat);
         let mut notes = Vec::new();
         let watcher_alive = heartbeat_is_live(&heartbeat);
@@ -490,24 +556,7 @@ impl Reader {
     /// The cheap probe: four `stat`s and one ref read, which is the whole reason the pane can ask several
     /// times a second and still cost nothing. Nothing here parses a file or opens the store.
     fn probe(&self) -> Signature {
-        let repository = fathom_ingest::repo::Repository::discover(&self.root).ok();
-        let (head, git_dir) = match &repository {
-            Some(repo) => (
-                repo.head_oid()
-                    .ok()
-                    .flatten()
-                    .map(|oid| oid.to_string())
-                    .unwrap_or_default(),
-                stamp(repo.git_dir()),
-            ),
-            None => (String::new(), Stamp::default()),
-        };
-        Signature {
-            store: stamp(&self.store_path),
-            heartbeat: stamp(&self.heartbeat),
-            git_dir,
-            head,
-        }
+        probe(&self.root, &self.store_path, &self.heartbeat)
     }
 
     /// Ask the job `fathom watch` runs to take what is new, in one bounded slice.
@@ -755,7 +804,7 @@ impl Top {
 }
 
 /// Is a watcher's heartbeat young enough to be a live one?
-fn heartbeat_is_live(path: &Path) -> bool {
+pub(crate) fn heartbeat_is_live(path: &Path) -> bool {
     let now = Timestamp::from_unix_micros(crate::clock::SystemClock.now().as_unix_micros());
     read_heartbeat(path, now).alive
 }
