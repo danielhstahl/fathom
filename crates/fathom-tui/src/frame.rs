@@ -619,20 +619,28 @@ pub fn apply(app: &mut App, message: Message) {
     }
 }
 
-/// Apply one watcher's update: the rows, the index's numbers, and the sentence that says why the frame
-/// moved under the reviewer's hands (`reco-bpc`).
+/// Apply one watcher's update: the rows, the index's numbers, the row saying how far a run the producer
+/// is running has got, and the sentence that says why the frame moved under the reviewer's hands
+/// (`reco-bpc`, `reco-j7t`).
 ///
 /// Separate from [`apply`] on purpose: a watcher is not on the bus, because there is no producer to send
 /// on its behalf — the loop asks it, on the wake-ups it already takes. Everything in an [`Update`][crate::watch::Update]
 /// is optional, and each absent field is a different sentence: new rows are the rail's own load report
 /// (which is also what re-attaches a cursor the rows moved out from under), new numbers are the index's
-/// summary, and a note from the producer is whatever it needs said about a run that did not go cleanly.
+/// summary, a note from the producer is whatever it needs said about a run that did not go cleanly, and
+/// work is the status row while a run the *producer* owns is still going.
 ///
 /// The reviewer's place is kept: the rail re-attaches to the episode it was on, and the only thing that
 /// moves unasked is the picture of what the repository now holds.
 pub fn apply_update(app: &mut App, update: crate::watch::Update) {
     if let Some(facts) = &update.index {
         app.set_index_facts(facts);
+    }
+    // The progress row first, so a run that finished inside one ask leaves nothing behind: a producer that
+    // completed in the same breath it started in must not leave `indexing 0 %` on the screen as a
+    // souvenir (`reco-j7t`).
+    if let Some(work) = &update.work {
+        app.note_work(work);
     }
     let mut said: Option<String> = None;
     if let Some(batch) = update.episodes {

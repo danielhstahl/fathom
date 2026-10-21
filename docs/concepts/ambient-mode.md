@@ -123,6 +123,17 @@ indexed yet, `--no-watch`, a binary built without the indexer — the status lin
 `snapshot · <why>` and `?` carries the remedy, because a still rail in a repository that is not still is the
 one reading of this view you must never be able to trust by accident.
 
+The **same producer answers `<C-r>`** (`reco-j7t`). The key is bound to `index.reindex`, and a forced ask
+goes to the indexer whether or not `HEAD` moved since the last look: an index left behind by an interrupted
+run, a `git reset`, or a `fathom index` that was never re-run moves for no `.git` event at all, and
+"nothing has moved since I looked" is not the answer to "is this index up to date". While the frame's own
+run is going the status line carries its numbers — `indexing 40 % · ~2 s left · 200 / 500 commits ·
+1 204 analyses computed`, counted by the indexer and estimated by the shell — and when it lands the strip's
+epoch and episode count move with it. A run bigger than one slice is asked about again on the wake-ups the
+loop already takes, so a backlog drains in quarter-second bites with no timer and no second thread. A frame
+that cannot index says which it is instead: `--no-watch` names the flag that would move it, an unindexed
+repository names `fathom index`, and neither names a ticket as if it were pending work.
+
 The tmux shape that has worked, as one line:
 
 ```bash

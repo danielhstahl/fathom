@@ -1004,16 +1004,25 @@ impl Store {
 
     /// The commit ids whose derived rows a run still owes.
     ///
-    /// That is: what this run wrote, plus what any run that never closed cleanly wrote — until some later
-    /// run has finished successfully, which is what bounds the second half to exactly one run's worth of
-    /// re-lookups. Without that bound a store would carry a crashed run's commits on its pending list
-    /// forever, paying a small warm cost every run of the week for a crash that happened once.
+    /// That is: what this run wrote, plus what any run that never closed cleanly wrote **or that closed
+    /// after stopping early for its unit budget** — until some later run has finished without either
+    /// caveat, which is what bounds the second half to exactly one run's worth of re-lookups. Without
+    /// that bound a store would carry a crashed run's commits on its pending list forever, paying a small
+    /// warm cost every run of the week for a crash that happened once.
     ///
     /// The second half is what closes the hole a naive "only the new commits" warm path leaves: a run killed
     /// halfway through its analyses may have written every commit row it meant to, so its commits would
     /// never be looked at again and the index would be quietly, permanently incomplete. Because
     /// [`crate::cache`] answers a *key* rather than a question, re-asking the already-finished ones is a
     /// lookup that hits, so being thorough costs lookups and not computations.
+    ///
+    /// A budget is the same hole with a politeness problem. `fathom watch`, `fathom ambient` and the open
+    /// frame's own `<C-r>` all index in bounded slices, and a slice that runs out of budget stops with the
+    /// commits written and the analyses unfinished — so it closes `ok`, and `status <> 'ok'` alone lets the
+    /// next slice walk past everything it did not reach. That is how a quarter-second slice of a 500-commit
+    /// backlog becomes an index that stopped at the quarter-second and says it finished (`reco-j7t`);
+    /// `index_run.interrupted` is the column that says which run did that, and it is the reason the column
+    /// exists (§7.6's stated partial).
     ///
     /// # Errors
     ///
@@ -1026,9 +1035,10 @@ impl Store {
                      LEFT JOIN index_run ir ON ir.id = gc.run_id
                  WHERE gc.run_id = ?1
                     OR gc.run_id IS NULL
-                    OR (ir.id IS NOT NULL AND ir.status <> 'ok'
+                    OR (ir.id IS NOT NULL AND (ir.status <> 'ok' OR ir.interrupted <> 0)
                             AND NOT EXISTS (SELECT 1 FROM index_run later
-                                            WHERE later.status = 'ok' AND later.id > ir.id))
+                                            WHERE later.status = 'ok' AND later.interrupted = 0
+                                              AND later.id > ir.id))
                  ORDER BY gc.oid",
             )
             .map_err(|err| corrupt("finding commits that still need analysis", &err))?;
@@ -1823,6 +1833,83 @@ mod tests {
         assert!(
             store.oids_pending_derivation(later).unwrap().is_empty(),
             "one run's re-lookups is the bound"
+        );
+    }
+
+    #[test]
+    fn a_run_that_stopped_for_its_budget_leaves_its_commits_on_the_derivation_list() {
+        // A slice budget is how every bounded indexer in this product works: `fathom watch`, `fathom
+        // ambient`, and the open frame's own `<C-r>` all take what fits in a quarter second and come back
+        // for the rest. Such a run does not *fail* — it closes `ok` with `interrupted` set — so a query
+        // that only asks about unclean runs lets the next slice walk past everything the last one did not
+        // reach, and a 500-commit backlog becomes an index that stopped at the first slice and said it
+        // finished (`reco-j7t`).
+        let mut store = store();
+        let sliced = store.begin_run("warm", Trigger::Commit, 1).unwrap();
+        store
+            .write_commits(sliced, 2, &[commit(&"1".repeat(40))])
+            .unwrap();
+        store
+            .finish_run(
+                sliced,
+                2,
+                &RunStats {
+                    commits_seen: 1,
+                    commits_added: 1,
+                    rows_written: 2,
+                    interrupted: true,
+                    error: None,
+                },
+            )
+            .unwrap();
+
+        let next = store.begin_run("warm", Trigger::Commit, 3).unwrap();
+        assert_eq!(
+            store.oids_pending_derivation(next).unwrap(),
+            vec!["1".repeat(40)],
+            "the next slice asks about what the last one did not reach"
+        );
+
+        // A chain of slices that all stop early keeps the debt: none of them has finished the work.
+        store
+            .finish_run(
+                next,
+                4,
+                &RunStats {
+                    commits_seen: 1,
+                    commits_added: 1,
+                    rows_written: 2,
+                    interrupted: true,
+                    error: None,
+                },
+            )
+            .unwrap();
+        let third = store.begin_run("warm", Trigger::Commit, 5).unwrap();
+        assert_eq!(
+            store.oids_pending_derivation(third).unwrap(),
+            vec!["1".repeat(40)],
+            "an interrupted run does not pay a previous one's debt"
+        );
+
+        // And one clean run pays it, so a budget that tripped once does not cost every warm run for the
+        // rest of the week — the same bound `a_run_that_never_closed…` holds a crash to.
+        store
+            .finish_run(
+                third,
+                6,
+                &RunStats {
+                    commits_seen: 1,
+                    commits_added: 1,
+                    rows_written: 2,
+                    interrupted: false,
+                    error: None,
+                },
+            )
+            .unwrap();
+        let fourth = store.begin_run("warm", Trigger::Commit, 7).unwrap();
+        assert!(
+            store.oids_pending_derivation(fourth).unwrap().is_empty(),
+            "the debt is one run's re-lookups, not a permanent one"
         );
     }
 

@@ -17,6 +17,66 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `<C-r>` narrated a re-index instead of doing one, and named a ticket that had closed (`reco-j7t`)
+
+The key is bound to `index.reindex`, labelled *Re-index this repository*, offered by the palette, and listed
+in ADR-006's table. Pressing it wrote one string into the frame and stopped:
+
+```text
+indexing 0 % · unknown left (no store handle in the shell — e1.4 owns the worker)
+```
+
+Every part of that was false. The shell *does* have a producer — `reco-bpc` gave it one two tickets ago, the
+composition root's own `fathom-cli/src/feed.rs`, which has been indexing on the frame's clock ever since.
+`e1.4` closed weeks ago and had already shipped the worker it was named as owing. And a progress row written
+once, at the moment of the keystroke, is a placeholder wearing a percentage, which is the one thing
+ADR-006 §10.3 refuses outright: `warm.reindex.noop.ms` is even budgeted against `ctrl-r` twice not feeling
+like work.
+
+* **A forced ask goes to the indexer**, whether or not `HEAD` moved since the last look. "Nothing moved since
+    I looked" is not the answer to "is this index up to date": an index left behind by an interrupted run, a
+    `git reset`, or a `fathom index` that was never re-run moves for no `.git` event at all. A *poll* still
+    runs only on movement — an idle frame may not walk its repository four times a second.
+* **The run reports its own numbers** through `Update::work`, in the shell's one permitted shape: the phase
+    word and unit word the indexer prints for `fathom index`, the commits derived and the commits that owed
+    derivation, and the analyses computed. The shell turns them into the estimate row —
+    `indexing 40 % · ~2 s left · 200 / 500 commits · 1 204 analyses computed` — because the estimate is a
+    ratio of two time samples and only the loop owns a clock (ADR-002 §4.4). Same counters, same sentence as
+    the CLI; neither is invented.
+* **And it is on the status strip**, which is the half that made the row useless: the progress line lived only
+    in a pane that had nothing else to print, so the reviewer who pressed `<C-r>` over a rail of 500 episodes
+    — everyone who has ever wanted a re-index — saw no progress at all.
+* **A slice that stops for its budget keeps being asked**, on the wake-ups the loop already takes: no timer,
+    no thread, no new wake-up budget (ADR-006 §0.1). The denominator belongs to the run and not to the slice
+    — each slice asks the store what still owes derivation and restarts its own count there — so the row
+    counts up to 500 rather than restarting at `0 %` every quarter second. When the run lands, the row goes
+    and the strip's epoch and episode count move with it.
+* **A budget-stopped slice used to lose the rest of its work.** `oids_pending_derivation` asked only about
+    runs that never closed cleanly, and a slice that ran out of budget *closes `ok`* — it did not fail — so
+    the next slice walked past everything the last one had not reached. A quarter-second bite of a 130-commit
+    backlog derived 79 commits, the next bite derived nothing, and the index said it was finished at 79. The
+    query now honours `index_run.interrupted`, the column that exists to say exactly that, under the same
+    one-run's-worth-of-re-lookups bound as the crash case. `fathom watch` and `fathom ambient` were losing
+    the same work.
+* **The two answers that are not "it ran"** name something the reviewer can do: `--no-watch` names the flag
+    that would move the frame, an unindexed repository names `fathom index`, and a frame its caller handed
+    no producer at all — an embedder, a test frame; the shipped shell always has one — says so and names the
+    command. No toast names a closed ticket as if it were pending work; there is now a scanner in the test
+    file pointed at the old sentence, so it cannot come back.
+
+*Asserted by*: `crates/fathom-tui/tests/watch.rs` (18: the row is built from a producer's counters, it lands
+on the strip, a run that finishes inside one ask never shows one, a finished run takes its row with it, and
+none of the three answers names a ticket), `crates/fathom-cli`'s `feed` unit tests (the slice arithmetic
+behind the numbers, including the frozen denominator), `fathom-store`'s `spine` tests (a budget-stopped run
+leaves its commits on the derivation list, and one clean run pays the debt), and
+`tests/test_tui_reindex_contract.py` (4 against the built binary over a pty, including the case the poll
+cannot fix — a repository that moved before the frame opened, so the re-index can only be the keystroke).
+
+A re-index that spans more than one slice still has one step left to join up: the episodes the last slice
+writes are not on the rail until a later index run publishes them, so a 130-commit backlog shows its
+progress row, says the run landed, and leaves the count where it was until the next `fathom index`. The
+derivation now finishes; the rail's rows lag by one run, in the shell and in `fathom watch` alike.
+
 ### An open TUI was a photograph of a moving repository: nothing fed the frame (`reco-bpc`)
 
 The product premise is physical — fathom sits in a second terminal in ambient mode while an agent works in

@@ -25,13 +25,22 @@
 //!   open, a binary built without the indexer, `--no-watch` — the answer is [`fathom_tui::watch::Source::snapshot`],
 //!   which puts the limitation and its remedy in the frame instead of leaving a still picture to be
 //!   mistaken for a quiet repository.
+//!
+//! `<C-r>` (`index.reindex`) asks this producer *now* (`reco-j7t`). A forced ask goes to the index job
+//! whether or not `HEAD` moved — "nothing moved since I looked" is not the answer to "is this index up to
+//! date" — and the run reports its own counters back through [`fathom_tui::watch::Update::work`], so the
+//! frame shows `indexing 40 % · ~2 s left · 200 / 500 commits` from the indexer's numbers rather than
+//! narrating that it has no store handle. A run that stops for its slice budget keeps being asked, on the
+//! wake-ups the loop already takes; the loop gains no timer, no thread and no second poller.
 
 use std::path::{Path, PathBuf};
+#[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use fathom_tui::index::{Facts, Read};
-use fathom_tui::watch::{Source, Update, Watcher};
+use fathom_tui::watch::{Source, Update, Watcher, Work};
 
 /// How often an open frame looks for new commits.
 ///
@@ -133,6 +142,100 @@ struct State {
     /// The watcher's own job, re-armed per ask.
     #[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
     job: crate::watch::IndexJob,
+    /// What this process's own index run has said about itself, while it is still running (`reco-j7t`).
+    ///
+    /// `None` between runs. A run that stopped for its slice budget is not a finished run, and the numbers
+    /// the next slice reports have to be read against the ones this one already reported or the progress
+    /// row restarts from `0 %` every quarter second — which is a row that reads as a run that keeps
+    /// starting over, and a reviewer who watches that presses `<C-c>`.
+    run: Option<Run>,
+}
+
+/// One in-flight index run this process is running on the frame's behalf (`reco-j7t`).
+///
+/// Every number here came out of the index run's own ticks — nothing is counted from outside, because an
+/// outside count of somebody else's work is a guess wearing a percentage (`ADR-006 §10.3`).
+#[derive(Default)]
+struct Run {
+    /// Commits the spine took, summed over the slices so far.
+    commits: u64,
+    /// Commits that owed derivation when the run stated its denominator for the first time. Frozen for the
+    /// length of the run: each slice restarts the run's own count, and the row that restarts with it is a
+    /// lie about how far the reviewer has to go.
+    of: Option<u64>,
+    /// Commits still owing derivation, as the last slice's last tick reported them.
+    left: Option<u64>,
+    /// Analyses computed, summed over the slices so far.
+    units: u64,
+    /// The word the run used for the phase it was in when it last reported, and what it calls one unit of
+    /// it — so the row says `analysing 40 % · … · 200 / 500 commits` in the indexer's own vocabulary and
+    /// not one the frame invented.
+    phase: Option<Words>,
+}
+
+/// What the run is called, and what its units are called, in the indexer's own words.
+type Words = (&'static str, &'static str);
+
+/// What one slice of a run reported, before the frame folds it into the run's totals (`reco-j7t`).
+#[derive(Default)]
+struct Report {
+    /// Commits this slice took into the spine.
+    commits: u64,
+    /// Analyses this slice computed.
+    units: u64,
+    /// Did the run say it was finished, or did it stop for its slice budget and wait to be asked again?
+    complete: bool,
+    /// The phase the slice ended in, as words.
+    phase: Option<Words>,
+    /// The derivation denominator the run last stated: the words it belongs to, the commits derived, and
+    /// the commits that owed derivation when the run counted them.
+    deriving: Option<(Words, u64, u64)>,
+}
+
+impl Run {
+    /// Fold one slice's report into the run's totals and say what the row should read (`reco-j7t`).
+    ///
+    /// The denominator belongs to the run and not to the slice. Each slice calls `index::run` again, and
+    /// each one re-asks the store what still owes derivation and starts its own count from there — so a
+    /// row printed straight from a slice restarts at `0 %` every quarter second, which reads as a run
+    /// that keeps starting over. The frame keeps the total it was first given and counts the rest off what
+    /// the run says is *left*, which is the one figure every slice agrees on.
+    fn fold(&mut self, slice: Report) -> Work {
+        self.commits += slice.commits;
+        self.units += slice.units;
+        if let Some((words, done, of)) = slice.deriving {
+            self.of = Some(self.of.map_or(of, |seen| seen.max(of)));
+            self.left = Some(of.saturating_sub(done));
+            self.phase = Some(words);
+        } else if self.of.is_none() {
+            // Nothing has stated a denominator yet, so the row borrows the run's own word for what it is
+            // doing and shows the counts it has — with no percentage, because there is nothing yet to
+            // take a percentage of (`ADR-001 §7.7`).
+            self.phase = slice.phase;
+        }
+        Work {
+            task: self.phase.map_or("indexing", |(word, _)| word),
+            unit: self.phase.map_or("commit", |(_, unit)| unit),
+            done: self
+                .of
+                .map_or(self.commits, |of| of.saturating_sub(self.left.unwrap_or(0))),
+            of: self.of,
+            units: self.units,
+            complete: slice.complete,
+        }
+    }
+}
+
+/// What one ask's slice of indexing did, in the only shapes the frame can show (`reco-j7t`).
+struct Slice {
+    /// The status row: the run's counters so far, and whether it is finished.
+    work: Work,
+    /// Commits the run has taken into the spine, summed over its slices — what the toast counts when the
+    /// run lands, because the reviewer asked how much of the repository is new, not how much one
+    /// quarter-second of it was.
+    commits: u64,
+    /// Did the run finish? `false` says *ask me again*, and the poll interval steps aside for it.
+    complete: bool,
 }
 
 impl Feed {
@@ -159,6 +262,7 @@ impl Feed {
                     crate::session::store_path(root),
                     CHUNK_UNITS,
                 ),
+                run: None,
             }),
         }
     }
@@ -170,7 +274,12 @@ impl Feed {
             // drew, which is what `ADR-001 §7.2` asks of a partial.
             return None;
         };
-        if !force && state.asked.is_some_and(|asked| asked.elapsed() < self.poll) {
+        // Two things switch the poll interval off. `<C-r>` is one: the reviewer asked *now*. The other is a
+        // run this process is in the middle of (`reco-j7t`) — a slice that stopped for its budget is not a
+        // run that finished, and making the frame wait a whole poll interval to be told the next quarter of
+        // it is done is a slow way of saying *still working* when the work is right here.
+        let mid_run = state.run.is_some();
+        if !force && !mid_run && state.asked.is_some_and(|asked| asked.elapsed() < self.poll) {
             return None;
         }
         state.asked = Some(Instant::now());
@@ -181,17 +290,34 @@ impl Feed {
             state.seen = Some(now);
             return None;
         };
-        if !force && !now.worth_reading(&seen) {
+        if !force && !mid_run && !now.worth_reading(&seen) {
             state.seen = Some(now);
             return None;
         }
         let head_moved = now.head_moved(&seen);
         let mut update = Update::default();
         let mut note = None;
-        if head_moved && self.index_here {
+        // `<C-r>` asks for a re-index, not for a re-probe, so a forced ask puts the question to the index
+        // job whether or not `HEAD` moved since the last look: "nothing moved since I looked" is not the
+        // answer to "is this index up to date". A poll still runs only on movement — an idle frame may not
+        // start a walk of its repository four times a second, whatever its budget allows.
+        let index_now = self.index_here && (force || head_moved || mid_run);
+        if index_now {
             match self.index_slice(&mut state, now.head()) {
-                Ok(commits) => update.new_commits = Some(commits),
-                Err(why) => note = Some(format!("the frame's own index run failed: {why}")),
+                Ok(slice) => {
+                    update.work = Some(slice.work);
+                    if slice.complete {
+                        update.new_commits = (slice.commits > 0).then_some(slice.commits);
+                        state.run = None;
+                    }
+                }
+                Err(why) => {
+                    // A run that failed is a run that is over: the row goes away and the sentence says
+                    // which of the two happened, rather than leaving a progress line standing over a
+                    // repository the frame has stopped reading.
+                    state.run = None;
+                    note = Some(format!("the frame's own index run failed: {why}"));
+                }
             }
         } else if head_moved {
             // The honest lag: `HEAD` has moved, somebody else owns indexing it, and the picture will catch
@@ -203,26 +329,34 @@ impl Feed {
                 short(now.head())
             ));
         }
+        // Re-probe after the work: indexing moved the store, and storing the *old* stamp here would make
+        // the next ask see a change it had already accounted for and re-read the whole page again.
+        let after = crate::ambient::probe(&self.root, &self.store_path, &self.heartbeat);
+        // While the frame's own run is still going, that row *is* the update. Re-reading the store's
+        // numbers and the rail's page on every one of those asks would charge a repository read to the
+        // reviewer four times a second for rows that cannot be complete before the run says so; the
+        // numbers and the rows arrive with the update that says it landed (`reco-j7t`).
+        if update.work.as_ref().is_some_and(|work| !work.complete) {
+            state.seen = Some(after);
+            return Some(update);
+        }
         // Both halves of the re-read are keyed off the same index read, so the strip's numbers and the
         // rail's rows cannot disagree about the epoch they came from (`reco-wzt`'s rule, unchanged).
         let facts = crate::tui::index_facts(&self.root);
         update.episodes = crate::episodes::load(&self.root, &facts);
         update.index = Some(facts);
         update.note = note;
-        // Re-probe after the work: indexing moved the store, and storing the *old* stamp here would make
-        // the next ask see a change it had already accounted for and re-read the whole page again.
-        state.seen = Some(crate::ambient::probe(
-            &self.root,
-            &self.store_path,
-            &self.heartbeat,
-        ));
+        state.seen = Some(after);
         Some(update)
     }
 
-    /// Take what is new, in one bounded slice, with the watcher's own budget re-armed for this ask.
+    /// Take what is new, in one bounded slice, with the watcher's own budget re-armed for this ask — and
+    /// say, in the run's own numbers, how far the run has got (`reco-j7t`).
     #[cfg(all(feature = "watch", feature = "sqlite-bundled"))]
-    fn index_slice(&self, state: &mut State, head: &str) -> Result<u64, String> {
+    fn index_slice(&self, state: &mut State, head: &str) -> Result<Slice, String> {
+        use fathom_analyze::index::{Phase, ProgressSink, Tick};
         use fathom_ingest::watch::{Interest, InterestReason, Job as _, Progress};
+
         state.job.start_slice(SLICE_BUDGET);
         let interest = Interest {
             reason: InterestReason::Commits,
@@ -232,21 +366,75 @@ impl Feed {
             replaced: false,
             signals: Vec::new(),
         };
+        // The run's own ticks, caught on their way past. The frame cannot install a printer, but the
+        // counters `fathom index` prints are exactly the ones a reviewer watching this frame needs, and
+        // they are measured against the one denominator a run can state up front — the commits that owe
+        // derivation — rather than against a total the frame would have to invent.
+        #[derive(Default)]
+        struct Caught {
+            /// The last tick of any phase: the word for what the run is doing.
+            last: Option<Tick>,
+            /// The last derivation tick that came with a denominator, as `(done, of)`.
+            deriving: Option<(u64, u64)>,
+        }
+        let caught = Arc::new(Mutex::new(Caught::default()));
+        let sink = {
+            let caught = Arc::clone(&caught);
+            ProgressSink::new(move |tick: &Tick| {
+                if let Ok(mut seen) = caught.lock() {
+                    if tick.phase == Phase::Analysing {
+                        seen.deriving = tick.of.map(|of| (tick.done, of));
+                    }
+                    seen.last = Some(*tick);
+                }
+            })
+        };
+        state.job.set_ticks(Some(sink));
         // The per-chunk progress the watcher prints is not this frame's to print: the row the shell would
         // draw it in is `index.progress`, and a frame that redrew itself every 250 ms while indexing a
         // backlog is a frame that owns the terminal, which ADR-006 §0.1 forbids outright.
         let mut quiet = |_: Progress| {};
-        state
-            .job
-            .refresh(&interest, &mut quiet)
-            .map(|progress| progress.commits)
-            .map_err(|err| err.message().to_owned())
+        let outcome = state.job.refresh(&interest, &mut quiet);
+        state.job.set_ticks(None);
+        let progress = outcome.map_err(|err| err.message().to_owned())?;
+        let caught = caught
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        // Everything the run said, in the frame's own vocabulary: two `&'static str` words rather than a
+        // `Phase`, so the arithmetic that turns it into a row is testable without a store behind it.
+        // `analysing` is the phase that owns the denominator, but the row is about the re-index the
+        // reviewer asked for, and the indexer calls the whole job `indexing` in ADR-006 §10.3's own copy —
+        // so the row says `indexing`, measured against the derivation count (`reco-j7t`).
+        let words = ("indexing", Phase::Analysing.unit());
+        let report = Report {
+            commits: progress.commits,
+            units: progress.units,
+            complete: progress.complete,
+            // The derivation phase owns the denominator, so a slice that reached it is labelled with its
+            // words; until then the row borrows whatever phase the run last reported — a walk still
+            // walking, an episodes pass still rebuilding.
+            phase: match (caught.deriving, caught.last) {
+                (Some(_), _) => Some(words),
+                (None, Some(tick)) => Some((tick.phase.word(), tick.phase.unit())),
+                (None, None) => None,
+            },
+            deriving: caught.deriving.map(|(done, of)| (words, done, of)),
+        };
+        let run = state.run.get_or_insert_with(Run::default);
+        let work = run.fold(report);
+        let complete = progress.complete;
+        Ok(Slice {
+            work,
+            commits: run.commits,
+            complete,
+        })
     }
 
     /// A build without the watcher's job cannot index what it notices; it reads what somebody else wrote.
     /// `can_index` keeps this from being reached, and the compiler still wants it to exist.
     #[cfg(not(all(feature = "watch", feature = "sqlite-bundled")))]
-    fn index_slice(&self, _state: &mut State, _head: &str) -> Result<u64, String> {
+    fn index_slice(&self, _state: &mut State, _head: &str) -> Result<Slice, String> {
         Err("this build cannot index from the shell".to_owned())
     }
 }
@@ -283,4 +471,95 @@ fn short(oid: &str) -> String {
         return "unknown".to_owned();
     }
     oid.chars().take(7).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Report, Run};
+
+    const WORDS: (&str, &str) = ("indexing", "commit");
+
+    #[test]
+    fn a_slice_that_stopped_for_its_budget_reports_the_run_and_not_the_slice() {
+        // 500 commits owe derivation; the first slice takes 200 of them and stops for its budget. The run
+        // restarts its own count on every slice — each call asks the store what is *left* — so a row built
+        // from one slice would read `0 %` four times a second, which is a row that reads as a hang.
+        let mut run = Run::default();
+        let first = run.fold(Report {
+            commits: 200,
+            units: 812,
+            complete: false,
+            phase: Some(WORDS),
+            deriving: Some((WORDS, 200, 500)),
+        });
+        assert_eq!((first.done, first.of, first.units), (200, Some(500), 812));
+        assert!(
+            !first.complete,
+            "a slice that stopped for budget is not a finished run"
+        );
+        assert_eq!(first.task, "indexing", "the row is in the indexer's words");
+        // The second slice sees 300 left and takes all of them. The denominator stays 500 — the total the
+        // run first stated — and `done` is that total minus what the run says is left.
+        let second = run.fold(Report {
+            commits: 300,
+            units: 1_204,
+            complete: true,
+            phase: Some(WORDS),
+            deriving: Some((WORDS, 300, 300)),
+        });
+        assert_eq!(
+            (second.done, second.of, second.units),
+            (500, Some(500), 2_016),
+            "the row counts up to the run's own total, not the last slice's"
+        );
+        assert!(second.complete, "and it says when the run is over");
+    }
+
+    #[test]
+    fn a_run_that_never_reached_its_denominator_promises_no_percentage() {
+        // A walk still walking has no denominator yet: the run does not know how much derivation it owes
+        // until it has walked, and printing `0 %` for "not counted yet" is the lie ADR-001 §7.7 refuses.
+        let mut run = Run::default();
+        let walking = run.fold(Report {
+            commits: 0,
+            units: 0,
+            complete: false,
+            phase: Some(("indexing", "commit")),
+            deriving: None,
+        });
+        assert_eq!(walking.of, None, "no denominator yet, so no percentage");
+        assert_eq!(walking.done, 0, "and nothing invented for the count");
+        assert_eq!(
+            walking.task, "indexing",
+            "the run's own word for what it is doing"
+        );
+    }
+
+    #[test]
+    fn a_slice_whose_run_stated_a_smaller_total_than_it_already_said_keeps_the_larger_one() {
+        // A crashed run's commits come back into the derivation list on the next pass, so the list a later
+        // slice states can be bigger or smaller than the one before it. The row keeps the larger total and
+        // never goes backwards past the work it already reported.
+        let mut run = Run::default();
+        run.fold(Report {
+            commits: 100,
+            units: 100,
+            complete: false,
+            phase: Some(WORDS),
+            deriving: Some((WORDS, 100, 400)),
+        });
+        let after = run.fold(Report {
+            commits: 50,
+            units: 50,
+            complete: false,
+            phase: Some(WORDS),
+            deriving: Some((WORDS, 0, 600)),
+        });
+        assert_eq!(after.of, Some(600), "the bigger denominator wins");
+        assert_eq!(
+            after.done, 0,
+            "and the row says where the run actually is, not where it was"
+        );
+        assert_eq!(after.units, 150, "while the counts it owns keep summing");
+    }
 }

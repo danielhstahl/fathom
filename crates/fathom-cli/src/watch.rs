@@ -43,6 +43,15 @@ pub(crate) struct IndexJob {
     /// Re-analyse uncommitted paths when the index moves? Off by default, and the *watcher's* option
     /// decides — not the mere fact that `git add` touched the index file, which it does on every commit.
     index_worktree: bool,
+    /// Where a caller that is not a terminal wants the run's own ticks (`reco-j7t`).
+    ///
+    /// `fathom watch` prints its state machine to stdout; an open frame can print nothing, so
+    /// `fathom tui`'s producer installs a sink here and reads the ticks back out afterwards — the same
+    /// ticks that make `fathom index` say `analysing 62 % · ~14 s left · 4 102 / 6 552 commits`, handed to
+    /// a shell that may show what an indexer is doing but may not run one (ADR-002 §5.2).
+    ///
+    /// `None` is every other caller, which was every caller until `reco-j7t`.
+    ticks: Option<fathom_analyze::index::ProgressSink>,
 }
 
 impl IndexJob {
@@ -58,7 +67,16 @@ impl IndexJob {
             chunk_deadline: Some(Instant::now() + Duration::from_millis(250)),
             store_compiled: cfg!(feature = "sqlite-bundled"),
             index_worktree: false,
+            ticks: None,
         }
+    }
+
+    /// Install the sink that receives the run's progress ticks (`reco-j7t`).
+    ///
+    /// Set per ask rather than at construction, because the sink closes over whoever is asking and the job
+    /// outlives the ask: the frame's producer installs one, runs a slice, and reads what it caught.
+    pub(crate) fn set_ticks(&mut self, ticks: Option<fathom_analyze::index::ProgressSink>) {
+        self.ticks = ticks;
     }
 
     /// Re-arm the slice budget for one more ask.
@@ -136,6 +154,10 @@ impl IndexJob {
                     Worktree::Ignore
                 },
                 unit_budget: Some(self.chunk_units),
+                // The ticks are the run's own counters, already phase-labelled and already measured
+                // against the one denominator a run can state up front — which is why the frame's producer
+                // reads these rather than counting commits from the outside (`reco-j7t`).
+                progress: self.ticks.clone(),
                 ..index::Options::head()
             };
             let report = index::run(&repository, &mut store, &Unclassified, &options)
@@ -380,6 +402,9 @@ pub fn run(args: &WatchArgs) -> eyre::Result<ExitCode> {
             ),
             store_compiled: cfg!(feature = "sqlite-bundled"),
             index_worktree: options.index_worktree,
+            // `fathom watch` prints its own state machine to stdout and wants no sink: the ticks are for a
+            // caller that cannot print anything, which is the frame, not the watcher (`reco-j7t`).
+            ticks: None,
         })
     };
     let printer = Printer {

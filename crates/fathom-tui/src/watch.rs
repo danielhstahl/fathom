@@ -50,6 +50,71 @@ pub struct Update {
     /// The producer's own sentence, in preference to the one the shell composes — which is where a failed
     /// index run, a skipped slice and a store that would not open get said in the words that explain them.
     pub note: Option<String>,
+    /// What the producer is still doing, when it is doing something (`reco-j7t`).
+    ///
+    /// This is the field that makes `<C-r>` a re-index instead of a description of one. A producer that runs
+    /// its slices inside the ask has nowhere else to put the numbers: the shell has no worker to ask, and a
+    /// progress row written once, at the moment of the keystroke, is the placeholder this ticket was filed
+    /// against. Absent means the producer did no work of its own — it re-read, or it is reading what
+    /// somebody else wrote.
+    pub work: Option<Work>,
+}
+
+/// Work a producer is in the middle of, in the shape the shell's estimate needs (`reco-j7t`).
+///
+/// Deliberately not a percentage: the estimate is a ratio of two *time* samples and only the loop owns a
+/// clock ([`crate::progress::Tracker`], ADR-002 §4.4), so a producer hands over counters and says whether
+/// it has more to do, and the frame turns them into
+/// `indexing 62 % · ~14 s left · 4 102 / 6 552 commits · 1 204 analyses computed` — the row
+/// `fathom index` prints, from the same [`fathom_core::progress::Estimate`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Work {
+    /// The word the row prints — `indexing`, `analysing` — as the indexer names its own phase.
+    pub task: &'static str,
+    /// What one unit of it is called, so the row says `4 102 / 6 552 commits` and not `units`.
+    pub unit: &'static str,
+    /// Units finished, counted against [`Work::of`] rather than against the whole repository.
+    pub done: u64,
+    /// Units there are to do, once the producer can count them. `None` prints as `unknown %` and never
+    /// as a fake 100 % (`ADR-001 §7.7`).
+    pub of: Option<u64>,
+    /// Analyses computed so far — the count behind the commits, and the one that keeps a warm run whose
+    /// commits are cheap but whose units are not honest.
+    pub units: u64,
+    /// Is the run finished? `false` is a slice that stopped for its own budget, and it is the producer's
+    /// way of saying *ask me again*: the frame keeps the row until a `true` clears it.
+    pub complete: bool,
+}
+
+impl Work {
+    /// A run the producer is still in the middle of.
+    #[must_use]
+    pub fn running(task: &'static str, unit: &'static str, done: u64, of: Option<u64>) -> Self {
+        Work {
+            task,
+            unit,
+            done,
+            of,
+            units: 0,
+            complete: false,
+        }
+    }
+
+    /// A run that has finished: the row goes away rather than sitting at `100 %` forever.
+    #[must_use]
+    pub fn finished(task: &'static str, unit: &'static str, done: u64, of: Option<u64>) -> Self {
+        Work {
+            complete: true,
+            ..Work::running(task, unit, done, of)
+        }
+    }
+
+    /// Say how many analyses the run has computed (`fathom_analyze::index::Report::computed`).
+    #[must_use]
+    pub fn with_units(mut self, units: u64) -> Self {
+        self.units = units;
+        self
+    }
 }
 
 impl Update {
@@ -69,6 +134,7 @@ impl Update {
             && self.index.is_none()
             && self.new_commits.is_none()
             && self.note.is_none()
+            && self.work.is_none()
     }
 }
 

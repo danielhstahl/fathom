@@ -1,4 +1,5 @@
-//! An open frame notices the commit made next door (`reco-bpc`).
+//! An open frame notices the commit made next door (`reco-bpc`), and re-indexes when it is asked to
+//! (`reco-j7t`).
 //!
 //! The defect was that nothing ever told the frame anything: `frame::Options` documented a worker that
 //! would push rows, and no producer existed, so an ambient terminal showed a still picture of a moving
@@ -9,6 +10,12 @@
 //!   second process the reviewer had to remember to start;
 //! * when nothing is, the frame says so, in the frame, and says what would move it. A frozen rail that
 //!   admits it is frozen is a limitation; one that does not is a lie about the repository.
+//!
+//! The second defect was the key that narrated its own absence: `<C-r>` wrote a progress row for a run it
+//! never started and named a ticket that had closed weeks ago as the party that would one day own the
+//! worker. What is asserted here is the shape of a real answer — a producer's counters turn into a row on
+//! the status strip while the run goes, the row goes when the run lands, and no answer the key gives
+//! points a reviewer at work that is already finished.
 //!
 //! No git, no store and no pty: the producer is scripted, which is the point — the shell's half of the
 //! contract is "do the right thing with what you are handed", and the composition root's half is tested
@@ -26,7 +33,7 @@ use fathom_tui::frame::{HeadlessSink, Options, run_loop};
 use fathom_tui::index::Facts;
 use fathom_tui::keymap::Keymap;
 use fathom_tui::timeline::{Batch, Episode};
-use fathom_tui::watch::{Source, Update, Watcher};
+use fathom_tui::watch::{Source, Update, Watcher, Work};
 
 /// The instant the frames are drawn for; a fixture that read a clock would be a fixture with a flake.
 const NOW: Timestamp = Timestamp::from_unix_micros(1_700_000_000_000_000);
@@ -91,6 +98,7 @@ impl Watcher for Scripted {
             )),
             new_commits: Some(1),
             note: None,
+            work: None,
         })
     }
 
@@ -108,6 +116,7 @@ impl Watcher for Scripted {
             )),
             new_commits: Some(1),
             note: None,
+            work: None,
         })
     }
 }
@@ -207,6 +216,7 @@ fn the_watchers_update_names_itself_rather_than_arriving_silently() {
             )),
             new_commits: Some(1),
             note: None,
+            work: None,
         },
     );
     assert_eq!(before, 1);
@@ -404,4 +414,245 @@ fn the_frame_asks_no_faster_than_its_own_wakeup() {
         fathom_tui::terminal::SIGNAL_POLL >= Duration::from_millis(50),
         "the wake-up the producer piggy-backs on is not the one it sets"
     );
+}
+
+// ---------------------------------------------------------------------------------------------
+// the third answer: `<C-r>` starts a re-index, and says how far it has got (`reco-j7t`)
+// ---------------------------------------------------------------------------------------------
+
+/// A producer scripted to be *in the middle of* a run: every ask answers with the next row the indexer
+/// would have reported, and the last row repeats forever, which is how a finished run keeps saying so.
+///
+/// The rows are the indexer's own — the phase word, the unit word, the denominator out of
+/// `fathom_analyze::index::Tick` — because the point of the test is the frame's half of the contract:
+/// turn the numbers a producer hands over into a row a reviewer can read, and take the row away when the
+/// run says it is done.
+struct ScriptedRun {
+    asks: Vec<Work>,
+    asked: AtomicUsize,
+}
+
+impl ScriptedRun {
+    fn new(asks: Vec<Work>) -> Self {
+        ScriptedRun {
+            asks,
+            asked: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl Watcher for ScriptedRun {
+    fn poll(&self) -> Option<Update> {
+        let n = self.asked.fetch_add(1, Ordering::Relaxed);
+        Some(Update {
+            work: Some(self.asks[n.min(self.asks.len() - 1)].clone()),
+            ..Update::default()
+        })
+    }
+
+    fn refresh(&self) -> Option<Update> {
+        self.poll()
+    }
+}
+
+#[test]
+fn ctrl_r_reports_the_run_it_started_in_the_indexers_own_numbers() {
+    let mut app = shell(Some(Source::live(ScriptedRun::new(vec![
+        Work::running("analysing", "commit", 200, Some(500)).with_units(1_204),
+    ]))));
+    assert!(
+        app.model.index.progress.is_none(),
+        "nothing is running before the key is pressed"
+    );
+    app.feed_key("<C-r>", Instant::now());
+    let row = app
+        .model
+        .index
+        .progress
+        .clone()
+        .expect("the re-index the reviewer asked for has a row");
+    assert!(
+        row.starts_with("analysing ") && row.contains("40 %"),
+        "the row is the run's own phase, measured against the run's own denominator: {row}"
+    );
+    assert!(
+        row.contains("200 / 500 commit"),
+        "the counts behind the percentage are printed beside it, as everywhere else: {row}"
+    );
+    assert!(
+        row.contains("1 204 analyses computed"),
+        "a warm run whose commits are cheap but whose analyses are not says so: {row}"
+    );
+    // And it is on the strip, which is the half the ticket was about: the row used to live only in an
+    // empty pane, so on a rail with 500 episodes in it a re-index showed no progress at all.
+    let strip = status_line(&app);
+    assert!(
+        strip.contains("analysing") && strip.contains("200 / 500"),
+        "the status strip carries the row: {strip}"
+    );
+}
+
+#[test]
+fn a_run_that_lands_takes_its_row_with_it() {
+    let mut app = shell(Some(Source::live(ScriptedRun::new(vec![Work::running(
+        "analysing",
+        "commit",
+        200,
+        Some(500),
+    )]))));
+    app.feed_key("<C-r>", Instant::now());
+    assert!(app.model.index.progress.is_some());
+    // The update that says the run is finished: the row goes, the strip's numbers move, and the estimate
+    // is dropped rather than left to describe a run that ended.
+    fathom_tui::frame::apply_update(
+        &mut app,
+        Update {
+            work: Some(Work::finished("analysing", "commit", 500, Some(500))),
+            index: Some(Facts::present(
+                Some(2),
+                Some("ready".to_owned()),
+                Some(503),
+                Some(503),
+            )),
+            ..Update::default()
+        },
+    );
+    assert!(
+        app.model.index.progress.is_none(),
+        "a row that outlives its run is the placeholder this ticket was filed against: {:?}",
+        app.model.index.progress
+    );
+    assert!(
+        app.estimates.is_empty(),
+        "the estimate goes with the row it belongs to"
+    );
+    let strip = status_line(&app);
+    assert!(
+        !strip.contains("analysing"),
+        "the strip stopped saying it: {strip}"
+    );
+    assert_eq!(app.model.index.episodes, Some(503), "and said what landed");
+}
+
+#[test]
+fn a_run_that_finishes_inside_one_ask_never_shows_a_row() {
+    // The common case: a warm repository with one new commit. A row that appeared and vanished between
+    // two frames is worse than no row, because what the reviewer remembers seeing is `0 %`.
+    let mut app = shell(Some(Source::live(ScriptedRun::new(vec![Work::finished(
+        "analysing",
+        "commit",
+        1,
+        Some(1),
+    )]))));
+    app.feed_key("<C-r>", Instant::now());
+    assert!(
+        app.model.index.progress.is_none(),
+        "a run that finished in the same breath it started in leaves nothing standing: {:?}",
+        app.model.index.progress
+    );
+}
+
+/// Does this sentence name a ticket? The point of the check is not the format: it is that a closed
+/// ticket, read in the present tense, is a reviewer being pointed at work that is already done.
+fn names_a_ticket(text: &str) -> bool {
+    text.split_whitespace().any(|word| {
+        let word = word.trim_matches(|c: char| !(c.is_ascii_alphanumeric() || c == '.'));
+        if word.starts_with("reco-") {
+            return true;
+        }
+        // `e1.4`, `e12.3`: letters, digits, a dot, digits — one word, no spaces.
+        let Some(dot) = word.find('.') else {
+            return false;
+        };
+        let (before, after) = (word[..dot].to_owned(), word[dot + 1..].to_owned());
+        let letters: String = before
+            .chars()
+            .take_while(char::is_ascii_alphabetic)
+            .collect();
+        let digits = &before[letters.len()..];
+        let number = |text: &str| !text.is_empty() && text.chars().all(|c| c.is_ascii_digit());
+        !letters.is_empty() && number(digits) && number(&after)
+    })
+}
+
+#[test]
+fn the_ticket_scanner_catches_the_sentence_this_ticket_was_filed_about() {
+    // A scanner that never fires is worse than none, so it is pointed at the sentence the defect left on
+    // the screen, and at the row that replaces it.
+    assert!(
+        names_a_ticket(
+            "indexing 0 % · unknown left (no store handle in the shell — e1.4 owns the worker)"
+        ),
+        "the old row named a closed ticket and this scanner missed it"
+    );
+    assert!(names_a_ticket("owned by reco-j7t"));
+    assert!(!names_a_ticket(
+        "indexing 40 % · ~2 s left · 200 / 500 commits"
+    ));
+    assert!(!names_a_ticket(
+        "run `fathom index` here, then reopen fathom"
+    ));
+}
+
+#[test]
+fn no_answer_c_r_gives_names_a_closed_ticket_as_open_work() {
+    for (what, source) in [
+        ("no producer at all", None),
+        (
+            "a snapshot",
+            Some(Source::snapshot(
+                "`--no-watch`",
+                "reopen without the flag and this frame watches the repository itself",
+            )),
+        ),
+        (
+            "a live producer",
+            Some(Source::live(ScriptedRun::new(vec![Work::finished(
+                "analysing",
+                "commit",
+                1,
+                Some(1),
+            )]))),
+        ),
+    ] {
+        let mut app = shell(source);
+        app.feed_key("<C-r>", Instant::now());
+        let said = app.toast.clone().unwrap_or_default();
+        assert!(!said.is_empty(), "`<C-r>` on {what} said nothing at all");
+        assert!(
+            !names_a_ticket(&said),
+            "the answer about {what} names a ticket as if it were pending work: {said}"
+        );
+        assert!(
+            !said.contains("no store handle") && !said.contains("owns the worker"),
+            "the answer about {what} narrates the shell's own limits instead of what to do: {said}"
+        );
+    }
+}
+
+#[test]
+fn a_frame_with_no_producer_names_the_command_rather_than_its_own_anatomy() {
+    // The shipped shell always installs a producer, so this is the embedder's frame and the test frame —
+    // which is exactly why the sentence has to be a remedy and not an excuse.
+    let mut app = shell(None);
+    app.feed_key("<C-r>", Instant::now());
+    let said = app.toast.clone().unwrap_or_default();
+    assert!(
+        said.contains("fathom index"),
+        "a refusal that names no command the reviewer can type is a dead end: {said}"
+    );
+    assert!(
+        app.model.index.progress.is_none(),
+        "no run started, so no run may be reported: {:?}",
+        app.model.index.progress
+    );
+}
+
+#[test]
+fn an_update_that_carries_only_a_progress_row_is_not_an_empty_one() {
+    // The loop draws nothing for an update that says nothing. A run mid-slice says something: the row.
+    let mut idle = Update::default();
+    assert!(idle.is_empty());
+    idle.work = Some(Work::running("analysing", "commit", 1, Some(2)));
+    assert!(!idle.is_empty(), "a progress row alone is worth a frame");
 }

@@ -272,13 +272,14 @@ The four P1s, in the order a reviewer meets them:
    empty, and nothing badges a surface, so the three-line `permissions: write-all` in CI is
    indistinguishable from a three-line docs edit — and it is the one that must not be missed.
 
-The P2s are the spine not quite joined up: `<C-r>` narrates a re-index instead of doing one, an open
-TUI never notices a commit made next door (ambient mode, the product premise, shows a frozen frame),
-the status strip prints four `unknown`s that `fathom stats` answers (two of them — `epoch` and the
-episode count — stopped being `unknown` when the composition root started telling the shell both), a
-rewritten history leaves the
-index counting dead commits, no verb enumerates episodes headlessly, a prompt cannot accept a space,
-`fathom tui` discards its own frame report, and the noop re-index costs 5× its budget. The P3s are
+The P2s are the spine not quite joined up: the status strip prints four `unknown`s that `fathom stats`
+answers (two of them — `epoch` and the episode count — stopped being `unknown` when the composition root
+started telling the shell both), a rewritten history leaves the
+index counting dead commits, no verb enumerates episodes headlessly, `fathom tui` discards its own frame
+report, and the noop re-index costs 5× its budget. Three more on that list have since closed: an open TUI
+notices a commit made next door (`reco-bpc`), `<C-r>` re-indexes through the producer the CLI owns instead
+of narrating that it cannot (`reco-j7t` — it now shows the run's own counters on the status line while it
+goes), and the space bar reaches a prompt (`reco-q45`). The P3s are
 honest little cruelties: toasts that evict the hint line forever, keys that are silent when they
 should say why they cannot apply, and a `g` that answers 250 ms late with nothing to say it is
 waiting.

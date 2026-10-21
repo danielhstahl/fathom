@@ -957,6 +957,48 @@ impl App {
         self.timeline.set_index_facts(facts);
     }
 
+    /// Record what a producer says about the work it is still doing (`reco-j7t`).
+    ///
+    /// The counters are the producer's and the estimate is the shell's, which is the split `e5.9` already
+    /// made for a worker on the bus: a producer says `412 / 500` and nothing about *when*, and the row
+    /// that turns that into `indexing 62 % · ~14 s left` needs the instant the run started — which only
+    /// the loop has. So this is the one place the two meet for a producer that is not on the bus.
+    ///
+    /// A finished run takes its row away. A progress line that outlives the run it describes is the
+    /// placeholder this ticket was filed against, and it is cleared only when it is *that* task's line: a
+    /// decode worker with one of its own keeps its own (`WorkerMsg::Quiet` makes the same distinction).
+    pub fn note_work(&mut self, work: &crate::watch::Work) {
+        if work.complete {
+            self.estimates.remove(work.task);
+            if self
+                .model
+                .index
+                .progress
+                .as_deref()
+                .is_some_and(|said| said.starts_with(work.task))
+            {
+                self.model.index.progress = None;
+            }
+            return;
+        }
+        let tracker = self
+            .estimates
+            .entry(work.task)
+            .or_insert_with(|| crate::progress::Tracker::new(work.task, work.unit));
+        tracker.observe(work.done, work.of);
+        let mut line = tracker.line();
+        // The commits are what the percentage counts and the analyses are what the work is: on a warm run
+        // they differ by an order of magnitude, and the row that shows only the first reads as a run that
+        // finished the moment its commits did (`ADR-006 §10.3`).
+        if work.units > 0 {
+            line.push_str(&format!(
+                " · {} analyses computed",
+                format_thousands(work.units)
+            ));
+        }
+        self.model.index.progress = Some(line);
+    }
+
     /// Hand the rail a batch of episodes and say what it did, in the toast's words.
     ///
     /// This is the seam the worker writes to: rows come from
@@ -1854,6 +1896,13 @@ impl App {
         // repository. Only said when the caller had an opinion to give.
         if let Some(source) = &self.watch {
             bits.push(source.bit());
+        }
+        // A run the producer is running, said while it runs (`reco-j7t`). The row used to exist only in a
+        // pane with nothing else to print, which meant the reviewer who pressed `<C-r>` on a repository of
+        // 500 episodes — everyone who has ever wanted a re-index — saw no progress at all. The strip has
+        // the row, and the estimate already fits it.
+        if let Some(progress) = &self.model.index.progress {
+            bits.push(progress.clone());
         }
         // `e5.5`'s half of ADR-001 §7.2: everything the shell noticed about this terminal, this
         // session or this keymap is counted here, and the full list is one `?` away. A status line
@@ -2878,32 +2927,48 @@ impl App {
                 ));
             }
             "compare.with_mark" => self.compare_with_mark(),
-            "index.reindex" => {
-                // `<C-r>` asks the one party that can answer: the watcher the composition root installed
-                // (`reco-bpc`). Where there is one, this is a real re-read of a real repository, and the
-                // toast says what came back instead of what a placeholder would say.
-                if let Some(source) = &self.watch {
-                    if !source.is_live() {
-                        // A snapshot cannot be refreshed by wishing, and the sentence that says what would
-                        // move it is the one the frame already carries.
-                        self.toast(source.sentence());
-                        return;
-                    }
-                    match source.refresh() {
-                        Some(update) => crate::frame::apply_update(self, update),
-                        None => {
-                            self.toast("the repository was re-read — nothing had moved".to_owned())
-                        }
-                    }
-                    return;
-                }
-                self.model.index.progress = Some(
-                    "indexing 0 % · unknown left (no store handle \
-                                                  in the shell — e1.4 owns the worker)"
-                        .to_owned(),
-                );
-            }
+            "index.reindex" => self.reindex_now(),
             _ => self.toast(format!("{label} — owned by {ticket}")),
+        }
+    }
+
+    /// `<C-r>` (`index.reindex`): ask the producer to re-read the repository *now*, and show what it says
+    /// while it does.
+    ///
+    /// There are exactly three answers, and the frame gives one of them:
+    ///
+    /// * a **live producer** indexes what it finds and reports real counters — commits counted, analyses
+    ///   computed — through [`crate::watch::Work`], and keeps reporting them until the run says it is
+    ///   done. Nothing new is scheduled to make that happen: the loop already wakes ten times a second for
+    ///   `<C-c>` (ADR-006 §0.1), and the producer throttles itself, so a backlog is taken in slices with no
+    ///   timer, no thread and no second wake-up; when it lands, the strip's numbers and the rail's rows are
+    ///   re-read in the same breath (`reco-bpc`'s rule, unchanged).
+    /// * a **snapshot** says what would move it, in the sentence the frame already carries — `--no-watch`,
+    ///   no index yet, a store that would not open, a binary with no indexer in it.
+    /// * **no producer at all** says that too. That is a caller with no opinion — an embedder, a headless
+    ///   test frame; the shipped shell always installs one (ADR-002 §5.2 means the shell may not go and get
+    ///   one for itself) — and the remedy it names is a command the reviewer can type, not a ticket.
+    ///
+    /// What it must never do again is write a progress row for a run it never started, in the present
+    /// tense, naming a ticket that closed weeks ago as the party that would one day own the worker.
+    pub fn reindex_now(&mut self) {
+        let Some(source) = &self.watch else {
+            self.toast(
+                "nothing re-indexes from this frame: its caller handed it no producer, and the shell \
+                 opens no store and runs no indexer of its own — `fathom index` in a terminal is what \
+                 does it here",
+            );
+            return;
+        };
+        if !source.is_live() {
+            // A snapshot cannot be refreshed by wishing, and the sentence that says what would
+            // move it is the one the frame already carries.
+            self.toast(source.sentence());
+            return;
+        }
+        match source.refresh() {
+            Some(update) => crate::frame::apply_update(self, update),
+            None => self.toast("the repository was re-read — nothing had moved".to_owned()),
         }
     }
 
