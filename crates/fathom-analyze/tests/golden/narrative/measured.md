@@ -26,7 +26,7 @@
 **Where it landed**
 
 - It landed in `src/store 1f +412 −90 · tests/store 1f +88 −12 · migrations 1f +40 −0 · src/pool 1f +12 −3 · assets 1f +0 −0`[c14].
-- Surfaces touched: `source 2f +424 −93 · test 1f +88 −12 · migration 1f +40 −0 · binary 1f +0 −0`[c15].
+- Surfaces touched: `source 2f +424 −93 · test 1f +88 −12 · migration 1f +40 −0 · generated 1f +0 −0`[c15].
 - Nothing answers *moves*: the rail's per-path rollup carries no move information; the per-commit read does[c16].
 - Basis: 5 of 5 paths, ranked by churn; the census is the episode's own paths[c17].
 
@@ -43,7 +43,7 @@
 
 **Why it is in front of you**
 
-- Surfaces (50/50): `migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, binary`[c23].
+- Surfaces (50/50): `migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated`[c23].
 - Size (10/16): `+552 −105 = 657 churn`[c24].
 - Author (8/8): `written by an agent — the reason this tool exists (ADR-001 §7.3)`[c25].
 - The remaining terms of the vector are in the document's `risk.components`[c26].
@@ -75,7 +75,7 @@ Evidence
 - `[c12]` `what` figure `files` — #/totals/n_files — files: 5 file(s)
 - `[c13]` `what` figure `path classes` — #/files — path classes: source 2 · test 1 · migration 1 · binary 1
 - `[c14]` `where` figure `directories` — #/files — directories: src/store 1f +412 −90 · tests/store 1f +88 −12 · migrations 1f +40 −0 · src/pool 1f +12 −3 · assets 1f +0 −0
-- `[c15]` `where` figure `surfaces` — #/files — surfaces: source 2f +424 −93 · test 1f +88 −12 · migration 1f +40 −0 · binary 1f +0 −0
+- `[c15]` `where` figure `surfaces` — #/files — surfaces: source 2f +424 −93 · test 1f +88 −12 · migration 1f +40 −0 · generated 1f +0 −0
 - `[c16]` `where` figure `moves` — fathom analyze <episode> --json — moves: unknown — the rail's per-path rollup carries no move information; the per-commit read does
 - `[c17]` `where` figure `basis` — #/totals — basis: 5 of 5 paths, ranked by churn; the census is the episode's own paths
 - `[c18]` `surface` figure `operator surfaces` — #/files — operator surfaces: 1 (migration)
@@ -83,10 +83,10 @@ Evidence
 - `[c20]` `tests` figure `test share of churn` — #/files — test share of churn: 15% of the episode's churn is test-side
 - `[c21]` `tests` figure `source side` — #/files — source side: 2 file(s) · +424 −93
 - `[c22]` `tests` figure `watch` — #/files — watch: source grew by 424 while 12 test lines were removed — the deleted cover is not re-established by anything in these rows
-- `[c23]` `attention` figure `surfaces (50/50)` — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, binary
+- `[c23]` `attention` figure `surfaces (50/50)` — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated
 - `[c24]` `attention` figure `size (10/16)` — #/risk/components — size (10/16): +552 −105 = 657 churn
 - `[c25]` `attention` figure `author (8/8)` — #/risk/components — author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3)
-- `[c26]` the ranking's remaining components — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, binary | size (10/16): +552 −105 = 657 churn | author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3) | breadth (6/12): 4 surfaces over 5 files in 4 commits | deletions (2/14): 16% of the churn is removal (−105 against +552)
+- `[c26]` the ranking's remaining components — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated | size (10/16): +552 −105 = 657 churn | author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3) | breadth (6/12): 4 surfaces over 5 files in 4 commits | deletions (2/14): 16% of the churn is removal (−105 against +552)
 - `[c27]` the `tests` gap — #/gaps/4 — case names are e2.9's — counts of the test side come from the path taxonomy; the case-level answer — which named cases were added, removed, skipped or weakened, and the pairing between a case and the behaviour it covers — is `e2.9`'s and is supplied, not guessed (owner e2.9; remedy none in this build)
 - `[c28]` the `blast` gap — #/gaps/5 — no module graph in this build — blast radius needs `e3.2`'s module graph; `e2.10` prints a path-heuristic reach in the Python card, and this build refuses to print one it cannot name a rule for (owner e3.2; remedy none in this build)
 - `[c29]` what the ranking cannot see — #/risk/blind_spots — whether a migration can be rolled back | an environment variable declared and never read | a new import cycle | a removed public API | what depends on the touched code (blast radius) | a committed secret whose value is real | whether a deleted test was the only cover for the behaviour
