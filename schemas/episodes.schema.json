@@ -1,0 +1,451 @@
+{
+  "$id": "https://fathom.dev/schemas/episodes.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The episode list, as rows: the headless form of the reviewer's main list, so a script or a CI step can assert what the rail shows (ADR-006 §6.7). Owner: `reco-11b`.",
+  "properties": {
+    "contract": {
+      "const": "fathom.cli.episodes/1"
+    },
+    "episodes": {
+      "description": "One row per episode the filters selected, in `page.order`, at most `page.limit` of them. The columns are the rail's: identity, time, authorship, size, path count, review state and harness turn.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "attribution_agent": {
+            "description": "The agent the evidence named, when it named exactly one. `null` when it did not: a name Fathom made up would outlive the correction (`e4.1`).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attribution_source": {
+            "description": "Which class of evidence decided the author kind — `correction`, `harness`, `trailer`, `declared`, `author`, `committer`, `message`, `identity` — or `null` when the row was written before the column existed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author_confidence": {
+            "description": "The store's own confidence figure, passed through: `fathom analyze` on the same episode prints this same number, and a list that re-scaled or elided a 0.0 would be a second reality. `fathom attribution list` prints the evidence beside it.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "author_email": {
+            "type": "string"
+          },
+          "author_kind": {
+            "description": "How Fathom classified the author. `unknown` is an answer, not a gap: it means the evidence did not decide.",
+            "enum": [
+              "agent",
+              "human",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "boundary_confidence": {
+            "description": "How much to trust the rule that opened this episode, as the store recorded it (ADR-003 §4.7).",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "boundary_rule": {
+            "description": "Which rule opened this episode (ADR-003 §4.7), or `null`. A boundary a human drew and a boundary a heuristic guessed are different claims, which is why this is printed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created": {
+            "description": "`created_utc_ms` in the shape the text report prints: `YYYY-MM-DD HH:MM UTC`.",
+            "type": "string"
+          },
+          "created_utc_ms": {
+            "description": "When the episode began, unix epoch milliseconds (ADR-004 §4.1 — the store keeps millis).",
+            "type": "integer"
+          },
+          "first_oid": {
+            "description": "The first member commit, in first-parent order.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The derived episode identity (ADR-003 §2.1) — what `fathom show`, `analyze` and `review sign` take, and what a review is keyed to.",
+            "type": "string"
+          },
+          "intent_state": {
+            "description": "`recorded`, `digest-only`, `none`, or `null` when this build never looked — which is a different statement from 'nothing was recorded' (`e4.2`).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "description": "`committed` for a closed episode, `provisional` for the still-growing tail of a session.",
+            "type": "string"
+          },
+          "last": {
+            "description": "`last_utc_ms` rendered, which is the instant the row is sorted on.",
+            "type": "string"
+          },
+          "last_oid": {
+            "description": "The last member commit.",
+            "type": "string"
+          },
+          "last_utc_ms": {
+            "description": "The last member's author date, unix epoch milliseconds.",
+            "type": "integer"
+          },
+          "live": {
+            "description": "Whether any current commit still belongs to it (ADR-003 §6.3). `false` means the history that carried this episode was rewritten away; a sign-off on it still exists, which is why the row is printed and not hidden.",
+            "type": "boolean"
+          },
+          "n_add": {
+            "description": "Lines added across the episode's commits — the `+` the rail prints.",
+            "type": "integer"
+          },
+          "n_binary": {
+            "description": "Binary files in the change, which is why the rail says `bin` instead of drawing a sparkline.",
+            "type": "integer"
+          },
+          "n_commits": {
+            "description": "Member commits — the card's '4 commits'.",
+            "type": "integer"
+          },
+          "n_del": {
+            "description": "Lines removed, summed the same way as `n_add`.",
+            "type": "integer"
+          },
+          "n_files": {
+            "description": "The rail's file rollup: file rows summed over the episode's commits, so one file edited in three of this episode's commits counts three times. `paths` is the same fact asked as 'which files', which is why the two numbers can differ.",
+            "type": "integer"
+          },
+          "overridden": {
+            "description": "Whether a `fathom.toml` override moved one of this episode's boundaries.",
+            "type": "boolean"
+          },
+          "paths": {
+            "description": "The distinct paths the episode touched (after a rename, the new path). Repository-relative, like every path this binary prints.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "review_state": {
+            "description": "What the reviewer has done with it. `unread` covers 'no row yet' and 'a row that says unread' alike, which is the store's rule and the shell's `u` filter.",
+            "enum": [
+              "unread",
+              "read",
+              "accepted",
+              "flagged",
+              "dismissed",
+              "snoozed"
+            ],
+            "type": "string"
+          },
+          "session": {
+            "description": "The harness session a trailer or an event named, or `null` — most human commits have none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "description": "The one-line subject the rail prints, verbatim: control characters are folded only in the text render, never here.",
+            "type": "string"
+          },
+          "turn": {
+            "description": "The harness turn as the store keeps it — already session-qualified (ADR-005 §1), so this and `turn_id` are the same string whenever both exist.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turn_id": {
+            "description": "The session-qualified turn id, in the spelling `fathom hooks --trailer` prints (ADR-003 §18.2 D5), or `null`. Two sessions' turn 3 are `sess-7:3` and `ci-build:3`, never two things called `3`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "live",
+          "summary",
+          "created_utc_ms",
+          "last_utc_ms",
+          "created",
+          "last",
+          "author_kind",
+          "author_name",
+          "author_email",
+          "author_confidence",
+          "attribution_source",
+          "attribution_agent",
+          "n_commits",
+          "n_files",
+          "n_add",
+          "n_del",
+          "n_binary",
+          "paths",
+          "review_state",
+          "session",
+          "turn",
+          "turn_id",
+          "first_oid",
+          "last_oid",
+          "boundary_rule",
+          "boundary_confidence",
+          "intent_state",
+          "overridden"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "filter": {
+      "additionalProperties": false,
+      "description": "The flags that narrowed the list, echoed as typed *and* as resolved. Echoed because a count a script cannot reproduce is not an assertion.",
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_dead": {
+          "type": "boolean"
+        },
+        "kinds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "since": {
+          "description": "`--since` as typed, so `since: \"2w\"` and `since_utc_ms` are the same fact in two clocks: the flag is relative to the run, the instant is what the query used.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "since_utc_ms": {
+          "description": "The resolved lower bound on `last_utc`, unix milliseconds; `null` when unbounded.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "state": {
+          "description": "`--state` as typed, or `null`. Note that `unread` means 'nobody has decided', not 'the row says unread'.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "description": "The whole filter as one string, in the spelling the text report prints; empty means no filter was given.",
+          "type": "string"
+        },
+        "until": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "until_utc_ms": {
+          "description": "The resolved exclusive upper bound on `last_utc`, unix milliseconds; `null` when unbounded.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "authors",
+        "kinds",
+        "state",
+        "path",
+        "since",
+        "until",
+        "since_utc_ms",
+        "until_utc_ms",
+        "include_dead"
+      ],
+      "type": "object"
+    },
+    "index": {
+      "additionalProperties": false,
+      "description": "Where these rows came from. Deliberately not `common.schema.json#/$defs/index`: this section answers 'which store, which epoch, how many episodes', which is all a list needs, and borrowing the status verbs' section would promise numbers this verb does not read.",
+      "properties": {
+        "epoch": {
+          "description": "The epoch the rows were read from (ADR-004 §6.3). A rebuild moves it, so a row can be tied to the run that wrote it.",
+          "type": "integer"
+        },
+        "episodes": {
+          "description": "Every episode the index holds — before the filters and before the page. `page.matched` is this number filtered, `page.returned` is that paged, and the rail's strip prints this one. They are three different questions and only agree by coincidence.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "Relative to the repository: `.fathom/index.sqlite3`.",
+          "type": "string"
+        },
+        "present": {
+          "description": "Always `true` here: a verb that could not read an index refuses rather than answering empty.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "present",
+        "path",
+        "epoch",
+        "episodes"
+      ],
+      "type": "object"
+    },
+    "notes": {
+      "description": "What the rows cannot say, in the order a reader needs them: an empty answer and why, a page cut short by `--limit`, rows the filters excluded, ghosts `--include-dead` let in, a list longer than a frame can hold. The same strings the text report prints after a `!`.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "page": {
+      "additionalProperties": false,
+      "description": "The paging, stated as four numbers rather than as a shorter list: `matched` is the filter's answer, `returned` is the page's.",
+      "properties": {
+        "limit": {
+          "description": "`--limit` as typed, or `null` for 'every row the filters select' (`--limit 0`).",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "matched": {
+          "description": "Episodes the filters select, before paging. Assert on this one when the question is 'how many unread episodes are there'.",
+          "type": "integer"
+        },
+        "offset": {
+          "description": "`--offset` as typed.",
+          "type": "integer"
+        },
+        "order": {
+          "description": "The store's ordering, named rather than assumed: the rail draws in this order, so a script and the shell see the same first row.",
+          "type": "string"
+        },
+        "returned": {
+          "description": "Rows in `episodes`. Less than `matched` only when the page was cut short, and then `truncated` is true.",
+          "type": "integer"
+        },
+        "truncated": {
+          "description": "`matched` exceeded the page. `fathom index` has no such ceiling and neither does this verb: raise `--limit` or walk `--offset`.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "offset",
+        "limit",
+        "returned",
+        "matched",
+        "truncated",
+        "order"
+      ],
+      "type": "object"
+    },
+    "review_counts": {
+      "additionalProperties": false,
+      "description": "Every review state's share of the selection, always all six keys so a script can index by name without guessing which states are new. The `--state` filter itself is *not* applied here — `--kind agent --state unread` prints the whole agent split, which is the only way the count tells you what you filtered out. The six sum to `page.matched`.",
+      "properties": {
+        "accepted": {
+          "type": "integer"
+        },
+        "dismissed": {
+          "type": "integer"
+        },
+        "flagged": {
+          "type": "integer"
+        },
+        "read": {
+          "type": "integer"
+        },
+        "snoozed": {
+          "type": "integer"
+        },
+        "unread": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unread",
+        "read",
+        "accepted",
+        "flagged",
+        "dismissed",
+        "snoozed"
+      ],
+      "type": "object"
+    },
+    "root": {
+      "description": "`--root`, repository-relative or `~`-relative — never an absolute home path (ADR-002 §7.5).",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract",
+    "root",
+    "index",
+    "filter",
+    "page",
+    "review_counts",
+    "episodes",
+    "notes"
+  ],
+  "title": "fathom episodes --json",
+  "type": "object",
+  "x-fathom-contract": "fathom.cli.episodes/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "the list was printed — including when it is empty, because a quiet repository is an answer and not a failure"
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "clap rejected the command line, or a flag value named nothing: `--kind sideways`, `--state never`, `--since someday`"
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "`--root` is not a git repository, or `.git` is unreadable"
+    },
+    {
+      "code": 4,
+      "name": "STORE_CORRUPT",
+      "when": "the episode read failed; the remedy is a rebuild"
+    },
+    {
+      "code": 9,
+      "name": "FEATURE_ABSENT",
+      "when": "this binary was built without an index backend (the `minimal` CI binary)"
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "the repository has no index to list; the remedy is `fathom index`"
+    }
+  ],
+  "x-fathom-verb": "episodes"
+}

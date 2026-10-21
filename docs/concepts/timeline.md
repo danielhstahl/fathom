@@ -48,6 +48,14 @@ toast line at open
 says `500 episodes from index epoch 1 (ready) · index holds 4 000`, because a rail that is merely full
 does not otherwise tell the reviewer how much of the index it was given.
 
+That read has a headless form, and deliberately so (`reco-11b`). `fathom episodes` asks this binary's one
+episode query from a shell that takes no terminal — the same filters, the same order, the same review
+states — because ADR-006 §6.7 refuses a fact that only a screen can show, and the acceptance run had to
+*look at a monitor* to say "the rail shows 213 episodes". Both readers live in
+`crates/fathom-cli/src/episodes.rs`, which is why the strip's count and the payload's are one number with
+two printers rather than two numbers that happen to agree today
+([the headless verbs](cli.md#the-headless-verbs)).
+
 The shell is *also* told what the index holds — `Options::index`, an `fathom_tui::index::Facts` the
 composition root read from the store, because the rail may not (the empty-state defect the MVP
 walkthrough filed). It is where the batch's `origin` and the strip's epoch come from, so the rows and

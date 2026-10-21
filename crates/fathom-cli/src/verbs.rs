@@ -149,6 +149,8 @@ pub enum Verb {
     Index(IndexArgs),
     /// Show one episode in full
     Show(ShowArgs),
+    /// List the episodes — the rail's rows, headless (`reco-11b`)
+    Episodes(EpisodesArgs),
     /// Report or correct who Fathom thinks wrote a commit (`e4.1`)
     Attribution(AttributionArgs),
     /// The review ledger: sign-offs that outlive the history they were written about (`e4.6`)
@@ -245,6 +247,55 @@ pub struct SearchArgs {
     /// List the saved searches and exit.
     #[arg(long)]
     pub list: bool,
+}
+
+/// `fathom episodes` — the reviewer's main list, for a script or CI (`reco-11b`).
+///
+/// `fathom show` answers a question about one episode; this answers the question the rail asks about the
+/// whole index: how many episodes are there, which of them are unread, who wrote each, how big was it, and
+/// what is left. ADR-006 §6.7 refuses a fact that only exists on a screen, and until now the rail's rows
+/// were exactly such a fact — an acceptance script could not put a number on "the rail shows 213
+/// episodes". The filters are the rail's own (`fathom_store::episode::EpisodeQuery`, the shape the shell
+/// filters with), so a filtered count here is the same count the shell drew.
+#[derive(Args, Debug)]
+pub struct EpisodesArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the list as one JSON value on stdout (`fathom.cli.episodes/1`), and nothing else there.
+    #[arg(long)]
+    pub json: bool,
+    /// How many rows to print, newest first; `0` is every row the filters select.
+    ///
+    /// The rail can only ever hold 500 rows at a time; this verb is not a rail, so a larger page is allowed,
+    /// and `page.truncated` says when the index held more than the page.
+    #[arg(long, default_value_t = 500, value_name = "N")]
+    pub limit: i64,
+    /// Skip this many rows before printing, for paging with `--limit`.
+    #[arg(long, default_value_t = 0, value_name = "N")]
+    pub offset: i64,
+    /// Only episodes by this author, exactly as git recorded the name; repeatable.
+    #[arg(long, value_name = "NAME")]
+    pub author: Vec<String>,
+    /// Only episodes whose author kind is this — `agent`, `human` or `unknown`; repeatable.
+    #[arg(long = "kind", value_name = "KIND")]
+    pub kinds: Vec<String>,
+    /// Only episodes in this review state: `unread`, `read`, `accepted`, `flagged`, `dismissed`, `snoozed`.
+    #[arg(long, value_name = "STATE")]
+    pub state: Option<String>,
+    /// Only episodes that touched a path containing this fragment.
+    #[arg(long, value_name = "FRAGMENT")]
+    pub path: Option<String>,
+    /// Only episodes whose last commit is at or after this date — `7d`, `2w`, `today`, `yesterday`,
+    /// `2026-10-01`: the same grammar `fathom search since:` takes.
+    #[arg(long, value_name = "WHEN")]
+    pub since: Option<String>,
+    /// Only episodes whose last commit is before this date, in the same grammar as `--since`.
+    #[arg(long, value_name = "WHEN")]
+    pub until: Option<String>,
+    /// Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left.
+    #[arg(long)]
+    pub include_dead: bool,
 }
 
 /// `fathom index`
@@ -1060,6 +1111,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         None => open_terminal(globals),
         Some(Verb::Index(args)) => index(args, globals),
         Some(Verb::Show(args)) => query::show(&args.root, &args.episode, args.json),
+        Some(Verb::Episodes(args)) => crate::episodes::run(args),
         Some(Verb::Attribution(args)) => match &args.action {
             AttributionAction::Correct(args) => {
                 let Some(target) = args.target.as_deref().or(args.identity.as_deref()) else {
@@ -1566,8 +1618,9 @@ fn prune_lines(prune: &fathom_store::prune::PruneReport) -> Vec<String> {
 /// The `--json` shape, assembled here rather than derived from [`index::Report`]'s own serde so that the
 /// key names are the CLI's promise and not a struct's internals: a field renamed in `fathom-analyze` must
 /// not silently rename `fathom index --json`'s contract.
-#[allow(clippy::too_many_arguments)] // eight arguments, and every one is a different part of the store the
-                                      // report reads; a struct would only hide that
+#[allow(clippy::too_many_arguments)]
+// eight arguments, and every one is a different part of the store the
+// report reads; a struct would only hide that
 #[cfg(feature = "sqlite-bundled")]
 fn json_report(
     root: &std::path::Path,

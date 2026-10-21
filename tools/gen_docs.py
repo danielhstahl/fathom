@@ -439,6 +439,8 @@ VERB_DOCS = {
               "build the index every other verb reads"),
     "show": (["docs/concepts/episode.md", "docs/concepts/cli.md"],
              "one episode, with its file rows"),
+    "episodes": (["docs/concepts/cli.md", "docs/concepts/timeline.md"],
+                 "the episode list, as rows — the rail without a screen"),
     "attribution": (["docs/concepts/episode.md", "docs/concepts/cli.md"],
                     "who wrote it, and how to overrule that"),
     "review": (["docs/concepts/review-ledger.md", "docs/concepts/cli.md"],

@@ -17,6 +17,53 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Nothing enumerated the episodes, so the rail could not be checked from a script or CI (`reco-11b`)
+
+The acceptance walkthrough reaches the reviewer's main list and says *the rail shows 213 episodes*. Nothing
+in the binary could put a number on that sentence: `fathom show` takes one revspec and answers about one
+episode, `fathom analyze`/`narrative`/`why` are one-episode verbs too, and `fathom --plain` renders one frame
+of whichever view the stored session happens to name, with no flag to choose a view and no rows to feed it.
+So the claim was checked by a human looking at a screen, and CI — which is exactly what a headless contract
+exists for — could not assert on the reviewer's list at all. ADR-006 §6.7 says every view has a headless
+equivalent; the rail, the first thing the product draws, did not have one. Two hints in the shipped binary
+already told people to run `fathom episodes` (`fathom review`'s "names no episode", the diff pane's provider
+error), which is the sharpest possible statement of the gap: the promise existed and the verb did not.
+
+* **`fathom episodes` exists**, and it prints the list as rows: id, time, author kind, `+add`/`−del`, path
+    count, review state and the session-qualified turn, in the rail's own order (newest `last_utc`, then id),
+    with the summary the rail prints as the last column. `--json` is `fathom.cli.episodes/1`, checked in
+    [`schemas/episodes.schema.json`](schemas/episodes.schema.json) and round-trip-tested like the four
+    verbs that came before it.
+* **One read, two surfaces.** The verb lives in `crates/fathom-cli/src/episodes.rs`, beside the store→frame
+    read `reco-wzt` wrote, and the module is no longer gated with the shell — `fathom-tui` still opens no
+    store (ADR-002 §5.2, lint `E01`), so both surfaces take their rows from this one function. The filters
+    are the store's `EpisodeQuery`, the shape the shell filters with, so `--author`, `--kind`, `--state`,
+    `--path`, `--since` and `--until` count what the rail drew rather than a near-relative of it.
+* **Three counts, because there are three questions.** `index.episodes` is everything the index holds, which
+    is the rail strip's number; `page.matched` is that after the filters; `page.returned` is that after the
+    page. A page shorter than the selection is announced in the notes and flagged as `page.truncated`, and a
+    list longer than the shell's 500-row page says that too — the rail and the index are different sizes and
+    a script that conflated them would assert on a number that moves when somebody else commits.
+* **The review states are the store's**, so a row that `x` accepted reads `accepted` here, and
+    `review_counts` prints all six states over the filtered selection — including the states the `--state`
+    filter excluded, which is the only way the number tells you what it filtered out.
+* **The refusals are separated the way the published table says**: a flag *value* that names nothing
+    (`--state never`, `--kind sideways`, `--since someday`) is exit 2 with the names in the hint, `--root` is
+    not a repository is exit 3, no index is exit 12 with `fathom index` as the remedy, and an empty selection
+    is exit 0 with a note — "how many flagged episodes?" asked of a repository with none is a question, not a
+    failure.
+* **Nothing in the payload is a clock.** No `generated_at`, no run id: two runs over an unchanged index are
+    byte-identical, so a CI step can diff this run against last week's instead of re-deriving the world.
+
+*Asserted by*: `crates/fathom-cli/tests/episodes_verb.rs` (8: the columns in text and in JSON from one read,
+the three counts and the truncation, paging that walks the selection without gaps or repeats, the filters the
+rail owns, a reviewed episode moving state with the whole breakdown printed, the usage refusals naming what
+they wanted, exit 3 and exit 12, and `--include-dead` saying honestly when there is nothing dead),
+`crates/fathom-cli/tests/schemas.rs` (`episodes_json_conforms_to_its_schema`, plus the schema census), and
+`crates/fathom-cli/tests/tui_data.rs` (`the_rail_and_the_headless_list_count_the_same_episodes`: `fathom
+--plain` and `fathom episodes` on the same store, the strip's count and the list's count required to be the
+same number).
+
 ### A rewritten history left rows behind, `fathom stats` counted them as the repository, and `fathom doctor` found nothing (`reco-218`)
 
 The acceptance walkthrough rewrites the fixture's last five commits in another terminal — `git reset --hard`,

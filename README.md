@@ -153,6 +153,7 @@ of which half is code and which half is not.
 fathom index              # turn git history (+ harness hook events) into episodes  [works: e1.2/e1.4/e1.10]
 fathom stats              # repo scale, index state, cache hit rate                  [works: e1.10]
 fathom show HEAD~3        # one episode: message, trailers, files, taxonomy decisions[works: e1.10]
+fathom episodes           # the episode list as rows — the rail, headless, for a script or CI [works: reco-11b]
 fathom doctor --json      # the report that is safe to attach to a bug report          [works: e1.10]
 fathom                    # the TUI: queue, timeline, diff, structure, deps, ambient
 fathom ambient            # the glance pane for the second terminal: latest, queue, index, one reason
@@ -167,7 +168,7 @@ fathom change explain <path>       # what that path IS in this episode, with a c
 fathom change score                # the labelled-corpus accuracy report the CI gate runs
 ```
 
-The four headless verbs above are real: they index a repository, report it, and leave with the published
+The headless verbs above are real: they index a repository, report it, and leave with the published
 exit codes ([`docs/concepts/cli.md`](docs/concepts/cli.md) is their contract, `schemas/*.schema.json` the
 machine-readable form). The rest of the verbs are the agreed surface, and the plan is written against them.
 Three exceptions exist on purpose: `fathom config …`, `fathom taxonomy …` and `fathom change …`

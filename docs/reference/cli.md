@@ -11,7 +11,7 @@
   schema file pins it — is [the headless verbs](../concepts/cli.md). This page is the flag list; that
   page is the argument for it.
 
-One binary, seventeen verbs, one exit-code contract. `fathom` with no verb opens the terminal UI if the
+One binary, eighteen verbs, one exit-code contract. `fathom` with no verb opens the terminal UI if the
 `tui` feature was compiled in ([the cheatsheet](cheatsheet.md) is its keyboard reference); every verb
 has a headless form, because ADR-006 §6.7 refuses a fact that only exists on a screen.
 
@@ -35,6 +35,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 |---|---|---|---|
 | **[`index`](#fathom-index)** | Index the repository so every other verb has something to read | shipped | [*onboarding*](../concepts/onboarding.md) · [*cli*](../concepts/cli.md) |
 | **[`show`](#fathom-show)** | Show one episode in full | shipped | [*episode*](../concepts/episode.md) · [*cli*](../concepts/cli.md) |
+| **[`episodes`](#fathom-episodes)** | List the episodes — the rail's rows, headless (reco-11b) | shipped | [*cli*](../concepts/cli.md) · [*timeline*](../concepts/timeline.md) |
 | **[`attribution`](#fathom-attribution)** | Report or correct who Fathom thinks wrote a commit (e4.1) | shipped | [*episode*](../concepts/episode.md) · [*cli*](../concepts/cli.md) |
 | **[`review`](#fathom-review)** | The review ledger: sign-offs that outlive the history they were written about (e4.6) | shipped | [*review-ledger*](../concepts/review-ledger.md) · [*cli*](../concepts/cli.md) |
 | **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) · [*delta-model*](../concepts/delta-model.md) |
@@ -240,6 +241,55 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.show -->
+
+## `fathom episodes`
+
+The reviewer's main list, without a screen: one row per episode — id, time, author kind, `+add`/`−del`,
+path count, review state, session/turn — as text or as `--json` ([`fathom.cli.episodes/1`](../../schemas/episodes.schema.json)).
+`fathom show` answers a question about one episode; this answers the question the rail asks about the whole
+index, which is what ADR-006 §6.7 means by "every view has a headless equivalent" (`reco-11b`).
+
+The filters are the rail's own — the store's `EpisodeQuery`, the shape the shell filters with — so a count
+taken here is the count the shell drew, and `fathom --plain` and this verb are the same read rendered twice.
+Three counts are printed and they are three questions: `index.episodes` is what the index holds, `page.matched`
+is that filtered, `page.returned` is that paged. A page shorter than the selection is announced, never
+silent. `--limit 0` is "every row the filters select"; the shell holds at most 500 rows at a time and this
+verb is not a shell, so it says so when a list is longer than a frame could hold.
+
+An empty selection exits 0 with the reason in its notes — a script must be able to ask "how many flagged
+episodes?" of a repository with none. No index at all is exit 12 with `fathom index` as the remedy.
+
+<!-- BEGIN GENERATED: help.episodes -->
+```text
+List the episodes — the rail's rows, headless (`reco-11b`)
+
+Usage: fathom episodes [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the list as one JSON value on stdout (`fathom.cli.episodes/1`), and nothing else there
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <N>          How many rows to print, newest first; `0` is every row the filters select [default: 500]
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --offset <N>         Skip this many rows before printing, for paging with `--limit` [default: 0]
+      --author <NAME>      Only episodes by this author, exactly as git recorded the name; repeatable
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --kind <KIND>        Only episodes whose author kind is this — `agent`, `human` or `unknown`; repeatable
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --state <STATE>      Only episodes in this review state: `unread`, `read`, `accepted`, `flagged`, `dismissed`, `snoozed`
+      --path <FRAGMENT>    Only episodes that touched a path containing this fragment
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --since <WHEN>       Only episodes whose last commit is at or after this date — `7d`, `2w`, `today`, `yesterday`, `2026-10-01`: the same grammar `fathom search since:` takes
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --until <WHEN>       Only episodes whose last commit is before this date, in the same grammar as `--since`
+      --include-dead       Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.episodes -->
 
 ## `fathom attribution`
 

@@ -15,6 +15,7 @@ what a machine reads.
 |---|---|---|
 | `fathom index [ROOT] [--rebuild] [--watch] [--refresh] [--stats] [--committed-only]` | turn git history into the index, and say what the run did | [`index.schema.json`](../../schemas/index.schema.json) |
 | `fathom show <episode\|rev> [--root R] [--json]` | one episode: identity, authorship, message, trailers, and the file rows with their taxonomy decisions | [`show.schema.json`](../../schemas/show.schema.json) |
+| `fathom episodes [--root R] [--json] [--limit N] [--offset N] [--author N] [--kind K] [--state S] [--path P] [--since W] [--until W] [--include-dead]` | the **episode list** — the rail's rows: id, time, author kind, `+add`/`−del`, path count, review state, session/turn, plus the three counts (index, selection, page) and a breakdown by review state | [`episodes.schema.json`](../../schemas/episodes.schema.json) |
 | `fathom analyze <episode\|rev\|id> [--root R] [--json] [--schema [--check\|--write]]` | the episode's **delta document** — the seven-section model the TUI card, the export and an agent all read; `--schema` prints its JSON Schema | [`episode-delta.schema.json`](../../schemas/episode-delta.schema.json) |
 | `fathom narrative <episode\|rev\|id> [--root R] [--json] [--markdown] [--explain] [--top N] [--attribution]` | one episode's **narrative** — the prose a human skims, with a citation on every claim, the self-check verdict printed with it, and (with `--attribution`) whether a model was ever in the path | `fathom-narrative/1`, documented in [the episode narrative](episode-narrative.md) |
 | `fathom drift [--root R] [--session S] [--all] [--window N] [--min-overlap F] [--max N] [--dismiss KEY] [--off KIND] [--json] [--fail-on-findings]` | **plan versus execution** across a session: the six contradictions between what the recorded intent said and what the episodes did, each with both sides linked | `fathom-drift/1`, documented in [plan versus execution](plan-drift.md) |
@@ -33,6 +34,21 @@ what a machine reads.
 [`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves: `HEAD`, `HEAD~3`, `HEAD^2`,
 `main`, `v1.2^{}`, a full oid, or a hex prefix. Episode identity of its own arrives with `e1.6`; until then
 one commit is one episode, and the verb says so rather than inventing a grouping.
+
+`fathom episodes` is the rail with no screen (`reco-11b`), and it exists because a fact that only a terminal
+can show is a fact CI cannot check: the acceptance run could say "the rail shows 213 episodes" only by
+looking at one. It is the *same read* — one [`EpisodeQuery`](../../crates/fathom-store/src/episode.rs)
+against the same store, the same review states, the same order (`last_utc` descending, then id) — which is
+what lets `--plain` and a script be given the same rows rather than two stories about them. Three counts are
+printed because there are three questions: `index.episodes` is everything the index holds, `page.matched` is
+that after the filters, `page.returned` is that after the page; the shell holds at most 500 rows at a time and
+this verb is not the shell, so a page cut short is announced rather than left as a short list. `--state`
+means what the shell's `u` means (`unread` is "nobody has decided", not "the row says unread"), `--since` and
+`--until` take `fathom search since:`'s grammar (`7d`, `2w`, `today`, `2026-10-01`), and `--include-dead`
+asks for the ghosts a rewrite left — which the pruner has usually removed, and the notes say either way. A
+selection of nothing is exit 0 with the reason: "how many flagged episodes?" asked of a repository with none
+is a question, not a failure. There is no clock in the payload, so two runs over the same index are
+byte-identical and a CI step can diff them.
 
 `fathom index --rebuild` advances the epoch and re-walks (ADR-004 §6.3, §9.3). The staging file and the
 atomic swap are *not* here yet and are not a gap: they exist so a concurrent reader never sees a
@@ -172,7 +188,11 @@ default and prints its findings: it is the command you run *because* something i
 that exits non-zero makes the diagnostic the thing that is wrong. `fathom doctor --strict` is the CI form
 of the same report and exits with the worst finding's code. When two findings apply, the verb leaves with
 the higher number (a plain directory is both `NOT_A_REPOSITORY` and `INDEX_DEGRADED`; the index verdict is
-the one with more to do about it, and both are printed).
+the one with more to do about it, and both are printed). `fathom episodes` and `fathom search` sit one step
+apart from both of those: with no index at all they exit 12, because they have no answer to print, and with
+an index that is merely stale they print the list and exit 0 — the rows they hold are the rows the store
+has, and a list verb that failed because the watch daemon was not running would be a list verb that cannot
+be used next to a running one.
 
 ## Output discipline
 

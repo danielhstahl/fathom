@@ -183,9 +183,166 @@ fn show_stats_and_doctor_conform_to_their_schemas() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
-/// `fathom status` with no daemon running — the shape a script meets most often, and the one where the verb
-/// has to say "nothing is watching, here is the endpoint it would use" instead of printing zeros. The live
-/// daemon's document is checked in `tests/daemon.rs`, which starts a real one.
+/// `fathom episodes --json` against `schemas/episodes.schema.json` (`reco-11b`): the reviewer's main list,
+/// which had no headless form at all until this verb.
+///
+/// The fixture's three same-dated commits by one author segment into **one** episode, which is the point of
+/// asserting the three counts separately: `index.episodes` is what the index holds, `page.matched` is that
+/// filtered and `page.returned` is that paged. A script that asserts on the wrong one is asserting on a
+/// number that moves when somebody else commits, and a list shorter than the index with nothing saying so is
+/// the confusion the schema's three fields exist to prevent.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn episodes_json_conforms_to_its_schema() {
+    let dir = fixture::repository("episodes");
+    let root = dir.to_str().unwrap();
+    assert_eq!(fixture::code(&fixture::fathom(&["index", root], &dir)), 0);
+
+    let out = fixture::fathom(&["episodes", "--root", root, "--json"], &dir);
+    assert_eq!(fixture::code(&out), 0, "{}", fixture::stderr(&out));
+    let report = round_trip("episodes.schema.json", &out);
+    assert_eq!(report["contract"], "fathom.cli.episodes/1");
+    assert_eq!(report["index"]["episodes"].as_u64(), Some(1));
+    assert_eq!(report["page"]["matched"].as_u64(), Some(1));
+    assert_eq!(report["page"]["returned"].as_u64(), Some(1));
+    assert_eq!(report["page"]["limit"].as_u64(), Some(500));
+    assert_eq!(report["page"]["truncated"].as_bool(), Some(false));
+    assert_eq!(report["page"]["order"].as_str(), Some("last_utc desc, id"));
+    assert_eq!(
+        report["review_counts"]["unread"].as_u64(),
+        Some(1),
+        "nothing has been read, and the breakdown says so: {report}"
+    );
+    assert_eq!(
+        report["review_counts"]["accepted"].as_u64(),
+        Some(0),
+        "all six states are keyed, always: {report}"
+    );
+    let rows = report["episodes"].as_array().expect("rows");
+    assert_eq!(rows.len(), 1);
+    // The acceptance criterion's columns, on the row rather than in a fixture somewhere — asserted as
+    // *keys*, because a stated absence (`session: null`) is a column too, and a script keys off the name.
+    let row = &rows[0];
+    for column in [
+        "id",
+        "last",
+        "author_kind",
+        "n_add",
+        "n_del",
+        "n_files",
+        "review_state",
+        "session",
+        "turn",
+    ] {
+        assert!(row.get(column).is_some(), "row has no {column}: {row}");
+    }
+    assert_eq!(row["summary"].as_str(), Some("commit 0"));
+    assert_eq!(
+        row["n_commits"].as_u64(),
+        Some(3),
+        "one episode, three commits"
+    );
+    assert_eq!(row["n_files"].as_u64(), Some(3));
+    assert_eq!(row["n_add"].as_u64(), Some(3));
+    assert_eq!(row["paths"].as_array().map(Vec::len), Some(3));
+    assert_eq!(row["author_kind"].as_str(), Some("human"));
+    assert_eq!(row["review_state"].as_str(), Some("unread"));
+    assert!(
+        row["session"].is_null() && row["turn"].is_null(),
+        "no harness trailer named a session, and that is a null and not a blank: {row}"
+    );
+
+    // `--limit 0` is "every row the filters select", printed as `null` because a ceiling that does not
+    // exist is not the same statement as a ceiling of zero.
+    let rest = fixture::fathom(
+        &["episodes", "--root", root, "--json", "--limit", "0"],
+        &dir,
+    );
+    assert_eq!(fixture::code(&rest), 0, "{}", fixture::stderr(&rest));
+    let report = round_trip("episodes.schema.json", &rest);
+    assert!(report["page"]["limit"].is_null(), "{report}");
+    assert_eq!(report["page"]["returned"].as_u64(), Some(1));
+
+    // The filter echoes itself both ways: as typed, and as the instant the query used.
+    let filtered = fixture::fathom(
+        &[
+            "episodes",
+            "--root",
+            root,
+            "--json",
+            "--state",
+            "unread",
+            "--since",
+            "2023-01-01",
+        ],
+        &dir,
+    );
+    assert_eq!(
+        fixture::code(&filtered),
+        0,
+        "{}",
+        fixture::stderr(&filtered)
+    );
+    let report = round_trip("episodes.schema.json", &filtered);
+    assert_eq!(report["filter"]["state"].as_str(), Some("unread"));
+    assert_eq!(report["filter"]["since"].as_str(), Some("2023-01-01"));
+    assert!(report["filter"]["since_utc_ms"].as_i64().is_some());
+    assert_eq!(
+        report["filter"]["text"].as_str(),
+        Some("state=unread since=2023-01-01")
+    );
+    assert_eq!(report["page"]["matched"].as_u64(), Some(1));
+
+    // An empty selection is exit 0 with a note, not an error: a script must be able to ask "how many
+    // flagged episodes?" of a repository with none.
+    let none = fixture::fathom(
+        &["episodes", "--root", root, "--json", "--state", "flagged"],
+        &dir,
+    );
+    assert_eq!(fixture::code(&none), 0, "{}", fixture::stderr(&none));
+    let report = round_trip("episodes.schema.json", &none);
+    assert_eq!(report["episodes"].as_array().map(Vec::len), Some(0));
+    assert_eq!(report["page"]["matched"].as_u64(), Some(0));
+    assert!(
+        report["notes"]
+            .as_array()
+            .is_some_and(|notes| !notes.is_empty()),
+        "an empty answer says why: {report}"
+    );
+
+    // The junk this schema has to refuse: a row with its identity removed, and a key nobody declared.
+    let schema = Schema::load("episodes.schema.json");
+    let mut value: Value =
+        serde_json::from_str(fixture::stdout(&out).trim()).expect("the payload is JSON");
+    value["episodes"][0]
+        .as_object_mut()
+        .expect("a row")
+        .remove("id");
+    assert!(
+        !validate(&schema.document, &value, "$").is_empty(),
+        "a row with no id validated clean"
+    );
+    let mut value: Value =
+        serde_json::from_str(fixture::stdout(&out).trim()).expect("the payload is JSON");
+    value["not_a_field"] = serde_json::json!(1);
+    assert!(
+        !validate(&schema.document, &value, "$").is_empty(),
+        "an undeclared key validated clean against episodes.schema.json"
+    );
+
+    // No index: the refusal is an exit code and a remedy, and stdout stays clean enough to pipe.
+    let cold = fixture::repository("episodes-cold");
+    let refused = fixture::fathom(&["episodes", "--json"], &cold);
+    assert_eq!(fixture::code(&refused), 12);
+    assert!(
+        fixture::stdout(&refused).trim().is_empty(),
+        "a refusal prints no payload: {}",
+        fixture::stdout(&refused)
+    );
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(&cold).ok();
+}
+
 #[cfg(feature = "sqlite-bundled")]
 #[test]
 fn status_json_conforms_to_its_schema() {
@@ -364,6 +521,7 @@ fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
         .collect();
     for name in [
         "common.schema.json",
+        "episodes.schema.json",
         "index.schema.json",
         "show.schema.json",
         "stats.schema.json",
@@ -471,6 +629,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
             "common.schema.json",
             "doctor.schema.json",
             "episode-delta.schema.json",
+            "episodes.schema.json",
             "export.schema.json",
             "hooks.schema.json",
             "index.schema.json",

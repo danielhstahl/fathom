@@ -34,10 +34,11 @@ mod diagnose;
 // `fathom_analyze::drift` compares. The rules live there, so that every finding has a fixture; this module
 // owns only what a terminal sees.
 mod drift;
-// The episodes the shell opens with (`reco-wzt`): read from the store here, because the shell may not
-// open one (ADR-002 §5.2), and handed over as a batch the rail draws. Only the shell has a use for them,
-// which is the only reason the module is gated with the shell.
-#[cfg(feature = "tui")]
+// The episode list, read from the store once and used by both surfaces that need it: the rows the shell
+// opens with (`reco-wzt`), and the rows `fathom episodes` prints for a script (`reco-11b`). It lives here,
+// and not in the shell, because the shell may not open a store (ADR-002 §5.2) — and it is no longer gated
+// with the shell, because a headless verb has the same requirement and must not be able to disagree with
+// the rail about what the index holds.
 mod episodes;
 mod features;
 // The producer that feeds an open frame (`reco-bpc`): the cheap probe, the index slice and the re-read that

@@ -24,6 +24,7 @@ STATE_RS = ROOT / "crates" / "fathom-cli" / "src" / "state.rs"
 VERB_SCHEMAS = {
     "index": "index.schema.json",
     "show": "show.schema.json",
+    "episodes": "episodes.schema.json",
     "stats": "stats.schema.json",
     "doctor": "doctor.schema.json",
     "export": "export.schema.json",

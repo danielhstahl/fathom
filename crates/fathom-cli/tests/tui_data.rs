@@ -321,6 +321,82 @@ fn the_rail_lists_the_episodes_the_index_holds() {
     std::fs::remove_dir_all(&dir).expect("clean up the fixture");
 }
 
+/// The sentence the acceptance run could only say by watching a screen — "the rail shows N episodes" — is
+/// now a sentence a script can check, and this test checks it against the screen (`reco-11b`).
+///
+/// Both halves are the shipped binary on the same store: `fathom --plain` draws the rail, and `fathom
+/// episodes` prints the list headlessly from the same read. The numbers have to be the same number, because
+/// there is exactly one episode read in this binary (`crates/fathom-cli/src/episodes.rs`), and the day they
+/// disagree is the day one of the two surfaces has started making its own up.
+#[cfg(feature = "sqlite-bundled")]
+#[test]
+fn the_rail_and_the_headless_list_count_the_same_episodes() {
+    let dir = repository(120);
+    assert_eq!(
+        code(&fathom_in(&dir, &["index", "."])),
+        Some(0),
+        "a mid-sized repository indexes as happily as a large one"
+    );
+    seed(&dir, &[("tui.view", "timeline"), ("tui.size", "200x60")]);
+    let frame = stdout(&fathom_in(&dir, &["--plain"]));
+    let strip = frame
+        .lines()
+        .find(|line| line.contains("filter:") && line.contains(" of "))
+        .unwrap_or_else(|| panic!("the strip carries the filter and the count:\n{frame}"));
+    let strip_count = |bit: &str| {
+        bit.trim()
+            .replace(' ', "")
+            .split('·')
+            .next()
+            .unwrap_or("")
+            .parse::<u64>()
+            .ok()
+    };
+    let (rail_kept, rail_held) = strip
+        .split('·')
+        .map(|bit| bit.split('│').next().unwrap_or(bit))
+        .find_map(|bit| {
+            let (kept, held) = bit.split_once(" of ")?;
+            Some((strip_count(kept)?, strip_count(held)?))
+        })
+        .unwrap_or_else(|| panic!("the strip should read `… · N of N …`: {strip}"));
+    assert!(
+        rail_kept > 0 && rail_held > 0,
+        "the rail drew nothing to count:\n{frame}"
+    );
+
+    let list = fathom_in(&dir, &["episodes"]);
+    assert_eq!(code(&list), Some(0), "{}", stderr(&list));
+    let list = stdout(&list);
+    // The headless header's scale line, and its page line, parsed the same way — no literal, because how
+    // many episodes 120 commits segment into belongs to the boundary rules and not to this file.
+    let index_line = list
+        .lines()
+        .find(|line| line.starts_with("index "))
+        .unwrap_or_else(|| panic!("the list names its index first:\n{list}"));
+    let held: u64 = index_line
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .find(|pair| pair[1] == "episode(s)")
+        .and_then(|pair| pair[0].parse().ok())
+        .unwrap_or_else(|| panic!("no episode count on the index line: {index_line}"));
+    assert_eq!(
+        held, rail_held,
+        "`fathom episodes` says the index holds {held} and the rail's strip says {rail_held}:\n{list}"
+    );
+    let rows = list.lines().filter(|line| line.starts_with("ep-")).count() as u64;
+    assert_eq!(
+        rows, rail_kept,
+        "the rail drew {rail_kept} rows and the list printed {rows}:\n{list}"
+    );
+    assert!(
+        list.contains(&format!("selected   {rows} of {held}")),
+        "the list states its own page against the index:\n{list}"
+    );
+    std::fs::remove_dir_all(&dir).expect("clean up the fixture");
+}
+
 /// The cursor is addressed by identity (ADR-003 §2), so a selection read back out of the store lands on
 /// the row it names — and the card then prints that episode's harness session, which only the read
 /// could have supplied.
