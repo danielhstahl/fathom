@@ -384,6 +384,53 @@ fn precedence_is_interaction_then_view_then_global() {
 }
 
 #[test]
+fn the_space_bar_is_text_in_the_modes_that_own_the_keyboard() {
+    // ADR-006 §1.1 says that in `prompt` "everything typed is text", and §5.2's query grammar only
+    // exists if that includes the space bar: `epoch store risk>60 author:dana` is four tokens
+    // because of three spaces. The terminal does not deliver the space bar as a space — `chord_of`
+    // spells it `<Space>` — so a "printable means one character that is not `<…>`" test drops it.
+    // The rule is pinned from both ends: no exclusive mode may bind the chord, and the text path
+    // must read the chord as the character it stands for.
+    let km = Keymap::defaults();
+    for mode in [Mode::Prompt, Mode::Pick] {
+        assert_eq!(
+            km.table().get(&mode).and_then(|binds| binds.get("<Space>")),
+            None,
+            "bare `<Space>` belongs to the field in {}, so no action may be bound there",
+            mode.name()
+        );
+        assert_eq!(km.resolve(&[mode], "<Space>"), None);
+    }
+    // The list keeps its key: `<Space>` expands a node wherever a field is not holding the keyboard.
+    assert_eq!(
+        km.resolve(&chain(Mode::Timeline), "<Space>"),
+        Some("list.expand")
+    );
+
+    // The keystroke the terminal sends, and the text the field is owed.
+    let space = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+    assert_eq!(chord_of(space), "<Space>");
+    assert_eq!(keymap::text_of(&chord_of(space)), Some(" "));
+    assert_eq!(keymap::text_of("j"), Some("j"));
+    assert_eq!(
+        keymap::text_of("<Enter>"),
+        None,
+        "a named chord is not text"
+    );
+    assert_eq!(
+        keymap::text_of("<C-a>"),
+        None,
+        "an unbound control still earns a toast"
+    );
+    assert_eq!(
+        keymap::text_of("gx"),
+        None,
+        "a flushed pair is two keystrokes, not text"
+    );
+    assert_eq!(keymap::text_of(""), None);
+}
+
+#[test]
 fn a_view_mode_may_add_a_key_of_its_own() {
     let km = Keymap::merged(&[bound(Mode::Queue, "y", "review.flag")]);
     assert_eq!(km.resolve(&chain(Mode::Queue), "y"), Some("review.flag"));

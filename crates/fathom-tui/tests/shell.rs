@@ -516,6 +516,88 @@ fn the_search_field_owns_the_keyboard_and_does_not_move_the_list() {
     assert_eq!(app.overlay, None);
 }
 
+/// Type into a field the way a keyboard does it: one key event per character, so the space bar
+/// arrives as the chord `<Space>` (`keymap::chord_of`) rather than as a text-shaped shortcut that
+/// only the test suite speaks.
+fn type_text(app: &mut App, text: &str) {
+    use crossterm::event::KeyEvent;
+    for ch in text.chars() {
+        app.feed_key_event(
+            KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE),
+            Instant::now(),
+        );
+    }
+}
+
+#[test]
+fn the_space_bar_is_text_in_every_prompt() {
+    // ADR-006 §7.1: an exclusive mode owns the keyboard and everything it does not bind is text.
+    // The space bar is the keystroke that was easy to lose — the terminal spells it `<Space>` — and
+    // losing it is not cosmetic: every query §5.2 documents is multi-token, so a field that eats
+    // the space cannot express one filter token, let alone the free text that composes with them.
+    let query = "author:mira path:src/harbour";
+
+    // `/` — the search box.
+    let mut search = app((120, 40));
+    search.dispatch("search.open");
+    type_text(&mut search, query);
+    assert_eq!(
+        search.prompt, query,
+        "a two-token query survives the keystrokes that typed it"
+    );
+    assert!(
+        !search
+            .toast
+            .as_deref()
+            .is_some_and(|toast| toast.contains("<Space>")),
+        "the space bar is not an unbound key in a field: {:?}",
+        search.toast
+    );
+
+    // `,` — the palette filter, whose matcher already splits the query on whitespace and so has
+    // always assumed a space a reviewer could not type.
+    let mut palette = app((120, 40));
+    palette.dispatch("palette.open");
+    type_text(&mut palette, "focus next");
+    assert_eq!(palette.prompt, "focus next");
+    let rows = palette.palette_rows();
+    assert!(
+        !rows.is_empty()
+            && rows.iter().all(|row| {
+                let label = row.label().to_lowercase();
+                label.contains("focus") && label.contains("next")
+            }),
+        "both tokens filter, the space included: {:?}",
+        rows.iter().map(|row| row.label()).collect::<Vec<_>>()
+    );
+
+    // `F` — the filter chooser, `filter.edit`: a prompt with no keys of its own (§7.4).
+    let mut filter = app((120, 40));
+    filter.dispatch("filter.edit");
+    type_text(&mut filter, "epoch store");
+    assert_eq!(
+        filter.prompt, "epoch store",
+        "and the `F` field is a field too"
+    );
+
+    // The published chord spelling arrives at the same place as the keystroke.
+    let mut spelled = app((120, 40));
+    spelled.dispatch("search.open");
+    for chord in ["a", "<Space>", "b"] {
+        spelled.feed_key(chord, Instant::now());
+    }
+    assert_eq!(spelled.prompt, "a b");
+
+    // And the field can take the space back: `<BS>` deletes it like any other character.
+    spelled.dispatch("prompt.backspace");
+    assert_eq!(
+        spelled.prompt, "a ",
+        "one keystroke deletes one character, space or not"
+    );
+    spelled.dispatch("prompt.backspace");
+    assert_eq!(spelled.prompt, "a");
+}
+
 #[test]
 fn an_unbound_key_toasts_instead_of_doing_nothing_silently() {
     let mut app = app((100, 30));

@@ -310,6 +310,71 @@ fn the_arrow_keys_walk_the_last_searches_and_the_session_carries_them() {
     );
 }
 
+/// Type into the box the way the terminal sends it: one key event per character, so a space is
+/// the chord `<Space>` and not a shortcut only the test suite can use.
+fn type_query(app: &mut App, text: &str) {
+    use crossterm::event::{KeyCode, KeyModifiers};
+    for ch in text.chars() {
+        app.feed_key_event(
+            crossterm::event::KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE),
+            std::time::Instant::now(),
+        );
+    }
+}
+
+#[test]
+fn a_documented_query_can_actually_be_typed() {
+    // The grammar (§5.2) is free text plus filter tokens, and the thing between two tokens is a
+    // space. A dispatch path that reads the terminal's `<Space>` as "a chord, therefore not text"
+    // makes every documented query untypeable — `author:mira path:src/harbour` arrives as one
+    // mashed word, which the session then remembers as though the reviewer had written it.
+    let mut app = shell((110, 40));
+    app.dispatch("search.open");
+    app.dispatch("prompt.clear_line");
+    type_query(&mut app, "author:mira path:src/harbour");
+    assert_eq!(
+        app.prompt, "author:mira path:src/harbour",
+        "the field holds what was typed, both spaces included"
+    );
+    let report = app.search_report.clone().unwrap();
+    assert_eq!(report.query, "author:mira path:src/harbour");
+    assert_eq!(
+        report.filters,
+        vec!["author:mira".to_owned(), "path:src/harbour".to_owned()],
+        "two tokens were parsed, not one word: {:?}",
+        report.filters
+    );
+
+    // Free text and a filter token compose, which is the whole point of the grammar.
+    app.dispatch("prompt.clear_line");
+    type_query(&mut app, "epoch store author:dana");
+    let report = app.search_report.clone().unwrap();
+    assert!(
+        report
+            .hits
+            .iter()
+            .any(|hit| hit.label.contains("epoch-safe")),
+        "the Dana episode is what the corpus has for that question: {:?}",
+        report
+            .hits
+            .iter()
+            .map(|hit| hit.label.clone())
+            .collect::<Vec<_>>()
+    );
+
+    // And the session remembers the query the reviewer actually asked, spaces and all.
+    app.dispatch("prompt.submit");
+    assert_eq!(app.last_search.as_deref(), Some("epoch store author:dana"));
+    let rows = fathom_tui::session::snapshot(&app);
+    let mut fresh = shell((110, 40));
+    let _ = fathom_tui::session::restore(&mut fresh, &rows);
+    assert_eq!(
+        fresh.last_search.as_deref(),
+        Some("epoch store author:dana"),
+        "the spaces survive the restart too"
+    );
+}
+
 #[test]
 fn a_query_with_a_pipe_in_it_is_one_search_and_not_two() {
     // The session stores the history as one `|`-joined row, so the delimiter has to be escaped on the way

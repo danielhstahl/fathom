@@ -17,6 +17,32 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The space bar went to the keymap instead of the field, so no documented query could be typed (`reco-q45`)
+
+`e1.12`'s own acceptance script types `DROP COLUMN` into `/`, and the box filled with `DROPCOLUMN` —
+which the session then remembered as the question the reviewer asked. ADR-006 §7.1 says that in
+`prompt` and `pick` the field owns the keyboard and a printable key not bound there is *text*; the
+dispatch path wrote that rule as "one character that is not `<…>`", and the terminal does not send
+the space bar as a character. It sends the chord `<Space>` (`keymap::chord_of`), so the space
+quietly fell out of the field as an unbound key while every letter stayed. Everything §5.2
+documents is multi-token — free text plus `author:` `path:` `risk>` `dep:` — so a field that eats
+the space cannot express one filter token, let alone the text that composes with it: `/`, the `,`
+palette filter (whose matcher has always split the query on whitespace) and the `F` filter chooser
+were all typeable only as one mashed word.
+
+* **`keymap::text_of` is now the one answer to "is this chord text?"** — `<Space>` is a space, `j` is
+  a `j`, and a named chord (`<Enter>`, `<C-a>`) is still a chord, so an unbound control typed inside a
+  search box still toasts instead of vanishing. `App::apply_steps` asks that question instead of
+  counting characters.
+* **The rule is pinned from both ends.** Nothing in the published table binds bare `<Space>` in
+  `prompt` or `pick`, which `tests/keymap.rs` asserts next to the text rule; `tests/shell.rs` types
+  `author:mira path:src/harbour` through real key events into `/`, `,` and `F` and requires the field
+  to hold exactly that, spaces included; and `tests/search_box.rs` checks the report got two filters,
+  that free text and a token compose, and that the session restores the query with its spaces.
+  `tests/test_search_prompt_contract.py` presses the same query on the built binary over a real pty —
+  the byte the terminal sends is the seam that broke — and reads the query line back off the screen.
+  ADR-006 §7.1 states the rule out loud now, including why the chord spelling is the trap.
+
 ### The structural extractor core: Rust, Python, TypeScript, and the harness that keeps them honest (`reco-zoz`)
 
 Spike `s1` measured what six grammars can do and told the next ticket to copy the harness shape, not the

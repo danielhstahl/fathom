@@ -2275,6 +2275,29 @@ pub fn chord_of(key: KeyEvent) -> String {
     }
 }
 
+/// The text a keystroke adds to a field when the field owns the keyboard (ADR-006 §7.1).
+///
+/// In `prompt` and `pick` a printable key that no mode binds is *text*, not a missed keystroke.
+/// The spelling is the trap: [`chord_of`] renders the space bar as `<Space>`, so "one character
+/// that is not `<…>`" is not the same question as "printable", and a rule written that way
+/// throws the space away. Losing it is not cosmetic — every documented query is multi-token
+/// (`epoch store risk>60 author:dana`, §5.2), so a field that eats the space cannot express one
+/// token, let alone the free text that composes with them.
+///
+/// `Some("")` is never returned; `None` means "this is a chord, not a character", which is what
+/// makes an unbound `<C-a>` still worth a toast inside a search box.
+#[must_use]
+pub fn text_of(chord: &str) -> Option<&str> {
+    if chord == "<Space>" {
+        return Some(" ");
+    }
+    if chord.is_empty() || chord.starts_with('<') {
+        return None;
+    }
+    // A held-and-flushed pair (`gx`) is two keystrokes, not text, even though it spells no `<…>`.
+    (chord.chars().count() == 1).then_some(chord)
+}
+
 /// Parse a published sequence into chords, so `press "q j <Enter> d x"` and the docs agree with
 /// the runtime: a prefix chord absorbs the next key (`<C-w>l`), and a doubled bare key is one
 /// chord (`gg`).

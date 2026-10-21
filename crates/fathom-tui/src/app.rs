@@ -2513,13 +2513,18 @@ impl App {
                 }
                 Step::Unbound(chord) => {
                     self.chord_since = None;
-                    if self.interaction().is_exclusive()
-                        && chord.chars().count() == 1
-                        && !chord.starts_with('<')
-                    {
-                        // §7.1: in `prompt` and `pick` the field owns the keyboard, so a printable
-                        // key that is not bound there is *text*, not a missed keystroke.
-                        self.prompt.push_str(&chord);
+                    // §7.1: in `prompt` and `pick` the field owns the keyboard, so a printable
+                    // key that is not bound there is *text*, not a missed keystroke. The space bar
+                    // counts, and it has to be asked the right way: the terminal delivers it as
+                    // `<Space>` (see [`crate::keymap::text_of`]), and a field that drops it cannot
+                    // hold a single documented query, because a token boundary is a space.
+                    let text = if self.interaction().is_exclusive() {
+                        crate::keymap::text_of(&chord)
+                    } else {
+                        None
+                    };
+                    if let Some(text) = text {
+                        self.prompt.push_str(text);
                     } else if !chord.is_empty() {
                         self.toast(format!(
                             "`{chord}` is unbound in {} — `?` lists every key",
