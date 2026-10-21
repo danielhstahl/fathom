@@ -17,6 +17,60 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The structural extractor grows a tail: Go, Ruby and Java, and the scan policy to bound them (`reco-dlp.1`)
+
+`e3.1` shipped three of the six grammars spike `s1` measured; the other three each needed a mechanism
+rather than a mapping table, so they were split out rather than bundled past the plan's two-day line.
+They are in now, in the same harness, in the same report, on the same relation scoring —
+`benchmarks/reports/e3-1-structure-core.json` lists six languages and one definition of "measured",
+because a second harness would be a second set of rules about what that word means. P 1.000 / R 1.000
+on definitions, exports, imports and supertypes in all three, 12/12 synthetic scopes, 25/25 wildcard
+edges, and every verdict earned rather than defaulted (`go` `pass`, `ruby` and `java` `conditions`,
+each with a named blind spot behind it).
+
+* **Go edges say they are package-granular.** An import names a directory, not a file, so a resolved
+    import (`crates/fathom-analyze/src/structure/golang.rs`) fans out to every non-test file of the
+    target package and each edge carries `granularity: package` plus the import path it came from —
+    the shape is stored, so a month later nobody has to guess whether `granularity` is decoration.
+    `Structure::granularity_sentence()` is the wording a pane must print, `dependents_of` gained a
+    third list (`package_granular`) beside *named* and *unknown contents*, and the `package` clause is
+    recorded as the file's unit. `//go:build` files mark their scope `build_constraint` rather than
+    claiming the package is whole; the module path is deduced from the corpus, because the extractor
+    is not handed `go.mod` and will not open a file it was not given.
+* **Ruby is bounded, and the bound has a price written next to it.** `extract.ruby.max_files_per_run`
+    (4 000), `…max_bytes_per_run` (24 000 000) and `…priority` (`lib, app, ext, spec, test`) end a
+    scan that would otherwise spend 20 minutes on a big `spec/` tree; a file past the cap comes back
+    `scan_budget` with its file-level numbers, exactly as an oversized file comes back `too_large`, and
+    the report shows the cap biting (4 of 6 corpus files refused at a cap of 2). The MiB/s exemption
+    that buys is arithmetic — 24 MB at the measured 0.612 MiB/s is 37.4 s against ADR-004's 60 s
+    cold-graph budget — and `tests/test_structure_tail_contract.py` refuses the exemption without it.
+    Ruby's export surface is its own file's top-level names with the note `export_surface_is_the_file`
+    (no per-symbol access control exists), and the question the extractor *can* answer is
+    `structure::loads(entry)`: *loading `lib/demo.rb` pulls in 4 file(s)*.
+* **The Java same-package guess has a scope, and the scope is measured at 1 200 files.** A bare
+    `Builder` resolves against the file's declared package and nowhere else; a single-type import of
+    the same spelling shadows it (JLS §6.5.5); a name the file binds as a type parameter is a mention,
+    not a use. On a machine-authored 1 200-file corpus with 58 colliding type names, 916 shadowing
+    imports and 120 type-variable baits: 2 760 edges claimed, **0.000** false-positive rate against a
+    stated budget of ≤ 0.02, recall 1.000. The wide scan `s1` ran claims 108 356 edges at 0.975, and
+    the report re-scans with the bound-name rule off to show *that* rule is load-bearing too — 4.17 %,
+    over budget, on nothing but method type variables. `extract.java.same_package_scan` selects the
+    scope; the wide one stays selectable so the cost of it stays a number.
+* **The structural schema version went to 2**, and says why: `granularity` and `package` on every edge,
+    `package` on every structure, `scan_budget` in the refusal vocabulary. A version-1 row is not wrong,
+    it is mute about a Go edge's granularity, which is a question a stored row has to answer (`e3.2`).
+* **Two kinds of throughput exemption, both paid for.** Ruby's is the scan-budget arithmetic above; Go
+    (542 files/s on the replica) and Java (346) are exempt from the replica itself, because a fixture
+    copied 444 times turns a package into 800 files and measures the fan-out rather than the grammar —
+    they are judged on a repository-shaped corpus instead (1 240 Go files at 2 060 files/s, 1 200 Java
+    files at 1 113), with the MiB/s canary scaled by that corpus's own mean file size so the two floors
+    cannot contradict each other.
+
+CI now re-measures the whole report with all six grammars and runs the tail's contract test
+(`crates/fathom-analyze/tests/structure_tail.rs`, 19 tests) alongside it;
+`docs/concepts/structure-extraction.md` carries the numbers and the rules in prose.
+
+
 ### A warm re-index with nothing new re-walked the history; now the refs answer it (`reco-7tc`)
 
 `fathom index` on a repository whose `HEAD` already had a row cost 48–58 ms — five times

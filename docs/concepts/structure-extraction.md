@@ -403,9 +403,11 @@ The spike was a measurement with an expiry date. This section is the shipped thi
 `crates/fathom-analyze/src/structure/` extracts, per file: definitions with a span and a complexity
 proxy, exported visibility, imports with their resolved targets, implemented traits and inherited
 bases, and the two states this document argued for — `synthetic_eligible` scopes and wildcard
-dependency edges. It runs Rust, Python and TypeScript; Go, Ruby and Java are *detected* and answered
-with a named reason, because a language the extractor has not shipped is a different fact from a
-language fathom has never heard of. The measured result is
+dependency edges. It ran Rust, Python and TypeScript; `e3.1b` (`reco-dlp.1`, below) added Go, Ruby
+and Java, so all six languages `s1` measured are now extracted. A language the extractor has not
+shipped is still a different fact from a language fathom has never heard of — the six that ship are
+still joined in `Language::detect` by the ones that do not, each answered with a named reason. The
+measured result is
 [`benchmarks/reports/e3-1-structure-core.json`](../../benchmarks/reports/e3-1-structure-core.json), and every
 number below came out of that file rather than being typed into it.
 
@@ -452,19 +454,23 @@ Five things the next tickets get to rely on, each with the sentence that makes i
 
 ## Reproducing `e3.1`
 
+The harness needs all six grammars from `e3.1b` on: there is one report, it lists six languages, and
+a build that speaks three cannot reproduce it — that is the price of "one harness, one report", and
+it is cheaper than the alternative of two harnesses disagreeing about what measured means.
+
 ```bash
 # measure, and write the committed report
-cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+cargo run --release -p fathom-analyze --features langs-all \
     --example structure_harness -- --repo . \
     --report benchmarks/reports/e3-1-structure-core.json
 
 # the gate: relations, mechanisms and verdicts reproduce (timings deliberately excluded)
-cargo run -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+cargo run -p fathom-analyze --features langs-all \
     --example structure_harness -- --repo . \
     --report benchmarks/reports/e3-1-structure-core.json --check
 
 # the throughput floor: 1 000 files/s/core, release only
-cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript \
+cargo run --release -p fathom-analyze --features langs-all \
     --example structure_harness -- --repo . --bench
 
 # the byte contract, and the corpus/model properties
@@ -477,3 +483,159 @@ PYTHONPATH=src python3 -m pytest -q tests/test_structure_core_contract.py
 `--dump <language>` prints what the extractor concluded per file and `--probe <language>` prints
 symbol kinds and parse errors; the raw grammar archaeology (`--sexp`) stays spike `s1`'s, and
 `s1_spike` still does it against all six grammars. `--max-passes 1` is there to watch the bound bite.
+
+## What `e3.1b` (`reco-dlp.1`) added: the other three grammars, and the scan policy
+
+`s1` measured six grammars and `e3.1` shipped three of them. The tail is the other three — Go, Ruby,
+Java — plus the three knobs `s1` left as recommendations, because a language that costs what Ruby
+costs is not a reason to gate it out, it is a reason to bound the scan. Everything below is measured
+in the same report and by the same harness as the three above; the tail joined that harness rather
+than starting a second one, because a second harness is a second set of rules about what "measured"
+means.
+
+| language | definitions | exports | imports | supertypes | synthetic scopes | wildcards | verdict |
+|---|---|---|---|---|---|---|---|
+| Go | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 2/2 | 14/14 | `pass` |
+| Ruby | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 3/3 | 7/7 | `conditions` |
+| Java | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 1/1 | 4/4 | `conditions` |
+
+### Go: an import names a package, and every edge has to admit it
+
+`s1` finding 4, and the finding with the most consequences for `e3.2`: *Go has no file-to-file
+dependency*. An import names a directory, so a resolved import fans out to every non-test file of
+that package with symbol `*` — a **package-granular** edge, and each one carries `granularity:
+package` **and the import path it came from** — because a reader who finds the edge a month later in a stored graph cannot
+otherwise tell a package edge from a file one. `Structure::granularity_sentence()` is the wording a
+pane must use instead of implying a file-level fact nobody declared:
+
+> 3 of this file's 4 dependency edges are (unnamed) → `example.com/app/pkg/shape` at **package**
+> granularity, drawn once per file of the target package; the language's dependency is the package,
+> not the file
+
+`dependents_of` splits the same three ways: `named`, `unknown`, and now `package_granular`, so a
+caller list can say "these arrived through a package import" rather than merging them into the ones
+that named something. Two more Go-specific facts:
+
+* **The module path is deduced, never read.** The extractor is not handed `go.mod` and will not open
+  a file it was not given (ADR-004 §5: everything it reads is inside the corpus), so the module path
+  is the import-spec prefix that explains the most imports. An import that fits neither that prefix
+  nor a corpus-relative path stays unresolved — `fmt`, in the corpus's case.
+* **A `//go:build` line is a cannot-enumerate state, not a duplicate definition.** Two files declare
+  `metrics.Init` and exactly one is compiled; a parser does not run the build, so both files mark
+  their file scope with `build_constraint` and neither may assert emptiness. The `package` clause
+  itself is recorded as the file's unit (`Structure::package`) and is not a definition.
+
+### Ruby: a bounded scan, a degenerate export surface, and the question to ask instead
+
+`s1` found Ruby at 0.64 MiB/s against 11–16 for the others, and `e0.12` turned that into a scan
+policy instead of a feature gate. The scan budget is three keys, in `[extract.ruby]`: `max_files_per_run` (4 000),
+`max_bytes_per_run` (24 000 000), and `priority` (`lib`, `app`, `ext`, `spec`, `test`), so a run that
+has to stop early stops having read what an entry point reaches rather than whatever a directory walk
+reached first. Whichever cap is spent first ends the scan; files past it come back `scan_budget` with
+their file-level measurement, exactly as an oversized file comes back `too_large` — a refused file is
+a measured file. The cap is shown biting on the corpus (4 of 6 Ruby files refused at a cap of 2), and
+its **cost** is arithmetic: 24 MB at the measured 0.612 MiB/s is 37.4 s, inside ADR-004's 60 s small-class
+cold-graph budget. That arithmetic is what buys Ruby's throughput exemption, and
+`tests/test_structure_tail_contract.py` refuses the exemption without it.
+
+The rest of Ruby is about not lying in two directions:
+
+* **A resolved `require` names no symbol.** Ruby's dependency is whole-file, so every resolved edge
+  is a wildcard and the import relation cannot say which name was used. `require_relative` resolves
+  against the file's directory, a bare `require` against the corpus's load root (`lib/` here), and a
+  gem stays honestly unresolved rather than being aimed at a stranger.
+* **The export set is the file's top-level names and nothing more**, with the note
+  `export_surface_is_the_file` attached: 8 exports for 67 declarations, and no per-symbol access
+  control anywhere in the language. A surface that prints that list under *public symbols* is
+  reporting a distinction Ruby does not have. The question Ruby can answer is
+  `CorpusStructure::loads(entry)` — *"loading `lib/demo.rb` pulls in 4 file(s): …"* — and `e3.7` is
+  told to print that.
+* **A scope a program wrote into is marked**: `dynamic_method` for `define_method` over a constant
+  array (four blind-spot rows, the only Ruby ones), `monkeypatch` for a `class_eval` that reopens a
+  class this file does not declare. A literal `define_method(:perimeter)`, an `attr_accessor` and a
+  `Struct.new` are *in* the file and are extracted; the mark is for what the file cannot enumerate,
+  not for unusual syntax.
+
+### Java: the one place a guess is a feature, inside a stated scope
+
+A bare `Builder` in `Builder.java`'s own package is a reference to `Builder.java`, and no import
+statement says so. Refusing to resolve it would report no edge at all, so the extractor guesses — and
+the guess has a scope, which is `extract.java.same_package_scan` (`imports_plus_package`, the
+default; or `all_type_references`). Three rules make the scoped scan what it is: a bare type
+reference resolves against the file's **own declared package** and nowhere else; a single-type import
+of the same spelling shadows it (JLS §6.5.5) so the import owns that reference; and a name the file
+binds itself — a method type parameter — is a mention, not a use. The coarse edge is stated rather
+than hidden: bound names are collected per file, not per scope, so a file that binds `<Result>` and
+also names the package's `Result` elsewhere loses that one edge, which is a hole rather than a wrong
+answer.
+
+The criterion `e0.12` wrote was "re-measure on at least 1 000 files, publish the rate, state the
+budget", so the rate is measured on a machine-authored corpus of 1 200 files in 40 packages — and
+says so out loud, because nobody hand-annotates 1 200 Java files and a published rate with vague
+provenance gets quoted. What makes the number worth having is that the generator plants the traps:
+58 type names declared in more than one package, 916 same-name imports that shadow a neighbour, 120
+method type variables spelled like a neighbour, and 2 760 real dependencies.
+
+| scan | edges claimed | false-positive rate | recall |
+|---|---|---|---|
+| `imports_plus_package` (shipped) | 2 760 | **0.000** (budget ≤ 0.02) | 1.000 (floor ≥ 0.95) |
+| `all_type_references` (what `s1` ran) | 108 356 | 0.975 | 1.000 |
+
+The wide column is kept as a measurement so the scoping decision stays a number, and so is the
+counterfactual for the third rule: the same corpus re-scanned with the bound-name rule switched off
+claims 2 880 edges instead of 2 760, a 4.17 % false-positive rate — over the stated budget, on
+nothing but method type variables. That is a second scan rather than arithmetic, because arithmetic
+about a rule someone later edits out of the code is a number that goes stale in silence. Two Java
+details with the same shape as Ruby's: a `record`'s accessors are **not** definitions (they are a
+`record_accessor` note and a `synthesised_accessors` mark on the record's own scope), and the export
+surface is derived from `module-info.java`, so nothing in `com.acme.app.legacy` is public API.
+
+### The knobs, and the throughput exemptions they buy
+
+| key | default | what it is |
+|---|---|---|
+| `extract.ruby.max_files_per_run` | 4 000 | files of Ruby one run may parse, in priority order; `0` means no cap |
+| `extract.ruby.max_bytes_per_run` | 24 000 000 | bytes of Ruby one run may parse; `0` means no cap |
+| `extract.ruby.priority` | `lib, app, ext, spec, test` | which files get read when a cap binds |
+| `extract.java.same_package_scan` | `imports_plus_package` | how far the same-package guess reaches |
+
+All four are declared in the config schema with the defaults `policy.rs` uses — a limit only the
+library knows about is a limit nobody can set (ADR-004 §5.1) — and a value that is not one of the two
+allowed scopes is a notice naming the key, never a silent fallback.
+
+The throughput floor is 1 000 files/s/core and 1 MiB/s, measured on a 4 000-file replica. The tail
+needed two *kinds* of exemption, and neither is "this language is allowed to be slow":
+
+* **`via = scan_budget`** (Ruby, 827 files/s and 0.612 MiB/s on the replica): allowed under the MiB/s
+  floor because the byte cap bounds what a cold run can spend, and the report states the resulting
+  37.4 s against the 60 s budget. Miss the arithmetic and it is a condition on the run.
+* **`via = repository_shape`** (Go at 542 files/s and Java at 346 on the replica): the replica is a
+  fixture copied 444 times, which for a language whose import names a *package* means packages of
+  ~800 files and a fan-out of 563 edges per file instead of the fixture's 14. The exemption is
+  judged instead on a machine-authored repository-shaped corpus — 1 240 Go files in 40 packages of
+  30 (2 060 files/s), 1 200 Java files in the same shape (1 113 files/s) — and the MiB/s canary is
+  scaled by that corpus's own mean file size, because 1 MiB/s at 1 kB per file *is* 1 000 files/s and
+  the two floors have to say the same thing on both corpora.
+
+The structural schema version went to **2** with these changes: `granularity` and `package` on every
+edge, `package` on every structure, and `scan_budget` in the refusal vocabulary. A version-1 row is
+not wrong, it is mute about a Go edge's granularity — which is a question a stored row has to be able
+to answer, and the reason the version is stated at all.
+
+## Reproducing the tail
+
+```bash
+# measure all six languages and write the committed report
+cargo run --release -p fathom-analyze --features langs-all --example structure_harness -- \
+    --repo . --report benchmarks/reports/e3-1-structure-core.json
+
+# the gate: relations, mechanisms, verdicts and the same-package rate reproduce (timings excluded)
+cargo run -p fathom-analyze --features langs-all --example structure_harness -- \
+    --repo . --report benchmarks/reports/e3-1-structure-core.json --check
+
+# the tail's rules as Rust tests: granularity, the budget's refusal path, the same-package scope
+cargo test -p fathom-analyze --features langs-all --test structure_tail
+
+# the report, the thresholds, the truth files, the config keys and the CI wiring
+PYTHONPATH=src python3 -m pytest -q tests/test_structure_tail_contract.py
+```

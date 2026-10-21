@@ -37,6 +37,99 @@ pub const DEFAULT_MAX_FILE_BYTES: usize = 2_000_000;
 /// rather than a quadratic surprise. `extract.complexity.max_nodes`.
 pub const DEFAULT_MAX_COMPLEXITY_NODES: usize = 20_000;
 
+/// How many files of one language one extraction run may scan. Ruby's cap, and the only language
+/// that needs one: `s1` measured the Ruby grammar at under 1 MiB/s against 11–16 MiB/s for every
+/// other language, so a warm graph pass over a Ruby repository is the one case where "read every
+/// file" is a cost no budget in ADR-004 covers. `extract.ruby.max_files_per_run`.
+pub const DEFAULT_RUBY_MAX_FILES_PER_RUN: usize = 4_000;
+
+/// How many bytes of one language one extraction run may scan. Same reasoning as the count cap and
+/// the reason both exist: the count cap binds on a tree of many small `def`s (which is what makes
+/// Ruby expensive per construct) and the byte cap binds on a few enormous generated files.
+/// `extract.ruby.max_bytes_per_run`.
+pub const DEFAULT_RUBY_MAX_BYTES_PER_RUN: usize = 24_000_000;
+
+/// The order Ruby files are scanned in, as path prefixes, so that a run which *has* to stop early
+/// stops having read the files an entry point reaches. `spec/` and `test/` are last on purpose: a
+/// budget spent on a suite is a budget spent on the least architecturally interesting half of the
+/// repository. `extract.ruby.priority`.
+pub const DEFAULT_RUBY_PRIORITY: &[&str] = &["lib", "app", "ext", "spec", "test"];
+
+/// How far the Java extractor looks for a dependency that has no `import` statement.
+/// `extract.java.same_package_scan`.
+pub const DEFAULT_JAVA_SAME_PACKAGE_SCAN: &str = "imports_plus_package";
+
+/// The two spellings `extract.java.same_package_scan` takes, and the reason there are two.
+///
+/// Spike `s1` found 14/14 same-package edges with zero false positives — by scanning *every* type
+/// reference in a ten-file corpus. At repository scale that is how `Builder`, `Result` and `Config`
+/// get resolved to the wrong package, which is why the shipped default is the scoped scan and why
+/// the wide one is still selectable: the report measures both on a 1 000-file corpus so the scoping
+/// decision is a number rather than an argument (`e3.1b` acceptance criterion 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScanScope {
+    /// Only an unqualified type reference this file does not already import by name, resolved
+    /// against the package the file declares. The shipped default.
+    ImportsPlusPackage,
+    /// Every `type_identifier` in the file, resolved against anything in the corpus with that name.
+    /// What `s1` ran; kept selectable so the false-positive cost of it stays measurable.
+    AllTypeReferences,
+}
+
+impl ScanScope {
+    /// The printed spelling.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ScanScope::ImportsPlusPackage => "imports_plus_package",
+            ScanScope::AllTypeReferences => "all_type_references",
+        }
+    }
+
+    /// Parse a configured value. `None` means "not a word the extractor knows", which the caller
+    /// turns into a notice rather than an error.
+    pub fn parse(text: &str) -> Option<ScanScope> {
+        match text.trim() {
+            "imports_plus_package" => Some(ScanScope::ImportsPlusPackage),
+            "all_type_references" => Some(ScanScope::AllTypeReferences),
+            _ => None,
+        }
+    }
+}
+
+/// A per-run cap on one language's scan, and the order the cap spends itself in.
+///
+/// This is the scan policy spike `s1` named as the thing that changes when a grammar is slow
+/// (finding 7): the feature gates stay as ADR-002 §6.5 wrote them, and what a slow grammar buys
+/// instead is a *bound that is arithmetic*. The caps are per run, files over the cap come back as
+/// [`UnavailableReason::ScanBudget`](crate::structure::UnavailableReason::ScanBudget) with their
+/// file-level numbers intact, and the priority list decides who gets refused.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScanBudget {
+    /// `…max_files_per_run`.
+    pub max_files: usize,
+    /// `…max_bytes_per_run`.
+    pub max_bytes: usize,
+    /// Path prefixes, in the order they are scanned. A file matching none is scanned last.
+    pub priority: Vec<String>,
+}
+
+impl ScanBudget {
+    /// Where a path sits in the priority list: lower sorts first, and the length of the list is
+    /// "matched nothing".
+    pub fn rank(&self, path: &str) -> usize {
+        self.priority
+            .iter()
+            .position(|prefix| {
+                let prefix = prefix.trim_matches('/');
+                path == prefix
+                    || path.starts_with(&format!("{prefix}/"))
+                    || path.contains(&format!("/{prefix}/"))
+            })
+            .unwrap_or(self.priority.len())
+    }
+}
+
 /// The policy an extraction run obeys. Echoed into every report and into every stored row's
 /// provenance, so a number can be read years later without guessing which build made it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,6 +142,33 @@ pub struct ExtractPolicy {
     pub max_file_bytes: usize,
     /// `extract.complexity.max_nodes`.
     pub max_complexity_nodes: usize,
+    /// The Ruby scan budget: `extract.ruby.max_files_per_run`, `…max_bytes_per_run`, `…priority`.
+    pub ruby_scan: ScanBudget,
+    /// `extract.java.same_package_scan`.
+    pub java_same_package_scan: ScanScope,
+    /// Whether a name the file binds itself (a method type parameter, a local class) is treated as a
+    /// reference for the same-package guess. `true` is the shipped rule.
+    ///
+    /// Not a configuration key, and deliberately not one: an operator has no reason to choose the
+    /// worse-sounding side of a rule, and a key is a promise to keep both sides working. The harness
+    /// switches it off to *measure* the rule — the report's counterfactual is a third scan, not
+    /// arithmetic about a rule someone might later edit out of the code.
+    pub java_bound_names: bool,
+}
+
+impl ExtractPolicy {
+    /// The per-run scan budget for a language, if that language has one.
+    ///
+    /// Only Ruby does. The mechanism is generic because the *reason* is generic — a grammar whose
+    /// cost is per syntactic construct rather than per byte needs a cap expressed in constructs —
+    /// and every other grammar measured 11–16 MiB/s, where a cap would be decoration.
+    #[must_use]
+    pub fn scan_budget(&self, language: crate::structure::Language) -> Option<&ScanBudget> {
+        match language {
+            crate::structure::Language::Ruby => Some(&self.ruby_scan),
+            _ => None,
+        }
+    }
 }
 
 impl Default for ExtractPolicy {
@@ -58,11 +178,31 @@ impl Default for ExtractPolicy {
             max_resolution_hops: DEFAULT_MAX_RESOLUTION_HOPS,
             max_file_bytes: DEFAULT_MAX_FILE_BYTES,
             max_complexity_nodes: DEFAULT_MAX_COMPLEXITY_NODES,
+            ruby_scan: ScanBudget {
+                max_files: DEFAULT_RUBY_MAX_FILES_PER_RUN,
+                max_bytes: DEFAULT_RUBY_MAX_BYTES_PER_RUN,
+                priority: DEFAULT_RUBY_PRIORITY
+                    .iter()
+                    .map(|prefix| (*prefix).to_string())
+                    .collect(),
+            },
+            java_same_package_scan: ScanScope::ImportsPlusPackage,
+            java_bound_names: true,
         }
     }
 }
 
 impl ExtractPolicy {
+    /// The scoped same-package scan with the bound-name rule switched off.
+    ///
+    /// The harness uses this to *measure* the rule: re-run the same corpus with it off and publish the
+    /// rate. See [`ExtractPolicy::java_bound_names`] for why this is not a configuration key.
+    #[must_use]
+    pub fn with_bound_name_rule_off(mut self) -> Self {
+        self.java_bound_names = false;
+        self
+    }
+
     /// Read the `[extract]` table out of a `fathom.toml` document, alongside the notices a surface
     /// should print about anything it refused.
     pub fn from_repo_config_text(text: &str) -> (ExtractPolicy, Vec<String>) {
@@ -116,6 +256,61 @@ impl ExtractPolicy {
             }
             *slot.inner() = usize::try_from(number).unwrap_or(usize::MAX);
         }
+        // The scan policy: the two Ruby caps (integers, same rule as the other bounds), Ruby's
+        // priority list (a string list) and Java's scan scope (one of two words). Kept in their own
+        // loop rather than folded into `Limit`, which is an integer-slot abstraction and would have
+        // to stop being one to carry a list.
+        for path in ["ruby.max_files_per_run", "ruby.max_bytes_per_run"] {
+            let Some(value) = knob(table, path).and_then(TomlItem::as_value) else {
+                continue;
+            };
+            let Some(number) = value.as_integer() else {
+                notices.push(format!(
+                    "extract.{path} is not a whole number, so it was not used"
+                ));
+                continue;
+            };
+            if number < 0 {
+                notices.push(format!(
+                    "extract.{path} = {number} is not a quantity; the built-in default stood"
+                ));
+                continue;
+            }
+            let slot = usize::try_from(number).unwrap_or(usize::MAX);
+            if path.ends_with("max_files_per_run") {
+                policy.ruby_scan.max_files = slot;
+            } else {
+                policy.ruby_scan.max_bytes = slot;
+            }
+        }
+        if let Some(value) = knob(table, "ruby.priority").and_then(TomlItem::as_value) {
+            match value.as_array() {
+                Some(array) => {
+                    let mut prefixes = Vec::new();
+                    for entry in array {
+                        match entry.as_str() {
+                            Some(prefix) => prefixes.push(prefix.to_string()),
+                            None => notices.push(
+                                "extract.ruby.priority must be a list of path prefixes".to_string(),
+                            ),
+                        }
+                    }
+                    policy.ruby_scan.priority = prefixes;
+                }
+                None => notices.push("extract.ruby.priority is not a list of strings".to_string()),
+            }
+        }
+        if let Some(value) = knob(table, "java.same_package_scan").and_then(TomlItem::as_value) {
+            match value.as_str().and_then(ScanScope::parse) {
+                Some(scope) => policy.java_same_package_scan = scope,
+                None => notices.push(format!(
+                    "extract.java.same_package_scan is not `{}` or `{}`, so the scoped default \
+                     stood",
+                    ScanScope::ImportsPlusPackage.as_str(),
+                    ScanScope::AllTypeReferences.as_str()
+                )),
+            }
+        }
         // Every key that was *not* read is named. A limit typed as `max_file_size`, or under the
         // wrong table, is a limit that does not exist — and the difference between "I ignored your
         // typo" and "I never saw your typo" is the difference between a config surface and a rumour.
@@ -124,6 +319,10 @@ impl ExtractPolicy {
             "complexity.max_nodes",
             "resolution.max_passes",
             "resolution.max_hops",
+            "ruby.max_files_per_run",
+            "ruby.max_bytes_per_run",
+            "ruby.priority",
+            "java.same_package_scan",
         ]
         .into_iter()
         .collect();
@@ -147,6 +346,10 @@ impl ExtractPolicy {
             "extract.resolution.max_hops": self.max_resolution_hops,
             "extract.max_file_bytes": self.max_file_bytes,
             "extract.complexity.max_nodes": self.max_complexity_nodes,
+            "extract.ruby.max_files_per_run": self.ruby_scan.max_files,
+            "extract.ruby.max_bytes_per_run": self.ruby_scan.max_bytes,
+            "extract.ruby.priority": self.ruby_scan.priority.clone(),
+            "extract.java.same_package_scan": self.java_same_package_scan.as_str(),
         })
     }
 }

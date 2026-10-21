@@ -54,8 +54,14 @@ mod model;
 mod policy;
 mod query;
 
+#[cfg(feature = "lang-go")]
+mod golang;
+#[cfg(feature = "lang-java")]
+mod javalang;
 #[cfg(feature = "lang-python")]
 mod pythonlang;
+#[cfg(feature = "lang-ruby")]
+mod rubylang;
 #[cfg(feature = "lang-rust")]
 mod rustlang;
 #[cfg(feature = "lang-typescript")]
@@ -89,15 +95,17 @@ pub(crate) mod util;
 
 pub use crate::structure::model::synthetic;
 pub use crate::structure::model::{
-    Complexity, CorpusStructure, Dependents, Edge, EdgeKind, FileLevel, FileStructure, Import,
-    Language, LanguageSummary, Note, Resolution, SourceFile, Span, Structure, Summary, Supertype,
-    SupertypeKind, Symbol, SymbolKind, SyntheticScope, UnavailableReason, Visibility,
+    Complexity, CorpusStructure, Dependents, Edge, EdgeKind, FileLevel, FileStructure, Granularity,
+    Import, Language, LanguageSummary, Note, Resolution, SourceFile, Span, Structure, Summary,
+    Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, UnavailableReason, Visibility,
 };
 pub use crate::structure::policy::{
-    DEFAULT_MAX_COMPLEXITY_NODES, DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_RESOLUTION_HOPS,
-    DEFAULT_MAX_RESOLUTION_PASSES, ExtractPolicy,
+    DEFAULT_JAVA_SAME_PACKAGE_SCAN, DEFAULT_MAX_COMPLEXITY_NODES, DEFAULT_MAX_FILE_BYTES,
+    DEFAULT_MAX_RESOLUTION_HOPS, DEFAULT_MAX_RESOLUTION_PASSES, DEFAULT_RUBY_MAX_BYTES_PER_RUN,
+    DEFAULT_RUBY_MAX_FILES_PER_RUN, DEFAULT_RUBY_PRIORITY, ExtractPolicy, ScanBudget, ScanScope,
 };
-pub use crate::structure::query::{declaring_files, dependents_of};
+pub use crate::structure::query::Loads;
+pub use crate::structure::query::{declaring_files, dependents_of, loads};
 
 /// The version of *this* structural shape.
 ///
@@ -105,7 +113,14 @@ pub use crate::structure::query::{declaring_files, dependents_of};
 /// version for the structure analyzer: a change to what a `Symbol` carries, to a normalisation rule,
 /// or to a language module's export rule has to bump it, because every stored row after the bump
 /// means something different from every row before it.
-pub const SCHEMA_VERSION: u32 = 1;
+///
+/// **Version 2** is `e3.1b` (`reco-dlp.1`): every `Edge` gained `granularity` and `package` (Go's
+/// dependency is a package, and a stored edge that cannot say so is a file-to-file claim nobody
+/// made), every `Structure` gained `package` (a Go package clause, a Java package declaration, a
+/// `module-info.java` surface), and `UnavailableReason` gained `scan_budget`. A version-1 row is not
+/// wrong — it simply cannot answer "was this edge a package edge?", which is exactly the question a
+/// reader must be able to ask of a stored row before re-using it.
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// Extract a corpus: one record per input file, always.
 ///

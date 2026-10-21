@@ -1,0 +1,709 @@
+{
+  "language": "ruby",
+  "root": "lib/demo.rb",
+  "notes": "Ruby's load path is a convention: `require \"demo/version\"` resolves against a load root that is not stated in the file (the corpus's root is `lib/`), so the corpus is annotated with that root and the extractor must be told it. `require`, `require_relative` and `autoload` are all file-granular: Ruby has no symbol-level import edge at all, so every resolved edge carries symbol `*` and the import relation cannot say *which* name was used. Export is the degenerate case: `module Demo` in five files is one constant, and any public constant or top-level method is nameable from anywhere, so the export set is the public top-level surface and carries almost no information — which is itself the finding. Truth includes the methods `attr_reader`/`attr_accessor`/`define_method`/`alias`/`defdelegate`/`class_eval`/`Struct.new` create, because they exist for every consumer of the class; whether a *parser* can see them is the question this spike asks, not whether Ruby has them. Every Ruby file with an export carries the note `export_surface_is_the_file`: the honest Ruby surface question is which files an entry point loads, and `CorpusStructure::loads` is the query that answers it (e3.1b, s1 finding 3).",
+  "files": {
+    "lib/demo.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo",
+          "t": [
+            "module"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Config",
+          "t": [
+            "class",
+            "struct_new"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.DEFAULTS",
+          "t": [
+            "const",
+            "freeze"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Error",
+          "t": [
+            "class",
+            "subclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.configure",
+          "t": [
+            "method",
+            "eigenclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.config",
+          "t": [
+            "method",
+            "eigenclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.reset!",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.parsed",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo"
+      ],
+      "imports": [
+        {
+          "f": "lib/demo/version.rb",
+          "s": "*",
+          "t": [
+            "load_path_require"
+          ]
+        },
+        {
+          "f": "lib/demo/report.rb",
+          "s": "*",
+          "t": [
+            "load_path_require"
+          ]
+        },
+        {
+          "f": "lib/demo/core/shape.rb",
+          "s": "*",
+          "t": [
+            "require_relative"
+          ]
+        },
+        {
+          "f": "lib/demo/core/circle.rb",
+          "s": "*",
+          "t": [
+            "autoload"
+          ]
+        }
+      ],
+      "external": [
+        "json"
+      ],
+      "bases": [
+        {
+          "n": "Demo.Error",
+          "b": "StandardError",
+          "k": "base"
+        }
+      ]
+    },
+    "lib/demo/version.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo",
+          "t": [
+            "module",
+            "module_reopen"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.VERSION",
+          "t": [
+            "const"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.banner",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo"
+      ],
+      "imports": []
+    },
+    "lib/demo/core/shape.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo.Core",
+          "t": [
+            "module",
+            "scope_resolution"
+          ]
+        },
+        {
+          "k": "module",
+          "n": "Demo.Core.Mixin",
+          "t": [
+            "module",
+            "nested_module"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Mixin.tagged",
+          "t": [
+            "method"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Core.Shape",
+          "t": [
+            "class"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.Core.Shape.Unit",
+          "t": [
+            "const"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.Core.Shape.METHODS",
+          "t": [
+            "const",
+            "percent_list"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.registered",
+          "t": [
+            "method",
+            "eigenclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.register",
+          "t": [
+            "method",
+            "eigenclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.initialize",
+          "t": [
+            "method",
+            "initialize"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.area",
+          "t": [
+            "method",
+            "not_implemented"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.<=>",
+          "t": [
+            "method",
+            "operator_method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.==",
+          "t": [
+            "method",
+            "operator_method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.describe",
+          "t": [
+            "method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.helper",
+          "t": [
+            "method",
+            "private_scope"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.shield",
+          "t": [
+            "method",
+            "protected_scope"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.id",
+          "t": [
+            "method",
+            "attr_dsl"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.name",
+          "t": [
+            "method",
+            "attr_dsl"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.name=",
+          "t": [
+            "method",
+            "attr_dsl",
+            "setter"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.label",
+          "t": [
+            "method",
+            "attr_dsl"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.label=",
+          "t": [
+            "method",
+            "attr_dsl",
+            "setter"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.perimeter",
+          "t": [
+            "method",
+            "define_method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.perim",
+          "t": [
+            "method",
+            "alias"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.side1",
+          "t": [
+            "method",
+            "define_method_loop"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.side2",
+          "t": [
+            "method",
+            "define_method_loop"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Core.Base",
+          "t": [
+            "class",
+            "subclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Base.area",
+          "t": [
+            "method",
+            "override"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Core.Pointy",
+          "t": [
+            "class",
+            "struct_new"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Pointy.norm",
+          "t": [
+            "method",
+            "struct_block"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo.Core"
+      ],
+      "imports": [],
+      "bases": [
+        {
+          "n": "Demo.Core.Shape",
+          "b": "Mixin",
+          "k": "base"
+        },
+        {
+          "n": "Demo.Core.Base",
+          "b": "Shape",
+          "k": "base"
+        }
+      ],
+      "synthetic": [
+        {
+          "scope": "Demo.Core.Shape",
+          "t": [
+            "dynamic_method"
+          ]
+        }
+      ]
+    },
+    "lib/demo/core/circle.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo",
+          "t": [
+            "module",
+            "module_reopen",
+            "nested_module"
+          ]
+        },
+        {
+          "k": "module",
+          "n": "Demo.Core",
+          "t": [
+            "module",
+            "module_reopen",
+            "nested_module"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Core.Circle",
+          "t": [
+            "class",
+            "subclass"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.centroid",
+          "t": [
+            "method",
+            "defdelegate"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.initialize",
+          "t": [
+            "method",
+            "initialize"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.area",
+          "t": [
+            "method",
+            "override"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.radius",
+          "t": [
+            "method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.unit",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Circle.to_h",
+          "t": [
+            "method"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo"
+      ],
+      "imports": [],
+      "bases": [
+        {
+          "n": "Demo.Core.Circle",
+          "b": "Shape",
+          "k": "base"
+        },
+        {
+          "n": "Demo.Core.Circle",
+          "b": "Comparable",
+          "k": "base"
+        }
+      ]
+    },
+    "lib/demo/report.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo",
+          "t": [
+            "module",
+            "module_reopen"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Demo.Report",
+          "t": [
+            "class"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.Report.FIELDS",
+          "t": [
+            "const",
+            "percent_list"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.initialize",
+          "t": [
+            "method",
+            "initialize"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.name",
+          "t": [
+            "method",
+            "define_method_loop"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.area",
+          "t": [
+            "method",
+            "define_method_loop"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.header",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.from_file",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.to_s",
+          "t": [
+            "method"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.method_missing",
+          "t": [
+            "method",
+            "dunder"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Report.respond_to_missing?",
+          "t": [
+            "method",
+            "dunder"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo"
+      ],
+      "imports": [
+        {
+          "f": "lib/demo/core/circle.rb",
+          "s": "*",
+          "t": [
+            "require_relative"
+          ]
+        }
+      ],
+      "synthetic": [
+        {
+          "scope": "Demo.Report",
+          "t": [
+            "dynamic_method"
+          ]
+        }
+      ]
+    },
+    "lib/demo/plugin.rb": {
+      "definitions": [
+        {
+          "k": "module",
+          "n": "Demo",
+          "t": [
+            "module",
+            "module_reopen"
+          ]
+        },
+        {
+          "k": "module",
+          "n": "Demo.Plugin",
+          "t": [
+            "module",
+            "nested_module"
+          ]
+        },
+        {
+          "k": "const",
+          "n": "Demo.Plugin.HANDLERS",
+          "t": [
+            "const"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Plugin.install",
+          "t": [
+            "method",
+            "singleton_def"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.extra",
+          "t": [
+            "method",
+            "class_eval",
+            "cross_file_reopen"
+          ]
+        },
+        {
+          "k": "method",
+          "n": "Demo.Core.Shape.audit",
+          "t": [
+            "method",
+            "class_eval",
+            "eigenclass",
+            "cross_file_reopen"
+          ]
+        },
+        {
+          "k": "class",
+          "n": "Slate",
+          "t": [
+            "class",
+            "struct_new"
+          ]
+        },
+        {
+          "k": "fn",
+          "n": "standalone",
+          "t": [
+            "fn",
+            "top_level_def"
+          ]
+        }
+      ],
+      "exports": [
+        "Demo",
+        "Slate",
+        "standalone"
+      ],
+      "imports": [
+        {
+          "f": "lib/demo/core/shape.rb",
+          "s": "*",
+          "t": [
+            "require_relative",
+            "monkeypatch_target"
+          ]
+        },
+        {
+          "f": "lib/demo/report.rb",
+          "s": "*",
+          "t": [
+            "require_relative",
+            "conditional_require"
+          ]
+        }
+      ],
+      "external": [
+        "json"
+      ],
+      "synthetic": [
+        {
+          "scope": "Demo.Core.Shape",
+          "t": [
+            "monkeypatch"
+          ]
+        }
+      ]
+    }
+  },
+  "wildcard_question": {
+    "file": "lib/demo/core/shape.rb"
+  },
+  "bases_notes": "One row per superclass (`class Circle < Shape`) and per mixin call (`include Mixin`, `prepend`, `extend`), kind `base` for both: Ruby calls a mixin an ancestor, `ancestors` lists it, and there is no separate contract relation to call it. `StandardError` and `Comparable` are annotated even though they are outside the corpus — the base is recorded *as written*, and `resolved: null` is what says the corpus does not declare it.",
+  "synthetic_notes": "Three files, two reasons. `shape.rb` and `report.rb` both run `define_method` over a constant array, so the method names exist only at runtime: the scope cannot be enumerated from the file, which is the `dynamic_method` mark and the excuse for the four `define_method_loop` rows. `plugin.rb` reopens `Demo.Core.Shape` with `class_eval` from a file that does not declare it, so *this* file cannot enumerate a class that lives elsewhere — the same state arrived at from the other side, and marked `monkeypatch`. Nothing else is marked: `attr_reader`, `alias`, `Struct.new` and a literal `define_method(:perimeter)` are all in the file, and a parser that cannot see them has a bug, not a blind spot."
+}

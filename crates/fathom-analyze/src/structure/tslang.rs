@@ -710,6 +710,8 @@ pub fn resolve(
                 via: None,
                 form: import.form.to_string(),
                 passes: 0,
+                granularity: engine::Granularity::File,
+                package: None,
             });
             continue;
         };
@@ -742,6 +744,8 @@ pub fn resolve(
                     via: None,
                     form: import.form.to_string(),
                     passes: 0,
+                    granularity: engine::Granularity::File,
+                    package: None,
                 });
             }
         }

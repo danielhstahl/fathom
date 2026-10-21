@@ -21,7 +21,7 @@
 
 use crate::structure::policy::ExtractPolicy;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The kind vocabulary: ten names, not each language's own sixty.
 ///
@@ -290,6 +290,10 @@ pub mod synthetic {
     pub const WILDCARD_REEXPORT: &str = "wildcard_reexport";
     /// A declaration was merged into a module that lives elsewhere (`declare module 'x'`).
     pub const AMBIENT_MERGE: &str = "ambient_merge";
+    /// Which declarations exist depends on a build constraint the extractor cannot evaluate — Go's
+    /// `//go:build` pair, a build-tagged `init_linux.go`. The parser does not run the build, so it
+    /// cannot say which arm this repository compiles.
+    pub const BUILD_CONSTRAINT: &str = "build_constraint";
     /// The extractor saw a shape it knows it cannot enumerate, and said so rather than guessing.
     pub const UNKNOWN_SHAPE: &str = "unknown_shape";
 }
@@ -416,6 +420,40 @@ impl EdgeKind {
     }
 }
 
+/// What unit a dependency edge is *about*: one file, or a whole package of them.
+///
+/// The distinction exists because of one language. In Go a package is a directory and an import
+/// names the directory, so `main.go → shape/circle.go` is a *file-level rendering of a
+/// package-level fact*: the language's dependency is `main → shape`, and a graph that prints the
+/// file version overstates what it knows (spike `s1`, finding 4 — "only one of those is a
+/// dependency anyone can reason about, and the architecture panes in `e3.5` will be read as
+/// language-shaped claims"). `e3.1b` ships the file-level rendering — the per-file record is what
+/// the store keeps and what a delta is computed on — and marks every such edge
+/// [`Granularity::Package`] so a pane can say *"Go: package-level, drawn per file"* instead of
+/// implying a file-to-file fact nobody declared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Granularity {
+    /// The dependency is a file-to-file fact in the language's own terms. Every language but Go.
+    #[default]
+    File,
+    /// The dependency is a package-to-package fact, recorded once per file of the package because
+    /// that is the granularity the store keys on. `Edge::package` carries the package the source
+    /// named. A consumer that prints these edges without saying so is reporting a Go module graph
+    /// with the wrong nouns.
+    Package,
+}
+
+impl Granularity {
+    /// The stable string, which is also the JSON spelling.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Granularity::File => "file",
+            Granularity::Package => "package",
+        }
+    }
+}
+
 /// One resolved dependency: this file depends on that unit, for that symbol, with that provenance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
@@ -436,6 +474,14 @@ pub struct Edge {
     /// How many resolution passes this edge needed. Bounded by the policy, and recorded so a
     /// file whose chains need every pass is visible in the data rather than in a comment.
     pub passes: usize,
+    /// Whether the language calls this a file-to-file dependency or a package-to-package one
+    /// ([`Granularity`]). Defaults to [`Granularity::File`]; only Go ever sets `Package`.
+    #[serde(default)]
+    pub granularity: Granularity,
+    /// For a package-granular edge, the package as the source spells it (a Go import path, minus
+    /// the module prefix). `None` for every file-granular edge, which is most of them.
+    #[serde(default)]
+    pub package: Option<String>,
 }
 
 impl Edge {
@@ -449,7 +495,33 @@ impl Edge {
             via: None,
             form: String::new(),
             passes: 1,
+            granularity: Granularity::File,
+            package: None,
         }
+    }
+
+    /// A package-granular edge: this file depends on *every* declaration of `package`, and the
+    /// `target` is one file of that package only because the record has to be keyed on something.
+    /// Go is the language that needs this constructor and the only one that has a use for it.
+    #[must_use]
+    pub fn package(target: impl Into<String>, package: impl Into<String>) -> Edge {
+        Edge {
+            target: target.into(),
+            symbol: "*".to_string(),
+            kind: EdgeKind::Wildcard,
+            specifier: String::new(),
+            via: None,
+            form: String::new(),
+            passes: 1,
+            granularity: Granularity::Package,
+            package: Some(package.into()),
+        }
+    }
+
+    /// Whether a surface has to say "package-level" before it prints this edge.
+    #[must_use]
+    pub fn is_package_granular(&self) -> bool {
+        self.granularity == Granularity::Package
     }
 
     /// The file the report is about.
@@ -462,6 +534,8 @@ impl Edge {
             via: None,
             form: String::new(),
             passes: 1,
+            granularity: Granularity::File,
+            package: None,
         }
     }
 
@@ -564,6 +638,14 @@ pub enum UnavailableReason {
     },
     /// The grammar could not be handed to the parser at all.
     Parser,
+    /// The language's per-run scan budget was spent before this file was reached. The files that
+    /// *were* scanned are the ones the priority list ranked highest, so this is a stated refusal of
+    /// a known quantity, not a truncation that nobody chose. Ruby needs this because `s1` measured
+    /// it an order of magnitude slower than its neighbours; the mechanism is any language's.
+    ScanBudget {
+        /// Which cap ran out: the printed config key, so the fix is in the sentence.
+        limit: String,
+    },
 }
 
 impl UnavailableReason {
@@ -577,6 +659,7 @@ impl UnavailableReason {
             UnavailableReason::NotUtf8 => "not_utf8",
             UnavailableReason::ParseFailed { .. } => "parse_failed",
             UnavailableReason::Parser => "parser",
+            UnavailableReason::ScanBudget { .. } => "scan_budget",
         }
     }
 
@@ -603,6 +686,10 @@ impl UnavailableReason {
             UnavailableReason::Parser => {
                 "structure unavailable: the parser could not be initialised".to_string()
             }
+            UnavailableReason::ScanBudget { limit } => format!(
+                "structure unavailable: the per-run scan budget `{limit}` was already spent; \
+                 raise it or reorder `priority` if this file matters"
+            ),
         }
     }
 }
@@ -644,12 +731,63 @@ pub struct Structure {
     pub notes: Vec<Note>,
     /// What the bounded resolution pass cost this file.
     pub resolution: Resolution,
+    /// The unit the language says this file *belongs to*, when the language names one: a Go
+    /// `package` clause, a Java `package` declaration. `None` where the language's unit is the file
+    /// itself. This is the half of s1 finding 4 that lets a pane draw the language's noun — the
+    /// package a file's edges really point at — instead of the file's.
+    #[serde(default)]
+    pub package: Option<String>,
 }
 
 impl Structure {
     /// The declaration with exactly this dotted name, if this file has one.
     pub fn find(&self, name: &str) -> Option<&Symbol> {
         self.symbols.iter().find(|s| s.name == name)
+    }
+
+    /// The dependency edges that are package-to-package facts drawn at file granularity (Go).
+    ///
+    /// A surface that prints these next to file-level edges without saying so is claiming a
+    /// file-to-file dependency the language never declared (`docs/concepts/structure-extraction.md`,
+    /// "What this changes", item 4). `granularity_sentence` is the wording.
+    pub fn package_edges(&self) -> Vec<&Edge> {
+        self.edges
+            .iter()
+            .filter(|edge| edge.is_package_granular())
+            .collect()
+    }
+
+    /// The sentence that labels this file's edges, when they need labelling. `None` means every edge
+    /// here is a file-to-file fact and a pane may print it as one.
+    #[must_use]
+    pub fn granularity_sentence(&self) -> Option<String> {
+        if self.edges.is_empty() {
+            return None;
+        }
+        let package = self
+            .package
+            .clone()
+            .unwrap_or_else(|| "(unnamed)".to_string());
+        let packages: BTreeSet<String> = self
+            .edges
+            .iter()
+            .filter(|edge| edge.is_package_granular())
+            .filter_map(|edge| edge.package.clone())
+            .collect();
+        if packages.is_empty() {
+            return None;
+        }
+        Some(format!(
+            "{} of this file's {} dependency edges are {package} → {} at *package* granularity, \
+             drawn once per file of the target package; the language's dependency is the package, \
+             not the file",
+            self.edges
+                .iter()
+                .filter(|edge| edge.is_package_granular())
+                .count(),
+            self.edges.len(),
+            packages.into_iter().collect::<Vec<_>>().join(", "),
+        ))
     }
 
     /// The declarations whose container is `container`.
@@ -794,12 +932,30 @@ pub struct Dependents {
     /// Files whose dependency on this unit *or one of its barrels* is real but of unknown
     /// contents. `e3.2`'s caller-list and `e3.7`'s breaking-change report both have to read this.
     pub unknown: Vec<String>,
+    /// The subset of `unknown` whose dependency is package-granular (Go): the dependent named a
+    /// *package*, so it can reach every exported declaration of it, and no file of it in
+    /// particular. A caller list that prints these as "depends on this file" is the file-level lie
+    /// s1 finding 4 named.
+    #[serde(default)]
+    pub package_granular: Vec<String>,
 }
 
 impl Dependents {
     /// The sentence a surface prints. Ordered so the confident half comes first and the unknown
     /// half is still said.
     pub fn sentence(&self) -> String {
+        let mut base = self.sentence_without_granularity();
+        if !self.package_granular.is_empty() {
+            base.push_str(&format!(
+                "; {} of them depend on it as a whole package, not on a named symbol: {}",
+                self.package_granular.len(),
+                self.package_granular.join(", ")
+            ));
+        }
+        base
+    }
+
+    fn sentence_without_granularity(&self) -> String {
         match (self.named.is_empty(), self.unknown.is_empty()) {
             (true, true) => "no dependents found in this corpus".to_string(),
             (false, true) => format!(

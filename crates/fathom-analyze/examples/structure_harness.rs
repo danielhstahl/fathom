@@ -41,7 +41,14 @@
     clippy::unwrap_used,
     clippy::expect_used
 )]
+// The report is one deeply nested `json!` per language and the macro's own expansion beats the
+// default limit of 128 — a fact about `serde_json`'s macro, not about this report's structure.
+#![recursion_limit = "256"]
 
+#[path = "structure_harness/go_corpus.rs"]
+mod go_corpus;
+#[path = "structure_harness/java_corpus.rs"]
+mod java_corpus;
 #[path = "structure_harness/scoring.rs"]
 mod scoring;
 #[path = "structure_harness/truth.rs"]
@@ -54,16 +61,30 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-/// The three languages `e0.12` gave this ticket. `e3.1b` (`reco-dlp.1`) adds Go, Ruby and Java and
-/// the scan-policy knobs; nothing here changes when it does.
-const LANGUAGES: [(&str, &[&str]); 3] = [
+/// Every language the extractor ships: the three `e3.1` (`reco-zoz`) started with, and the three
+/// `e3.1b` (`reco-dlp.1`) added. One table, one loop, one report: the tail's acceptance criterion is
+/// that the three new languages *join* the harness rather than start a second one, because a second
+/// harness is a second set of rules about what "measured" means.
+const LANGUAGES: [(&str, &[&str]); 6] = [
     ("rust", &["rs"]),
     ("python", &["py"]),
     ("typescript", &["ts"]),
+    ("go", &["go"]),
+    ("ruby", &["rb"]),
+    ("java", &["java"]),
 ];
 
 /// What the report is called and where it lives.
 const REPORT_PATH: &str = "benchmarks/reports/e3-1-structure-core.json";
+
+/// How many Java files the same-package scan is re-measured on. `e0.12` wrote "at least 1 000" into
+/// `e3.1b`'s acceptance criteria; the corpus generator rounds up from this.
+const SAME_PACKAGE_CORPUS_FILES: usize = 1_200;
+
+/// How many files the *repository-shaped* throughput corpus has, for the two languages whose replica
+/// shape is a lie about their resolution (see `go_corpus`). Same order of magnitude as the real thing,
+/// because a shape measured at a tenth of a repository is a shape measured at a tenth.
+const REPOSITORY_SHAPE_FILES: usize = SAME_PACKAGE_CORPUS_FILES;
 
 fn main() {
     let args = match Args::parse() {
@@ -216,6 +237,7 @@ fn run(args: &Args) -> Result<i32, String> {
     let lock = std::fs::read_to_string(args.repo.join("Cargo.lock")).unwrap_or_default();
 
     for (name, extensions) in LANGUAGES {
+        let tongue = Language::detect(&format!("probe.{}", extensions[0]));
         let dir = args.corpus.join(name);
         if !dir.is_dir() {
             return Err(format!("no corpus for {name} at {}", dir.display()));
@@ -274,6 +296,8 @@ fn run(args: &Args) -> Result<i32, String> {
         });
         let mechanisms = mechanisms(&annotation, &extracted, &policy, bound_demo);
         let fallback = fallback_battery(&policy);
+        let granularity = granularity_block(&extracted);
+        let surface = surface_block(name, annotation.root.as_deref().unwrap_or(""), &extracted);
         let throughput = throughput(name, &policy, &dir, &files, &sources);
         let throughput_floor = thresholds
             .get("throughput")
@@ -295,13 +319,98 @@ fn run(args: &Args) -> Result<i32, String> {
             .and_then(|row| row.get("mib_per_second"))
             .and_then(Value::as_f64)
             .unwrap_or_default();
+        // The scan budget, shown biting on the fixture (cheap) and priced by arithmetic at the cost
+        // the replica just measured — the expensive half is never measured twice.
+        let scan_budget = scan_budget_block(
+            tongue,
+            &policy,
+            &borrowed,
+            measured_mib_per_second,
+            &thresholds,
+        );
+        let same_package = (name == "java").then(|| same_package_block(&thresholds));
         // A debug build measures bounds checks and an unoptimised grammar walk, not the extractor,
         // so the floor is only enforced where the number means something — the same exemption spike
         // `s1` used, and for the same reason: `--check` runs in debug precisely so CI is fast.
-        let throughput_ok = (measured_files_per_second >= throughput_floor
-            && measured_mib_per_second >= mib_floor)
-            || cfg!(debug_assertions)
-            || !args.bench && !args.write;
+        //
+        // The other way a language may miss the floor without failing is a *named exemption* in
+        // `thresholds.json`, and an exemption is never "this language is allowed to be slow". It is a
+        // condition with a checkable consequence, of which there are two kinds:
+        //
+        // * `"via": "scan_budget"`, for a grammar that really costs more per byte (Ruby, which `s1`
+        //   measured under 1 MiB/s against 11-16 for the rest): the per-run byte cap divided by the
+        //   measured rate must fit inside ADR-004's cold-graph budget, which `scan_budget.cost`
+        //   computes and the contract test re-checks. A slow grammar is a bound, not a free pass.
+        // * `"via": "repository_shape"`, for a language the replica mis-measures (Go and Java, whose
+        //   imports are package-granular and so fan out 200x wider in a corpus of 444 copies of an
+        //   eleven-file fixture than in any repository): the exemption holds only if the
+        //   machine-authored repository-shaped corpus in `throughput.repository` clears both floors.
+        let exemption = thresholds
+            .get("throughput")
+            .and_then(|row| row.get("exempt"))
+            .and_then(|row| row.get(name));
+        let exempt_floor = exemption
+            .as_ref()
+            .and_then(|row| row.get("mib_per_second_floor"))
+            .and_then(Value::as_f64);
+        let budget_ok = scan_budget
+            .get("cost")
+            .and_then(|cost| cost.get("inside_graph_budget"))
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+        let repository = throughput.get("repository");
+        let repository_files = repository
+            .as_ref()
+            .and_then(|row| row.get("files_per_second_per_core"))
+            .and_then(Value::as_f64)
+            .unwrap_or_default();
+        let repository_mib = repository
+            .as_ref()
+            .and_then(|row| row.get("mib_per_second"))
+            .and_then(Value::as_f64)
+            .unwrap_or_default();
+        let exempt_via = exemption
+            .as_ref()
+            .and_then(|row| row.get("via"))
+            .and_then(Value::as_str);
+        // The two floors are the same statement in two units only when a file is about a kilobyte:
+        // 1 MiB/s at 1 kB per file *is* 1 000 files/s. A machine-authored corpus has its own mean file
+        // size, so judging it against the canary as written would compare a 0.46 kB corpus with a 0.9 kB
+        // one and call the difference a regression. The canary is therefore scaled by the corpus's own
+        // mean file size, which is the only way the two floors agree on two corpora.
+        let shape_mean_kib = repository
+            .as_ref()
+            .and_then(|row| Some((row.get("bytes")?.as_f64()?, row.get("files")?.as_f64()?)))
+            .map(|(bytes, files)| {
+                if files == 0.0 {
+                    1.0
+                } else {
+                    bytes / files / 1_024.0
+                }
+            })
+            .unwrap_or(1.0);
+        let shape_canary_floor = round(mib_floor * shape_mean_kib);
+        let exempt_ok = match exempt_via {
+            Some("scan_budget") => {
+                exempt_floor.is_some_and(|floor| measured_mib_per_second >= floor) && budget_ok
+            }
+            Some("repository_shape") => {
+                repository_files >= throughput_floor && repository_mib >= shape_canary_floor
+            }
+            // An exemption with no `via` is a hole in the thresholds, so it exempts nothing.
+            _ => false,
+        };
+        let basis = if measured_files_per_second >= throughput_floor
+            && measured_mib_per_second >= mib_floor
+        {
+            "replica"
+        } else if exempt_ok {
+            exempt_via.unwrap_or("none")
+        } else {
+            "none"
+        };
+        let throughput_ok =
+            (basis != "none") || cfg!(debug_assertions) || !args.bench && !args.write;
         let verdict = verdict_of(name, &score, &mechanisms, &thresholds, throughput_ok);
         if !args.quiet {
             print_one(name, &score, &mechanisms, &verdict);
@@ -353,6 +462,10 @@ fn run(args: &Args) -> Result<i32, String> {
                 .collect::<Vec<Value>>(),
             "mechanisms": mechanisms,
             "fallback": fallback,
+            "granularity": granularity,
+            "scan_budget": scan_budget,
+            "surface": surface,
+            "same_package": same_package,
             "extraction": {
                 "milliseconds": round(extract_elapsed.as_secs_f64() * 1_000.0),
                 "policy": policy.to_json(),
@@ -364,6 +477,11 @@ fn run(args: &Args) -> Result<i32, String> {
                 "measured_files_per_second_per_core": round(measured_files_per_second),
                 "floor_mib_per_second": mib_floor,
                 "measured_mib_per_second": round(measured_mib_per_second),
+                "exemption": exemption,
+                "exemption_satisfied": exempt_ok,
+                "basis": basis,
+                "repository_shape_canary_floor": shape_canary_floor,
+                "repository_shape": repository,
                 "enforced": !cfg!(debug_assertions),
                 "ok": throughput_ok,
                 "mean": "the replica, measured: files per second per core is the contract because ADR-004's budgets are paid per changed file; MiB/s is reported next to spike s1's parse-only figure to show what resolution adds on top of parsing. A debug build exempts both, because a debug build measures the borrow checker.",
@@ -712,6 +830,275 @@ fn fallback_battery(policy: &ExtractPolicy) -> Value {
 }
 
 // ---------------------------------------------------------------------------
+// the three things `e3.1b` added to the report
+// ---------------------------------------------------------------------------
+
+/// What the corpus's edges are *about*: files, or whole packages.
+///
+/// This is the acceptance criterion "Go edges are package-level, or every file-level Go edge is
+/// labelled as one and the panes say so", made into a number and a sentence. The panes themselves are
+/// `e3.5` and `e3.6`; what this ticket owes them is the label, the count and the wording, all of which
+/// come out of the extractor rather than being typed into a report.
+fn granularity_block(corpus: &structure::CorpusStructure) -> Value {
+    let mut total = 0usize;
+    let mut package_edges = 0usize;
+    let mut files_with = 0usize;
+    let mut packages: BTreeSet<String> = BTreeSet::new();
+    let mut sentence: Option<String> = None;
+    for record in &corpus.files {
+        let Some(structure) = &record.structure else {
+            continue;
+        };
+        total += structure.edges.len();
+        let here = structure.package_edges().len();
+        package_edges += here;
+        if here > 0 && sentence.is_none() {
+            sentence = structure.granularity_sentence();
+        }
+        files_with += usize::from(here > 0);
+        if let Some(package) = &structure.package {
+            packages.insert(package.clone());
+        }
+    }
+    json!({
+        "edges_total": total,
+        "edges_package_granular": package_edges,
+        "files_with_package_granular_edges": files_with,
+        "declared_units": packages.into_iter().collect::<Vec<String>>(),
+        "label_for_a_pane": sentence,
+        "mean": "Go's dependency is package-to-package; the record is per file because that is what the store keys on. Every such edge carries `granularity: package` and the import path it came from, and `label_for_a_pane` is the sentence a surface prints instead of implying a file-to-file fact nobody declared. A language with none of these has edges that may be printed as file-level facts, which is most of them.",
+    })
+}
+
+/// What a file's export list may be read as, and the question the language can answer instead.
+///
+/// Ruby's honest surface question is *which files does this entry point load* (s1 finding 3), so the
+/// report asks it, over the corpus's own annotated entry point.
+fn surface_block(language: &str, entry: &str, corpus: &structure::CorpusStructure) -> Value {
+    let answer = (!entry.is_empty()).then(|| structure::loads(corpus, entry));
+    json!({
+        "entry_point": entry,
+        "loads": answer.as_ref().map(|loads| json!({
+            "sentence": loads.sentence(),
+            "files": loads.files,
+            "depth": loads.depth,
+            "truncated": loads.truncated,
+        })),
+        "may_claim_public_symbols": language != "ruby",
+        "mean": if language == "ruby" {
+            "Ruby has no per-symbol access control, so `exports` here is every top-level name the file wrote and nothing more: a surface that prints it under the heading `public symbols` is lying about the language. The question Ruby can answer is the one above - what a require pulls in - and `e3.7` is told to print that instead."
+        } else {
+            "This language's export rule is a real access rule, so a surface may print its export list as public API."
+        },
+    })
+}
+
+/// The per-run scan budget: what it is set to, what it refuses when it bites, and what it costs.
+///
+/// The cap is shown rather than asserted — the same argument `--max-passes 1` makes for the resolution
+/// bound. The cost half is arithmetic on the throughput the harness just measured: a byte cap divided
+/// by a measured rate is a number of seconds, and ADR-004's cold-graph budget says whether that number
+/// is affordable.
+fn scan_budget_block(
+    language: Language,
+    policy: &ExtractPolicy,
+    sources: &[SourceFile],
+    measured_mib_per_second: f64,
+    thresholds: &Value,
+) -> Value {
+    let graph_budget_ms = thresholds
+        .get("throughput")
+        .and_then(|row| row.get("graph_budget_ms"))
+        .and_then(Value::as_f64)
+        .unwrap_or(60_000.0);
+    let Some(budget) = policy.scan_budget(language) else {
+        return json!({
+            "configured": null,
+            "mean": "No per-run cap for this language, on purpose: s1 measured it inside the pack, and a cap that can never bind is decoration. The mechanism is here for the next grammar that costs what Ruby costs.",
+        });
+    };
+    // The demonstration: the same corpus, with the count cap set to two files.
+    let mut tiny = policy.clone();
+    if language == Language::Ruby {
+        tiny.ruby_scan.max_files = 2;
+    }
+    let squeezed = structure::extract(sources, &tiny);
+    let refused: Vec<String> = squeezed
+        .files
+        .iter()
+        .filter(|record| {
+            record
+                .reason
+                .as_ref()
+                .is_some_and(|reason| reason.as_str() == "scan_budget")
+        })
+        .map(|record| record.path.clone())
+        .collect();
+    let cost = if measured_mib_per_second > 0.0 && budget.max_bytes > 0 {
+        let implied_ms = budget.max_bytes as f64 / (measured_mib_per_second * 1_048_576.0) * 1e3;
+        json!({
+            "measured_mib_per_second": round(measured_mib_per_second),
+            "implied_ms_at_the_cap": round(implied_ms),
+            "graph_budget_ms": graph_budget_ms,
+            "inside_graph_budget": implied_ms <= graph_budget_ms,
+            "mean": "the byte cap divided by the measured rate: the most a cold run can spend on this language, against ADR-004's `cold.graph.ms` small-class budget. This is why a slow grammar is a scan-policy question rather than a feature-gate argument.",
+        })
+    } else {
+        json!(null)
+    };
+    json!({
+        "configured": {
+            "max_files_per_run": budget.max_files,
+            "max_bytes_per_run": budget.max_bytes,
+            "priority": budget.priority,
+        },
+        "demonstration": {
+            "max_files": 2,
+            "refused": refused.len(),
+            "refused_paths": refused.iter().take(12).cloned().collect::<Vec<String>>(),
+            "every_refused_file_still_measured": squeezed
+                .files
+                .iter()
+                .filter(|record| record.structure.is_none())
+                .all(|record| record.file_level.bytes > 0),
+        },
+        "cost": cost,
+        "mean": "s1 finding 7: the feature gates stay and the scan policy is what changes. Ruby is the only language with a cap by default, because it is the only grammar measured an order of magnitude off the pack; files past the cap come back `scan_budget` with their file-level numbers, in the order `extract.ruby.priority` ranked them.",
+    })
+}
+
+/// One measurement of the same-package scan on the machine-authored repository-scale corpus.
+fn measure_same_package(
+    generated: &java_corpus::Generated,
+    scope: fathom_analyze::structure::ScanScope,
+    policy: &ExtractPolicy,
+) -> Value {
+    let mut scoped_policy = policy.clone();
+    scoped_policy.java_same_package_scan = scope;
+    let sources: Vec<SourceFile> = generated
+        .files
+        .iter()
+        .map(|(path, body)| SourceFile::new(path, body))
+        .collect();
+    let started = Instant::now();
+    let corpus = structure::extract(&sources, &scoped_policy);
+    let elapsed = started.elapsed().as_secs_f64().max(1e-9);
+    let mut produced: BTreeSet<String> = BTreeSet::new();
+    for record in &corpus.files {
+        let Some(structure) = &record.structure else {
+            continue;
+        };
+        for edge in &structure.edges {
+            if edge.form == "same_package" {
+                produced.insert(format!(
+                    "{} \u{2022} {} \u{2022} {}",
+                    record.path, edge.target, edge.symbol
+                ));
+            }
+        }
+    }
+    let correct: BTreeSet<String> = produced.intersection(&generated.planted).cloned().collect();
+    let false_positives: Vec<String> = produced.difference(&generated.planted).cloned().collect();
+    let missed: Vec<String> = generated.planted.difference(&produced).cloned().collect();
+    let claimed = produced.len();
+    let expected = generated.planted.len();
+    json!({
+        "scope": scope.as_str(),
+        "edges_claimed": claimed,
+        "dependencies_in_the_corpus": expected,
+        "correct": correct.len(),
+        "false_positive": false_positives.len(),
+        "missed": missed.len(),
+        "false_positive_rate": round(if claimed == 0 { 0.0 } else { false_positives.len() as f64 / claimed as f64 }),
+        "recall": round(if expected == 0 { 1.0 } else { correct.len() as f64 / expected as f64 }),
+        "examples_false_positive": false_positives.into_iter().take(8).collect::<Vec<String>>(),
+        "examples_missed": missed.into_iter().take(8).collect::<Vec<String>>(),
+        "seconds": round(elapsed),
+    })
+}
+
+/// The published false-positive rate and the stated budget, measured twice: once with the shipped
+/// scoped scan and once with the wide scan `s1` ran, so the scoping decision is a number a later
+/// ticket can re-run rather than a paragraph.
+fn same_package_block(thresholds: &Value) -> Value {
+    let wanted = thresholds
+        .get("same_package")
+        .and_then(|row| row.get("corpus_files"))
+        .and_then(Value::as_u64)
+        .map(|n| n as usize)
+        .unwrap_or(SAME_PACKAGE_CORPUS_FILES);
+    let fp_budget = thresholds
+        .get("same_package")
+        .and_then(|row| row.get("max_false_positive_rate"))
+        .and_then(Value::as_f64)
+        .unwrap_or(0.02);
+    let recall_floor = thresholds
+        .get("same_package")
+        .and_then(|row| row.get("min_recall"))
+        .and_then(Value::as_f64)
+        .unwrap_or(0.95);
+    let generated = java_corpus::author(wanted);
+    let policy = ExtractPolicy::default();
+    let scoped = measure_same_package(
+        &generated,
+        fathom_analyze::structure::ScanScope::ImportsPlusPackage,
+        &policy,
+    );
+    let wide = measure_same_package(
+        &generated,
+        fathom_analyze::structure::ScanScope::AllTypeReferences,
+        &policy,
+    );
+    let unbound_policy = ExtractPolicy::default().with_bound_name_rule_off();
+    let unbound = measure_same_package(
+        &generated,
+        fathom_analyze::structure::ScanScope::ImportsPlusPackage,
+        &unbound_policy,
+    );
+    let met = scoped["false_positive_rate"].as_f64().unwrap_or(1.0) <= fp_budget
+        && scoped["recall"].as_f64().unwrap_or(0.0) >= recall_floor;
+    // What the scoped scan does with the bound-name rule switched off: a third scan of the same
+    // corpus, not arithmetic about a rule. Arithmetic about a rule you changed is the kind of number
+    // that stops matching the code the day someone edits the rule; this one cannot drift, and it is
+    // what makes the rule a measured decision rather than a preference.
+    let counterfactual = json!({
+        "without_the_bound_name_rule": {
+            "false_positive": unbound["false_positive"],
+            "false_positive_rate": unbound["false_positive_rate"],
+            "edges_claimed": unbound["edges_claimed"],
+            "recall": unbound["recall"],
+            "added_edges": unbound["edges_claimed"].as_u64().unwrap_or(0)
+                .saturating_sub(scoped["edges_claimed"].as_u64().unwrap_or(0)),
+            "bounds_name_baits": generated.bound_baits,
+            "over_budget": unbound["false_positive_rate"].as_f64().unwrap_or(1.0) > fp_budget,
+            "mean": "the same scoped scan, re-run with the rule that treats a name the file binds itself as a mention switched off. Every added edge is a method type variable spelled like a type another file of the same package declares: the source cannot mean any of them, and a scan that only counts words would clear its recall floor while claiming them. Measured rather than inferred, because a counterfactual computed from the same assumption being tested proves nothing.",
+        },
+    });
+    json!({
+        "corpus": {
+            "files": generated.files.len(),
+            "packages": generated.packages,
+            "planted_dependencies": generated.planted.len(),
+            "shadowed_imports": generated.shadowed,
+            "type_variable_baits": generated.bound_baits,
+            "type_names_declared_in_more_than_one_package": generated.colliding_names,
+            "authored_by": "crates/fathom-analyze/examples/structure_harness/java_corpus.rs",
+            "mean": "machine-authored, and said out loud: nobody hand-annotates 1 200 Java files. What makes the number worth having is that the generator plants every dependency it expects and nothing else, and fills the type-name pool with the collisions (`Builder`, `Result`, `Config`) that a same-package scan can only get wrong when a name means several files.",
+        },
+        "budget": {
+            "min_files": wanted,
+            "max_false_positive_rate": fp_budget,
+            "min_recall": recall_floor,
+        },
+        "counterfactual": counterfactual,
+        "scoped": scoped,
+        "wide": wide,
+        "budget_met": met,
+        "mean": "s1 finding 5, measured at repository scale instead of on ten files. Three rules make the scoped column what it is: a reference resolves against the file's own declared package and nowhere else; a single-type import of the same spelling shadows it (JLS 6.5.5); and a name the file itself binds as a type parameter is a mention, not a use. The wide column is the spike's version - every type reference, resolved against any package that declares the name - kept as a measurement so the cost of that reading stays a number. The coarse edge of the shipped scan is stated too: bound names are collected per file, not per scope, so a file that binds `<Result>` and also names the package's `Result` elsewhere loses that one edge, which is a hole rather than a wrong answer.",
+    })
+}
+
+// ---------------------------------------------------------------------------
 // throughput
 // ---------------------------------------------------------------------------
 
@@ -765,7 +1152,32 @@ fn throughput(
     }
     corpora.push(("replica", replica));
 
+    // A third shape, for the two languages whose *replica* is pathological. Replicating a fixture 444
+    // times turns a package of four files into a package of eight hundred, and a package-granular
+    // import then fans out 200× wider than the language's own dependency ever would: the replica was
+    // measuring its own construction. These corpora are machine-authored at a believable
+    // files-per-package instead, and a throughput exemption is only granted against them — see
+    // `throughput_check.basis` in the report, and `thresholds.json`'s `throughput.exempt`.
+    if language == "java" {
+        corpora.push((
+            "repository",
+            java_corpus::author(REPOSITORY_SHAPE_FILES).files,
+        ));
+    }
+    if language == "go" {
+        corpora.push(("repository", go_corpus::author(REPOSITORY_SHAPE_FILES)));
+    }
+
     for (label, corpus) in &corpora {
+        // The caps are lifted for the measurement on purpose: the floor is a statement about the
+        // extractor's cost, and measuring the refusal path would report a speed nobody built. What
+        // the caps cost is computed from this number (`scan_budget.cost`), not hidden behind it.
+        let mut throughput_policy = policy.clone();
+        throughput_policy.ruby_scan = fathom_analyze::structure::ScanBudget {
+            max_files: 0,
+            max_bytes: 0,
+            priority: policy.ruby_scan.priority.clone(),
+        };
         let borrowed: Vec<SourceFile> = corpus
             .iter()
             .map(|(path, body)| SourceFile::new(path, body))
@@ -775,7 +1187,7 @@ fn throughput(
             continue;
         }
         let started = Instant::now();
-        let extracted = structure::extract(&borrowed, policy);
+        let extracted = structure::extract(&borrowed, &throughput_policy);
         let elapsed = started.elapsed().as_secs_f64().max(1e-9);
         out[*label] = json!({
             "files": corpus.len(),
@@ -926,13 +1338,24 @@ fn build_report(
             "id": "reco-zoz",
             "plan_key": "e3.1",
             "title": "structural extractor core: rust, python, typescript, and the corpus harness",
+            "tail": {
+                "id": "reco-dlp.1",
+                "plan_key": "e3.1b",
+                "title": "structural extractor tail: go, ruby and java, with the scan-policy knobs",
+                "added": ["go", "ruby", "java"],
+                "mechanisms": [
+                    "package-granular Go edges, labelled",
+                    "the Ruby per-run scan budget with per-file priority",
+                    "the Java same-package scan, scoped and re-measured at repository scale",
+                ],
+            },
             "extractor": "crates/fathom-analyze/src/structure/",
             "harness": "crates/fathom-analyze/examples/structure_harness.rs",
             "corpus": "crates/fathom-analyze/structure/corpus",
             "thresholds": "crates/fathom-analyze/structure/thresholds.json",
             "inherited_from": "crates/fathom-analyze/spike/s1 (corpus and truth, extended with bases and synthetic)",
             "schema_version": structure::SCHEMA_VERSION,
-            "reproduce": format!("cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript --example structure_harness -- --repo . --report {REPORT_PATH}"),
+            "reproduce": format!("cargo run --release -p fathom-analyze --features langs-all --example structure_harness -- --repo . --report {REPORT_PATH}"),
             "available_languages": structure::available_languages(),
         },
         "environment": {
@@ -1060,6 +1483,64 @@ fn compare(committed: &Value, fresh: &Value) -> Vec<String> {
             verdicts(committed),
             verdicts(fresh)
         ));
+    }
+    // The published false-positive rate is a measurement, so CI re-measures it too: the numbers
+    // `e3.2` was told to wait for are exactly the ones that must not be able to drift. Timings and the
+    // illustrative samples are stripped first — a busy runner is not a regression, and eight example
+    // strings that sort differently are not either.
+    let same_package = |report: &Value| -> Option<Value> {
+        let block = report["languages"]
+            .as_array()?
+            .iter()
+            .find(|row| row["language"] == "java")?
+            .get("same_package")?
+            .clone();
+        if block.is_null() {
+            return None;
+        }
+        fn strip(value: &Value) -> Value {
+            match value {
+                Value::Object(row) => Value::Object(
+                    row.iter()
+                        .filter(|(key, _)| *key != "seconds" && !key.starts_with("examples_"))
+                        .map(|(key, value)| (key.clone(), strip(value)))
+                        .collect(),
+                ),
+                Value::Array(rows) => Value::Array(rows.iter().map(strip).collect()),
+                other => other.clone(),
+            }
+        }
+        Some(strip(&block))
+    };
+    match (same_package(committed), same_package(fresh)) {
+        (Some(before), Some(after)) => {
+            if before != after {
+                failures.push(format!(
+                    "java/same_package: committed {} but the run produced {}",
+                    before["scoped"]
+                        .as_object()
+                        .map(|row| format!(
+                            "scoped {} claimed, {} false positive, recall {} (budget {})",
+                            row["edges_claimed"],
+                            row["false_positive"],
+                            row["recall"],
+                            before["budget"]["max_false_positive_rate"]
+                        ))
+                        .unwrap_or_default(),
+                    after["scoped"]
+                        .as_object()
+                        .map(|row| format!(
+                            "scoped {} claimed, {} false positive, recall {}",
+                            row["edges_claimed"], row["false_positive"], row["recall"]
+                        ))
+                        .unwrap_or_default()
+                ));
+            }
+        }
+        (None, Some(_)) | (Some(_), None) => {
+            failures.push("java/same_package: present in one report and not the other".to_string());
+        }
+        (None, None) => {}
     }
     for key in ["thresholds", "policy", "schema_version_check"] {
         if key == "schema_version_check" {
@@ -1351,6 +1832,7 @@ fn dump(args: &Args, language: &str) -> Result<i32, String> {
                 .collect::<Vec<_>>()
                 .join(" ")
         );
+        println!("   unit        {:?}", structure.package);
         println!("   exports     {:?}", structure.exports);
         println!(
             "   imports     {}",

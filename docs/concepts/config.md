@@ -515,6 +515,10 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
 | `extract.resolution.max_hops` | `integer` | `4` | `replace` | `any` | hops | structure.extract | `e3.1` |
+| `extract.ruby.max_files_per_run` | `integer` | `4000` | `replace` | `any` | files per run | structure.extract | `e3.1b` |
+| `extract.ruby.max_bytes_per_run` | `integer` | `24000000` | `replace` | `any` | bytes per run | structure.extract | `e3.1b` |
+| `extract.ruby.priority` | `string_list` | `lib, app, ext, spec, test` | `replace` | `any` | — | structure.extract | `e3.1b` |
+| `extract.java.same_package_scan` | `string` | `imports_plus_package` | `replace` | `any` | — | structure.extract | `e3.1b` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
 | `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |

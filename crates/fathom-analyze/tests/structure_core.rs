@@ -713,7 +713,11 @@ fn language_detection_names_the_three_shipped_languages_and_the_three_named_but_
 fn the_schema_version_is_stated_because_the_output_is_stored() {
     // Not ceremony: `e3.2` writes these shapes into a stored graph, and a stored shape that cannot
     // say which version of the model produced it is a migration nobody can write afterwards.
-    assert_eq!(structure::SCHEMA_VERSION, 1);
+    //
+    // 2 is `e3.1b` (`reco-dlp.1`): the edge gained `granularity` and `package`, the structure gained
+    // `package`, and the refusal vocabulary gained `scan_budget`. A version-1 row is not wrong, it is
+    // mute about Go's granularity, which is a question a reader has to be able to ask of a stored row.
+    assert_eq!(structure::SCHEMA_VERSION, 2);
     let bytes = structure::canonical_json(&extract_all(
         &corpus_sources("rust", &["rs"]),
         &ExtractPolicy::default(),
@@ -723,5 +727,22 @@ fn the_schema_version_is_stated_because_the_output_is_stored() {
     assert_eq!(
         parsed["schema_version"],
         serde_json::json!(structure::SCHEMA_VERSION)
+    );
+    // And the version has to travel with the edges, not only with the document: a stored row is
+    // queried one edge at a time, and `granularity` is the field that decides how to print it.
+    let edges = parsed["files"]
+        .as_array()
+        .expect("the canonical output lists files")
+        .iter()
+        .flat_map(|file| {
+            file["structure"]["edges"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        !edges.is_empty() && edges.iter().all(|edge| edge.get("granularity").is_some()),
+        "an edge is stored without saying what its granularity is"
     );
 }

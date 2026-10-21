@@ -101,7 +101,7 @@ jobs:
         run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
 
   structure-core:
-    name: structural extractor core reproduces (three languages)
+    name: structural extractor core and tail reproduce (six languages)
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: stable
@@ -114,8 +114,11 @@ jobs:
         # resolution bound including the forced-one-pass demonstration, and the fallback battery)
         # and the verdicts, and never throughput: a busy runner is not a regression, and a debug
         # build measures the borrow checker rather than the grammar.
+        # `e3.1b` (`reco-dlp.1`) added Go, Ruby and Java to the same harness and the same report, so
+        # `--check` now needs all six grammars: a report with six languages cannot be reproduced by a
+        # build that speaks three, and the answer to that is not to compare three of them.
         run: >
-          cargo run --locked -p fathom-analyze --features lang-rust,lang-python,lang-typescript
+          cargo run --locked -p fathom-analyze --features langs-all
           --example structure_harness -- --repo .
           --report benchmarks/reports/e3-1-structure-core.json --check
       - name: "e3.1: the byte contract and the corpus properties"
@@ -125,8 +128,15 @@ jobs:
         run: >
           cargo test --locked -p fathom-analyze
           --features lang-rust,lang-python,lang-typescript --test structure_core
-      - name: "e3.1: the harness builds with every grammar `e3.1b` will need"
-        run: cargo build --locked -p fathom-analyze --features langs-all --example structure_harness
+      - name: "e3.1b: the tail contract — go granularity, the ruby scan budget, the java same-package budget"
+        # The three things `e3.1b` added, each asserted against the report and against `thresholds.json`
+        # rather than against a paragraph: package-granular Go edges, the Ruby per-run scan budget and the
+        # Java same-package false-positive budget.
+        run: >
+          cargo test --locked -p fathom-analyze
+          --features langs-all --test structure_tail
+      - name: "e3.1b: the harness builds with every grammar, including the three corpora generators"
+        run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
 
   g3-calibration:
     name: Guardrail 3 calibration reproduces (three real repositories)

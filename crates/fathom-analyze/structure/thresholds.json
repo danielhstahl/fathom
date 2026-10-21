@@ -1,5 +1,5 @@
 {
-  "what": "The acceptance bar for `e3.1` (`reco-zoz`): the structural extractor core for Rust, Python and TypeScript, plus the four mechanisms spike `s1` handed over as non-negotiables. A language that misses a `hard` floor is not cut from the plan — it is stated as what this build does not do, in the report and in `docs/concepts/structure-extraction.md`, and the language's files come back with a reason instead of a silently thin graph.",
+  "what": "The acceptance bar for `e3.1` (`reco-zoz`) and its tail `e3.1b` (`reco-dlp.1`): the structural extractor for six languages, plus the mechanisms spike `s1` handed over as non-negotiables and the three scan-policy knobs `e0.12` attached to the tail. A language that misses a `hard` floor is not cut from the plan \u2014 it is stated as what this build does not do, in the report and in `docs/concepts/structure-extraction.md`, and the language's files come back with a reason instead of a silently thin graph.",
   "how_thresholds_are_set": "Recall is the bar that matters for a graph, because a missing edge is an invisible dependency and an invisible dependency is the failure ADR-004's whole argument is about. Precision matters more for an export surface, because a wrong `public` is a false promise in a breaking-change report. Each floor is stated as (a) what a reviewer would notice and (b) what a grammar plus a language model can actually deliver, and `hard: true` means 'missing this makes the language unusable for `e3.2`..`e3.7` at file granularity, so it goes to the fallback rather than to a caveat'. The numbers are spike `s1`'s, deliberately: the spike measured what these grammars deliver, and re-measuring its own guess is not how this ticket should move the bar.",
   "relations": {
     "default": {
@@ -13,13 +13,13 @@
         "precision": 0.95,
         "recall": 0.9,
         "hard": false,
-        "mean": "One row per top-level symbol nameable from outside the declaring unit, per the language's own access rules — Rust's re-export rule, Python's `__all__`-or-underscore rule, TypeScript's `export`-plus-barrel rule. Precision is the higher bar here: a false `public` is a wrong breaking-change report, which is worse than a missing one."
+        "mean": "One row per top-level symbol nameable from outside the declaring unit, per the language's own access rules \u2014 Rust's re-export rule, Python's `__all__`-or-underscore rule, TypeScript's `export`-plus-barrel rule. Precision is the higher bar here: a false `public` is a wrong breaking-change report, which is worse than a missing one."
       },
       "imports": {
         "precision": 0.9,
         "recall": 0.9,
         "hard": false,
-        "mean": "One row per (file, resolved corpus file, symbol) dependency, wildcard rows included with symbol `*`. Ten percent is the price of dynamic module systems — a Python `importlib.import_module` and a TypeScript namespace import are genuinely unresolvable at file granularity."
+        "mean": "One row per (file, resolved corpus file, symbol) dependency, wildcard rows included with symbol `*`. Ten percent is the price of dynamic module systems \u2014 a Python `importlib.import_module` and a TypeScript namespace import are genuinely unresolvable at file granularity."
       },
       "supertypes": {
         "precision": 0.9,
@@ -27,10 +27,11 @@
         "hard": false,
         "mean": "One row per declared base, implemented trait or implemented interface. Recall is the higher bar: `who implements Shape?` is the question the architecture pane draws, and a missing `impl` is a hole in the shape of the system."
       }
-    }
+    },
+    "irreducible_note": null
   },
   "mechanisms": {
-    "what": "The four checks in the report's `mechanisms` block, and what each one costs when it fails. These are not extra accuracy metrics — they are the four ways a clean set score can still describe a useless extractor, which is the argument spike `s1` spent its planning budget making.",
+    "what": "The four checks in the report's `mechanisms` block, and what each one costs when it fails. These are not extra accuracy metrics \u2014 they are the four ways a clean set score can still describe a useless extractor, which is the argument spike `s1` spent its planning budget making.",
     "synthetic_eligible": "Every scope the corpus marks must come back marked. A marked scope must never produce a 'declares nothing' assertion: the surface may say 'may have shrunk, not shrunk', and nothing stronger. Missing a scope is a fail, not a condition, because an unmarked dynamic scope is a confidently wrong answer about code that changed.",
     "wildcard_edges": "Every `*` import in the corpus must arrive as its own edge kind, and `dependents_of` must answer 'who depends on X' by naming the wildcard files as *unknown-content dependents*. Reporting a star import as a resolved named edge, or answering 'nobody', is a fail: both are the same lie told twice.",
     "resolution": "Resolution is a bounded iteration, and the bound is a config key, and the report says how many passes were used and whether the file converged. Non-convergence is a bug to fix, not a caveat; `--max-passes 1` exists so the bound can be shown to bite rather than asserted.",
@@ -39,14 +40,33 @@
   "throughput": {
     "files_per_second_per_core_floor": 1000.0,
     "mib_per_second_floor": 1.0,
-    "comment": "Parse-plus-extract throughput per core, release profile, measured on a deterministic 4 000-file replica of the corpus because 9 fixture files measure process startup. ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms` are paid per changed file, so files-per-second-per-core is the contract and 1 000 files/s clears a 5 000-file warm pass by three orders of magnitude. The MiB/s figure is a canary, stated second because source files are small and uneven: spike `s1` measured 5 MiB/s parse-only, and this number is parse *plus* resolution, whose cost grows with the corpus rather than the file. Both floors are enforced in a release build and exempt in a debug build, which measures bounds checks rather than the extractor. Missing a floor is a condition, never a no-go: cost is a feature-gate question (ADR-002 §6.5)."
+    "graph_budget_ms": 60000.0,
+    "comment": "Parse-plus-extract throughput per core, release profile, measured on a deterministic 4 000-file replica of the corpus because 9 fixture files measure process startup. ADR-004's `cold.graph.ms` and `warm.graph.marginal.ms` are paid per changed file, so files-per-second-per-core is the contract and 1 000 files/s clears a 5 000-file warm pass by three orders of magnitude. The MiB/s figure is a canary, stated second because source files are small and uneven: spike `s1` measured 5 MiB/s parse-only, and this number is parse *plus* resolution, whose cost grows with the corpus rather than the file. Both floors are enforced in a release build and exempt in a debug build, which measures bounds checks rather than the extractor.",
+    "exempt": {
+      "ruby": {
+        "via": "scan_budget",
+        "mib_per_second_floor": 0.4,
+        "why": "Ruby is the one grammar s1 measured an order of magnitude off the pack (under 1 MiB/s on the replica shape against 11-16 for the others, because the Ruby grammar costs per syntactic construct rather than per byte, and Ruby files are made of constructs). The answer is not a lower accuracy bar and not a dropped grammar; it is a bound that is arithmetic. `extract.ruby.max_bytes_per_run` divided by the measured rate is the most a cold run may spend on Ruby, and the report's `scan_budget.cost` states that number against `graph_budget_ms` (`cold.graph.ms`, the small class). Miss the floor *and* the arithmetic and it is a condition on the run, which is what `verdict_rule` says anyway."
+      },
+      "go": {
+        "via": "repository_shape",
+        "why": "Not a slower grammar \u2014 a mis-measured one. A Go import names a package, so the replica (an eleven-file fixture copied 444 times) is a corpus of packages with ~800 files each, and every one of the fixture's imports fans out to all of them: the replica reported 563 resolved edges per file against the fixture's 14. The exemption holds only while the machine-authored repository-shaped corpus in `throughput.repository` \u2014 40 packages of 30 files, one module, every import pointing at a package that exists \u2014 clears the files-per-second floor outright and the MiB/s canary scaled to that corpus's own mean file size. Go clears both, which is the evidence that the replica's 0.3 MiB/s is about the replica and not about the grammar.",
+        "judged_on": "throughput.repository, scaled canary"
+      },
+      "java": {
+        "via": "repository_shape",
+        "why": "Same reason and same escape hatch as Go: Java resolves a bare reference against a package, so a 4 000-copy replica resolves every import to ~800 files and reports 719 edges per file. The repository-shaped corpus is the same 1 200-file, 40-package corpus the same-package false-positive rate is published from, so the number is not chosen for the occasion \u2014 and it clears the contract floor at ~1 100 files/s.",
+        "judged_on": "throughput.repository, scaled canary"
+      }
+    }
   },
   "granularity": {
     "definitions": "one row per named declaration at file top level or inside a type/module container, members included, function-local declarations excluded; a cfg-gated or conditional arm that declares a second copy of a name is the same row, because the graph is a set of names, not a count of tokens",
     "exports": "one row per top-level symbol nameable from outside the declaring unit, per the language's own access rules",
     "imports": "one row per (file, resolved corpus file, symbol) dependency, with symbol `*` for a dependency whose contents the file does not name",
     "supertypes": "one row per (file, declaring symbol, base as written), kind `base`, `trait`, `interface` or `metaclass`",
-    "synthetic": "one row per (file, dotted scope) that cannot be enumerated from the file, with the reason words the extractor uses"
+    "synthetic": "one row per (file, dotted scope) that cannot be enumerated from the file, with the reason words the extractor uses",
+    "edge_granularity": "one row per (file, unit depended on, symbol). A unit is a file in every language except Go, where an import names a *package*: those edges carry `granularity: package` and the import path, and are drawn once per file of the target package because the record is per file. A pane that prints a package-granular edge as a file-to-file fact is reporting a dependency the language never declared (s1 finding 4)."
   },
   "irreducible_blind_spots": {
     "what": "Categories the extractor cannot remove at any effort level, per language, because the information is not in the file. A run that records one of these still passes, but the verdict is `conditions`: the category is stated as a limitation rather than rounded away. Anything the corpus shows that is not listed here is a bug in the extractor, not a property of the language.",
@@ -67,10 +87,23 @@
       "ambient_merge",
       "wildcard_reexport",
       "side_effect_import"
+    ],
+    "go": [
+      "build_constraint",
+      "embed_promoted_method"
+    ],
+    "ruby": [
+      "define_method_loop",
+      "method_missing",
+      "export_surface_is_the_file"
+    ],
+    "java": [
+      "record_accessor",
+      "annotation_processor_generated"
     ]
   },
   "irreducible_tags": {
-    "what": "The annotation tags whose *definition rows* are removed from the scored set, because the declaration is not textually in the file at all: a `macro_rules!` arm, a `@dataclass`-written `__init__`, a monkeypatched method, a webpack virtual module. This is not leniency wearing a hat — the alternative is scoring the extractor against rows no file-granularity parser can produce, which teaches it to guess. What the extractor owes instead is the honest state, and `mechanisms.synthetic_eligible` is where that debt is collected: the scope the row lives in must come back marked.",
+    "what": "The annotation tags whose *definition rows* are removed from the scored set, because the declaration is not textually in the file at all: a `macro_rules!` arm, a `@dataclass`-written `__init__`, a monkeypatched method, a webpack virtual module. This is not leniency wearing a hat \u2014 the alternative is scoring the extractor against rows no file-granularity parser can produce, which teaches it to guess. What the extractor owes instead is the honest state, and `mechanisms.synthetic_eligible` is where that debt is collected: the scope the row lives in must come back marked.",
     "default": [],
     "rust": [
       "macro_generated"
@@ -82,7 +115,21 @@
     ],
     "typescript": [
       "generated_into_foreign_module"
+    ],
+    "go": [],
+    "ruby": [
+      "define_method_loop"
+    ],
+    "java": [
+      "record_accessor"
     ]
   },
-  "verdict_rule": "pass: every relation at or above its floor, and no mechanism missed, and the throughput floor met in a release build. conditions: every `hard` floor met, but a soft floor missed, a row missed or found that the floors tolerate, or an irreducible blind spot recorded. fail: a `hard` floor missed, or any mechanism check missed — a mechanism is not a quality bar, it is the definition of what the output is allowed to claim."
+  "verdict_rule": "pass: every relation at or above its floor, and no mechanism missed, and the throughput floor met in a release build. conditions: every `hard` floor met, but a soft floor missed, a row missed or found that the floors tolerate, or an irreducible blind spot recorded. fail: a `hard` floor missed, or any mechanism check missed \u2014 a mechanism is not a quality bar, it is the definition of what the output is allowed to claim.",
+  "same_package": {
+    "what": "The budget for Java same-package resolution, which is the one place in the extractor where false-positive risk is a feature rather than an accident. Spike `s1` found 14 of 14 same-package edges with zero false positives on a ten-file corpus; `e0.12` turned that into `e3.1b`'s third acceptance criterion \u2014 re-measure on at least 1 000 files, publish the rate, state the budget \u2014 and made `e3.2` wait for it before drawing same-package edges at all.",
+    "corpus_files": 1200,
+    "max_false_positive_rate": 0.02,
+    "min_recall": 0.95,
+    "mean": "Of the edges the scan claims, at most 2 % may be edges the corpus does not contain, and at least 95 % of the dependencies the corpus plants must be found. Both are re-measured from the report by `tests/test_structure_tail_contract.py`, and `--check` refuses a report whose numbers moved, so the budget is arithmetic in CI rather than a paragraph in a design document. The corpus is machine-authored (see `java_corpus.rs` and the report's `same_package.corpus.mean`), which is the only honest way to get 1 200 Java files with a known dependency set; what makes the number worth having is that the generator plants the shadowing imports, the package-qualified heads and the bound type variables that a naive same-package scan gets wrong, and counts the baits so the counterfactual rate is checkable."
+  }
 }

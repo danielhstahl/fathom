@@ -18,7 +18,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "json",
             "symbol": "*",
@@ -27,7 +29,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "ujson",
             "symbol": "*",
@@ -36,7 +40,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Circle",
@@ -45,7 +51,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Shape",
@@ -54,7 +62,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".service",
             "symbol": "run",
@@ -126,6 +136,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -186,6 +197,7 @@
         ],
         "imports": [],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -502,7 +514,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "argparse",
             "symbol": "*",
@@ -511,7 +525,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "sys",
             "symbol": "*",
@@ -520,7 +536,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Circle",
@@ -529,7 +547,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".registry",
             "symbol": "Handler",
@@ -538,7 +558,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": ".",
             "symbol": "*",
@@ -547,7 +569,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".service",
             "symbol": "run",
@@ -556,7 +580,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "label",
@@ -655,6 +681,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -754,7 +781,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./index",
             "symbol": "default",
@@ -763,7 +792,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./geo",
             "symbol": "Point",
@@ -772,7 +803,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./legacy",
             "symbol": "Legacy",
@@ -781,7 +814,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "./shapes",
             "symbol": "*",
@@ -790,7 +825,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./index",
             "symbol": "Circle",
@@ -799,7 +836,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./index",
             "symbol": "Shape",
@@ -808,7 +847,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./index",
             "symbol": "area",
@@ -817,7 +858,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./types",
             "symbol": "Config",
@@ -929,6 +972,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -1007,7 +1051,9 @@
         "edges": [
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "NamedTuple",
@@ -1016,7 +1062,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "TypedDict",
@@ -1025,7 +1073,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "typing",
@@ -1034,7 +1084,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Shape",
@@ -1123,6 +1175,7 @@
             "kind": "monkeypatch"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -1428,6 +1481,7 @@
         ],
         "imports": [],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -1627,7 +1681,9 @@
         "edges": [
           {
             "form": "use",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "std::f64",
             "symbol": "f64",
@@ -1636,7 +1692,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Point",
@@ -1645,7 +1703,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "",
             "symbol": "Point",
@@ -1696,6 +1756,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -1795,7 +1856,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./point",
             "symbol": "Point",
@@ -1824,6 +1887,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -1946,7 +2010,9 @@
         "edges": [
           {
             "form": "reexport_star",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "./distance",
             "symbol": "*",
@@ -1955,7 +2021,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./point",
             "symbol": "Coordinates",
@@ -1964,7 +2032,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./point",
             "symbol": "Geo",
@@ -1973,7 +2043,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./point",
             "symbol": "Point",
@@ -2033,6 +2105,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -2069,7 +2142,9 @@
         "edges": [
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "dist",
@@ -2078,7 +2153,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Point",
@@ -2087,7 +2164,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "point",
@@ -2096,7 +2175,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "approx",
@@ -2105,7 +2186,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "private_math",
@@ -2180,6 +2263,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -2279,7 +2363,9 @@
         "edges": [
           {
             "form": "use",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "std::ops::Add",
             "symbol": "Add",
@@ -2312,6 +2398,7 @@
             "kind": "associated_type_binding"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -2584,6 +2671,7 @@
         ],
         "imports": [],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -2780,6 +2868,7 @@
         ],
         "imports": [],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -2881,7 +2970,9 @@
         "edges": [
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./factory",
             "symbol": "default",
@@ -2890,7 +2981,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./geo",
             "symbol": "Point",
@@ -2899,7 +2992,9 @@
           },
           {
             "form": "reexport_star",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "./shapes",
             "symbol": "*",
@@ -2908,7 +3003,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./shapes",
             "symbol": "Circle",
@@ -2917,7 +3014,9 @@
           },
           {
             "form": "reexport",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./shapes",
             "symbol": "Shape",
@@ -2991,6 +3090,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -3051,7 +3151,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./shapes",
             "symbol": "Shape",
@@ -3086,6 +3188,7 @@
             "kind": "ambient_declaration"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -3403,7 +3506,9 @@
         "edges": [
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "cfg_split",
@@ -3412,7 +3517,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "distance",
@@ -3421,7 +3528,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "geo",
@@ -3430,7 +3539,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "ORIGIN",
@@ -3439,7 +3550,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Point",
@@ -3448,7 +3561,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "macros",
@@ -3457,7 +3572,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "helper",
@@ -3466,7 +3583,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "secret",
@@ -3475,7 +3594,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "crate::shapes",
             "symbol": "*",
@@ -3484,7 +3605,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Shape",
@@ -3493,7 +3616,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "shapes",
@@ -3502,7 +3627,9 @@
           },
           {
             "form": "mod_decl",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "traits",
@@ -3665,6 +3792,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -3918,6 +4046,7 @@
             "kind": "macro_definition"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -3978,7 +4107,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "collections",
             "symbol": "*",
@@ -3987,7 +4118,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "Optional",
@@ -3996,7 +4129,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "TYPE_CHECKING",
@@ -4005,7 +4140,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "dataclasses",
             "symbol": "dataclass",
@@ -4014,7 +4151,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "dataclasses",
             "symbol": "dataclasses",
@@ -4023,7 +4162,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "dataclasses",
             "symbol": "field",
@@ -4032,7 +4173,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "typing",
@@ -4041,7 +4184,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".service",
             "symbol": "Report",
@@ -4050,7 +4195,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "DEFAULT_TIMEOUT",
@@ -4059,7 +4206,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "label",
@@ -4211,6 +4360,7 @@
             "kind": "namedtuple_call"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -4719,7 +4869,9 @@
         "edges": [
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "register",
@@ -4749,6 +4901,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -4964,6 +5117,7 @@
         ],
         "imports": [],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -5086,7 +5240,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "importlib",
             "symbol": "*",
@@ -5095,7 +5251,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "json",
             "symbol": "*",
@@ -5104,7 +5262,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "AsyncIterator",
@@ -5113,7 +5273,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "Iterable",
@@ -5122,7 +5284,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "typing",
@@ -5131,7 +5295,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Circle",
@@ -5140,7 +5306,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Shape",
@@ -5149,7 +5317,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".registry",
             "symbol": "Handler",
@@ -5158,7 +5328,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "*",
@@ -5167,7 +5339,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".util",
             "symbol": "label",
@@ -5304,6 +5478,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -5569,7 +5744,9 @@
         "edges": [
           {
             "form": "use",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "std::fmt",
             "symbol": "fmt",
@@ -5578,7 +5755,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Point",
@@ -5626,6 +5805,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -6294,7 +6474,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./factory",
             "symbol": "Handler",
@@ -6303,7 +6485,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 2,
             "specifier": "./geo",
             "symbol": "distance",
@@ -6312,7 +6496,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "./geo/point",
             "symbol": "*",
@@ -6321,7 +6507,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./geo/point",
             "symbol": "Point",
@@ -6330,7 +6518,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "wildcard",
+            "package": null,
             "passes": 1,
             "specifier": "./legacy",
             "symbol": "*",
@@ -6339,7 +6529,9 @@
           },
           {
             "form": "import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "./legacy",
             "symbol": "sealed",
@@ -6435,6 +6627,7 @@
           }
         ],
         "notes": [],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -6927,7 +7120,9 @@
         "edges": [
           {
             "form": "use",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "std::fmt::Debug",
             "symbol": "Debug",
@@ -6936,7 +7131,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "std::fmt::self",
             "symbol": "self",
@@ -6945,7 +7142,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Point",
@@ -6954,7 +7153,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Area",
@@ -6963,7 +7164,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "Shape",
@@ -6972,7 +7175,9 @@
           },
           {
             "form": "use",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": "",
             "symbol": "describe",
@@ -7082,6 +7287,7 @@
             "kind": "associated_type_binding"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -7688,6 +7894,7 @@
             "kind": "ambient_declaration_file"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -7819,7 +8026,9 @@
         "edges": [
           {
             "form": "import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "math",
             "symbol": "*",
@@ -7828,7 +8037,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "Any",
@@ -7837,7 +8048,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "Callable",
@@ -7846,7 +8059,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "TYPE_CHECKING",
@@ -7855,7 +8070,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "unresolved",
+            "package": null,
             "passes": 0,
             "specifier": "typing",
             "symbol": "typing",
@@ -7864,7 +8081,9 @@
           },
           {
             "form": "from_import",
+            "granularity": "file",
             "kind": "resolved",
+            "package": null,
             "passes": 1,
             "specifier": ".models",
             "symbol": "Shape",
@@ -7966,6 +8185,7 @@
             "kind": "nested_function"
           }
         ],
+        "package": null,
         "resolution": {
           "bound": 4,
           "converged": true,
@@ -8234,11 +8454,21 @@
   ],
   "policy": {
     "extract.complexity.max_nodes": 20000,
+    "extract.java.same_package_scan": "imports_plus_package",
     "extract.max_file_bytes": 2000000,
     "extract.resolution.max_hops": 4,
-    "extract.resolution.max_passes": 4
+    "extract.resolution.max_passes": 4,
+    "extract.ruby.max_bytes_per_run": 24000000,
+    "extract.ruby.max_files_per_run": 4000,
+    "extract.ruby.priority": [
+      "lib",
+      "app",
+      "ext",
+      "spec",
+      "test"
+    ]
   },
-  "schema_version": 1,
+  "schema_version": 2,
   "summary": {
     "by_language": {
       "python": {

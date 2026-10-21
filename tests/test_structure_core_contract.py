@@ -61,7 +61,7 @@ EXTRACT_KEYS = [
 def report() -> dict:
     assert REPORT.exists(), (
         "the committed report is missing; regenerate it with\n"
-        "  cargo run --release -p fathom-analyze --features lang-rust,lang-python,lang-typescript \\\n"
+        "  cargo run --release -p fathom-analyze --features langs-all \\\n"
         "      --example structure_harness -- --repo . \\\n"
         "      --report benchmarks/reports/e3-1-structure-core.json")
     return json.loads(REPORT.read_text())
@@ -210,6 +210,12 @@ def test_the_irreducible_tags_are_actually_exercised() -> None:
         for tag in row["t"]
     }
     for language, tags in irreducible_tags().items():
+        if language not in LANGUAGES:
+            # `e3.1b` added languages, and their excuses are checked by
+            # `tests/test_structure_tail_contract.py` against their own corpora. This file's rule is
+            # about the tags *this* contract declared; reading the tail's tags from here would make
+            # the core test depend on corpora it does not otherwise look at.
+            continue
         for tag in tags:
             assert tag in used, f"thresholds declares {language}/{tag} as irreducible; no row uses it"
 
@@ -370,14 +376,23 @@ def test_the_defaults_match_between_the_rust_policy_and_the_config_schema() -> N
 
 
 def test_the_harness_and_the_tests_are_feature_gated() -> None:
-    """A default `cargo test` must not pay for three C builds (ADR-002 §6.5)."""
+    """A default `cargo test` must not pay for C grammars it did not ask for (ADR-002 §6.5)."""
     text = CARGO_TOML.read_text()
-    for target in ("structure_harness", "structure_core"):
+
+    def gate(target: str) -> str:
         block = text.split(f'name = "{target}"', 1)
         assert len(block) == 2, f"{target} is not declared as a Cargo target"
-        following = block[1].split("[[", 1)[0]
-        for feature in ("lang-rust", "lang-python", "lang-typescript"):
-            assert feature in following, f"{target} is not gated on {feature}"
+        return block[1].split("[[", 1)[0]
+
+    # The core test file is still three grammars — it tests three languages and pays for three.
+    core = gate("structure_core")
+    for feature in ("lang-rust", "lang-python", "lang-typescript"):
+        assert feature in core, f"structure_core is not gated on {feature}"
+    # The harness stopped being three-grammar at `e3.1b`: one report lists six languages, and a
+    # build that speaks three cannot reproduce it, so the example asks for all six instead of
+    # reporting three and calling the difference a missing corpus.
+    assert "langs-all" in gate("structure_harness"), (
+        "structure_harness must be gated on langs-all: the report it checks has six languages")
 
 
 def test_ci_re_measures_the_committed_report() -> None:

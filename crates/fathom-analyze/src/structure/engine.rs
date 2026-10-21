@@ -13,6 +13,7 @@
 //! * **Nothing runs unbounded.** Resolution is iterative (s1 finding 6), and every iterative step in
 //!   here is bounded by [`ExtractPolicy`] and reports how close it came to the bound.
 
+pub(crate) use crate::structure::model::Granularity;
 #[allow(unused_imports)]
 pub(crate) use crate::structure::model::LanguageSummary;
 pub(crate) use crate::structure::model::{CorpusStructure, SourceFile, Summary};
@@ -73,6 +74,11 @@ pub(crate) struct Draft {
     /// visibility marker there. Keys are namespaced by the language module that writes them, and
     /// nothing outside that module interprets them.
     pub aux: BTreeMap<String, String>,
+    /// The unit the language says this file belongs to, when it names one — a Go package clause, a
+    /// Java `package`. Written by the scanner, copied into [`Structure::package`] by [`assemble`],
+    /// and interpreted by nobody else in the engine, which is the point of it living here rather
+    /// than in a language-sniffing branch downstream.
+    pub unit: Option<String>,
 }
 
 impl Draft {
@@ -263,7 +269,24 @@ pub fn extract_all(sources: &[SourceFile], policy: &ExtractPolicy) -> CorpusStru
     let mut scanned: Vec<Scanned> = Vec::new();
     let mut records: Vec<FileStructure> = Vec::new();
 
+    let refusals = scan_budget_refusals(sources, policy);
     for source in sources {
+        if let Some(reason) = refusals.get(source.path) {
+            // Over the per-run scan budget: file-level facts, a stated reason naming the knob, and
+            // no parse. This is the Ruby answer to being an order of magnitude slower than its
+            // neighbours (s1 finding 7), and it is a refusal rather than a truncation precisely
+            // because the priority list chose it.
+            let mut file_level = FileLevel::measure(source.path, source.text);
+            file_level.refused = true;
+            records.push(FileStructure {
+                path: source.path.to_string(),
+                language: Language::detect(source.path),
+                file_level,
+                structure: None,
+                reason: Some(reason.clone()),
+            });
+            continue;
+        }
         match scan_one(source, policy) {
             ScannedOrRefused::Scanned(entry) => scanned.push(entry),
             ScannedOrRefused::Refused(record) => records.push(record),
@@ -386,6 +409,7 @@ pub fn extract_all(sources: &[SourceFile], policy: &ExtractPolicy) -> CorpusStru
                     bound,
                     truncated_chains: *truncated.get(path).unwrap_or(&0),
                 },
+                entry.draft.unit.clone(),
             );
             records.push(FileStructure {
                 path: path.clone(),
@@ -404,6 +428,63 @@ pub fn extract_all(sources: &[SourceFile], policy: &ExtractPolicy) -> CorpusStru
         files: records,
         summary,
     }
+}
+
+/// Which files a per-run scan budget refused, and why, before any of them was parsed.
+///
+/// The whole point of doing this *before* the scan is that the answer is a choice with a rule
+/// behind it: files are ranked by the configured priority prefixes (path order inside a prefix),
+/// taken in that order until a cap is spent, and everything after the cap is refused with the name
+/// of the knob that refused it. Without the ranking a cap is a truncation, and a truncation nobody
+/// ordered is the same silent short graph this module exists to avoid.
+fn scan_budget_refusals(
+    sources: &[SourceFile],
+    policy: &ExtractPolicy,
+) -> BTreeMap<String, UnavailableReason> {
+    let mut out: BTreeMap<String, UnavailableReason> = BTreeMap::new();
+    let mut by_language: BTreeMap<Language, Vec<&SourceFile>> = BTreeMap::new();
+    for source in sources {
+        by_language
+            .entry(Language::detect(source.path))
+            .or_default()
+            .push(source);
+    }
+    for (language, group) in by_language {
+        let Some(budget) = policy.scan_budget(language) else {
+            continue;
+        };
+        let files_key = format!("extract.{}.max_files_per_run", language.as_str());
+        let bytes_key = format!("extract.{}.max_bytes_per_run", language.as_str());
+        let mut ordered: Vec<&SourceFile> = group;
+        ordered.sort_by(|a, b| {
+            budget
+                .rank(a.path)
+                .cmp(&budget.rank(b.path))
+                .then_with(|| a.path.cmp(b.path))
+        });
+        let mut taken_files = 0usize;
+        let mut taken_bytes = 0usize;
+        for source in ordered {
+            let over_files = budget.max_files > 0 && taken_files >= budget.max_files;
+            let over_bytes = budget.max_bytes > 0
+                && taken_bytes.saturating_add(source.text.len()) > budget.max_bytes;
+            if over_files || over_bytes {
+                let limit = if over_files {
+                    files_key.clone()
+                } else {
+                    bytes_key.clone()
+                };
+                out.insert(
+                    source.path.to_string(),
+                    UnavailableReason::ScanBudget { limit },
+                );
+                continue;
+            }
+            taken_files += 1;
+            taken_bytes += source.text.len();
+        }
+    }
+    out
 }
 
 /// Whether *this file* settled inside the bound.
@@ -577,6 +658,7 @@ fn assemble(
     edges: Vec<Edge>,
     supertypes: &[Supertype],
     resolution: Resolution,
+    unit: Option<String>,
 ) -> Structure {
     let mut symbols = draft.symbols.clone();
     for symbol in &mut symbols {
@@ -625,6 +707,7 @@ fn assemble(
         synthetic_scopes: draft.synthetic_scopes(),
         notes,
         resolution,
+        package: unit,
     }
 }
 
@@ -692,6 +775,12 @@ pub(crate) fn langs() -> Vec<&'static Lang> {
     out.push(&crate::structure::pythonlang::LANG);
     #[cfg(feature = "lang-typescript")]
     out.push(&crate::structure::tslang::LANG);
+    #[cfg(feature = "lang-go")]
+    out.push(&crate::structure::golang::LANG);
+    #[cfg(feature = "lang-ruby")]
+    out.push(&crate::structure::rubylang::LANG);
+    #[cfg(feature = "lang-java")]
+    out.push(&crate::structure::javalang::LANG);
     out
 }
 

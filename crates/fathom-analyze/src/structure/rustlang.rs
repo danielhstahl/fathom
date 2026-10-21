@@ -741,6 +741,8 @@ fn unresolved(import: &RawImport) -> engine::Edge {
         via: None,
         form: import.form.to_string(),
         passes: 0,
+        granularity: engine::Granularity::File,
+        package: None,
     }
 }
 

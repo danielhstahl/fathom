@@ -1038,6 +1038,46 @@ KEY_LIST: list[Key] = [
            "forty, so the walk is cut and the cut is counted per file in "
            "`resolution.truncated_chains`. `e3.1`, spike `s1` finding 6.",
        analyzer="structure.extract", ticket="e3.1"),
+    # --- extract: the scan policy (`e3.1b`, spike `s1` finding 7) -------------
+    _k(path="extract.ruby.max_files_per_run", kind="integer",
+       default=4_000, minimum=0, units="files per run",
+       doc="How many Ruby files one extraction run may parse, in priority order. Ruby is the one "
+           "grammar `s1` measured an order of magnitude off the pack (under 1 MiB/s against 11-16 for "
+           "the others), and the answer is a bound rather than a feature gate: files past the cap come "
+           "back `scan_budget` with their file-level measurement, exactly as an oversized file comes "
+           "back `too_large`, so a refused file is still a measured file. 4 000 Ruby files at the "
+           "measured rate is seconds, and the report's `scan_budget.cost` states that number against "
+           "the cold-graph budget. `0` means no cap, which is the safe direction for a typo: the "
+           "failure mode is scanning everything, not an empty graph. `e3.1b`, spike `s1` finding 7.",
+       analyzer="structure.extract", ticket="e3.1b"),
+    _k(path="extract.ruby.max_bytes_per_run", kind="integer",
+       default=24_000_000, minimum=0, units="bytes per run",
+       doc="How many bytes of Ruby one extraction run may parse. The count cap alone binds wrongly "
+           "on a tree of many small `def`s and never binds on a few generated megabytes, so the cap "
+           "is both: whichever is spent first stops the run. This is the number that makes Ruby's "
+           "cost a budget instead of an argument - divide it by the measured rate and you have the "
+           "worst a cold run may spend on Ruby. `0` means no cap. `e3.1b`.",
+       analyzer="structure.extract", ticket="e3.1b"),
+    _k(path="extract.ruby.priority", kind="string_list", merge="replace",
+       default=["lib", "app", "ext", "spec", "test"],
+       doc="Path prefixes, in order, that decide which Ruby files get read when the per-run cap "
+           "binds. A run that has to stop early should stop having read what an entry point reaches, "
+           "hence `lib` and `app` before `spec` and `test` - the opposite of the alphabetical order a "
+           "directory walk gives you. Files matching no listed prefix are scanned after the listed "
+           "ones, so this reorders and never drops. `e3.1b`.",
+       analyzer="structure.extract", ticket="e3.1b"),
+    _k(path="extract.java.same_package_scan", kind="string",
+       default="imports_plus_package",
+       enum=("imports_plus_package", "all_type_references"),
+       doc="How far the Java extractor looks for a dependency that has no `import` statement, which "
+           "is the one place in the extractor where guessing is a feature: a bare `Builder` in a file "
+           "means `Builder.java` beside it, and a scan that refuses to say so reports no edge at all. "
+           "`imports_plus_package` (the default) resolves a bare type reference against the file's own "
+           "declared package only, with a single-type import shadowing it; `all_type_references` is the "
+           "wider scan `s1` prototyped, kept because the report publishes the false-positive rate of "
+           "both (`same_package.scoped` against `same_package.wide`) and because a codebase that never "
+           "collides type names may want the recall. `e3.1b`, spike `s1` finding 5.",
+       analyzer="structure.extract", ticket="e3.1b"),
     # --- layers -------------------------------------------------------------
     _k(path="layers.<layer-name>", kind="string_list", merge="deep",
        default={"ui": ["src/ui"], "core": ["src/core"], "store": ["src/store"]},
