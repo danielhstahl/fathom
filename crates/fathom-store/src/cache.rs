@@ -1265,11 +1265,24 @@ impl crate::spine::Store {
         let Some((result_sha, error, row_epoch, result_bytes)) = found else {
             // A row for the same input under a *different* key is the diagnostic case: it proves the miss
             // came from a version or config move rather than from new input (§5.6).
+            //
+            // The predicate carries `input_kind`, for two reasons and only one of them is speed.
+            // `input_hash` is a digest taken *within* a scope kind: a blob digest and a tree digest are
+            // different namespaces that can name the same bytes, so a twin sought across kinds can be found
+            // in an unrelated row and file a cold miss as a version move — the one thing this diagnostic
+            // exists to distinguish. And `cache_input(input_kind, input_hash, analyzer_id)`, the index built
+            // for exactly this question, has `input_kind` as its leading column: without it SQLite scans
+            // every cache row it has (`SCAN cache USING COVERING INDEX cache_input`), and because this runs
+            // once per *miss* — once per file row of every commit of every cold index — the run's cost goes
+            // quadratic in the number of rows the run is itself adding. Measured on a 31 899-row cache from
+            // a real repository: 2.4 ms per miss, and every cold index makes tens of thousands of misses
+            // (`reco-66q`). With the kind in the predicate it is a seek.
             let twin: bool = self
                 .connection()
                 .query_row(
-                    "SELECT count(*) FROM cache WHERE analyzer_id = ?1 AND input_hash = ?2",
-                    params![analyzer_id, input_hash],
+                    "SELECT count(*) FROM cache
+                     WHERE input_kind = ?1 AND input_hash = ?2 AND analyzer_id = ?3",
+                    params![key.input_kind, input_hash, analyzer_id],
                     |row| row.get::<_, i64>(0),
                 )
                 .unwrap_or(0)
