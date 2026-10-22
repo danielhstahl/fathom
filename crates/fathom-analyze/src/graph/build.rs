@@ -34,8 +34,9 @@ use std::collections::BTreeMap;
 
 use crate::graph::delta::module_key;
 use crate::graph::layers::Layers;
-use crate::graph::model::{Graph, Interner, Row, RowKind, encode_rows};
+use crate::graph::model::{Graph, Interner, Row, RowKind, Vertex, encode_rows};
 use crate::graph::policy::GraphPolicy;
+use crate::graph::query::Naming;
 use crate::structure::FileStructure;
 
 /// What a build measured about itself.
@@ -182,6 +183,35 @@ pub struct BuildOutcome {
     pub modules: BTreeMap<String, ModuleRows>,
     /// What the build measured about itself.
     pub summary: BuildSummary,
+}
+
+impl BuildOutcome {
+    /// The id→path dictionary this build's rows need to be spelled back as paths.
+    ///
+    /// A [`Graph`] is ids and every answer a surface prints is a path, so this is the read side of the
+    /// same dictionary the builder minted. The two flags a stored node cannot say for itself later —
+    /// that its declaration list may have shrunk rather than shrunk, and which `[layers]` tag it
+    /// carried — are carried here too, because a delta that reports a disappeared export without that
+    /// flag is reporting a fact it does not have (`s1` finding 1).
+    #[must_use]
+    pub fn naming(&self) -> Naming {
+        Naming::from_vertices(self.modules.values().flat_map(|module| {
+            std::iter::once(Vertex {
+                id: module.node,
+                key: module.path.clone(),
+                kind: RowKind::Module,
+                layer: module.layer.clone(),
+                incomplete: module.incomplete.is_some(),
+            })
+            .chain(module.symbols.iter().map(move |(id, key)| Vertex {
+                id: *id,
+                key: key.clone(),
+                kind: RowKind::Symbol,
+                layer: module.layer.clone(),
+                incomplete: module.incomplete.is_some(),
+            }))
+        }))
+    }
 }
 
 impl Builder {

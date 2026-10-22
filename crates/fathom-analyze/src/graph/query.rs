@@ -50,6 +50,24 @@ impl Naming {
         naming
     }
 
+    /// The union of two dictionaries, which is what a *pair* of revisions needs.
+    ///
+    /// A delta names both the rows that arrived and the rows that went away, and a caller that holds
+    /// two materialised revisions holds two views of one dictionary. Where the two disagree — a
+    /// module whose declaration list became untrustworthy between the revisions — the second (the
+    /// later revision, by convention at every call site) wins, because the answer is about what the
+    /// revision did and its own flags are the ones to print.
+    #[must_use]
+    pub fn merged(first: &Naming, second: &Naming) -> Self {
+        Self::from_vertices(
+            first
+                .by_id
+                .values()
+                .cloned()
+                .chain(second.by_id.values().cloned()),
+        )
+    }
+
     /// The key of an id, or `None` when the graph references something the dictionary never saw —
     /// which is reported, not renamed.
     #[must_use]

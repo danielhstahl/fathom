@@ -80,8 +80,55 @@ Reading it costs:
   reached without an anchor the answer is a stated partial: an anchor went missing, and a graph that
   quietly reconstructed from nothing would be worse than no graph.
 * **moving the cursor one commit** — apply that revision's delta. This is what a keystroke pays.
-* **stepping onto a non-adjacent revision** — reconstruct it, and say so: `s3` measured the difference
-  between the two paths at roughly a thousand times.
+* **asking what a revision, or a span of them, did** — read rows, not graphs. This is
+  [`architecture_delta`](#what-did-this-revision-do-to-the-architecture), and it is the cheap one for
+  every pair the chain connects.
+* **stepping onto a revision no stored chain connects** — reconstruct it, and say so: `s3` measured the
+  difference between the two paths at roughly a thousand times.
+
+## What did this revision do to the architecture
+
+`changed_edges` answers which rows differ. A reviewer asks a different question — *what happened* — and
+`crates/fathom-analyze/src/graph/diff.rs` answers it as six findings that are six different facts about
+the same rows:
+
+| Finding | Why it is not two rows |
+| --- | --- |
+| nodes and edges added, removed, re-pointed | a dependency that became a star import is one **re-point**, not a removal plus an addition: the count did not change and the certainty did |
+| a symbol that **moved** | a deletion plus an addition with a new key is not the same fact as `Store` walking from `store.rs` to `store/persist.rs`; a 1→N move is one **split**, an N→1 one **fold**, and a pairing that cannot be made from one revision stays an unresolved candidate with both rows still listed |
+| an arrow that **turned around** | `a → b` gone and `b → a` arrived is one inversion, and the answer says whether both arrows still exist afterwards — a two-module cycle, decided at module granularity so a symbol-level `implements` counts |
+| the **public surface** | which exported names a file gained and lost, with the *may have shrunk* flag from finding 1 attached, because a surface list that may have shrunk is not a shrunk one |
+| **edge churn** per module | the rate a module's wiring moves, in both directions, over a window it prints: a module touched in 4 of 4 revisions and one touched in 4 of 200 are opposite findings |
+| **layer drift** | the tags this revision's own rows carried against the tags the dictionary holds now — the honest half of the re-tag question, and never a re-tag of a module nobody rewrote |
+
+Three removals that look identical and are not: `with-target` (its own target went in the same
+revision), `unwired` (the target is still there and somebody took the dependency away), and `dropped`
+(a row cleaned up on a target that had already gone, which `dead` says out loud). A changelog that says
+"the dependency went away" about all three has described none of them.
+
+**The cost ladder.** Because `s3`'s policy stores a delta per revision, the same question has five
+honest prices, and the answer carries which one it paid — `Cost { rung, delta_rows, deltas,
+materialisations }`:
+
+| Rung | What it read |
+| --- | --- |
+| `empty` | one `graph_snapshot` row, zero delta rows, zero chunks: the constant-time "nothing architectural changed", which is why the writer records a delta's byte size on the row (`bytes = 0` *is* the answer) |
+| `adjacent` | `to`'s own delta rows: one indexed SELECT, the common case of two adjacent episodes |
+| `chain` | `from` sits up `to`'s chain inside `graph.query.max_chain_walk`, so the span is the composition of those stored deltas — still no chunk decoded |
+| `shared_anchor` | both revisions sit on one anchor, so the answer is that anchor-to-`from` run inverted, composed with the anchor-to-`to` run |
+| `materialised` | two full reconstructions, which is what anything straddling an anchor pays — and the price a representation without stored deltas pays for *every* question |
+
+Whatever rung answered, the six findings are the same six findings; what changes is which of them the
+rung may *state*. The cheap rungs have not read either revision, so they do not claim an edge was dead
+or that two arrows now point at each other, and they say that in `notices` rather than leaving a reader
+to notice the absence. That agreement is asserted, not assumed: `graph_diff_lane.rs` compares every rung
+against the two-materialisation endpoint document for the same pair, and `graph_diff_property.rs` proves
+the composition property over randomised histories — a span is the composition of its parts, and a row
+that leaves and comes back inside the span is not a change over it.
+
+The document is `fathom.graph-delta/1`: `to_json` for the exporter and the MCP server, `sentence` and
+`summary_lines` for a line in a pane, every list sorted by a key that is not an internal id, so the same
+facts never differ because two hash maps walked in a different order.
 
 ## The five questions it answers
 
@@ -92,6 +139,7 @@ Reading it costs:
 | `path(A, B)` | the hops, or *not found within N hops* — a bound that stopped the search is never reported as an absence |
 | `layer_subgraph(L)` | the layer's nodes, its internal edges, and what crosses its boundary in each direction |
 | `changed_edges(A, B)` | edges added and removed between two revisions; adjacent revisions read the stored delta in one query, anything else pays two materialisations, and the answer carries which one it was |
+| `architecture_delta(A, B)` | the six findings above, at the cheapest of five rungs — see *What did this revision do to the architecture* |
 
 None of them is a scan. Both directions are indexed `(endpoint, kind)`, because fan-in is budgeted at the
 same price as fan-out and a graph that indexes only the source side makes one of them a table walk.
@@ -103,12 +151,16 @@ same price as fan-out and a graph that indexes only the source side makes one of
 | `crates/fathom-analyze/src/graph/model.rs` | row kinds, the chunk codec, the materialised `Graph` (both directions indexed), the id interner |
 | `crates/fathom-analyze/src/graph/build.rs` | substrate in, rows out: one module's rows and one revision's build summary |
 | `crates/fathom-analyze/src/graph/delta.rs` | module keys, per-module and per-revision ops, the changed-edge delta |
+| `crates/fathom-analyze/src/graph/diff.rs` | the architecture delta: the six findings, the cost ladder, the churn window and the JSON form |
 | `crates/fathom-analyze/src/graph/layers.rs` | `[layers]` as tags, with specificity ordering |
 | `crates/fathom-analyze/src/graph/policy.rs` | `graph.*` knobs, and the notices when two of them disagree |
 | `crates/fathom-analyze/src/graph/query.rs` | the five queries and the shape of each answer |
-| `crates/fathom-analyze/src/graph/lane.rs` | the store-facing lane: `record`, `materialise`, `step`, `changed_edges` |
+| `crates/fathom-analyze/src/graph/lane.rs` | the store-facing lane: `record`, `materialise`, `step`, `changed_edges`, `architecture_delta`, `churn` |
 | `crates/fathom-store/src/graph.rs` | the graph tables, the node dictionary, the chain walk, the byte accounting |
 | `crates/fathom-analyze/tests/graph.rs` | the model, builder, delta and query assertions — needs no store |
+| `crates/fathom-analyze/tests/graph_diff.rs` | the six findings and the churn bands, with no store linked in at all |
+| `crates/fathom-analyze/tests/graph_diff_lane.rs` | the five rungs over a real store, and the claim that they all say the same thing |
+| `crates/fathom-analyze/tests/graph_diff_property.rs` | the composition property, as a property |
 | `crates/fathom-analyze/tests/graph_lane.rs` | the chain, the anchor period, and the three schema findings `s3` paid for |
 
 The model, the builder and the queries compile with no SQLite backend at all (ADR-002 §6.1): a

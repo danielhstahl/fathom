@@ -170,6 +170,15 @@ required-features = ["sqlite-bundled"]
 name = "graph_lane"
 required-features = ["sqlite-bundled"]
 
+# The architecture delta (`e3.3`, `reco-8wg`) has two halves and they are gated differently. The
+# store-backed one — which rung answered, what it cost, and that every rung agrees — replays a history
+# through the lane, so it names the backend exactly the way `graph_lane` does. The pure half
+# (`graph_diff.rs`, `graph_diff_property.rs`) names nothing at all, which is the point: ADR-002 §6.1
+# says a `--no-default-features` build still gets the six findings, the churn window and the JSON form.
+[[test]]
+name = "graph_diff_lane"
+required-features = ["sqlite-bundled"]
+
 # The cycles (`e3.5`, `reco-8md`): the per-episode answer over the graph lane, so it needs a SQLite
 # backend exactly the way `graph_lane` does. The model itself is asserted in `tests/cycles.rs`, which
 # names no feature at all — that split is the point, and it is what keeps ADR-002 §6.1's

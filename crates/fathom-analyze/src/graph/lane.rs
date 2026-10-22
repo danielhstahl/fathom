@@ -45,10 +45,35 @@ use fathom_store::spine::Store;
 use crate::graph::build::BuildSummary;
 use crate::graph::build::{BuildOutcome, Builder, ModuleInput, ModuleRows};
 use crate::graph::delta::{EdgeDelta, changed_modules, module_key, revision_ops};
+use crate::graph::diff::{
+    ArchitectureDelta, ChurnReport, Cost, RevisionOps, TaggedOp, compose, ops_between,
+};
 use crate::graph::model::{
     FreshEntry, Graph, Interner, Op, Row, RowKind, Vertex, decode_rows, encode_rows,
 };
 use crate::graph::query::Naming;
+
+/// What one revision's stored delta rows amounted to, read back.
+#[derive(Debug, Clone, Default)]
+pub struct StoredOps {
+    /// The ops, tagged with the layer tags the revision stamped.
+    pub ops: Vec<TaggedOp>,
+    /// Rows that could not be read — a foreign kind, or an endpoint that is not a number. Counted,
+    /// never guessed at, because a silently smaller delta is a wrong answer.
+    pub unreadable: usize,
+    /// Rows the store returned, readable or not.
+    pub rows: usize,
+}
+
+/// The graph a `graph_snapshot` row says this revision's delta cost, on the same basis
+/// `Store::graph_payload_bytes` uses: `kind + src + dst` text plus twelve bytes of row framing.
+pub(crate) fn op_payload_bytes(ops: &[DeltaOp]) -> i64 {
+    ops.iter()
+        .map(|op| {
+            i64::try_from(op.kind.len() + op.src.len() + op.dst.len() + 12).unwrap_or(i64::MAX)
+        })
+        .sum()
+}
 
 /// The cursor's state: one revision, materialised, with the per-module rows a delta is computed from.
 #[derive(Debug, Clone)]
@@ -268,6 +293,17 @@ impl<'a> Lane<'a> {
         };
         snap.node_count = i64::try_from(outcome.graph.node_count()).unwrap_or(i64::MAX);
         snap.edge_count = i64::try_from(outcome.graph.edge_count()).unwrap_or(i64::MAX);
+        // The column is the writer's own byte estimate, and `e3.3` is the reason it is filled in:
+        // a `delta` row with `bytes = 0` is exactly "this revision wrote no graph rows", which is the
+        // one thing about a revision a reader can decide without reading its delta, its chunks, or
+        // its graph. An anchor writes no delta rows at all — its manifest is written after the row
+        // and accounted in `graph_payload_bytes`, not here — so it stays 0 and the empty test never
+        // applies to it, because that test asks for `kind = 'delta'` first.
+        snap.bytes = if anchored {
+            0
+        } else {
+            op_payload_bytes(&self.staged)
+        };
         snap.analyzer_version = i64::from(crate::graph::model::SCHEMA_VERSION);
         snap.built_utc = now;
 
@@ -442,6 +478,305 @@ impl<'a> Lane<'a> {
         let (before, _) = self.materialise(from)?;
         let (after, _) = self.materialise(to)?;
         Ok(EdgeDelta::between(&before, &after))
+    }
+
+    /// Did this revision change the architecture at all — decided in constant time.
+    ///
+    /// The answer a commit list wants is one bit, and the graph can give it for one indexed read:
+    /// an adjacent revision that wrote no delta rows changed nothing architectural about the graph,
+    /// and a revision that wrote rows changed something. `Some(true)` is "changed", `Some(false)` is
+    /// "no architectural change", and `None` is "the cheap test does not apply" — which is what a
+    /// non-adjacent pair and an anchor get, and neither of them is an answer of "no".
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when either revision is not in the store at all.
+    pub fn architectural_change(&self, from: &str, to: &str) -> Result<Option<bool>, ChainPartial> {
+        let lost = || ChainPartial::AnchorLost {
+            tree_oid: to.to_string(),
+            steps: 0,
+        };
+        let Some(snap) = self.store.graph_snapshot(to).map_err(|_| lost())? else {
+            return Err(lost());
+        };
+        if snap.kind != "delta" || snap.base_tree.as_deref() != Some(from) {
+            return Ok(None);
+        }
+        if snap.bytes > 0 {
+            return Ok(Some(true));
+        }
+        // Zero recorded bytes means the writer staged nothing — unless the store predates the column
+        // being filled, in which case every row says 0. One seek settles it, and for the case that
+        // matters (the revision wrote nothing) the seek returns no rows, so it costs what an empty
+        // seek costs and nothing else.
+        let ops = self.store.graph_ops(to).map_err(|_| lost())?;
+        Ok(Some(!ops.is_empty()))
+    }
+
+    /// The architecture delta between two revisions, taken at the cheapest rung the store can answer.
+    ///
+    /// The ladder is the whole point of storing a delta per revision, and it is tried in order:
+    ///
+    /// 1. [`Rung::Empty`] — the constant-time no-change answer ([`Lane::architectural_change`]).
+    /// 2. [`Rung::Adjacent`] — `to`'s own delta rows, one indexed SELECT. The common case: two
+    ///    adjacent episodes, or a commit and its parent.
+    /// 3. [`Rung::Chain`] — `from` is on `to`'s chain inside `graph.query.max_chain_walk`, so the
+    ///    span is answered by composing those stored deltas. Still no chunk is decoded.
+    /// 4. [`Rung::SharedAnchor`] — both revisions sit on the same anchor, so the answer is that
+    ///    anchor-to-`from` run inverted, composed with the anchor-to-`to` run.
+    /// 5. [`Rung::Materialised`] — two full reconstructions. Anything straddling an anchor pays this,
+    ///    and the answer says so: this is the price every representation without stored deltas pays
+    ///    for *every* question.
+    ///
+    /// Whatever the rung, the delta reports the same six findings; what changes is which of them the
+    /// rung is allowed to state. Rungs 2–4 have not read either revision, so they do not claim an
+    /// edge was dead ([`crate::graph::diff::EdgeFact::dead`]) or that two arrows now point at each
+    /// other — and they say that in `notices` rather than leaving the reader to notice the absence.
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when either revision cannot be reconstructed.
+    pub fn architecture_delta(
+        &self,
+        from: &str,
+        to: &str,
+    ) -> Result<ArchitectureDelta, ChainPartial> {
+        let view = self.naming().map_err(|_| ChainPartial::AnchorLost {
+            tree_oid: to.to_string(),
+            steps: 0,
+        })?;
+        if from == to {
+            let mut delta = ArchitectureDelta::empty(from, to);
+            delta.adjacent = false;
+            delta
+                .notices
+                .push("both endpoints name the same revision".to_string());
+            delta.sort();
+            return Ok(delta);
+        }
+        if matches!(self.architectural_change(from, to)?, Some(false)) {
+            return Ok(ArchitectureDelta::empty(from, to));
+        }
+        let warm = |tree: &str| {
+            self.cursor
+                .as_ref()
+                .filter(|cursor| cursor.tree_oid == tree)
+                .map(|cursor| &cursor.graph)
+        };
+        // -- rung 2: one stored delta --------------------------------------------------------
+        if let Some(snap) = self
+            .store
+            .graph_snapshot(to)
+            .map_err(|_| ChainPartial::AnchorLost {
+                tree_oid: to.to_string(),
+                steps: 0,
+            })?
+            && snap.kind == "delta"
+            && snap.base_tree.as_deref() == Some(from)
+        {
+            let stored = self.stored_ops(to)?;
+            let mut delta = ArchitectureDelta::of(
+                from,
+                to,
+                &stored.ops,
+                &view,
+                warm(from),
+                warm(to),
+                Cost::adjacent(stored.rows),
+            );
+            unreadable(&mut delta, stored.unreadable);
+            return Ok(delta);
+        }
+        // -- rung 3: `from` is somewhere up `to`'s chain ---------------------------------------
+        let max = self.builder.policy.max_chain_walk;
+        let walk_to = self.walk(to, max)?;
+        let from_is_anchor = walk_to.anchor == from;
+        let cut = walk_to.deltas.iter().position(|tree| tree == from);
+        let run: &[String] = match (from_is_anchor, cut) {
+            (true, _) => walk_to.deltas.as_slice(),
+            (false, Some(at)) => &walk_to.deltas[at + 1..],
+            (false, None) => &[],
+        };
+        if from_is_anchor || cut.is_some() {
+            let (runs, rows) = self.stored_run(run)?;
+            let ops = compose(runs.iter().map(Vec::as_slice));
+            let mut delta = ArchitectureDelta::of(
+                from,
+                to,
+                &ops,
+                &view,
+                warm(from),
+                warm(to),
+                Cost::chain(rows, run.len()),
+            );
+            if runs.iter().any(|run| !run.is_empty()) {
+                delta.notices.push(format!(
+                    "this span was composed from {} stored delta(s); a row that came back inside \
+                     the span cancelled and is not counted",
+                    run.len()
+                ));
+            }
+            return Ok(delta);
+        }
+        // -- rung 4: the two of them share an anchor ------------------------------------------
+        if let Ok(walk_from) = self.walk(from, max)
+            && walk_from.anchor == walk_to.anchor
+            && !walk_from.deltas.is_empty()
+        {
+            let (forward, forward_rows) = self.stored_run(&walk_to.deltas)?;
+            let (backward, backward_rows) = self.stored_run(&walk_from.deltas)?;
+            // Inverting a run means flipping every op *and* walking the deltas newest-first:
+            // the reverse of `A → from` is `from → A`, and the sequence order is part of it.
+            let mut runs: Vec<Vec<TaggedOp>> = backward
+                .into_iter()
+                .rev()
+                .map(|ops| ops.iter().map(TaggedOp::inverted).collect())
+                .collect();
+            runs.extend(forward);
+            let ops = compose(runs.iter().map(Vec::as_slice));
+            let rows = forward_rows + backward_rows;
+            let mut delta = ArchitectureDelta::of(
+                from,
+                to,
+                &ops,
+                &view,
+                warm(from),
+                warm(to),
+                Cost::shared_anchor(rows, walk_to.deltas.len() + walk_from.deltas.len()),
+            );
+            delta.notices.push(format!(
+                "both revisions were read from anchor {} — neither revision was materialised",
+                walk_from.anchor
+            ));
+            return Ok(delta);
+        }
+        // -- rung 5: the expensive answer, reported as such -----------------------------------
+        let (before, _) = self.materialise(from)?;
+        let (after, _) = self.materialise(to)?;
+        let ops = ops_between(&before, &after, &view);
+        Ok(ArchitectureDelta::of(
+            from,
+            to,
+            &ops,
+            &view,
+            Some(&before),
+            Some(&after),
+            Cost::materialised(0, 0),
+        ))
+    }
+
+    /// Per-module edge churn over an explicit list of revisions, oldest first.
+    ///
+    /// One SELECT per revision, no chunk decoded and nothing materialised: churn is a count over
+    /// stored delta rows, which is the one question in this ticket that a stored chain answers
+    /// better than a snapshot store would.
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when a revision in the window has no rows at all.
+    pub fn churn(&self, revisions: &[String]) -> Result<ChurnReport, ChainPartial> {
+        self.churn_with(revisions, None)
+    }
+
+    /// The same window, with the newest revision's graph in hand so each module's current edge count
+    /// can be printed beside its churn — the denominator that tells a 12-event module with three
+    /// edges from a 12-event module with three hundred.
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when a revision in the window cannot be read.
+    pub fn churn_with(
+        &self,
+        revisions: &[String],
+        newest: Option<&Graph>,
+    ) -> Result<ChurnReport, ChainPartial> {
+        let view = self.naming().map_err(|_| ChainPartial::AnchorLost {
+            tree_oid: revisions.last().cloned().unwrap_or_default(),
+            steps: 0,
+        })?;
+        let mut steps = Vec::with_capacity(revisions.len());
+        for tree in revisions {
+            let stored = self.stored_ops(tree)?;
+            steps.push(RevisionOps::new(tree.clone(), stored.ops));
+        }
+        Ok(ChurnReport::measure(&steps, &view, newest))
+    }
+
+    /// The last `window` revisions the store has, oldest first, as a churn window.
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when a revision in the window cannot be read.
+    pub fn churn_recent(&self, window: usize) -> Result<ChurnReport, ChainPartial> {
+        let mut trees = self
+            .store
+            .graph_revisions()
+            .map_err(|_| ChainPartial::AnchorLost {
+                tree_oid: String::from("(listing revisions)"),
+                steps: 0,
+            })?;
+        trees.truncate(window);
+        trees.reverse();
+        self.churn(&trees)
+    }
+
+    /// The ops one revision stored, tagged with the layers it stamped, plus what could not be read.
+    ///
+    /// # Errors
+    ///
+    /// [`ChainPartial`] when the read fails.
+    pub fn stored_ops(&self, tree_oid: &str) -> Result<StoredOps, ChainPartial> {
+        let rows = self
+            .store
+            .graph_ops(tree_oid)
+            .map_err(|_| ChainPartial::AnchorLost {
+                tree_oid: tree_oid.to_string(),
+                steps: 0,
+            })?;
+        let mut out = StoredOps {
+            ops: Vec::with_capacity(rows.len()),
+            unreadable: 0,
+            rows: rows.len(),
+        };
+        for row in &rows {
+            match row_of(row) {
+                Some(r) => out.ops.push(TaggedOp::tagged(
+                    Op {
+                        add: row.op == StoreOp::Add,
+                        row: r,
+                    },
+                    row.src_layer.clone(),
+                    row.dst_layer.clone(),
+                )),
+                None => out.unreadable += 1,
+            }
+        }
+        Ok(out)
+    }
+
+    /// Walk `tree` back to its anchor, translating the store's two failure shapes into the one
+    /// vocabulary the lane already uses.
+    fn walk(&self, tree: &str, max: usize) -> Result<ChainWalk, ChainPartial> {
+        match self.store.graph_chain_walk(tree, max) {
+            Ok(walk) => Ok(walk),
+            Err(GraphWalkError::Partial(partial)) => Err(partial),
+            Err(GraphWalkError::Store(_)) => Err(ChainPartial::AnchorLost {
+                tree_oid: tree.to_string(),
+                steps: 0,
+            }),
+        }
+    }
+
+    /// The stored ops for a run of revisions, oldest first, plus the row count they cost.
+    fn stored_run(&self, run: &[String]) -> Result<(Vec<Vec<TaggedOp>>, usize), ChainPartial> {
+        let mut runs = Vec::with_capacity(run.len());
+        let mut rows = 0_usize;
+        for tree in run {
+            let stored = self.stored_ops(tree)?;
+            rows += stored.rows;
+            runs.push(stored.ops);
+        }
+        Ok((runs, rows))
     }
 
     /// The graph's own bytes on the payload basis — the basis `s3` measured, and therefore the basis
@@ -760,6 +1095,15 @@ impl<'a> Lane<'a> {
         }
         graph.apply(rows.into_iter().map(Op::add));
         Ok((graph, report))
+    }
+}
+
+/// Say out loud that a revision's delta contained rows this build cannot read.
+fn unreadable(delta: &mut ArchitectureDelta, count: usize) {
+    if count > 0 {
+        delta.notices.push(format!(
+            "{count} stored delta row(s) could not be read and are not in this answer: a row this              build has no vocabulary for is missing rows, not a smaller change"
+        ));
     }
 }
 

@@ -16,6 +16,7 @@
 //! | one delta per revision | [`delta`] |
 //! | the anchor, the chain walk, the store rows | [`lane`] over [`fathom_store::graph`] |
 //! | the five questions the panes ask | [`query`] |
+//! | the architecture delta, its four costs and its six findings | [`diff`] |
 //!
 //! # What this deliberately is not
 //!
@@ -69,6 +70,7 @@
 
 pub mod build;
 pub mod delta;
+pub mod diff;
 pub mod layers;
 pub mod model;
 pub mod policy;
@@ -82,6 +84,11 @@ pub mod lane;
 
 pub use crate::graph::build::{BuildOutcome, BuildSummary, Builder, ModuleInput, ModuleRows};
 pub use crate::graph::delta::{EdgeDelta, changed_modules, module_key, module_ops, revision_ops};
+pub use crate::graph::diff::{
+    ArchitectureDelta, Band, CONTRACT, ChurnReport, Cost, EdgeFact, HOT_MODULES, LayerDrift,
+    ModuleChurn, Move, MoveShape, NodeFact, Repoint, Reversal, RevisionOps, Rung, SurfaceChange,
+    TaggedOp, compose, ops_between,
+};
 pub use crate::graph::layers::Layers;
 pub use crate::graph::model::{
     FreshEntry, Graph, Interner, Op, Row, RowKind, SCHEMA_VERSION, Vertex, decode_rows, encode_rows,
@@ -96,7 +103,9 @@ pub use crate::graph::query::{
 };
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
-pub use crate::graph::lane::{Cursor, Lane, MaterialiseReport, RecordSummary, Step, StepKind};
+pub use crate::graph::lane::{
+    Cursor, Lane, MaterialiseReport, RecordSummary, Step, StepKind, StoredOps,
+};
 
 /// The policy and the layer tags, read out of a `fathom.toml` document in one go.
 ///
