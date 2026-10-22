@@ -1050,6 +1050,16 @@ impl Store {
     /// `index_run.interrupted` is the column that says which run did that, and it is the reason the column
     /// exists (§7.6's stated partial).
     ///
+    /// **The order is the answer, not a detail.** The rows come back in the order the walk wrote them,
+    /// read backwards — a parent before its child — because every derivation that reads its parent's
+    /// answer (which `structure.delta` does, §6.1 R2) can only hit if the parent has been asked first. The
+    /// walk emits newest-first, so "backwards" is descending insertion order. `ORDER BY gc.oid`, which
+    /// this query used until `e7.2` measured it against real repositories, is a *hash* order: it was
+    /// stable and it was arbitrary, so a cold index of an 82 k-commit repository asked about every tree
+    /// with its parent's answer missing, every time, and the cost of the whole history landed on every
+    /// commit instead of on the change. Ordering is deterministic either way, which is the only property
+    /// the old clause was buying.
+    ///
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] if the read fails.
@@ -1065,7 +1075,7 @@ impl Store {
                             AND NOT EXISTS (SELECT 1 FROM index_run later
                                             WHERE later.status = 'ok' AND later.interrupted = 0
                                               AND later.id > ir.id))
-                 ORDER BY gc.oid",
+                 ORDER BY gc.rowid DESC",
             )
             .map_err(|err| corrupt("finding commits that still need analysis", &err))?;
         let rows = statement
@@ -1859,6 +1869,33 @@ mod tests {
         assert!(
             store.oids_pending_derivation(later).unwrap().is_empty(),
             "one run's re-lookups is the bound"
+        );
+    }
+
+    #[test]
+    fn the_derivation_list_asks_a_parent_before_its_child() {
+        // The walk emits newest-first, which is the order the rows land in, so the derivation list has to
+        // come back the other way round: an analyzer that reads its parent's answer (`structure.delta`,
+        // §6.1 R2) misses on every commit when the child is asked first, and a cold index then pays the
+        // cost of the whole tree per commit instead of the cost of the change (`reco-66q`, measured on
+        // `git/git`: 6.3 ms per commit that a parent-first order makes into microseconds).
+        let mut store = store();
+        let run = store.begin_run("cold", Trigger::Commit, 1).unwrap();
+        store
+            .write_commits(
+                run,
+                2,
+                &[
+                    commit(&"a".repeat(40)),
+                    commit(&"b".repeat(40)),
+                    commit(&"c".repeat(40)),
+                ],
+            )
+            .unwrap();
+        assert_eq!(
+            store.oids_pending_derivation(run).unwrap(),
+            vec!["c".repeat(40), "b".repeat(40), "a".repeat(40)],
+            "walk order reversed: the oldest row first, so a parent is never asked about second"
         );
     }
 

@@ -188,13 +188,20 @@ pub const ANALYZERS: &[Analyzer] = &[
         est_cost_ms: 2,
     },
     Analyzer {
+        // Version 2: the payload is a chain of deltas anchored every 32 trees, not a copy of the whole
+        // inventory on every row (`reco-66q`, measured on three real repositories). The shape changed, so
+        // every v1 row is unreachable — which is the correct invalidation, not a migration: §9.5 says a
+        // derived row is recomputed rather than rewritten, and the recomputation is what the lane does.
         id: "structure.delta",
-        version: 1,
+        version: 2,
         schema_version: 1,
         scope_kind: "tree",
         config_keys: &["layers.", "noise.globs"],
         depends_on: &["taxonomy.path", "diff.per_file"],
-        source_paths: &["crates/fathom-analyze/src/structure/**"],
+        source_paths: &[
+            "crates/fathom-analyze/src/structure/**",
+            "crates/fathom-analyze/src/index.rs",
+        ],
         est_cost_ms: 4,
     },
     Analyzer {

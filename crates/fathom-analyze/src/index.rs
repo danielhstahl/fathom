@@ -1151,7 +1151,41 @@ fn analyse_path_pair(
     Ok(1)
 }
 
+/// How many delta links a tree's inventory chain carries before it is anchored again.
+///
+/// The cadence is `s3`'s: ADR-004 §13.7 anchors a shared graph snapshot every 32 revisions for the same
+/// reason — a chain that is never re-anchored is cheap to write and ruinous to read. Thirty-two small
+/// links read back in well under a millisecond, and one tree walk per 32 commits is 3 % of the cost of
+/// walking the tree on every commit, which is what this used to do.
+const INVENTORY_ANCHOR_EVERY: u32 = 32;
+
+/// The most a chain is walked backwards when one is read back. Past it the tree is enumerated instead,
+/// which is always right (§7.6: a bad read degrades to re-derivation, never to a partial answer).
+const INVENTORY_CHAIN_LIMIT: u32 = INVENTORY_ANCHOR_EVERY * 4;
+
+/// Whether a link whose parent sits `dep` links below its anchor has to be an anchor itself.
+///
+/// Spelled out as a function because it is the whole anchor policy, and the policy is what a reader of
+/// §6.1 R2 will want to check: at most [`INVENTORY_ANCHOR_EVERY`] delta links ever sit between two
+/// anchors, in either order of derivation, on either side of a crash.
+const fn needs_anchor(dep: u32) -> bool {
+    dep >= INVENTORY_ANCHOR_EVERY
+}
+
 /// The `structure.delta` unit: the file inventory one tree introduces (§6's row one).
+///
+/// The payload is a **chain**, not a copy. A link is either an anchor — the tree enumerated, the only
+/// thing in this function that costs the repository — or a delta: the paths this commit moved, and the
+/// parent tree they apply to. Every link is O(change) to write except one in [`INVENTORY_ANCHOR_EVERY`],
+/// which is O(tree), so §6.1 R2's "the cost is the change, never the repository" is a property of the
+/// code and not a hope.
+///
+/// It was not, before `e7.2`. This function wrote the whole inventory into every row and read the parent's
+/// whole inventory to build it, which is O(files) per commit in time and in bytes; measured on real
+/// repositories (`benchmarks/reports/e7-2-real-repos.json`) that was 5.4–6.3 ms and 172 KB of payload per
+/// commit, 76 % of `git/git`'s cold index and the largest single term in the store's analysis cache. And
+/// the merge it was built around never fired: it asked for the *parent's* row while the derivation loop
+/// walked commits in hash order, so the answer was missing every time and every commit enumerated.
 fn analyse_structure(
     store: &mut Store,
     repo: &Repository,
@@ -1175,144 +1209,272 @@ fn analyse_structure(
         return Ok(0);
     }
     let started = Instant::now();
-    // The parent's inventory is the whole trick. When it is in the cache, this inventory is that one plus
-    // this commit's changed paths and no tree object outside the changed spine is read at all — which is
-    // §6.1 R2 and §6.6 R2: a warm run's cost is the change, never the repository. When it is not (a root
-    // commit, a shallow boundary, the first run after a bump) the tree is enumerated once, and the payload
-    // says which of the two it is, because "cold" and "re-derived" are different diagnoses (§5.6).
-    let parent_inventory = match parent_tree {
+    // The parent's link is the whole trick, and reading it is now cheap because a link is small. What the
+    // link says is only "how long is the chain below me" — the delta itself never needs the parent's files,
+    // because the commit's own changed paths are already in `units`.
+    let parent = match parent_tree {
         None => None,
-        Some(parent) => {
-            store
-                .resolve(
-                    "structure.delta",
-                    &parent.hex(),
-                    Some("tree"),
-                    &options.versions,
-                    &options.config,
-                    now,
-                )?
-                .payload
-        }
+        Some(parent) => store
+            .resolve(
+                "structure.delta",
+                &parent.hex(),
+                Some("tree"),
+                &options.versions,
+                &options.config,
+                now,
+            )?
+            .payload
+            .as_deref()
+            .and_then(Link::from_json)
+            .map(|link| (parent, link)),
     };
-    let inventory = match parent_inventory.as_deref().and_then(Inventory::from_json) {
-        Some(inventory) => inventory.merged(repo, units)?,
-        None => Inventory::enumerate(repo, tree)?,
+    // No link to build on — a root commit, a shallow boundary, a parent this run has not reached yet, or a
+    // payload in some older shape — or a chain that has run its length: spend a tree walk, once, so that
+    // every reader after this one pays at most `INVENTORY_ANCHOR_EVERY` small links.
+    let link = match &parent {
+        None => Link::enumerate(repo, tree)?,
+        Some((_, prev)) if needs_anchor(prev.dep) => Link::enumerate(repo, tree)?,
+        Some((parent, prev)) => Link::delta(repo, *parent, prev.dep + 1, units)?,
     };
     let cost_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     store.put(
         &outcome.key,
-        inventory.to_json().as_bytes(),
+        link.to_json().as_bytes(),
         None,
         cost_ms,
         now,
     )?;
     Ok(1)
 }
-/// One file in an inventory.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct File {
-    /// The path, quoted the way `git_commit_file.new_path` quotes it — a byte-injective spelling, which is
-    /// what lets two inventories be merged without a lossy comparison.
-    path: String,
-    /// The raw mode, `0o100644`-style.
-    mode: u32,
-    /// The blob's size, taken from its object header.
-    size: u64,
-}
 
-/// How an inventory was made, recorded in the payload: `full` cost the tree, `merged` cost the change.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum Derived {
-    /// Derived from the parent tree's inventory plus this commit's changed paths.
-    Merged,
-    /// Enumerated from the tree itself.
-    Full,
-}
+/// One file in an inventory: `[path, mode, size]`, positional.
+///
+/// Positional because this is written once per changed path and read back on every hit, and saying
+/// `"path"`/`"mode"`/`"size"` three times per row costs more than the values do. The tuple order is part
+/// of the payload's shape, which is what `structure.delta`'s analyzer version is for (§5.5).
+type InventoryFile = (String, u32, u64);
 
-/// A tree's file inventory — `structure.delta`'s result, and the reason §6.1 R2's "the cost does not depend
-/// on the repository's size" is worth writing down instead of hoping someone notices.
+/// One link of a tree's inventory chain — an anchor, or the change one commit made to its parent.
+///
+/// Both kinds are the same shape so that one reader handles both: apply `gone`, then `files`, walking
+/// from the anchor down. `full` is the tree enumerated; `delta` is the parent's inventory plus this
+/// commit's changed paths.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Inventory {
-    files: Vec<File>,
-    directories: usize,
+struct Link {
+    /// `full` or `delta`, and recorded in the payload because "cold" and "re-derived" are different
+    /// diagnoses (§5.6).
+    kind: String,
+    /// Links between this one and the anchor below it; `0` on an anchor.
+    dep: u32,
+    /// The tree this delta applies to — the first parent's tree. Absent on an anchor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    base: Option<String>,
+    /// Files this link introduces, as `[path, mode, size]`: every file on an anchor, the added and
+    /// modified ones on a delta.
+    files: Vec<InventoryFile>,
+    /// Paths this link removes. A rename is its source here and its destination in `files`, which is why
+    /// `old_path` is a field of the unit rather than a second unit: the alternative is charging a moved
+    /// file its full size as churn, the mistake §6's invalidation matrix exists to prevent.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    gone: Vec<String>,
+    /// Directories, counted where a tree was actually walked. A delta cannot say anything true about
+    /// directories — whether a path's parent already exists is a fact about the tree it lands in — so a
+    /// chain carries its anchor's count and does not invent a new one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    dirs: Option<usize>,
+    /// The enumeration hit its walk cap (§6's truncation rule), so the inventory is a stated partial.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     truncated: bool,
-    derived: Derived,
 }
 
-impl Inventory {
+impl Link {
+    /// Enumerate a tree: the one thing in this lane that costs the repository.
     fn enumerate(repo: &Repository, tree: Oid) -> Result<Self, Error> {
         let listing = repo.tree_files(tree, None)?;
-        Ok(Inventory {
+        Ok(Link {
+            kind: "full".to_owned(),
+            dep: 0,
+            base: None,
             files: listing
                 .files
                 .iter()
-                .map(|file| File {
-                    path: file.path.quoted(),
-                    mode: file.mode,
-                    size: file.size,
-                })
+                .map(|file| (file.path.quoted(), file.mode, file.size))
                 .collect(),
-            directories: listing.directories,
+            gone: Vec::new(),
+            dirs: Some(listing.directories),
             truncated: listing.truncated,
-            derived: Derived::Full,
         })
     }
 
-    /// Apply one commit's changed paths to its parent's inventory.
+    /// The change one commit's paths make to its parent's inventory.
     ///
-    /// The only git work this does is reading the object *headers* of the paths that changed, which inflate
-    /// nothing (`Repository::object_header`'s whole reason for existing).
-    fn merged(self, repo: &Repository, units: &[Unit]) -> Result<Self, Error> {
-        let mut files: BTreeMap<String, File> = self
-            .files
-            .into_iter()
-            .map(|file| (file.path.clone(), file))
-            .collect();
-        let directories = self.directories;
+    /// The only git work this does is reading the object *headers* of the paths that changed, which
+    /// inflate nothing (`Repository::object_header`'s whole reason for existing).
+    fn delta(repo: &Repository, base: Oid, dep: u32, units: &[Unit]) -> Result<Self, Error> {
+        let mut files: BTreeMap<String, (u32, u64)> = BTreeMap::new();
+        let mut gone: BTreeSet<String> = BTreeSet::new();
         for unit in units {
-            // A rename is one unit that loses one name and gains another, which is why `old_path` is a field
-            // of the unit rather than a second unit: the alternative is charging a moved file its full size
-            // as churn, which is the mistake §6's invalidation matrix exists to prevent.
             if let Some(old) = &unit.old_path {
-                files.remove(old);
+                let _ = gone.insert(old.clone());
             }
             let Some(after) = unit.after else {
-                // Gone. A directory disappearing is the sum of its files disappearing, and each of those is
-                // its own unit, so the count needs no separate handling either.
-                files.remove(&unit.path);
+                // Gone. A directory disappearing is the sum of its files disappearing, and each of those
+                // is its own unit, so nothing needs counting separately.
+                let _ = files.remove(&unit.path);
+                let _ = gone.insert(unit.path.clone());
                 continue;
             };
+            let _ = gone.remove(&unit.path);
             let size = repo.object_header(after)?.map_or(0, |header| header.size);
-            let _ = files.insert(
-                unit.path.clone(),
-                File {
-                    path: unit.path.clone(),
-                    mode: unit.mode.unwrap_or(0o100644),
-                    size,
-                },
-            );
+            let _ = files.insert(unit.path.clone(), (unit.mode.unwrap_or(0o100644), size));
         }
-        Ok(Inventory {
-            files: files.into_values().collect(),
-            directories,
+        Ok(Link {
+            kind: "delta".to_owned(),
+            dep,
+            base: Some(base.hex()),
+            files: files
+                .into_iter()
+                .map(|(path, (mode, size))| (path, mode, size))
+                .collect(),
+            gone: gone.into_iter().collect(),
+            dirs: None,
             truncated: false,
-            derived: Derived::Merged,
         })
+    }
+
+    /// Apply this link to a file map, in the direction the chain is read: down from the anchor.
+    fn apply(&self, files: &mut BTreeMap<String, (u32, u64)>) {
+        for path in &self.gone {
+            let _ = files.remove(path);
+        }
+        for (path, mode, size) in &self.files {
+            let _ = files.insert(path.clone(), (*mode, *size));
+        }
     }
 
     /// Compact JSON. Infallible by construction: every field is a string, an integer or a bool.
     fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap_or_else(|_| String::from(r#"{"derived":"full"}"#))
+        serde_json::to_string(self).unwrap_or_else(|_| String::from(r#"{"kind":"full","dep":0,"files":[]}"#))
     }
 
-    /// `None` for anything that is not a payload this wrote — a truncated blob, an old shape, a corrupt
-    /// byte. The caller then enumerates the tree, which is always right (§7.6: a bad read degrades to
-    /// re-derivation, never to a wrong answer).
+    /// `None` for anything that is not a payload this wrote — a truncated blob, an older shape, a corrupt
+    /// byte. The caller then enumerates the tree, which is always right (§7.6).
     fn from_json(bytes: &[u8]) -> Option<Self> {
         serde_json::from_slice(bytes).ok()
     }
+}
+
+/// How a read-back inventory was made, so a reader can tell what it cost.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Derived {
+    /// An anchor was reached, and the deltas above it were applied: the chain carried the answer.
+    Chain,
+    /// The chain was missing, unreadable or longer than [`INVENTORY_CHAIN_LIMIT`], so the tree was
+    /// enumerated instead (§7.6's degrade-to-re-derivation).
+    Enumerated,
+}
+
+/// A tree's file inventory, read back out of the chain `structure.delta` keeps.
+#[derive(Debug, Clone)]
+pub struct Inventory {
+    /// Every file the tree holds, as `[path, mode, size]`, sorted by path. The path is quoted the way
+    /// `git_commit_file.new_path` quotes it — a byte-injective spelling, which is what lets two links be
+    /// merged without a lossy comparison.
+    pub files: Vec<InventoryFile>,
+    /// Directories, from the anchor the walk reached; `None` when the tree was enumerated by a path that
+    /// did not count them.
+    pub directories: Option<usize>,
+    /// The enumeration that produced an anchor hit its walk cap.
+    pub truncated: bool,
+    /// How this answer was made.
+    pub derived: Derived,
+    /// Delta links walked to get here; `0` for an anchor or a fresh enumeration.
+    pub links: u32,
+}
+
+/// Read a tree's inventory back: walk the chain of `structure.delta` links up to its anchor, then apply
+/// the links forward.
+///
+/// This is the reader the lane's contract implies and nothing shipped yet uses: the delta is only worth
+/// storing if the inventory it describes can still be had. It costs at most
+/// [`INVENTORY_CHAIN_LIMIT`] small reads, and when it cannot get there — a pruned link, an old payload, a
+/// chain from before this representation existed — it enumerates the tree, which is slower and exactly
+/// correct.
+///
+/// # Errors
+///
+/// [`Error`] if the store or the repository cannot be read.
+pub fn inventory(
+    store: &mut Store,
+    repo: &Repository,
+    options: &Options,
+    tree: Oid,
+    now: i64,
+) -> Result<Inventory, Error> {
+    let mut links: Vec<Link> = Vec::new();
+    let mut cursor = tree;
+    let mut broken = false;
+    for _ in 0..=INVENTORY_CHAIN_LIMIT {
+        let outcome = store.resolve(
+            "structure.delta",
+            &cursor.hex(),
+            Some("tree"),
+            &options.versions,
+            &options.config,
+            now,
+        )?;
+        let Some(link) = outcome.payload.as_deref().and_then(Link::from_json) else {
+            broken = true;
+            break;
+        };
+        let anchor = link.kind == "full";
+        let base = link.base.clone();
+        links.push(link);
+        if anchor {
+            break;
+        }
+        let Some(hex) = base else {
+            broken = true;
+            break;
+        };
+        cursor = match hex.parse::<Oid>() {
+            Ok(oid) => oid,
+            Err(_) => {
+                broken = true;
+                break;
+            }
+        };
+    }
+    let walked = links.len();
+    let anchor = match links.last() {
+        Some(last) if last.kind == "full" && !broken => last.clone(),
+        // Nothing to build from: a pruned link, a payload from before this shape, a chain longer than the
+        // walk allows. Enumerate, and say in the answer that that is what happened.
+        _ => {
+            let enumerated = Link::enumerate(repo, tree)?;
+            return Ok(Inventory {
+                files: enumerated.files,
+                directories: enumerated.dirs,
+                truncated: enumerated.truncated,
+                derived: Derived::Enumerated,
+                links: 0,
+            });
+        }
+    };
+    let mut files: BTreeMap<String, (u32, u64)> = BTreeMap::new();
+    for link in links.iter().rev() {
+        link.apply(&mut files);
+    }
+    Ok(Inventory {
+        files: files
+            .into_iter()
+            .map(|(path, (mode, size))| (path, mode, size))
+            .collect(),
+        directories: anchor.dirs,
+        truncated: anchor.truncated,
+        derived: Derived::Chain,
+        links: u32::try_from(walked.saturating_sub(1)).unwrap_or(u32::MAX),
+    })
 }
 
 /// A per-file result, as the analyzer's own payload.
@@ -1556,30 +1718,107 @@ mod tests {
     }
 
     #[test]
-    fn an_inventory_round_trips_through_its_own_payload() {
-        let inventory = Inventory {
-            files: vec![
-                File {
-                    path: "README.md".to_owned(),
-                    mode: 0o100644,
-                    size: 12,
-                },
-                File {
-                    path: "src/main.rs".to_owned(),
-                    mode: 0o100755,
-                    size: 4_096,
-                },
-            ],
-            directories: 2,
+    fn a_link_round_trips_through_its_own_payload() {
+        let link = Link {
+            kind: "delta".to_owned(),
+            dep: 3,
+            base: Some("a".repeat(40)),
+            files: vec![("src/main.rs".to_owned(), 0o100_755, 4_096)],
+            gone: vec![("README.md".to_owned())],
+            dirs: None,
             truncated: false,
-            derived: Derived::Merged,
         };
-        let json = inventory.to_json();
-        let read = Inventory::from_json(json.as_bytes()).unwrap();
-        assert_eq!(read.files.len(), 2);
-        assert_eq!(read.files[1].mode, 0o100755);
-        assert_eq!(read.derived, Derived::Merged);
+        let read = Link::from_json(link.to_json().as_bytes()).expect("the payload is this shape");
+        assert_eq!(read.kind, "delta");
+        assert_eq!(read.dep, 3);
+        assert_eq!(read.base.as_deref(), Some("a".repeat(40).as_str()));
+        assert_eq!(read.files, vec![("src/main.rs".to_owned(), 0o100_755, 4_096)]);
+        assert_eq!(read.gone, vec!["README.md".to_owned()]);
+        // An anchor says nothing about a parent and nothing about directories, and does not pay for the
+        // two `None`s and the empty list in every row of the bigger payload.
+        let anchor = Link {
+            kind: "full".to_owned(),
+            dep: 0,
+            base: None,
+            files: vec![("README.md".to_owned(), 0o100_644, 12)],
+            gone: Vec::new(),
+            dirs: Some(2),
+            truncated: false,
+        };
+        let json = anchor.to_json();
+        assert!(!json.contains("base"), "an anchor names no parent: {json}");
+        assert!(!json.contains("gone"), "and removes nothing: {json}");
+        assert!(json.contains("\"dirs\":2"), "and counts what it counted: {json}");
         // Anything that is not this shape is `None`, and the caller re-derives rather than trusting it.
-        assert!(Inventory::from_json(b"not json").is_none());
+        assert!(Link::from_json(b"not json").is_none());
+    }
+
+    #[test]
+    fn a_chain_of_links_applies_in_the_direction_it_is_read() {
+        // The reader walks up to the anchor and applies down from it, so the anchor's list is the base
+        // and every delta after it is one more edit: add, modify, move, delete, in that order of applying.
+        let anchor = Link {
+            kind: "full".to_owned(),
+            dep: 0,
+            base: None,
+            files: vec![
+                ("README.md".to_owned(), 0o100_644, 12),
+                ("src/main.rs".to_owned(), 0o100_644, 10),
+            ],
+            gone: Vec::new(),
+            dirs: Some(1),
+            truncated: false,
+        };
+        let moved = Link {
+            kind: "delta".to_owned(),
+            dep: 1,
+            base: None,
+            files: vec![("src/lib.rs".to_owned(), 0o100_644, 10)],
+            gone: vec![("src/main.rs".to_owned())],
+            dirs: None,
+            truncated: false,
+        };
+        let last = Link {
+            kind: "delta".to_owned(),
+            dep: 2,
+            base: None,
+            files: vec![("docs/x.md".to_owned(), 0o100_644, 3)],
+            gone: vec![("README.md".to_owned())],
+            dirs: None,
+            truncated: false,
+        };
+        // Collected the way the reader collects them — the tree asked about first, its parent next, the
+        // anchor last — and applied in the opposite direction, which is what [`inventory`] does and what
+        // this test exists to pin: apply oldest-first, so a later link's removal wins over an earlier
+        // link's addition and the result is the newest tree rather than the anchor's.
+        let links = [&last, &moved, &anchor];
+        let mut files: BTreeMap<String, (u32, u64)> = BTreeMap::new();
+        for link in links.iter().rev() {
+            link.apply(&mut files);
+        }
+        assert_eq!(
+            files
+                .into_iter()
+                .map(|(path, (mode, size))| (path, mode, size))
+                .collect::<Vec<_>>(),
+            vec![
+                ("docs/x.md".to_owned(), 0o100_644, 3),
+                ("src/lib.rs".to_owned(), 0o100_644, 10),
+            ],
+            "the tree the three commits arrive at, and nothing left over from the one they started at"
+        );
+    }
+
+    #[test]
+    fn a_chain_is_never_longer_than_the_anchor_interval() {
+        // The read cost bound, as a fact about the policy rather than about one repository.
+        assert!(!needs_anchor(0));
+        assert!(!needs_anchor(INVENTORY_ANCHOR_EVERY - 1));
+        assert!(needs_anchor(INVENTORY_ANCHOR_EVERY));
+        assert!(needs_anchor(INVENTORY_ANCHOR_EVERY * 7));
+        assert!(
+            INVENTORY_CHAIN_LIMIT > INVENTORY_ANCHOR_EVERY,
+            "a reader must be able to reach an anchor before it gives up and enumerates"
+        );
     }
 }
