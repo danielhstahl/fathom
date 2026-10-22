@@ -304,6 +304,12 @@ pub struct Report {
     pub failures: Vec<String>,
     /// Wall time.
     pub elapsed: Duration,
+    /// Where that wall time went, in order, as `(phase, milliseconds)`.
+    ///
+    /// `e7.2`'s real-repository pass (`reco-66q`) found a cold index 25x over its budget with no way to
+    /// say which half was late: the per-analyzer counters add up to a fraction of the run, and the rest
+    /// was invisible. A run that cannot name its phases cannot be made faster, only guessed at.
+    pub phases: Vec<(String, u128)>,
 }
 
 impl Report {
@@ -414,6 +420,30 @@ pub struct ProvisionalRecord {
     pub reason: Reason,
 }
 
+/// The phase names, in run order, as the report prints them.
+pub const PHASE_SPINE: &str = "spine";
+/// The ref snapshot (§4.1) — the store write that says what the refs said.
+pub const PHASE_REFS: &str = "refs";
+/// The per-commit analysis loop: everything between the spine and the worktree.
+pub const PHASE_ANALYSES: &str = "analyses";
+/// The uncommitted pass (§6.4).
+pub const PHASE_WORKTREE: &str = "worktree";
+/// The episode rebuild (§4.3), which is a query over the commit rows and not a second walk.
+pub const PHASE_EPISODES: &str = "episodes";
+/// Closing the `index_run` row and flushing the counters (§9.2).
+pub const PHASE_CLOSE: &str = "close";
+
+/// The phase marks as `(name, whole milliseconds)`, each phase measured from the previous mark.
+fn phase_pairs(marks: Vec<(&'static str, Duration)>) -> Vec<(String, u128)> {
+    let mut out = Vec::with_capacity(marks.len());
+    let mut previous = Duration::ZERO;
+    for (name, at) in marks {
+        let _ = out.push((name.to_owned(), at.saturating_sub(previous).as_millis()));
+        previous = at;
+    }
+    out
+}
+
 /// Index `repo` into `store`.
 ///
 /// # Errors
@@ -446,8 +476,10 @@ pub fn run(
     // 1. The spine, first and through `ingest::run`, which owns the walk, the batching, the resume query and
     //    the `index_run` row — so this run is durable bookkeeping from here on (§9.2). It walks the history
     //    once, and nothing below walks it again: the analyses ask the store which commits this run wrote.
+    let mut phases: Vec<(&'static str, Duration)> = Vec::with_capacity(6);
     let mut sink = StoreSink::deferring(store, now).with_progress(options.progress.clone());
     let spine = ingest::run(repo, taxonomy, &options.ingest, &mut sink)?;
+    phases.push((PHASE_SPINE, started.elapsed()));
     // The walk's own closing tick: it is the first time the run knows how many commits the repository
     // had, and a phase that ends without ever reaching its total reads like a run that stopped early.
     if let Some(progress) = &options.progress {
@@ -469,6 +501,7 @@ pub fn run(
     // ADR-004 Appendix A §4.1's "what the refs said at this instant", which until `e1.3` needed it, nothing
     // had ever said.
     snapshot_refs(repo, store, now)?;
+    phases.push((PHASE_REFS, started.elapsed()));
 
     // 2. What the analyses owe work on, which is a query and not a walk (§6.1 R1): the commits written by
     //    this run, plus any commit whose run never closed cleanly. The second half is what makes an
@@ -555,6 +588,8 @@ pub fn run(
         });
     }
 
+    phases.push((PHASE_ANALYSES, started.elapsed()));
+
     // 4. The worktree (§6.4), unless asked not to look at it or asked to stop.
     let (worktree, worktree_skipped) = if options.worktree == Worktree::Ignore || triggered(options)
     {
@@ -582,6 +617,7 @@ pub fn run(
         (rows, skipped)
     };
 
+    phases.push((PHASE_WORKTREE, started.elapsed()));
     if triggered(options) && interrupted.is_none() {
         interrupted = Some(Interrupted::Cancelled);
     }
@@ -613,6 +649,8 @@ pub fn run(
     } else {
         crate::episodes::Report::default()
     };
+
+    phases.push((PHASE_EPISODES, started.elapsed()));
 
     // 4c. Close the `index_run` row, and only now. Closing it when the commit rows landed would stamp `ok`
     //     on a run whose analyses were then interrupted, and §9.2's whole recovery argument is that this
@@ -646,8 +684,10 @@ pub fn run(
         .map(|id| ((*id).to_owned(), stats_of(&delta, id)))
         .collect();
 
+    phases.push((PHASE_CLOSE, started.elapsed()));
     Ok(Report {
         kind: spine.kind,
+        phases: phase_pairs(phases),
         commits_walked: spine.commits_seen,
         commits_new: spine.commits_new,
         commits_considered: targets.len(),
@@ -828,6 +868,8 @@ fn quiet_report(
         reason: None,
         failures: Vec::new(),
         elapsed: started.elapsed(),
+        // The phases a quiet run has: the check itself, and the worktree pass it still does (§6.4).
+        phases: phase_pairs(vec![(PHASE_WORKTREE, started.elapsed())]),
         quiet: true,
     })
 }

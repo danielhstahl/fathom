@@ -1695,6 +1695,16 @@ fn json_report(
         // Printed every run rather than only on a quiet one, so that `commits.walked: 0` can be read as "a
         // quiet run" or as "an empty repository" without having to guess which.
         "nothing_new": report.quiet,
+        // Where the wall clock went, in whole milliseconds, in run order. Printed every run: a report
+        // that says only "45 s" cannot be argued with, and one that says "spine 3 ms, analyses 44 s"
+        // can be (`reco-66q`). The names are the phases of `fathom_analyze::index::run`.
+        "phases_ms": serde_json::Value::Object(
+            report
+                .phases
+                .iter()
+                .map(|(phase, ms)| (phase.clone(), json!(ms)))
+                .collect::<serde_json::Map<_, _>>(),
+        ),
         "commits": {
             "walked": report.commits_walked,
             "new": report.commits_new,
