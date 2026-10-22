@@ -169,3 +169,11 @@ required-features = ["sqlite-bundled"]
 [[test]]
 name = "graph_lane"
 required-features = ["sqlite-bundled"]
+
+# The cycles (`e3.5`, `reco-8md`): the per-episode answer over the graph lane, so it needs a SQLite
+# backend exactly the way `graph_lane` does. The model itself is asserted in `tests/cycles.rs`, which
+# names no feature at all — that split is the point, and it is what keeps ADR-002 §6.1's
+# `--no-default-features` build honest about cycles as well as about the graph.
+[[test]]
+name = "cycles_episode"
+required-features = ["sqlite-bundled"]

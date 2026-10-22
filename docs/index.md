@@ -72,7 +72,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [test surface](concepts/test-surface.md) · [rename detection](concepts/rename-detection.md) ·
 [rename pairing](concepts/rename-pairing.md) · [structure extraction](concepts/structure-extraction.md) ·
 [the architecture graph, per revision](concepts/architecture-graph.md) ·
-[graph storage](concepts/graph-storage.md)
+[graph storage](concepts/graph-storage.md) · [cycles and cycle debt](concepts/cycle-detection.md)
 
 **Reviewing it** — [episode segmentation](concepts/episode-segmentation.md) ·
 [the delta model](concepts/delta-model.md) · [episode narrative](concepts/episode-narrative.md) ·

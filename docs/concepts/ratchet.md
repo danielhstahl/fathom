@@ -60,8 +60,11 @@ a ratchet that blocks a first-day review teaches nothing about the review.
 
 The related nouns, which are *not* this one:
 
-* **cycle debt** (`e3.5`) — import cycles that exist, baselined with owner and expiry, so only new cycles
-  alarm; the count of nodes inside cycles is a trendable health metric.
+* **cycle debt** ([`e3.5`, shipped](cycle-detection.md)) — import cycles that exist, baselined with owner
+  and expiry, so only new cycles alarm; the count of nodes inside cycles is a trendable health metric. The
+  four-way verdict (`debt` / `violations` / `back` / `stale`) and the day-grain expiry rule live in
+  [cycles and cycle debt](cycle-detection.md); `cycles::debt` is the code that reads this file's
+  `kind = "cycle"` rows.
 * **layering rule** (`e3.6`) — the intended architecture in `fathom.toml`: named layers, allowed and forbidden
   edges. Evaluated as a per-episode **delta**, so the reviewer sees what this turn did rather than what the
   codebase already owed. The ratchet is what makes that subtraction possible.

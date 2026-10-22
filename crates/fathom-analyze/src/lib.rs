@@ -69,6 +69,13 @@ pub mod structure;
 /// layer subgraph and changed edges. The store half is SQLite-gated, like [`index`].
 pub mod graph;
 
+/// The cycles (`e3.5`, `reco-8md`): strongly-connected components *maintained* across episodes rather
+/// than recomputed per one, the shortest offender path for each (module level, with an opt-in
+/// symbol-level view), the debt ledger that keeps a baselined cycle from ever reading as a new violation,
+/// and the two numbers the scorecard trends — cycles and nodes inside cycles. Reads the graph of
+/// [`graph`]; writes nothing.
+pub mod cycles;
+
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod episodes;
