@@ -288,6 +288,18 @@ a node op without `dst = ''` (`dst` is in the PK and not nullable);
 (D16's rule, with a worse failure mode if broken). Details and numbers:
 [graph-storage.md](../concepts/graph-storage.md).
 
+**`e3.2` built that policy, and added one table.** `graph_node` is the vertex dictionary: `node_key`
+(the module path or `<path>::<symbol>`), the `node_id` issued for it, its `kind`, its `[layers]` tag and
+whether its declaration list may have shrunk. It is the one addition §4.6's schema did not already have,
+and it is here because of where the bytes actually are: a delta row's endpoints were paths, a path is
+named in thousands of revisions, and interning them moved the measured cost of a revision from the 22 335 B
+`s3` measured to **6 041 B** — which is the number §14.1's budget was set with room for. Ids never move,
+because a moved id silently rewrites what every stored chunk means; a re-intern refreshes the *tags* and
+keeps the number. Everything else in §4.6 is unchanged, and the three rough edges above are implemented
+as stated: node ops carry `dst = ''`, an anchor's manifest gets its own `graph_chunk` row of kind
+`manifest`, and a second commit reaching a stored tree is counted as a duplicate rather than rewritten.
+Measured on the built lane, longest chain walk 31 steps against `graph.query.max_chain_walk = 32`.
+
 ### 4.7 The single computation site
 
 `v_review_state` derives review state from the ledger — never stored twice, per the glossary entry

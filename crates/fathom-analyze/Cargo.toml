@@ -154,3 +154,18 @@ required-features = ["langs-all"]
 [[example]]
 name = "g3_calibration"
 required-features = ["sqlite-bundled"]
+
+# The graph chain's measurement harness (`e3.2`, `reco-8s4`) records a synthetic repository through
+# the lane into a real store, so it needs a SQLite backend — and nothing else: the structures are
+# synthesised, so it deliberately does not ask for the grammars the other examples need.
+[[example]]
+name = "graph_harness"
+required-features = ["sqlite-bundled"]
+
+# The graph lane (`reco-8s4`) writes and reads the graph tables, so it names the backend it needs the
+# same way `episodes` and `ledger` do. The pure half — `tests/graph.rs` — deliberately does not, which
+# is the point: ADR-002 §6.1 says a `--no-default-features` build still gets the graph model and the
+# five queries, and a test target that asked for SQLite would stop proving that.
+[[test]]
+name = "graph_lane"
+required-features = ["sqlite-bundled"]

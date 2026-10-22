@@ -63,6 +63,12 @@ pub mod search;
 /// absent comes back saying so rather than coming back missing.
 pub mod structure;
 
+/// The module graph (`e3.2`, `reco-8s4`): modules and exported symbols as nodes, imports/uses/
+/// implementations/inheritance as edges, layer tags from `[layers]`, stored as one delta per revision
+/// with a shared anchor every `graph.chain_full_every`, and queried by dependency, dependents, path,
+/// layer subgraph and changed edges. The store half is SQLite-gated, like [`index`].
+pub mod graph;
+
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod episodes;

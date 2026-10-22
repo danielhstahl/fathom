@@ -64,6 +64,13 @@ pub mod search;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod ledger;
 
+/// The module graph as a delta chain: ADR-004 §4.6's `graph_snapshot`/`graph_delta`/`graph_chunk` rows,
+/// the anchor manifest `s3`'s policy writes, the node dictionary that banks its projected interning, and
+/// the bounded chain walk (`e3.2`, `reco-8s4`). Gated with [`spine`]: a graph with nowhere to be stored is
+/// a query API over nothing.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod graph;
+
 /// The writer lease: `flock` + a record + a heartbeat, so "who writes this store" is decided by a lock
 /// rather than by which binary was invoked (ADR-004 §7.1, `e6.3` / `reco-kvk`). Not SQLite-gated: a
 /// lease is a file, and a daemon that cannot open a store still has to find out whether it is the writer.

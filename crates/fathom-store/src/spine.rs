@@ -48,7 +48,13 @@ use sha2::Digest as _;
 /// the bump costs nothing that D12 (ADR-004 §9.5) does not already license: nothing is migrated, every
 /// derived row goes unreachable and is re-derived, and the ledger rows themselves come back from the
 /// committed markdown on the next `fathom review status`.
-pub const SCHEMA_VERSION: i64 = 7;
+///
+/// Version 8 is `e3.2`'s graph lane ([`crate::graph`]): ADR-004 §4.6's four tables — which `s3` proved
+/// hold the policy it chose without a migration of their own — plus `graph_node`, the node dictionary
+/// that banks the interning `s3` projected. Every graph row is class R, so the same argument as
+/// version 7's applies with more force: there is nothing to migrate, and a store that already has
+/// these tables from a `--check` build just re-derives them.
+pub const SCHEMA_VERSION: i64 = 8;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -109,6 +115,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (5, crate::episode::MIGRATION_5),
     (6, crate::episode::MIGRATION_6),
     (7, crate::ledger::MIGRATION_7),
+    (8, crate::graph::MIGRATION_8),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.

@@ -1,0 +1,163 @@
+{
+  "bytes": {
+    "basis": "row text plus blob payload, the basis s3 measured and budgets.json means",
+    "chunk_blobs": 3598,
+    "chunk_bytes": 992926,
+    "delta_payload": 339740,
+    "delta_rows": 13697,
+    "dictionary_payload": 322639,
+    "dictionary_rows": 7584,
+    "dictionary_vertices": 7584,
+    "manifest_blobs": 32,
+    "manifest_bytes": 4386204,
+    "per_revision": 6041,
+    "store_basis": "dbstat",
+    "store_total": 9813404,
+    "total": 6041509
+  },
+  "corpus": {
+    "fan_out": 6,
+    "layers": [
+      [
+        "l0",
+        "core"
+      ],
+      [
+        "l1",
+        "util"
+      ],
+      [
+        "l2",
+        "state"
+      ],
+      [
+        "l3",
+        "api"
+      ],
+      [
+        "tests",
+        "core/tests"
+      ]
+    ],
+    "modules": 2300,
+    "revisions": 1000,
+    "seed": 20260729
+  },
+  "policy": {
+    "chain_full_every": 32,
+    "max_chain_walk": 32,
+    "path_max_hops": 6
+  },
+  "read": {
+    "chain_walk_steps_max": 31,
+    "changed_edges_adjacent": {
+      "max_ms": 0.049,
+      "p50_ms": 0.02,
+      "p95_ms": 0.03,
+      "samples": 800
+    },
+    "changed_edges_came_from_the_store": true,
+    "dependencies_of": {
+      "max_ms": 0.011,
+      "p50_ms": 0.002,
+      "p95_ms": 0.004,
+      "samples": 400
+    },
+    "dependents_of": {
+      "max_ms": 0.043,
+      "p50_ms": 0.014,
+      "p95_ms": 0.019,
+      "samples": 400
+    },
+    "layer_subgraph": {
+      "max_ms": 4.176,
+      "p50_ms": 3.564,
+      "p95_ms": 4.098,
+      "samples": 100
+    },
+    "materialise": {
+      "max_ms": 29.163,
+      "p50_ms": 20.61,
+      "p95_ms": 23.329,
+      "samples": 40
+    },
+    "path": {
+      "max_ms": 0.009,
+      "p50_ms": 0.001,
+      "p95_ms": 0.004,
+      "samples": 400
+    },
+    "step": {
+      "max_ms": 11.446,
+      "p50_ms": 10.087,
+      "p95_ms": 11.231,
+      "samples": 39
+    },
+    "step_samples": 39,
+    "step_samples_onto_anchors": 1,
+    "undecoded_lines": 0
+  },
+  "verdicts": [
+    {
+      "budget": 32768.0,
+      "id": "store.bytes_per_commit_graph.small",
+      "measured": 6041.0,
+      "unit": "bytes",
+      "verdict": "within"
+    },
+    {
+      "budget": 50.0,
+      "id": "warm.graph.marginal.ms.small",
+      "measured": 35.622,
+      "unit": "ms",
+      "verdict": "within"
+    },
+    {
+      "budget": 64.0,
+      "id": "graph.materialise_revision.ms.small",
+      "measured": 23.329,
+      "unit": "ms",
+      "verdict": "within"
+    },
+    {
+      "budget": 50.0,
+      "id": "warm.graph.marginal.ms.small (step)",
+      "measured": 11.231,
+      "unit": "ms",
+      "verdict": "within"
+    },
+    {
+      "budget": 20.0,
+      "id": "query.graph_dependents.ms.small",
+      "measured": 0.019,
+      "unit": "ms",
+      "verdict": "within"
+    },
+    {
+      "budget": 40.0,
+      "id": "query.graph_path.ms.small",
+      "measured": 0.004,
+      "unit": "ms",
+      "verdict": "within"
+    },
+    {
+      "budget": 15.0,
+      "id": "query.graph_delta_adjacent.ms.small",
+      "measured": 0.03,
+      "unit": "ms",
+      "verdict": "within"
+    }
+  ],
+  "write": {
+    "anchors": 32,
+    "chunk_blobs": 62868,
+    "delta_ops": 13697,
+    "max_deltas_between_anchors": 30,
+    "per_revision": {
+      "max_ms": 389.807,
+      "p50_ms": 24.84,
+      "p95_ms": 35.622,
+      "samples": 1000
+    }
+  }
+}

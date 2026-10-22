@@ -71,6 +71,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [dependency risk](concepts/dependency-risk.md) · [non-code surfaces](concepts/noncode-surfaces.md) ·
 [test surface](concepts/test-surface.md) · [rename detection](concepts/rename-detection.md) ·
 [rename pairing](concepts/rename-pairing.md) · [structure extraction](concepts/structure-extraction.md) ·
+[the architecture graph, per revision](concepts/architecture-graph.md) ·
 [graph storage](concepts/graph-storage.md)
 
 **Reviewing it** — [episode segmentation](concepts/episode-segmentation.md) ·

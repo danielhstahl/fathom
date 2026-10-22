@@ -203,6 +203,49 @@ which forces a migration, all of which `e3.2` should know before it discovers th
 - **Windows, NFS, and a real `fathom-store` binary.** Same caveats ADR-004 §14 already
   carries; bytes are row layout, times are a Python floor on one container.
 
+## What `e3.2` measured, having built it
+
+Spike numbers are a floor until the thing they describe exists. `e3.2` (`reco-8s4`) built the lane and
+re-measured it on the same repository shape — 2 300 modules, 1 000 revisions, one to three files per
+commit — with the one difference the spike projected and did not spend: **node ids are interned**, so
+a delta row carries dictionary numbers instead of paths. The harness is
+`cargo run --release -p fathom-analyze --features sqlite-bundled --example graph_harness`, and the
+committed report is `benchmarks/reports/e3-2-graph-chain.json`.
+
+| Quantity | `s3`, prototype, ids not interned | `e3.2`, shipped, ids interned | Budget |
+| --- | --- | --- | --- |
+| `store.bytes_per_commit_graph` | 22 335 B/revision | **6 041 B/revision** | 32 768 B |
+| `warm.graph.marginal.ms` (write one revision) | 0.68 ms p50 (Python, smaller graph) | 24.8 ms p50 / 35.6 ms p95 | 50 ms p95 |
+| `graph.materialise_revision.ms` | 204.6 ms p95 | 20.6 ms p50 / 23.3 ms p95 | 64 ms p95 |
+| one commit of cursor movement | — | 10.1 ms p50 / 11.2 ms p95 | 50 ms p95 |
+| `query.graph_dependents.ms` | — | 0.014 ms p50 / 0.019 ms p95 | 20 ms p95 |
+| `query.graph_path.ms` | — | 0.001 ms p50 / 0.004 ms p95 | 40 ms p95 |
+| `query.graph_delta_adjacent.ms` | — | 0.019 ms p50 / 0.030 ms p95 | 15 ms p95 |
+
+Bytes are row text plus blob payload — the basis `s3` measured, therefore the basis
+`store.bytes_per_commit_graph` means; store pages are reported beside them and never mixed in. The
+5.4× reduction over the prototype is almost entirely interning, and it lands near the "real figure
+near 8 KiB" this page predicted, which is the number the 32 KiB budget was set with room for.
+
+**The measurement moved where the cost is.** The anchor's manifest — one line per live module, each
+line a path's interned id plus the chunk's content address — is now the largest single term: 4 386 204
+B of the 6 041 509 B total, against 339 740 B for all 13 697 delta rows put together. Interning made
+the deltas cheap enough that the manifest is what an anchor costs. Amortised it is 1.85 B per live
+module per revision, which fits; the lever that would shrink it again is an integer chunk handle in
+place of a hex content address, and that is an ADR-004 schema question rather than an `e3.2` one. The
+delta rows themselves are 24.8 B each.
+
+Two things the run proves rather than asserts. **The bound holds**: the longest chain walk needed was
+31 steps against `graph.query.max_chain_walk = 32`, and no line failed to decode. **Content-addressing
+is what makes an anchor cheap to repeat**: 62 868 chunk writes landed as 3 598 distinct chunk rows, a
+17× sharing rate, which is the mechanism behind the byte column and the reason a full snapshot per
+revision stays banned.
+
+The budget was not tightened as part of this ticket, on the reasoning in `benchmarks/BUDGETS.md` that a
+budget moves in a change whose diff says so: the measured 6 041 B is now on the record, and the ratchet
+— most likely to something like 12 KiB, keeping `store.bytes_per_commit_spine`'s sense of headroom —
+belongs to a change that also decides what happens to the manifest.
+
 ## Reproducing it
 
 ```bash
