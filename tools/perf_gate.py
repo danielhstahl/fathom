@@ -176,6 +176,19 @@ COVERAGE: dict[str, tuple[str, str]] = {
                                               "the budget is zero, and `e1.2`'s writer asserts the "
                                               "absence of a per-commit checkpoint in its own tests"),
     "prune.batch_rows": ("not measured yet", "retention is `e1.7`'s"),
+    # --- rate budgets, measured against real repositories rather than the fixture (`e7.2`) --
+    "cold.index.ms_per_commit": ("tools/perf_realrepo.py",
+                                 "cold index into a deleted store, wall time over the commits walked"),
+    "cold.index.ms_per_file_row": ("tools/perf_realrepo.py",
+                                   "cold index wall time over the `git_commit_file` rows the run wrote"),
+    "warm.reindex.ms_per_commit_in_store": ("tools/perf_realrepo.py",
+                                            "warm re-index wall time over the commits already in the "
+                                            "store, with the `phases_ms` split naming where it goes"),
+    "cache.bytes_per_cached_row": ("tools/perf_realrepo.py",
+                                   "the store's own `cache` accounting: result bytes per row, largest "
+                                   "analyzer payload first"),
+    "store.bytes_per_file_row_spine": ("tools/perf_realrepo.py",
+                                       "`dbstat` pages of the spine tables over the file rows they hold")
 }
 
 

@@ -8,7 +8,7 @@ that exists in two places is a budget that drifts, and a drifted budget is a bud
 on (ADR-004 D14).
 
 Every number below is a budget id: `<family>.<size_class>` — so `cold.index.ms.small` is the
-`cold.index.ms` family at the `small` size class. **172 numbers, 43 families, 4 size classes.**
+`cold.index.ms` family at the `small` size class. **192 numbers, 48 families, 4 size classes.**
 
 ## What runs, and where the numbers come from
 
@@ -55,8 +55,11 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | budget family | unit | statistic | small | medium | large | xlarge | measured by | how |
 |---|---|---|---|---|---|---|---|---|
 | `cache.budget.mib` | MiB | ceiling | 256.0 | 512.0 | 2,048.0 | 4,096.0 | not measured yet | needs cache rows in the store; `e1.4` writes them |
+| `cache.bytes_per_cached_row` | bytes | p95 per cached row | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | tools/perf_realrepo.py | the store's own `cache` accounting: result bytes per row, largest analyzer payload first |
 | `cold.graph.ms` | ms | p95 | 60,000.0 | 480,000.0 | 1,800,000.0 | 6,000,000.0 | not measured yet | the graph lane is `e3.2`'s and is not built; `s3` measured its write half |
 | `cold.index.ms` | ms | p95 | 1,500.0 | 20,000.0 | 75,000.0 | 240,000.0 | this harness | `fathom index` into a deleted store, 3 samples, p95 |
+| `cold.index.ms_per_commit` | ms | p95 per commit | 10.0 | 10.0 | 10.0 | 10.0 | tools/perf_realrepo.py | cold index into a deleted store, wall time over the commits walked |
+| `cold.index.ms_per_file_row` | ms | p95 per file row | 4.0 | 4.0 | 4.0 | 4.0 | tools/perf_realrepo.py | cold index wall time over the `git_commit_file` rows the run wrote |
 | `cold.queue_visible.ms` | ms | p95 | 3,000.0 | 8,000.0 | 20,000.0 | 45,000.0 | this harness | TUI first paint through the pty, from spawn to first frame |
 | `graph.materialise_revision.ms` | ms | p95 | 64.0 | 256.0 | 600.0 | 1,200.0 | not measured yet | `s3` measured the prototype floor (204.6 ms p95) and `e3.2` owns the lane that has to clear it |
 | `ingest.file_size_cap.mib` | MiB | cap | 8.0 | 8.0 | 8.0 | 8.0 | `crates/fathom-ingest/tests/memory_cap.rs` | the cap is asserted as a bound, not benched |
@@ -83,11 +86,13 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `rss.tui.mib` | MiB | peak | 120.0 | 180.0 | 260.0 | 400.0 | this harness | `VmHWM` of the TUI child, sampled after every keystroke |
 | `store.bytes_per_commit_graph` | bytes | p50 | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | not measured yet | `s3` measured 22 335 B/revision on a prototype, and `e3.2` owns the lane that has to fit it |
 | `store.bytes_per_commit_spine` | bytes | p50 | 4,096.0 | 4,096.0 | 4,096.0 | 4,096.0 | this harness | `dbstat` pages of the spine tables, over the commit count |
+| `store.bytes_per_file_row_spine` | bytes | p50 per file row | 3,072.0 | 3,072.0 | 3,072.0 | 3,072.0 | tools/perf_realrepo.py | `dbstat` pages of the spine tables over the file rows they hold |
 | `store.size.mib` | MiB | ceiling | 400.0 | 2,048.0 | 8,192.0 | 24,576.0 | this harness | `stat` of the whole store file after the cold run |
 | `store.wal_cap.mib` | MiB | cap | 64.0 | 64.0 | 128.0 | 128.0 | not measured yet | `e1.2`'s writer owns the WAL watermark (ADR-004 §7.4): a size at which a warning fires is asserted by the writer's tests, not benched |
 | `warm.graph.marginal.ms` | ms | p95 | 50.0 | 60.0 | 80.0 | 120.0 | not measured yet | the graph lane is `e3.2`'s and is not built; `s3` measured its prototype floor (0.68 ms p50 / 33 ms p95 per revision) |
 | `warm.reindex.git.share_pct` | % | p95 | 60.0 | 60.0 | 60.0 | 60.0 | not measured yet | needs the git/store split in `fathom index --stats`, which `e1.10` owns and `e1.4`'s R7 makes meaningful |
 | `warm.reindex.ms` | ms | p95 | 150.0 | 200.0 | 300.0 | 400.0 | this harness | one new commit, then `fathom index`, 3 samples, p95 |
+| `warm.reindex.ms_per_commit_in_store` | ms | p95 per commit already in the store | 1.0 | 1.0 | 1.0 | 1.0 | tools/perf_realrepo.py | warm re-index wall time over the commits already in the store, with the `phases_ms` split naming where it goes |
 | `warm.reindex.noop.ms` | ms | p95 | 10.0 | 10.0 | 15.0 | 15.0 | this harness | `fathom index` twice in a row, 3 samples, p95 of the run's own store-side `elapsed_ms` |
 | `warm.reindex.provisional.ms` | ms | p95 | 120.0 | 160.0 | 240.0 | 320.0 | not measured yet | needs a dirty-work-tree index path in the binary (`e1.4` R7) |
 | `warm.reindex.scaling_ratio` | ratio | p50 | 1.25 | 1.25 | 1.25 | 1.25 | not measured yet | `e7.2` (`reco-66q`) runs the 1×/6× pair against real repositories |

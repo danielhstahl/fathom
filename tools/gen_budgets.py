@@ -221,6 +221,72 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "a 150 ms warm budget per commit and much worse under a reader (§7.4)."),
     ("prune.batch_rows", {"small": 5_000, "medium": 5_000, "large": 5_000, "xlarge": 5_000},
      "rows", "cap", "Rows deleted per pruning transaction (§8.1)."),
+
+    # --- rates: the budgets a real repository can actually be judged by (`e7.2`, `reco-66q` -----
+    #
+    # Everything above this line is a ceiling for the *fixture* corpus, and it stays one: the fixture is
+    # the thing CI can run in three minutes on every pull request, its commits touch two paths, and a
+    # ceiling that a real repository could also pass is a ceiling no build ever fails on. What `e7.2`
+    # found (`benchmarks/reports/e7-2-real-repos.md`) is that the fixture's ceilings are unreachable at
+    # the *`medium`* class on real repositories — not for a mysterious reason, but because an index's
+    # cost is a function of work §11.1's two axes do not measure: file *rows* written (churn) and tree
+    # width. `aws/aws-sdk-go` is `medium` on both published axes (5 501 commits, 5 509 files) and writes
+    # 66 521 file rows, twelve per commit, because every release regenerates the SDK; the fixture of the
+    # same class writes about one.
+    #
+    # So these are rate budgets: a ceiling per unit of *work*, measured on the three repositories of
+    # that report after its fixes, with the headroom stated in each rationale. A rate is the same number
+    # at every size class on purpose — the class table is what a rate turns into a per-class ceiling, and
+    # §11.9 does that arithmetic out loud rather than leaving a reader to invent it.
+    ("cold.index.ms_per_commit", {"small": 10, "medium": 10, "large": 10, "xlarge": 10},
+     "ms", "p95 per commit",
+     "The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode "
+     "rebuild, and the per-commit analysis overhead that is not per file — the `phases_ms` of a run "
+     "minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit "
+     "on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so "
+     "this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same "
+     "repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows "
+     "per commit the aws SDK writes, which is what the row budget below is for."),
+    ("cold.index.ms_per_file_row", {"small": 4, "medium": 4, "large": 4, "xlarge": 4},
+     "ms", "p95 per file row",
+     "The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the "
+     "cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` "
+     "phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting "
+     "puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the "
+     "cache lookups and puts around them. So this is ~2x of measured — which is the shape "
+     "`diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the "
+     "same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured "
+     "4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had "
+     "ever measured — the second bug in this section's other commit."),
+    ("warm.reindex.ms_per_commit_in_store", {"small": 1, "medium": 1, "large": 1, "xlarge": 1},
+     "ms", "p95 per commit already in the store",
+     "What a warm re-index pays per commit it did *not* have to look at — the O(repository) term of a "
+     "run that is supposed to be O(change) (§6.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on "
+     "aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode "
+     "rebuild, which re-reads and re-segments the whole reachable history on every run because "
+     "`episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget "
+     "is ~1.8x that, and it is a description of what the code does rather than an endorsement: the "
+     "number to beat is the one that goes to zero when segmentation becomes incremental, and §11.7 "
+     "says what happens to `warm.reindex.ms` while it does not."),
+    ("cache.bytes_per_cached_row", {"small": 32_768, "medium": 32_768, "large": 32_768,
+                                    "xlarge": 32_768}, "bytes", "p95 per cached row",
+     "The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache "
+     "fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload "
+     "has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row "
+     "when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas "
+     "(aws, 4 756 tree rows), so this is ~1.4x of measured — and the reason it is that close is that "
+     "the anchor cadence (one full enumeration per 32 commits, §13.7's) is what sets it: double the "
+     "cadence and the payload halves, halve it and it doubles, and §6.1 R2 is the reason the cadence "
+     "exists at all."),
+    ("store.bytes_per_file_row_spine", {"small": 3_072, "medium": 3_072, "large": 3_072,
+                                        "xlarge": 3_072}, "bytes", "p50 per file row",
+     "`git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per "
+     "commit — the denominator §11.6's 4 KiB-per-commit model gets wrong for every repository whose "
+     "commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over "
+     "66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the "
+     "classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and "
+     "measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row "
+     "count times this row size, and §11.6 has to be read with this row in it from now on."),
 ]
 
 # Machine-readable CI gate rules from §11.8, so `e0.11` reads them instead of encoding them.

@@ -285,6 +285,20 @@ class Repo:
                 "spine_bytes": split.get("spine"), "cache_bytes": split.get("cache"),
                 "tables": split.get("tables", {})}
 
+    def spine_rows(self) -> int:
+        """The `git_commit_file` rows the store holds — the denominator a churn-shaped budget wants."""
+        import sqlite3
+
+        if not self.store.exists():
+            return 0
+        connection = sqlite3.connect(f"file:{self.store}?mode=ro", uri=True)
+        try:
+            return int(connection.execute("select count(*) from git_commit_file").fetchone()[0])
+        except sqlite3.Error:
+            return 0
+        finally:
+            connection.close()
+
     def analyzer_costs(self) -> list[dict]:
         """Where the indexer spent its time, from the store's own per-row counters."""
         import sqlite3
@@ -388,6 +402,57 @@ class Repo:
                         f"cache.budget.mib.{cls}", budget_value(f"cache.budget.mib.{cls}"),
                         how="every payload in `.fathom/objects` — the class-R cache this budget is a "
                             "cap on, measured for the first time by this harness"))
+
+        # The rate budgets, ADR-004 §11.9 (`reco-66q`). These are the same measurements divided by the
+        # work that caused them, and they exist because the per-class ceilings above are fixtures of a
+        # corpus whose commits touch two paths: on a repository whose commits touch twelve, or whose tip
+        # regenerates four thousand files, the per-commit quotient is not a property of the commit at
+        # all. The decomposition is the one the run's own `phases_ms` gives: everything the run pays per
+        # commit is the spine/ref/episode/worktree/close phases, and everything it pays per *file row* is
+        # the analyses phase, so nothing is counted twice and neither term borrows the other's work.
+        phases = report.get("phases_ms") or {}
+        per_commit_ms = sum(phases.get(name, 0)
+                            for name in ("spine", "refs", "worktree", "episodes", "close"))
+        file_rows = self.spine_rows()
+        analyzers = self.analyzer_costs()
+        self.record(Row(f"cold.index.ms_per_commit.{self.label}", "ms",
+                        round(per_commit_ms / max(1, facts["commits"]), 2),
+                        f"cold.index.ms_per_commit.{cls}",
+                        budget_value(f"cold.index.ms_per_commit.{cls}"),
+                        how="the commit-shaped term of the cold index — `phases_ms` of spine + refs + "
+                            "worktree + episodes + close, over the commits walked — so that the file "
+                            "rows a commit writes are charged to the row budget and not twice",
+                        detail={"phases_ms": phases, "file_rows": file_rows}))
+        self.record(Row(f"cold.index.ms_per_file_row.{self.label}", "ms",
+                        round(phases.get("analyses", 0) / max(1, file_rows), 2),
+                        f"cold.index.ms_per_file_row.{cls}",
+                        budget_value(f"cold.index.ms_per_file_row.{cls}"),
+                        how="the `analyses` phase over the `git_commit_file` rows the run wrote — "
+                            "blob reads, line diffs, classification, cache lookups and puts",
+                        detail={"analyses_ms": phases.get("analyses")}))
+        widest = max(analyzers, key=lambda a: a["bytes_per_row"], default=None)
+        self.record(Row(f"cache.bytes_per_cached_row.{self.label}", "bytes",
+                        widest["bytes_per_row"] if widest else None,
+                        f"cache.bytes_per_cached_row.{cls}",
+                        budget_value(f"cache.bytes_per_cached_row.{cls}"),
+                        how=f"the widest per-row payload the store holds "
+                            f"(`{widest['analyzer']}`) — this is what `cache.budget.mib` is made of",
+                        detail=widest))
+        self.record(Row(f"store.bytes_per_file_row_spine.{self.label}", "bytes",
+                        int((sizes["spine_bytes"] or 0) // max(1, file_rows)),
+                        f"store.bytes_per_file_row_spine.{cls}",
+                        budget_value(f"store.bytes_per_file_row_spine.{cls}"),
+                        how="`dbstat` pages of the spine tables over the file rows they hold, which is "
+                            "the denominator §11.6's per-commit model is missing",
+                        detail={"spine_bytes": sizes["spine_bytes"], "file_rows": file_rows}))
+        self.record(Row(f"warm.reindex.ms_per_commit_in_store.{self.label}", "ms",
+                        round(warm["wall_ms"] / max(1, facts["commits"]), 3),
+                        f"warm.reindex.ms_per_commit_in_store.{cls}",
+                        budget_value(f"warm.reindex.ms_per_commit_in_store.{cls}"),
+                        how="a warm re-index over the commits already in the store — the O(repository) "
+                            "term of a run that is meant to be O(change) (§6.6 R1)",
+                        detail={"warm_wall_ms": round(warm["wall_ms"], 1),
+                                "commits": facts["commits"]}))
 
         stats, _rss, _out = self.samples_verb(["stats", "--json"])
         self.record(Row(f"query.metrics.ms.{self.label}", "ms", round(stats, 1),
@@ -526,9 +591,8 @@ def write_markdown(report: dict) -> str:
         "",
         "The budgets are the same numbers `make bench-check` judges the deterministic fixture corpus "
         "against; this report judges them against real repositories, which is what `reco-66q` asks for. "
-        "Nothing here replaces `benchmarks/reports/perf-gate.md`, which is the fixture side of the same "
-        "budgets.",
-        "",
+        "The fixture side stays where it is — `benchmarks/baselines/perf-gate.json` is still the "
+        "regression detector, because it is the half that runs in seconds on every pull request.",
         "## How each number is obtained",
         "",
         "| number | method |",

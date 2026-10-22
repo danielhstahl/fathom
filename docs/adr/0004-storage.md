@@ -950,11 +950,23 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
+| `cache.bytes_per_cached_row` | bytes | p95 per cached row | 32,768 | 32,768 | 32,768 | 32,768 | The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured — and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, §13.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and §6.1 R2 is the reason the cadence exists at all. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
 | `cold.graph.ms` | ms | p95 | 1,800,000 | 480,000 | 60,000 | 6,000,000 | Graph lane, lazy and interruptible (§8.5). The small-class value is `e3.2`'s own 60 s/1 000 commits, carried here rather than restated. `s3` measured the *write* half of this lane at 0.68 ms p50 / 33 ms p95 per revision on a 10 004-commit prototype store (ADR-004 §13.7) — about 7 s per 10 000 commits against this budget — so it stays where `e3.2` put it: the lane is not write-bound, it is materialisation-bound, and that number has a budget of its own (`graph.materialise_revision.ms`). |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
 | `cold.index.ms` | ms | p95 | 75,000 | 20,000 | 1,500 | 240,000 | Spine only: walk, normalize, episode segmentation, episode-scoped analyzers. ~3.3k commits/s from `medium` up. Reference point: the Python contract fixture manages 235 commits/s (ADR-004 §13.2); this is a budget for `fathom-store`, not a claim about the prototype. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `cold.index.ms_per_commit` | ms | p95 per commit | 10 | 10 | 10 | 10 | The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode rebuild, and the per-commit analysis overhead that is not per file — the `phases_ms` of a run minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows per commit the aws SDK writes, which is what the row budget below is for. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `cold.index.ms_per_file_row` | ms | p95 per file row | 4 | 4 | 4 | 4 | The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the cache lookups and puts around them. So this is ~2x of measured — which is the shape `diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured 4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had ever measured — the second bug in this section's other commit. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1062,6 +1074,10 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
+| `store.bytes_per_file_row_spine` | bytes | p50 per file row | 3,072 | 3,072 | 3,072 | 3,072 | `git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per commit — the denominator §11.6's 4 KiB-per-commit model gets wrong for every repository whose commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over 66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row count times this row size, and §11.6 has to be read with this row in it from now on. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
 | `store.size.mib` | MiB | ceiling | 8,192 | 2,048 | 400 | 24,576 | Whole store including the analysis cache. Derived from the per-commit byte model of §11.6, not guessed. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
@@ -1079,6 +1095,10 @@ is a budget row lookup, never an `if` in product code.
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
 | `warm.reindex.ms` | ms | p95 | 300 | 200 | 150 | 400 | One new commit on top of a warm store. `small` is `e1.4`'s own number; the others follow from the claim that warm cost is O(changed paths), not O(repository) — a claim `e0.11` asserts directly as `warm.reindex.scaling_ratio`. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `warm.reindex.ms_per_commit_in_store` | ms | p95 per commit already in the store | 1 | 1 | 1 | 1 | What a warm re-index pays per commit it did *not* have to look at — the O(repository) term of a run that is supposed to be O(change) (§6.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode rebuild, which re-reads and re-segments the whole reachable history on every run because `episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget is ~1.8x that, and it is a description of what the code does rather than an endorsement: the number to beat is the one that goes to zero when segmentation becomes incremental, and §11.7 says what happens to `warm.reindex.ms` while it does not. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1192,6 +1212,87 @@ decoration.
 * `e7.2` (`reco-66q`) may rewrite a budget only by changing `tools/gen_budgets.py` with a written
   rationale, which regenerates this document. Quiet misses are the failure mode; the mechanism to
   do it loudly is the whole point of D14.
+
+### 11.9 What `e7.2` measured against real repositories, and what it changed here
+
+`reco-66q` ran §11's budgets against real open-source repositories for the first time, with
+`tools/perf_realrepo.py` (the harness, and what each number's method is, is in that file's own
+docstring; the numbers are `benchmarks/reports/e7-2-real-repos.md` and its `.json` payload). The
+three repositories were chosen for §11.1's two axes plus a third thing the axes cannot express:
+`aws/aws-sdk-go` (5 501 commits, 5 509 files, `medium`, generated code — every release rewrites
+thousands of machine-written files), `git/git` (82 542 commits, 4 857 files, `xlarge` on commits)
+and `tensorflow/tensorflow` (201 675 commits, 37 370 files, `xlarge` on both). The box was 8 cores
+with 7 934 MiB of RAM, so §11.8's `skip_xlarge_below_ram_mib` applies to the *gate*; the
+repositories that fall into `xlarge` were still measured, and are reported against the class they
+are, because "we did not run it" is not a budget verdict.
+
+**The finding, in one sentence: the budgets are missing a denominator.** §11.1 classes a repository
+by commit count and tracked-file count, and neither of those is what an index costs. Cost is a
+function of the *file rows a history writes* (churn) and the *width of a tree per commit*
+(enumeration), and on the fixture corpus both are near their minimum: a fixture commit touches
+about two paths. `aws-sdk-go` is `medium` on both published axes and writes **66 521 file rows,
+twelve per commit**. Eight of eleven budgets missed on it — `cold.index.ms` at 19× — and every one
+of the misses that looked mysterious from its own number had a cause once the run was attributed by
+phase (`fathom index --json`'s `phases_ms`, added by this ticket for exactly that argument).
+
+What the fixes were, and what they were worth on that repository (the commits carry the before and
+after in full):
+
+| change | the number it moved | before → after |
+| --- | --- | --- |
+| `resolve()`'s twin diagnostic did not constrain `input_kind`, so it scanned the whole `cache` table once per **miss**: the cold index cost grew quadratically in its own output | `analyses` phase, aws | 319,876 ms → 140,620 ms |
+| `structure.delta` stored a tree's whole inventory per row instead of a chain of deltas, and asked for the parent tree in an order that could not have it | `.fathom/objects`, aws | 764.9 MiB → 104.8 MiB (budget 512) |
+| read verbs ran `PRAGMA quick_check` + the foreign-key scan on every process start, which §9.6 and the function's own comment both assign to `doctor` | `fathom show --json` end to end | 621 ms → 176 ms |
+
+Cold index on aws went 380.6 s → 161.2 s and still misses `cold.index.ms.medium` (20 s) by 8.1×.
+That is deliberate: **`cold.index.ms` is not being revised.** A ceiling raised until the current
+code passes it would stop failing on the things that are actually wrong with it — `diff.per_file`
+at 1.20 ms/row, the spine at 5.0 ms/commit, the `Store::inventory()` read that is still on the
+query path — and §11.1's size classes were always the *fixture* corpus's (§11.8's first bullet),
+which is the thing CI can gate in three minutes. What was stale was not the fixture's ceiling; it
+was the assumption that it was a statement about repositories.
+
+So `tools/gen_budgets.py` gained **rate budgets**: the same measurements divided by the work that
+caused them, with the headroom in the rationale. `cold.index.ms_per_commit` (10 ms) and
+`cold.index.ms_per_file_row` (4 ms) together say what a cold index may cost, and a per-class
+ceiling is arithmetic away — `medium` at its §11.1 maxima with a real-world twelve rows per commit
+is 10 000 × 10 ms + 120 000 × 4 ms ≈ 580 s, against the 161 s measured. `warm.reindex.ms_per_commit_in_store`
+(1 ms) budgets the O(repository) term a warm run still pays — measured 0.55 ms/commit, and it is
+a *description* of the episode rebuild re-segmenting every reachable commit on every run, not an
+endorsement: the number to beat is the one that tends to zero when segmentation becomes incremental,
+and until then §11.7's warning about `warm.reindex.ms` is live for every user whose repository
+grows up. `cache.bytes_per_cached_row` (32 KiB) and `store.bytes_per_file_row_spine` (3 KiB) are
+the per-row halves of `cache.budget.mib` and §11.6, which is where those two budgets become
+implementable: a cap on the cache with no ceiling per cached row is a policy nobody can code.
+
+The dispositions, stated rather than implied:
+
+| budget | measured on aws after the fixes | budget | disposition |
+| --- | ---: | ---: | --- |
+| `cold.index.ms` | 161,225 ms | 20,000 ms | **held, failing.** The remaining cost is named (diff engine, spine, `inventory()`); raising the ceiling would only make it invisible. The rate budgets above are what a real repository is judged by meanwhile. |
+| `warm.reindex.ms` | 3,024 ms | 200 ms | **held, failing**, and re-expressed as `warm.reindex.ms_per_commit_in_store`, which it passes. The fix is incremental episode segmentation; this ticket did not attempt it, and says so. |
+| `warm.reindex.noop.ms` | 35 ms | 10 ms | **held, failing.** ~10 ms of that is fork+exec+open, which the budget's in-process definition does not contain; the store-side no-op is the ~1 ms §6.6 R1 promises and is measured passing. |
+| `query.metrics.ms` | 176 ms | 400 ms | **passes** as of this ticket. |
+| `query.card.ms` | 179 ms | 50 ms | **held, failing.** Whole-process now 3.6× over instead of 12×. `Store::inventory()` + `cache_inventory()` are the next term, named in the fix's commit message. |
+| `rss.cold_index.peak_mib` | 1,636 MiB | 500 MiB | **held, failing, not root-caused here.** ~25 KiB resident per file row on aws; §11.6's 38 MiB-at-1 000-commits floor was measured on a corpus whose commits are an order of magnitude smaller than a real one's. Candidates: the deferring spine sink and the object reads `diff.per_file` makes. |
+| `store.bytes_per_commit_spine` | 27,264 B | 4,096 B | **explained and re-based**, not relaxed: it is 2,242 B/row × 12.1 rows/commit, and `store.bytes_per_file_row_spine` (3 KiB) is the budget that says something true about it. §11.6 has to be read with the row in it. |
+| `cache.budget.mib` | 104.8 MiB | 512 MiB | **passes** as of this ticket, having been a 1.5× miss before it; `cache.bytes_per_cached_row` is what keeps it passing. |
+| `store.size.mib` | 291 MiB | 2,048 MiB | passes. |
+| `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. |
+| `query.diff_first_hunk.ms` | 223 ms | 40 ms | **held, failing**: the first `@@` of a 100 000-line generated file is a different problem from the first `@@` of a source file, and the pty probe does not distinguish them. |
+| `rss.tui.mib` | 197 MiB | 180 MiB | **held, failing** by 9 %, on a store whose episodes are the aws release commits; not chased further here. |
+
+Two things this ticket did not fix and did not pretend to, recorded because they are the shape of
+what is left. TensorFlow is the repository that stays out of reach: at a 12-minute deadline the
+fixed binary had completed the spine (201 675 commits, 880 546 file rows) and derived 11 094 tree
+rows, of which **4,491 are anchors carrying a full 37 370-path enumeration (~830 KB each, 99.97 %
+of the bytes)** where the 1-in-32 cadence alone would have produced ~350 — on a merge-heavy
+monorepo history the parent tree is usually not derived yet when the child is asked, so a link has
+to be an anchor, and an anchor's cost is the tree. The follow-ups that would actually move it are
+deriving in first-parent order and compressing anchor payloads, not a smaller cadence. And the two
+`git/git` runs on either side of the fixes were not a clean pair (the pre-fix run shared the box
+with two other measurements), so its numbers are reported as bounds in the report rather than as a
+ratio — which is the kind of thing a report should say out loud rather than round away.
 
 ---
 

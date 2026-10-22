@@ -1547,6 +1547,186 @@
    "size_class": "xlarge",
    "statistic": "cap",
    "unit": "rows"
+  },
+  {
+   "budget": 10,
+   "family": "cold.index.ms_per_commit",
+   "id": "cold.index.ms_per_commit.small",
+   "rationale": "The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode rebuild, and the per-commit analysis overhead that is not per file \u2014 the `phases_ms` of a run minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows per commit the aws SDK writes, which is what the row budget below is for.",
+   "size_class": "small",
+   "statistic": "p95 per commit",
+   "unit": "ms"
+  },
+  {
+   "budget": 10,
+   "family": "cold.index.ms_per_commit",
+   "id": "cold.index.ms_per_commit.medium",
+   "rationale": "The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode rebuild, and the per-commit analysis overhead that is not per file \u2014 the `phases_ms` of a run minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows per commit the aws SDK writes, which is what the row budget below is for.",
+   "size_class": "medium",
+   "statistic": "p95 per commit",
+   "unit": "ms"
+  },
+  {
+   "budget": 10,
+   "family": "cold.index.ms_per_commit",
+   "id": "cold.index.ms_per_commit.large",
+   "rationale": "The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode rebuild, and the per-commit analysis overhead that is not per file \u2014 the `phases_ms` of a run minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows per commit the aws SDK writes, which is what the row budget below is for.",
+   "size_class": "large",
+   "statistic": "p95 per commit",
+   "unit": "ms"
+  },
+  {
+   "budget": 10,
+   "family": "cold.index.ms_per_commit",
+   "id": "cold.index.ms_per_commit.xlarge",
+   "rationale": "The commit-shaped term of a cold index: spine walk and row write, the ref snapshot, the episode rebuild, and the per-commit analysis overhead that is not per file \u2014 the `phases_ms` of a run minus its `analyses` phase, over the commits walked. Measured post-`reco-66q` at 5.54 ms/commit on `aws/aws-sdk-go` (5 501 commits: 5.01 of it the spine phase, 0.53 the episode rebuild), so this is ~1.8x of measured. `cold.index.ms` divided by commits is NOT this number: on the same repository that quotient is 31.6 ms, because the quotient is charged for the twelve file rows per commit the aws SDK writes, which is what the row budget below is for.",
+   "size_class": "xlarge",
+   "statistic": "p95 per commit",
+   "unit": "ms"
+  },
+  {
+   "budget": 4,
+   "family": "cold.index.ms_per_file_row",
+   "id": "cold.index.ms_per_file_row.small",
+   "rationale": "The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the cache lookups and puts around them. So this is ~2x of measured \u2014 which is the shape `diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured 4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had ever measured \u2014 the second bug in this section's other commit.",
+   "size_class": "small",
+   "statistic": "p95 per file row",
+   "unit": "ms"
+  },
+  {
+   "budget": 4,
+   "family": "cold.index.ms_per_file_row",
+   "id": "cold.index.ms_per_file_row.medium",
+   "rationale": "The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the cache lookups and puts around them. So this is ~2x of measured \u2014 which is the shape `diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured 4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had ever measured \u2014 the second bug in this section's other commit.",
+   "size_class": "medium",
+   "statistic": "p95 per file row",
+   "unit": "ms"
+  },
+  {
+   "budget": 4,
+   "family": "cold.index.ms_per_file_row",
+   "id": "cold.index.ms_per_file_row.large",
+   "rationale": "The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the cache lookups and puts around them. So this is ~2x of measured \u2014 which is the shape `diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured 4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had ever measured \u2014 the second bug in this section's other commit.",
+   "size_class": "large",
+   "statistic": "p95 per file row",
+   "unit": "ms"
+  },
+  {
+   "budget": 4,
+   "family": "cold.index.ms_per_file_row",
+   "id": "cold.index.ms_per_file_row.xlarge",
+   "rationale": "The row-shaped term: read both blob versions, diff them, classify, cache the answer, and the cache lookups and puts that go with it. Measured post-`reco-66q` at 1.96 ms/row (aws, `analyses` phase over 66 521 rows, 161 225 ms end to end), of which the store's own per-analyzer accounting puts 1.20 ms in `diff.per_file` and 0.07 ms in `structure.delta` per file row, and the rest is the cache lookups and puts around them. So this is ~2x of measured \u2014 which is the shape `diff.per_file.ms` (4 ms/row) already has, and deliberately the same: the two budgets are the same physical quantity seen from the run and from the analyzer. Before `reco-66q` this measured 4.81 ms/row on aws and the run paid a further ~2.7 ms/row inside a cache scan nothing had ever measured \u2014 the second bug in this section's other commit.",
+   "size_class": "xlarge",
+   "statistic": "p95 per file row",
+   "unit": "ms"
+  },
+  {
+   "budget": 1,
+   "family": "warm.reindex.ms_per_commit_in_store",
+   "id": "warm.reindex.ms_per_commit_in_store.small",
+   "rationale": "What a warm re-index pays per commit it did *not* have to look at \u2014 the O(repository) term of a run that is supposed to be O(change) (\u00a76.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode rebuild, which re-reads and re-segments the whole reachable history on every run because `episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget is ~1.8x that, and it is a description of what the code does rather than an endorsement: the number to beat is the one that goes to zero when segmentation becomes incremental, and \u00a711.7 says what happens to `warm.reindex.ms` while it does not.",
+   "size_class": "small",
+   "statistic": "p95 per commit already in the store",
+   "unit": "ms"
+  },
+  {
+   "budget": 1,
+   "family": "warm.reindex.ms_per_commit_in_store",
+   "id": "warm.reindex.ms_per_commit_in_store.medium",
+   "rationale": "What a warm re-index pays per commit it did *not* have to look at \u2014 the O(repository) term of a run that is supposed to be O(change) (\u00a76.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode rebuild, which re-reads and re-segments the whole reachable history on every run because `episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget is ~1.8x that, and it is a description of what the code does rather than an endorsement: the number to beat is the one that goes to zero when segmentation becomes incremental, and \u00a711.7 says what happens to `warm.reindex.ms` while it does not.",
+   "size_class": "medium",
+   "statistic": "p95 per commit already in the store",
+   "unit": "ms"
+  },
+  {
+   "budget": 1,
+   "family": "warm.reindex.ms_per_commit_in_store",
+   "id": "warm.reindex.ms_per_commit_in_store.large",
+   "rationale": "What a warm re-index pays per commit it did *not* have to look at \u2014 the O(repository) term of a run that is supposed to be O(change) (\u00a76.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode rebuild, which re-reads and re-segments the whole reachable history on every run because `episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget is ~1.8x that, and it is a description of what the code does rather than an endorsement: the number to beat is the one that goes to zero when segmentation becomes incremental, and \u00a711.7 says what happens to `warm.reindex.ms` while it does not.",
+   "size_class": "large",
+   "statistic": "p95 per commit already in the store",
+   "unit": "ms"
+  },
+  {
+   "budget": 1,
+   "family": "warm.reindex.ms_per_commit_in_store",
+   "id": "warm.reindex.ms_per_commit_in_store.xlarge",
+   "rationale": "What a warm re-index pays per commit it did *not* have to look at \u2014 the O(repository) term of a run that is supposed to be O(change) (\u00a76.6 R1). Measured post-`reco-66q` at 0.55 ms/commit on aws (5 501 commits, one new commit, 2 905 ms of the 3 024 ms warm run spent in the episode rebuild, which re-reads and re-segments the whole reachable history on every run because `episode_inputs` needs every commit's paths and `write_episodes` upserts every episode). Budget is ~1.8x that, and it is a description of what the code does rather than an endorsement: the number to beat is the one that goes to zero when segmentation becomes incremental, and \u00a711.7 says what happens to `warm.reindex.ms` while it does not.",
+   "size_class": "xlarge",
+   "statistic": "p95 per commit already in the store",
+   "unit": "ms"
+  },
+  {
+   "budget": 32768,
+   "family": "cache.bytes_per_cached_row",
+   "id": "cache.bytes_per_cached_row.small",
+   "rationale": "The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured \u2014 and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, \u00a713.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and \u00a76.1 R2 is the reason the cadence exists at all.",
+   "size_class": "small",
+   "statistic": "p95 per cached row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 32768,
+   "family": "cache.bytes_per_cached_row",
+   "id": "cache.bytes_per_cached_row.medium",
+   "rationale": "The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured \u2014 and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, \u00a713.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and \u00a76.1 R2 is the reason the cadence exists at all.",
+   "size_class": "medium",
+   "statistic": "p95 per cached row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 32768,
+   "family": "cache.bytes_per_cached_row",
+   "id": "cache.bytes_per_cached_row.large",
+   "rationale": "The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured \u2014 and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, \u00a713.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and \u00a76.1 R2 is the reason the cadence exists at all.",
+   "size_class": "large",
+   "statistic": "p95 per cached row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 32768,
+   "family": "cache.bytes_per_cached_row",
+   "id": "cache.bytes_per_cached_row.xlarge",
+   "rationale": "The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured \u2014 and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, \u00a713.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and \u00a76.1 R2 is the reason the cadence exists at all.",
+   "size_class": "xlarge",
+   "statistic": "p95 per cached row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 3072,
+   "family": "store.bytes_per_file_row_spine",
+   "id": "store.bytes_per_file_row_spine.small",
+   "rationale": "`git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per commit \u2014 the denominator \u00a711.6's 4 KiB-per-commit model gets wrong for every repository whose commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over 66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row count times this row size, and \u00a711.6 has to be read with this row in it from now on.",
+   "size_class": "small",
+   "statistic": "p50 per file row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 3072,
+   "family": "store.bytes_per_file_row_spine",
+   "id": "store.bytes_per_file_row_spine.medium",
+   "rationale": "`git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per commit \u2014 the denominator \u00a711.6's 4 KiB-per-commit model gets wrong for every repository whose commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over 66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row count times this row size, and \u00a711.6 has to be read with this row in it from now on.",
+   "size_class": "medium",
+   "statistic": "p50 per file row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 3072,
+   "family": "store.bytes_per_file_row_spine",
+   "id": "store.bytes_per_file_row_spine.large",
+   "rationale": "`git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per commit \u2014 the denominator \u00a711.6's 4 KiB-per-commit model gets wrong for every repository whose commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over 66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row count times this row size, and \u00a711.6 has to be read with this row in it from now on.",
+   "size_class": "large",
+   "statistic": "p50 per file row",
+   "unit": "bytes"
+  },
+  {
+   "budget": 3072,
+   "family": "store.bytes_per_file_row_spine",
+   "id": "store.bytes_per_file_row_spine.xlarge",
+   "rationale": "`git_commit_file`, its indexes and the noise/kind rows they carry, per file row rather than per commit \u2014 the denominator \u00a711.6's 4 KiB-per-commit model gets wrong for every repository whose commits touch more than a couple of paths. Measured at 2 242 B/row (aws: 143.1 MiB of spine over 66 521 file rows), which is mostly the path text twice (`new_path` and the path index) and the classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row count times this row size, and \u00a711.6 has to be read with this row in it from now on.",
+   "size_class": "xlarge",
+   "statistic": "p50 per file row",
+   "unit": "bytes"
   }
  ],
  "gates": {
