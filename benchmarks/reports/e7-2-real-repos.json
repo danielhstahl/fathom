@@ -1,0 +1,1839 @@
+{
+ "budget_source": "benchmarks/budgets.json",
+ "budget_verdicts_aws": {
+  "cache.budget.mib.aws-sdk-go": {
+   "after": "pass",
+   "before": "fail"
+  },
+  "cold.index.ms.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "query.card.ms.cli.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "query.diff_first_hunk.ms.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "query.diff_open.ms.aws-sdk-go": {
+   "after": "pass",
+   "before": "pass"
+  },
+  "query.metrics.ms.aws-sdk-go": {
+   "after": "pass",
+   "before": "fail"
+  },
+  "query.queue.ms.aws-sdk-go": {
+   "after": "pass",
+   "before": "pass"
+  },
+  "query.timeline.ms.aws-sdk-go": {
+   "after": "pass",
+   "before": "pass"
+  },
+  "rss.cold_index.peak_mib.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "rss.tui.mib.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "rss.warm_reindex.peak_mib.aws-sdk-go": {
+   "after": "measured",
+   "before": "measured"
+  },
+  "store.bytes_per_commit_spine.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "store.size.mib.aws-sdk-go": {
+   "after": "pass",
+   "before": "pass"
+  },
+  "warm.reindex.ms.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  },
+  "warm.reindex.noop.ms.aws-sdk-go": {
+   "after": "fail",
+   "before": "fail"
+  }
+ },
+ "environment": {
+  "binary": "target/release/fathom",
+  "commit": "3a08088",
+  "cpu_count": 8,
+  "git": "git version 2.47.3",
+  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Sun Sep 20 16:14:09 UTC 2026",
+  "profile": "release",
+  "python": "3.14.5",
+  "ram_mib": 7934
+ },
+ "generated_utc": "2026-10-22T04:19:36Z",
+ "harness": "tools/perf_realrepo.py",
+ "read_me_first": "The prose is e7-2-real-repos.md; the budgets are ADR-004 \u00a711 and the written revision is \u00a711.9. `repositories` is the aws pair tagged by the state of the tree each binary was built from; `runs_not_completed` is what the store held when a deadline killed a run, which is a bound on a cost and not a measurement of a whole index, and every field that says so does.",
+ "repositories": [
+  {
+   "analyzers": [
+    {
+     "analyzer": "diff.per_file",
+     "bytes_per_row": 494,
+     "cost_ms": 95275,
+     "ms_per_row": 1.432,
+     "result_bytes": 32924227,
+     "rows": 66521
+    },
+    {
+     "analyzer": "structure.delta",
+     "bytes_per_row": 171791,
+     "cost_ms": 23097,
+     "ms_per_row": 4.856,
+     "result_bytes": 817041850,
+     "rows": 4756
+    }
+   ],
+   "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+   "binary": "/tmp/fathom-before",
+   "cold": {
+    "commits_walked": 5500,
+    "files_written": null,
+    "samples_ms": [
+     380561.2
+    ],
+    "store_side_elapsed_ms": 380418
+   },
+   "facts": {
+    "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+    "clone": "git clone --single-branch https://github.com/aws/aws-sdk-go.git",
+    "commits": 5501,
+    "files": 5509,
+    "note": "5 501 commits, 5 509 files, of which the taxonomy calls the overwhelming majority generated: the churn per release commit is enormous and the content is repetitive.",
+    "path": "aws-sdk-go",
+    "shallow_clone": false,
+    "size_class": "medium",
+    "tip": "070853e88",
+    "tip_subject": "release v1.55.8 (2025-07-31)",
+    "top_extensions": [
+     {
+      "ext": "go",
+      "files": 2870
+     },
+     {
+      "ext": "json",
+      "files": 2488
+     },
+     {
+      "ext": "md",
+      "files": 42
+     },
+     {
+      "ext": "yml",
+      "files": 8
+     },
+     {
+      "ext": "ini",
+      "files": 5
+     },
+     {
+      "ext": "txt",
+      "files": 3
+     },
+     {
+      "ext": "sum",
+      "files": 1
+     },
+     {
+      "ext": "private/protocol/eventstream/testdata/encoded/positive/payload_one_str_header",
+      "files": 1
+     }
+    ]
+   },
+   "index_report": {
+    "analyzers": [
+     {
+      "bumped": 0,
+      "bytes": 135976,
+      "cold": 66519,
+      "computes": 66519,
+      "cost_ms": 95263,
+      "epoch_stale": 0,
+      "hit_rate": 0.5189483444500942,
+      "hits": 347,
+      "id": "diff.per_file",
+      "lookups": 66866,
+      "negative_hits": 0,
+      "puts": 66519
+     },
+     {
+      "bumped": 0,
+      "bytes": 0,
+      "cold": 5500,
+      "computes": 5500,
+      "cost_ms": 28531,
+      "epoch_stale": 0,
+      "hit_rate": 0.0,
+      "hits": 0,
+      "id": "ingest.normalize",
+      "lookups": 5500,
+      "negative_hits": 0,
+      "puts": 0
+     },
+     {
+      "bumped": 0,
+      "bytes": 526455754,
+      "cold": 7118,
+      "computes": 7118,
+      "cost_ms": 23096,
+      "epoch_stale": 0,
+      "hit_rate": 30.583187048956503,
+      "hits": 3136,
+      "id": "structure.delta",
+      "lookups": 10254,
+      "negative_hits": 0,
+      "puts": 4755
+     }
+    ],
+    "commits": {
+     "looked_up": 5500,
+     "new": 5500,
+     "walked": 5500,
+     "written": 5500
+    },
+    "contract": "fathom.cli.index/1",
+    "elapsed_ms": 380418,
+    "epoch": 1,
+    "failures": [],
+    "intent": {
+     "digest_only": 0,
+     "from_hook": 0,
+     "harness": {
+      "events": 0,
+      "events_file": ".fathom/events.jsonl",
+      "exists": false,
+      "notices": [],
+      "refused": 0,
+      "turns": 0
+     },
+     "none": 4504,
+     "recorded": 0
+    },
+    "interrupted": false,
+    "kind": "cold",
+    "nothing_new": false,
+    "prune": null,
+    "reason": null,
+    "rebuild": false,
+    "store": ".fathom/index.sqlite3",
+    "unreadable": [],
+    "worktree": [],
+    "worktree_skipped": []
+   },
+   "label": "aws-sdk-go",
+   "measurements": [
+    {
+     "budget": "cold.index.ms.medium",
+     "budget_value": 20000.0,
+     "detail": {
+      "commits": 5501,
+      "store_side_elapsed_ms": 380418
+     },
+     "how": "`fathom index` into a deleted store, 1 sample(s), p95; 5,501 commits walked",
+     "id": "cold.index.ms.aws-sdk-go",
+     "samples": [
+      380561.2
+     ],
+     "unit": "ms",
+     "value": 380561.2,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.cold_index.peak_mib.medium",
+     "budget_value": 500.0,
+     "how": "VmHWM of the index child, sampled while it ran",
+     "id": "rss.cold_index.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 1552.4,
+     "verdict": "fail"
+    },
+    {
+     "budget": "warm.reindex.ms.medium",
+     "budget_value": 200.0,
+     "detail": {
+      "commits_new": 1,
+      "files_in_commit": 2,
+      "store_side_elapsed_ms": 2913
+     },
+     "how": "the repository moved from `HEAD~1` to its real tip (`070853e88`: release v1.55.8 (2025-07-31)), then `fathom index`",
+     "id": "warm.reindex.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 2928.3,
+     "verdict": "fail"
+    },
+    {
+     "how": "VmHWM of the warm index child (no budget names the warm path alone)",
+     "id": "rss.warm_reindex.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 100.2,
+     "verdict": "measured"
+    },
+    {
+     "budget": "warm.reindex.noop.ms.medium",
+     "budget_value": 10.0,
+     "detail": {
+      "process_wall_ms": 45.1
+     },
+     "how": "the run's own store-side `elapsed_ms` with nothing new",
+     "id": "warm.reindex.noop.ms.aws-sdk-go",
+     "samples": [
+      45.1,
+      44.6,
+      42.3
+     ],
+     "unit": "ms",
+     "value": 34.0,
+     "verdict": "fail"
+    },
+    {
+     "budget": "store.size.mib.medium",
+     "budget_value": 2048.0,
+     "detail": {
+      "cache_bytes": 45338624,
+      "objects_bytes": 802038041,
+      "spine_bytes": 147144704,
+      "sqlite_bytes": 192520192,
+      "tables": {
+       "analyzer": 4096,
+       "attribution_correction": 4096,
+       "blob": 42119168,
+       "blob_ref": 12263424,
+       "cache": 29274112,
+       "cache_epoch": 700416,
+       "cache_input": 7872512,
+       "cache_lru": 1196032,
+       "commit_author_time": 114688,
+       "commit_tree": 303104,
+       "counter": 4096,
+       "episode": 4632576,
+       "episode_created": 77824,
+       "episode_doc": 552960,
+       "episode_doc_title": 258048,
+       "episode_epoch": 45056,
+       "episode_fallback": 372736,
+       "episode_fingerprint": 376832,
+       "episode_fts_config": 4096,
+       "episode_fts_data": 643072,
+       "episode_fts_docsize": 57344,
+       "episode_fts_idx": 4096,
+       "episode_lineage": 81920,
+       "episode_live": 45056,
+       "episode_member": 446464,
+       "episode_member_commit": 434176,
+       "episode_rewrite": 4096,
+       "episode_rewrite_new": 4096,
+       "episode_shape": 376832,
+       "git_commit": 2134016,
+       "git_commit_file": 56500224,
+       "git_commit_file_noise": 9678848,
+       "git_commit_file_path": 8724480,
+       "graph_chunk": 4096,
+       "graph_chunk_link": 4096,
+       "graph_delta": 4096,
+       "graph_delta_dst": 4096,
+       "graph_delta_src": 4096,
+       "graph_node": 4096,
+       "graph_node_id": 4096,
+       "graph_snapshot": 4096,
+       "graph_snapshot_base": 4096,
+       "index_run": 4096,
+       "ledger_content": 4096,
+       "ledger_entry": 4096,
+       "ledger_episode": 4096,
+       "ledger_fingerprint": 4096,
+       "ledger_state": 4096,
+       "ledger_tampered": 4096,
+       "meta": 4096,
+       "ref_tip": 126976,
+       "review_state": 4096,
+       "review_state_state": 4096,
+       "session_state": 4096,
+       "sqlite_autoindex_analyzer_1": 4096,
+       "sqlite_autoindex_blob_1": 5939200,
+       "sqlite_autoindex_cache_1": 6283264,
+       "sqlite_autoindex_counter_1": 4096,
+       "sqlite_autoindex_episode_1": 159744,
+       "sqlite_autoindex_episode_doc_1": 159744,
+       "sqlite_autoindex_git_commit_1": 290816,
+       "sqlite_autoindex_graph_chunk_1": 4096,
+       "sqlite_autoindex_graph_snapshot_1": 4096,
+       "sqlite_autoindex_ledger_entry_1": 4096,
+       "sqlite_autoindex_meta_1": 4096,
+       "sqlite_autoindex_ref_tip_1": 49152,
+       "sqlite_autoindex_review_state_1": 4096,
+       "sqlite_autoindex_session_state_1": 4096,
+       "sqlite_schema": 28672,
+       "sqlite_sequence": 4096,
+       "triage_event": 4096,
+       "triage_event_episode": 4096,
+       "triage_event_reason": 4096,
+       "triage_event_utc": 4096
+      },
+      "total_bytes": 994591001,
+      "wal_bytes": 32768
+     },
+     "how": "`index.sqlite3` + WAL + the analysis cache's object directory (\u00a711.6's byte model names the store file; the object directory is where \u00a75's payloads actually live, and it is charged here too)",
+     "id": "store.size.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 948.516,
+     "verdict": "pass"
+    },
+    {
+     "budget": "store.bytes_per_commit_spine.medium",
+     "budget_value": 4096.0,
+     "detail": {
+      "spine_bytes": 147144704
+     },
+     "how": "`dbstat` pages of the spine tables over the commit count",
+     "id": "store.bytes_per_commit_spine.aws-sdk-go",
+     "unit": "bytes",
+     "value": 26748,
+     "verdict": "fail"
+    },
+    {
+     "budget": "cache.budget.mib.medium",
+     "budget_value": 512.0,
+     "how": "every payload in `.fathom/objects` \u2014 the class-R cache this budget is a cap on, measured for the first time by this harness",
+     "id": "cache.budget.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 764.9,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.metrics.ms.medium",
+     "budget_value": 400.0,
+     "how": "`fathom stats --json` \u2014 the verb the budget names, p95 of 3",
+     "id": "query.metrics.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 593.0,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.card.ms.medium",
+     "budget_value": 50.0,
+     "detail": {
+      "bytes_of_json": 2333
+     },
+     "how": "`fathom show --json HEAD~7`: the card's read, end to end, p95 of 3",
+     "id": "query.card.ms.cli.aws-sdk-go",
+     "unit": "ms",
+     "value": 613.0,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.timeline.ms.medium",
+     "budget_value": 12.0,
+     "how": "`t` written to the grid changed (median of 2 pty probe(s))",
+     "id": "query.timeline.ms.aws-sdk-go",
+     "samples": [
+      0.1,
+      0.1
+     ],
+     "unit": "ms",
+     "value": 0.1,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.queue.ms.medium",
+     "budget_value": 12.0,
+     "how": "`j` written one row down the rail (median of 2 pty probe(s))",
+     "id": "query.queue.ms.aws-sdk-go",
+     "samples": [
+      0.1,
+      0.1
+     ],
+     "unit": "ms",
+     "value": 0.1,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_open.ms.medium",
+     "budget_value": 150.0,
+     "how": "`d` written to the diff pane painting (median of 2 pty probe(s))",
+     "id": "query.diff_open.ms.aws-sdk-go",
+     "samples": [
+      2.1,
+      200.4
+     ],
+     "unit": "ms",
+     "value": 101.25,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_first_hunk.ms.medium",
+     "budget_value": 40.0,
+     "how": "`d` written to the first `@@` on screen (median of 1 pty probe(s))",
+     "id": "query.diff_first_hunk.ms.aws-sdk-go",
+     "samples": [
+      201.8
+     ],
+     "unit": "ms",
+     "value": 201.8,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.tui.mib.medium",
+     "budget_value": 180.0,
+     "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+     "id": "rss.tui.mib.aws-sdk-go",
+     "samples": [
+      194.27,
+      194.32
+     ],
+     "unit": "MiB",
+     "value": 194.32,
+     "verdict": "fail"
+    }
+   ],
+   "noop": {
+    "elapsed_ms": 34.0,
+    "quiet": "3/3 runs reported `nothing_new`",
+    "samples_ms": [
+     45.1,
+     44.6,
+     42.3
+    ],
+    "wall_ms": 45.098167000105605
+   },
+   "root": "aws-sdk-go",
+   "sizes": {
+    "cache_bytes": 45338624,
+    "objects_bytes": 802038041,
+    "spine_bytes": 147144704,
+    "sqlite_bytes": 192520192,
+    "tables": {
+     "analyzer": 4096,
+     "attribution_correction": 4096,
+     "blob": 42119168,
+     "blob_ref": 12263424,
+     "cache": 29274112,
+     "cache_epoch": 700416,
+     "cache_input": 7872512,
+     "cache_lru": 1196032,
+     "commit_author_time": 114688,
+     "commit_tree": 303104,
+     "counter": 4096,
+     "episode": 4632576,
+     "episode_created": 77824,
+     "episode_doc": 552960,
+     "episode_doc_title": 258048,
+     "episode_epoch": 45056,
+     "episode_fallback": 372736,
+     "episode_fingerprint": 376832,
+     "episode_fts_config": 4096,
+     "episode_fts_data": 643072,
+     "episode_fts_docsize": 57344,
+     "episode_fts_idx": 4096,
+     "episode_lineage": 81920,
+     "episode_live": 45056,
+     "episode_member": 446464,
+     "episode_member_commit": 434176,
+     "episode_rewrite": 4096,
+     "episode_rewrite_new": 4096,
+     "episode_shape": 376832,
+     "git_commit": 2134016,
+     "git_commit_file": 56500224,
+     "git_commit_file_noise": 9678848,
+     "git_commit_file_path": 8724480,
+     "graph_chunk": 4096,
+     "graph_chunk_link": 4096,
+     "graph_delta": 4096,
+     "graph_delta_dst": 4096,
+     "graph_delta_src": 4096,
+     "graph_node": 4096,
+     "graph_node_id": 4096,
+     "graph_snapshot": 4096,
+     "graph_snapshot_base": 4096,
+     "index_run": 4096,
+     "ledger_content": 4096,
+     "ledger_entry": 4096,
+     "ledger_episode": 4096,
+     "ledger_fingerprint": 4096,
+     "ledger_state": 4096,
+     "ledger_tampered": 4096,
+     "meta": 4096,
+     "ref_tip": 126976,
+     "review_state": 4096,
+     "review_state_state": 4096,
+     "session_state": 4096,
+     "sqlite_autoindex_analyzer_1": 4096,
+     "sqlite_autoindex_blob_1": 5939200,
+     "sqlite_autoindex_cache_1": 6283264,
+     "sqlite_autoindex_counter_1": 4096,
+     "sqlite_autoindex_episode_1": 159744,
+     "sqlite_autoindex_episode_doc_1": 159744,
+     "sqlite_autoindex_git_commit_1": 290816,
+     "sqlite_autoindex_graph_chunk_1": 4096,
+     "sqlite_autoindex_graph_snapshot_1": 4096,
+     "sqlite_autoindex_ledger_entry_1": 4096,
+     "sqlite_autoindex_meta_1": 4096,
+     "sqlite_autoindex_ref_tip_1": 49152,
+     "sqlite_autoindex_review_state_1": 4096,
+     "sqlite_autoindex_session_state_1": 4096,
+     "sqlite_schema": 28672,
+     "sqlite_sequence": 4096,
+     "triage_event": 4096,
+     "triage_event_episode": 4096,
+     "triage_event_reason": 4096,
+     "triage_event_utc": 4096
+    },
+    "total_bytes": 994591001,
+    "wal_bytes": 32768
+   },
+   "state": "before the three fixes",
+   "tui": {
+    "errors": [],
+    "runs": 2
+   },
+   "warm": {
+    "new": 1,
+    "store_side_elapsed_ms": 2913,
+    "wall_ms": 2928.3
+   }
+  },
+  {
+   "analyzers": [
+    {
+     "analyzer": "diff.per_file",
+     "bytes_per_row": 494,
+     "cost_ms": 79535,
+     "ms_per_row": 1.196,
+     "result_bytes": 32924200,
+     "rows": 66521
+    },
+    {
+     "analyzer": "structure.delta",
+     "bytes_per_row": 23063,
+     "cost_ms": 4911,
+     "ms_per_row": 1.033,
+     "result_bytes": 109690906,
+     "rows": 4756
+    }
+   ],
+   "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+   "binary": "/workspace/target/release/fathom",
+   "cold": {
+    "commits_walked": 5500,
+    "files_written": null,
+    "samples_ms": [
+     161224.8
+    ],
+    "store_side_elapsed_ms": 161019
+   },
+   "facts": {
+    "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+    "clone": "git clone --single-branch https://github.com/aws/aws-sdk-go.git",
+    "commits": 5501,
+    "files": 5509,
+    "note": "5 501 commits, 5 509 files, of which the taxonomy calls the overwhelming majority generated: the churn per release commit is enormous and the content is repetitive.",
+    "path": "aws-sdk-go",
+    "shallow_clone": false,
+    "size_class": "medium",
+    "tip": "070853e88",
+    "tip_subject": "release v1.55.8 (2025-07-31)",
+    "top_extensions": [
+     {
+      "ext": "go",
+      "files": 2870
+     },
+     {
+      "ext": "json",
+      "files": 2488
+     },
+     {
+      "ext": "md",
+      "files": 42
+     },
+     {
+      "ext": "yml",
+      "files": 8
+     },
+     {
+      "ext": "ini",
+      "files": 5
+     },
+     {
+      "ext": "txt",
+      "files": 3
+     },
+     {
+      "ext": "sum",
+      "files": 1
+     },
+     {
+      "ext": "private/protocol/eventstream/testdata/encoded/positive/payload_one_str_header",
+      "files": 1
+     }
+    ]
+   },
+   "index_report": {
+    "analyzers": [
+     {
+      "bumped": 0,
+      "bytes": 135949,
+      "cold": 66519,
+      "computes": 66519,
+      "cost_ms": 79524,
+      "epoch_stale": 0,
+      "hit_rate": 0.5189483444500942,
+      "hits": 347,
+      "id": "diff.per_file",
+      "lookups": 66866,
+      "negative_hits": 0,
+      "puts": 66519
+     },
+     {
+      "bumped": 0,
+      "bytes": 0,
+      "cold": 5500,
+      "computes": 5500,
+      "cost_ms": 27534,
+      "epoch_stale": 0,
+      "hit_rate": 0.0,
+      "hits": 0,
+      "id": "ingest.normalize",
+      "lookups": 5500,
+      "negative_hits": 0,
+      "puts": 0
+     },
+     {
+      "bumped": 0,
+      "bytes": 139022477,
+      "cold": 5617,
+      "computes": 5617,
+      "cost_ms": 4910,
+      "epoch_stale": 0,
+      "hit_rate": 45.221377023600546,
+      "hits": 4637,
+      "id": "structure.delta",
+      "lookups": 10254,
+      "negative_hits": 0,
+      "puts": 4755
+     }
+    ],
+    "commits": {
+     "looked_up": 5500,
+     "new": 5500,
+     "walked": 5500,
+     "written": 5500
+    },
+    "contract": "fathom.cli.index/1",
+    "elapsed_ms": 161019,
+    "epoch": 1,
+    "failures": [],
+    "intent": {
+     "digest_only": 0,
+     "from_hook": 0,
+     "harness": {
+      "events": 0,
+      "events_file": ".fathom/events.jsonl",
+      "exists": false,
+      "notices": [],
+      "refused": 0,
+      "turns": 0
+     },
+     "none": 4504,
+     "recorded": 0
+    },
+    "interrupted": false,
+    "kind": "cold",
+    "nothing_new": false,
+    "phases_ms": {
+     "analyses": 130516,
+     "close": 1,
+     "episodes": 2905,
+     "refs": 19,
+     "spine": 27536,
+     "worktree": 39
+    },
+    "prune": null,
+    "reason": null,
+    "rebuild": false,
+    "store": ".fathom/index.sqlite3",
+    "unreadable": [],
+    "worktree": [],
+    "worktree_skipped": []
+   },
+   "label": "aws-sdk-go",
+   "measurements": [
+    {
+     "budget": "cold.index.ms.medium",
+     "budget_value": 20000.0,
+     "detail": {
+      "commits": 5501,
+      "store_side_elapsed_ms": 161019
+     },
+     "how": "`fathom index` into a deleted store, 1 sample(s), p95; 5,501 commits walked",
+     "id": "cold.index.ms.aws-sdk-go",
+     "samples": [
+      161224.8
+     ],
+     "unit": "ms",
+     "value": 161224.8,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.cold_index.peak_mib.medium",
+     "budget_value": 500.0,
+     "how": "VmHWM of the index child, sampled while it ran",
+     "id": "rss.cold_index.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 1635.8,
+     "verdict": "fail"
+    },
+    {
+     "budget": "warm.reindex.ms.medium",
+     "budget_value": 200.0,
+     "detail": {
+      "commits_new": 1,
+      "files_in_commit": 2,
+      "store_side_elapsed_ms": 2971
+     },
+     "how": "the repository moved from `HEAD~1` to its real tip (`070853e88`: release v1.55.8 (2025-07-31)), then `fathom index`",
+     "id": "warm.reindex.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 3024.3,
+     "verdict": "fail"
+    },
+    {
+     "how": "VmHWM of the warm index child (no budget names the warm path alone)",
+     "id": "rss.warm_reindex.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 101.0,
+     "verdict": "measured"
+    },
+    {
+     "budget": "warm.reindex.noop.ms.medium",
+     "budget_value": 10.0,
+     "detail": {
+      "process_wall_ms": 57.1
+     },
+     "how": "the run's own store-side `elapsed_ms` with nothing new",
+     "id": "warm.reindex.noop.ms.aws-sdk-go",
+     "samples": [
+      57.1,
+      50.8,
+      51.1
+     ],
+     "unit": "ms",
+     "value": 35.0,
+     "verdict": "fail"
+    },
+    {
+     "budget": "store.size.mib.medium",
+     "budget_value": 2048.0,
+     "detail": {
+      "cache_bytes": 45342720,
+      "objects_bytes": 109857396,
+      "spine_bytes": 149983232,
+      "sqlite_bytes": 195362816,
+      "tables": {
+       "analyzer": 4096,
+       "attribution_correction": 4096,
+       "blob": 44904448,
+       "blob_ref": 12300288,
+       "cache": 29274112,
+       "cache_epoch": 700416,
+       "cache_input": 7835648,
+       "cache_lru": 1196032,
+       "commit_author_time": 114688,
+       "commit_tree": 303104,
+       "counter": 4096,
+       "episode": 4632576,
+       "episode_created": 77824,
+       "episode_doc": 552960,
+       "episode_doc_title": 258048,
+       "episode_epoch": 45056,
+       "episode_fallback": 372736,
+       "episode_fingerprint": 376832,
+       "episode_fts_config": 4096,
+       "episode_fts_data": 643072,
+       "episode_fts_docsize": 57344,
+       "episode_fts_idx": 4096,
+       "episode_lineage": 81920,
+       "episode_live": 45056,
+       "episode_member": 446464,
+       "episode_member_commit": 434176,
+       "episode_rewrite": 4096,
+       "episode_rewrite_new": 4096,
+       "episode_shape": 376832,
+       "git_commit": 2134016,
+       "git_commit_file": 56500224,
+       "git_commit_file_noise": 9678848,
+       "git_commit_file_path": 8724480,
+       "graph_chunk": 4096,
+       "graph_chunk_link": 4096,
+       "graph_delta": 4096,
+       "graph_delta_dst": 4096,
+       "graph_delta_src": 4096,
+       "graph_node": 4096,
+       "graph_node_id": 4096,
+       "graph_snapshot": 4096,
+       "graph_snapshot_base": 4096,
+       "index_run": 4096,
+       "ledger_content": 4096,
+       "ledger_entry": 4096,
+       "ledger_episode": 4096,
+       "ledger_fingerprint": 4096,
+       "ledger_state": 4096,
+       "ledger_tampered": 4096,
+       "meta": 4096,
+       "ref_tip": 126976,
+       "review_state": 4096,
+       "review_state_state": 4096,
+       "session_state": 4096,
+       "sqlite_autoindex_analyzer_1": 4096,
+       "sqlite_autoindex_blob_1": 5955584,
+       "sqlite_autoindex_cache_1": 6324224,
+       "sqlite_autoindex_counter_1": 4096,
+       "sqlite_autoindex_episode_1": 159744,
+       "sqlite_autoindex_episode_doc_1": 159744,
+       "sqlite_autoindex_git_commit_1": 290816,
+       "sqlite_autoindex_graph_chunk_1": 4096,
+       "sqlite_autoindex_graph_snapshot_1": 4096,
+       "sqlite_autoindex_ledger_entry_1": 4096,
+       "sqlite_autoindex_meta_1": 4096,
+       "sqlite_autoindex_ref_tip_1": 49152,
+       "sqlite_autoindex_review_state_1": 4096,
+       "sqlite_autoindex_session_state_1": 4096,
+       "sqlite_schema": 28672,
+       "sqlite_sequence": 4096,
+       "triage_event": 4096,
+       "triage_event_episode": 4096,
+       "triage_event_reason": 4096,
+       "triage_event_utc": 4096
+      },
+      "total_bytes": 305252980,
+      "wal_bytes": 32768
+     },
+     "how": "`index.sqlite3` + WAL + the analysis cache's object directory (\u00a711.6's byte model names the store file; the object directory is where \u00a75's payloads actually live, and it is charged here too)",
+     "id": "store.size.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 291.112,
+     "verdict": "pass"
+    },
+    {
+     "budget": "store.bytes_per_commit_spine.medium",
+     "budget_value": 4096.0,
+     "detail": {
+      "spine_bytes": 149983232
+     },
+     "how": "`dbstat` pages of the spine tables over the commit count",
+     "id": "store.bytes_per_commit_spine.aws-sdk-go",
+     "unit": "bytes",
+     "value": 27264,
+     "verdict": "fail"
+    },
+    {
+     "budget": "cache.budget.mib.medium",
+     "budget_value": 512.0,
+     "how": "every payload in `.fathom/objects` \u2014 the class-R cache this budget is a cap on, measured for the first time by this harness",
+     "id": "cache.budget.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 104.8,
+     "verdict": "pass"
+    },
+    {
+     "budget": "cold.index.ms_per_commit.medium",
+     "budget_value": 10.0,
+     "detail": {
+      "file_rows": 66885,
+      "phases_ms": {
+       "analyses": 130516,
+       "close": 1,
+       "episodes": 2905,
+       "refs": 19,
+       "spine": 27536,
+       "worktree": 39
+      }
+     },
+     "how": "the commit-shaped term of the cold index \u2014 `phases_ms` of spine + refs + worktree + episodes + close, over the commits walked \u2014 so that the file rows a commit writes are charged to the row budget and not twice",
+     "id": "cold.index.ms_per_commit.aws-sdk-go",
+     "unit": "ms",
+     "value": 5.54,
+     "verdict": "pass"
+    },
+    {
+     "budget": "cold.index.ms_per_file_row.medium",
+     "budget_value": 4.0,
+     "detail": {
+      "analyses_ms": 130516
+     },
+     "how": "the `analyses` phase over the `git_commit_file` rows the run wrote \u2014 blob reads, line diffs, classification, cache lookups and puts",
+     "id": "cold.index.ms_per_file_row.aws-sdk-go",
+     "unit": "ms",
+     "value": 1.95,
+     "verdict": "pass"
+    },
+    {
+     "budget": "cache.bytes_per_cached_row.medium",
+     "budget_value": 32768.0,
+     "detail": {
+      "analyzer": "structure.delta",
+      "bytes_per_row": 23063,
+      "cost_ms": 4911,
+      "ms_per_row": 1.033,
+      "result_bytes": 109690906,
+      "rows": 4756
+     },
+     "how": "the widest per-row payload the store holds (`structure.delta`) \u2014 this is what `cache.budget.mib` is made of",
+     "id": "cache.bytes_per_cached_row.aws-sdk-go",
+     "unit": "bytes",
+     "value": 23063,
+     "verdict": "pass"
+    },
+    {
+     "budget": "store.bytes_per_file_row_spine.medium",
+     "budget_value": 3072.0,
+     "detail": {
+      "file_rows": 66885,
+      "spine_bytes": 149983232
+     },
+     "how": "`dbstat` pages of the spine tables over the file rows they hold, which is the denominator \u00a711.6's per-commit model is missing",
+     "id": "store.bytes_per_file_row_spine.aws-sdk-go",
+     "unit": "bytes",
+     "value": 2242,
+     "verdict": "pass"
+    },
+    {
+     "budget": "warm.reindex.ms_per_commit_in_store.medium",
+     "budget_value": 1.0,
+     "detail": {
+      "commits": 5501,
+      "warm_wall_ms": 3024.3
+     },
+     "how": "a warm re-index over the commits already in the store \u2014 the O(repository) term of a run that is meant to be O(change) (\u00a76.6 R1)",
+     "id": "warm.reindex.ms_per_commit_in_store.aws-sdk-go",
+     "unit": "ms",
+     "value": 0.55,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.metrics.ms.medium",
+     "budget_value": 400.0,
+     "how": "`fathom stats --json` \u2014 the verb the budget names, p95 of 3",
+     "id": "query.metrics.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 175.6,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.card.ms.medium",
+     "budget_value": 50.0,
+     "detail": {
+      "bytes_of_json": 2333
+     },
+     "how": "`fathom show --json HEAD~7`: the card's read, end to end, p95 of 3",
+     "id": "query.card.ms.cli.aws-sdk-go",
+     "unit": "ms",
+     "value": 178.9,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.timeline.ms.medium",
+     "budget_value": 12.0,
+     "how": "`t` written to the grid changed (median of 2 pty probe(s))",
+     "id": "query.timeline.ms.aws-sdk-go",
+     "samples": [
+      0.2,
+      0.1
+     ],
+     "unit": "ms",
+     "value": 0.15,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.queue.ms.medium",
+     "budget_value": 12.0,
+     "how": "`j` written one row down the rail (median of 2 pty probe(s))",
+     "id": "query.queue.ms.aws-sdk-go",
+     "samples": [
+      0.1,
+      0.1
+     ],
+     "unit": "ms",
+     "value": 0.1,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_open.ms.medium",
+     "budget_value": 150.0,
+     "how": "`d` written to the diff pane painting (median of 2 pty probe(s))",
+     "id": "query.diff_open.ms.aws-sdk-go",
+     "samples": [
+      2.3,
+      222.1
+     ],
+     "unit": "ms",
+     "value": 112.2,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_first_hunk.ms.medium",
+     "budget_value": 40.0,
+     "how": "`d` written to the first `@@` on screen (median of 1 pty probe(s))",
+     "id": "query.diff_first_hunk.ms.aws-sdk-go",
+     "samples": [
+      222.9
+     ],
+     "unit": "ms",
+     "value": 222.9,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.tui.mib.medium",
+     "budget_value": 180.0,
+     "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+     "id": "rss.tui.mib.aws-sdk-go",
+     "samples": [
+      197.15,
+      197.16
+     ],
+     "unit": "MiB",
+     "value": 197.16,
+     "verdict": "fail"
+    }
+   ],
+   "noop": {
+    "elapsed_ms": 35.0,
+    "quiet": "3/3 runs reported `nothing_new`",
+    "samples_ms": [
+     57.1,
+     50.8,
+     51.1
+    ],
+    "wall_ms": 57.08299999241717
+   },
+   "root": "aws-sdk-go",
+   "sizes": {
+    "cache_bytes": 45342720,
+    "objects_bytes": 109857396,
+    "spine_bytes": 149983232,
+    "sqlite_bytes": 195362816,
+    "tables": {
+     "analyzer": 4096,
+     "attribution_correction": 4096,
+     "blob": 44904448,
+     "blob_ref": 12300288,
+     "cache": 29274112,
+     "cache_epoch": 700416,
+     "cache_input": 7835648,
+     "cache_lru": 1196032,
+     "commit_author_time": 114688,
+     "commit_tree": 303104,
+     "counter": 4096,
+     "episode": 4632576,
+     "episode_created": 77824,
+     "episode_doc": 552960,
+     "episode_doc_title": 258048,
+     "episode_epoch": 45056,
+     "episode_fallback": 372736,
+     "episode_fingerprint": 376832,
+     "episode_fts_config": 4096,
+     "episode_fts_data": 643072,
+     "episode_fts_docsize": 57344,
+     "episode_fts_idx": 4096,
+     "episode_lineage": 81920,
+     "episode_live": 45056,
+     "episode_member": 446464,
+     "episode_member_commit": 434176,
+     "episode_rewrite": 4096,
+     "episode_rewrite_new": 4096,
+     "episode_shape": 376832,
+     "git_commit": 2134016,
+     "git_commit_file": 56500224,
+     "git_commit_file_noise": 9678848,
+     "git_commit_file_path": 8724480,
+     "graph_chunk": 4096,
+     "graph_chunk_link": 4096,
+     "graph_delta": 4096,
+     "graph_delta_dst": 4096,
+     "graph_delta_src": 4096,
+     "graph_node": 4096,
+     "graph_node_id": 4096,
+     "graph_snapshot": 4096,
+     "graph_snapshot_base": 4096,
+     "index_run": 4096,
+     "ledger_content": 4096,
+     "ledger_entry": 4096,
+     "ledger_episode": 4096,
+     "ledger_fingerprint": 4096,
+     "ledger_state": 4096,
+     "ledger_tampered": 4096,
+     "meta": 4096,
+     "ref_tip": 126976,
+     "review_state": 4096,
+     "review_state_state": 4096,
+     "session_state": 4096,
+     "sqlite_autoindex_analyzer_1": 4096,
+     "sqlite_autoindex_blob_1": 5955584,
+     "sqlite_autoindex_cache_1": 6324224,
+     "sqlite_autoindex_counter_1": 4096,
+     "sqlite_autoindex_episode_1": 159744,
+     "sqlite_autoindex_episode_doc_1": 159744,
+     "sqlite_autoindex_git_commit_1": 290816,
+     "sqlite_autoindex_graph_chunk_1": 4096,
+     "sqlite_autoindex_graph_snapshot_1": 4096,
+     "sqlite_autoindex_ledger_entry_1": 4096,
+     "sqlite_autoindex_meta_1": 4096,
+     "sqlite_autoindex_ref_tip_1": 49152,
+     "sqlite_autoindex_review_state_1": 4096,
+     "sqlite_autoindex_session_state_1": 4096,
+     "sqlite_schema": 28672,
+     "sqlite_sequence": 4096,
+     "triage_event": 4096,
+     "triage_event_episode": 4096,
+     "triage_event_reason": 4096,
+     "triage_event_utc": 4096
+    },
+    "total_bytes": 305252980,
+    "wal_bytes": 32768
+   },
+   "state": "after the three fixes; the run this report quotes",
+   "tui": {
+    "errors": [],
+    "runs": 2
+   },
+   "warm": {
+    "new": 1,
+    "store_side_elapsed_ms": 2971,
+    "wall_ms": 3024.3
+   }
+  },
+  {
+   "analyzers": [
+    {
+     "analyzer": "diff.per_file",
+     "bytes_per_row": 494,
+     "cost_ms": 82491,
+     "ms_per_row": 1.24,
+     "result_bytes": 32924200,
+     "rows": 66521
+    },
+    {
+     "analyzer": "structure.delta",
+     "bytes_per_row": 23063,
+     "cost_ms": 4929,
+     "ms_per_row": 1.036,
+     "result_bytes": 109690906,
+     "rows": 4756
+    }
+   ],
+   "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+   "binary": "/tmp/fathom-final",
+   "cold": {
+    "commits_walked": 5500,
+    "files_written": null,
+    "samples_ms": [
+     174059.2
+    ],
+    "store_side_elapsed_ms": 173942
+   },
+   "facts": {
+    "axis": "generated code \u2014 the tree is machine-written Go and JSON definitions",
+    "clone": "git clone --single-branch https://github.com/aws/aws-sdk-go.git",
+    "commits": 5501,
+    "files": 5509,
+    "note": "5 501 commits, 5 509 files, of which the taxonomy calls the overwhelming majority generated: the churn per release commit is enormous and the content is repetitive.",
+    "path": "aws-sdk-go",
+    "shallow_clone": false,
+    "size_class": "medium",
+    "tip": "070853e88",
+    "tip_subject": "release v1.55.8 (2025-07-31)",
+    "top_extensions": [
+     {
+      "ext": "go",
+      "files": 2870
+     },
+     {
+      "ext": "json",
+      "files": 2488
+     },
+     {
+      "ext": "md",
+      "files": 42
+     },
+     {
+      "ext": "yml",
+      "files": 8
+     },
+     {
+      "ext": "ini",
+      "files": 5
+     },
+     {
+      "ext": "txt",
+      "files": 3
+     },
+     {
+      "ext": "sum",
+      "files": 1
+     },
+     {
+      "ext": "private/protocol/eventstream/testdata/encoded/positive/payload_one_str_header",
+      "files": 1
+     }
+    ]
+   },
+   "index_report": {
+    "analyzers": [
+     {
+      "bumped": 0,
+      "bytes": 135949,
+      "cold": 66519,
+      "computes": 66519,
+      "cost_ms": 82480,
+      "epoch_stale": 0,
+      "hit_rate": 0.5189483444500942,
+      "hits": 347,
+      "id": "diff.per_file",
+      "lookups": 66866,
+      "negative_hits": 0,
+      "puts": 66519
+     },
+     {
+      "bumped": 0,
+      "bytes": 0,
+      "cold": 5500,
+      "computes": 5500,
+      "cost_ms": 30120,
+      "epoch_stale": 0,
+      "hit_rate": 0.0,
+      "hits": 0,
+      "id": "ingest.normalize",
+      "lookups": 5500,
+      "negative_hits": 0,
+      "puts": 0
+     },
+     {
+      "bumped": 0,
+      "bytes": 139022477,
+      "cold": 5617,
+      "computes": 5617,
+      "cost_ms": 4929,
+      "epoch_stale": 0,
+      "hit_rate": 45.221377023600546,
+      "hits": 4637,
+      "id": "structure.delta",
+      "lookups": 10254,
+      "negative_hits": 0,
+      "puts": 4755
+     }
+    ],
+    "commits": {
+     "looked_up": 5500,
+     "new": 5500,
+     "walked": 5500,
+     "written": 5500
+    },
+    "contract": "fathom.cli.index/1",
+    "elapsed_ms": 173942,
+    "epoch": 1,
+    "failures": [],
+    "intent": {
+     "digest_only": 0,
+     "from_hook": 0,
+     "harness": {
+      "events": 0,
+      "events_file": ".fathom/events.jsonl",
+      "exists": false,
+      "notices": [],
+      "refused": 0,
+      "turns": 0
+     },
+     "none": 4504,
+     "recorded": 0
+    },
+    "interrupted": false,
+    "kind": "cold",
+    "nothing_new": false,
+    "phases_ms": {
+     "analyses": 140620,
+     "close": 1,
+     "episodes": 2995,
+     "refs": 144,
+     "spine": 30123,
+     "worktree": 57
+    },
+    "prune": null,
+    "reason": null,
+    "rebuild": false,
+    "store": ".fathom/index.sqlite3",
+    "unreadable": [],
+    "worktree": [],
+    "worktree_skipped": []
+   },
+   "label": "aws-sdk-go",
+   "measurements": [
+    {
+     "budget": "cold.index.ms.medium",
+     "budget_value": 20000.0,
+     "detail": {
+      "commits": 5501,
+      "store_side_elapsed_ms": 173942
+     },
+     "how": "`fathom index` into a deleted store, 1 sample(s), p95; 5,501 commits walked",
+     "id": "cold.index.ms.aws-sdk-go",
+     "samples": [
+      174059.2
+     ],
+     "unit": "ms",
+     "value": 174059.2,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.cold_index.peak_mib.medium",
+     "budget_value": 500.0,
+     "how": "VmHWM of the index child, sampled while it ran",
+     "id": "rss.cold_index.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 1601.7,
+     "verdict": "fail"
+    },
+    {
+     "budget": "warm.reindex.ms.medium",
+     "budget_value": 200.0,
+     "detail": {
+      "commits_new": 1,
+      "files_in_commit": 2,
+      "store_side_elapsed_ms": 3150
+     },
+     "how": "the repository moved from `HEAD~1` to its real tip (`070853e88`: release v1.55.8 (2025-07-31)), then `fathom index`",
+     "id": "warm.reindex.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 3169.9,
+     "verdict": "fail"
+    },
+    {
+     "how": "VmHWM of the warm index child (no budget names the warm path alone)",
+     "id": "rss.warm_reindex.peak_mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 100.6,
+     "verdict": "measured"
+    },
+    {
+     "budget": "warm.reindex.noop.ms.medium",
+     "budget_value": 10.0,
+     "detail": {
+      "process_wall_ms": 43.7
+     },
+     "how": "the run's own store-side `elapsed_ms` with nothing new",
+     "id": "warm.reindex.noop.ms.aws-sdk-go",
+     "samples": [
+      43.7,
+      41.8,
+      38.2
+     ],
+     "unit": "ms",
+     "value": 33.0,
+     "verdict": "fail"
+    },
+    {
+     "budget": "store.size.mib.medium",
+     "budget_value": 2048.0,
+     "detail": {
+      "cache_bytes": 45342720,
+      "objects_bytes": 109857396,
+      "spine_bytes": 149983232,
+      "sqlite_bytes": 195362816,
+      "tables": {
+       "analyzer": 4096,
+       "attribution_correction": 4096,
+       "blob": 44904448,
+       "blob_ref": 12300288,
+       "cache": 29274112,
+       "cache_epoch": 700416,
+       "cache_input": 7835648,
+       "cache_lru": 1196032,
+       "commit_author_time": 114688,
+       "commit_tree": 303104,
+       "counter": 4096,
+       "episode": 4632576,
+       "episode_created": 77824,
+       "episode_doc": 552960,
+       "episode_doc_title": 258048,
+       "episode_epoch": 45056,
+       "episode_fallback": 372736,
+       "episode_fingerprint": 376832,
+       "episode_fts_config": 4096,
+       "episode_fts_data": 643072,
+       "episode_fts_docsize": 57344,
+       "episode_fts_idx": 4096,
+       "episode_lineage": 81920,
+       "episode_live": 45056,
+       "episode_member": 446464,
+       "episode_member_commit": 434176,
+       "episode_rewrite": 4096,
+       "episode_rewrite_new": 4096,
+       "episode_shape": 376832,
+       "git_commit": 2134016,
+       "git_commit_file": 56500224,
+       "git_commit_file_noise": 9678848,
+       "git_commit_file_path": 8724480,
+       "graph_chunk": 4096,
+       "graph_chunk_link": 4096,
+       "graph_delta": 4096,
+       "graph_delta_dst": 4096,
+       "graph_delta_src": 4096,
+       "graph_node": 4096,
+       "graph_node_id": 4096,
+       "graph_snapshot": 4096,
+       "graph_snapshot_base": 4096,
+       "index_run": 4096,
+       "ledger_content": 4096,
+       "ledger_entry": 4096,
+       "ledger_episode": 4096,
+       "ledger_fingerprint": 4096,
+       "ledger_state": 4096,
+       "ledger_tampered": 4096,
+       "meta": 4096,
+       "ref_tip": 126976,
+       "review_state": 4096,
+       "review_state_state": 4096,
+       "session_state": 4096,
+       "sqlite_autoindex_analyzer_1": 4096,
+       "sqlite_autoindex_blob_1": 5955584,
+       "sqlite_autoindex_cache_1": 6324224,
+       "sqlite_autoindex_counter_1": 4096,
+       "sqlite_autoindex_episode_1": 159744,
+       "sqlite_autoindex_episode_doc_1": 159744,
+       "sqlite_autoindex_git_commit_1": 290816,
+       "sqlite_autoindex_graph_chunk_1": 4096,
+       "sqlite_autoindex_graph_snapshot_1": 4096,
+       "sqlite_autoindex_ledger_entry_1": 4096,
+       "sqlite_autoindex_meta_1": 4096,
+       "sqlite_autoindex_ref_tip_1": 49152,
+       "sqlite_autoindex_review_state_1": 4096,
+       "sqlite_autoindex_session_state_1": 4096,
+       "sqlite_schema": 28672,
+       "sqlite_sequence": 4096,
+       "triage_event": 4096,
+       "triage_event_episode": 4096,
+       "triage_event_reason": 4096,
+       "triage_event_utc": 4096
+      },
+      "total_bytes": 305252980,
+      "wal_bytes": 32768
+     },
+     "how": "`index.sqlite3` + WAL + the analysis cache's object directory (\u00a711.6's byte model names the store file; the object directory is where \u00a75's payloads actually live, and it is charged here too)",
+     "id": "store.size.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 291.112,
+     "verdict": "pass"
+    },
+    {
+     "budget": "store.bytes_per_commit_spine.medium",
+     "budget_value": 4096.0,
+     "detail": {
+      "spine_bytes": 149983232
+     },
+     "how": "`dbstat` pages of the spine tables over the commit count",
+     "id": "store.bytes_per_commit_spine.aws-sdk-go",
+     "unit": "bytes",
+     "value": 27264,
+     "verdict": "fail"
+    },
+    {
+     "budget": "cache.budget.mib.medium",
+     "budget_value": 512.0,
+     "how": "every payload in `.fathom/objects` \u2014 the class-R cache this budget is a cap on, measured for the first time by this harness",
+     "id": "cache.budget.mib.aws-sdk-go",
+     "unit": "MiB",
+     "value": 104.8,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.metrics.ms.medium",
+     "budget_value": 400.0,
+     "how": "`fathom stats --json` \u2014 the verb the budget names, p95 of 3",
+     "id": "query.metrics.ms.aws-sdk-go",
+     "unit": "ms",
+     "value": 625.3,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.card.ms.medium",
+     "budget_value": 50.0,
+     "detail": {
+      "bytes_of_json": 2333
+     },
+     "how": "`fathom show --json HEAD~7`: the card's read, end to end, p95 of 3",
+     "id": "query.card.ms.cli.aws-sdk-go",
+     "unit": "ms",
+     "value": 611.3,
+     "verdict": "fail"
+    },
+    {
+     "budget": "query.timeline.ms.medium",
+     "budget_value": 12.0,
+     "how": "`t` written to the grid changed (median of 2 pty probe(s))",
+     "id": "query.timeline.ms.aws-sdk-go",
+     "samples": [
+      0.1,
+      0.1
+     ],
+     "unit": "ms",
+     "value": 0.1,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.queue.ms.medium",
+     "budget_value": 12.0,
+     "how": "`j` written one row down the rail (median of 2 pty probe(s))",
+     "id": "query.queue.ms.aws-sdk-go",
+     "samples": [
+      0.1,
+      0.3
+     ],
+     "unit": "ms",
+     "value": 0.2,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_open.ms.medium",
+     "budget_value": 150.0,
+     "how": "`d` written to the diff pane painting (median of 2 pty probe(s))",
+     "id": "query.diff_open.ms.aws-sdk-go",
+     "samples": [
+      2.3,
+      227.8
+     ],
+     "unit": "ms",
+     "value": 115.05,
+     "verdict": "pass"
+    },
+    {
+     "budget": "query.diff_first_hunk.ms.medium",
+     "budget_value": 40.0,
+     "how": "`d` written to the first `@@` on screen (median of 1 pty probe(s))",
+     "id": "query.diff_first_hunk.ms.aws-sdk-go",
+     "samples": [
+      228.7
+     ],
+     "unit": "ms",
+     "value": 228.7,
+     "verdict": "fail"
+    },
+    {
+     "budget": "rss.tui.mib.medium",
+     "budget_value": 180.0,
+     "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+     "id": "rss.tui.mib.aws-sdk-go",
+     "samples": [
+      197.29,
+      197.29
+     ],
+     "unit": "MiB",
+     "value": 197.29,
+     "verdict": "fail"
+    }
+   ],
+   "noop": {
+    "elapsed_ms": 33.0,
+    "quiet": "3/3 runs reported `nothing_new`",
+    "samples_ms": [
+     43.7,
+     41.8,
+     38.2
+    ],
+    "wall_ms": 43.73483300150838
+   },
+   "root": "aws-sdk-go",
+   "sizes": {
+    "cache_bytes": 45342720,
+    "objects_bytes": 109857396,
+    "spine_bytes": 149983232,
+    "sqlite_bytes": 195362816,
+    "tables": {
+     "analyzer": 4096,
+     "attribution_correction": 4096,
+     "blob": 44904448,
+     "blob_ref": 12300288,
+     "cache": 29274112,
+     "cache_epoch": 700416,
+     "cache_input": 7835648,
+     "cache_lru": 1196032,
+     "commit_author_time": 114688,
+     "commit_tree": 303104,
+     "counter": 4096,
+     "episode": 4632576,
+     "episode_created": 77824,
+     "episode_doc": 552960,
+     "episode_doc_title": 258048,
+     "episode_epoch": 45056,
+     "episode_fallback": 372736,
+     "episode_fingerprint": 376832,
+     "episode_fts_config": 4096,
+     "episode_fts_data": 643072,
+     "episode_fts_docsize": 57344,
+     "episode_fts_idx": 4096,
+     "episode_lineage": 81920,
+     "episode_live": 45056,
+     "episode_member": 446464,
+     "episode_member_commit": 434176,
+     "episode_rewrite": 4096,
+     "episode_rewrite_new": 4096,
+     "episode_shape": 376832,
+     "git_commit": 2134016,
+     "git_commit_file": 56500224,
+     "git_commit_file_noise": 9678848,
+     "git_commit_file_path": 8724480,
+     "graph_chunk": 4096,
+     "graph_chunk_link": 4096,
+     "graph_delta": 4096,
+     "graph_delta_dst": 4096,
+     "graph_delta_src": 4096,
+     "graph_node": 4096,
+     "graph_node_id": 4096,
+     "graph_snapshot": 4096,
+     "graph_snapshot_base": 4096,
+     "index_run": 4096,
+     "ledger_content": 4096,
+     "ledger_entry": 4096,
+     "ledger_episode": 4096,
+     "ledger_fingerprint": 4096,
+     "ledger_state": 4096,
+     "ledger_tampered": 4096,
+     "meta": 4096,
+     "ref_tip": 126976,
+     "review_state": 4096,
+     "review_state_state": 4096,
+     "session_state": 4096,
+     "sqlite_autoindex_analyzer_1": 4096,
+     "sqlite_autoindex_blob_1": 5955584,
+     "sqlite_autoindex_cache_1": 6324224,
+     "sqlite_autoindex_counter_1": 4096,
+     "sqlite_autoindex_episode_1": 159744,
+     "sqlite_autoindex_episode_doc_1": 159744,
+     "sqlite_autoindex_git_commit_1": 290816,
+     "sqlite_autoindex_graph_chunk_1": 4096,
+     "sqlite_autoindex_graph_snapshot_1": 4096,
+     "sqlite_autoindex_ledger_entry_1": 4096,
+     "sqlite_autoindex_meta_1": 4096,
+     "sqlite_autoindex_ref_tip_1": 49152,
+     "sqlite_autoindex_review_state_1": 4096,
+     "sqlite_autoindex_session_state_1": 4096,
+     "sqlite_schema": 28672,
+     "sqlite_sequence": 4096,
+     "triage_event": 4096,
+     "triage_event_episode": 4096,
+     "triage_event_reason": 4096,
+     "triage_event_utc": 4096
+    },
+    "total_bytes": 305252980,
+    "wal_bytes": 32768
+   },
+   "state": "intermediate: fixes 1 and 2 in, fix 3 out. The three fix commits' own before/after pairs were measured alongside this run, which is why they quote 174,059 ms for the cold index where this report quotes 161,225 ms",
+   "tui": {
+    "errors": [],
+    "runs": 2
+   },
+   "warm": {
+    "new": 1,
+    "store_side_elapsed_ms": 3150,
+    "wall_ms": 3169.9
+   }
+  }
+ ],
+ "runs_not_completed": {
+  "git/git": {
+   "after": {
+    "cache": [
+     [
+      "diff.per_file",
+      136956,
+      13042,
+      42182522
+     ],
+     [
+      "structure.delta",
+      82175,
+      96548,
+      2196413355
+     ]
+    ],
+    "cli": "",
+    "commits": 82541,
+    "file_rows": 137422,
+    "killed_after_30_min": "yes",
+    "sqlite_bytes": 407367680
+   },
+   "before": {
+    "cache": [
+     [
+      "diff.per_file",
+      92690,
+      17704,
+      28570190
+     ],
+     [
+      "structure.delta",
+      55785,
+      477736,
+      9581236004
+     ]
+    ],
+    "commits": 82541,
+    "file_rows": 137422,
+    "runs": [
+     [
+      1,
+      "running",
+      1792636316037,
+      null
+     ]
+    ],
+    "sqlite_bytes": 316887040
+   },
+   "commits": 82542,
+   "deadline_minutes": 30,
+   "files": 4857,
+   "note": "Neither run finished; both were cut at the same 30-minute deadline on the same repository and the store contents at the kill are the measurement. The pre-fix run also shared the box with two other measurements, so its timings bound the truth upward. `cold.index.ms.xlarge` (240,000 ms) is recorded as NOT MEASURED, not as met.",
+   "size_class_by_adr_11_1": "xlarge (commits)"
+  },
+  "tensorflow/tensorflow": {
+   "after": {
+    "cache": [
+     [
+      "diff.per_file",
+      25041,
+      4356,
+      7985599
+     ],
+     [
+      "structure.delta",
+      11094,
+      395223,
+      9365315908
+     ]
+    ],
+    "cli": "",
+    "commits": 201675,
+    "file_rows": 880546,
+    "killed_after_12_min": "yes",
+    "sqlite_bytes": 790810624
+   },
+   "commits": 201675,
+   "deadline_minutes": 12,
+   "files": 37370,
+   "note": "Post-fix run only, 12-minute deadline: spine complete at 201,675 commits, 880,546 file rows, 11,094 tree rows of which 4,491 are anchors carrying 9,363,516,111 B \u2014 the many-language monorepo case, written up in the report and in ADR-004 \u00a711.9. Not run pre-fix, because two indexes sharing one box is not a before/after.",
+   "size_class_by_adr_11_1": "xlarge (both axes)"
+  }
+ },
+ "schema_version": 1,
+ "stage": "e7.2",
+ "ticket": "reco-66q",
+ "title": "reco-66q \u2014 ADR-004 budgets measured against real open-source repositories",
+ "xlarge_policy": "the CI gate skips `xlarge` below 8192 MiB of RAM (this box: 7934 MiB)"
+}
