@@ -1838,7 +1838,10 @@ mod tests {
         {
             let store = Store::open(&fixture).expect("open");
             let fresh = store.structural_check().expect("check");
-            assert!(fresh.is_empty(), "a store this build just made is sound: {fresh:?}");
+            assert!(
+                fresh.is_empty(),
+                "a store this build just made is sound: {fresh:?}"
+            );
             // A stamp that disagrees with this build is the cheap check's signature find: it costs nothing
             // to read, and it is the one that would otherwise present a v1 store's rows as if a v3 reader
             // had written them.

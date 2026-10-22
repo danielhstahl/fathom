@@ -1237,13 +1237,7 @@ fn analyse_structure(
         Some((parent, prev)) => Link::delta(repo, *parent, prev.dep + 1, units)?,
     };
     let cost_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    store.put(
-        &outcome.key,
-        link.to_json().as_bytes(),
-        None,
-        cost_ms,
-        now,
-    )?;
+    store.put(&outcome.key, link.to_json().as_bytes(), None, cost_ms, now)?;
     Ok(1)
 }
 
@@ -1354,7 +1348,8 @@ impl Link {
 
     /// Compact JSON. Infallible by construction: every field is a string, an integer or a bool.
     fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap_or_else(|_| String::from(r#"{"kind":"full","dep":0,"files":[]}"#))
+        serde_json::to_string(self)
+            .unwrap_or_else(|_| String::from(r#"{"kind":"full","dep":0,"files":[]}"#))
     }
 
     /// `None` for anything that is not a payload this wrote — a truncated blob, an older shape, a corrupt
@@ -1732,7 +1727,10 @@ mod tests {
         assert_eq!(read.kind, "delta");
         assert_eq!(read.dep, 3);
         assert_eq!(read.base.as_deref(), Some("a".repeat(40).as_str()));
-        assert_eq!(read.files, vec![("src/main.rs".to_owned(), 0o100_755, 4_096)]);
+        assert_eq!(
+            read.files,
+            vec![("src/main.rs".to_owned(), 0o100_755, 4_096)]
+        );
         assert_eq!(read.gone, vec!["README.md".to_owned()]);
         // An anchor says nothing about a parent and nothing about directories, and does not pay for the
         // two `None`s and the empty list in every row of the bigger payload.
@@ -1748,7 +1746,10 @@ mod tests {
         let json = anchor.to_json();
         assert!(!json.contains("base"), "an anchor names no parent: {json}");
         assert!(!json.contains("gone"), "and removes nothing: {json}");
-        assert!(json.contains("\"dirs\":2"), "and counts what it counted: {json}");
+        assert!(
+            json.contains("\"dirs\":2"),
+            "and counts what it counted: {json}"
+        );
         // Anything that is not this shape is `None`, and the caller re-derives rather than trusting it.
         assert!(Link::from_json(b"not json").is_none());
     }

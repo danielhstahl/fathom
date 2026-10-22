@@ -303,7 +303,8 @@ pub fn gather_with(root: &Path, check: Check) -> Snapshot {
         .map(str::to_owned);
 
     #[cfg(feature = "sqlite-bundled")]
-    let (index, cache, index_findings) = describe_index(root, &redactor, head_oid.as_deref(), check);
+    let (index, cache, index_findings) =
+        describe_index(root, &redactor, head_oid.as_deref(), check);
     #[cfg(not(feature = "sqlite-bundled"))]
     let (index, cache, index_findings) = {
         let _ = (&check, &mut head_oid);

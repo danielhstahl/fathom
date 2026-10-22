@@ -485,7 +485,9 @@ impl crate::spine::Store {
             .query_row("PRAGMA page_size", [], |row| row.get(0))
             .map_err(|err| corrupt("reading page_size", &err))?;
         if pages == 0 || page_size == 0 {
-            problems.push("the file reports no pages, so it is not a usable SQLite database".to_owned());
+            problems.push(
+                "the file reports no pages, so it is not a usable SQLite database".to_owned(),
+            );
             return Ok(problems);
         }
         // The tables the readers in this crate assume exist. This is not the whole schema — `meta`,
