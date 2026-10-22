@@ -246,12 +246,52 @@ impl Snapshot {
     }
 }
 
-/// Read the repository at `root` and the index beside it.
+/// How hard a verb looks for a damaged store (ADR-004 §9.6).
+///
+/// Three levels because there are three verbs that ask three different questions, and the distinction is
+/// a cost, not a preference: `PRAGMA quick_check` walks every b-tree page in the store, and
+/// `pragma_foreign_key_check` walks every foreign-keyed row, so a verb that runs them pays for the size
+/// of the repository on every invocation. Measured on a 190 MiB store built from `aws/aws-sdk-go` that
+/// was ~0.5 s and ~0.35 s, spent before the verb did anything it was asked to do — `reco-66q`, in the
+/// course of measuring `query.card.ms`, which is budgeted at 50 ms for the whole read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Check {
+    /// The checks whose cost does not depend on how big the store is: page geometry, the schema this
+    /// build can read, and the version stamps. Every read verb (`stats`, `show`, `analyze`, `export`,
+    /// `compare`, `why`, the daemon's snapshot) runs these and only these.
+    Structural,
+    /// `fathom doctor`: the structural checks, `PRAGMA quick_check` and the foreign-key scan.
+    Quick,
+    /// `fathom doctor --deep`: `PRAGMA integrity_check` as well.
+    Full,
+}
+
+impl Check {
+    /// The name the report prints, so that "no problems" always says which problems were looked for.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Check::Structural => "structural",
+            Check::Quick => "structural+quick_check+foreign_keys",
+            Check::Full => "structural+quick_check+foreign_keys+integrity_check",
+        }
+    }
+}
+
+/// Read the repository at `root` and the index beside it, with the checks a read verb runs.
 ///
 /// `deep` is `fathom doctor --deep`'s full `integrity_check`; the other verbs pass `false`, because a
-/// whole-database check on every `fathom stats` is a check nobody will run twice.
+/// whole-database check on every `fathom stats` is a check nobody will run twice — which is a sentence
+/// this function only started telling the truth about in `reco-66q`, where `deep == false` meant
+/// "run `quick_check` anyway". `fathom doctor` asks for more through [`gather_with`].
 #[must_use]
 pub fn gather(root: &Path, deep: bool) -> Snapshot {
+    gather_with(root, if deep { Check::Full } else { Check::Structural })
+}
+
+/// The same, with the check level a verb means: this is `fathom doctor`'s entry point.
+#[must_use]
+pub fn gather_with(root: &Path, check: Check) -> Snapshot {
     let redactor = Redactor::for_root(root);
     let mut findings = Vec::new();
     let repository = describe_repository(root, &redactor, &mut findings);
@@ -263,10 +303,10 @@ pub fn gather(root: &Path, deep: bool) -> Snapshot {
         .map(str::to_owned);
 
     #[cfg(feature = "sqlite-bundled")]
-    let (index, cache, index_findings) = describe_index(root, &redactor, head_oid.as_deref(), deep);
+    let (index, cache, index_findings) = describe_index(root, &redactor, head_oid.as_deref(), check);
     #[cfg(not(feature = "sqlite-bundled"))]
     let (index, cache, index_findings) = {
-        let _ = (&deep, &mut head_oid);
+        let _ = (&check, &mut head_oid);
         (
             json!({ "present": false, "reason": "no SQLite backend in this build" }),
             Value::Null,
@@ -630,7 +670,7 @@ fn describe_index(
     root: &Path,
     redactor: &Redactor,
     head_oid: Option<&str>,
-    deep: bool,
+    check: Check,
 ) -> (Value, Value, Vec<Finding>) {
     use fathom_store::spine::Store;
 
@@ -687,7 +727,11 @@ fn describe_index(
     let inventory = store.cache_inventory().ok();
     let counters = store.counters("cache.").unwrap_or_default();
     let pending = store.pending_derivation().unwrap_or_default();
-    let integrity = store.integrity_check(deep).unwrap_or_default();
+    let integrity = match check {
+        Check::Structural => store.structural_check().unwrap_or_default(),
+        Check::Quick => store.integrity_check(false).unwrap_or_default(),
+        Check::Full => store.integrity_check(true).unwrap_or_default(),
+    };
     let tips = store.ref_tips().unwrap_or_default();
     let head_indexed = match head_oid {
         Some(oid) => store
@@ -810,6 +854,9 @@ fn describe_index(
         "epoch": epoch,
         "epoch_status": epoch_status,
         "integrity": if integrity.is_empty() { "ok" } else { "failed" },
+        // Which checks were run. Without this a shallow pass and a deep one print the same `"ok"`, and a
+        // reader who is told a store is sound is entitled to know what was actually looked at.
+        "integrity_checks": check.label(),
         "integrity_problems": integrity,
         "unreadable_commits": unreadable
             .iter()

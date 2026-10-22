@@ -37,7 +37,17 @@ pub fn doctor(
 ) -> eyre::Result<ExitCode> {
     let root_path = Path::new(root);
     let redactor = Redactor::for_root(root_path);
-    let snapshot = state::gather(root_path, deep);
+    // Doctor is the verb ADR-004 §9.6 gives the whole-database checks to, and it is the only one that asks
+    // for them: `fathom doctor` runs `quick_check`, `--deep` adds `integrity_check`, and the read verbs
+    // (`stats`, `show`, `analyze`, …) run the checks that do not cost the size of the repository.
+    let snapshot = state::gather_with(
+        root_path,
+        if deep {
+            state::Check::Full
+        } else {
+            state::Check::Quick
+        },
+    );
     let build = build_section();
     let config = config_section(&redactor);
     let layout = fathom_layout(&redactor);

@@ -450,8 +450,88 @@ pub struct SqliteProvenance {
 }
 
 impl crate::spine::Store {
-    /// The integrity checks `fathom doctor` runs: `PRAGMA quick_check` always, `PRAGMA integrity_check`
-    /// as well on `--deep` (ADR-004 §9.6).
+    /// The checks a read verb can afford: the ones whose cost does not depend on how many rows the store
+    /// holds.
+    ///
+    /// This is what `fathom stats`, `fathom show`, `fathom analyze`, the daemon's snapshot and the TUI's
+    /// status line run, and it is a separate function because the alternative is what `reco-66q` measured:
+    /// with the whole-database checks in the shared read path, `fathom show --json` on a 190 MiB store
+    /// built from a real repository spent ~0.5 s in `PRAGMA quick_check` and ~0.35 s in
+    /// `pragma_foreign_key_check` — before doing whatever it was asked to do — on *every invocation*,
+    /// which is a third of `query.card.ms`' entire budget paid for a check the reader did not ask for.
+    /// ADR-004 §9.6 puts those checks in `doctor`; the comment in `describe_index` has said since `e1.10`
+    /// that "a whole-database check on every `fathom stats` is a check nobody will run twice". The code
+    /// now matches the comment.
+    ///
+    /// What is left is what a read verb can honestly claim to have verified: that the file is a SQLite
+    /// database with the page geometry it claims, that the schema this build's readers assume is in it,
+    /// and that the version stamps agree with this build. A store that passes these and is still corrupt
+    /// is a store `fathom doctor` exists for — and the report says which checks ran
+    /// (`fathom-cli`'s `integrity_checks` field), so a shallow pass is never read as a deep one.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if a check statement itself could not run.
+    pub fn structural_check(&self) -> Result<Vec<String>, Error> {
+        let conn = self.connection();
+        let mut problems = Vec::new();
+        // A zero here is not a slow answer, it is a file that is not a database: an empty file, a
+        // truncated one, or a directory entry that is not SQLite at all. Everything below assumes both
+        // numbers, so they are checked before they are used.
+        let pages: i64 = conn
+            .query_row("PRAGMA page_count", [], |row| row.get(0))
+            .map_err(|err| corrupt("reading page_count", &err))?;
+        let page_size: i64 = conn
+            .query_row("PRAGMA page_size", [], |row| row.get(0))
+            .map_err(|err| corrupt("reading page_size", &err))?;
+        if pages == 0 || page_size == 0 {
+            problems.push("the file reports no pages, so it is not a usable SQLite database".to_owned());
+            return Ok(problems);
+        }
+        // The tables the readers in this crate assume exist. This is not the whole schema — `meta`,
+        // `counter` and the FTS side tables are read defensively and a missing one is a finding, not a
+        // corrupt store — and it is deliberately a name list rather than a `PRAGMA table_info` per table:
+        // the check is meant to cost nothing, and `sqlite_master` is a handful of rows whatever the store
+        // holds.
+        let mut statement = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .map_err(|err| corrupt("reading the schema", &err))?;
+        let have: std::collections::BTreeSet<String> = statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|err| corrupt("reading the schema", &err))?
+            .collect::<Result<_, _>>()
+            .map_err(|err| corrupt("reading the schema", &err))?;
+        for table in [
+            "meta",
+            "index_run",
+            "analyzer",
+            "git_commit",
+            "git_commit_file",
+            "ref_tip",
+            "episode",
+            "episode_member",
+            "cache",
+            "blob",
+            "blob_ref",
+        ] {
+            if !have.contains(table) {
+                problems.push(format!("the schema has no `{table}` table"));
+            }
+        }
+        let version: i64 = conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|err| corrupt("reading user_version", &err))?;
+        if version != crate::spine::SCHEMA_VERSION {
+            problems.push(format!(
+                "user_version is {version}, this build writes {}",
+                crate::spine::SCHEMA_VERSION
+            ));
+        }
+        Ok(problems)
+    }
+
+    /// The integrity checks `fathom doctor` runs: [`structural_check`] and `PRAGMA quick_check` always,
+    /// `PRAGMA integrity_check` as well on `--deep` (ADR-004 §9.6).
     ///
     /// Returns the problems, which is empty when the store is sound, rather than a boolean: the sentence
     /// doctor prints has to name *which* page or index disagreed, and a caller that got `false` would
@@ -462,11 +542,15 @@ impl crate::spine::Store {
     /// [`Error::StoreCorrupt`] if a check statement itself could not run, which is a different fact from
     /// "the store reported a problem" and is reported as such.
     pub fn integrity_check(&self, deep: bool) -> Result<Vec<String>, Error> {
-        let mut problems = self.check_statement("quick_check", "PRAGMA quick_check")?;
+        // Everything the cheap path already verified, and then the checks whose cost is the size of the
+        // database. Nothing here is skipped on `--deep`, and nothing cheap is paid twice: the structural
+        // checks are microseconds, so `doctor` reporting a clean store can say it ran them too.
+        let mut problems = self.structural_check()?;
+        problems.extend(self.check_statement("quick_check", "PRAGMA quick_check")?);
         if deep {
             problems.extend(self.check_statement("integrity_check", "PRAGMA integrity_check")?);
         }
-        // ADR-004 §9.1's other two checks are the spine's own: foreign keys and the version stamps.
+        // ADR-004 §9.1's other check is the spine's own: foreign keys.
         let conn = self.connection();
         let broken: i64 = conn
             .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |row| {
@@ -475,15 +559,6 @@ impl crate::spine::Store {
             .map_err(|err| corrupt("checking foreign keys", &err))?;
         if broken != 0 {
             problems.push(format!("{broken} foreign key violations"));
-        }
-        let version: i64 = conn
-            .query_row("PRAGMA user_version", [], |row| row.get(0))
-            .map_err(|err| corrupt("reading user_version", &err))?;
-        if version != crate::spine::SCHEMA_VERSION {
-            problems.push(format!(
-                "user_version is {version}, this build writes {}",
-                crate::spine::SCHEMA_VERSION
-            ));
         }
         Ok(problems)
     }

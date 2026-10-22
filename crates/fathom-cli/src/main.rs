@@ -10,6 +10,11 @@
 
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
+// `serde_json::json!` expands a long object one recursive macro frame per key, so the ceiling here is a
+// property of the macro's encoding and not a warning about the code. `state::describe_index`'s snapshot
+// is the object that reaches it: `reco-66q` added one key (`integrity_checks`, which checks ran, so that
+// an "ok" always says what was looked for) and the default 128 was no longer enough.
+#![recursion_limit = "256"]
 
 // The clock is read once, here, and only by the verbs that need an instant (ADR-002 §4.4). Every verb
 // that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,

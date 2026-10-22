@@ -1827,6 +1827,42 @@ mod tests {
     }
 
     #[test]
+    fn the_cheap_check_is_the_one_a_read_verb_can_afford() {
+        // `reco-66q`. `fathom stats` and `fathom show` are budgeted in tens of milliseconds and, until
+        // this ticket, paid a whole-database check on every process start to print "ok". The cheap path
+        // (`Store::structural_check`, what every read verb now runs) therefore has to be able to say
+        // something true — the geometry, the tables this build's readers assume, the version stamps — and
+        // has to be *honest* about the things it does not look at, which is why the CLI prints which
+        // level ran alongside the verdict.
+        let fixture = temp_store();
+        {
+            let store = Store::open(&fixture).expect("open");
+            let fresh = store.structural_check().expect("check");
+            assert!(fresh.is_empty(), "a store this build just made is sound: {fresh:?}");
+            // A stamp that disagrees with this build is the cheap check's signature find: it costs nothing
+            // to read, and it is the one that would otherwise present a v1 store's rows as if a v3 reader
+            // had written them.
+            store.conn.execute_batch("PRAGMA user_version = 7").unwrap();
+            let cheap = store.structural_check().expect("check again");
+            assert!(
+                cheap.iter().any(|problem| problem.contains("user_version")),
+                "the cheap check names the stamp: {cheap:?}"
+            );
+            assert!(
+                store
+                    .integrity_check(false)
+                    .expect("doctor's battery")
+                    .iter()
+                    .any(|problem| problem.contains("user_version")),
+                "and the expensive battery is a superset, not a different opinion"
+            );
+        }
+        let _ = std::fs::remove_file(&fixture);
+        let _ = std::fs::remove_file(format!("{}-wal", fixture.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", fixture.display()));
+    }
+
+    #[test]
     fn a_run_that_never_closed_leaves_its_commits_on_the_derivation_list() {
         let mut store = store();
         let doomed = store.begin_run("warm", Trigger::Commit, 1).unwrap();
