@@ -284,6 +284,11 @@ pub trait Source: Send + Sync + 'static {
     /// `search_history` — pointer-shaped hits over the indexed history, never content.
     fn search_history(&self, args: &Args, window: Window) -> Result<Batch, Failure>;
 
+    /// `review_memory` — what a human recorded about a change, read back from the committed
+    /// review memory (`e6.5`). A document, not a page: the recorded notes arrive with their
+    /// evidence lines, and the truncation is reported by [`Batch::truncated`].
+    fn review_memory(&self, args: &Args, window: Window) -> Result<Batch, Failure>;
+
     /// `mark_reviewed` — record that a named human accepted a change.
     ///
     /// The `Batch` here is a document, not a page: the ledger entry's identity, whether it was already

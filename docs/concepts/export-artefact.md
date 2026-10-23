@@ -67,6 +67,7 @@ The order is the order a reviewer works in: verdict, then the episodes, then the
 | Findings with evidence | every detector finding, worst first, each with its evidence lines and its suppress key | `fathom_analyze::risk::collect` |
 | Operator-action checklist | what is still being asked of a human, open first, each with what to type | decisions, findings, ledger problems |
 | Sign-offs | reviewer, kind, instant, decision, scope, dismissal reason, note, digests, and whether the content still matches | `.fathom/reviews/` through `fathom_analyze::ledger` |
+| Review memory | every note the range carries: kind, status, author, instant, its words as written, how it is attached now (including after a rewrite), and its digests | `.fathom/reviews/notes.md` through `fathom_analyze::notes` (`e6.5`, `reco-552`) |
 | Commits | every commit in scope, with author, instant, its episode and a web link when the remote makes one derivable | the store's commit rows |
 | What this record cannot answer | every gap, once, with its owner and remedy | the delta documents' gaps + the export's own |
 | Provenance and self-check | which contracts and version wrote the file, which checks ran, and what they found | `export::record::CHECKS` |
@@ -142,6 +143,21 @@ green tick, so each entry prints:
 
 A dismissed episode is not counted as reviewed: the north-star number is accepted sign-offs, and the summary
 says `0 of 2 … · 1 undecided · 1 refused or deferred` rather than rounding a dismissal up.
+
+## 5b. The review-memory block
+
+The sign-off says a person accepted a change; the memory says what they wrote down while doing it — the
+decision and its reason, the question nobody has answered, the follow-up somebody owes
+([the review memory](review-memory.md)). Each note prints its kind, its status, its author and author kind,
+the instant the file holds, its text as written, and the evidence: the episode it is about *after* the re-link
+ladder, the rung that placed it, the episode it was written against when a rebase moved it, its four identity
+digests, its own tamper digest and the file-and-anchor a reader can open.
+
+An unanswered question or follow-up is also an open checklist item — `Answer the question nt-…`, with
+`fathom note answer nt-… nt-… "…"` as the thing to type — so `--strict` refuses to call a range finished
+while a reviewer's question is still sitting in the memory file. A note whose episode was rewritten away
+stays in the artefact and says so: an orphan is a fact, and a note that vanished from the export would read
+as a note that was deleted.
 
 ## 6. The self-check is a check
 

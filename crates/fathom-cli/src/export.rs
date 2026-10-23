@@ -162,6 +162,24 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
     let (entries, problems) = fathom_analyze::ledger::collect::read(root);
     let facts = fathom_analyze::ledger::collect::episode_facts(&store).map_err(failed)?;
     let signoffs = signoff_rows(&entries, &facts, &scope, &commits);
+    // The review memory (`e6.5`), read through the same code `fathom context` uses so the artefact carries
+    // the ladder's verdict rather than the id the note was written against. Read from the files, not the
+    // mirror: the artefact must not depend on someone having remembered to refresh an index.
+    let notes = fathom_analyze::notes::collect::read(root).0;
+    let note_links = fathom_analyze::ledger::link_over(&notes, &facts);
+    let note_statuses = fathom_analyze::notes::statuses(&notes);
+    let note_attachments: Vec<fathom_analyze::notes::Attachment> = notes
+        .iter()
+        .zip(&note_links)
+        .map(|(note, link)| fathom_analyze::notes::Attachment::of(note, link))
+        .collect();
+    let memory: Vec<fathom_analyze::export::MemoryRow> =
+        memory_rows(&notes, &note_statuses, &note_attachments, &scope, &commits);
+    let memory_problems: Vec<String> = fathom_analyze::notes::collect::read(root)
+        .1
+        .iter()
+        .map(fathom_analyze::ledger::Problem::line)
+        .collect();
 
     let dependencies = dependencies_for(&repo, &scope);
     if dependencies.is_none() {
@@ -190,6 +208,8 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
             .iter()
             .map(fathom_analyze::ledger::Problem::line)
             .collect(),
+        memory,
+        memory_problems,
         produced_by: fathom_analyze::insight::Provenance::produced_by(),
         store: Some(redactor.path(&store_path)),
         epoch: store.epoch().ok(),
@@ -567,6 +587,77 @@ fn finding_rows(
 /// "Belongs" is either test: the entry's episode id is in scope, or one of the commits it covered is — the
 /// second half is what makes a sign-off that re-linked through a rebase still show up in the artefact for
 /// the history that replaced the one it was signed against.
+/// The memory rows for the artefact: every note whose episode is in scope, or whose path the range's
+/// episodes touched, or whose link the ladder could not place (`e6.5`).
+///
+/// An orphaned note stays in the artefact on purpose. "The change this was written about was rewritten
+/// away" is a fact a reviewer needs, and a note that silently vanished from the export would read as a
+/// note that was deleted.
+fn memory_rows(
+    notes: &[fathom_analyze::notes::Note],
+    statuses: &[fathom_analyze::notes::Status],
+    attachments: &[fathom_analyze::notes::Attachment],
+    scope: &Scope,
+    commits: &[fathom_analyze::export::CommitRef],
+) -> Vec<fathom_analyze::export::MemoryRow> {
+    let oids: Vec<&str> = scope
+        .commit_oids
+        .iter()
+        .map(String::as_str)
+        .chain(commits.iter().map(|commit| commit.oid.as_str()))
+        .collect();
+    let mut rows = Vec::new();
+    for (((note, status), attachment), _) in notes
+        .iter()
+        .zip(statuses)
+        .zip(attachments)
+        .zip(notes.iter().map(|_| ()))
+    {
+        let episode = attachment
+            .episode
+            .clone()
+            .or_else(|| note.written_episode().map(str::to_owned))
+            .unwrap_or_default();
+        let in_scope = scope.episodes.contains(&episode)
+            || note.members.iter().any(|oid| oids.contains(&oid.as_str()))
+            || attachment.state == "orphan";
+        if !in_scope {
+            continue;
+        }
+        rows.push(fathom_analyze::export::MemoryRow {
+            id: note.id.clone(),
+            file: note.file.clone(),
+            episode,
+            kind: note.kind.as_str().to_owned(),
+            status: status.as_str().to_owned(),
+            author: note.author.display.clone(),
+            author_kind: note.author.kind.as_str().to_owned(),
+            written_utc: note.written_utc,
+            text: note.text.clone(),
+            about: note.about.clone(),
+            answers: fathom_analyze::notes::answers(notes, &note.id)
+                .into_iter()
+                .map(|answer| answer.id.clone())
+                .collect(),
+            link_state: attachment.state.clone(),
+            link_method: attachment.method.clone(),
+            relinked_from: attachment.relinked_from.clone(),
+            why: attachment.reason.clone(),
+            target: note.target(),
+            via: note.via.clone(),
+            digests: vec![
+                ("fingerprint".to_owned(), note.fingerprint.clone()),
+                ("fallback".to_owned(), note.fallback.clone()),
+                ("shape".to_owned(), note.shape.clone()),
+                ("content".to_owned(), note.content.clone()),
+            ],
+            digest: note.digest.clone(),
+            tampered: attachment.tampered,
+        });
+    }
+    rows
+}
+
 fn signoff_rows(
     entries: &[fathom_analyze::ledger::SignOff],
     facts: &[fathom_analyze::ledger::EpisodeFacts],
@@ -940,6 +1031,25 @@ fn payload(
             "note": row.note,
             "file": row.file,
         })).collect::<Vec<_>>(),
+        "memory": record.memory.iter().map(|row| json!({
+            "id": row.id,
+            "kind": row.kind,
+            "status": row.status,
+            "episode": row.episode,
+            "author": row.author,
+            "author_kind": row.author_kind,
+            "written_utc": row.written_utc,
+            "text": row.text,
+            "about": row.about,
+            "answers": row.answers,
+            "link_state": row.link_state,
+            "relinked_from": row.relinked_from,
+            "target": row.target,
+            "file": row.file,
+            "digest": row.digest,
+            "tampered": row.tampered,
+        })).collect::<Vec<_>>(),
+        "memory_problems": record.memory_problems,
         "checklist_open": record.checklist.iter().filter(|item| item.is_open()).map(|item| json!({
             "kind": item.kind,
             "text": item.text,

@@ -93,6 +93,8 @@ fn every_format_renders_the_same_record_and_says_the_same_things() {
         dependencies: None,
         signoffs: Vec::new(),
         ledger_problems: Vec::new(),
+        memory: Vec::new(),
+        memory_problems: Vec::new(),
         produced_by: "fathom test".to_owned(),
         store: Some(".fathom/index.sqlite3".to_owned()),
         epoch: Some(1),

@@ -71,6 +71,8 @@ mod memory;
 // a document and the thing you read it for are different jobs.
 mod mcp;
 mod narrative;
+/// The review memory's verbs — `fathom note …` and `fathom context …` (`e6.5`, `reco-552`).
+mod notes;
 mod output;
 // The diff pane's byte source (`reco-0kw`): the episode's patch, materialised from the store and
 // the object store here, because the shell may not do either (ADR-002 §5.2). Only the shell has a

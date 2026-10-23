@@ -125,6 +125,7 @@ pub fn render(record: &Record) -> String {
     findings(&mut out, record);
     checklist(&mut out, record);
     signoffs(&mut out, record);
+    memory(&mut out, record);
     commits(&mut out, record);
     gaps(&mut out, record);
     footer(&mut out, record);
@@ -712,6 +713,119 @@ fn checklist(out: &mut String, record: &Record) {
             record.checklist.len().saturating_sub(LIST_CAP),
             "items",
         );
+    }
+    out.push_str("</section>\n");
+}
+
+/// The memory section: what a human recorded while reviewing, with the evidence each note cites
+/// (`e6.5`, `reco-552`).
+fn memory(out: &mut String, record: &Record) {
+    out.push_str("<section id=\"memory\"><h2>Review memory</h2>\n");
+    if record.memory.is_empty() {
+        out.push_str(
+            "<p><em>Nothing recorded in the review memory covers this range.</em> <code>fathom note              add</code> writes one, next to the ledger in <code>.fathom/reviews/</code>.</p>\n",
+        );
+    } else {
+        let open = record
+            .memory
+            .iter()
+            .filter(|row| row.status == "open")
+            .count();
+        out.push_str(&format!(
+            "<p>{} note(s) · {} still open · read from <code>{}</code></p>\n",
+            record.memory.len(),
+            open,
+            escape(
+                record
+                    .memory
+                    .first()
+                    .map_or(".fathom/reviews/notes.md", |row| row.file.as_str())
+            )
+        ));
+        out.push_str("<table><thead><tr><th>note</th><th>kind</th><th>status</th><th>when</th><th>who</th><th>about</th><th>says</th></tr></thead><tbody>");
+        for row in record.memory.iter().take(LIST_CAP) {
+            let about = if row.episode.is_empty() {
+                escape(&row.target)
+            } else {
+                format!(
+                    "<a href=\"#{}\"><code>{}</code></a>",
+                    super::markdown::episode_anchor(&row.episode),
+                    escape(&row.episode)
+                )
+            };
+            out.push_str(&format!(
+                "<tr><td><code>{}</code></td><td><code>{}</code></td><td><code>{}</code></td><td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                escape(&row.id),
+                escape(&row.kind),
+                escape(&row.status),
+                escape(&crate::ledger::entry::iso_utc(row.written_utc)),
+                escape(&format!("{} ({})", row.author, row.author_kind)),
+                about,
+                escape(&row.text)
+            ));
+        }
+        out.push_str("</tbody></table>\n");
+        out.push_str("<h4>Evidence each note cites</h4><ul>");
+        for row in record.memory.iter().take(LIST_CAP) {
+            out.push_str(&format!(
+                "<li><code>{}</code> (<code>{}</code>, <code>{}</code>) — {}<ul>",
+                escape(&row.id),
+                escape(&row.kind),
+                escape(&row.status),
+                escape(&row.text)
+            ));
+            if let Some(from) = &row.relinked_from {
+                out.push_str(&format!(
+                    "<li>re-linked from <code>{}</code> by <code>{}</code> — {}</li>",
+                    escape(from),
+                    escape(&row.link_method),
+                    escape(&row.why)
+                ));
+            } else if row.link_state != "fresh" && !row.why.is_empty() {
+                out.push_str(&format!(
+                    "<li>link: <code>{}</code> — {}</li>",
+                    escape(&row.link_state),
+                    escape(&row.why)
+                ));
+            }
+            if !row.about.is_empty() {
+                out.push_str(&format!(
+                    "<li>answers <code>{}</code></li>",
+                    escape(&row.about)
+                ));
+            }
+            if !row.answers.is_empty() {
+                out.push_str(&format!(
+                    "<li>answered by <code>{}</code></li>",
+                    escape(&row.answers.join(", "))
+                ));
+            }
+            for (label, value) in &row.digests {
+                if !value.is_empty() {
+                    out.push_str(&format!("<li>{label}: <code>{}</code></li>", escape(value)));
+                }
+            }
+            out.push_str(&format!(
+                "<li>note digest: <code>{}</code> · recorded in <code>{}</code> by <code>{}</code> · {}</li>",
+                escape(&row.digest),
+                escape(&row.file),
+                escape(&row.via),
+                if row.tampered {
+                    "<strong>the text no longer hashes to this digest</strong>"
+                } else {
+                    "intact"
+                }
+            ));
+            out.push_str("</ul></li>");
+        }
+        out.push_str("</ul>\n");
+    }
+    if !record.memory_problems.is_empty() {
+        out.push_str("<h4>The review memory reported problems</h4><ul>");
+        for problem in record.memory_problems.iter().take(LIST_CAP) {
+            out.push_str(&format!("<li>{}</li>", escape(problem)));
+        }
+        out.push_str("</ul>\n");
     }
     out.push_str("</section>\n");
 }

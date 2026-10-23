@@ -105,6 +105,14 @@ impl Source for Stub {
             ))
     }
 
+    fn review_memory(&self, args: &Args, _window: Window) -> Result<Batch, Failure> {
+        Ok(Batch::new()
+            .field("target", args.str("target").unwrap_or("?"))
+            .items(vec![
+                json!({"id": "nt-1", "kind": "decision", "text": "we kept the cycle"}),
+            ]))
+    }
+
     fn add_review_note(&self, args: &Args) -> Result<Batch, Failure> {
         Ok(Batch::new().field("target", args.str("target").unwrap_or("?")))
     }
@@ -150,6 +158,8 @@ fn the_write_tools_are_absent_from_the_list_when_writes_are_off() {
             "dependency_delta",
             "risk_report",
             "search_history",
+            // `e6.5`: the review memory is a read tool, so it is here whether or not writes are on.
+            "review_memory",
         ],
         "the callable surface, and nothing that would refuse"
     );
@@ -403,6 +413,10 @@ impl Source for Secretive {
     }
 
     fn mark_reviewed(&self, _args: &Args) -> Result<Batch, Failure> {
+        Ok(Batch::new())
+    }
+
+    fn review_memory(&self, _args: &Args, _window: Window) -> Result<Batch, Failure> {
         Ok(Batch::new())
     }
 

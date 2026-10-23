@@ -239,6 +239,23 @@ pub const READ_TOOLS: &[ToolSpec] = &[
         max_items: 32,
         bound_note: "`k` defaults to 8 and is refused above 32",
     },
+    ToolSpec {
+        name: "review_memory",
+        title: "What a human recorded about a change",
+        description: "The durable answers a review left behind, read back from the committed markdown under \
+                      `.fathom/reviews/`: the recorded decisions with their reasons, the questions and \
+                      follow-ups still open, and the annotations — each with its author, the instant it was \
+                      written, how it is attached to the change now (including after a rebase), and the \
+                      evidence it cites: episode id and digests, member commits, the path and line it \
+                      pointed at, and the file and block to quote. This is the tool for \"why did we do \
+                      X\"; it returns what was written down, never an inference about why.",
+        capability: Capability::Read,
+        required: &["target"],
+        optional: &["kind", "status", "include_answered"],
+        default_items: 20,
+        max_items: 100,
+        bound_note: "notes are capped at 100 with a cursor; a body prints as written, up to 8 KiB",
+    },
 ];
 
 /// The two gated write tools (ADR-005 §4.2).
@@ -260,15 +277,20 @@ pub const WRITE_TOOLS: &[ToolSpec] = &[
     ToolSpec {
         name: "add_review_note",
         title: "Attach a note to an episode, a change or a path",
-        description: "Record a note, question or decision against a target this index knows, with the \
-                      author and the time it was written. The body is bounded at 4096 bytes and the target \
-                      must resolve.",
+        description: "Record a note, question, decision or follow-up against a target this index knows, \
+                      with the author and the time it was written, by appending it to the committed \
+                      review memory at `.fathom/reviews/notes.md` — the same file a person writes \
+                      through `fathom note add`, so an agent's note and a human's are one record that \
+                      travels in the same PR. The body is bounded at 4096 bytes, is redacted on the way \
+                      in, and the target must resolve. `reviewer` names the human the note is \
+                      attributed to; without it the note is the agent's own claim. Answering a \
+                      recorded question is `about: nt-…`, never an edit.",
         capability: Capability::Write,
         required: &["target", "body"],
-        optional: &["kind"],
+        optional: &["kind", "about", "reviewer"],
         default_items: 0,
         max_items: 1,
-        bound_note: "body is capped at 4096 UTF-8 bytes",
+        bound_note: "body is capped at 4096 UTF-8 bytes; one block appended per call, a repeat is skipped",
     },
 ];
 
@@ -280,13 +302,14 @@ pub const PAGE_LIMIT_MAX: usize = 500;
 
 /// Every tool, read tools first.
 pub const ALL: &[ToolSpec] = &[
-    // Concatenation at compile time is not worth a macro for eight entries.
+    // Concatenation at compile time is not worth a macro for nine entries.
     READ_TOOLS[0],
     READ_TOOLS[1],
     READ_TOOLS[2],
     READ_TOOLS[3],
     READ_TOOLS[4],
     READ_TOOLS[5],
+    READ_TOOLS[6],
     WRITE_TOOLS[0],
     WRITE_TOOLS[1],
 ];

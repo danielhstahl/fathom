@@ -40,6 +40,7 @@ pub fn render(record: &Record) -> String {
     findings(&mut out, record);
     checklist(&mut out, record);
     signoffs(&mut out, record);
+    memory(&mut out, record);
     commits(&mut out, record);
     gaps(&mut out, record);
     footer(&mut out, record);
@@ -606,6 +607,118 @@ fn checklist(out: &mut String, record: &Record) {
         "item(s)",
     );
     out.push('\n');
+}
+
+/// The memory block: what a human wrote down while reviewing — decisions with their reasons, the
+/// questions nobody has answered, the follow-ups somebody owes (`e6.5`, `reco-552`).
+///
+/// Printed as a list rather than a table on purpose: the text is prose a person wrote, and a table cell is
+/// where prose goes to be clipped. Every row ends with the file-and-anchor and the tamper digest, so a
+/// reader who does not believe the line can check it in the committed file.
+fn memory(out: &mut String, record: &Record) {
+    out.push_str("## Review memory\n\n");
+    if record.memory.is_empty() {
+        out.push_str(
+            "_Nothing recorded in the review memory covers this range._ `fathom note add \"we deliberately \
+             allow this because \"…\" --episode <ep>` writes one, and it lands next to the ledger in \
+             `.fathom/reviews/`.\n\n",
+        );
+    } else {
+        let open = record
+            .memory
+            .iter()
+            .filter(|row| row.status == "open")
+            .count();
+        out.push_str(&format!(
+            "{} note(s) · {open} still open · read from {}\n\n",
+            record.memory.len(),
+            code(
+                record
+                    .memory
+                    .first()
+                    .map_or(".fathom/reviews/notes.md", |row| row.file.as_str())
+            )
+        ));
+        out.push_str("| note | kind | status | when | who | about | says |\n");
+        out.push_str("|---|---|---|---|---|---|---|\n");
+        for row in record.memory.iter().take(LIST_CAP) {
+            let about = if row.episode.is_empty() {
+                row.target.clone()
+            } else {
+                format!("[{}](#{})", row.episode, episode_anchor(&row.episode))
+            };
+            out.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} | {} |\n",
+                code(&row.id),
+                code(&row.kind),
+                code(&row.status),
+                code(&crate::ledger::entry::iso_utc(row.written_utc)),
+                inline(&format!("{} ({})", row.author, row.author_kind)),
+                inline(&about),
+                inline(&row.text)
+            ));
+        }
+        capped(out, record.memory.len().saturating_sub(LIST_CAP), "note(s)");
+        out.push('\n');
+        out.push_str("Evidence each note cites:\n\n");
+        for row in record.memory.iter().take(LIST_CAP) {
+            out.push_str(&format!(
+                "- {} ({}, {}) — {}\n",
+                code(&row.id),
+                code(&row.kind),
+                code(&row.status),
+                inline(&row.text)
+            ));
+            if let Some(from) = &row.relinked_from {
+                out.push_str(&format!(
+                    "    - re-linked from {} by {} — {}\n",
+                    code(from),
+                    code(&row.link_method),
+                    inline(&row.why)
+                ));
+            } else if row.link_state != "fresh" && !row.why.is_empty() {
+                out.push_str(&format!(
+                    "    - link: {} — {}\n",
+                    code(&row.link_state),
+                    inline(&row.why)
+                ));
+            }
+            if !row.about.is_empty() {
+                out.push_str(&format!("    - answers {}\n", code(&row.about)));
+            }
+            if !row.answers.is_empty() {
+                let answers: Vec<&str> = row.answers.iter().map(String::as_str).collect();
+                out.push_str(&format!(
+                    "    - answered by {}\n",
+                    code(&answers.join(", "))
+                ));
+            }
+            for (label, value) in &row.digests {
+                if !value.is_empty() {
+                    out.push_str(&format!("    - {label}: {}\n", code(value)));
+                }
+            }
+            out.push_str(&format!(
+                "    - note digest: {} · recorded in {} by {} · {}\n",
+                code(&row.digest),
+                code(&row.file),
+                code(&row.via),
+                if row.tampered {
+                    "**the text no longer hashes to this digest**"
+                } else {
+                    "intact"
+                }
+            ));
+        }
+        out.push('\n');
+    }
+    if !record.memory_problems.is_empty() {
+        out.push_str("**The review memory reported problems**\n\n");
+        for problem in record.memory_problems.iter().take(LIST_CAP) {
+            out.push_str(&format!("- {}\n", inline(problem)));
+        }
+        out.push('\n');
+    }
 }
 
 /// The sign-off block: who, when, over what, and why if they refused.

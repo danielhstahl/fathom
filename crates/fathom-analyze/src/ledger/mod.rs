@@ -102,4 +102,4 @@ pub use format::{
     LEDGER_DIR, LEDGER_FILE, Parsed, Problem, default_path, discover, parse, parse_text, preamble,
     render, render_entry,
 };
-pub use relink::{EntryState, Link, LinkMethod, Verdict, assess, link};
+pub use relink::{Anchor, EntryState, Link, LinkMethod, Verdict, assess, link, link_over};

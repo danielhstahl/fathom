@@ -58,7 +58,12 @@ use sha2::Digest as _;
 /// indexes its reachability probe needs to answer "is this blob still named by anything?" without a
 /// table scan per blob. Same argument as version 8's — every byte under a ceiling is class R, so the
 /// bump migrates nothing and re-derives what it evicts.
-pub const SCHEMA_VERSION: i64 = 9;
+///
+/// Version 10 is `reco-552`'s review memory ([`crate::notes`]): ADR-004 Appendix A's `decision_note`, plus
+/// the columns a re-link verdict has to report. The same argument as version 9's applies — the table is a
+/// mirror, class M by its content and class R by its copy — so the bump migrates nothing, every derived row
+/// goes unreachable, and the notes come back from the committed markdown on the next `fathom note list`.
+pub const SCHEMA_VERSION: i64 = 10;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -121,6 +126,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (7, crate::ledger::MIGRATION_7),
     (8, crate::graph::MIGRATION_8),
     (9, crate::ceiling::MIGRATION_9),
+    (10, crate::notes::MIGRATION_10),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.

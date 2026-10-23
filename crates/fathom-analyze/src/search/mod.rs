@@ -95,16 +95,19 @@ pub enum Kind {
     Dependency,
     /// A path someone has touched.
     Path,
+    /// A note, decision, question or follow-up from the review memory (`e6.5`).
+    Note,
 }
 
 impl Kind {
     /// Every kind, in group order.
-    pub const ALL: [Kind; 5] = [
+    pub const ALL: [Kind; 6] = [
         Kind::Episode,
         Kind::Symbol,
         Kind::Finding,
         Kind::Dependency,
         Kind::Path,
+        Kind::Note,
     ];
 
     /// The name `kind:` accepts and the report prints.
@@ -116,6 +119,7 @@ impl Kind {
             Kind::Finding => "finding",
             Kind::Dependency => "dependency",
             Kind::Path => "path",
+            Kind::Note => "note",
         }
     }
 
@@ -129,6 +133,9 @@ impl Kind {
             "finding" | "findings" | "finding-kind" => Some(Kind::Finding),
             "dependency" | "dependencies" | "dep" | "deps" | "package" => Some(Kind::Dependency),
             "path" | "paths" | "file" | "files" => Some(Kind::Path),
+            "note" | "notes" | "decision" | "decision-note" | "question" | "memory" => {
+                Some(Kind::Note)
+            }
             _ => None,
         }
     }
@@ -936,6 +943,11 @@ impl Hit {
             Kind::Symbol => Destination::Diff {
                 episode: self.episode.clone(),
                 path: self.paths_hint(),
+            },
+            // A recorded note opens the episode it is about, because that is where its evidence lives; the
+            // note's own id is in the hit, so the shell can quote it (`e6.5`).
+            Kind::Note => Destination::Timeline {
+                episode: self.episode.clone().unwrap_or_else(|| self.id.clone()),
             },
         }
     }

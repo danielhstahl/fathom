@@ -32,6 +32,7 @@ use fathom_analyze::insight;
 use fathom_core::exit::ExitCode;
 use fathom_mcp::policy::{Policy, Transport};
 use fathom_mcp::source::{Args, AuditLine, Batch, Failure, Source, Window};
+use fathom_mcp::tools::MAX_BODY_BYTES;
 use fathom_store::episode::EpisodeQuery;
 use fathom_store::spine::Store;
 use serde_json::{Value, json};
@@ -45,14 +46,6 @@ use crate::verbs::{McpAction, McpArgs};
 /// It is deliberately *not* the review ledger: the ledger is the claim that a human reviewed something and
 /// is committed; the audit log is the record of what the agent asked for and is not.
 pub const AUDIT_LOG: &str = ".fathom/logs/mcp-audit.jsonl";
-
-/// Where review notes recorded through `add_review_note` wait for `e6.5`.
-///
-/// `e6.5` (reco-552) owns the committable markdown memory with a mirrored index, its relink behaviour and
-/// its TUI surface. Until that lands the note has to live *somewhere* durable enough to be read back in the
-/// next session, and a JSONL line under `.fathom/reviews/` is the honest interim: it is appended, it is
-/// readable, it says what it is, and it does not pretend to be the ledger.
-pub const NOTE_LOG: &str = ".fathom/reviews/notes.jsonl";
 
 /// `fathom mcp …`
 pub(crate) fn run(args: &McpArgs, root: &Path) -> eyre::Result<ExitCode> {
@@ -435,6 +428,38 @@ impl Review {
         Err(Failure::NotReviewable(format!(
             "`{target}` resolves to no episode, commit or path in this index; a note that points at \
              nothing will be indistinguishable from a note that was deleted"
+        )))
+    }
+
+    /// The note's anchor, from whatever the caller named: an episode id, a member commit, or a path
+    /// (optionally `path:line`). Mirrors [`Self::resolve_target`] but keeps the episode's facts, which is what
+    /// a note needs in order to be attached by digest rather than by name.
+    fn note_target(
+        &self,
+        store: &Store,
+        target: &str,
+    ) -> Result<(String, fathom_analyze::notes::NoteTarget), Failure> {
+        use fathom_analyze::notes::NoteTarget;
+        let facts = fathom_analyze::ledger::collect::episode_facts(store)
+            .map_err(|err| Failure::Internal(err.to_string()))?;
+        if let Some(episode) = crate::review::find_episode_for(&facts, target) {
+            return Ok(("episode".to_owned(), NoteTarget::episode(episode.clone())));
+        }
+        // `path:line` is the shape a reviewer copies out of an editor; the line is evidence, the path is the
+        // anchor (reco-552: a note about a file keeps its meaning when the file moves between commits).
+        let (path, line) = match target.rsplit_once(':') {
+            Some((head, tail)) if !head.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) => {
+                (head, tail.parse::<u32>().ok())
+            }
+            _ => (target, None),
+        };
+        let (_, kind) = self.resolve_target(store, path)?;
+        if kind == "path" {
+            return Ok(("path".to_owned(), NoteTarget::path(path, line)));
+        }
+        Err(Failure::NotReviewable(format!(
+            "`{target}` resolves to no episode, commit or path in this index; a note that points at nothing \
+         will be indistinguishable from a note that was deleted"
         )))
     }
 }
@@ -973,51 +998,247 @@ impl Source for Review {
             ))
     }
 
+    fn review_memory(&self, args: &Args, window: Window) -> Result<Batch, Failure> {
+        use fathom_analyze::notes::{Kind, collect};
+        let ask = args
+            .str("target")
+            .ok_or_else(|| Failure::BadArgs("target is required".to_owned()))?;
+        let want_kind = args
+            .str("kind")
+            .map(|raw| {
+                Kind::parse(raw).ok_or_else(|| {
+                    Failure::BadArgs(format!(
+                        "kind `{raw}` is not one of decision, question, follow-up or annotation"
+                    ))
+                })
+            })
+            .transpose()?;
+        let want_status = args.str("status").map(str::to_ascii_lowercase);
+        let keep_answered = args.flag("include_answered").unwrap_or(false);
+        let mut store = self.store()?;
+        let now = crate::clock::now_millis();
+        // Read through the same code `fathom context` uses: the re-link ladder runs here, so a note written
+        // before a rebase is answered about the episode the change became, not about the one it was written
+        // against (reco-552 AC 2).
+        let ctx = collect::context(&mut store, &self.root, ask, now)
+            .map_err(|err| Failure::Internal(format!("the review memory would not read: {err}")))?;
+
+        let pool: Vec<&fathom_analyze::notes::Recorded> = ctx
+            .decisions
+            .iter()
+            .chain(ctx.questions.iter())
+            .chain(ctx.followups.iter())
+            .chain(ctx.annotations.iter())
+            .collect();
+        let keep: Vec<&fathom_analyze::notes::Recorded> = pool
+            .iter()
+            .copied()
+            .filter(|row| {
+                want_kind.is_none_or(|kind| Kind::parse(&row.kind) == Some(kind))
+                    && want_status
+                        .as_deref()
+                        .is_none_or(|status| row.status == status)
+                    && (keep_answered || row.status == "open")
+                    // A withdrawn note is not an answer to anything; it stays out unless `status` asks.
+                    || row.status == "withdrawn" && want_status.is_none() && keep_answered
+            })
+            .collect();
+        let page: Vec<&fathom_analyze::notes::Recorded> = keep
+            .iter()
+            .copied()
+            .skip(window.offset)
+            .take(window.limit)
+            .collect();
+        let items: Vec<Value> = page
+            .iter()
+            .map(|row| {
+                json!({
+                    "id": row.id,
+                    "kind": row.kind,
+                    "status": row.status,
+                    "source": row.source,
+                    "text": crate::mcp::clip(&row.text, MAX_BODY_BYTES),
+                    "author": row.author,
+                    "author_kind": row.author_kind,
+                    "ts": fathom_analyze::ledger::iso_utc(row.written_utc),
+                    "episode": row.episode,
+                    "link_state": row.state,
+                    "link_method": row.method,
+                    "relinked_from": row.relinked_from,
+                    "why": row.why,
+                    "target": row.target,
+                    "about": row.about,
+                    "answers": row.answers,
+                    "location": row.location,
+                    "via": row.via,
+                    "evidence": row.evidence,
+                    "digest": row.digest,
+                    "tampered": row.tampered,
+                })
+            })
+            .collect();
+        let mut batch = Batch::new()
+            .items(items)
+            .total(keep.len())
+            .field("target", ask.to_owned())
+            .field("target_kind", ctx.asked_as.clone())
+            .field("episode", ctx.episode.clone().unwrap_or_default())
+            .field("episodes_in_scope", ctx.episodes.len())
+            .field("decisions", ctx.decisions.len())
+            .field("questions", ctx.questions.len())
+            .field("followups", ctx.followups.len())
+            .field("annotations", ctx.annotations.len())
+            .field("signoffs", ctx.signoffs.len())
+            .field("open", ctx.open)
+            .field(
+                "answered_hidden",
+                (!keep_answered)
+                    .then(|| pool.len() - keep.len())
+                    .filter(|hidden| *hidden > 0),
+            );
+        if keep.len() > window.offset + window.limit {
+            batch = batch.unknown(
+                "the page held notes back; ask again with a cursor, or narrow with `kind` and `status`",
+            );
+        }
+        if !ctx.complaints.is_empty() {
+            for complaint in ctx.complaints.iter().take(8) {
+                batch = batch.unknown(complaint.clone());
+            }
+        }
+        if !ctx.signoffs.is_empty() {
+            batch = batch.field(
+                "signoffs_note",
+                "the formal dispositions over the same episodes (accepted/flagged/…) are in `signoffs`                  of the same query — a note is a record, a sign-off is a gate",
+            );
+        }
+        Ok(batch.unknown(
+            "every note here was written by a named author and is copied out as written; the digests and              member commits are the evidence to check, and none of it is an inference about why the code              is the way it is",
+        ))
+    }
+
     fn add_review_note(&self, args: &Args) -> Result<Batch, Failure> {
+        use fathom_analyze::notes::{Draft, Kind, collect};
         let target = args
             .str("target")
             .ok_or_else(|| Failure::BadArgs("target is required".to_owned()))?;
-        let body = args
+        let raw = args
             .str("body")
             .ok_or_else(|| Failure::BadArgs("body is required".to_owned()))?;
-        let kind = match args.str("kind").unwrap_or("note") {
-            "note" | "question" | "decision" | "flag" => args.str("kind").unwrap_or("note"),
-            other => {
-                return Err(Failure::BadArgs(format!(
-                    "kind `{other}` is not one of note, question, decision or flag"
-                )));
-            }
-        };
-        let store = self.store()?;
-        let (target, target_kind) = self.resolve_target(&store, target)?;
-        let line = json!({
-            "contract": "fathom.review_note/1",
-            "ts_utc": crate::clock::now_millis(),
-            "kind": kind,
-            "target": target.clone(),
-            "target_kind": target_kind.clone(),
-            "author": args.str("reviewer").unwrap_or("unattributed"),
-            "via": "fathom mcp add_review_note",
-            "body": fathom_core::redact::redact(body).0,
-            "body_bytes": body.len(),
-        });
-        let path = self.root.join(NOTE_LOG);
-        append_line(&path, &line).map_err(|err| {
-            Failure::Internal(format!(
-                "the note could not be appended to {}: {err}",
-                path.display()
-            ))
+        if raw.trim().is_empty() {
+            return Err(Failure::BadArgs(
+                "body is required, and an empty note is a note about nothing".to_owned(),
+            ));
+        }
+        let kind = Kind::parse(args.str("kind").unwrap_or("annotation")).ok_or_else(|| {
+            Failure::BadArgs(
+                "kind must be one of decision, question, follow-up, annotation (or the aliases note, flag)"
+                    .to_owned(),
+            )
         })?;
-        Ok(Batch::new()
-            .field("written_to", display(&path, &self.root))
-            .field("kind", kind)
-            .field("target", target)
+        // Redacted on the way in, exactly as the ledger redacts a reviewer's note: the memory file is
+        // committed, so a secret pasted by an agent would otherwise ship in a PR (ADR-005 §6.3).
+        let body = fathom_core::redact::redact(raw.trim()).0;
+        let mut store = self.store()?;
+        let now = crate::clock::now_millis();
+        let (target_kind, note_target) = self.note_target(&store, target)?;
+        // `reviewer` names the human on whose behalf the agent is writing. Without it the note is the
+        // agent's *own* claim — attributed to the agent, never to a guessed person, which is the rule
+        // `mark_reviewed` runs with more force (ADR-005 §4.2). `mcp_actor` yields "unknown" for an empty
+        // name and the memory refuses an unknown author, so the agent signs as itself here.
+        let named = args.str("reviewer").unwrap_or_default();
+        let actor = if named.trim().is_empty() {
+            fathom_analyze::ledger::Actor {
+                display: "fathom-mcp agent".to_owned(),
+                kind: fathom_analyze::ledger::ActorKind::Agent,
+            }
+        } else {
+            crate::review::mcp_actor(named)
+        };
+        let draft = Draft {
+            about: args.str("about").unwrap_or_default(),
+            via: "fathom mcp add_review_note",
+            ..Draft::new(kind, &note_target, &actor, &body, now)
+        };
+        let candidate = fathom_analyze::notes::add(&draft).map_err(|err| {
+            Failure::NotReviewable(format!("the memory refused the note: {}", err.message()))
+        })?;
+        // Idempotent, for the ledger's reason: a retrying agent must not fill the durable file with copies
+        // of one thought. The id itself carries the instant, so a retry one second later would slip past an
+        // id-only check — an agent's repeat is matched on what it *says*, its author and what it is about.
+        // A human at the CLI is not deduped this way: a person repeating themselves is making a point.
+        let prior = collect::read(&self.root).0;
+        let already = prior.iter().any(|note| {
+            note.id == candidate.id
+                || (note.kind == candidate.kind
+                    && note.text == candidate.text
+                    && note.author.display == candidate.author.display
+                    && (!note.episode.is_empty() && note.episode == candidate.episode
+                        || !note.path.is_empty() && note.path == candidate.path))
+        });
+        if already {
+            return Ok(Batch::new()
+                .field("already", true)
+                .field("id", candidate.id.clone())
+                .field("kind", kind.as_str())
+                .field("target", target.to_owned())
+                .field("target_kind", target_kind)
+                .field(
+                    "written",
+                    "a note with this author, kind, text and instant is already in the memory file;                      nothing was appended (an append-only record must not need a rewrite to dedupe)",
+                ));
+        }
+        let (note, report) = collect::append(&mut store, &self.root, &draft, now)
+            .map_err(|err| Failure::Internal(format!("writing the review memory failed: {err}")))?;
+        let attachment = report
+            .find(&note.id)
+            .map(|(_, attachment, _)| attachment.clone());
+        let mut batch = Batch::new()
+            .field("already", false)
+            .field("id", note.id.clone())
+            .field("kind", note.kind.as_str())
+            .field("status", "open")
+            .field("author", note.author.display.clone())
+            .field("author_kind", note.author.kind.as_str())
+            .field("target", target.to_owned())
             .field("target_kind", target_kind)
-            .field("body_bytes", body.len())
-            .unknown(
-                "notes recorded here are the interim store; e6.5 (reco-552) owns the committable \
-                 markdown memory with a mirrored index, and this file is what it will index",
-            ))
+            .field(
+                "attached_to",
+                attachment
+                    .as_ref()
+                    .and_then(|a| a.episode.clone())
+                    .unwrap_or_else(|| target.to_owned()),
+            )
+            .field(
+                "link_state",
+                attachment
+                    .as_ref()
+                    .map(|a| a.state.clone())
+                    .unwrap_or_default(),
+            )
+            .field(
+                "written_to",
+                display(&collect::default_path(&self.root), &self.root),
+            )
+            .field("notes", report.notes.len())
+            .field("open", report.open().len())
+            .field("body_bytes", note.text.len());
+        if let Some(about) = draft
+            .about
+            .strip_prefix("nt-")
+            .filter(|about| !about.is_empty())
+            .and_then(|about| report.find(&format!("nt-{about}")))
+        {
+            batch = batch.field("answers", about.0.id.clone());
+        }
+        if attachment.is_some_and(|a| a.relinked_from.is_some()) {
+            batch = batch.unknown(
+                "the note was re-linked onto a different episode than the one it names; `review_memory`                  reports the ladder's verdict",
+            );
+        }
+        Ok(batch.unknown(
+            "this note is written as an agent-acted-for claim, appended to a committed file, and is              tamper-evident: answering it means appending another note, never editing this one",
+        ))
     }
 
     fn audit(&self, line: &AuditLine) -> Result<(), String> {
@@ -1070,6 +1291,20 @@ fn append_line(path: &Path, record: &Value) -> std::io::Result<()> {
 }
 
 /// A repository-relative path for a message.
+/// Clip a body to `max` bytes at a character boundary, for a field the caller is owed verbatim.
+fn clip(text: &str, max: usize) -> String {
+    if text.len() <= max {
+        return text.to_owned();
+    }
+    let mut end = max;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    let mut out = text[..end].to_owned();
+    out.push_str(" […]");
+    out
+}
+
 fn display(path: &Path, root: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)

@@ -160,6 +160,13 @@ impl Problem {
 ///
 /// A missing directory is not a problem — a repository where nobody has reviewed anything has no ledger, and
 /// `fathom review status` says so in a sentence rather than an error.
+///
+/// A file that *declares* a different format is skipped rather than parsed. `e6.5`'s review memory
+/// ([`crate::notes`]) appends markdown into this same directory, and the two files are deliberately two
+/// formats: a sign-off and a note carry different fields, and reading one with the other's parser would
+/// report a pile of "unknown field" complaints about a file that is perfectly well-formed. A file that
+/// declares nothing is still read, because every ledger written before `e6.5` declares nothing and its own
+/// missing tag is a complaint this format makes on purpose.
 #[must_use]
 pub fn discover(root: &Path) -> Vec<PathBuf> {
     let dir = root.join(LEDGER_DIR);
@@ -170,7 +177,8 @@ pub fn discover(root: &Path) -> Vec<PathBuf> {
         .flatten()
         .filter_map(|entry| {
             let path = entry.path();
-            (path.extension().is_some_and(|ext| ext == "md")).then_some(path)
+            (path.extension().is_some_and(|ext| ext == "md") && !declares_other_format(&path, &dir))
+                .then_some(path)
         })
         .collect();
     files.sort();
@@ -224,6 +232,45 @@ pub fn parse(path: &Path, root: &Path) -> Parsed {
     parse_text(&display, &text)
 }
 
+/// Does this file declare a `<!-- format: … -->` tag that is not [`FORMAT_TAG`]? Only the *declared* case
+/// excludes a file: an untagged file is an old ledger, and the ledger's own reader is the one that complains
+/// about a missing tag.
+///
+/// The scan is bounded ([`MAX_FORMAT_SCAN_BYTES`]) because the tag is in the header, and it reads the file
+/// with the same refusal [`parse`] applies — a symlink out of the repository is not opened here either.
+fn declares_other_format(path: &Path, dir: &Path) -> bool {
+    // Containment is `refusal`'s call, not this one's: a symlink that points out of the repository has to
+    // reach `parse` so it is *reported*, not quietly dropped by a scanner that never opens it.
+    if !resolves_inside(dir, path) {
+        return false;
+    }
+    let Some(tag) = declared_format(path) else {
+        return false;
+    };
+    tag != FORMAT_TAG
+}
+
+/// The format tag a file declares, read from the first bytes of it, or `None` when it declares none (or
+/// cannot be read — a file the scanner cannot read is not a file this one may exclude on a guess).
+fn declared_format(path: &Path) -> Option<String> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut buffer = vec![0u8; MAX_FORMAT_SCAN_BYTES];
+    let read = file.read(&mut buffer).ok()?;
+    buffer.truncate(read);
+    let text = std::str::from_utf8(&buffer).ok()?;
+    text.lines().find_map(|line| {
+        let trimmed = line.trim();
+        trimmed
+            .strip_prefix("<!-- format:")
+            .map(|rest| rest.trim_end_matches("-->").trim().to_owned())
+    })
+}
+
+/// How many bytes of a file the format-tag scan reads. The tag is the third line of every file this tool
+/// writes, and a header that is not in the first few kilobytes is not a header.
+const MAX_FORMAT_SCAN_BYTES: usize = 4096;
+
 /// Why this path may not be read, in words, or `None` when it may.
 fn refusal(path: &Path, root: &Path) -> Option<String> {
     if !resolves_inside(root, path) {
@@ -255,8 +302,11 @@ fn refusal(path: &Path, root: &Path) -> Option<String> {
 /// `root` is canonicalised first (it is the caller's `--root`, which may be `.`), and the ledger file is
 /// resolved through the filesystem. A path that cannot be resolved at all is treated as outside: a file
 /// the reader cannot place is a file the reader does not open.
+///
+/// `pub(crate)` because `e6.5`'s review memory ([`crate::notes`]) reads the same directory and must refuse a
+/// symlinked file with the same sentence rather than invent a second, weaker one.
 #[must_use]
-fn resolves_inside(root: &Path, path: &Path) -> bool {
+pub(crate) fn resolves_inside(root: &Path, path: &Path) -> bool {
     let Ok(root) = root.canonicalize() else {
         return false;
     };

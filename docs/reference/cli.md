@@ -57,6 +57,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`difftool`](#fathom-difftool)** | Show one file's two sides in your own difftool — difftastic, meld, kdiff3, vim -d (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
 | **[`cmp`](#fathom-cmp)** | Compare any two episodes or revisions: the composed delta over a range (e5.3) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*delta*](../concepts/delta.md) |
 | **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
+| **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
+| **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
 <!-- END GENERATED: verbs -->
 
 ## Global flags
@@ -1482,6 +1484,253 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.search -->
+
+## `fathom context`
+
+Answer *"what does this repository already know about this?"* for a path or an episode: the recorded
+decisions with their reasons, the questions and follow-ups still open, and the ledger's dispositions over
+the same episodes — each with its author, its date and the evidence it cites. See
+[the review memory](../concepts/review-memory.md).
+
+<!-- BEGIN GENERATED: help.context -->
+```text
+What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
+
+Usage: fathom context [OPTIONS] <TARGET>
+
+Arguments:
+  <TARGET>  The path or episode to ask about. A path may be a file or a directory fragment
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the answer as one JSON line on stdout (`fathom.cli.context/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --all                Include answered and withdrawn notes in the lists, not just the live ones
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.context -->
+
+## `fathom note`
+
+The review memory: notes, decisions, questions and follow-ups, appended as markdown blocks under
+`.fathom/reviews/notes.md` and mirrored into the index. Appending is the only edit: an answer names the
+note it answers, a withdrawal names the note it retracts, and every block hashes itself.
+
+<!-- BEGIN GENERATED: help.note -->
+```text
+The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/` (`e6.5`)
+
+Usage: fathom note [OPTIONS] [COMMAND]
+
+Commands:
+  add       Record a note, decision, question or follow-up against an episode or a path
+  list      List what is recorded, oldest first
+  show      Show one note with its evidence and its link verdict
+  answer    Answer a question or close a follow-up by appending the note that closes it
+  withdraw  Take a recorded decision back, by appending the note that retracts it
+  verify    Re-hash every note against its own `digest:` line — tampering, and nothing else
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note -->
+
+### `fathom note list`
+
+<!-- BEGIN GENERATED: help.note.list -->
+```text
+List what is recorded, oldest first
+
+Usage: fathom note list [OPTIONS] [TARGET]
+
+Arguments:
+  [TARGET]  Only notes attached to this episode or touching this path
+
+Options:
+      --kind <KIND>        Only this kind: `decision`, `question`, `follow-up`, `annotation`
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --status <STATUS>    Only notes in this status: `open`, `answered`, `withdrawn`
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <LIMIT>      How many to print, oldest first; `0` is every note [default: 0]
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.list -->
+
+### `fathom note add`
+
+<!-- BEGIN GENERATED: help.note.add -->
+```text
+Record a note, decision, question or follow-up against an episode or a path
+
+Usage: fathom note add [OPTIONS] [TEXT]
+
+Arguments:
+  [TEXT]  The text of the note. One line in the file either way: paragraph breaks are folded, never wrapped
+
+Options:
+      --episode <EPISODE>  The episode to attach it to, or an unambiguous prefix of its id
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --path <PATH>        The path to attach it to, optionally `path:line`. Resolved to the newest episode that touched it when the index knows one
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --kind <KIND>        What kind of note this is: `decision`, `question`, `follow-up`, `annotation` (`note` and `flag` are accepted as `annotation`) [default: annotation]
+      --author <AUTHOR>    Who is writing, when git config and `fathom.toml` do not say
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --agent <AGENT>      Record the note as an agent's act on someone's behalf, not as a human's
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --about <ABOUT>      The note this one answers, by `nt-…` id
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.add -->
+
+### `fathom note show`
+
+<!-- BEGIN GENERATED: help.note.show -->
+```text
+Show one note with its evidence and its link verdict
+
+Usage: fathom note show [OPTIONS] <ID>
+
+Arguments:
+  <ID>  The note id (`nt-…`)
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.show -->
+
+### `fathom note answer`
+
+<!-- BEGIN GENERATED: help.note.answer -->
+```text
+Answer a question or close a follow-up by appending the note that closes it
+
+Usage: fathom note answer [OPTIONS] <ID> <TEXT>
+
+Arguments:
+  <ID>    The question or follow-up being answered (`nt-…`)
+  <TEXT>  The answer
+
+Options:
+      --author <AUTHOR>    Who is answering
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --agent <AGENT>      Record the answer as an agent's act on someone's behalf
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --kind <KIND>        The kind of the answering note: a `decision` is an answer that settles it, an `annotation` is an answer that informs it [default: decision]
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.answer -->
+
+### `fathom note withdraw`
+
+<!-- BEGIN GENERATED: help.note.withdraw -->
+```text
+Take a recorded decision back, by appending the note that retracts it
+
+Usage: fathom note withdraw [OPTIONS] <ID> <TEXT>
+
+Arguments:
+  <ID>    The note being retracted (`nt-…`)
+  <TEXT>  Why it no longer holds
+
+Options:
+      --author <AUTHOR>    Who is retracting it
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --agent <AGENT>      Record the retraction as an agent's act on someone's behalf
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.withdraw -->
+
+### `fathom note verify`
+
+<!-- BEGIN GENERATED: help.note.verify -->
+```text
+Re-hash every note against its own `digest:` line — tampering, and nothing else
+
+Usage: fathom note verify [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.note.verify -->
 
 ---
 

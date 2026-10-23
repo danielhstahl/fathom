@@ -45,6 +45,10 @@ pub mod ledger;
 /// The episode narrative (`e4.7`, `reco-2rx`): the deterministic, cited prose a human skims, composed from
 /// the delta document and nothing else. Its own self-check is that no claim arrives without evidence.
 pub mod narrative;
+/// The review memory: the annotations, decisions, questions and follow-ups a review produces, as committed
+/// markdown under `.fathom/reviews/notes.md`, re-linked by the same ladder the ledger rides and mirrored
+/// into `decision_note` (`e6.5`, `reco-552`).
+pub mod notes;
 /// The attention queue (`e4.5`, `reco-wsj`): the ordering, the four triage acts and the retrospective.
 /// Its types reach the surfaces through [`insight`], which is the only door `fathom-tui` may open.
 pub mod queue;

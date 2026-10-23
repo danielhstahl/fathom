@@ -37,6 +37,9 @@ READ_TOOLS = [
     "dependency_delta",
     "risk_report",
     "search_history",
+    # `e6.5` (reco-552): the recorded decisions, questions and annotations, read from the committed
+    # markdown. A read tool, so it is offered to a read-only session.
+    "review_memory",
 ]
 WRITE_TOOLS = ["mark_reviewed", "add_review_note"]
 
@@ -425,8 +428,34 @@ def test_with_writes_on_each_call_is_audited_and_a_token_is_bound(tmp_path: Path
             {"target": episode, "body": "We kept the cycle because the port is the boundary.", "kind": "decision"},
         )
         assert note.get("error") is None, note
-        notes = (work / ".fathom" / "reviews" / "notes.jsonl").read_text().splitlines()
-        assert notes and json.loads(notes[-1])["target"] == episode
+        # `e6.5`: an agent's note is a block in the committed markdown, not a line in a private log —
+        # the same file `fathom note add` appends to, so one memory travels in one PR (reco-552).
+        memory = work / ".fathom" / "reviews" / "notes.md"
+        assert memory.exists(), "an agent's note must land in the committable memory file"
+        text = memory.read_text()
+        assert "fathom-review-note/1" in text
+        assert "We kept the cycle" in text, "the body is copied out as written"
+        assert note["author_kind"] == "agent", "an agent wrote it, and the file says so"
+        assert note["id"].startswith("nt-") and note["id"] in text
+        assert "fathom mcp add_review_note" in text, "the note says which door wrote it"
+
+        # Idempotent per (author, kind, text, target): a retrying agent must not fill the durable file
+        # with copies of one thought, and it is told so rather than being quietly given a new id.
+        _result, twice = session.call(
+            "add_review_note",
+            {"target": episode, "body": "We kept the cycle because the port is the boundary.", "kind": "decision"},
+        )
+        assert twice.get("error") is None, twice
+        assert twice.get("already") is True, twice
+        assert twice["id"] == note["id"]
+        assert text.count("We kept the cycle") == 1, "the repeat appended a second block"
+
+        # And the read side answers about the same episode, with the evidence lines attached.
+        _result, back = session.call("review_memory", {"target": episode})
+        assert back.get("error") is None, back
+        assert back["target_kind"] == "episode", back
+        assert any(row["id"] == note["id"] for row in back["items"]), back
+        assert all(row["evidence"] for row in back["items"])
 
         oversized = session.call(
             "add_review_note", {"target": episode, "body": "x" * 5000}
@@ -493,6 +522,8 @@ def test_every_response_is_under_the_configured_ceiling(indexed: Path) -> None:
                 arguments["episode_id"] = "HEAD"
             if name == "changes_between":
                 arguments = {"ref_a": "HEAD~4", "ref_b": "HEAD"}
+            if name == "review_memory":
+                arguments = {"target": "src"}
             _result, body = session.call(name, arguments)
             assert body["bytes_returned"] <= 256 * 1024, f"{name} overflowed the default ceiling"
     finally:

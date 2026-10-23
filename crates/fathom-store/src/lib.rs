@@ -69,6 +69,11 @@ pub mod search;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod ledger;
 
+/// The mirror of the review memory — ADR-004 Appendix A's `decision_note`, class M, rebuilt from the
+/// committed markdown exactly as [`ledger`] is, and gated with it for the same reason (`e6.5`, `reco-552`).
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod notes;
+
 /// The module graph as a delta chain: ADR-004 §4.6's `graph_snapshot`/`graph_delta`/`graph_chunk` rows,
 /// the anchor manifest `s3`'s policy writes, the node dictionary that banks its projected interning, and
 /// the bounded chain walk (`e3.2`, `reco-8s4`). Gated with [`spine`]: a graph with nowhere to be stored is

@@ -17,6 +17,61 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### What a review knew, kept in the repository (`reco-552`)
+
+A review produces more than a verdict. It produces *"we deliberately allow this cycle because the port is
+the boundary"*, *"does anything still call the old entry point?"*, *"follow up once the migration lands"* —
+and that is the part that normally dies in a pull-request thread. The **review memory** puts it in the
+repository instead: committed markdown under `.fathom/reviews/notes.md`, with a mirrored index, so it is
+reviewable in the same PR as the change it describes, survives a rebase, answers
+`fathom context <path-or-episode>`, is searchable from the shell and the TUI, and is answerable by the agent
+over MCP. The module is `crates/fathom-analyze/src/notes/`; the store mirror is migration 10,
+`decision_note` (ADR-004 Appendix A).
+
+* **Four kinds, and none of them a sign-off.** `decision`, `question`, `followup`, `annotation` — ADR-004's
+  vocabulary, not a new one. A note never clocks the north-star metric; the ledger still owns the gate. Each
+  is attached to an **episode** by the same four digests a sign-off carries, or to a **path** (a path anchor
+  is a state, reported as `anchored`, never as a failed link), and a note with nothing to point at is refused
+  at write time.
+* **Appending is the only edit.** Answering a question appends a note with `about: nt-…`; withdrawing appends
+  one with `withdraws: nt-…`. Nothing is rewritten and nothing is deleted, and every block ends with a
+  `digest:` line hashing its own lines, so editing a committed note is detectable — by
+  `fathom note verify`, which needs no index at all and so works in a fresh clone. Unknown fields are
+  reported with their file and line rather than dropped, exactly as the ledger does.
+* **A note is still linked after a rebase**, because it goes through the same re-link ladder a sign-off does
+  (exact → fingerprint → shape → member-set) and reports which rung placed it. What the ladder cannot place
+  says `ORPHAN` and why, in the file and in every report, rather than vanishing: a note whose history was
+  rewritten away is a fact a reviewer needs. Measured in `crates/fathom-analyze/tests/notes.rs` against real
+  `git` rewrites.
+* **`fathom context <path-or-episode>`** answers *"why did we do X, who said so, and what is still open"* —
+  decisions with their reasons, open questions and follow-ups, and the ledger's dispositions over the same
+  episodes, each with author, date and the evidence lines beside it. One structure feeds the terminal,
+  `--json`, the MCP tool and the artefact, so they cannot tell three stories about one query.
+* **`fathom note`** is the door a human uses: `list` (filterable by kind, status and target), `add`, `show`,
+  `answer`, `withdraw`, `verify`. Author identity resolves the same way a sign-off's does, and a note nobody
+  can be attributed to is refused. Both verbs are driven as a binary in
+  `crates/fathom-cli/tests/notes_verb.rs` — the printed answer with its author and its date, the `--json`
+  contract ids, the exit codes (`2` for an id that is not in the memory, `7` for a block that no longer
+  hashes), the refusals that leave the file byte-identical, and `kind:note` in the search corpus the TUI's
+  `/` reads.
+* **The agent's half** (`e6.4`'s door, now on the real record): `review_memory` is a **read** tool, so a
+  read-only session can answer *"why did we do X"* with the recorded decision and its citations — episode,
+  digests, member commits, target, file anchor, tamper digest. `add_review_note` appends to the same file a
+  person writes, attributed to the agent (or to the human named in `reviewer`, which the file then says),
+  redacted and bounded on the way in, idempotent per `(author, kind, text, target)`. `.fathom/reviews/notes.jsonl`,
+  the interim store `e6.4` wrote, is superseded: it is not read, and moving one is
+  `fathom note add --kind annotation "$(cat old.jsonl)"`.
+* **The mirror is disposable** (ADR-004 §12, again): the write path is markdown-then-fsync-then-mirror, so a
+  crash loses a row and never a note, and deleting `.fathom/index.sqlite3` loses nothing that the next
+  `fathom note list` cannot rebuild.
+* **Notes appear in the [export artefact](docs/concepts/export-artefact.md)** as their own block, oldest
+  note first, diff-friendly one line per field — and an unanswered question is an open checklist item, so
+  `--strict` will not call a range finished while someone's question is still sitting in the memory file.
+
+Six new verb invocations (`fathom context`, `fathom note list|add|show|answer|withdraw|verify`), one MCP read
+tool, one migration (`SCHEMA_VERSION` 10, which invalidates every derived row and re-derives it, migrating
+nothing), documented in [docs/concepts/review-memory.md](docs/concepts/review-memory.md).
+
 ### A declared architecture that refuses things, and the violations this turn caused (`reco-cfp`)
 
 `[layers]` already said where things live. Now `[layering]` says which edges between them are refused —

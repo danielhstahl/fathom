@@ -66,7 +66,83 @@
 
 use serde::Serialize;
 
-use super::entry::{ContentCompare, EpisodeFacts, SignOff};
+use super::entry::{ContentCompare, EpisodeFacts, PathFact, SignOff};
+
+/// What the ladder needs to know about an entry, whatever kind of entry it is.
+///
+/// The ladder was written for sign-offs, and `e6.5`'s review memory needs exactly the same re-link: a note
+/// attached to an episode has to follow that episode through a rebase for the same reason a sign-off does
+/// (ADR-003 §6), and a second copy of the rungs would be a second answer to one question — the day they
+/// disagree, nobody could say which entry kind got the better ladder. So the two entry types are the same
+/// six facts here: the id it wrote, the episode it named, the three digests it can be re-found by, and the
+/// member set it can be re-found without.
+///
+/// The three extra methods are the places the two kinds genuinely differ, and they are named rather than
+/// inferred from a field that happens to be empty:
+///
+/// * [`Anchor::claims_episode`] is ADR-003 RL0's guard: only a *decision* that a human made about an episode
+///   counts as "this episode has been signed", so a note pinned to an episode must not shield it from a
+///   weaker-tier re-link of somebody else's sign-off.
+/// * [`Anchor::signed_content`] is the content claim staleness is measured against. A note carries a content
+///   digest when it was written against an episode, and none when it was pinned to a bare path — and "there
+///   is no content claim here" is not the same sentence as "the content moved".
+/// * [`Anchor::intact`] is the tamper check, which is per-kind because each kind frames its own digest.
+pub trait Anchor {
+    /// The entry's own id (`sg-…` for a sign-off, `nt-…` for a note).
+    fn anchor_id(&self) -> &str;
+    /// The episode the entry names as written, before any re-link.
+    fn anchor_episode(&self) -> &str;
+    /// ADR-003's strong digest.
+    fn anchor_fingerprint(&self) -> &str;
+    /// ADR-003's author+subject digest.
+    fn anchor_fallback(&self) -> &str;
+    /// ADR-003's author+paths digest.
+    fn anchor_shape(&self) -> &str;
+    /// The member commits the entry lists, in the printed (short) form.
+    fn anchor_members(&self) -> &[String];
+    /// Whether this entry is a disposition a human made about the episode — RL0's guard.
+    fn claims_episode(&self) -> bool;
+    /// Whether the entry's own text still hashes to the digest it carries.
+    fn intact(&self) -> bool;
+    /// The content digest and path facts the entry was written against; `None` when it makes no content
+    /// claim at all.
+    fn signed_content(&self) -> Option<(&str, &[PathFact])>;
+    /// What a surface prints about the entry when no live episode can be described instead.
+    fn fallback_summary(&self) -> &str;
+}
+
+impl Anchor for SignOff {
+    fn anchor_id(&self) -> &str {
+        &self.id
+    }
+    fn anchor_episode(&self) -> &str {
+        &self.episode
+    }
+    fn anchor_fingerprint(&self) -> &str {
+        &self.fingerprint
+    }
+    fn anchor_fallback(&self) -> &str {
+        &self.fallback
+    }
+    fn anchor_shape(&self) -> &str {
+        &self.shape
+    }
+    fn anchor_members(&self) -> &[String] {
+        &self.members
+    }
+    fn claims_episode(&self) -> bool {
+        self.decision.is_sign_off()
+    }
+    fn intact(&self) -> bool {
+        super::entry::entry_digest(&self.id, &self.body) == self.digest
+    }
+    fn signed_content(&self) -> Option<(&str, &[PathFact])> {
+        Some((&self.content, &self.paths))
+    }
+    fn fallback_summary(&self) -> &str {
+        &self.note
+    }
+}
 
 /// How a ledger entry got attached to an episode — `ledger_entry.link_method`'s vocabulary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -190,24 +266,31 @@ impl Link {
 /// whether the change has a live successor.
 #[must_use]
 pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
+    link_over(entries, episodes)
+}
+
+/// The same ladder over any [`Anchor`]: sign-offs, review notes, or a later entry kind with the same
+/// digests. Kept generic rather than duplicated so there is exactly one rung list in the tree.
+#[must_use]
+pub fn link_over<E: Anchor>(entries: &[E], episodes: &[EpisodeFacts]) -> Vec<Link> {
     // Which live episodes already carry a fresh accepted entry of their own — the RL0 guard below. Computed
     // once, over the entries whose *own* id matched exactly, so a weak-tier guess cannot be justified by an
     // entry that only a weak-tier guess put there.
     let mut claimed: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     for entry in entries {
-        if entry.decision.is_sign_off()
+        if entry.claims_episode()
             && episodes
                 .iter()
-                .any(|episode| episode.live && episode.id == entry.episode)
+                .any(|episode| episode.live && episode.id == entry.anchor_episode())
         {
-            claimed.insert(entry.episode.as_str());
+            claimed.insert(entry.anchor_episode());
         }
     }
 
     entries
         .iter()
         .map(|entry| {
-            let tampered = super::entry::entry_digest(&entry.id, &entry.body) != entry.digest;
+            let tampered = !entry.intact();
             let candidates = |tier: Tier| {
                 episodes
                     .iter()
@@ -227,7 +310,7 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
             let by_id = |live: bool| {
                 episodes
                     .iter()
-                    .find(|episode| episode.id == entry.episode && episode.live == live)
+                    .find(|episode| episode.id == entry.anchor_episode() && episode.live == live)
             };
             let dead_exact = by_id(false);
             let (chosen, method, score) = if let Some(episode) = by_id(true) {
@@ -278,7 +361,7 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
                 // all" — and only the first one tells the reviewer their review was real.
                 if let Some(dead) = dead_exact {
                     return Link {
-                        entry: entry.id.clone(),
+                        entry: entry.anchor_id().to_owned(),
                         episode: Some(dead.id.clone()),
                         // The link did not move: this is the episode the entry named, still named, and
                         // still dead. `relinked_from` is for a decision that *arrived* somewhere else.
@@ -297,7 +380,7 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
                     };
                 }
                 return Link {
-                    entry: entry.id.clone(),
+                    entry: entry.anchor_id().to_owned(),
                     episode: None,
                     // Nothing was linked, so nothing was linked *from*: `relinked_from` names the episode a
                     // carried-forward sign-off used to point at, and an orphan never arrived anywhere. Leaving
@@ -311,25 +394,29 @@ pub fn link(entries: &[SignOff], episodes: &[EpisodeFacts]) -> Vec<Link> {
                     linked_fingerprint: String::new(),
                     dead: false,
                     tampered,
-                    summary: entry.note.clone(),
+                    summary: entry.fallback_summary().to_owned(),
                 };
             };
 
-            let relinked_from = if episode.id == entry.episode {
+            let relinked_from = if episode.id == entry.anchor_episode() {
                 None
             } else {
-                Some(entry.episode.clone())
+                Some(entry.anchor_episode().to_owned())
             };
             // Every candidate the ladder can choose is live — a dead one is either the exact hit handled
             // above or filtered out of the tiers — so a link that got here points at a reviewable episode.
-            let (state, reason) =
-                match super::entry::compare_signed(&entry.content, &entry.paths, &episode.content) {
-                    ContentCompare::Same => (EntryState::Fresh, String::new()),
-                    ContentCompare::Unmeasured(why) => (EntryState::Stale, why),
-                    changed => (EntryState::Stale, changed.reason()),
-                };
+            let (state, reason) = match entry.signed_content() {
+                None => (EntryState::Fresh, String::new()),
+                Some((content, paths)) => {
+                    match super::entry::compare_signed(content, paths, &episode.content) {
+                        ContentCompare::Same => (EntryState::Fresh, String::new()),
+                        ContentCompare::Unmeasured(why) => (EntryState::Stale, why),
+                        changed => (EntryState::Stale, changed.reason()),
+                    }
+                }
+            };
             Link {
-                entry: entry.id.clone(),
+                entry: entry.anchor_id().to_owned(),
                 episode: Some(episode.id.clone()),
                 relinked_from,
                 method,
@@ -355,22 +442,25 @@ enum Tier {
 }
 
 impl Tier {
-    fn matches(self, entry: &SignOff, episode: &EpisodeFacts) -> bool {
+    fn matches(self, entry: &dyn Anchor, episode: &EpisodeFacts) -> bool {
         match self {
             Tier::StrongDigest => {
-                !entry.fingerprint.is_empty() && entry.fingerprint == episode.fingerprint
+                !entry.anchor_fingerprint().is_empty()
+                    && entry.anchor_fingerprint() == episode.fingerprint
             }
             Tier::AuthorSubject => {
-                !entry.fallback.is_empty() && entry.fallback == episode.fallback_fingerprint
+                !entry.anchor_fallback().is_empty()
+                    && entry.anchor_fallback() == episode.fallback_fingerprint
             }
             Tier::AuthorPaths => {
-                !entry.shape.is_empty() && entry.shape == episode.shape_fingerprint
+                !entry.anchor_shape().is_empty()
+                    && entry.anchor_shape() == episode.shape_fingerprint
             }
             Tier::MemberSet => episode.members.iter().any(|oid| {
                 // The printed `members:` field is the eight-hex prefix form (see `entry::join8`), so the
                 // intersection is on prefixes; the full oids are in the mirror row's `scope` JSON.
                 entry
-                    .members
+                    .anchor_members()
                     .iter()
                     .any(|mine| !mine.is_empty() && oid.starts_with(mine.as_str()))
             }),
@@ -384,11 +474,11 @@ fn prefer(a: &EpisodeFacts, b: &EpisodeFacts) -> std::cmp::Ordering {
 }
 
 /// Why nothing matched, phrased as what the reviewer can do about it.
-fn orphan_reason(entry: &SignOff) -> String {
+fn orphan_reason(entry: &dyn Anchor) -> String {
     format!(
-        "no episode in the current index carries this sign-off: its id, its two weaker digests and its {} \
+        "no episode in the current index carries this entry: its id, its two weaker digests and its {} \
          member commit(s) all match nothing — the change was rewritten away or is not on this ref",
-        entry.members.len()
+        entry.anchor_members().len()
     )
 }
 

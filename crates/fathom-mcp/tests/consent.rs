@@ -187,6 +187,16 @@ impl fathom_mcp::source::Source for NoSource {
         ))
     }
 
+    fn review_memory(
+        &self,
+        _args: &fathom_mcp::source::Args,
+        _window: fathom_mcp::source::Window,
+    ) -> Result<fathom_mcp::source::Batch, fathom_mcp::source::Failure> {
+        Err(fathom_mcp::source::Failure::Internal(
+            "not this test".to_owned(),
+        ))
+    }
+
     fn add_review_note(
         &self,
         _args: &fathom_mcp::source::Args,

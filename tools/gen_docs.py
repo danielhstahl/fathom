@@ -483,6 +483,10 @@ VERB_DOCS = {
             "the composed delta between any two episodes or revisions"),
     "search": (["docs/adr/0006-tui.md", "docs/concepts/timeline.md"],
                "one fuzzy box over episodes, paths, symbols, dependencies and findings"),
+    "context": (["docs/concepts/review-memory.md", "docs/concepts/review-ledger.md"],
+                "what this repository already knows about a path or an episode"),
+    "note": (["docs/concepts/review-memory.md", "docs/concepts/cli.md"],
+             "the review memory: decisions, questions and follow-ups, committed"),
 }
 
 

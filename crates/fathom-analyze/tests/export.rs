@@ -252,6 +252,27 @@ fn input() -> Input {
         ledger_problems: vec![
             ".fathom/reviews/ledger.md:41: a line that is not an entry was skipped".to_owned(),
         ],
+        memory: vec![
+            // A recorded decision (answered, so it is not an open item) and an open question, one of them
+            // re-linked after a rewrite — the three things `e6.5`'s artefact has to show.
+            note(
+                "nt-aaaa1111111111",
+                "decision",
+                "answered",
+                "ep-aaaa1111",
+                1_700_000_150_000,
+                "we deliberately allow the cycle here because the port is the boundary",
+            ),
+            note(
+                "nt-bbbb2222222222",
+                "question",
+                "open",
+                "ep-bbbb2222",
+                1_700_000_250_000,
+                "does the old entry point still have a caller?",
+            ),
+        ],
+        memory_problems: Vec::new(),
         produced_by: "fathom 0.1.0".to_owned(),
         store: Some(".fathom/index.sqlite3".to_owned()),
         epoch: Some(7),
@@ -276,7 +297,41 @@ fn shuffled_input() -> Input {
         .push(acceptance("ep-aaaa1111", 1_700_000_300_000));
     given.signoffs.reverse();
     given.ledger_problems.reverse();
+    given.memory.reverse();
     given
+}
+
+/// One recorded note, in the shape the artefact is handed.
+fn note(
+    id: &str,
+    kind: &str,
+    status: &str,
+    episode: &str,
+    written_utc: i64,
+    text: &str,
+) -> export::MemoryRow {
+    export::MemoryRow {
+        id: id.to_owned(),
+        file: ".fathom/reviews/notes.md".to_owned(),
+        episode: episode.to_owned(),
+        kind: kind.to_owned(),
+        status: status.to_owned(),
+        author: "Ana Dev <ana@example.com>".to_owned(),
+        author_kind: "human".to_owned(),
+        written_utc,
+        text: text.to_owned(),
+        about: String::new(),
+        answers: Vec::new(),
+        link_state: "fresh".to_owned(),
+        link_method: "fingerprint".to_owned(),
+        relinked_from: None,
+        why: String::new(),
+        target: String::new(),
+        via: "fathom note add".to_owned(),
+        digests: vec![("fingerprint".to_owned(), format!("{id}-fingerprint"))],
+        digest: format!("sha256:{id}"),
+        tampered: false,
+    }
 }
 
 fn render(format: Format) -> String {
@@ -740,6 +795,82 @@ fn the_html_carries_the_same_record_as_the_markdown() {
 // --- acceptance criterion 4: reviewer, time, scope, and every dismissal's reason -----------------------------
 
 #[test]
+fn the_memory_block_prints_what_was_recorded_and_who_recorded_it() {
+    // `e6.5`'s acceptance, at the artefact: the recorded decision with its reason and the open question,
+    // each with its author, its date and the evidence it cites — in all three renderings, from one record.
+    let md = render(Format::Markdown);
+    let block = &md[md
+        .find("## Review memory")
+        .expect("the memory block is printed")..];
+    assert!(
+        block.contains("we deliberately allow the cycle here because the port is the boundary"),
+        "the recorded decision is missing: {block}"
+    );
+    assert!(
+        block.contains("does the old entry point still have a caller?"),
+        "the open question is missing: {block}"
+    );
+    assert!(block.contains("Ana Dev"), "no author: {block}");
+    assert!(
+        block.contains("2023-11-14T22:15:50Z"),
+        "no printable instant for the note: {block}"
+    );
+    assert!(
+        block.contains("`.fathom/reviews/notes.md`"),
+        "the reader cannot tell which file the note came from"
+    );
+    assert!(
+        block.contains("fingerprint:"),
+        "a note printed without its digests is a claim with no evidence: {block}"
+    );
+    assert!(
+        block.contains("intact"),
+        "the tamper verdict is not printed: {block}"
+    );
+    assert!(
+        !block.contains("_Nothing recorded"),
+        "an artefact with notes must not print the empty-state line"
+    );
+
+    // An unanswered question is an open action, in the same sense an unsigned episode is.
+    let record = export::build(&input());
+    let answers: Vec<&str> = record
+        .checklist
+        .iter()
+        .filter(|item| item.kind == "memory" && item.is_open())
+        .map(|item| item.text.as_str())
+        .collect();
+    assert_eq!(
+        answers,
+        vec![
+            "Answer the question nt-bbbb2222222222: does the old entry point still have a caller?"
+        ],
+        "the answered decision must not be an open item, the open question must be: {answers:?}"
+    );
+    let how = record
+        .checklist
+        .iter()
+        .find(|item| item.kind == "memory")
+        .and_then(|item| item.how.clone())
+        .expect("an open item names what to type");
+    assert!(
+        how.starts_with("fathom note answer nt-bbbb2222222222"),
+        "{how}"
+    );
+
+    // And the HTML tells the same story, escaped.
+    let html = render(Format::Html);
+    let section = &html[html
+        .find("id=\"memory\"")
+        .expect("the memory section is printed")..];
+    assert!(
+        section.contains("we deliberately allow the cycle here because the port is the boundary"),
+        "the HTML dropped the decision"
+    );
+    assert!(section.contains("<code>nt-aaaa1111111111</code>"));
+}
+
+#[test]
 fn the_signoff_block_says_who_when_scope_and_why() {
     let text = render(Format::Markdown);
     let block = &text[text
@@ -1008,6 +1139,8 @@ fn an_artefact_with_nothing_in_it_still_renders_and_still_verifies() {
         dependencies: None,
         signoffs: Vec::new(),
         ledger_problems: Vec::new(),
+        memory: Vec::new(),
+        memory_problems: Vec::new(),
         produced_by: "fathom 0.1.0".to_owned(),
         store: None,
         epoch: None,

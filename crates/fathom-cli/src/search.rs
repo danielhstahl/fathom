@@ -265,15 +265,50 @@ fn read(root: &Path) -> Option<Corpus> {
                 .to_owned(),
         ),
     };
-    match corpus::from_store(&store, &lend) {
-        Ok(corpus) => Some(corpus),
+    let mut corpus = match corpus::from_store(&store, &lend) {
+        Ok(corpus) => corpus,
         Err(why) => {
             // Half a corpus is worse than none: a box that searches the episodes and quietly not the
             // dependencies would still be believed. Say what failed, and hand over nothing.
             eprintln!("fathom: the search corpus could not be built: {why}");
-            None
+            return None;
         }
+    };
+    // The review memory (`e6.5`). Read from the committed markdown, not the mirror, for the same reason
+    // `fathom context` does: a note in the file is a note a reviewer wrote, and a stale index must not be
+    // allowed to make one unfindable. Absent files add nothing, which is the common case.
+    let notes = fathom_analyze::notes::collect::read(root).0;
+    for note in &notes {
+        corpus.push(fathom_analyze::search::Entry {
+            kind: fathom_analyze::search::Kind::Note,
+            id: note.id.clone(),
+            name: note.text.clone(),
+            body: note.text.clone(),
+            detail: format!(
+                "{} · {} · {} · {}",
+                note.kind.as_str(),
+                note.author.display,
+                note.via,
+                note.target()
+            ),
+            episode: note.written_episode().map(str::to_owned),
+            author: Some(note.author.display.clone()),
+            utc: Some(fathom_core::time::Timestamp::from_unix_micros(
+                note.written_utc * 1_000,
+            )),
+            risk: None,
+            paths: if note.path.is_empty() {
+                note.paths.iter().map(|fact| fact.path.clone()).collect()
+            } else {
+                vec![note.path.clone()]
+            },
+            deps: Vec::new(),
+            // A recorded note is exactly what a reviewer is looking for when they ask "why did we do this",
+            // but it is not more relevant than the episode itself: no prior, no penalty.
+            prior: 0,
+        });
     }
+    Some(corpus)
 }
 
 // ---------------------------------------------------------------------------

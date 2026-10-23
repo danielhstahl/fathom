@@ -230,6 +230,7 @@ on being trustworthy.
 | `risk_report` | — | `ref_a`, `ref_b`, `min_tier` | ranked changes with `factors[]`, `confidence`, `model_version`, `model_artifact_id`, `training_corpus_version`, `grounding` | ≤ 100 |
 | `search_history` | `query` | `k` (default 8, max 32), `since`, `author` | **pointer-shaped**: `episode_id`, `ts`, `title`, `score`, `matched_on`. **Never content.** | `k` |
 | `search` | `query` | `limit` | `episode_id`, `rule`, `score`, `snippet` (≤ 200 chars, redacted, only when the requester holds `snippets` capability) | `limit` |
+| `review_memory` | `target` | `kind`, `status`, `include_answered` | the review memory's recorded decisions, questions, follow-ups and annotations about an episode, a commit or a path (`reco-552`): `id`, `kind`, `status`, `author`, `ts`, `text` as written, how it is attached now (`link_state`, `relinked_from`), and the `evidence` lines — episode, digests, member commits, target, file anchor, tamper digest. What was written down, never an inference about why | notes ≤ 100, body ≤ 8 KiB each |
 
 Three cross-cutting rules:
 
@@ -246,12 +247,12 @@ Three cross-cutting rules:
 | Tool | Args | Gate |
 | --- | --- | --- |
 | `mark_reviewed` | `change_id`, `reviewer`, `note` (opt) | requires `write` capability **and** an approval token bound to `change_id`; idempotent per `(change_id, reviewer)` |
-| `add_review_note` | `target`, `body`, `kind` | requires `write` capability; `body` ≤ 4096 B; `target` must resolve to a known id |
+| `add_review_note` | `target`, `body`, `kind`, `about` (opt), `reviewer` (opt) | requires `write` capability; `body` ≤ 4096 B, redacted on the way in; `target` must resolve to a known id or path; appends to the committed `.fathom/reviews/notes.md`, idempotent per `(author, kind, text, target)` (`reco-552`) |
 
 `mark_reviewed` marks **a human looked**, which is a claim about a human, not about code. The
-"already reviewed" state it writes lands in the change ledger (`reco-rlf`), which does not exist yet
-(`reco-552`), and `reviewed` has no canonical event in §2.1 either — so *this* tool is a typed
-request plus the ledger entry shape, and the honest half is §8's deferral. The agent may not call it
+"already reviewed" state it writes is a ledger entry (`reco-rlf`) in `.fathom/reviews/`, committed and
+tamper-evident, and `add_review_note`'s notes land in the review memory beside it (`reco-552`) — the two
+files are the durable record, and the store is a mirror of both. The agent may not call either
 without `write`; an auto-approval path that could mark things reviewed without a human is refused at
 schema level, not by a prompt asking nicely.
 

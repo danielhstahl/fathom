@@ -193,6 +193,12 @@ pub enum Verb {
     Cmp(CmpArgs),
     /// Search the whole index from one box, in the shell's own ranking (`e5.2`)
     Search(SearchArgs),
+    /// What this repository knows about a path or an episode: the recorded decisions and the open questions
+    /// (`e6.5`)
+    Context(ContextArgs),
+    /// The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/`
+    /// (`e6.5`)
+    Note(NoteArgs),
 }
 
 /// `fathom cmp` — compare two endpoints (`e5.3`, `reco-ifo`).
@@ -247,6 +253,143 @@ pub struct SearchArgs {
     /// List the saved searches and exit.
     #[arg(long)]
     pub list: bool,
+}
+
+/// `fathom context <path-or-episode>` — what this repository knows about one thing (`e6.5`, `reco-552`).
+///
+/// The question this answers is the one a review leaves behind: *why is it like this, and what did we say we
+/// would come back to?* The ask is either an episode (`ep-…`, or a prefix) or a path (a file or a directory,
+/// matched the way the rail's `--path` filter matches it). The answer is the recorded decisions and the open
+/// questions, each with its author, its date and the evidence it cites — including the ledger's sign-offs,
+/// which are the formal half of "what was decided" and are printed as themselves, labelled `ledger`.
+#[derive(Args, Debug)]
+pub struct ContextArgs {
+    /// The path or episode to ask about. A path may be a file or a directory fragment.
+    pub target: String,
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the answer as one JSON line on stdout (`fathom.cli.context/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Include answered and withdrawn notes in the lists, not just the live ones.
+    #[arg(long)]
+    pub all: bool,
+}
+
+/// `fathom note …` — the review memory's verbs (`e6.5`, `reco-552`).
+#[derive(Args, Debug)]
+pub struct NoteArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the report as one JSON line on stdout (`fathom.cli.note/1`).
+    #[arg(long, global = true)]
+    pub json: bool,
+    /// What to do with the memory; bare `fathom note` is `note list`.
+    #[command(subcommand)]
+    pub action: Option<NoteAction>,
+}
+
+/// What to do with the review memory.
+#[derive(Subcommand, Debug)]
+pub enum NoteAction {
+    /// Record a note, decision, question or follow-up against an episode or a path
+    Add(NoteAddArgs),
+    /// List what is recorded, oldest first
+    List(NoteListArgs),
+    /// Show one note with its evidence and its link verdict
+    Show(NoteShowArgs),
+    /// Answer a question or close a follow-up by appending the note that closes it
+    Answer(NoteAnswerArgs),
+    /// Take a recorded decision back, by appending the note that retracts it
+    Withdraw(NoteWithdrawArgs),
+    /// Re-hash every note against its own `digest:` line — tampering, and nothing else
+    Verify,
+}
+
+/// `fathom note add`.
+#[derive(Args, Debug)]
+pub struct NoteAddArgs {
+    /// The text of the note. One line in the file either way: paragraph breaks are folded, never wrapped.
+    pub text: Option<String>,
+    /// The episode to attach it to, or an unambiguous prefix of its id.
+    #[arg(long, conflicts_with = "path")]
+    pub episode: Option<String>,
+    /// The path to attach it to, optionally `path:line`. Resolved to the newest episode that touched it when
+    /// the index knows one.
+    #[arg(long)]
+    pub path: Option<String>,
+    /// What kind of note this is: `decision`, `question`, `follow-up`, `annotation` (`note` and `flag` are
+    /// accepted as `annotation`).
+    #[arg(long, default_value = "annotation")]
+    pub kind: String,
+    /// Who is writing, when git config and `fathom.toml` do not say.
+    #[arg(long)]
+    pub author: Option<String>,
+    /// Record the note as an agent's act on someone's behalf, not as a human's.
+    #[arg(long)]
+    pub agent: Option<String>,
+    /// The note this one answers, by `nt-…` id.
+    #[arg(long)]
+    pub about: Option<String>,
+}
+
+/// `fathom note list`.
+#[derive(Args, Debug)]
+pub struct NoteListArgs {
+    /// Only notes attached to this episode or touching this path.
+    pub target: Option<String>,
+    /// Only this kind: `decision`, `question`, `follow-up`, `annotation`.
+    #[arg(long)]
+    pub kind: Option<String>,
+    /// Only notes in this status: `open`, `answered`, `withdrawn`.
+    #[arg(long)]
+    pub status: Option<String>,
+    /// How many to print, oldest first; `0` is every note.
+    #[arg(long, default_value_t = 0)]
+    pub limit: usize,
+}
+
+/// `fathom note show`.
+#[derive(Args, Debug)]
+pub struct NoteShowArgs {
+    /// The note id (`nt-…`).
+    pub id: String,
+}
+
+/// `fathom note answer` — close a question by appending, which is how a memory stays honest.
+#[derive(Args, Debug)]
+pub struct NoteAnswerArgs {
+    /// The question or follow-up being answered (`nt-…`).
+    pub id: String,
+    /// The answer.
+    pub text: String,
+    /// Who is answering.
+    #[arg(long)]
+    pub author: Option<String>,
+    /// Record the answer as an agent's act on someone's behalf.
+    #[arg(long)]
+    pub agent: Option<String>,
+    /// The kind of the answering note: a `decision` is an answer that settles it, an `annotation` is an
+    /// answer that informs it.
+    #[arg(long, default_value = "decision")]
+    pub kind: String,
+}
+
+/// `fathom note withdraw` — retract a recorded decision without editing it.
+#[derive(Args, Debug)]
+pub struct NoteWithdrawArgs {
+    /// The note being retracted (`nt-…`).
+    pub id: String,
+    /// Why it no longer holds.
+    pub text: String,
+    /// Who is retracting it.
+    #[arg(long)]
+    pub author: Option<String>,
+    /// Record the retraction as an agent's act on someone's behalf.
+    #[arg(long)]
+    pub agent: Option<String>,
 }
 
 /// `fathom episodes` — the reviewer's main list, for a script or CI (`reco-11b`).
@@ -1253,6 +1396,8 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         ),
         Some(Verb::Cmp(args)) => crate::compare::run(args),
         Some(Verb::Search(args)) => crate::search::run(args),
+        Some(Verb::Context(args)) => crate::notes::context(args),
+        Some(Verb::Note(args)) => crate::notes::note(args),
     }
 }
 

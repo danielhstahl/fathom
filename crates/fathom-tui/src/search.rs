@@ -84,6 +84,12 @@ impl Link {
                     ),
                 },
             },
+            // A recorded note opens the episode it is about — that is where its evidence is — and says
+            // which note it was, so the reviewer can quote the id (`e6.5`).
+            Kind::Note => Link::Timeline {
+                episode: hit.episode.clone().unwrap_or_else(|| hit.id.clone()),
+                label: format!("{} ({})", hit.label, hit.id),
+            },
             Kind::Symbol => Link::Say {
                 reason: format!(
                     "`{}` is a symbol, and nothing has indexed symbols since `e3.1` — the corpus the \
@@ -269,7 +275,7 @@ pub const FILTERS: &[(&str, &str)] = &[
     ("until:", "on or before a day"),
     ("risk>", "at least this risky"),
     ("risk<", "at most this risky"),
-    ("kind:", "episode, path, dependency, finding"),
+    ("kind:", "episode, path, dependency, finding, note"),
     ("path:", "touches this path"),
     ("dep:", "depends on this package"),
     ("finding:", "raised this finding kind"),
@@ -289,6 +295,7 @@ const fn short_kind(kind: Kind) -> &'static str {
         Kind::Finding => "fd",
         Kind::Dependency => "dp",
         Kind::Path => "pa",
+        Kind::Note => "nt",
     }
 }
 

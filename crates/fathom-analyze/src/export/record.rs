@@ -205,6 +205,56 @@ pub struct SignOffScale {
     pub del: i64,
 }
 
+/// One recorded note, as the review memory wrote it (`e6.5`, `reco-552`).
+///
+/// The sign-off says a person accepted a change; this says what they wrote down while doing it — the
+/// decision and its reason, the question nobody has answered, the follow-up somebody owes. Both halves are
+/// in the artefact because a reviewer asked to look at a range needs both: the gate and the memory.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemoryRow {
+    /// The note id (`nt-…`).
+    pub id: String,
+    /// The memory file it was read from, repo-relative.
+    pub file: String,
+    /// The episode it is about *now*, after the re-link ladder — empty when it is anchored to a path.
+    pub episode: String,
+    /// `decision`, `question`, `followup`, `annotation`.
+    pub kind: String,
+    /// `open`, `answered`, `withdrawn`.
+    pub status: String,
+    /// Who wrote it.
+    pub author: String,
+    /// `human` or `agent`, as the file recorded it.
+    pub author_kind: String,
+    /// When, unix milliseconds — the instant the memory holds, never the clock of the export.
+    pub written_utc: i64,
+    /// The words, as written.
+    pub text: String,
+    /// The note this one answers, when it answers one.
+    pub about: String,
+    /// The notes that answer this one.
+    pub answers: Vec<String>,
+    /// `fresh`, `stale`, `orphan` or `anchored` — the ladder's verdict.
+    pub link_state: String,
+    /// Which rung of the ladder attached it.
+    pub link_method: String,
+    /// The episode it was written against, when a rewrite moved it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relinked_from: Option<String>,
+    /// Why it is stale or orphaned, in the ladder's own words.
+    pub why: String,
+    /// The path and line it points at, as written.
+    pub target: String,
+    /// Which door wrote it.
+    pub via: String,
+    /// The episode identity digests the note carries, labelled, in the order the file writes them.
+    pub digests: Vec<(String, String)>,
+    /// The note's own tamper digest.
+    pub digest: String,
+    /// Whether its text still hashes to [`MemoryRow::digest`].
+    pub tampered: bool,
+}
+
 /// One card row: a label and the value the model printed for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CardRow {
@@ -596,6 +646,10 @@ pub struct Record {
     pub signoffs: Vec<SignOffRow>,
     /// What the ledger reported about itself: a torn line, a digest that does not match.
     pub ledger_problems: Vec<String>,
+    /// The review memory in scope — decisions, questions, follow-ups, annotations — oldest first.
+    pub memory: Vec<MemoryRow>,
+    /// What the memory files reported about themselves (`e6.5`).
+    pub memory_problems: Vec<String>,
     /// Every commit the artefact links to, oldest first.
     pub commits: Vec<CommitRef>,
     /// Every gap in the delta documents, in episode then section order.
@@ -642,6 +696,10 @@ pub struct Input {
     pub signoffs: Vec<SignOffRow>,
     /// What the ledger reported about its own files.
     pub ledger_problems: Vec<String>,
+    /// The notes the review memory holds for the range, in any order — [`build`] sorts them (`e6.5`).
+    pub memory: Vec<MemoryRow>,
+    /// What the memory files reported about their own contents.
+    pub memory_problems: Vec<String>,
     /// `fathom <version>`.
     pub produced_by: String,
     /// The redacted store path.
@@ -688,9 +746,20 @@ pub fn build(input: &Input) -> Record {
 
     let mut signoffs = input.signoffs.clone();
     signoffs.sort_by(|left, right| (left.signed_utc, &left.id).cmp(&(right.signed_utc, &right.id)));
+    // Oldest note first, the order the memory file appends in: an artefact that re-ordered the memory would
+    // read like a narrative the reviewer never wrote.
+    let mut memory = input.memory.clone();
+    memory.sort_by(|left, right| (left.written_utc, &left.id).cmp(&(right.written_utc, &right.id)));
 
     let architecture = architecture_of(&episodes);
-    let checklist = checklist_of(&episodes, &signoffs, &findings, &input.ledger_problems);
+    let checklist = checklist_of(
+        &episodes,
+        &signoffs,
+        &findings,
+        &memory,
+        &input.ledger_problems,
+        &input.memory_problems,
+    );
     let mut gaps: Vec<Gap> = episodes
         .iter()
         .flat_map(|episode| episode.delta.gaps.iter().cloned())
@@ -747,6 +816,8 @@ pub fn build(input: &Input) -> Record {
         checklist,
         signoffs,
         ledger_problems: input.ledger_problems.clone(),
+        memory,
+        memory_problems: input.memory_problems.clone(),
         commits,
         gaps,
         provenance: RecordProvenance {
@@ -988,7 +1059,9 @@ fn checklist_of(
     episodes: &[EpisodeView],
     signoffs: &[SignOffRow],
     findings: &[FindingRow],
+    memory: &[MemoryRow],
     ledger_problems: &[String],
+    memory_problems: &[String],
 ) -> Vec<ChecklistItem> {
     let mut items: Vec<ChecklistItem> = Vec::new();
 
@@ -1122,6 +1195,53 @@ fn checklist_of(
             detail: None,
             how: Some("fathom review verify".to_owned()),
             owner: "e4.6".to_owned(),
+            episode: None,
+            closed_by: None,
+            evidence: vec![problem.clone()],
+        });
+    }
+    // An unanswered question or follow-up is an open item, in the same sense an unsigned episode is: the
+    // artefact is not finished while somebody's question is still sitting in the memory file (`e6.5`).
+    for row in memory {
+        if row.status != "open" || !matches!(row.kind.as_str(), "question" | "followup") {
+            continue;
+        }
+        items.push(ChecklistItem {
+            id: format!("memory:{}", row.id),
+            kind: "memory".to_owned(),
+            state: STATE_OPEN.to_owned(),
+            text: format!("Answer the {} {}: {}", row.kind, row.id, row.text),
+            detail: Some(format!(
+                "{} asked {} · about {} · recorded in {}",
+                row.author,
+                crate::ledger::entry::iso_utc(row.written_utc),
+                if row.episode.is_empty() {
+                    row.target.as_str()
+                } else {
+                    row.episode.as_str()
+                },
+                row.file
+            )),
+            how: Some(format!(
+                "fathom note answer {} \"the answer, in one line\"",
+                row.id
+            )),
+            owner: "e6.5".to_owned(),
+            episode: (!row.episode.is_empty()).then(|| row.episode.clone()),
+            closed_by: None,
+            evidence: vec![row.id.clone(), row.file.clone()],
+        });
+    }
+
+    for problem in memory_problems {
+        items.push(ChecklistItem {
+            id: format!("memory-problem:{problem}"),
+            kind: "memory".to_owned(),
+            state: STATE_OPEN.to_owned(),
+            text: format!("The review memory needs a fix: {problem}"),
+            detail: None,
+            how: Some("fathom note verify".to_owned()),
+            owner: "e6.5".to_owned(),
             episode: None,
             closed_by: None,
             evidence: vec![problem.clone()],
@@ -1413,6 +1533,46 @@ impl Record {
             }
             if row.digest.is_empty() {
                 problems.push(format!("sign-off {} carries no tamper digest", row.id));
+            }
+        }
+
+        // Memory: owned, hashed, ordered, and vocabulary-bound (`e6.5`).
+        let memory_keys: Vec<(i64, &String)> = self
+            .memory
+            .iter()
+            .map(|row| (row.written_utc, &row.id))
+            .collect();
+        if !memory_keys.windows(2).all(|pair| pair[0] <= pair[1]) {
+            problems.push("the review memory is not printed oldest note first".to_owned());
+        }
+        for row in &self.memory {
+            // A note is in scope when it is about an episode in scope, when it is anchored to a path
+            // instead of an episode, or when the ladder said honestly that it lost its episode — an
+            // orphaned note is still a record the reader has to see, which is the whole point of the file.
+            let owned = row.episode.is_empty()
+                || row.link_state == "orphan"
+                || in_scope.contains(&row.episode.as_str())
+                || row
+                    .relinked_from
+                    .as_ref()
+                    .is_some_and(|from| in_scope.contains(&from.as_str()));
+            if !owned {
+                problems.push(format!(
+                    "note {} is about {}, which is no episode in scope",
+                    row.id, row.episode
+                ));
+            }
+            if row.digest.is_empty() {
+                problems.push(format!("note {} carries no tamper digest", row.id));
+            }
+            if !matches!(
+                row.kind.as_str(),
+                "decision" | "question" | "followup" | "annotation"
+            ) {
+                problems.push(format!("note {} has kind `{}`", row.id, row.kind));
+            }
+            if !matches!(row.status.as_str(), "open" | "answered" | "withdrawn") {
+                problems.push(format!("note {} has status `{}`", row.id, row.status));
             }
         }
 

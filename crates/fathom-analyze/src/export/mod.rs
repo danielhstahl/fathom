@@ -65,8 +65,9 @@ pub use markdown::redact_command;
 pub use record::{
     Architecture, CHECKLIST_ORDER, CHECKS, CONTRACT, CardRow, ChecklistItem, CommitRef,
     Dependencies, DirectoryRow, EPISODE_ORDER, EpisodeInput, EpisodeView, FindingRow, GENERATOR,
-    Input, Integrity, LIST_CAP, Record, RecordProvenance, RenameRow, Scope, SectionState,
-    SignOffRow, SignOffScale, Summary, VERSION, build, card_of, contracts, narrative_markdown,
+    Input, Integrity, LIST_CAP, MemoryRow, Record, RecordProvenance, RenameRow, Scope,
+    SectionState, SignOffRow, SignOffScale, Summary, VERSION, build, card_of, contracts,
+    narrative_markdown,
 };
 
 /// The version of the artefact's structure, independent of the delta model's own version.

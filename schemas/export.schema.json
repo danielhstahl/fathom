@@ -39,6 +39,21 @@
       ],
       "type": "string"
     },
+    "memory": {
+      "description": "Every note the review memory holds for the range (`e6.5`, reco-552): the recorded decisions with their reasons, the questions and follow-ups still open and the annotations, each with author, instant, status, how it is attached to the change now, and its tamper digest. Empty when nothing was recorded, which is a fact about the range and not a failure.",
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "memory_problems": {
+      "description": "What the memory files reported about themselves: a torn block, an unknown field, a note whose text no longer hashes to its digest. A non-empty list is an open checklist item, not a silent omission.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
     "out": {
       "description": "The stem the operator asked for, echoed.",
       "type": "string"
@@ -98,6 +113,8 @@
     "record",
     "summary",
     "signoffs",
+    "memory",
+    "memory_problems",
     "checklist_open",
     "strict",
     "exit_code",
