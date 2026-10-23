@@ -212,6 +212,14 @@ pub fn dispatch_focus(
         // ...and `c` gets its composition the same way (`reco-ifo`): the shell asks for a spec and is
         // handed the lines, because composing a range is a store read and the shell may not make one.
         compare: crate::compare::provider(root),
+        // ...and the architecture map gets its graph the same way (`e3.4`, `reco-w3w`): the chain walk and the
+        // node dictionary are read once, here, because `g` is the one view whose answer costs a reconstruction
+        // and a frozen frame is the wrong price for a keystroke. `None` is an index with no graph lane, and the
+        // canvas keeps its published placeholder instead of drawing an empty rectangle.
+        graph: crate::architecture::hand(root),
+        // ...and its arrows get their citations lazily, because naming the line behind one arrow is a blob
+        // read and an extract, and the reviewer only ever reads the arrow under the cursor.
+        citations: crate::architecture::citations(root),
         // The hint line, decided above while there was still somewhere to put a complaint about it.
         hints,
         patches: crate::patches::provider(root),

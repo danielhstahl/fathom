@@ -17,6 +17,41 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The architecture map, with what this turn did to the shape of the system drawn on it (`reco-w3w`)
+
+`fathom` could already answer "what does this depend on?" (`e3.2`) and "what did this turn change?"
+(`e3.3`), and neither question is the one a reviewer asks at the keyboard. The one they ask is *did this
+turn make the shape of the system worse?* — which is a picture, an overlay on that picture, and a citation
+under each arrow. `g` is that view (ADR-006 §5.5): the module graph aggregated to whatever the canvas can
+hold, the episode's architecture delta drawn as marks on the same graph, and a file-and-line citation for
+whichever arrow the cursor is on.
+
+* **Degrade by aggregation, never by clipping.** A 3 000-module graph is not drawn as 1 000 modules and a
+  shrug: the canvas folds whole modules into a counted cell, prints `nodes 214 of 1 902 shown · aggregated
+  at L2`, and the arithmetic (drawn + folded = handed) is asserted in
+  `crates/fathom-tui/tests/graph_map.rs`. Aggregation is a knob (`[`/`]`, and auto by default so the same
+  hand is legible at 40 columns and at 200), the hop radius is a knob (`<`/`>`), and `!` narrows the map to
+  what the episode touched plus its blast radius.
+* **Three layouts, and heat with a denominator.** Layered (longest-path depth, cycles condensed into one
+  rung when `graph-layout` is compiled in), circular, and a squarified treemap of the module tree — plus
+  the aggregated node table every build has, which names the feature that would buy the rest. Heat bands
+  carry their basis and their window (`heat churn over the last 30 revisions`), and a series that was never
+  measured prints its reason instead of a cold-looking map. `H` cycles the basis; the complexity series says
+  `not measured at startup` rather than `0`.
+* **The citation is the criterion, and an honest one.** An arrow prints `evidence crates/cli/src/main.rs:7`;
+  where the structural record names several statements that could be the dependency it prints the count and
+  refuses to guess (`3 lines could be this dependency`), and where it names none it cites the file and says
+  the line is not recorded. Citations are a provider asked for one arrow at a time, because naming the line
+  behind 3 000 arrows at startup is 3 000 blob reads to print one.
+* **The shell still opens nothing** (ADR-002 §5.2, lint `E01`). `fathom-cli` materialises the graph lane,
+  reads the episode's `delta.architecture` row, the churn window and the layer tags once, and hands the
+  result over as one value (`fathom_tui::graph::Hand`) through `Options::graph`; `g` draws what it was
+  given. A repository with no graph lane keeps the published placeholder, and a key pressed on it says what
+  would give it data. Removed nodes come back as ghost cells, so a delta cannot deny its own removals.
+* **Three registry rows** — `graph.heat_cycle` on `H`, and palette-only `graph.filter_layer` /
+  `graph.filter_clear` — so `graph.layout_cycle`'s label now names three layouts. The published tables in
+  ADR-006 §7.3–§7.4 and the Python keymap that owns them were updated together.
+
 ### What a review knew, kept in the repository (`reco-552`)
 
 A review produces more than a verdict. It produces *"we deliberately allow this cycle because the port is

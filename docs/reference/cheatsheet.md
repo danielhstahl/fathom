@@ -205,9 +205,10 @@ mode has to be live (§4).
 | **View-local** | `\` | Diff: split / unified | `diff` |
 | **View-local** | `W` | Diff: word-diff on / off | `diff` |
 | **View-local** | `=` | Diff: ignore whitespace | `diff` |
+| **View-local** | `H` | Graph: cycle heat basis (churn / complexity) | `graph` |
 | **View-local** | `<` | Graph: one hop closer | `graph` |
 | **View-local** | `>` | Graph: one hop further | `graph` |
-| **View-local** | `L` | Graph: cycle layout (layered / circular) | `graph` |
+| **View-local** | `L` | Graph: cycle layout (layered / circular / treemap) | `graph` |
 | **View-local** | `]` | Graph: aggregate one level down | `graph` |
 | **View-local** | `[` | Graph: aggregate one level up | `graph` |
 | **View-local** | `!` | Graph: show only this episode's delta overlay | `graph` |
@@ -336,7 +337,8 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `graph` | `!` | `graph.overlay_only` | Graph: show only this episode's delta overlay |
 | `graph` | `<` | `graph.hop_less` | Graph: one hop closer |
 | `graph` | `>` | `graph.hop_more` | Graph: one hop further |
-| `graph` | `L` | `graph.layout_cycle` | Graph: cycle layout (layered / circular) |
+| `graph` | `H` | `graph.heat_cycle` | Graph: cycle heat basis (churn / complexity) |
+| `graph` | `L` | `graph.layout_cycle` | Graph: cycle layout (layered / circular / treemap) |
 | `graph` | `[` | `graph.level_up` | Graph: aggregate one level up |
 | `graph` | `]` | `graph.level_down` | Graph: aggregate one level down |
 | `deps` | `[` | `deps.ecosystem_prev` | Deps: previous ecosystem |
@@ -428,9 +430,12 @@ makes "unbound" different from "unreachable".
 | `filter.edit` | Edit filters (author, area, state, date) | scope | `F` | yes | `global` | `e1.6` |
 | `goto.first_unread` | Jump to first unread episode | scope | — | yes | `global` | `e1.6` |
 | `goto.today` | Jump to today | scope | — | yes | `global` | `e1.6` |
+| `graph.filter_clear` | Graph: clear the map filter | view | — | yes | `global` | `e3.4` |
+| `graph.filter_layer` | Graph: filter to the selected module's layer | view | — | yes | `global` | `e3.4` |
+| `graph.heat_cycle` | Graph: cycle heat basis (churn / complexity) | view | `H` | yes | `graph` | `e3.4` |
 | `graph.hop_less` | Graph: one hop closer | view | `<` | yes | `graph` | `e3.4` |
 | `graph.hop_more` | Graph: one hop further | view | `>` | yes | `graph` | `e3.4` |
-| `graph.layout_cycle` | Graph: cycle layout (layered / circular) | view | `L` | yes | `graph` | `e3.4` |
+| `graph.layout_cycle` | Graph: cycle layout (layered / circular / treemap) | view | `L` | yes | `graph` | `e3.4` |
 | `graph.level_down` | Graph: aggregate one level down | view | `]` | yes | `graph` | `e3.4` |
 | `graph.level_up` | Graph: aggregate one level up | view | `[` | yes | `graph` | `e3.4` |
 | `graph.overlay_only` | Graph: show only this episode's delta overlay | view | `!` | yes | `graph` | `e3.4` |

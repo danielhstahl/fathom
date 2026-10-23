@@ -44,6 +44,11 @@ mod drift;
 // and not in the shell, because the shell may not open a store (ADR-002 §5.2) — and it is no longer gated
 // with the shell, because a headless verb has the same requirement and must not be able to disagree with
 // the rail about what the index holds.
+// The architecture map's read (`e3.4`, `reco-w3w`): the graph lane reads and the structural record behind
+// an arrow's citation. Both are store and object-store reads the shell may not make (ADR-002 §5.2), so they
+// are made here and handed over as a `fathom_tui::graph::Hand` and a citation provider.
+#[cfg(feature = "tui")]
+mod architecture;
 mod episodes;
 mod features;
 // The producer that feeds an open frame (`reco-bpc`): the cheap probe, the index slice and the re-read that

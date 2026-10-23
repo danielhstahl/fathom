@@ -171,6 +171,21 @@ pub struct Options {
     /// provider hands back the lines `fathom cmp` prints, so the shell and the script cannot tell two
     /// stories about one comparison. `None` is a build with no index, and `c` says so.
     pub compare: Option<crate::compare::Provider>,
+    /// The module graph the architecture map draws, if the caller has one (`e3.4`, `reco-w3w`).
+    ///
+    /// The same inversion as [`Self::episodes`] and [`Self::patches`], and for the same reason: reading the
+    /// graph means a store read and a chain walk (`e3.2`'s lane), and the shell may not make one
+    /// (ADR-002 §5.2, lint `E01`). `fathom-cli` materialises the revision, hands over the nodes, the
+    /// dependencies, the heat and the episode's architecture delta as one [`crate::graph::Hand`], and `g`
+    /// draws what it was given. `None` is a repository whose index holds no graph or a binary with no
+    /// backend, and the canvas says which instead of drawing an empty rectangle.
+    pub graph: Option<crate::graph::Hand>,
+    /// Who names the statement an arrow came from, if anyone (`e3.4`).
+    ///
+    /// The same inversion as [`Self::patches`], one question further along: naming the line means reading a
+    /// file's structural record, and the shell opens nothing. `None` is a build with no record to read, and
+    /// the detail pane cites the file and says the line is not recorded instead of inventing one.
+    pub citations: Option<crate::graph::CitationSource>,
     /// Whether the bottom hint line is drawn (`e5.4`: it can be disabled).
     ///
     /// `false` is not a cosmetic switch: it is passed to [`crate::layout::fit_chosen`] as the hint step
@@ -236,6 +251,8 @@ impl Default for Options {
             search: None,
             patches: None,
             compare: None,
+            graph: None,
+            citations: None,
             hints: true,
             mouse: false,
             lines: false,
@@ -772,6 +789,14 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // ...and the same for `c` (`e5.3`): a provider the palette's saved comparisons and the `c` keystroke
     // both ask, installed before `prime` so a resumed session that opens on a comparison can answer.
     app.compare = options.compare.clone();
+    // ...and the architecture map gets its graph the same way (`e3.4`): the read happens once, at startup,
+    // because a chain walk per keystroke would be a chain walk the reviewer pays for with a frozen frame.
+    if let Some(said) = app.install_graph(options.graph.clone()) {
+        app.notices.push(said);
+    }
+    // ...and the map's arrows get their citations the same way: the shell asks for the one arrow the cursor
+    // is on, and this provider is the only party that can read the record behind it (`e3.4`).
+    app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
     // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
     // session that resumes straight into the queue must be able to disposition from the first keystroke,
@@ -933,6 +958,10 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     // The same for a piped frame: `--plain` promises the frame the terminal would have been given, and
     // that frame answers `c` (`e5.3`).
     app.compare = options.compare.clone();
+    if let Some(said) = app.install_graph(options.graph.clone()) {
+        app.notices.push(said);
+    }
+    app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
     // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
     // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.

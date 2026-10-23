@@ -804,6 +804,11 @@ fn pane_body(app: &App, pane: &Pane, width: usize, rows: usize) -> Vec<StyledLin
     if let Some(lines) = app.diff_body(pane, width, rows) {
         return lines;
     }
+    // The architecture map draws its own panes too (`e3.4`): the canvas is a two-dimensional picture, not
+    // a list of rows the shell can slice, and the detail pane is a document with its own cursor.
+    if let Some(lines) = app.graph_body(pane, width, rows) {
+        return lines;
+    }
     // The queue's worklist is a window over a list the shell holds, with its own cursor and its own
     // two-row-per-episode rhythm, so it draws itself like the rail does (`reco-c05`).
     if app.view == ViewId::Queue && !app.timeline.is_empty() {
@@ -929,6 +934,12 @@ pub fn pane_text(app: &App, pane: &Pane) -> Vec<String> {
             .collect();
     }
     if let Some(lines) = app.diff_text(pane) {
+        return lines
+            .into_iter()
+            .map(|line| line.trim_end().to_owned())
+            .collect();
+    }
+    if let Some(lines) = app.graph_text(pane) {
         return lines
             .into_iter()
             .map(|line| line.trim_end().to_owned())

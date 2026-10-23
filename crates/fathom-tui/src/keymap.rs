@@ -417,7 +417,7 @@ pub const ACTIONS: &[Action] = &[
     },
     Action {
         id: "graph.layout_cycle",
-        label: "Graph: cycle layout (layered / circular)",
+        label: "Graph: cycle layout (layered / circular / treemap)",
         scope: "view",
         ticket: "e3.4",
         modes: &[Mode::Graph],
@@ -445,6 +445,30 @@ pub const ACTIONS: &[Action] = &[
         scope: "view",
         ticket: "e3.4",
         modes: &[Mode::Graph],
+        palette: true,
+    },
+    Action {
+        id: "graph.heat_cycle",
+        label: "Graph: cycle heat basis (churn / complexity)",
+        scope: "view",
+        ticket: "e3.4",
+        modes: &[Mode::Graph],
+        palette: true,
+    },
+    Action {
+        id: "graph.filter_layer",
+        label: "Graph: filter to the selected module's layer",
+        scope: "view",
+        ticket: "e3.4",
+        modes: &[Mode::Global],
+        palette: true,
+    },
+    Action {
+        id: "graph.filter_clear",
+        label: "Graph: clear the map filter",
+        scope: "view",
+        ticket: "e3.4",
+        modes: &[Mode::Global],
         palette: true,
     },
     Action {
@@ -1395,6 +1419,7 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Structure, "[", "structure.level_up");
     bind(Mode::Structure, "]", "structure.level_down");
     bind(Mode::Graph, "!", "graph.overlay_only");
+    bind(Mode::Graph, "H", "graph.heat_cycle");
     bind(Mode::Graph, "<", "graph.hop_less");
     bind(Mode::Graph, ">", "graph.hop_more");
     bind(Mode::Graph, "L", "graph.layout_cycle");

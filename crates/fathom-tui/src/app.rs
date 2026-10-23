@@ -24,6 +24,7 @@ use fathom_analyze::insight::{CONDITIONS, Disposition, QueuePlacement, TriageRec
 use crate::diff::{self, DiffView};
 use crate::diff::{Env, Handoff};
 use crate::event::{Button, FrameScheduler, MouseMsg, Scroll};
+use crate::graph::{self, Graph};
 use crate::keymap::{CHORD_TIMEOUT, ChordState, KeyStep, Keymap, Mode, mode_chain};
 use crate::layout::{Fit, FitState, Step as Chrome, fit_chosen};
 use crate::style::StyledLine;
@@ -436,6 +437,13 @@ pub struct App {
     pub model: Model,
     /// The diff viewer's own state, including the budget it will not exceed (`e1.7`).
     pub diff: DiffView,
+    /// The architecture map's own state: the handed graph, the knobs the canvas keys move, and the
+    /// selection (`e3.4`, `reco-w3w`).
+    ///
+    /// Held by the shell for the same reason the rail and the diff are: a pane that drew the map from a
+    /// temporary could not keep a cursor, an aggregation level or a filter across frames, and a canvas whose
+    /// cursor moved when the frame redrawn is a canvas nobody can read.
+    pub graph: Graph,
     /// Who can turn a scope into patch bytes, if anyone (`reco-0kw`).
     ///
     /// Installed by the composition root through [`crate::frame::Options::patches`]; `None` is a
@@ -695,6 +703,7 @@ impl App {
             scope: Scope::empty(),
             model,
             diff: DiffView::new(),
+            graph: Graph::new(),
             patches: None,
             compare: None,
             watch: None,
@@ -849,6 +858,11 @@ impl App {
         if let Some(lines) = self.queue_text(pane) {
             return lines;
         }
+        // The architecture map draws its own panes, at its own size, from the graph it was handed
+        // (`e3.4`). Both panes come back from here so the plain text path and the styled path agree.
+        if let Some(lines) = self.graph_text(pane) {
+            return lines;
+        }
         let rows = self.model.rows_for(self.view, pane.name);
         if !rows.is_empty() {
             let mut out = rows.to_vec();
@@ -930,6 +944,9 @@ impl App {
         if let Some(strip) = self.queue_strip(pane) {
             return strip;
         }
+        if let Some(strip) = self.graph_strip(pane) {
+            return strip;
+        }
         if pane.role == Role::Primary {
             self.current().question.to_owned()
         } else {
@@ -944,6 +961,135 @@ impl App {
                 pane.ticket
             )
         }
+    }
+
+    // --- the architecture map (`e3.4`) ------------------------------------------------------------
+
+    /// Install the graph the composition root read, and say what it means (`e3.4`).
+    ///
+    /// `None` is not a failure and changes nothing: a repository with no module graph in its index, or a
+    /// binary with no store to read, keeps the published placeholder in the canvas — the sentence that
+    /// names the missing producer and the command that would produce it (ADR-006 §6.3), which is a
+    /// published string and not this view's to rewrite. The shell never goes and looks (ADR-002 §5.2,
+    /// lint `E01`).
+    pub fn install_graph(&mut self, hand: Option<graph::Hand>) -> Option<String> {
+        hand.map(|hand| self.graph.install(hand))
+    }
+
+    /// The graph view's panes as text (`--plain`, the golden files, and anything that compares strings).
+    ///
+    /// `None` when the view has nothing handed to it: then the frame's published placeholder — the sentence
+    /// that names the missing producer, which ADR-006 §6.3 fixes — stays on screen, and this view does not
+    /// overwrite a published string with its own.
+    #[must_use]
+    pub fn graph_text(&self, pane: &Pane) -> Option<Vec<String>> {
+        if self.view != ViewId::Graph || !self.graph.has_data() {
+            return None;
+        }
+        let cols = self.pane_cols(pane.name).max(12);
+        let rows = self.pane_body_rows().max(3);
+        Some(match pane.name {
+            "canvas" => self.graph.canvas_text(cols, rows),
+            "detail" => self
+                .graph
+                .detail(cols, rows)
+                .into_iter()
+                .map(|line| line.text().to_owned())
+                .collect(),
+            _ => return None,
+        })
+    }
+
+    /// The graph view's panes as styled rows.
+    #[must_use]
+    pub fn graph_body(&self, pane: &Pane, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
+        if self.view != ViewId::Graph || !self.graph.has_data() {
+            return None;
+        }
+        Some(match pane.name {
+            "canvas" => self.graph.canvas(width.max(12), rows.max(3)),
+            "detail" => self.graph.detail(width.max(12), rows.max(3)),
+            _ => return None,
+        })
+    }
+
+    /// The graph view's strips: the canvas keeps the layout statement, which is the sentence that says what
+    /// the picture *is* — a canvas without it is a picture a reader cannot check.
+    #[must_use]
+    pub fn graph_strip(&self, pane: &Pane) -> Option<String> {
+        if self.view != ViewId::Graph || !self.graph.has_data() {
+            return None;
+        }
+        match pane.name {
+            "canvas" => Some(self.graph.canvas_strip(self.pane_cols("canvas").max(24))),
+            "detail" => Some(graph::clip(
+                &self
+                    .graph
+                    .selected_key()
+                    .map(|key| format!("selected {key} · its evidence is below"))
+                    .unwrap_or_else(|| "nothing selected · j/k pick a cell".to_owned()),
+                self.pane_cols("detail").max(16),
+            )),
+            _ => None,
+        }
+    }
+
+    /// The map's own half of the registry: the four published view keys plus the two filter actions the
+    /// palette offers (`e3.4`). Returns `true` when the action was the view's.
+    fn dispatch_graph(&mut self, action: &str) -> bool {
+        if self.view != ViewId::Graph {
+            return false;
+        }
+        if action.starts_with("graph.") {
+            if !self.graph.has_data() {
+                // The key is the view's and there is nothing for it to act on. Saying so is the whole
+                // difference between a dead key and a key that is waiting for a producer (ADR-006 §6.3).
+                self.toast("the canvas has no graph yet — `fathom index --force` builds one");
+                return true;
+            }
+            let said = self.graph.dispatch(action);
+            if let Some(notice) = self.graph.notice.clone() {
+                self.toast(notice);
+            }
+            return said;
+        }
+        if !self.graph.has_data() {
+            return false;
+        }
+        // In the canvas the picture is exactly the size of the pane, so there is nothing to scroll and
+        // everything to select: `j`/`k` move the *cell*, which is the same motion a click makes.
+        if self
+            .focused_pane()
+            .is_some_and(|pane| pane.name == "canvas")
+            && self.graph.dispatch(action)
+        {
+            if let Some(cell) = self.graph.selected() {
+                self.selection
+                    .insert((self.view, "canvas".to_owned()), cell);
+            }
+            return true;
+        }
+        if action == "drill.in"
+            && self
+                .focused_pane()
+                .is_some_and(|pane| pane.name == "canvas")
+        {
+            // ADR-006 §5.5: `<Enter>` on a node focuses the detail pane on it, and `<Enter>` on an edge is
+            // the citation — which is what the detail pane prints for the arrow the cursor is on.
+            if self.graph.selected().is_some() {
+                self.pane = self
+                    .current()
+                    .panes
+                    .iter()
+                    .position(|pane| pane.name == "detail")
+                    .unwrap_or(self.pane);
+                self.toast(
+                    "the cell's arrows and their file-and-line evidence are in the detail pane",
+                );
+                return true;
+            }
+        }
+        false
     }
 
     // --- the timeline view (`e1.6`) ---------------------------------------------------------------
@@ -966,8 +1112,7 @@ impl App {
         self.timeline.set_index_facts(facts);
     }
 
-    /// Record what a producer says about the work it is still doing (`reco-j7t`).
-    ///
+    /// Record what a producer says about the work it is still doing (`reco-j7t`).    ///
     /// The counters are the producer's and the estimate is the shell's, which is the split `e5.9` already
     /// made for a worker on the bus: a producer says `412 / 500` and nothing about *when*, and the row
     /// that turns that into `indexing 62 % · ~14 s left` needs the instant the run started — which only
@@ -1716,6 +1861,15 @@ impl App {
                 _ => 0,
             };
         }
+        if self.view == ViewId::Graph && self.graph.has_data() {
+            // The canvas' rows are the cells it drew; the detail pane's are the lines it drew, because
+            // that pane is a document the cursor walks (`e3.4`).
+            return match pane.name {
+                "canvas" => self.graph.cell_count(),
+                "detail" => self.graph.detail_rows(),
+                _ => 0,
+            };
+        }
         self.model.rows_for(self.view, pane.name).len()
     }
 
@@ -2214,6 +2368,16 @@ impl App {
         if self.rail_focus() {
             return self.timeline.cursor();
         }
+        if self.view == ViewId::Graph && self.graph.has_data() {
+            // The canvas' cursor is the selected cell, and the detail pane's is its own line cursor.
+            if let Some(pane) = self.focused_pane() {
+                return match pane.name {
+                    "canvas" => self.graph.selected().unwrap_or(0),
+                    "detail" => self.graph.detail_row(),
+                    _ => 0,
+                };
+            }
+        }
         self.focused_pane()
             .and_then(|pane| {
                 self.selection
@@ -2239,6 +2403,26 @@ impl App {
         }
         let count = self.row_count(pane);
         let clamped = if count == 0 { 0 } else { row.min(count - 1) };
+        if self.view == ViewId::Graph && self.graph.has_data() {
+            // The canvas' cursor is a *cell*, and the detail pane's is a line inside the selected cell's
+            // facts: both live in the view, and the shell's map only mirrors them so `selected_row` and
+            // `set_selection` stay one arithmetic (`e3.4`).
+            match pane.name {
+                "canvas" => {
+                    self.graph.set_cell(clamped);
+                    self.selection
+                        .insert((self.view, pane.name.to_owned()), clamped);
+                    return;
+                }
+                "detail" => {
+                    self.graph.set_detail_row(clamped);
+                    self.selection
+                        .insert((self.view, pane.name.to_owned()), clamped);
+                    return;
+                }
+                _ => {}
+            }
+        }
         self.selection
             .insert((self.view, pane.name.to_owned()), clamped);
         if self.view == ViewId::Queue && pane.name == "worklist" {
@@ -2298,6 +2482,18 @@ impl App {
         let Some(pane) = self.focused_pane() else {
             return;
         };
+        if self.view == ViewId::Graph && self.graph.has_data() && pane.name == "canvas" {
+            // A canvas has no window to move: the wheel over it moves the selection, which is the same
+            // action `j`/`k` run, so the pointer stays additive (ADR-006 §10.1).
+            let step = if delta > 0 { "list.down" } else { "list.up" };
+            if self.graph.dispatch(step)
+                && let Some(cell) = self.graph.selected()
+            {
+                self.selection
+                    .insert((self.view, "canvas".to_owned()), cell);
+            }
+            return;
+        }
         let rows = self.row_count(pane);
         let current = i32::try_from(self.scroll_of()).unwrap_or(i32::MAX);
         let max = i32::try_from(rows).unwrap_or(i32::MAX).saturating_sub(1);
@@ -2464,6 +2660,10 @@ impl App {
                 Some(offset + line / crate::worklist::LINES_PER_EPISODE)
             }
             (ViewId::Diff, "tree") => Some(self.diff_tree_start(rows) + line),
+            (ViewId::Graph, "canvas") if self.graph.has_data() => self.graph.hit(line),
+            (ViewId::Graph, "detail") if self.graph.has_data() => {
+                Some(self.scroll_of().saturating_add(line))
+            }
             _ => match pane.interaction() {
                 // A generic list: the frame shows `pane_rows` from the top of the primary pane and
                 // from the scroll offset of a secondary one — which is exactly what `pane_body`
@@ -2658,6 +2858,12 @@ impl App {
             // The diff view's own registry half (`e1.7`): the hunk jumps, the three toggles, and the
             // three ways out. Handled before the frame actions so a diff key cannot fall through to
             // the "owned by another ticket" toast.
+            return;
+        }
+        if self.dispatch_graph(action) {
+            // The architecture map's registry half (`e3.4`): aggregation, hop limit, the overlay toggle,
+            // the layout cycle and the heat basis — plus `j`/`k` over the cells, which in a canvas move a
+            // selection rather than a window.
             return;
         }
         match action {

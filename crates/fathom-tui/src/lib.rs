@@ -39,6 +39,10 @@ pub mod empty;
 pub mod error;
 pub mod event;
 pub mod frame;
+/// The architecture map (`e3.4`, `reco-w3w`): the structure map, the dependency map and the per-episode
+/// delta overlay, all three over one handed graph. The shell owns the frame; this module owns what the two
+/// `graph` panes mean.
+pub mod graph;
 pub mod index;
 pub mod keymap;
 pub mod layout;
