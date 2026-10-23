@@ -66,12 +66,6 @@ impl Root {
         }
     }
 
-    /// The canonical repository root, for messages and for tests.
-    #[must_use]
-    pub fn canonical(&self) -> &Path {
-        &self.canonical
-    }
-
     /// Does `path` stay inside this repository — textually *and* once the filesystem answers?
     ///
     /// Two tests, because each catches what the other cannot:

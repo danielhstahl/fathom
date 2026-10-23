@@ -241,7 +241,7 @@ pub fn evaluate(graph: &Graph, naming: &Naming, rules: &Rules, locate: &Locate) 
         );
         return out;
     }
-    if rules.len() == 0 {
+    if rules.is_empty() {
         out.notices.push(
             "no layering rule is in force, so nothing was judged. A clean report from here is a \
              report about nothing"

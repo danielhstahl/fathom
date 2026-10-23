@@ -724,7 +724,7 @@ impl Rules {
     /// nothing and a repository that passes are two different answers.
     #[must_use]
     pub fn is_inert(&self) -> bool {
-        self.mode == Mode::Off || self.len() == 0
+        self.mode == Mode::Off || self.is_empty()
     }
 
     /// How many layers were declared when these rules were read.

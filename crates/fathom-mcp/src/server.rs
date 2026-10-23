@@ -16,7 +16,7 @@
 //! 6. **Bound.** The envelope, and — if it will not fit in `mcp.max_response_bytes` — fewer rows and a
 //!    cursor, with the truncation said out loud.
 //! 7. **Audit.** Every gated call, refused or not, gets one line: the gate is ADR-005 §4.2's, and the
-//!     line is `e6.4`'s — a named tool call, a digest of its arguments, and what came of it.
+//!    line is `e6.4`'s — a named tool call, a digest of its arguments, and what came of it.
 //!
 //! Nothing on this path returns a JSON-RPC error for a tool that ran. A protocol error ends the agent's
 //! turn; the boundary returns a value and lets the agent decide what to do next (§4.1).
@@ -173,6 +173,7 @@ impl FathomMcp {
             "dependency_delta" => self.source.dependency_delta(&args, window),
             "risk_report" => self.source.risk_report(&args, window),
             "search_history" => self.source.search_history(&args, window),
+            "review_memory" => self.review_memory(&args, window),
             "mark_reviewed" => self.mark_reviewed(&args),
             "add_review_note" => self.add_review_note(&args),
             other => Err(Failure::UnknownTool(other.to_owned())),
@@ -445,6 +446,10 @@ impl FathomMcp {
             )));
         }
         self.source.mark_reviewed(args)
+    }
+
+    fn review_memory(&self, args: &Args, window: Window) -> Result<Batch, Failure> {
+        self.source.review_memory(args, window)
     }
 
     fn add_review_note(&self, args: &Args) -> Result<Batch, Failure> {
