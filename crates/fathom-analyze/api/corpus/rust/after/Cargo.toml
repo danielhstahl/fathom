@@ -1,0 +1,8 @@
+# The fixture crate's manifest. `[workspace]` is here so cargo treats this directory as its own
+# workspace root and never mistakes a fixture for a member of the real workspace.
+[workspace]
+
+[package]
+name = "shapes"
+version = "1.2.3"
+edition = "2021"

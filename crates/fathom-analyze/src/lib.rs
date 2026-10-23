@@ -67,6 +67,13 @@ pub mod search;
 /// absent comes back saying so rather than coming back missing.
 pub mod structure;
 
+/// The public API surface (`e3.7`, `reco-p5u`): what each package lets the outside world name, in each
+/// language's own access rules; the diff of two revisions classified breaking / additive / deprecating
+/// (with the indeterminate class a scope that cannot be enumerated forces); the semver recommendation
+/// per affected package with the one change that drove it; and the episode stamp on every change. Reads
+/// [`structure`]; writes nothing.
+pub mod api;
+
 /// The module graph (`e3.2`, `reco-8s4`): modules and exported symbols as nodes, imports/uses/
 /// implementations/inheritance as edges, layer tags from `[layers]`, stored as one delta per revision
 /// with a shared anchor every `graph.chain_full_every`, and queried by dependency, dependents, path,

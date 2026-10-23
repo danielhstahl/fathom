@@ -202,3 +202,10 @@ required-features = ["sqlite-bundled"]
 [[test]]
 name = "memory_ceiling"
 required-features = ["sqlite-bundled"]
+
+# The public API surface diff (`e3.7`, `reco-p5u`): six languages, one report shape. All six grammars,
+# for the same reason `structure_tail` names all six — an answer that is `Incomplete` because the
+# grammar was not compiled is an answer about the build, not about the repository.
+[[test]]
+name = "api_surface"
+required-features = ["langs-all"]

@@ -362,6 +362,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
 | `layering` | ADR-004 §5.1 / e3.6 (`reco-cfp`) | What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op. |
+| `api` | e3.7 (`reco-p5u`) | Which paths' exports the rest of the world compiles against, and how loudly a change to them speaks. A workspace of nine crates usually has two whose `pub` items are somebody else's contract, and a breaking change reported in the third is noise - the ignore and private sets are how the owner says which ones count. Reading the source is `[extract]`'s business; this table is the claim about the repository. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
@@ -532,6 +533,11 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `layering.no_cycles` | `boolean` | `False` | `replace` | `any` | — | — | `e3.6` |
 | `layering.no_cycle_within_layer` | `boolean` | `False` | `replace` | `any` | — | — | `e3.6` |
 | `layering.max_violations` | `integer` | `50` | `replace` | `any` | violations | — | `e3.6` |
+| `api.mode` | `string` | `warn` | `replace` | `any` | — | — | `e3.7` |
+| `api.ignore` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
+| `api.package` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
+| `api.private` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
+| `api.max_items_per_package` | `integer` | `20000` | `replace` | `any` | items | — | `e3.7` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
 | `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |
 | `deps.advisories.mode` | `string` | `cache` | `replace` | `any` | — | deps.advisories | `e2.7` |

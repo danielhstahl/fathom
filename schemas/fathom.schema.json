@@ -4,6 +4,74 @@
   "additionalProperties": false,
   "description": "Configuration for Fathom, the terminal UI that keeps a human's mental model of a codebase a coding agent is writing. Values are layered: command-line flags > environment variables (FATHOM_*, segments joined by __) > repo fathom.toml > user config > built-in defaults, and every effective value is explainable with `fathom config explain`. GENERATED from src/recommender/config/schema.py by `python3 -m recommender.config schema --write`; do not edit by hand.",
   "properties": {
+    "api": {
+      "additionalProperties": false,
+      "description": "Which paths' exports the rest of the world compiles against, and how loudly a change to them speaks. A workspace of nine crates usually has two whose `pub` items are somebody else's contract, and a breaking change reported in the third is noise - the ignore and private sets are how the owner says which ones count. Reading the source is `[extract]`'s business; this table is the claim about the repository.",
+      "properties": {
+        "ignore": {
+          "default": [],
+          "description": "Paths whose exports are not tracked at all - a test tree, a vendored directory, the binary crate nobody imports. A stated exclusion: ignored paths are counted and named in the report, so \"the surface did not change\" always says how much of the repository it declined to look at. `e3.7`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.7"
+        },
+        "max_items_per_package": {
+          "default": 20000,
+          "description": "The ceiling on how many public items one package carries. Above it the package says it is truncated rather than growing without limit: a bound the report states, not a switch that turns a feature off. `e3.7`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.7",
+          "x-fathom-units": "items"
+        },
+        "mode": {
+          "default": "warn",
+          "description": "How loudly an API change speaks. `off` examines nothing and says so - deliberately a different answer from \"examined and clean\", because a gate has to tell those apart; `warn` reports without deciding an exit code; `deny` makes a breaking change the `fathom check` violation exit (7). The volume, never the facts. `e3.7`.",
+          "enum": [
+            "off",
+            "warn",
+            "deny"
+          ],
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.7"
+        },
+        "package": {
+          "default": [],
+          "description": "A path prefix pinned to a package name, written `sdk/ts = @acme/sdk`, for directories whose manifest is missing or says something different from what the reviewer means by a package. Longest match wins, and the report names the rule that decided a package. `e3.7`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.7"
+        },
+        "private": {
+          "default": [],
+          "description": "Packages that exist and are published to nobody. Their surface is still extracted and still reported; the semver recommendation says *internal* instead of proposing a version bump for a package no caller can install. `e3.7`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.7"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e3.7 (`reco-p5u`)",
+      "x-fathom-section-title": "Public API surface"
+    },
     "attribution": {
       "additionalProperties": false,
       "description": "Who wrote a commit: the registry of known agents, the marker table, and the confidence bar below which Fathom prints `?` instead of guessing. Every value here is handed to the classifier as data \u2014 no crate below the CLI opens this file.",
@@ -4250,6 +4318,10 @@
     ],
     "precedence": "flag > env > repo > user > defaults",
     "sections": {
+      "api": {
+        "owner": "e3.7 (`reco-p5u`)",
+        "title": "Public API surface"
+      },
       "attribution": {
         "owner": "ADR-003 \u00a78 / e4.1 (`reco-w7q`)",
         "title": "Authorship attribution"

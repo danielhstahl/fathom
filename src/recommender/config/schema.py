@@ -255,6 +255,13 @@ SECTIONS: dict[str, dict] = {
                         "live; this says which edges between them are violations. A rule that cannot "
                         "match anything is refused when the file is read, with the reason, rather "
                         "than becoming a silent no-op."},
+    "api": {"title": "Public API surface", "owner": "e3.7 (`reco-p5u`)",
+            "doc": "Which paths' exports the rest of the world compiles against, and how loudly a "
+                   "change to them speaks. A workspace of nine crates usually has two whose `pub` "
+                   "items are somebody else's contract, and a breaking change reported in the third "
+                   "is noise - the ignore and private sets are how the owner says which ones count. "
+                   "Reading the source is `[extract]`'s business; this table is the claim about the "
+                   "repository."},
     "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
              "doc": "Which ecosystems' manifests and lockfiles are parsed, and what the "
                     "dependency-risk answer does with them: the advisory cache and its "
@@ -1159,6 +1166,34 @@ KEY_LIST: list[Key] = [
        doc="How many violations one report lists before it stops. The bound never changes a number: "
            "the report prints how many were found alongside how many are listed. `e3.6`.",
        ticket="e3.6"),
+    # --- api (whose exports are a contract) ---------------------------------
+    _k(path="api.mode", kind="string", default="warn", enum=("off", "warn", "deny"),
+       doc="How loudly an API change speaks. `off` examines nothing and says so - deliberately a "
+           "different answer from \"examined and clean\", because a gate has to tell those apart; "
+           "`warn` reports without deciding an exit code; `deny` makes a breaking change the "
+           "`fathom check` violation exit (7). The volume, never the facts. `e3.7`.",
+       ticket="e3.7"),
+    _k(path="api.ignore", kind="string_list", merge="extend", default=[],
+       doc="Paths whose exports are not tracked at all - a test tree, a vendored directory, the "
+           "binary crate nobody imports. A stated exclusion: ignored paths are counted and named in "
+           "the report, so \"the surface did not change\" always says how much of the repository it "
+           "declined to look at. `e3.7`.",
+       ticket="e3.7"),
+    _k(path="api.package", kind="string_list", merge="extend", default=[],
+       doc="A path prefix pinned to a package name, written `sdk/ts = @acme/sdk`, for directories "
+           "whose manifest is missing or says something different from what the reviewer means by a "
+           "package. Longest match wins, and the report names the rule that decided a package. `e3.7`.",
+       ticket="e3.7"),
+    _k(path="api.private", kind="string_list", merge="extend", default=[],
+       doc="Packages that exist and are published to nobody. Their surface is still extracted and "
+           "still reported; the semver recommendation says *internal* instead of proposing a version "
+           "bump for a package no caller can install. `e3.7`.",
+       ticket="e3.7"),
+    _k(path="api.max_items_per_package", kind="integer", default=20000, minimum=1, units="items",
+       doc="The ceiling on how many public items one package carries. Above it the package says it is "
+           "truncated rather than growing without limit: a bound the report states, not a switch that "
+           "turns a feature off. `e3.7`.",
+       ticket="e3.7"),
     # --- deps ---------------------------------------------------------------
     _k(path="deps.ecosystems", kind="string_list", merge="extend",
        default=["python", "node", "rust"],
