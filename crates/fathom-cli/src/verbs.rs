@@ -196,6 +196,9 @@ pub enum Verb {
     /// The architecture scorecard: five dimensions, one number, and the drift since your last review
     /// (`e3.9`)
     Architecture(ArchitectureArgs),
+    /// The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to
+    /// (`e3.10`)
+    Ratchet(RatchetArgs),
     /// What this repository knows about a path or an episode: the recorded decisions and the open questions
     /// (`e6.5`)
     Context(ContextArgs),
@@ -304,6 +307,61 @@ pub struct ArchitectureArgs {
     /// Print the knobs in force — the weights, the curves and their published constants — and exit.
     #[arg(long)]
     pub explain: bool,
+}
+
+/// `fathom ratchet` — the committed baseline and the act of turning it (`e3.10`, `reco-5ht`).
+///
+/// Bare, it reports: what is forgiven, what is about to stop being forgiven, what is back due, and what has
+/// no allowance at all — and it removes the rows whose violation has gone away, because tightening is the
+/// one direction the file may move without being asked (`--dry-run` watches instead of doing). Widening is
+/// the other direction and needs both `--update-baseline` and `--reason`: the reason, the owner and the
+/// expiry land in the file, in the printed diff and in the review memory, which is what makes a loosening a
+/// decision with a name on it instead of a line that appeared.
+#[derive(Args, Debug)]
+pub struct RatchetArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the report as one JSON line on stdout (`fathom-ratchet/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Raise the baseline: write the violations that have no allowance as new rows.
+    ///
+    /// The one flag that makes the file looser, which is why it asks for a reason in the same breath.
+    #[arg(long, requires = "reason")]
+    pub update_baseline: bool,
+    /// Why the baseline is being raised — required by `--update-baseline`, recorded in the file, the diff and
+    /// the review memory.
+    #[arg(long, value_name = "REASON")]
+    pub reason: Option<String>,
+    /// Who owns the new allowances; bare, the reviewer's own identity (`--identity`, `$FATHOM_REVIEWER`,
+    /// `git config user.name`).
+    #[arg(long, value_name = "OWNER")]
+    pub owner: Option<String>,
+    /// Who is asking, recorded beside the owner as `granted_by`; bare, the same identity as `--owner`.
+    #[arg(long, value_name = "WHO")]
+    pub granted_by: Option<String>,
+    /// The last day an allowance is live, `YYYY-MM-DD`, or `never` for a row with no expiry.
+    ///
+    /// Bare, `+90` days: an allowance with no end is what the file exists to refuse, so the default is a
+    /// quarter and saying `never` is a sentence a reviewer gets to read.
+    #[arg(long, value_name = "DATE|never")]
+    pub expires: Option<String>,
+    /// Grant only this key (repeatable): a violation key as the report prints it, or `kind=key`.
+    #[arg(long = "key", value_name = "KEY")]
+    pub key: Vec<String>,
+    /// Report what would change and write nothing — not even the automatic tightening.
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Judge this graph revision rather than the newest the index holds: an oid or an unambiguous prefix.
+    #[arg(long, value_name = "TREE")]
+    pub revision: Option<String>,
+    /// Do not write a `decision` note into the review memory when the baseline is raised.
+    ///
+    /// The interlock is on by default: the reason a cycle is allowed is exactly the knowledge a TOML row
+    /// cannot carry on its own (`e6.5`'s memory, `e3.10`'s write).
+    #[arg(long)]
+    pub no_note: bool,
 }
 
 /// `fathom context <path-or-episode>` — what this repository knows about one thing (`e6.5`, `reco-552`).
@@ -1448,6 +1506,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Cmp(args)) => crate::compare::run(args),
         Some(Verb::Search(args)) => crate::search::run(args),
         Some(Verb::Architecture(args)) => crate::scorecard::run(args),
+        Some(Verb::Ratchet(args)) => crate::ratchet::run(args),
         Some(Verb::Context(args)) => crate::notes::context(args),
         Some(Verb::Note(args)) => crate::notes::note(args),
     }

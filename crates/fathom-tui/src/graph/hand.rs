@@ -830,6 +830,95 @@ impl Truncated {
     }
 }
 
+/// What the map knows about the committed allowance ledger (`e3.10`, `reco-5ht`).
+///
+/// The map already colours a vertex by whether it sits in a baselined cycle, which is a fact about the
+/// *graph*. This is the other half, which is a fact about a *date*: an allowance keeps a violation forgiven
+/// until its expiry, and a map that says only "this is debt" has said it quietly right up to the morning the
+/// allowance lapses and the same baselined fact is news again. So the rows about to lapse are printed where
+/// the person looking at the picture is already looking.
+///
+/// The lines arrive pre-worded from `fathom_analyze::ratchet::Ledger`, through `fathom-cli`. A widget does
+/// not grow its own ratchet, its own matching grammar, or its own idea of what "soon" means —
+/// `docs/concepts/ratchet.md` is the rule, and a map that disagreed with the verb about which rows were
+/// expiring would be worse than a map that said nothing.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Debt {
+    /// Where the ledger was read from, as the config named it.
+    pub source: String,
+    /// Whether a file was there to read. `false` is an answer, not an error, and it is printed.
+    pub read: bool,
+    /// How many allowances are live right now.
+    pub live: usize,
+    /// The rows about to lapse, in the engine's words.
+    pub expiring: Vec<String>,
+    /// The rows whose day has gone by, in the engine's words.
+    pub back_due: Vec<String>,
+    /// Why the ledger could not be read, when it could not.
+    pub why: Vec<String>,
+}
+
+impl Debt {
+    /// A ledger that was not read, and the one sentence why.
+    #[must_use]
+    pub fn unread(source: impl Into<String>, why: impl Into<String>) -> Self {
+        Debt {
+            source: source.into(),
+            read: false,
+            live: 0,
+            expiring: Vec::new(),
+            back_due: Vec::new(),
+            why: vec![why.into()],
+        }
+    }
+
+    /// Whether the ledger has anything worth a row of the detail pane.
+    ///
+    /// A ledger that was simply not there is **not** one of those: a repository with no baseline file has no
+    /// debt to date, and printing that fact on every map of every repository would train the eye past it. The
+    /// verb says it loudly when it is the finding; the map says it only when a row is running out.
+    #[must_use]
+    pub fn speaks(&self) -> bool {
+        !self.why.is_empty() || !self.expiring.is_empty() || !self.back_due.is_empty()
+    }
+
+    /// The one line for the strip under the canvas.
+    #[must_use]
+    pub fn strip(&self) -> String {
+        if self.expiring.is_empty() && self.back_due.is_empty() {
+            return format!("{} debt allowance(s) live", self.live);
+        }
+        let mut out = String::from("debt:");
+        if !self.expiring.is_empty() {
+            out.push_str(&format!(" {} expiring", self.expiring.len()));
+        }
+        if !self.back_due.is_empty() {
+            out.push_str(&format!(" {} lapsed", self.back_due.len()));
+        }
+        out
+    }
+
+    /// The lines for the detail pane: the state, then one line per row that needs noticing.
+    #[must_use]
+    pub fn lines(&self) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .why
+            .iter()
+            .map(|line| format!("ratchet   {line}"))
+            .collect();
+        if self.speaks() {
+            out.push(format!("ratchet   {}", self.strip()));
+        }
+        out.extend(
+            self.expiring
+                .iter()
+                .chain(self.back_due.iter())
+                .map(|line| format!("  ! {line}")),
+        );
+        out
+    }
+}
+
 /// Everything the architecture map is allowed to know.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hand {
@@ -848,6 +937,8 @@ pub struct Hand {
     pub delta: Delta,
     /// Why a figure is missing, in the analysis' own words.
     pub gaps: Vec<String>,
+    /// What the committed allowance ledger says, especially about dates (`e3.10`, `reco-5ht`).
+    pub debt: Debt,
     /// The statement that this hand is a subset, when it is.
     pub truncated: Option<Truncated>,
     /// The cost of the answer, as the rung named it: `rung adjacent · 0.19 ms`.
@@ -867,6 +958,7 @@ impl Hand {
             delta: Delta::empty("", ""),
             gaps: Vec::new(),
             truncated: None,
+            debt: Debt::default(),
             cost: None,
         }
     }

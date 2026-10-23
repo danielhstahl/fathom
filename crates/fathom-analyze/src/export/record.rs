@@ -255,6 +255,96 @@ pub struct MemoryRow {
     pub tampered: bool,
 }
 
+/// One row of the committed technical-debt ledger, as the artefact shows it (`e3.10`, `reco-5ht`).
+///
+/// **There is no clock in here, and that is deliberate.** Whether an allowance "expires soon" is a question
+/// about today, and a review artefact is a committed, diffed, blessed document: a field that changed value
+/// every midnight would make two exports of the same range differ for a reason nobody reviewed. So the row
+/// carries the *dates the ledger itself holds* — class M state, in the file, stable until someone edits it
+/// — and the record compares them against the newest commit it carries, which is also recorded state. That
+/// answer is dated to the change under review rather than to the afternoon the artefact was printed, which
+/// is the answer a review can actually act on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AllowanceRow {
+    /// `cycle` or `layer` — which engine's debt this is.
+    pub kind: String,
+    /// The key, as the ledger spells it.
+    pub key: String,
+    /// The named human or team who owes the payoff.
+    pub owner: String,
+    /// The sentence that justified the exception.
+    pub reason: String,
+    /// The day it stops forgiving, as the file spelled it; `None` is a permanent allowance and is printed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires: Option<String>,
+    /// The day it was granted, when the file knows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub granted: Option<String>,
+    /// Who wrote the row.
+    pub granted_by: String,
+}
+
+impl AllowanceRow {
+    /// The one-line rendering every format uses.
+    #[must_use]
+    pub fn render(&self) -> String {
+        format!(
+            "{}/{} — owner {}, runs out {}, granted {} by {}: {}",
+            self.kind,
+            self.key,
+            if self.owner.is_empty() {
+                "nobody"
+            } else {
+                &self.owner
+            },
+            self.expires.clone().unwrap_or_else(|| "never".to_owned()),
+            self.granted
+                .clone()
+                .unwrap_or_else(|| "unstated".to_owned()),
+            if self.granted_by.is_empty() {
+                "unstated"
+            } else {
+                &self.granted_by
+            },
+            self.reason
+        )
+    }
+
+    /// Whether the row's own day had gone by at `horizon` (unix milliseconds), compared as the ISO dates the
+    /// file itself uses. A row with no expiry has none to run out.
+    #[must_use]
+    pub fn lapsed_by(&self, horizon: Option<i64>) -> bool {
+        let (Some(expires), Some(horizon)) = (self.expires.as_ref(), horizon) else {
+            return false;
+        };
+        // `iso_utc` prints `YYYY-MM-DD…`, and ISO dates order correctly as strings, which is the whole of the
+        // arithmetic this needs — no calendar, no time zone, no clock.
+        expires.as_str() <= crate::ledger::entry::iso_utc(horizon).as_str()
+    }
+}
+
+/// The committed ledger and the artefact's own date, handed to the checklist as the pair they are.
+///
+/// "Has this allowance run out?" is meaningless without a *by when*, and inside a record the only honest *by
+/// when* is the newest commit the record carries (`Record::horizon`) rather than the wall. Bundling the two
+/// also keeps [`checklist_of`] under the argument ceiling clippy names — which is a sign, not the reason.
+#[derive(Debug, Clone, Default)]
+pub struct Debts<'a> {
+    /// The rows, in `(kind, key)` order.
+    pub rows: &'a [AllowanceRow],
+    /// The artefact's date: the newest commit's timestamp, or `None` when it carries no commits.
+    pub horizon: Option<i64>,
+}
+
+impl Debts<'_> {
+    /// The rows whose own day had gone by by the horizon — the ones the checklist asks a human about.
+    pub fn lapsed(&self) -> impl Iterator<Item = &AllowanceRow> {
+        self.rows
+            .iter()
+            .filter(move |row| row.lapsed_by(self.horizon))
+    }
+}
+
 /// One card row: a label and the value the model printed for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CardRow {
@@ -650,6 +740,8 @@ pub struct Record {
     pub memory: Vec<MemoryRow>,
     /// What the memory files reported about themselves (`e6.5`).
     pub memory_problems: Vec<String>,
+    /// The committed technical-debt allowances, in `(kind, key)` order (`e3.10`, `reco-5ht`).
+    pub debts: Vec<AllowanceRow>,
     /// Every commit the artefact links to, oldest first.
     pub commits: Vec<CommitRef>,
     /// Every gap in the delta documents, in episode then section order.
@@ -700,6 +792,9 @@ pub struct Input {
     pub memory: Vec<MemoryRow>,
     /// What the memory files reported about their own contents.
     pub memory_problems: Vec<String>,
+    /// The committed allowance ledger, as the ratchet reads it — in any order, [`build`] sorts it
+    /// (`e3.10`, `reco-5ht`).
+    pub debts: Vec<AllowanceRow>,
     /// `fathom <version>`.
     pub produced_by: String,
     /// The redacted store path.
@@ -750,7 +845,14 @@ pub fn build(input: &Input) -> Record {
     // read like a narrative the reviewer never wrote.
     let mut memory = input.memory.clone();
     memory.sort_by(|left, right| (left.written_utc, &left.id).cmp(&(right.written_utc, &right.id)));
-
+    // The committed allowance ledger, in the order the ratchet's own file lists rows in once they are sorted.
+    // This is a copy of class-M state, not a second opinion: the record never decides what is forgiven.
+    let mut debts = input.debts.clone();
+    debts.sort_by(|left, right| (&left.kind, &left.key).cmp(&(&right.kind, &right.key)));
+    // The artefact's own date, taken from a commit rather than from the wall: "had this allowance run out by
+    // the time of the change under review?" is answerable from what the record already holds, and a question
+    // about today is not, without making the bytes of a blessed document change at midnight.
+    let horizon = input.commits.iter().map(|commit| commit.utc).max();
     let architecture = architecture_of(&episodes);
     let checklist = checklist_of(
         &episodes,
@@ -759,6 +861,10 @@ pub fn build(input: &Input) -> Record {
         &memory,
         &input.ledger_problems,
         &input.memory_problems,
+        &Debts {
+            rows: &debts,
+            horizon,
+        },
     );
     let mut gaps: Vec<Gap> = episodes
         .iter()
@@ -818,6 +924,7 @@ pub fn build(input: &Input) -> Record {
         ledger_problems: input.ledger_problems.clone(),
         memory,
         memory_problems: input.memory_problems.clone(),
+        debts,
         commits,
         gaps,
         provenance: RecordProvenance {
@@ -1062,6 +1169,7 @@ fn checklist_of(
     memory: &[MemoryRow],
     ledger_problems: &[String],
     memory_problems: &[String],
+    debts: &Debts<'_>,
 ) -> Vec<ChecklistItem> {
     let mut items: Vec<ChecklistItem> = Vec::new();
 
@@ -1248,6 +1356,40 @@ fn checklist_of(
         });
     }
 
+    // An allowance whose own day had gone by before the change under review is an open item: the exception
+    // written down has stopped covering the violation, and whether anybody noticed is not something the
+    // ledger knows (`e3.10`, `reco-5ht`). The date is compared to the newest commit in the record and never
+    // to today, because an artefact that changed which items it listed at midnight is not a document anyone
+    // would bless.
+    for row in debts.lapsed() {
+        items.push(ChecklistItem {
+            id: format!("debt:{}:{}", row.kind, row.key),
+            kind: "debt".to_owned(),
+            state: STATE_OPEN.to_owned(),
+            text: format!(
+                "The allowance for `{}` ran out on {}; {} still owes it: {}",
+                row.key,
+                row.expires.clone().unwrap_or_default(),
+                if row.owner.is_empty() {
+                    "nobody"
+                } else {
+                    &row.owner
+                },
+                row.reason
+            ),
+            detail: Some(row.render()),
+            how: Some(
+                "`fathom ratchet --update-baseline --reason \"…\"` re-grants it with a new date; paying the \
+                 violation off instead takes the row out on the next run"
+                    .to_owned(),
+            ),
+            owner: "e3.10".to_owned(),
+            episode: None,
+            closed_by: None,
+            evidence: vec![format!("{}:{}", row.kind, row.key)],
+        });
+    }
+
     items.sort_by_key(checklist_key);
     items
 }
@@ -1373,6 +1515,16 @@ pub fn contracts() -> BTreeMap<String, String> {
 }
 
 impl Record {
+    /// The artefact's own date: the newest commit it carries, in unix milliseconds (`e3.10`, `reco-5ht`).
+    ///
+    /// This is the only "when" a record is allowed to answer with, and it is answered from committed state
+    /// rather than from the wall — which is what lets a dated question like *had this allowance run out by the
+    /// time of this change?* be asked of a blessed artefact without the answer changing overnight.
+    #[must_use]
+    pub fn horizon(&self) -> Option<i64> {
+        self.commits.iter().map(|commit| commit.utc).max()
+    }
+
     /// The serialised form, keys in field order, byte-stable.
     #[must_use]
     pub fn to_json(&self) -> String {
@@ -1573,6 +1725,26 @@ impl Record {
             }
             if !matches!(row.status.as_str(), "open" | "answered" | "withdrawn") {
                 problems.push(format!("note {} has status `{}`", row.id, row.status));
+            }
+        }
+
+        // The allowance ledger: ordered, and every row names a kind of debt there is an engine for
+        // (`e3.10`, `reco-5ht`). The record does not decide what is forgiven — the ledger does — so the only
+        // things worth checking here are the order a reader diff's against and the vocabulary.
+        let debt_keys: Vec<(&String, &String)> =
+            self.debts.iter().map(|row| (&row.kind, &row.key)).collect();
+        if !debt_keys.windows(2).all(|pair| pair[0] <= pair[1]) {
+            problems.push("the allowance ledger is not printed by kind, then by key".to_owned());
+        }
+        for row in &self.debts {
+            if row.kind != "cycle" && row.kind != "layer" {
+                problems.push(format!(
+                    "allowance {} has kind `{}`, and only `cycle` and `layer` have engines",
+                    row.key, row.kind
+                ));
+            }
+            if row.key.is_empty() {
+                problems.push("an allowance row carries no key".to_owned());
             }
         }
 

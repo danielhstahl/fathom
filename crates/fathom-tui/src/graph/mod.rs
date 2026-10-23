@@ -46,7 +46,7 @@ mod model;
 mod plate;
 
 pub use hand::{
-    Band, Cell as SourceCell, CellKind, Delta, Evidence, Fan, Hand, Heat, HeatBasis, Line,
+    Band, Cell as SourceCell, CellKind, Debt, Delta, Evidence, Fan, Hand, Heat, HeatBasis, Line,
     Link as SourceLink, LinkKind, Mark, Op, Series, Subject, Truncated,
 };
 pub use layout::{Drawing, Layout};
@@ -710,9 +710,18 @@ impl Graph {
             .basis
             .clone()
             .unwrap_or_else(|| layout.sentence().to_owned());
+        // The ledger's dates ride at the *front* of the strip, because the strip is clipped at the end and
+        // the strip is the one line of this shell that is true whether or not a cell is selected: a row about
+        // to lapse is a finding, and a finding that gets clipped off an 80-column terminal is a finding
+        // nobody sees (`e3.10`, `reco-5ht`).
+        let debt = if hand.debt.speaks() {
+            format!("{} · ", hand.debt.strip())
+        } else {
+            String::new()
+        };
         model::clip(
             &format!(
-                "{} · {} · {} · Δ {} rows · {}",
+                "{debt}{} · {} · {} · Δ {} rows · {}",
                 layout.sentence(),
                 basis,
                 self.filter.clause(),
@@ -832,6 +841,11 @@ impl Graph {
                 ),
                 Face::Warning,
             );
+        }
+        // The allowance ledger's dates, in the engine's words (`e3.10`, `reco-5ht`). A baselined vertex is
+        // quiet because someone wrote it down, and the row that wrote it down has an expiry on it.
+        for line in hand.debt.lines() {
+            push(&mut out, line, Face::Warning);
         }
         let ops: Vec<&Op> = hand
             .delta
@@ -1028,6 +1042,15 @@ impl Graph {
         }
         for gap in hand.gaps.iter().take(2) {
             out.push(StyledLine::with_face(model::clip(gap, cols), Face::Warning));
+        }
+        // The whole-map pane is where the ledger's dates belong as well as the per-cell pane: a row that is
+        // running out is a fact about the repository, not about the cell under the cursor (`e3.10`,
+        // `reco-5ht`). Same lines, same wording, one fewer thing for a reviewer to have to know to look for.
+        for line in hand.debt.lines() {
+            out.push(StyledLine::with_face(
+                model::clip(&line, cols),
+                Face::Warning,
+            ));
         }
         if hand.delta.violations > 0 {
             out.push(StyledLine::with_face(

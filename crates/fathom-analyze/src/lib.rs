@@ -103,6 +103,13 @@ pub mod layering;
 /// through [`scorecard::lane`].
 pub mod scorecard;
 
+/// The ratchet's write path (`e3.10`, `reco-5ht`): the plan that turns `.fathom/ratchet.toml` over — rows
+/// leaving on their own when the violation they forgave is gone, rows entering only through a deliberate act
+/// with an owner, an expiry and a written reason — and the one lane read that says what a revision currently
+/// owes. Reads [`cycles`] and [`layering`]; the file itself is read and written by the composition root,
+/// which is the only party in the workspace with a clock and a filesystem.
+pub mod ratchet;
+
 /// The hotspots (`e3.8`, `reco-wky`): which modules architectural attention pays off in, ranked by six
 /// explainable metrics — fan-in, fan-out, instability, size, the `e3.1` complexity proxy and `e3.3`'s
 /// churn velocity over a configurable window — with every metric's contribution printed, the churn ×

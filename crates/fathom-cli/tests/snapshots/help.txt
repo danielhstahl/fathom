@@ -29,6 +29,7 @@ Commands:
   cmp           Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
   search        Search the whole index from one box, in the shell's own ranking (`e5.2`)
   architecture  The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+  ratchet       The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (`e3.10`)
   context       What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
   note          The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/` (`e6.5`)
   help          Print this message or the help of the given subcommand(s)

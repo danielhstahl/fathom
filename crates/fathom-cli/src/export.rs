@@ -210,6 +210,7 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
             .collect(),
         memory,
         memory_problems,
+        debts: allowances(root),
         produced_by: fathom_analyze::insight::Provenance::produced_by(),
         store: Some(redactor.path(&store_path)),
         epoch: store.epoch().ok(),
@@ -906,6 +907,30 @@ fn destination(stem: &str, format: fathom_analyze::export::Format) -> std::path:
 /// `--out` and `--root` are dropped by the same rule the markdown renderer applies to the marker line: the
 /// record's bytes are a function of *what was reviewed*, not of where the operator happened to save it, so
 /// exporting the same range to two files yields two identical files.
+/// The committed allowance ledger, copied out as artefact rows (`e3.10`, `reco-5ht`).
+///
+/// A copy of class-M state, deliberately: the artefact prints what `.fathom/ratchet.toml` says and decides
+/// nothing about it. Whether a row is *live* needs the clock and is the ratchet verb's answer; the artefact is
+/// a blessed document, so it carries the dates the file carries and lets `Record::horizon` decide what had
+/// already run out by the time of the change under review.
+fn allowances(root: &Path) -> Vec<fathom_analyze::export::AllowanceRow> {
+    let config = std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default();
+    let (ratchet, _notices) = fathom_analyze::ratchet::Ratchet::read(root, &config);
+    ratchet
+        .allowances()
+        .iter()
+        .map(|row| fathom_analyze::export::AllowanceRow {
+            kind: row.kind.as_str().to_owned(),
+            key: row.key.clone(),
+            owner: row.owner.clone(),
+            reason: row.reason.clone(),
+            expires: row.expiry_day(),
+            granted: row.granted_day(),
+            granted_by: row.granted_by.clone(),
+        })
+        .collect()
+}
+
 fn asked_with(args: &ExportArgs) -> String {
     fathom_analyze::export::redact_command(&format!(
         "fathom export --format {} --out {} --episodes {} --root {}",

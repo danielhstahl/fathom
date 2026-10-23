@@ -473,6 +473,8 @@ VERB_DOCS = {
                 "the glance pane for the second terminal"),
     "architecture": (["docs/concepts/scorecard.md", "docs/reference/cli.md"],
                      "the architecture scorecard, its trend, and the delta since your last review"),
+    "ratchet": (["docs/concepts/ratchet.md", "docs/concepts/cycle-detection.md"],
+                "the committed allowance ledger, and the debt whose grace is running out"),
     "hooks": (["docs/harness/README.md", "docs/adr/0005-harness-contract.md"],
               "the harness event stream, and why a line was refused"),
     "open": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],

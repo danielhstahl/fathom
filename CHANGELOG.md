@@ -17,6 +17,49 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The ratchet: the committed allowance ledger, and the debt whose grace is running out (`reco-5ht`)
+
+`e3.5` and `e3.6` could already tell a baselined violation from a new one, but nothing could *write* the
+baseline: `.fathom/ratchet.toml` was a file you hand-edited and the tool only read. **`fathom ratchet`** is
+the write path, and the whole design of it is one refusal — the ledger may tighten by itself and must never
+widen by itself.
+
+* **One pure plan, four inputs.** `fathom_analyze::ratchet::Plan::build` is a pure function of the committed
+  file, the violations at one graph revision, which engines actually judged that revision, and the clock; it
+  returns exactly what the file should become, and the verb is allowed no other opinion. A violation that
+  has gone away has its row deleted by the next bare run — that is the ratchet, and it needs no flag. A
+  violation that has *appeared* is left uncovered: a bare run never writes news into the file, because a
+  baseline that quietly absorbed this month's mess is a baseline that has stopped meaning anything.
+* **Widening is an act, with things attached to it.** `--update-baseline` requires a non-empty `--reason` and
+  an owner, and `Grant::new` refuses an empty reason in the type before the flag parser refuses it;
+  `--reason` without `--update-baseline` is a usage error too, in both directions, so neither flag can be
+  typed as a slip of the other. Every granted row carries `owner`, `reason`, `expires`, `granted` and
+  `granted_by`, the last two filled in automatically from the clock and the git identity — a hand-edited row
+  missing its grant date is filled in rather than trusted. `--key` narrows a grant to what you name, and a key
+  that matches nothing is *refused* with an explanation rather than writing nothing quietly.
+* **An expiry is the point of the row, so an expiring allowance is chased down before it lapses.** `ratchet`
+  prints every live row inside the warning window with its days left, an expired allowance whose violation
+  is still there is **debt back due** — said with its date, nothing deleted, uncovered again — and re-granting
+  replaces the lapsed row instead of stacking a second one under it. Expiry is day-grain like `cycles::debt`,
+  so "expired on the 31st" does not depend on the hour the index ran.
+* **Three surfaces, one ledger.** The verb (`fathom ratchet`, `--json` as `fathom-ratchet/1`, schema
+  `schemas/ratchet.schema.json`), the architecture map (`fathom_tui::graph::hand::Debt`, filled by
+  `fathom-cli` from `ratchet::Ledger` — a widget grows no ratchet of its own, per ADR-002 §5.2), and the
+  review artefact (`debts`, in all three renderings, with rows already lapsed by the range's newest commit
+  raised as checklist items). The map's strip carries the ledger at the *front*, because a strip is clipped at
+  the end and a finding nobody sees is not a finding.
+* **The reason is in the review memory as well as the file.** Granting appends a `decision` note to
+  `.fathom/reviews/notes.md` carrying the same sentence and the rows it wrote, anchored to the ledger path —
+  so the ledger says what is forgiven and the memory says who said so and against what, which is the half a
+  committed TOML file cannot hold (`e6.5`).
+* **Two refusals, both load-bearing.** No index or no graph revision exits 12 (`INDEX_DEGRADED`): with no
+  graph there is no violation list to read the ledger against, and "nothing uncovered" would be reporting a
+  fact that was never checked. And a kind that was not judged is never tightened — switch `[layering]` off for
+  an afternoon and its rows are still there when it comes back, because what changed was the question.
+  `ratchet.mode` decides whether uncovered violations fail a run (`deny` → exit 7), and `off` means off: no
+  alarm, no failure, no surprise.
+
+
 ### Hotspots: which module attention pays off in, and what looks dead (`reco-wky`)
 
 `e3.2` answers *what does this depend on*, `e3.3` answers *what did this turn move*, and neither answers

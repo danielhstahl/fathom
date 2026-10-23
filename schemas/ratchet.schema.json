@@ -1,0 +1,286 @@
+{
+  "$id": "https://fathom.dev/schemas/ratchet.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fathom ratchet",
+  "description": "The ratchet: the committed technical-debt ledger at `.fathom/ratchet.toml`, read against the violations of one module-graph revision. The ledger tightens by itself when a baselined violation goes away and widens only when a human raises it with a reason, an owner and an expiry. The headless form of `fathom ratchet`, for CI and dashboards. Owner: `reco-5ht`.",
+  "x-fathom-contract": "fathom-ratchet/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "The ledger was read, and either nothing is uncovered or the mode is `warn` or `off`. An expiring allowance, a lapsed one and a tightening all exit 0: they are reported, and `fathom check` owns pass and fail."
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "A flag or its argument is wrong. `--update-baseline` with no `--reason` and `--reason` without `--update-baseline` are both here: a widening with no stated reason is the refusal this contract is built around."
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "The path is not a git repository, so there is no revision to read the ledger against."
+    },
+    {
+      "code": 4,
+      "name": "STORE_CORRUPT",
+      "when": "The store or the ledger file failed to open or parse; a ratchet read out of either would be a guess about what is forgiven."
+    },
+    {
+      "code": 7,
+      "name": "CHECK_VIOLATIONS",
+      "when": "`ratchet.mode = deny` and at least one violation is uncovered — no allowance, or an expired one. The exit code only: the ledger is not written by a run that is failing."
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "No index, or no module-graph revision in it. With no graph there is no list of violations to read the ledger against, and an empty read would report every violation in the repository as forgiven."
+    }
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "mode",
+    "summary",
+    "path",
+    "source",
+    "baselined",
+    "revision",
+    "revision_full",
+    "inventory",
+    "days_before_warning",
+    "changed",
+    "exit",
+    "alarms",
+    "allowances",
+    "added",
+    "renewed",
+    "untouched",
+    "removed",
+    "uncovered",
+    "refused",
+    "expiring",
+    "back_due",
+    "notices",
+    "decision_note"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "fathom-ratchet/1",
+      "description": "The contract this payload promises."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["off", "warn", "deny"],
+      "description": "`[ratchet].mode` in force — read from `fathom.toml`, not from the last run."
+    },
+    "path": {
+      "type": "string",
+      "description": "The path as given to the reader, repo-relative after the store redactor. Class M state: a committed file, not a cache."
+    },
+    "source": {
+      "type": "string",
+      "description": "Which file was read: the configured path when it exists, `.fathom/ratchet.toml` when it does not. Absence is a state, not an error."
+    },
+    "baselined": {
+      "type": "boolean",
+      "description": "Whether a file was there. `false` means every violation in this revision is news, and the run says so."
+    },
+    "wrote": {
+      "type": "boolean",
+      "description": "True only when this run wrote the ledger file. Absent is not possible; a run that wrote nothing says `false`, because 'the file is unchanged' is the answer a caller most often needs."
+    },
+    "revision": {
+      "type": "string",
+      "description": "The graph revision the violations were read at, seven characters, or `none` when there was no graph."
+    },
+    "revision_full": {
+      "type": "string",
+      "description": "The same revision in full, so a dashboard can pin it. See `common.schema.json`."
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the engines found at this revision, and whether they were asked at all. An engine that did not run cannot report zero.",
+      "required": ["cycles", "layer_violations", "judged_cycles", "judged_layer"],
+      "properties": {
+        "cycles": { "type": "integer", "minimum": 0, "description": "Cycles in the revision." },
+        "layer_violations": { "type": "integer", "minimum": 0, "description": "Layering violations in the revision." },
+        "judged_cycles": { "type": "boolean", "description": "Whether the cycle engine judged this revision. `false` with a non-empty ledger means every cycle row in it is unverified, which is not the same claim as 'no cycles'." },
+        "judged_layer": { "type": "boolean", "description": "Whether the layering engine judged this revision. `false` when no `[layers]` rules are configured, which is the absence of a rule rather than a clean bill of rules." }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "The whole state of the ratchet in one line, in the same words the plain-text rendering prints — a CI log and a dashboard read the same sentence."
+    },
+    "days_before_warning": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The warning window in force, in days: a live allowance with no more than this many days left is `expiring`. Printed because `expiring_soon` is meaningless without the number behind it."
+    },
+    "changed": {
+      "type": "boolean",
+      "description": "Whether the file would differ from what was read — the removals, grants and renewals together."
+    },
+    "exit": {
+      "type": ["integer", "null"],
+      "enum": [0, 7, null],
+      "description": "The exit this read implies — 7 only when `ratchet.mode = deny` has uncovered violations, `null` when the mode is `warn` or `off`. `off` means off: a run that failed in `off` mode would be a mode change smuggled in as a number."
+    },
+    "alarms": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The four things a CI step alerts on, as booleans rather than by parsing prose.",
+      "required": ["cycle", "layer", "expiring", "back_due"],
+      "properties": {
+        "cycle": { "type": "boolean", "description": "True when a cycle is uncovered — in `deny`, the reason the run failed." },
+        "layer": { "type": "boolean", "description": "True when a layering violation is uncovered. A `warn`-mode rule that moved is reported and does not alarm, like every other warning." },
+        "expiring": { "type": "boolean", "description": "True when a live allowance reaches its expiry inside `[ratchet].days_before_warning`. An allowance that expires while nobody is looking is the failure mode this contract exists to prevent. `off` never alarms — see `alarms`." },
+        "back_due": { "type": "boolean", "description": "True when an allowance lapsed and its violation is still there. Nothing was deleted: the row stays in the file and the violation is uncovered again."
+        }
+      }
+    },
+    "allowances": {
+      "type": "array",
+      "description": "Every row of the file, as it reads right now — including rows already expired, which are debt back due.",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "added": {
+      "type": "array",
+      "description": "Rows this run granted. Empty on a bare run: a bare run may only tighten.",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "renewed": {
+      "type": "array",
+      "description": "Rows this run re-granted in place. A renewed row replaces the lapsed one — the file holds one row per violation, never a history.",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "untouched": {
+      "type": "array",
+      "description": "Rows carried through unchanged, keyed explicitly rather than by subtraction so the three lists add to the whole file.",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "removed": {
+      "type": "array",
+      "description": "Rows this run deleted because their violation went away — automatic tightening, its own list because the removal of a committed allowance is a thing a reviewer should see named. Carries the reason it was granted: a reader asked why an exception vanished should see what it was for.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "key", "owner", "reason"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["cycle", "layer"] },
+          "key": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "uncovered": {
+      "type": "array",
+      "description": "The violations no live allowance covers — the news, as the ratchet counts it. This is the list `alarms.cycle` and `alarms.layer` are about, and the one `--update-baseline` is asked to write.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "key", "detail"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["cycle", "layer"] },
+          "key": { "type": "string", "minLength": 1, "description": "The key an allowance would have to carry to cover it — copy it into `--key` or into the file verbatim." },
+          "detail": { "type": "string", "description": "The violation in the engine's own words: its members, its layer tags, and the rule it broke." }
+        }
+      }
+    },
+    "refused": {
+      "type": "array",
+      "description": "Requests that were refused and why — `--key` values that matched nothing, for instance. A grant is not half-applied: every key is resolved before anything is written.",
+      "items": { "type": "string" }
+    },
+    "expiring": {
+      "type": "array",
+      "description": "The live rows about to lapse, each with `days_left`. The plain-text rendering prints the same rows as sentences; this is the same list for a machine, and the map, the artefact and the verb all read one ledger (`docs/concepts/ratchet.md`).",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "back_due": {
+      "type": "array",
+      "description": "The rows whose day has gone by while their violation stayed — debt back due, with `days_left` negative and the reason it was granted still attached.",
+      "items": { "$ref": "#/$defs/allowance" }
+    },
+    "notices": {
+      "type": "array",
+      "description": "Every caveat the engines and the reader raised. None may be swallowed, because a clean verdict is the one verdict a human stops reading.",
+      "items": { "type": "string" }
+    },
+    "decision_note": {
+      "type": ["string", "null"],
+      "description": "The id of the review-memory note this run appended when it granted an allowance — the reason lives in `.fathom/reviews/notes.md` as well as in the row. `null` when nothing was granted or `--no-note` was passed. See `common.schema.json` for `nt-` ids."
+    }
+  },
+  "$defs": {
+    "allowance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "owner",
+        "reason",
+        "expires",
+        "expires_never",
+        "days_left",
+        "granted",
+        "granted_by",
+        "live",
+        "expiring_soon"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["cycle", "layer"],
+          "description": "Which engine's debt this is."
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The matcher, spelled the way its engine spells it: an arrow path or member set for a cycle, `rule::src->dst` for a layering violation. One grammar per kind, owned by that engine."
+        },
+        "owner": {
+          "type": "string",
+          "description": "The named human or team who owes the payoff. A grant without one is refused before anything is written; a row hand-edited without one prints `nobody`."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The sentence that justifies the exception, and the reason the grant is reviewable at all."
+        },
+        "expires": {
+          "type": ["string", "null"],
+          "description": "The day it stops forgiving, `YYYY-MM-DD`. `null` with `expires_never` true is a permanent allowance, which is printed rather than hidden."
+        },
+        "expires_never": {
+          "type": "boolean",
+          "description": "True when the row carries no expiry — deliberate, permanent, and named."
+        },
+        "days_left": {
+          "type": ["integer", "null"],
+          "description": "Whole days from this run's clock until the expiry, negative once it has passed. Day-grain because the file stores a day; `null` when there is no expiry."
+        },
+        "granted": {
+          "type": ["string", "null"],
+          "description": "The day the row was written, `YYYY-MM-DD`, or `null` when the file does not say. Written automatically on a grant."
+        },
+        "granted_by": {
+          "type": "string",
+          "description": "Who wrote the row, from the git identity or `--granted-by`. Written automatically, like the grant date."
+        },
+        "live": {
+          "type": "boolean",
+          "description": "Whether the row forgives its violation right now. `false` is debt back due."
+        },
+        "expiring_soon": {
+          "type": "boolean",
+          "description": "Whether a live row reaches its expiry inside `[ratchet].days_before_warning`."
+        }
+      }
+    }
+  }
+}

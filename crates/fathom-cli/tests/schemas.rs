@@ -529,6 +529,7 @@ fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
         "doctor.schema.json",
         "export.schema.json",
         "hooks.schema.json",
+        "ratchet.schema.json",
         "status.schema.json",
     ] {
         let schema = Schema::load(name);
@@ -635,6 +636,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
             "export.schema.json",
             "hooks.schema.json",
             "index.schema.json",
+            "ratchet.schema.json",
             "show.schema.json",
             "stats.schema.json",
             "status.schema.json",

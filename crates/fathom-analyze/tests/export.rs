@@ -273,6 +273,7 @@ fn input() -> Input {
             ),
         ],
         memory_problems: Vec::new(),
+        debts: Vec::new(),
         produced_by: "fathom 0.1.0".to_owned(),
         store: Some(".fathom/index.sqlite3".to_owned()),
         epoch: Some(7),
@@ -1141,6 +1142,7 @@ fn an_artefact_with_nothing_in_it_still_renders_and_still_verifies() {
         ledger_problems: Vec::new(),
         memory: Vec::new(),
         memory_problems: Vec::new(),
+        debts: Vec::new(),
         produced_by: "fathom 0.1.0".to_owned(),
         store: None,
         epoch: None,
@@ -1239,4 +1241,121 @@ fn commit_links_are_offered_only_when_they_are_real_links() {
         !html.contains("/commit/"),
         "the HTML invented a link the record does not have"
     );
+}
+
+/// **Acceptance criterion 4 (`e3.10`): the committed allowance ledger is in the artefact.**
+///
+/// A review of a range that leans on a baselined cycle has to see what the cycle is leaning on, who owns it
+/// and when it stops — otherwise the artefact reports an exception and the reader is told nothing about it.
+/// All three renderings carry it, from one build of one record, because the whole point of the narrow waist
+/// is that a PR comment, an audit page and a machine payload cannot disagree.
+///
+/// The dates come from the file and the horizon from the commits, never from a clock: "lapsed" here means the
+/// row's own expiry had gone by by the newest commit in range, which is why a blessed artefact does not
+/// change its mind at midnight.
+#[test]
+fn the_allowance_ledger_is_in_every_rendering_of_the_artefact() {
+    let mut given = input();
+    given.debts = vec![
+        // Granted 2023-09-01, ran out 2023-11-01: the newest commit in this range is 2023-11-14, so this row
+        // had already lapsed by the time of the change under review.
+        export::AllowanceRow {
+            kind: "cycle".to_owned(),
+            key: "api|store".to_owned(),
+            owner: "team-payments".to_owned(),
+            reason: "the split lands with the ledger rewrite".to_owned(),
+            expires: Some("2023-11-01".to_owned()),
+            granted: Some("2023-09-01".to_owned()),
+            granted_by: "Ada Lovelace <ada@example.invalid>".to_owned(),
+        },
+        // Runs out next year, so it is listed and not asked about.
+        export::AllowanceRow {
+            kind: "layer".to_owned(),
+            key: "no_upward::ui->db".to_owned(),
+            owner: "team-storage".to_owned(),
+            reason: "the seam is next quarter".to_owned(),
+            expires: Some("2024-11-01".to_owned()),
+            granted: None,
+            granted_by: String::new(),
+        },
+    ];
+    let record = export::build(&given);
+    assert!(record.verify().is_empty(), "{:?}", record.verify());
+    assert_eq!(
+        record
+            .debts
+            .iter()
+            .map(|row| (row.kind.as_str(), row.key.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("cycle", "api|store"), ("layer", "no_upward::ui->db")],
+        "the ledger is printed by kind, then by key, whatever order the caller handed it over in"
+    );
+
+    let markdown = export::render(Format::Markdown, &record);
+    assert!(
+        markdown.contains("## Technical-debt allowances"),
+        "no allowance section in the markdown:\n{markdown}"
+    );
+    assert!(markdown.contains("team-payments"), "{markdown}");
+    assert!(markdown.contains("2023-11-01"), "{markdown}");
+    assert!(markdown.contains("the seam is next quarter"), "{markdown}");
+    assert!(
+        markdown.contains("newest commit in this range"),
+        "the artefact has to say what its dates are measured against:\n{markdown}"
+    );
+
+    let html = export::render(Format::Html, &record);
+    assert!(
+        html.contains("Technical-debt allowances"),
+        "no section in the HTML"
+    );
+    assert!(html.contains("team-storage"), "the second row is missing");
+    assert!(!html.contains("<script"), "the HTML carries a script tag");
+
+    let json: serde_json::Value =
+        serde_json::from_str(&export::render(Format::Json, &record)).expect("the JSON artefact");
+    let debts = json["debts"].as_array().expect("a debts array");
+    assert_eq!(debts.len(), 2, "{debts:#?}");
+    assert_eq!(debts[0]["kind"], "cycle");
+    assert_eq!(debts[0]["expires"], "2023-11-01");
+    assert_eq!(
+        debts[1]["granted"],
+        serde_json::Value::Null,
+        "a row the file says nothing about is null, not invented"
+    );
+
+    // The one lapsed row is an open action; the dated-but-live one is not, because asking a reviewer to act
+    // on every allowance in the file is how a checklist becomes wallpaper.
+    let debt_items: Vec<&export::ChecklistItem> = record
+        .checklist
+        .iter()
+        .filter(|item| item.kind == "debt")
+        .collect();
+    assert_eq!(debt_items.len(), 1, "{debt_items:#?}");
+    let item = debt_items[0];
+    assert!(item.is_open(), "a lapsed allowance is still asking");
+    assert!(item.text.contains("api|store"), "{}", item.text);
+    assert!(item.text.contains("2023-11-01"), "{}", item.text);
+    assert!(
+        item.how
+            .as_deref()
+            .unwrap_or_default()
+            .contains("fathom ratchet"),
+        "the item has to say what to type: {item:#?}"
+    );
+}
+
+/// The empty ledger is a state, printed as one. A range with no allowances is the common case, and an artefact
+/// that left the section out would read as a gap in the export rather than as the whole truth.
+#[test]
+fn an_empty_allowance_ledger_says_there_is_nothing_forgiven() {
+    let record = export::build(&input());
+    assert!(record.debts.is_empty());
+    for format in [Format::Markdown, Format::Html] {
+        let text = export::render(format, &record);
+        assert!(
+            text.contains("holds no allowance"),
+            "{format:?} says nothing about the empty ledger"
+        );
+    }
 }

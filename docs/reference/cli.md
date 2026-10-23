@@ -58,6 +58,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`cmp`](#fathom-cmp)** | Compare any two episodes or revisions: the composed delta over a range (e5.3) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*delta*](../concepts/delta.md) |
 | **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
 | **[`architecture`](#fathom-architecture)** | The architecture scorecard: five dimensions, one number, and the drift since your last review (e3.9) | shipped | [*scorecard*](../concepts/scorecard.md) · [*cli*](cli.md) |
+| **[`ratchet`](#fathom-ratchet)** | The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (e3.10) | shipped | [*ratchet*](../concepts/ratchet.md) · [*cycle-detection*](../concepts/cycle-detection.md) |
 | **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
 | **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
 <!-- END GENERATED: verbs -->
@@ -1525,6 +1526,52 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.architecture -->
+
+## `fathom ratchet`
+
+The ratchet, in the shell: what the committed ledger at `.fathom/ratchet.toml` forgives, which of it is
+running out, and the news that no allowance covers. The ledger tightens on its own — a baselined violation
+that has gone away has its row deleted by the next bare run — and it never widens on its own: raising it is
+a separate act that requires `--update-baseline`, a non-empty `--reason` and a named owner, and it leaves a
+diff and a review-memory note behind, so the exception is argued rather than absorbed
+([the ratchet](../concepts/ratchet.md)). An expiring allowance is warned about while it still has days; an
+allowance whose day has gone by is debt back due. `ratchet.mode = deny` is what makes an uncovered
+violation exit 7, and `warn` and `off` report without failing. An index with no module graph exits 12:
+with no graph there is no list of violations to read the ledger against, and a run that reported "nothing
+uncovered" would be reporting a fact it never checked.
+
+<!-- BEGIN GENERATED: help.ratchet -->
+```text
+The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (`e3.10`)
+
+Usage: fathom ratchet [OPTIONS]
+
+Options:
+      --plain                 Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>           The repository to read [default: .]
+      --json                  Print the report as one JSON line on stdout (`fathom-ratchet/1`)
+      --no-alt-screen         Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                 Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --update-baseline       Raise the baseline: write the violations that have no allowance as new rows
+      --mouse                 Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --reason <REASON>       Why the baseline is being raised — required by `--update-baseline`, recorded in the file, the diff and the review memory
+      --lines                 With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --owner <OWNER>         Who owns the new allowances; bare, the reviewer's own identity (`--identity`, `$FATHOM_REVIEWER`, `git config user.name`)
+      --granted-by <WHO>      Who is asking, recorded beside the owner as `granted_by`; bare, the same identity as `--owner`
+      --theme <NAME|PATH>     Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --expires <DATE|never>  The last day an allowance is live, `YYYY-MM-DD`, or `never` for a row with no expiry
+      --key <KEY>             Grant only this key (repeatable): a violation key as the report prints it, or `kind=key`
+      --progress              print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --dry-run               Report what would change and write nothing — not even the automatic tightening
+      --no-progress           never print the index's progress row, even on a terminal
+      --no-watch              Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --revision <TREE>       Judge this graph revision rather than the newest the index holds: an oid or an unambiguous prefix
+      --no-note               Do not write a `decision` note into the review memory when the baseline is raised
+  -h, --help                  Print help (see more with '--help')
+  -V, --version               Print version
+```
+<!-- END GENERATED: help.ratchet -->
+
 ## `fathom context`
 
 Answer *"what does this repository already know about this?"* for a path or an episode: the recorded

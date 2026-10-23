@@ -246,6 +246,7 @@ pub fn hand(root: &Path) -> Option<graph::Hand> {
 
     let mut hand = graph::Hand::new(short(&to), cells, links);
     hand.layers = layers;
+    hand.debt = debt(root);
     hand.heat = heat;
     hand.gaps = gaps;
     hand.cost = Some(format!(
@@ -297,6 +298,37 @@ pub fn hand(root: &Path) -> Option<graph::Hand> {
 #[must_use]
 pub fn hand(_root: &Path) -> Option<graph::Hand> {
     None
+}
+
+/// The committed allowance ledger as the map shows it (`e3.10`, `reco-5ht`).
+///
+/// Only the file and the clock, which is the whole point of reading it here: the map has no judged revision
+/// in front of it and must not pretend to know what is still owed. What it can know — what it would be
+/// careless not to show beside a vertex drawn as debt — is that the allowance forgiving it runs out on a
+/// date, and that the date is in the file the reviewer already committed.
+#[must_use]
+fn debt(root: &Path) -> graph::Debt {
+    use fathom_analyze::ratchet::{Ledger, Ratchet};
+    use fathom_core::time::Timestamp;
+
+    let config = std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default();
+    let (ratchet, _notices) = Ratchet::read(root, &config);
+    let now = Timestamp::from_unix_micros(crate::clock::now_millis() * 1_000);
+    let ledger = Ledger::of(&ratchet, now);
+    graph::Debt {
+        source: ledger.source.clone(),
+        read: ledger.read,
+        live: ledger.live,
+        expiring: ledger.expiring_lines(),
+        back_due: ledger.lapsed_lines(),
+        // "There is no baseline file" is the verb's sentence to say, not the map's; a malformed one is
+        // different, because the file is there and the map is showing a ledger it could not read.
+        why: if ratchet.loaded {
+            ledger.notices.clone()
+        } else {
+            Vec::new()
+        },
+    }
 }
 
 /// Who names the statement an arrow came from: the declaring file's own structural record, read at the

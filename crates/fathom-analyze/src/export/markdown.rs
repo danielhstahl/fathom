@@ -41,6 +41,7 @@ pub fn render(record: &Record) -> String {
     checklist(&mut out, record);
     signoffs(&mut out, record);
     memory(&mut out, record);
+    allowances(&mut out, record);
     commits(&mut out, record);
     gaps(&mut out, record);
     footer(&mut out, record);
@@ -719,6 +720,67 @@ fn memory(out: &mut String, record: &Record) {
         }
         out.push('\n');
     }
+}
+
+/// The committed allowance ledger, copied into the artefact (`e3.10`, `reco-5ht`).
+///
+/// This is a *copy*, not a verdict: the ratchet's file decides what is forgiven and this prints what the file
+/// says, with the dates the file carries. Rows whose own day had gone by before the newest commit in the
+/// range are named as lapsed, because that question is answerable from what the record already holds; "does
+/// it lapse next week" is a question about today and an artefact that answered it would age on the reader's
+/// machine rather than on the change it describes.
+fn allowances(out: &mut String, record: &Record) {
+    out.push_str("## Technical-debt allowances\n\n");
+    if record.debts.is_empty() {
+        out.push_str(
+            "_The committed ledger at `.fathom/ratchet.toml` holds no allowance: every cycle and layering \
+             violation in this range is news. `fathom ratchet` writes it._\n\n",
+        );
+        return;
+    }
+    let horizon = record.horizon();
+    out.push_str(&format!(
+        "_{} allowance(s) copied from the committed ledger, by kind then key. Lapsed means the row's own \
+         expiry had gone by by {} — the newest commit in this range, not the day this artefact was written._\n\n",
+        record.debts.len(),
+        horizon.map_or_else(
+            || "the range's newest commit".to_owned(),
+            crate::ledger::entry::iso_utc,
+        )
+    ));
+    out.push_str("| kind | key | owner | runs out | granted | by | lapsed | reason |\n");
+    out.push_str("|---|---|---|---|---|---|---|---|\n");
+    for row in record.debts.iter().take(LIST_CAP) {
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            code(&row.kind),
+            code(&row.key),
+            inline(if row.owner.is_empty() {
+                "nobody"
+            } else {
+                &row.owner
+            }),
+            code(row.expires.as_deref().unwrap_or("never")),
+            code(row.granted.as_deref().unwrap_or("unstated")),
+            inline(if row.granted_by.is_empty() {
+                "unstated"
+            } else {
+                &row.granted_by
+            }),
+            if row.lapsed_by(horizon) {
+                "**yes**"
+            } else {
+                "no"
+            },
+            inline(&row.reason)
+        ));
+    }
+    capped(
+        out,
+        record.debts.len().saturating_sub(LIST_CAP),
+        "allowance(s)",
+    );
+    out.push('\n');
 }
 
 /// The sign-off block: who, when, over what, and why if they refused.

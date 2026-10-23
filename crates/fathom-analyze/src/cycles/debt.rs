@@ -23,11 +23,11 @@
 //! reason = "split lands with the ledger rewrite; see the plan item"
 //! ```
 //!
-//! This module **reads** it. Writing it — the verb, the `--update-baseline` flag, the reason that has to
-//! be typed — is `e3.10` (`reco-5ht`), and what it needs from here is [`Allowance::for_cycle`] and
-//! [`Ratchet::render`], which are the two halves of "emit a baseline that is a diff a human can review".
-//! The one thing this module refuses on `e3.10`'s behalf is a matching rule that a refactor can dodge by
-//! accident: see [`normalize_key`].
+//! This module **reads** it. Writing it is [`crate::ratchet`], which owns the verb, the `--update-baseline`
+//! flag and the reason that has to be typed; what it takes from here is [`Allowance::for_cycle`],
+//! [`Ratchet::render_rows`] and [`Ratchet::with_rows`], the three halves of "emit a baseline that is a diff
+//! a human can review". The one thing this module refuses on the writer's behalf is a matching rule that a
+//! refactor can dodge by accident: see [`normalize_key`].
 //!
 //! # Matching, and why it is a member set
 //!
@@ -130,6 +130,13 @@ pub struct Allowance {
     pub expires: Option<Timestamp>,
     /// When it was granted, when the file says.
     pub granted: Option<Timestamp>,
+    /// Who asked for it, when the file says (`e3.10`).
+    ///
+    /// Separate from [`Allowance::owner`] on purpose: the owner is whoever is on the hook for paying the
+    /// debt off, and the granter is whoever spent the allowance. In a reviewed repository those are two
+    /// different people, and "the diff shows who" means both of them — the person who typed the flag is
+    /// the one a reviewer can ask why.
+    pub granted_by: String,
     /// The line it was read from, for the notice that names it.
     pub line: usize,
 }
@@ -216,6 +223,7 @@ impl Allowance {
             reason: reason.to_string(),
             expires,
             granted: None,
+            granted_by: String::new(),
             line: 0,
         }
     }
@@ -234,8 +242,19 @@ impl Allowance {
             reason: reason.to_string(),
             expires,
             granted: None,
+            granted_by: String::new(),
             line: 0,
         }
+    }
+
+    /// The day it was granted, spelled the way the file spelled it.
+    #[must_use]
+    pub fn granted_day(&self) -> Option<String> {
+        self.granted.map(|granted| {
+            let (year, month, day) =
+                Timestamp::from_unix_micros(granted.as_unix_micros() - MICROS_PER_DAY).civil();
+            format!("{year:04}-{month:02}-{day:02}")
+        })
     }
 
     /// The one line that says what it forgives and when it stops.
@@ -268,7 +287,14 @@ impl Allowance {
             out.push_str(&format!("expires = \"{year:04}-{month:02}-{day:02}\"\n"));
         }
         if let Some(granted) = self.granted {
-            out.push_str(&format!("granted = \"{granted}\"\n"));
+            // Spelled back as the day it was granted, exactly like `expires`: the file is the record, and a
+            // round trip through a reader that stores days must not move the date a human read.
+            let (year, month, day) =
+                Timestamp::from_unix_micros(granted.as_unix_micros() - MICROS_PER_DAY).civil();
+            out.push_str(&format!("granted = \"{year:04}-{month:02}-{day:02}\"\n"));
+        }
+        if !self.granted_by.is_empty() {
+            out.push_str(&format!("granted_by = \"{}\"\n", escape(&self.granted_by)));
         }
         out.push_str(&format!("reason = \"{}\"\n", escape(&self.reason)));
         out
@@ -475,6 +501,7 @@ impl Ratchet {
                 ));
             }
             let pattern = pattern_for(&kind, &key);
+            let granted_by = get("granted_by").unwrap_or_default();
             ratchet.allowances.push(Allowance {
                 kind,
                 pattern,
@@ -483,6 +510,7 @@ impl Ratchet {
                 reason,
                 expires,
                 granted: read_date(entry.get("granted").and_then(TomlItem::as_value)),
+                granted_by,
                 line,
             });
         }
@@ -565,17 +593,23 @@ impl Ratchet {
     /// a human should not have to know this module to read it.
     #[must_use]
     pub fn render(&self) -> String {
-        let mut out = String::from(
-            "# Fathom ratchet baseline: violations that already existed, each with an owner and an \
-             expiry.\n# Only tightening is automatic. Adding or widening a row is a deliberate edit, \
-             and the diff is the review.\n",
-        );
-        let mut rows = self.allowances.clone();
-        rows.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| a.pattern.cmp(&b.pattern)));
-        for row in rows {
-            out.push_str(&row.to_toml());
+        render_rows(&self.allowances)
+    }
+
+    /// The ledger itself, assembled from rows rather than read from a file.
+    ///
+    /// This is the writer's door (`e3.10`): [`crate::ratchet`] decides which rows survive a run and hands
+    /// them back here to be rendered, so there is exactly one spelling of a baseline document in the whole
+    /// workspace — one header, one sort, one row format — and a file the writer produces reads back through
+    /// [`Ratchet::from_text`] as exactly what it wrote.
+    #[must_use]
+    pub fn with_rows(source: &str, rows: Vec<Allowance>) -> Self {
+        Self {
+            source: Some(source.to_string()),
+            loaded: true,
+            allowances: rows,
+            ..Self::empty()
         }
-        out
     }
 }
 
@@ -884,6 +918,29 @@ impl Verdict {
             "notices": self.notices,
         })
     }
+}
+
+/// The header every baseline document carries, in the file itself so a reader meets it before the first
+/// row and a `git blame` cannot lose it.
+pub const HEADER: &str = "# Fathom ratchet baseline: violations that already existed, each with an owner \
+     and an expiry.\n# Only tightening is automatic. Adding or widening a row is a deliberate edit, and the \
+     diff is the review.\n";
+
+/// The committed spelling of a set of rows: the header, then one `[[allowance]]` per row, sorted by
+/// `(kind, pattern)` so the same facts written twice produce byte-identical files.
+///
+/// Kept as a free function rather than a method because the writer (`crate::ratchet`) holds the rows it is
+/// about to write as a plain list, and building a `Ratchet` to print it would be a ledger pretending to be
+/// a read of a file it has not written yet.
+#[must_use]
+pub fn render_rows(rows: &[Allowance]) -> String {
+    let mut out = String::from(HEADER);
+    let mut sorted: Vec<&Allowance> = rows.iter().collect();
+    sorted.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| a.pattern.cmp(&b.pattern)));
+    for row in sorted {
+        out.push_str(&row.to_toml());
+    }
+    out
 }
 
 /// The matching form of a key, which is a per-`kind` contract.

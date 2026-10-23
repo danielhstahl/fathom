@@ -773,3 +773,8 @@ trusted in review. Exit codes are asserted, not assumed: wrong type → 5, bad f
   (`warn`, because a ratchet that blocks a first-day review teaches nothing about the review). If
   `e3.10` wants different semantics for these two, it changes them in its own change set; the digest
   test in §9 only refuses silence.
+  **`e3.10` (`reco-5ht`) landed and changed neither**: the writer kept `.fathom/ratchet.toml` and `warn`, and
+  added no keys of its own. The two numbers it needed — the warning window (30 days, `EXPIRY_WARNING_DAYS`)
+  and the grace period a grant defaults to (90 days, `DEFAULT_GRACE_DAYS`) — are published constants in
+  `fathom_analyze::ratchet` rather than config, because neither is a thing a repository should tune before it
+  has a reason to, and a key nobody has argued for is a key whose semantics nobody will defend.

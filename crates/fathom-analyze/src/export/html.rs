@@ -126,6 +126,7 @@ pub fn render(record: &Record) -> String {
     checklist(&mut out, record);
     signoffs(&mut out, record);
     memory(&mut out, record);
+    allowances(&mut out, record);
     commits(&mut out, record);
     gaps(&mut out, record);
     footer(&mut out, record);
@@ -202,7 +203,7 @@ fn header(out: &mut String, record: &Record) {
 }
 
 fn toc(out: &mut String) {
-    const ENTRIES: [(&str, &str); 10] = [
+    const ENTRIES: [(&str, &str); 11] = [
         ("summary", "Summary card"),
         ("answers", "What this record can and cannot answer"),
         ("episodes", "Episodes"),
@@ -211,6 +212,7 @@ fn toc(out: &mut String) {
         ("findings", "Findings with evidence"),
         ("checklist", "Operator-action checklist"),
         ("signoffs", "Sign-offs"),
+        ("debts", "Technical-debt allowances"),
         ("commits", "Commits"),
         ("gaps", "What this record cannot answer"),
     ];
@@ -826,6 +828,69 @@ fn memory(out: &mut String, record: &Record) {
             out.push_str(&format!("<li>{}</li>", escape(problem)));
         }
         out.push_str("</ul>\n");
+    }
+    out.push_str("</section>\n");
+}
+
+/// The committed allowance ledger, copied into the artefact (`e3.10`, `reco-5ht`).
+///
+/// A copy of class-M state and no verdict: the ratchet's file decides what is forgiven. "Lapsed" is asked
+/// against the newest commit in the record rather than against today, so the bytes of a blessed artefact do
+/// not change on the reader's machine.
+fn allowances(out: &mut String, record: &Record) {
+    out.push_str("<section id=\"debts\"><h2>Technical-debt allowances</h2>\n");
+    if record.debts.is_empty() {
+        out.push_str(
+            "<p><em>The committed ledger at <code>.fathom/ratchet.toml</code> holds no allowance: every \
+             cycle and layering violation in this range is news.</em> <code>fathom ratchet</code> writes \
+             it.</p>\n",
+        );
+        out.push_str("</section>\n");
+        return;
+    }
+    let horizon = record.horizon();
+    out.push_str(&format!(
+        "<p><em>{} allowance(s) copied from the committed ledger, by kind then key. Lapsed means the row's \
+         own expiry had gone by by {} — the newest commit in this range, not the day this artefact was \
+         written.</em></p>\n",
+        record.debts.len(),
+        escape(&horizon.map_or_else(
+            || "the range's newest commit".to_owned(),
+            crate::ledger::entry::iso_utc,
+        ))
+    ));
+    out.push_str(
+        "<table><thead><tr><th>kind</th><th>key</th><th>owner</th><th>runs out</th><th>granted</th><th>by</th>\
+         <th>lapsed</th><th>reason</th></tr></thead><tbody>",
+    );
+    for row in record.debts.iter().take(LIST_CAP) {
+        out.push_str(&format!(
+            "<tr><td><code>{}</code></td><td><code>{}</code></td><td>{}</td><td><code>{}</code></td>\
+             <td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            escape(&row.kind),
+            escape(&row.key),
+            escape(if row.owner.is_empty() { "nobody" } else { &row.owner }),
+            escape(row.expires.as_deref().unwrap_or("never")),
+            escape(row.granted.as_deref().unwrap_or("unstated")),
+            escape(if row.granted_by.is_empty() {
+                "unstated"
+            } else {
+                &row.granted_by
+            }),
+            if row.lapsed_by(horizon) {
+                "<strong>yes</strong>".to_owned()
+            } else {
+                String::from("no")
+            },
+            escape(&row.reason)
+        ));
+    }
+    out.push_str("</tbody></table>\n");
+    if record.debts.len() > LIST_CAP {
+        out.push_str(&format!(
+            "<p><em>… and {} more allowance(s) not printed.</em></p>\n",
+            record.debts.len() - LIST_CAP
+        ));
     }
     out.push_str("</section>\n");
 }

@@ -24,8 +24,8 @@ use std::time::Instant;
 
 use fathom_tui::app::{App, Model};
 use fathom_tui::graph::hand::{
-    Cell as HandCell, CellKind, Delta, Evidence, Hand, Heat, Line, Link as HandLink, LinkKind,
-    Mark, Op, Series, Subject, Truncated,
+    Cell as HandCell, CellKind, Debt, Delta, Evidence, Hand, Heat, Line, Link as HandLink,
+    LinkKind, Mark, Op, Series, Subject, Truncated,
 };
 use fathom_tui::graph::{CitationSource, Graph, Layout, Level};
 use fathom_tui::keymap::Keymap;
@@ -967,5 +967,92 @@ fn a_narrow_frame_folds_harder_and_says_so_instead_of_dropping_cells() {
     assert!(
         all.contains("aggregated") || all.contains("folded"),
         "a 40-column frame of a 400-module graph says nothing about how it fitted: {all}"
+    );
+}
+
+// --- 4. the allowance ledger's dates (`e3.10`, `reco-5ht`) -------------------------------------
+
+/// A ledger with one row about to lapse and one that already has.
+fn debt() -> Debt {
+    Debt {
+        source: ".fathom/ratchet.toml".to_owned(),
+        read: true,
+        live: 1,
+        expiring: vec![
+            "cycle:api|store — allowance expires 2026-05-01 (12 day(s) left), owner team-payments, \
+             granted for: the split lands in April"
+                .to_owned(),
+        ],
+        back_due: vec![
+            "layer:no_upward::ui->db — allowance expired 2026-04-01 and the violation may well still be \
+             there; owner team-storage, reason given: the seam is next quarter"
+                .to_owned(),
+        ],
+        why: Vec::new(),
+    }
+}
+
+/// **Acceptance criterion 4 (`e3.10`): an expiring allowance is on the map.**
+///
+/// The map is the surface a reviewer looks at longest, and it already draws which vertices are debt — so the
+/// date each of them stops being forgiven belongs here rather than in a report nobody opens until the
+/// allowance has lapsed. Both panes print it: the whole-map pane, because a lapsed row is a fact about the
+/// repository, and the per-cell pane, because that is where the question gets asked of one module.
+#[test]
+fn an_allowance_running_out_is_printed_on_the_map() {
+    let mut hand = episode();
+    hand.debt = debt();
+    let mut graph = Graph::new();
+    graph.install(hand);
+    unfold(&mut graph);
+
+    let whole = flat(&graph.detail(76, 22));
+    assert!(
+        whole.contains("1 expiring") && whole.contains("1 lapsed"),
+        "the summary pane does not say what the ledger is about to do:\n{whole}"
+    );
+    assert!(
+        whole.contains("expires 2026-05-01"),
+        "the row about to lapse is not printed with its date:\n{whole}"
+    );
+    assert!(
+        whole.contains("expired 2026-04-01"),
+        "the row whose day has gone by is not printed with its date:\n{whole}"
+    );
+
+    assert!(graph.focus("crates/analyze/src/risk.rs"));
+    let cell = flat(&graph.detail(76, 22));
+    assert!(
+        cell.contains("team-payments") || cell.contains("expires 2026-05-01"),
+        "the cell pane has no ledger at all:\n{cell}"
+    );
+    assert!(
+        cell.contains("expires 2026-05-01"),
+        "the cell pane does not print the row that is running out:\n{cell}"
+    );
+
+    // And the strip, which is true whichever pane the cursor is in.
+    let strip = graph.canvas_strip(120);
+    assert!(
+        strip.contains("debt: 1 expiring 1 lapsed"),
+        "the strip does not carry the ledger: {strip}"
+    );
+}
+
+/// A ledger with nothing running out takes no room. A map of a clean repository must not grow a warning line
+/// about an empty file, or the warning stops meaning anything.
+#[test]
+fn a_quiet_ledger_prints_nothing_on_the_map() {
+    let mut graph = Graph::new();
+    graph.install(episode());
+    unfold(&mut graph);
+    let text = flat(&graph.detail(76, 22));
+    assert!(
+        !text.contains("ratchet"),
+        "the map printed a ledger nobody has:\n{text}"
+    );
+    assert!(
+        !graph.canvas_strip(120).contains("debt:"),
+        "and the strip did too"
     );
 }

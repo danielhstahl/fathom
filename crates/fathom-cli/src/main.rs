@@ -91,6 +91,10 @@ mod output;
 mod patches;
 mod query;
 mod queue;
+// The ratchet (`e3.10`, `reco-5ht`): the graph read the allowance ledger is judged against, the write of the
+// committed file, and the review-memory interlock. All three need a store handle, a clock and a filesystem,
+// which the shell is not allowed to have (ADR-002 §5.2).
+mod ratchet;
 mod review;
 // Which paths a run is allowed to write: the containment rule that a clone's symlink may not point a
 // store, a cache or a ledger outside the repository (`e7.8`).
