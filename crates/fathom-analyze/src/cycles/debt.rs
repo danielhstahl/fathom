@@ -147,6 +147,16 @@ impl Allowance {
         self.kind == "cycle"
     }
 
+    /// Whether this row forgives a layering violation ([`crate::layering`]).
+    ///
+    /// One file, four kinds, one reader: the kind field is what keeps two engines' debts from
+    /// cancelling each other out, and it is why [`Ratchet`] keeps every row it can read instead of only
+    /// its own.
+    #[must_use]
+    pub fn is_layering(&self) -> bool {
+        self.kind == "layer"
+    }
+
     /// Whether the allowance still covers anything at `now`.
     #[must_use]
     pub fn is_live(&self, now: Timestamp) -> bool {
@@ -202,6 +212,24 @@ impl Allowance {
             kind: "cycle".to_string(),
             key: cycle.display(),
             pattern: cycle.key(),
+            owner: owner.to_string(),
+            reason: reason.to_string(),
+            expires,
+            granted: None,
+            line: 0,
+        }
+    }
+
+    /// The row that would baseline one layering violation, for `e3.10`'s writer.
+    ///
+    /// `key` is [`crate::layering::Violation::key`] — the rule name and the pair or member set — because
+    /// a baseline written from a violation has to match the same violation after the next commit.
+    #[must_use]
+    pub fn for_layer(key: &str, owner: &str, expires: Option<Timestamp>, reason: &str) -> Self {
+        Self {
+            kind: "layer".to_string(),
+            key: key.to_string(),
+            pattern: pattern_for("layer", key),
             owner: owner.to_string(),
             reason: reason.to_string(),
             expires,
@@ -417,8 +445,12 @@ impl Ratchet {
                 continue;
             }
             if kind != "cycle" {
+                // One file, four kinds. A `layer` row belongs to `layering::debt` and an `api`, `dep`
+                // or `hotspot` row to whoever claims them next; they are counted, kept and matched by
+                // their own kind. Dropping them here would make one engine's reader lose another's rows
+                // on a round trip through `render`, which is the same mistake as a baseline that
+                // quietly rewrites itself.
                 ratchet.other_kinds += 1;
-                continue;
             }
             if owner.is_empty() {
                 ratchet.notices.push(format!(
@@ -442,9 +474,10 @@ impl Ratchet {
                     "{source}:{line} allowance for `{key}` has no expiry"
                 ));
             }
+            let pattern = pattern_for(&kind, &key);
             ratchet.allowances.push(Allowance {
                 kind,
-                pattern: normalize_key(&key),
+                pattern,
                 key,
                 owner,
                 reason,
@@ -466,6 +499,42 @@ impl Ratchet {
     #[must_use]
     pub fn cycle_allowances(&self) -> usize {
         self.allowances.iter().filter(|a| a.is_cycle()).count()
+    }
+
+    /// How many layering allowances the ledger holds.
+    #[must_use]
+    pub fn layering_allowances(&self) -> usize {
+        self.allowances.iter().filter(|a| a.is_layering()).count()
+    }
+
+    /// The live allowance of `kind` whose key matches `pattern`.
+    #[must_use]
+    pub fn covering_key(&self, kind: &str, pattern: &str, now: Timestamp) -> Option<&Allowance> {
+        self.allowances
+            .iter()
+            .find(|allowance| allowance.kind == kind && allowance.pattern == pattern)
+            .filter(|allowance| allowance.is_live(now))
+    }
+
+    /// The allowance of `kind` that matches `pattern` but has lapsed by `now`.
+    #[must_use]
+    pub fn lapsed_key(&self, kind: &str, pattern: &str, now: Timestamp) -> Option<&Allowance> {
+        self.allowances
+            .iter()
+            .find(|allowance| allowance.kind == kind && allowance.pattern == pattern)
+            .filter(|allowance| !allowance.is_live(now))
+    }
+
+    /// The live layering allowance that covers a violation key, if any.
+    #[must_use]
+    pub fn covering_layer(&self, pattern: &str, now: Timestamp) -> Option<&Allowance> {
+        self.covering_key("layer", pattern, now)
+    }
+
+    /// The layering allowance that matches a violation key but has lapsed by `now`.
+    #[must_use]
+    pub fn lapsed_layer(&self, pattern: &str, now: Timestamp) -> Option<&Allowance> {
+        self.lapsed_key("layer", pattern, now)
     }
 
     /// The live cycle allowance that covers `cycle`, if any.
@@ -817,12 +886,30 @@ impl Verdict {
     }
 }
 
+/// The matching form of a key, which is a per-`kind` contract.
+///
+/// A cycle key names a *set* of members, so sorting and deduplicating its tokens is the whole
+/// normalisation. A layering key names a rule and a *directed* edge (`rule::src->dst`), where sorting
+/// the tokens would fold `a->b` into `b->a` and bury the rule name in the pile — so that grammar
+/// belongs to `crate::layering::debt` and this dispatches to it. One ledger, two kinds, each matched
+/// by the rules its own keys are made of.
+#[must_use]
+pub(crate) fn pattern_for(kind: &str, key: &str) -> String {
+    if kind == crate::layering::debt::KIND {
+        return crate::layering::debt::normalize_key(key);
+    }
+    normalize_key(key)
+}
+
 /// The one matching rule: sorted, deduplicated, `|`-joined members.
 ///
 /// Accepts the two spellings an author reaches for — an arrow-joined path (`billing → invoicing →
 /// billing`, or `->`, in either direction) and a separated set (`billing, invoicing`) — and normalises
 /// both to the cycle key the graph produces. The closing node of a path spelling is a repeat and the
 /// dedup drops it, which is what makes `a → b → a` and `a|b` the same allowance rather than two.
+///
+/// This is the *cycle* grammar. A layering key carries a rule name and a direction and is normalised by
+/// [`crate::layering::debt::normalize_key`]; `pattern_for` (crate-private) picks the right one per row.
 #[must_use]
 pub fn normalize_key(text: &str) -> String {
     // One separator first, so `->` (two characters) and `→` (one) split the same way, then the ordinary

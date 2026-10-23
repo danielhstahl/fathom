@@ -17,6 +17,42 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A declared architecture that refuses things, and the violations this turn caused (`reco-cfp`)
+
+`[layers]` already said where things live. Now `[layering]` says which edges between them are refused —
+`forbid`, `allow`, boundary `only`, `no_upward`, `no_cycles`, `no_cycle_within_layer` — and the answer a
+reviewer gets is the delta, not the inventory: **what this episode introduced**, with what the repository
+already owed kept in a different box. The engine is `crates/fathom-analyze/src/layering/`; the CLI verb that
+prints it is **reco-ngk** and the scorecard that charts it is **reco-al1**, so this ticket ships the
+judgement and the numbers, not a new screen.
+
+* **Rules are checked when the file is read, and a rule that cannot match anything is refused.** An endpoint
+  naming no declared layer, `no_upward` with no `order`, an `only` written with the wrong arrow, a duplicated
+  rule, an `allow` that no `forbid` is broad enough to need — each is dropped from the set in force and
+  printed with its line, its reason and the spelling to write instead. A config that silently enforces
+  nothing is worse than no config, and "no `[layering]` table", `mode = "off"` and "looked, found nothing"
+  are three states that are printed as three states.
+* **One violation is one line you can act on**: the rule and where it was declared, the offending edge at
+  `file:line` — the line the *import statement* is on, from `e3.1`'s structural records, with an explicit
+  note where no span was recorded — why it is wrong, and a fix concrete enough to paste.
+* **Judged at the granularity the extractor guarantees** (`e0.12`'s checkpoint): a Go edge is judged
+  package-to-package and says so, and a package whose `[layers]` globs cut in half has no single layer, so
+  its edges are counted indeterminate rather than guessed.
+* **The baseline is [the ratchet](docs/concepts/ratchet.md), a second row kind.** `kind = "layer"` in the
+  same `.fathom/ratchet.toml`, keyed `rule::src->dst`, and the cycle-rule key matches member sets the way the
+  cycle ledger matches them. Four boxes — news, debt, back-due, stale — and nothing is auto-written or
+  auto-deleted. The key a human types and the key the code generates agree however the arrow was spelled.
+* **The export is the contract** (ADR-007 §3): `violations`, `new_violations`, `baselined_violations`,
+  `resolved_violations`, `edges_checked`, each rederivable from the lists beside it.
+
+Ten `[layering]` keys are declared and documented (`mode`, `order`, `forbid`, `allow`, `only`, `ignore`,
+`no_upward`, `no_cycles`, `no_cycle_within_layer`, `max_violations`), documented in
+[docs/concepts/layering.md](docs/concepts/layering.md) and in the key reference. `crates/fathom-analyze/tests/layers.rs`
+(41 tests) is the configured example repository: every seeded violation found, every near miss not, the
+delta separating this turn from the debt, and each refusal demanded by name.
+`tests/layers_episode.rs` (6 tests) drives the same answers through the real lane, and asserts that the
+graph built by applying the stored delta rows yields the same violations as a fresh materialisation.
+
 ### Memory has a ceiling now: bounded caches, back-pressure, and the numbers that say so (`reco-93w`)
 
 The claim is ADR-004 §11.8's, restated as something a person can set: **peak resident memory is a

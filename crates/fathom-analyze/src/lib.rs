@@ -76,6 +76,14 @@ pub mod graph;
 /// [`graph`]; writes nothing.
 pub mod cycles;
 
+/// The layering rules (`e3.6`, `reco-cfp`): the intended architecture declared in `fathom.toml` —
+/// allowed and forbidden dependencies, no upward references, no cycles, no cycles inside one layer, and
+/// boundary rules — validated at load, evaluated at the granularity the extractor guarantees, and
+/// reported as a per-episode delta against the committed baseline so a reviewer sees what this turn did
+/// rather than what the repository already owed. Reads the graph of [`graph`] and the cycles of
+/// [`cycles`]; writes nothing.
+pub mod layering;
+
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod episodes;

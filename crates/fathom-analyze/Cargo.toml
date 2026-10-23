@@ -186,3 +186,19 @@ required-features = ["sqlite-bundled"]
 [[test]]
 name = "cycles_episode"
 required-features = ["sqlite-bundled"]
+
+# The layering rules (`e3.6`, `reco-cfp`): one episode's violation delta over the graph lane, so it needs
+# a SQLite backend for the same reason `cycles_episode` does. `tests/layers.rs` names no feature at all —
+# the judgment is a function of a graph, a naming, a rules table and the line evidence, and ADR-002 §6.1
+# wants a `--no-default-features` build to be able to say what the architecture owes.
+[[test]]
+name = "layers_episode"
+required-features = ["sqlite-bundled"]
+
+# The memory ceilings (`e7.3`, `reco-93w`): the spine hand-off and the index it drives, so the target
+# names the backend it needs. Without this entry a `--no-default-features` build of the crate — the state
+# [ADR-002](../../docs/adr/0002-workspace.md) §6.1 promises still answers questions — fails to compile
+# this target instead of skipping it.
+[[test]]
+name = "memory_ceiling"
+required-features = ["sqlite-bundled"]

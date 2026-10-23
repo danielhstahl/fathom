@@ -361,6 +361,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `extract` | e3.1 (`reco-zoz`) | What one file may cost the structural extractor, and how far resolution may chase a re-export chain. Every one of these is a *bound the extractor reports on*, not a switch that turns a feature off: a file refused for size comes back with a reason and its file-level measurement, and a chain cut short comes back with `converged: false` rather than a guess. |
 | `graph` | e3.2 (`reco-8s4`) | Directories excluded from the dependency and structure graph. |
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
+| `layering` | ADR-004 §5.1 / e3.6 (`reco-cfp`) | What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
@@ -511,7 +512,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `structure.findings.directory_added` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `structure.findings.move_unconfirmed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
-| `graph.snapshot_cache_mib` | `integer` | `32` | `replace` | `any` | MiB | graph.build | `reco-93w` |
+| `graph.snapshot_cache_mib` | `integer` | `32` | `replace` | `any` | MiB | graph.build | `e7.3` |
 | `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
@@ -521,6 +522,16 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `extract.ruby.priority` | `string_list` | `lib, app, ext, spec, test` | `replace` | `any` | — | structure.extract | `e3.1b` |
 | `extract.java.same_package_scan` | `string` | `imports_plus_package` | `replace` | `any` | — | structure.extract | `e3.1b` |
 | `layers.<layer-name>` | `string_list` | `core=['src/core'], store=['src/store'], ui=['src/ui']` | `deep` | `any` | — | structure.delta | `e3.1` |
+| `layering.mode` | `string` | `warn` | `replace` | `any` | — | — | `e3.6` |
+| `layering.order` | `string_list` | `—` | `replace` | `any` | — | — | `e3.6` |
+| `layering.forbid` | `string_list` | `—` | `extend` | `any` | — | — | `e3.6` |
+| `layering.allow` | `string_list` | `—` | `extend` | `any` | — | — | `e3.6` |
+| `layering.only` | `string_list` | `—` | `extend` | `any` | — | — | `e3.6` |
+| `layering.ignore` | `string_list` | `—` | `extend` | `any` | — | — | `e3.6` |
+| `layering.no_upward` | `boolean` | `False` | `replace` | `any` | — | — | `e3.6` |
+| `layering.no_cycles` | `boolean` | `False` | `replace` | `any` | — | — | `e3.6` |
+| `layering.no_cycle_within_layer` | `boolean` | `False` | `replace` | `any` | — | — | `e3.6` |
+| `layering.max_violations` | `integer` | `50` | `replace` | `any` | violations | — | `e3.6` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
 | `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |
 | `deps.advisories.mode` | `string` | `cache` | `replace` | `any` | — | deps.advisories | `e2.7` |
@@ -634,7 +645,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `intent.scope_cap` | `integer` | `64` | `replace` | `any` | globs | episode.intent | `e4.2` |
 | `ingest.size_cap_mib` | `integer` | `8` | `replace` | `any` | MiB | ingest.normalize | `e1.2` |
 | `cache.budget.mib` | `integer` | `512` | `replace` | `any` | MiB | — | `e1.4` |
-| `cache.protect_recent_minutes` | `integer` | `1440` | `replace` | `any` | minutes | — | `reco-93w` |
+| `cache.protect_recent_minutes` | `integer` | `1440` | `replace` | `any` | minutes | — | `e7.3` |
 | `store.wal_cap.mib` | `integer` | `64` | `replace` | `any` | MiB | — | `e1.1` |
 | `store.size.mib` | `integer` | `2048` | `replace` | `any` | MiB | — | `e1.10` |
 | `rss.analyzer_working_set.mib` | `integer` | `128` | `replace` | `any` | MiB | — | `e0.11` |
@@ -645,7 +656,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `write.batch_rows` | `integer` | `5000` | `replace` | `any` | rows | — | `e1.1` |
 | `write.batch_ms` | `integer` | `50` | `replace` | `any` | ms | — | `e1.1` |
 | `write.mandatory_checkpoint_per_commit` | `integer` | `0` | `replace` | `any` | checkpoints | — | `e1.1` |
-| `write.queue_batches` | `integer` | `2` | `replace` | `any` | batches | — | `reco-93w` |
+| `write.queue_batches` | `integer` | `2` | `replace` | `any` | batches | — | `e7.3` |
 | `prune.batch_rows` | `integer` | `5000` | `replace` | `any` | rows | — | `e6.1` |
 | `rebuild.disk_ratio` | `number` | `2.0` | `replace` | `any` | ratio | — | `e1.10` |
 | `watch.cpu_share_pct` | `number` | `5.0` | `replace` | `any` | percent of one core | — | `e1.9` |

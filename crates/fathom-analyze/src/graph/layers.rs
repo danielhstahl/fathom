@@ -157,6 +157,36 @@ fn is_glob(pattern: &str) -> bool {
     pattern.contains('*') || pattern.contains('?')
 }
 
+/// The general case: a pattern with more than one `**`, which the one-`**` branch below cannot read.
+///
+/// `crates/**/tests/**` is what people reach for to mean "a test tree at any depth", and it is the
+/// pattern `layering.ignore` gets written with, so it is matched the way it reads: `**` eats any number
+/// of path segments including none, `*` stops at a `/`, `?` is one character. Kept beside the branch
+/// above rather than replacing it — that one has judged every `[layers]` pattern since `e3.6`, and its
+/// looseness about a trailing `**` is now part of that record.
+fn segment_glob_match(pattern: &str, text: &str) -> bool {
+    match_segments(
+        &pattern.split('/').collect::<Vec<_>>(),
+        &text.split('/').collect::<Vec<_>>(),
+    )
+}
+
+fn match_segments(pattern: &[&str], text: &[&str]) -> bool {
+    match (pattern.first(), text.first()) {
+        (None, None) => true,
+        (None, Some(_)) => false,
+        // A trailing `**` may name nothing at all: `crates/tests/**` is about the tests directory itself.
+        (Some(&"**"), None) => true,
+        (Some(_), None) => false,
+        (Some(&"**"), Some(_)) => {
+            (0..=text.len()).any(|skip| match_segments(&pattern[1..], &text[skip..]))
+        }
+        (Some(head), Some(segment)) => {
+            glob_match(head, segment) && match_segments(&pattern[1..], &text[1..])
+        }
+    }
+}
+
 /// The small glob dialect the docs above describe.
 ///
 /// `globset` is already a dependency of this crate, and this is not an argument for hand-rolling a
@@ -165,6 +195,9 @@ fn is_glob(pattern: &str) -> bool {
 /// published above so a rule can be checked by reading it.
 #[must_use]
 pub fn glob_match(pattern: &str, text: &str) -> bool {
+    if pattern.matches("**").count() > 1 {
+        return segment_glob_match(pattern, text);
+    }
     if let Some((prefix, suffix)) = pattern.split_once("**") {
         let suffix = suffix.trim_start_matches('/');
         return text.starts_with(prefix)

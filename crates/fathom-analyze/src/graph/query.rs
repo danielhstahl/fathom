@@ -101,6 +101,15 @@ impl Naming {
         self.by_id.get(&id)
     }
 
+    /// Every entry, in id order.
+    ///
+    /// A caller that has to look at every node — a layering pass folding tags up to packages, a
+    /// scorecard counting how much of the graph is tagged — asks once per revision, not once per row,
+    /// so this is the one place the dictionary is walked.
+    pub fn vertices(&self) -> impl Iterator<Item = &Vertex> {
+        self.by_id.values()
+    }
+
     /// Every node belonging to one module: the module itself and each symbol under it.
     ///
     /// The prefix walk is a range, not a scan: `<path>::` is a prefix of every symbol key the module

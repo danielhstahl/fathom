@@ -249,6 +249,12 @@ SECTIONS: dict[str, dict] = {
     "layers": {"title": "Layering rules", "owner": "ADR-004 §5.1 / e3.1",
                "doc": "The declared intended architecture: named layers, each a list of "
                       "path prefixes. An open map, keyed by layer name."},
+    "layering": {"title": "Layering enforcement", "owner": "ADR-004 §5.1 / e3.6 (`reco-cfp`)",
+                 "doc": "What the declared layers are allowed to depend on: refusals, their "
+                        "exceptions, boundary rules and the cycle rules. `[layers]` says where things "
+                        "live; this says which edges between them are violations. A rule that cannot "
+                        "match anything is refused when the file is read, with the reason, rather "
+                        "than becoming a silent no-op."},
     "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
              "doc": "Which ecosystems' manifests and lockfiles are parsed, and what the "
                     "dependency-risk answer does with them: the advisory cache and its "
@@ -1017,7 +1023,7 @@ KEY_LIST: list[Key] = [
            "buys with memory is not re-walking the anchor chain - `graph.materialise_revision.ms` "
            "paid once instead of per navigation. Set it to the number of revisions a session is "
            "expected to page through, not to the size of the repository.",
-       analyzer="graph.build", ticket="reco-93w"),
+       analyzer="graph.build", ticket="e7.3"),
     # --- extract ------------------------------------------------------------
     _k(path="extract.max_file_bytes", kind="integer", default=2_000_000, minimum=1,
        units="bytes",
@@ -1092,6 +1098,64 @@ KEY_LIST: list[Key] = [
        doc="One named layer: the path prefixes that belong to it. `deep`, so a repo file "
            "adds a layer without erasing the layers you declared at home.",
        analyzer="structure.delta", ticket="e3.1"),
+    # --- layering (what the layers may depend on) ---------------------------
+    _k(path="layering.mode", kind="string", default="warn",
+       enum=("off", "warn", "deny"),
+       doc="How loudly the layering rules speak. `off` examines nothing and says so; `warn` reports "
+           "without deciding an exit code; `deny` makes a new violation the `fathom check` violation "
+           "exit (7). A baselined violation is debt at every mode - the mode sets the volume, not the "
+           "facts. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.order", kind="string_list", merge="replace", default=[],
+       doc="The layers, bottom first. This is the only thing that makes a reference *upward*: "
+           "`layering.no_upward` refuses an edge that points at a higher-ranked layer. A layer left "
+           "out is counted unranked rather than guessed, and a name `[layers]` does not declare is "
+           "refused at load. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.forbid", kind="string_list", merge="extend", default=[],
+       doc="Refusals, one per entry, written `src -> dst` where each side is a layer name, a path "
+           "pattern or `*`. An optional `my-name: ` prefix names the rule in every violation and in "
+           "every baseline key; without one the rule is named by its own content, so editing the list "
+           "order cannot move a baseline. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.allow", kind="string_list", merge="extend", default=[],
+       doc="Exceptions to a refusal, same syntax, and each must be *narrower* than the refusal it "
+           "excepts - a layer-level refusal with a file-level exception is the shape a real read path "
+           "takes. An allow that excepts nothing is refused at load: a permission nobody forbade is "
+           "configuration that enforces nothing. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.only", kind="string_list", merge="extend", default=[],
+       doc="Boundary rules: `target <- the only source that may reach it`, which is why the arrow "
+           "points the other way from a refusal. Several entries naming the same target are one "
+           "allow-list, so `db <- api` plus `db <- db` says the api layer and the layer itself may "
+           "reach it and nothing else may. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.ignore", kind="string_list", merge="extend", default=[],
+       doc="Path patterns whose outgoing dependencies are not judged - a test tree, a fixtures "
+           "directory. Same dialect as a `[layers]` pattern. "
+           "Skipped edges are counted and printed, because an ignored region is a decision and not a "
+           "clean bill of health. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.no_upward", kind="boolean", default=False,
+       doc="Refuse a dependency from a higher-ranked layer to a lower-ranked one, against "
+           "`layering.order`. Refused at load when the order is empty, because an upward reference "
+           "with no declared order has no direction. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.no_cycles", kind="boolean", default=False,
+       doc="Every dependency cycle between judged modules is a violation. Detection is `e3.5`'s "
+           "engine - this declares that cycles are refused, and each violation carries the same "
+           "shortest witness the cycle report prints. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.no_cycle_within_layer", kind="boolean", default=False,
+       doc="Refuse a cycle whose members all sit in one layer: a loop inside a layer means the layer "
+           "is doing more than one job, which is a different claim from `no_cycles` and gets its own "
+           "fix hint. `e3.6`.",
+       ticket="e3.6"),
+    _k(path="layering.max_violations", kind="integer", default=50, minimum=1,
+       units="violations",
+       doc="How many violations one report lists before it stops. The bound never changes a number: "
+           "the report prints how many were found alongside how many are listed. `e3.6`.",
+       ticket="e3.6"),
     # --- deps ---------------------------------------------------------------
     _k(path="deps.ecosystems", kind="string_list", merge="extend",
        default=["python", "node", "rust"],
@@ -1757,7 +1821,7 @@ KEY_LIST: list[Key] = [
            "is not evicted, however cold the rest of the table is. The default is a day, because a "
            "repository someone is looking at today is a session and not a cold row. Zero disables "
            "the protection, which is what a CI job that wants the budget honoured exactly wants.",
-       ticket="reco-93w"),
+       ticket="e7.3"),
     _k(path="store.wal_cap.mib", kind="integer", default=64, fallback=64,
        budget="store.wal_cap.mib", units="MiB", minimum=8,
        doc="WAL size at which the writer warns and forces a passive checkpoint.",
@@ -1805,7 +1869,7 @@ KEY_LIST: list[Key] = [
            "sink that falls behind shrinks the pipeline rather than growing it. One serializes the "
            "two stages, which costs a warm index its overlap; anything past a handful is a cache "
            "with none of a cache's accounting, so the schema caps it at 64.",
-       ticket="reco-93w"),
+       ticket="e7.3"),
     _k(path="prune.batch_rows", kind="integer", default=5000, fallback=5000,
        budget="prune.batch_rows", units="rows", minimum=1,
        doc="Rows deleted per pruning transaction.", ticket="e6.1"),

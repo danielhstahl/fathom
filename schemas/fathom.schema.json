@@ -252,7 +252,7 @@
           "type": "integer",
           "x-fathom-merge": "replace",
           "x-fathom-scope": "any",
-          "x-fathom-ticket": "reco-93w",
+          "x-fathom-ticket": "e7.3",
           "x-fathom-units": "minutes"
         }
       },
@@ -1548,7 +1548,7 @@
           "x-fathom-analyzer": "graph.build",
           "x-fathom-merge": "replace",
           "x-fathom-scope": "any",
-          "x-fathom-ticket": "reco-93w",
+          "x-fathom-ticket": "e7.3",
           "x-fathom-units": "MiB"
         }
       },
@@ -1701,6 +1701,122 @@
       "type": "object",
       "x-fathom-owner": "ADR-006 / e5.4",
       "x-fathom-section-title": "Keymap overrides"
+    },
+    "layering": {
+      "additionalProperties": false,
+      "description": "What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op.",
+      "properties": {
+        "allow": {
+          "default": [],
+          "description": "Exceptions to a refusal, same syntax, and each must be *narrower* than the refusal it excepts - a layer-level refusal with a file-level exception is the shape a real read path takes. An allow that excepts nothing is refused at load: a permission nobody forbade is configuration that enforces nothing. `e3.6`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "forbid": {
+          "default": [],
+          "description": "Refusals, one per entry, written `src -> dst` where each side is a layer name, a path pattern or `*`. An optional `my-name: ` prefix names the rule in every violation and in every baseline key; without one the rule is named by its own content, so editing the list order cannot move a baseline. `e3.6`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "ignore": {
+          "default": [],
+          "description": "Path patterns whose outgoing dependencies are not judged - a test tree, a fixtures directory. Same dialect as a `[layers]` pattern. Skipped edges are counted and printed, because an ignored region is a decision and not a clean bill of health. `e3.6`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "max_violations": {
+          "default": 50,
+          "description": "How many violations one report lists before it stops. The bound never changes a number: the report prints how many were found alongside how many are listed. `e3.6`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6",
+          "x-fathom-units": "violations"
+        },
+        "mode": {
+          "default": "warn",
+          "description": "How loudly the layering rules speak. `off` examines nothing and says so; `warn` reports without deciding an exit code; `deny` makes a new violation the `fathom check` violation exit (7). A baselined violation is debt at every mode - the mode sets the volume, not the facts. `e3.6`.",
+          "enum": [
+            "off",
+            "warn",
+            "deny"
+          ],
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "no_cycle_within_layer": {
+          "default": false,
+          "description": "Refuse a cycle whose members all sit in one layer: a loop inside a layer means the layer is doing more than one job, which is a different claim from `no_cycles` and gets its own fix hint. `e3.6`.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "no_cycles": {
+          "default": false,
+          "description": "Every dependency cycle between judged modules is a violation. Detection is `e3.5`'s engine - this declares that cycles are refused, and each violation carries the same shortest witness the cycle report prints. `e3.6`.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "no_upward": {
+          "default": false,
+          "description": "Refuse a dependency from a higher-ranked layer to a lower-ranked one, against `layering.order`. Refused at load when the order is empty, because an upward reference with no declared order has no direction. `e3.6`.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "only": {
+          "default": [],
+          "description": "Boundary rules: `target <- the only source that may reach it`, which is why the arrow points the other way from a refusal. Several entries naming the same target are one allow-list, so `db <- api` plus `db <- db` says the api layer and the layer itself may reach it and nothing else may. `e3.6`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        },
+        "order": {
+          "default": [],
+          "description": "The layers, bottom first. This is the only thing that makes a reference *upward*: `layering.no_upward` refuses an edge that points at a higher-ranked layer. A layer left out is counted unranked rather than guessed, and a name `[layers]` does not declare is refused at load. `e3.6`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.6"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "ADR-004 \u00a75.1 / e3.6 (`reco-cfp`)",
+      "x-fathom-section-title": "Layering enforcement"
     },
     "layers": {
       "additionalProperties": false,
@@ -4067,7 +4183,7 @@
           "type": "integer",
           "x-fathom-merge": "replace",
           "x-fathom-scope": "any",
-          "x-fathom-ticket": "reco-93w",
+          "x-fathom-ticket": "e7.3",
           "x-fathom-units": "batches"
         }
       },
@@ -4154,6 +4270,10 @@
       "keys": {
         "owner": "ADR-006 / e5.4",
         "title": "Keymap overrides"
+      },
+      "layering": {
+        "owner": "ADR-004 \u00a75.1 / e3.6 (`reco-cfp`)",
+        "title": "Layering enforcement"
       },
       "layers": {
         "owner": "ADR-004 \u00a75.1 / e3.1",
