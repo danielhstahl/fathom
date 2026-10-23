@@ -57,6 +57,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`difftool`](#fathom-difftool)** | Show one file's two sides in your own difftool — difftastic, meld, kdiff3, vim -d (e5.8) | shipped | [*handoff*](../concepts/handoff.md) · [*diff-viewer*](../concepts/diff-viewer.md) |
 | **[`cmp`](#fathom-cmp)** | Compare any two episodes or revisions: the composed delta over a range (e5.3) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*delta*](../concepts/delta.md) |
 | **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
+| **[`architecture`](#fathom-architecture)** | The architecture scorecard: five dimensions, one number, and the drift since your last review (e3.9) | shipped | [*scorecard*](../concepts/scorecard.md) · [*cli*](cli.md) |
 | **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
 | **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
 <!-- END GENERATED: verbs -->
@@ -1485,6 +1486,45 @@ Options:
 ```
 <!-- END GENERATED: help.search -->
 
+## `fathom architecture`
+
+The five-dimension architecture scorecard, in a pipe: boundaries, coupling, acyclicity, API hygiene and
+hotspot pressure, combined by an arithmetic whose printed terms add to its printed total, plus the trend
+over the index's scored revisions and the delta since *your* last review — anchored on the revision your
+own review ended at, from `review_state`, not from a timestamp somebody guessed at
+([the scorecard](../concepts/scorecard.md)). A dimension that cannot be measured refuses, with its reason,
+and its weight leaves the denominator: no layering rules is not a clean bill of rules. `alert` is a reported
+flag, never an exit code — `fathom check` owns pass and fail. An index with no module graph exits 12 with the
+remedy, because a score of 0 computed from nothing would be a false claim.
+
+<!-- BEGIN GENERATED: help.architecture -->
+```text
+The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+
+Usage: fathom architecture [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository to read [default: .]
+      --json               Print the report as one JSON line on stdout (`fathom-architecture/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --revision <TREE>    Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix
+      --backfill <N>       Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored) [default: 0]
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --history [<N>]      How many scored revisions the trend reads; bare, or `0`, is every row the index holds [default: 0]
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --refresh            Forget every stored scorecard first, and re-derive what this run needs
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --read-only          Do not write anything: read the stored rows and score only what this run needs
+      --explain            Print the knobs in force — the weights, the curves and their published constants — and exit
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.architecture -->
 ## `fathom context`
 
 Answer *"what does this repository already know about this?"* for a path or an episode: the recorded

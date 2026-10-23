@@ -268,6 +268,13 @@ SECTIONS: dict[str, dict] = {
                         "go unreferenced before it is a candidate. A hotspot is \"expensive to change "
                         "and widely felt\", not \"bad\", and every knob here moves an explainable "
                         "number rather than switching a report on or off."},
+    "scorecard": {"title": "Architecture scorecard", "owner": "e3.9 (`reco-al1`)",
+                  "doc": "What the architecture score is made of: the five weights, the window a "
+                         "per-window score covers, how much movement still counts as flat, how many "
+                         "revisions a printed trend keeps, and the four published constants the curves "
+                         "divide by. The curve *shapes* are not knobs — they are the model — so every "
+                         "number a reviewer can recompute by hand stays recomputable after a tune. "
+                         "`fathom architecture --explain` prints what is in force. `e3.9`."},
     "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
              "doc": "Which ecosystems' manifests and lockfiles are parsed, and what the "
                     "dependency-risk answer does with them: the advisory cache and its "
@@ -1200,6 +1207,76 @@ KEY_LIST: list[Key] = [
            "truncated rather than growing without limit: a bound the report states, not a switch that "
            "turns a feature off. `e3.7`.",
        ticket="e3.7"),
+    # --- scorecard (the five-dimension architecture score, `e3.9`) -----------
+    _k(path="scorecard.weight.boundaries", kind="number", default=0.30, minimum=0.0, maximum=1.0,
+       units="weight",
+       doc="How much of the score is owed to respecting the layering rules this repository wrote down. "
+           "The largest default, because it is the one dimension with a *written rule* behind it: a "
+           "violation is a finding a reviewer can act on. With no rules declared the dimension refuses "
+           "rather than flattering, and its weight leaves the denominator. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.weight.coupling", kind="number", default=0.15, minimum=0.0, maximum=1.0,
+       units="weight",
+       doc="How much of the score is owed to how far an average module reaches. Coupling describes a "
+           "shape, not a mistake — a well-designed graph can be a coupled one — so it is weighted under "
+           "the two rule-backed dimensions on purpose. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.weight.acyclicity", kind="number", default=0.25, minimum=0.0, maximum=1.0,
+       units="weight",
+       doc="How much of the score is owed to how much of the graph sits inside a loop nobody budgeted. "
+           "Debt with an owner and an expiry is not counted: the ratchet already forgave it, and counting "
+           "it again would call the day you wrote the baseline a day the architecture degraded. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.weight.api", kind="number", default=0.15, minimum=0.0, maximum=1.0,
+       units="weight",
+       doc="How much of the score is owed to what this episode did to the contracts other code compiles "
+           "against. Smallest when the store can only see the module graph's export grain — a signature "
+           "change that kept its name is invisible there — and a coarse signal should not be handed a fine "
+           "share of the verdict. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.weight.hotspots", kind="number", default=0.15, minimum=0.0, maximum=1.0,
+       units="weight",
+       doc="How much of the score is owed to how many modules are expensive to change and widely felt. A "
+           "hot module is usually the load-bearing wall, so this term says where attention is owed rather "
+           "than that someone was wrong. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.window", kind="integer", default=30, minimum=1, units="revisions",
+       doc="How many revisions a per-window score covers, and the churn window the hotspot term reads. "
+           "Thirty is the window every other 'recent' measure in Fathom already uses, so the scorecard and "
+           "the heat map are talking about the same month. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.flat_within", kind="integer", default=2, minimum=0, units="points",
+       doc="How many points of movement still counts as *no movement*. The arithmetic is exact, but a "
+           "score is a ratio over a graph that moves one module at a time, and 'the architecture moved 1 "
+           "point this week' would be an invitation to read noise as news. The band is printed beside "
+           "every verdict, never applied silently. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.trend_cap", kind="integer", default=240, minimum=1, units="points",
+       doc="How many plotted points a trend series may hold. Older revisions are thinned, the oldest and "
+           "newest ends are always kept, and the report prints how many rows were read and dropped — so "
+           "memory is bounded by this number rather than by the repository's history. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.coupling_ceiling", kind="number", default=8.0, minimum=0.01,
+       units="edges/module",
+       doc="The mean dependency edges per module that scores as fully coupled: the denominator of the "
+           "coupling share is modules x this ceiling. Published so a reader can redo the division; the "
+           "basis line prints both numbers. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.api_knee", kind="number", default=4.0, minimum=0.01, units="exports",
+       doc="How many vanished exports score API hygiene at a half. The API term has no honest denominator "
+           "at the graph's grain, so it uses a knee — `n / (n + k)` — and this is the published `k`. "
+           "`e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.hotspot_bar", kind="integer", default=70, minimum=0, maximum=100, units="score",
+       doc="The hotspot score at or above which a module counts as pressure in the fifth dimension. It is "
+           "the same 0–100 scale `fathom hotspots` prints, so the scorecard and the table agree about what "
+           "a hot module is. `e3.9`.",
+       ticket="e3.9"),
+    _k(path="scorecard.alert_below", kind="integer", default=50, minimum=0, maximum=100, units="score",
+       doc="The score below which the report says `alert: true`. This is a *reported flag*, not an exit "
+           "code: the CI gate is `fathom check` (reco-ngk), and two places deciding 'under 50 is a failure' "
+           "is how a gate and a dashboard end up disagreeing about the same run. `e3.9`.",
+       ticket="e3.9"),
     # --- hotspots (where architectural attention pays off) -------------------
     _k(path="hotspots.window", kind="integer", default=30, minimum=1, units="revisions",
        doc="How many revisions churn velocity is measured over. Thirty episodes is about a working "

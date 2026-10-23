@@ -572,6 +572,25 @@ pub struct EpisodeFiles {
     pub truncated: bool,
 }
 
+/// One episode's review marker, as the `review_state` row holds it.
+///
+/// A struct rather than four returns because every consumer wants the whole act: the state tells a list what
+/// to paint, and the actor and the instant are what a sentence like "accepted by Rue two days ago" is made
+/// of (`e3.9`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewMarker {
+    /// What was decided.
+    pub state: ReviewState,
+    /// Who decided it — `name <address>`, or empty when the writer had nothing to record. Never invented.
+    pub actor: String,
+    /// The reviewer's own words, when the act carried any.
+    pub note: String,
+    /// When the marker was last written, unix millis.
+    pub updated_utc: i64,
+    /// The digest the marker was written against, which is what a relink checks (`e1.6`).
+    pub fingerprint: String,
+}
+
 /// The composable filter `e1.6`'s rail asks for (author AND path AND unread must compose).
 #[derive(Debug, Clone, Default)]
 pub struct EpisodeQuery {
@@ -1133,6 +1152,44 @@ impl Store {
         Ok(state
             .map(|value| ReviewState::parse(&value))
             .unwrap_or_default())
+    }
+
+    /// One episode's review marker in full: who set it, when, and against which fingerprint.
+    ///
+    /// [`Store::review_of`] answers "which state", which is what a list paints; the scorecard's
+    /// "since my last review" (`e3.9`, `reco-al1`) has to name the reviewer as well, and an actor read out
+    /// of a commit author or a guess would be ADR-001 §7.7's forbidden invention. `None` is "never marked",
+    /// which is a different fact from an empty actor on a row that exists.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn review_marker(&self, id: &str) -> Result<Option<ReviewMarker>, Error> {
+        self.connection()
+            .query_row(
+                "SELECT state, actor, note, updated_utc, fingerprint FROM review_state WHERE episode_id = ?1",
+                params![id],
+                |row| {
+                    Ok(ReviewMarker {
+                        state: ReviewState::parse(&row.get::<_, String>(0)?),
+                        // Every text column here is nullable in the table as it was first written, and a
+                        // reviewer who left no note is a NULL rather than an empty string. Reading them as
+                        // `String` would make the whole verb fail on the common case.
+                        actor: row
+                            .get::<_, Option<String>>(1)?
+                            .unwrap_or_default(),
+                        note: row
+                            .get::<_, Option<String>>(2)?
+                            .unwrap_or_default(),
+                        updated_utc: row.get::<_, i64>(3)?,
+                        fingerprint: row
+                            .get::<_, Option<String>>(4)?
+                            .unwrap_or_default(),
+                    })
+                },
+            )
+            .optional()
+            .map_err(|err| corrupt("reading a review marker", &err))
     }
 
     /// Every review marker, as `episode id → state` — the unread set the rail paints.

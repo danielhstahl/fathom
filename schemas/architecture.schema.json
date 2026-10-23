@@ -1,0 +1,433 @@
+{
+  "$id": "https://fathom.dev/schemas/architecture.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fathom architecture",
+  "description": "The architecture scorecard: five dimensions, the arithmetic that combines them, the trend over revisions and the delta since the reviewer's own last review. The headless form of `fathom architecture`, for CI and dashboards (ADR-006 §9.5). Owner: `reco-al1`.",
+  "x-fathom-contract": "fathom-architecture/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "A scorecard was derived or read, and printed. A refused dimension, or a score below `scorecard.alert_below`, is still OK: `fathom check` owns pass and fail."
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "A flag or its argument is wrong — a `--revision` prefix that matches no scored revision, or matches two."
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "The path is not a git repository, so there is no spine to score."
+    },
+    {
+      "code": 4,
+      "name": "STORE_CORRUPT",
+      "when": "The store failed its integrity check; a score read out of it would be a guess."
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "No index, no graph revision, or the named revision has no graph. The message names the fix (`fathom analyze`): scoring nothing as 0 would be a false claim."
+    }
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "schema_version",
+    "headline",
+    "index",
+    "scorecard",
+    "previous",
+    "since_last_review",
+    "trend",
+    "policy",
+    "notices",
+    "since_recorded"
+  ],
+  "properties": {
+    "contract": {
+      "const": "fathom-architecture/1",
+      "description": "The model contract, not a verb wrapper: the same id the exported artefact and `fathom check` read. A consumer promises to ignore unknown keys."
+    },
+    "schema_version": {
+      "type": "integer"
+    },
+    "headline": {
+      "type": "string",
+      "description": "One line, identical to the headline `fathom architecture --json` prints in the text form. The two surfaces are rendered from the same struct."
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "revisions",
+        "scored",
+        "read",
+        "unscored"
+      ],
+      "properties": {
+        "revisions": {
+          "type": "integer"
+        },
+        "scored": {
+          "type": "integer"
+        },
+        "read": {
+          "type": "integer"
+        },
+        "unscored": {
+          "type": "integer"
+        },
+        "newest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "episode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "scorecard": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "model",
+        "model_version",
+        "revision",
+        "revision_full",
+        "score",
+        "scored",
+        "dimensions",
+        "measured",
+        "denominator",
+        "weight_sum",
+        "terms",
+        "notices"
+      ],
+      "properties": {
+        "model": {
+          "const": "architecture-1",
+          "description": "The model id. A row written by another model is refused by comparison, not reconciled: `--refresh` re-derives it."
+        },
+        "model_version": {
+          "type": "integer"
+        },
+        "revision": {
+          "type": "string",
+          "description": "The graph revision's root tree, abbreviated to 7 — what a human writes on a whiteboard. The full id rides as `revision_full`."
+        },
+        "revision_full": {
+          "type": "string"
+        },
+        "episode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The episode the revision's commit belongs to, or `null`: graph revisions outrank episodes, so the relation is displayed and never assumed."
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "`null` when the scorecard refused: a refusal is printed as a refusal, never as 0."
+        },
+        "scored": {
+          "type": "boolean"
+        },
+        "unscored": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "alert": {
+          "type": "boolean",
+          "description": "`scorecard.alert_below`, reported and never exited on: `fathom check` owns pass/fail."
+        },
+        "alert_below": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer",
+          "description": "The sum of the terms, in hundredths of a point."
+        },
+        "total_shown": {
+          "type": "string"
+        },
+        "checked_sum": {
+          "type": "integer",
+          "description": "The sum this card was checked against before publication — `Scorecard::of` refuses a total that is not the sum of its terms."
+        },
+        "dimensions": {
+          "type": "integer",
+          "description": "Always 5; `measured` of them have numbers."
+        },
+        "measured": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "denominator": {
+          "type": "number",
+          "description": "The weight sum over the measured dimensions — the renormalisation, printed rather than hidden."
+        },
+        "weight_sum": {
+          "type": "number"
+        },
+        "built_utc": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Microseconds since the Unix epoch, UTC: the instant this card was derived, stored with it so a re-derived row is distinguishable from the one it replaced."
+        },
+        "terms": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "dimension",
+              "title",
+              "question",
+              "source",
+              "measured",
+              "weight",
+              "health",
+              "points",
+              "points_shown",
+              "complete"
+            ],
+            "properties": {
+              "dimension": {
+                "enum": [
+                  "boundaries",
+                  "coupling",
+                  "acyclicity",
+                  "api",
+                  "hotspots"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "question": {
+                "type": "string",
+                "description": "What the dimension asks, spelled out — the same sentence `fathom architecture --explain` prints."
+              },
+              "source": {
+                "type": "string",
+                "description": "Which earlier lane the raw number comes from, ticket included. A number with no named source is a number nobody can argue with."
+              },
+              "measured": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Empty when measured; the sentence that says why not otherwise. A refusal is a finding."
+              },
+              "unscored": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "curve": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": true,
+                "description": "The two integers (or the count and the knee) the dimension divided. `null` when the dimension was not measured — never a 0 dressed up as a share."
+              },
+              "formula": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The arithmetic as a string, e.g. `2 / 16 = 0.125`. Recompute it and you get the printed badness."
+              },
+              "badness": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "health": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "1 - badness, rounded to 6 dp, and nothing else: the arithmetic of the score is five lines and is documented in docs/concepts/scorecard.md."
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "origin": {
+                "type": "string",
+                "description": "`default` or `fathom.toml`: who set this weight, so a movement can be attributed to a tuning as well as to the code."
+              },
+              "points": {
+                "type": "integer",
+                "description": "The contribution, in hundredths of a point. The sum of the five `points` is the total, exactly: integers, not float addition."
+              },
+              "points_shown": {
+                "type": "string",
+                "description": "The same integer rendered to two decimals, so `jq` addition of these strings equals the printed score."
+              },
+              "ceiling": {
+                "type": "integer",
+                "description": "The points this dimension would score at perfect health, in hundredths."
+              },
+              "ceiling_shown": {
+                "type": "string"
+              },
+              "complete": {
+                "type": "boolean",
+                "description": "False when a caveat rode up from the lane that measured it — a coverage figure below its bar. Publishable only when every measured term is complete or disclaimed."
+              },
+              "basis": {
+                "type": "string"
+              },
+              "caveats": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "previous": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The newest stored revision before `scorecard` — the score's own step, without flags changing what 'previous' means. Same shape as `scorecard`, or null when the index holds one scored revision."
+    },
+    "since_last_review": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The delta since the reviewer's own last review, anchored on the revision that review ended at: `basis` names which rung of the ladder was affordable and what it cost. Null when nobody has recorded a review here.",
+      "additionalProperties": true
+    },
+    "trend": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "One point per scored revision, newest first, folded from the stored rows, thinned to `scorecard.trend_cap` with the oldest and newest ends always kept. Null when nothing is stored.",
+      "additionalProperties": true
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "weights",
+        "weight_sum",
+        "window",
+        "flat_within",
+        "trend_cap",
+        "coupling_ceiling",
+        "api_knee",
+        "hotspot_bar",
+        "alert_below",
+        "untouched"
+      ],
+      "properties": {
+        "weights": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "dimension",
+              "weight",
+              "default",
+              "origin"
+            ]
+          }
+        },
+        "weight_sum": {
+          "type": "number"
+        },
+        "window": {
+          "type": "integer"
+        },
+        "flat_within": {
+          "type": "integer"
+        },
+        "trend_cap": {
+          "type": "integer"
+        },
+        "coupling_ceiling": {
+          "type": "number"
+        },
+        "api_knee": {
+          "type": "number"
+        },
+        "hotspot_bar": {
+          "type": "integer"
+        },
+        "alert_below": {
+          "type": "integer"
+        },
+        "untouched": {
+          "type": "boolean",
+          "description": "True when every knob is the built-in default — the honest answer to 'is this repo playing by the published scale or by its own?'"
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "What a reader of the payload must know that no column carries: refused dimensions, a thinned trend, foreign rows, an unreliable review anchor."
+    },
+    "since_recorded": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "What `since your last review` meant on the day this revision was scored, as the row recorded it: the anchor's rung, the reviewer's state and actor, the revision-count span and the two scores. Kept because review state can be cleared and an episode can be re-segmented out from under an anchor: this is the one place the past meaning of the delta survives. Null when the row was written with no anchor."
+    }
+  }
+}

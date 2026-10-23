@@ -471,6 +471,8 @@ VERB_DOCS = {
                "who is keeping this index current, and what it costs"),
     "ambient": (["docs/concepts/ambient-mode.md", "docs/adr/0006-tui.md"],
                 "the glance pane for the second terminal"),
+    "architecture": (["docs/concepts/scorecard.md", "docs/reference/cli.md"],
+                     "the architecture scorecard, its trend, and the delta since your last review"),
     "hooks": (["docs/harness/README.md", "docs/adr/0005-harness-contract.md"],
               "the harness event stream, and why a line was refused"),
     "open": (["docs/concepts/handoff.md", "docs/concepts/diff-viewer.md"],

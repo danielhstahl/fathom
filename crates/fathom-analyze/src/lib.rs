@@ -95,6 +95,14 @@ pub mod cycles;
 /// [`cycles`]; writes nothing.
 pub mod layering;
 
+/// The architecture scorecard (`e3.9`, `reco-al1`): five dimensions — boundaries, coupling, acyclicity,
+/// API hygiene, hotspot pressure — combined by a documented, hand-reproducible formula into one 0–100
+/// health score per revision, trended across the revisions the index holds with bounded memory, and
+/// reported against the reviewer's last review by an identity ladder that survives a rebase. Reads
+/// [`layering`], [`cycles`], [`graph`] and [`hotspots`]; writes only the class-R `scorecard` rows, and only
+/// through [`scorecard::lane`].
+pub mod scorecard;
+
 /// The hotspots (`e3.8`, `reco-wky`): which modules architectural attention pays off in, ranked by six
 /// explainable metrics — fan-in, fan-out, instability, size, the `e3.1` complexity proxy and `e3.3`'s
 /// churn velocity over a configurable window — with every metric's contribution printed, the churn ×

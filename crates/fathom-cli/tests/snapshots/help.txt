@@ -4,33 +4,34 @@ Review an agent-driven repository before it merges.
 Usage: fathom [OPTIONS] [COMMAND]
 
 Commands:
-  index        Index the repository so every other verb has something to read
-  show         Show one episode in full
-  episodes     List the episodes — the rail's rows, headless (`reco-11b`)
-  attribution  Report or correct who Fathom thinks wrote a commit (`e4.1`)
-  review       The review ledger: sign-offs that outlive the history they were written about (`e4.6`)
-  analyze      Print one episode's delta document — the model the TUI, the export and an agent all read
-  narrative    Read one episode: the narrative every claim in it cites its evidence from (`e4.7`)
-  drift        What the plan said against what the session did — the contradictions, both sides linked (`e4.8`)
-  why          Print one episode's risk score with every feature, its weight and its contribution (`e4.4`)
-  stats        Report repo scale, index state and cache hit rate
-  check        Run the checks CI cares about; findings above the threshold exit 7
-  doctor       Describe this build, its environment and its index, with a remedy per finding
-  export       Write a review artefact for a pull request or an audit
-  mcp          Speak MCP to a coding agent
-  watch        Watch the repository and index as it changes
-  ambient      The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
-  hooks        Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
-  daemon       The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
-  status       Who is keeping this index current, what it costs, and what is left (`e6.3`)
-  tui          Print the terminal UI's keymap, or open the UI itself
-  open         Open an episode's file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
-  difftool     Show one file's two sides in your own difftool — difftastic, meld, kdiff3, `vim -d` (`e5.8`)
-  cmp          Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
-  search       Search the whole index from one box, in the shell's own ranking (`e5.2`)
-  context      What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
-  note         The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/` (`e6.5`)
-  help         Print this message or the help of the given subcommand(s)
+  index         Index the repository so every other verb has something to read
+  show          Show one episode in full
+  episodes      List the episodes — the rail's rows, headless (`reco-11b`)
+  attribution   Report or correct who Fathom thinks wrote a commit (`e4.1`)
+  review        The review ledger: sign-offs that outlive the history they were written about (`e4.6`)
+  analyze       Print one episode's delta document — the model the TUI, the export and an agent all read
+  narrative     Read one episode: the narrative every claim in it cites its evidence from (`e4.7`)
+  drift         What the plan said against what the session did — the contradictions, both sides linked (`e4.8`)
+  why           Print one episode's risk score with every feature, its weight and its contribution (`e4.4`)
+  stats         Report repo scale, index state and cache hit rate
+  check         Run the checks CI cares about; findings above the threshold exit 7
+  doctor        Describe this build, its environment and its index, with a remedy per finding
+  export        Write a review artefact for a pull request or an audit
+  mcp           Speak MCP to a coding agent
+  watch         Watch the repository and index as it changes
+  ambient       The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+  hooks         Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
+  daemon        The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
+  status        Who is keeping this index current, what it costs, and what is left (`e6.3`)
+  tui           Print the terminal UI's keymap, or open the UI itself
+  open          Open an episode's file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
+  difftool      Show one file's two sides in your own difftool — difftastic, meld, kdiff3, `vim -d` (`e5.8`)
+  cmp           Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
+  search        Search the whole index from one box, in the shell's own ranking (`e5.2`)
+  architecture  The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+  context       What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
+  note          The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/` (`e6.5`)
+  help          Print this message or the help of the given subcommand(s)
 
 Options:
       --plain
@@ -1397,6 +1398,97 @@ Options:
           Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
           
           `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+===== fathom architecture --help =====
+The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+
+Usage: fathom architecture [OPTIONS]
+
+Options:
+      --plain
+          Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7).
+          
+          Chosen automatically when stdout is not a terminal, so a redirected run degrades by itself.
+
+      --root <ROOT>
+          The repository to read
+          
+          [default: .]
+
+      --json
+          Print the report as one JSON line on stdout (`fathom-architecture/1`)
+
+      --no-alt-screen
+          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
+      --revision <TREE>
+          Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix
+
+      --backfill <N>
+          Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored).
+          
+          Each one costs a graph materialisation, which is why the default is none: a trend that recomputed every revision on every run would be a trend nobody runs.
+          
+          [default: 0]
+
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --history [<N>]
+          How many scored revisions the trend reads; bare, or `0`, is every row the index holds
+          
+          [default: 0]
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
+      --refresh
+          Forget every stored scorecard first, and re-derive what this run needs.
+          
+          The recovery path for a row that disagrees with its revision — the honest fix for a derived fact is to re-derive it, not to patch it.
+
+      --theme <NAME|PATH>
+          Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
+          
+          `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --read-only
+          Do not write anything: read the stored rows and score only what this run needs.
+          
+          A dashboard polling on a schedule, or anyone reading a store another process is writing.
+
+      --explain
+          Print the knobs in force — the weights, the curves and their published constants — and exit
 
       --progress
           Print the index's progress row even where stderr is not a terminal (`e5.9`).

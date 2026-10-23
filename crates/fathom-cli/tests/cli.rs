@@ -758,6 +758,7 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["export", "--help"],
         vec!["cmp", "--help"],
         vec!["search", "--help"],
+        vec!["architecture", "--help"],
         vec!["watch", "--help"],
         vec!["daemon", "--help"],
         vec!["daemon", "start", "--help"],

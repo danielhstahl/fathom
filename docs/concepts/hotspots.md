@@ -1,11 +1,11 @@
 # Hotspots: where attention pays off, and what looks dead
 
 - **Status**: **shipped as the analysis lane** — the six metrics, the score, the shape calls, the churn ×
-  complexity quadrant and the three dead-code sweeps. No shipped verb prints it yet: the graph pane's heat
-  channel is still `e3.3`'s churn alone ([ADR-006 §5.5](../adr/0006-tui.md)), and `fathom architecture`
-  does not grow a `hotspots` subcommand in this ticket. The lane is a library with a published seam
-  (`measure::facts_of`) and every acceptance criterion is asserted at that seam; the surface that spends
-  it is the next caller, not a missing piece of this one.
+  complexity quadrant and the three dead-code sweeps. Two surfaces spend it now: the fifth dimension of
+  [`fathom architecture`](scorecard.md) is this score, unchanged and on the same 0–100 scale, and its
+  `hotspot_bar` knob is this table's own bar. The graph pane's heat channel is still `e3.3`'s churn alone
+  ([ADR-006 §5.5](../adr/0006-tui.md)), and there is no `fathom hotspots` verb: the lane is a library with a
+  published seam (`measure::facts_of`), and every acceptance criterion is asserted at that seam.
 - **Decided by**: [the architecture graph](architecture-graph.md) (fan-in, fan-out, instability and the
   wildcard and synthetic-scope caveats all come from `e3.2`'s queries),
   [structure extraction](structure-extraction.md) (`e3.1`'s spans are the complexity proxy — a proxy, and

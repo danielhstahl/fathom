@@ -83,7 +83,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [session state](concepts/session-state.md) · [the summary card](concepts/summary-card.md) ·
 [the review artefact](concepts/export-artefact.md) · [risk ranking](concepts/risk-ranking.md) ·
 [risk scoring](concepts/risk-scoring.md) ·
-[hotspots and dead-code candidates](concepts/hotspots.md)
+[hotspots and dead-code candidates](concepts/hotspots.md) ·
+[the architecture scorecard](concepts/scorecard.md)
 
 **Findings and their cost** — [pathology detectors](concepts/pathology-detectors.md) ·
 [false-positive calibration](concepts/false-positive-calibration.md)

@@ -521,6 +521,7 @@ fn every_schema_is_a_well_formed_document_with_documented_exit_codes() {
         .collect();
     for name in [
         "common.schema.json",
+        "architecture.schema.json",
         "episodes.schema.json",
         "index.schema.json",
         "show.schema.json",
@@ -626,6 +627,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
     assert_eq!(
         names,
         vec![
+            "architecture.schema.json",
             "common.schema.json",
             "doctor.schema.json",
             "episode-delta.schema.json",

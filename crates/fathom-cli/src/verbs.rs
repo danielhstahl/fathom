@@ -193,6 +193,9 @@ pub enum Verb {
     Cmp(CmpArgs),
     /// Search the whole index from one box, in the shell's own ranking (`e5.2`)
     Search(SearchArgs),
+    /// The architecture scorecard: five dimensions, one number, and the drift since your last review
+    /// (`e3.9`)
+    Architecture(ArchitectureArgs),
     /// What this repository knows about a path or an episode: the recorded decisions and the open questions
     /// (`e6.5`)
     Context(ContextArgs),
@@ -253,6 +256,54 @@ pub struct SearchArgs {
     /// List the saved searches and exit.
     #[arg(long)]
     pub list: bool,
+}
+
+/// `fathom architecture` — the scorecard, headless (`e3.9`, `reco-al1`).
+///
+/// The five dimensions, their arithmetic, the trend across what the index holds and the delta since the
+/// reviewer's last review, in one document. `fathom check` (**reco-ngk**) and the exported artefact
+/// (**e5.7**) read the same `fathom-architecture/1` payload this prints with `--json`, so the CI log and the
+/// dashboard cannot disagree with the terminal about what 61 means.
+#[derive(Args, Debug)]
+pub struct ArchitectureArgs {
+    /// The repository to read.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the report as one JSON line on stdout (`fathom-architecture/1`).
+    #[arg(long)]
+    pub json: bool,
+    /// Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix.
+    #[arg(long, value_name = "TREE")]
+    pub revision: Option<String>,
+    /// Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored).
+    ///
+    /// Each one costs a graph materialisation, which is why the default is none: a trend that recomputed
+    /// every revision on every run would be a trend nobody runs.
+    #[arg(long, default_value_t = 0, value_name = "N")]
+    pub backfill: usize,
+    /// How many scored revisions the trend reads; bare, or `0`, is every row the index holds.
+    #[arg(
+        long,
+        default_value_t = 0,
+        default_missing_value = "0",
+        num_args = 0..=1,
+        value_name = "N"
+    )]
+    pub history: i64,
+    /// Forget every stored scorecard first, and re-derive what this run needs.
+    ///
+    /// The recovery path for a row that disagrees with its revision — the honest fix for a derived fact is to
+    /// re-derive it, not to patch it.
+    #[arg(long)]
+    pub refresh: bool,
+    /// Do not write anything: read the stored rows and score only what this run needs.
+    ///
+    /// A dashboard polling on a schedule, or anyone reading a store another process is writing.
+    #[arg(long)]
+    pub read_only: bool,
+    /// Print the knobs in force — the weights, the curves and their published constants — and exit.
+    #[arg(long)]
+    pub explain: bool,
 }
 
 /// `fathom context <path-or-episode>` — what this repository knows about one thing (`e6.5`, `reco-552`).
@@ -1396,6 +1447,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         ),
         Some(Verb::Cmp(args)) => crate::compare::run(args),
         Some(Verb::Search(args)) => crate::search::run(args),
+        Some(Verb::Architecture(args)) => crate::scorecard::run(args),
         Some(Verb::Context(args)) => crate::notes::context(args),
         Some(Verb::Note(args)) => crate::notes::note(args),
     }

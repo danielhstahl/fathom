@@ -39,6 +39,11 @@ mod diagnose;
 // `fathom_analyze::drift` compares. The rules live there, so that every finding has a fixture; this module
 // owns only what a terminal sees.
 mod drift;
+// The architecture scorecard's read (`e3.9`, `reco-al1`): five dimensions composed out of the reports the
+// other architecture lanes already export, the class-R rows a trend is folded from, and the
+// "since my last review" anchor. Every one of those is a store read, which the shell may not make and the
+// composition root must (ADR-002 §5.2).
+mod scorecard;
 // The episode list, read from the store once and used by both surfaces that need it: the rows the shell
 // opens with (`reco-wzt`), and the rows `fathom episodes` prints for a script (`reco-11b`). It lives here,
 // and not in the shell, because the shell may not open a store (ADR-002 §5.2) — and it is no longer gated

@@ -63,7 +63,7 @@ use sha2::Digest as _;
 /// the columns a re-link verdict has to report. The same argument as version 9's applies — the table is a
 /// mirror, class M by its content and class R by its copy — so the bump migrates nothing, every derived row
 /// goes unreachable, and the notes come back from the committed markdown on the next `fathom note list`.
-pub const SCHEMA_VERSION: i64 = 10;
+pub const SCHEMA_VERSION: i64 = 11;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -127,6 +127,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (8, crate::graph::MIGRATION_8),
     (9, crate::ceiling::MIGRATION_9),
     (10, crate::notes::MIGRATION_10),
+    (11, crate::scorecard::MIGRATION_11),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.
@@ -1288,6 +1289,29 @@ impl Store {
             committer_email,
             files,
         })
+    }
+
+    /// The commits whose root tree is `tree_oid` — the reverse of [`Store::read_commit`]'s question, and
+    /// the join a graph-keyed row needs in order to name the episode it belongs to (`e3.9`, `reco-al1`).
+    ///
+    /// A vector, not one commit: two commits can share a tree (an empty commit after a revert, a rebase that
+    /// replayed content that was already there), and picking one would be the scorecard inventing a history
+    /// the object database does not have. The `commit_tree` index makes it one seek.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn commits_with_tree(&self, tree_oid: &str) -> Result<Vec<String>, Error> {
+        let mut statement = self
+            .conn
+            .prepare("SELECT oid FROM git_commit WHERE tree_oid = ?1 ORDER BY author_utc, oid")
+            .map_err(|err| corrupt("looking up commits by tree", &err))?;
+        let oids = statement
+            .query_map(params![tree_oid], |row| row.get::<_, String>(0))
+            .map_err(|err| corrupt("looking up commits by tree", &err))?
+            .collect::<Result<Vec<String>, _>>()
+            .map_err(|err| corrupt("looking up commits by tree", &err))?;
+        Ok(oids)
     }
 
     /// One commit's file rows, ordered by `new_path` so the order is reproducible.

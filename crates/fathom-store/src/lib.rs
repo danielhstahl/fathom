@@ -81,6 +81,13 @@ pub mod notes;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod graph;
 
+/// The scorecard rows: ADR-004 Appendix A's `scorecard` table, the compact per-revision payload a trend
+/// is folded from, and the newest-first reads `fathom architecture` streams (`e3.9`, `reco-al1`). Gated
+/// with [`spine`] for the same reason every other class-R table is: rows of a derived fact with nowhere to
+/// be stored are a recomputation with extra steps.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod scorecard;
+
 /// The writer lease: `flock` + a record + a heartbeat, so "who writes this store" is decided by a lock
 /// rather than by which binary was invoked (ADR-004 §7.1, `e6.3` / `reco-kvk`). Not SQLite-gated: a
 /// lease is a file, and a daemon that cannot open a store still has to find out whether it is the writer.

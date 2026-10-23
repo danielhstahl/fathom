@@ -364,6 +364,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `layering` | ADR-004 §5.1 / e3.6 (`reco-cfp`) | What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op. |
 | `api` | e3.7 (`reco-p5u`) | Which paths' exports the rest of the world compiles against, and how loudly a change to them speaks. A workspace of nine crates usually has two whose `pub` items are somebody else's contract, and a breaking change reported in the third is noise - the ignore and private sets are how the owner says which ones count. Reading the source is `[extract]`'s business; this table is the claim about the repository. |
 | `hotspots` | e3.8 (`reco-wky`) | What the hotspot score is made of: the six metric weights, the knee each saturating curve bends at, the churn window, and how long a new symbol may go unreferenced before it is a candidate. A hotspot is "expensive to change and widely felt", not "bad", and every knob here moves an explainable number rather than switching a report on or off. |
+| `scorecard` | e3.9 (`reco-al1`) | What the architecture score is made of: the five weights, the window a per-window score covers, how much movement still counts as flat, how many revisions a printed trend keeps, and the four published constants the curves divide by. The curve *shapes* are not knobs — they are the model — so every number a reviewer can recompute by hand stays recomputable after a tune. `fathom architecture --explain` prints what is in force. `e3.9`. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
@@ -539,6 +540,18 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `api.package` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.private` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.max_items_per_package` | `integer` | `20000` | `replace` | `any` | items | — | `e3.7` |
+| `scorecard.weight.boundaries` | `number` | `0.3` | `replace` | `any` | weight | — | `e3.9` |
+| `scorecard.weight.coupling` | `number` | `0.15` | `replace` | `any` | weight | — | `e3.9` |
+| `scorecard.weight.acyclicity` | `number` | `0.25` | `replace` | `any` | weight | — | `e3.9` |
+| `scorecard.weight.api` | `number` | `0.15` | `replace` | `any` | weight | — | `e3.9` |
+| `scorecard.weight.hotspots` | `number` | `0.15` | `replace` | `any` | weight | — | `e3.9` |
+| `scorecard.window` | `integer` | `30` | `replace` | `any` | revisions | — | `e3.9` |
+| `scorecard.flat_within` | `integer` | `2` | `replace` | `any` | points | — | `e3.9` |
+| `scorecard.trend_cap` | `integer` | `240` | `replace` | `any` | points | — | `e3.9` |
+| `scorecard.coupling_ceiling` | `number` | `8.0` | `replace` | `any` | edges/module | — | `e3.9` |
+| `scorecard.api_knee` | `number` | `4.0` | `replace` | `any` | exports | — | `e3.9` |
+| `scorecard.hotspot_bar` | `integer` | `70` | `replace` | `any` | score | — | `e3.9` |
+| `scorecard.alert_below` | `integer` | `50` | `replace` | `any` | score | — | `e3.9` |
 | `hotspots.window` | `integer` | `30` | `replace` | `any` | revisions | — | `e3.8` |
 | `hotspots.min_history` | `integer` | `2` | `replace` | `any` | revisions | — | `e3.8` |
 | `hotspots.top` | `integer` | `20` | `replace` | `any` | rows | — | `e3.8` |
