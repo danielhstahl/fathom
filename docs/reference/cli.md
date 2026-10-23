@@ -46,7 +46,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`check`](#fathom-check)** | Run the checks CI cares about; findings above the threshold exit 7 | *refuses: names its plan item* | [*gate-a-pipeline*](../recipes/gate-a-pipeline.md) · [*cli*](cli.md) |
 | **[`doctor`](#fathom-doctor)** | Describe this build, its environment and its index, with a remedy per finding | shipped | [*troubleshooting*](../troubleshooting.md) · [*cli*](../concepts/cli.md) |
 | **[`export`](#fathom-export)** | Write a review artefact for a pull request or an audit | shipped | [*export-artefact*](../concepts/export-artefact.md) · [*export-for-a-pr*](../recipes/export-for-a-pr.md) |
-| **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | *refuses: names its plan item* | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
+| **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | shipped | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
 | **[`watch`](#fathom-watch)** | Watch the repository and index as it changes | shipped | [*run-beside-the-agent*](../recipes/run-beside-the-agent.md) · [*session-state*](../concepts/session-state.md) |
 | **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
@@ -849,9 +849,21 @@ Options:
 
 ## `fathom mcp`
 
-The agent-facing surface. **The server is not in this build**: `fathom mcp serve` refuses with the plan
-item that owns it (`e6.4`), and [the recipe for an agent that wants to ask](../recipes/ask-an-agent.md)
-uses `fathom analyze --json` instead, which is the same document through a different door.
+The agent-facing surface. `fathom mcp serve` speaks MCP over **stdio** — no socket, so no consent key — and
+answers the same questions the rail answers, from the same versioned delta model, through six read tools:
+`explain_episode`, `changes_between`, `architecture_delta`, `dependency_delta`, `risk_report`,
+`search_history`. Every answer carries `cost_ms`, `bytes_returned`, `degraded` and `unknowns`; a page that
+will not fit in `mcp.max_response_bytes` is cut and handed back with a cursor ([the contract is
+ADR-005 §4](../adr/0005-harness-contract.md)). No file body and no secret leaves a response: the same
+redaction table that runs at ingest runs again on the way out, and a body-shaped field is refused rather
+than trimmed. [the recipe for an agent that wants to ask](../recipes/ask-an-agent.md).
+
+The two write tools — `mark_reviewed`, `add_review_note` — are **off by default** and absent from
+`tools/list` while off, so a client never reaches for a door that will not open. An operator turns them on
+with `mcp.allow_writes = true`; from then on every call to them appends an audit line naming the tool, a
+digest of its arguments and its outcome. `mark_reviewed` additionally needs a token that only one change can
+use, minted by `fathom mcp approval-token` out of a secret in your own config — an agent cannot sign off its
+own work, and a token it obtained for one change does not open the next.
 
 <!-- BEGIN GENERATED: help.mcp -->
 ```text
@@ -860,8 +872,10 @@ Speak MCP to a coding agent
 Usage: fathom mcp [OPTIONS] <COMMAND>
 
 Commands:
-  serve  Serve the tool surface over stdio, which opens no socket
-  help   Print this message or the help of the given subcommand(s)
+  serve           Serve the tool surface over stdio, which opens no socket (`e6.4`)
+  tools           Print the tool surface and its bounds as this repository's config resolves them
+  approval-token  Mint the token that authorises `mark_reviewed` for exactly one change
+  help            Print this message or the help of the given subcommand(s)
 
 Options:
       --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
@@ -882,7 +896,7 @@ Options:
 
 <!-- BEGIN GENERATED: help.mcp.serve -->
 ```text
-Serve the tool surface over stdio, which opens no socket
+Serve the tool surface over stdio, which opens no socket (`e6.4`)
 
 Usage: fathom mcp serve [OPTIONS]
 
@@ -900,6 +914,68 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.mcp.serve -->
+
+What it offers, and what the config made of it, without starting a session:
+
+### `fathom mcp tools`
+
+<!-- BEGIN GENERATED: help.mcp.tools -->
+```text
+Print the tool surface and its bounds as this repository's config resolves them
+
+Usage: fathom mcp tools [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository whose `[mcp]` config and index to read [default: .]
+      --json               The surface as one JSON document on stdout (`fathom.mcp.surface/1`)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.mcp.tools -->
+
+Each tool is listed with the arguments it takes, its page bound and whether this repository's config offers
+it at all. `--json` is the same surface for a script, and it is the one place that says whether an approval
+secret is configured — which is why it is a flag and not the default.
+
+### `fathom mcp approval-token`
+
+<!-- BEGIN GENERATED: help.mcp.approval-token -->
+```text
+Mint the token that authorises `mark_reviewed` for exactly one change
+
+Usage: fathom mcp approval-token [OPTIONS] <CHANGE_ID>
+
+Arguments:
+  <CHANGE_ID>  The change to bind the token to: an episode id or a commit
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>        The repository whose `[mcp]` config holds the approval secret [default: .]
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.mcp.approval-token -->
+
+Prints the token for exactly one change, derived from `mcp.approval_token` in **your** config (never in the
+repository, so a clone cannot mint one). Hand it to the agent, or paste it into the call yourself;
+`mark_reviewed` refuses anything else, including a token minted for a different change.
 
 ## `fathom watch`
 

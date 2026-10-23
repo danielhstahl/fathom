@@ -36,7 +36,7 @@ shipped feature without a doc".
 | Feature | What turning it on changes | Consent key | Plan | Documented in |
 |---|---|---|---|---|
 | `tui` | the terminal UI: every view, the keymap, the layout ladder. | — | — | [cheatsheet.md](cheatsheet.md) · [0006-tui.md](../adr/0006-tui.md) |
-| `mcp` | `fathom mcp serve`, the read-only tools an agent may ask. | — | — | [cli.md](cli.md) · [0005-harness-contract.md](../adr/0005-harness-contract.md) |
+| `mcp` | `fathom mcp serve`, the tools an agent may ask; the two write tools are off until `mcp.allow_writes` turns them on and starts their audit trail (ADR-005 §4.2). | — | — | [cli.md](cli.md) · [0005-harness-contract.md](../adr/0005-harness-contract.md) |
 | `watch` | `fathom watch` and `fathom index --watch`: index as commits land. | — | — | [run-beside-the-agent.md](../recipes/run-beside-the-agent.md) |
 | `sqlite-bundled` | the store: SQLite compiled into the binary rather than found on the host. | — | — | [0004-storage.md](../adr/0004-storage.md) |
 | `langs-all` | all six tree-sitter grammars, so structure extraction covers the tree. | — | — | [structure-extraction.md](../concepts/structure-extraction.md) |

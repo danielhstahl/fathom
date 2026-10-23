@@ -3,21 +3,38 @@
 - **You get**: a coding agent reading the same reviewed facts a human is looking at, through a door that has a
   schema on it — and the rules for not mistaking that for trust.
 - **Time**: ten minutes.
-- **Needs**: an agent that can run a shell command, and this build's `--json` outputs.
-- **Plan keys**: `e2.11` (the delta model), `e6.4` (the MCP server, **not in this build**).
+- **Needs**: an agent that can run a shell command, and this build's `fathom mcp serve`.
+- **Plan keys**: `e2.11` (the delta model), `e6.4` (the MCP server).
 
-There is no MCP server in this binary yet. `fathom mcp serve` parses, is feature-gated on `mcp`, and answers
-with a refusal naming `e6.4` — which is the designed behaviour, not a broken install
-([CLI reference](../reference/cli.md#fathom-mcp)). The reason it is worth writing this recipe anyway is that
-the *document* the MCP surface will serve already exists, is versioned, and is readable from a shell today:
+The server is in this binary. `fathom mcp serve` speaks MCP over stdio — no socket, so no consent key — and
+serves the same versioned documents the rail and the CLI print, addressed by a tool call instead of a shell
+command ([CLI reference](../reference/cli.md#fathom-mcp)). The reason that matters is ADR-002's "one insight
+API" rule: the TUI, the CLI, the export and an agent must not each get a slightly different answer, so there
+is one delta model behind all four doors and the MCP layer is allowed to *point at* it, never to re-derive it.
+
+Start it, and ask it what it offers:
+
+```bash
+fathom mcp serve            # stdio; a client speaks, this build never opens a port
+fathom mcp tools --json     # the same surface without a session: tools, bounds, what config did
+```
+
+The client config an agent understands is the ordinary one — a command, no URL:
+
+```json
+{ "mcpServers": { "fathom": { "command": "fathom", "args": ["mcp", "serve"] } } }
+```
+
+Six read tools are offered: `explain_episode`, `changes_between`, `architecture_delta`, `dependency_delta`,
+`risk_report`, `search_history`. The two write tools are off until an operator says otherwise, and stay out
+of `tools/list` while off, so an agent never reaches for a door that will not open
+([ADR-005 §4.3](../adr/0005-harness-contract.md)).
+
+And the shell door is still there, unchanged:
 
 ```bash
 fathom analyze <episode> --json
 ```
-
-That one command is the whole agent-facing contract. MCP will be a transport and a tool list in front of it,
-not a second model of the episode — ADR-002's "one insight API" rule exists precisely so that the TUI, the CLI,
-the export and an agent cannot each get a slightly different answer.
 
 ## 1 · Give the agent the document, not a prose summary
 
@@ -73,21 +90,35 @@ What to forbid in the same instruction, and why:
   `not recorded`, and the record is written by a harness whose output is untrusted input like everything else
   the tool reads ([the thesis](../concepts/thesis.md) is blunt about this).
 
-## 4 · When MCP lands, and what changes
+## 4 · What the session adds, and what it refuses
 
-`e6.4`'s server is specified as read-only tools over stdio, with the stdio transport deliberately chosen because
-it will not need the network consent that HTTP would
-([ADR-005](../adr/0005-harness-contract.md), [features](../reference/features.md)). The migration from this
-recipe to that one is mechanical: the same `EpisodeDelta` documents, addressed by a tool call instead of a
-shell command. Nothing in what you write today becomes wrong — which is the practical meaning of "one
-versioned delta model" and the reason it was made a gate rather than a convention.
+The MCP tools return the same documents as the shell verbs, plus four things a shell command cannot promise:
+
+* **bounds.** A page is at most `mcp.max_response_bytes`; a longer one is cut and handed back with
+  `next_cursor`, so an agent that asked for everything gets a fact about its asking rather than a truncated
+  paste it mistakes for the whole.
+* **cost on the answer.** `cost_ms` and `bytes_returned` are in every response, including refusals, because a
+  tool call runs inside the agent's turn budget and an unbounded result is a latency outage in costume.
+* **one egress rule.** No file body and no secret leaves a response. The redaction table that runs at ingest
+  runs again on the way out, and a body-shaped field (`body`, `snippet`, `patch`, `text`) is refused in place
+  and said in `unknowns`. An agent that wants a file reads the file; the model is a map, not the territory.
+* **a gate on the write half.** `mcp.allow_writes = true` turns `mark_reviewed` and `add_review_note` on and
+  starts an audit line per call — tool, argument digest, outcome. `mark_reviewed` additionally needs a token
+  from `fathom mcp approval-token`, and that token is bound to one change, so an agent cannot walk a queue
+  signing things off with a single credential it obtained once.
+
+Nothing in the shell recipe above becomes wrong: same documents, addressed differently — which is the
+practical meaning of "one versioned delta model" and the reason it was made a gate rather than a convention.
 
 ## 5 · Privacy, while we are here
 
-Asking an agent to read a local JSON file is not a network operation, and this build cannot make one anyway:
-the default binary links no network-capable crate, and the three `net-*` features are each gated on both a
-compile flag and a consent key ([features](../reference/features.md)). `fathom doctor --privacy` prints the
-matrix and then says it in one line, which is the line to paste into a privacy review:
+Asking an agent to read a local JSON file, or running a server over a pipe it does not own, is not a network
+operation, and this build cannot make one anyway: the default binary links no network-capable crate, and the
+three `net-*` features are each gated on both a compile flag and a consent key
+([features](../reference/features.md)). The MCP server is stdio for exactly that reason; asking it for the
+HTTP transport refuses until `privacy.mcp_http_transport` is set *and* the feature is compiled in.
+`fathom doctor --privacy` prints the matrix and then says it in one line, which is the line to paste into a
+privacy review:
 
 ```text
 outbound features compiled in: none — no HTTP client and no listener in this binary (ADR-002 R6)

@@ -314,7 +314,7 @@ CRATES: tuple[Crate, ...] = (
         purpose="The MCP server: tool surface, capability gating, approval tokens, contract versioning "
                 "(ADR-005 §4), and the shared review memory the agent writes back through it.",
         allows=("fathom-core", "fathom-analyze"),
-        default_deps=("rmcp", "serde", "serde_json", "thiserror", "tokio"),
+        default_deps=("rmcp", "serde", "serde_json", "thiserror", "tokio", "sha2"),
         features=(
             Feature("net-http-transport", "streamable-HTTP/SSE transport in addition to stdio: this "
                     "listens on a socket, so it is consent-gated like any egress and is off by default.",

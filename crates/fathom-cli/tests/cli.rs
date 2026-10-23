@@ -766,6 +766,8 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["ambient", "--help"],
         vec!["mcp", "--help"],
         vec!["mcp", "serve", "--help"],
+        vec!["mcp", "tools", "--help"],
+        vec!["mcp", "approval-token", "--help"],
     ] {
         let out = fathom(&args);
         assert_eq!(code(&out), 0, "fathom {:?}: {}", args, stderr(&out));

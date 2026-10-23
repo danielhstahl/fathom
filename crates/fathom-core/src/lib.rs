@@ -33,4 +33,7 @@ pub mod privacy;
 /// The progress row's percentage and converging time estimate, shared by the shell and `fathom index`
 /// (`e5.9`).
 pub mod progress;
+/// The redaction table — the secret shapes that may never leave the process, and the pass that removes them
+/// at both doors (`e6.4`, ADR-005 §6 rule 4, §4.3).
+pub mod redact;
 pub mod time;

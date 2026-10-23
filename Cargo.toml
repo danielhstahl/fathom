@@ -139,7 +139,12 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 # everything else (ADR-002 §7), and it stays out of the shipped binary because cargo keeps
 # dev-dependencies out of the normal build graph.
 petgraph = { version = "0.8", default-features = false }
-rmcp = { version = "3", default-features = false, features = ["transport-io"] }
+rmcp = { version = "3", default-features = false, features = ["transport-io", "server"] }
+# `transport-io` is stdio, which is what ships (§6.3: it opens no socket, so it is not a network feature).
+# `server` is the half that answers `tools/list` and `tools/call`; it costs `schemars`, `uuid` and `pastey`
+# and no new capability — no listener, no client, no HTTP. `macros` is deliberately not enabled: the tool
+# router is written out in `fathom-mcp/src/server.rs`, and a surface whose whole job is a closed set of
+# eight tools does not need a proc macro to spell them (ADR-002 §6 rule 1).
 # tokio is allowed without a `net-*` feature (the MCP SDK needs an executor) but only with a feature
 # list that cannot open a socket — `net` in particular is what lint N04 exists to keep out (ADR-002
 # §6.3). `io-std` is pulled transitively by `rmcp/transport-io` and is on the allow-list.

@@ -137,14 +137,24 @@ def test_nearest_name_suggestion_is_the_declared_key():
     assert S.nearest("deeps.ecosystems")[0] == "deps.ecosystems"
 
 
-def test_user_scoped_keys_are_exactly_consent_and_the_listener_token():
+def test_user_scoped_keys_are_exactly_consent_and_the_two_secrets():
+    """`e6.4` widened this set by exactly one key, and only because it is a secret.
+
+    The rule ADR-001 §7.5 draws is that a clone may not grant anything on the user's behalf: consent keys
+    and credentials are user-scoped, everything else may live in the repository's own `fathom.toml`.
+    `mcp.approval_token` joins `mcp.auth_token` here for the same reason the listener's token did — a write
+    approval a repository could write is a write approval already given away, and `fathom mcp serve` reads
+    it from the user's file only, whatever the repo file says.
+    """
     assert S.scope_of("privacy.llm") == "user"
     assert S.scope_of("privacy.advisories") == "user"
     assert S.scope_of("privacy.mcp_http_transport") == "user"
     assert S.scope_of("mcp.auth_token") == "user"
+    assert S.scope_of("mcp.approval_token") == "user"
+    assert S.scope_of("mcp.allow_writes") == "any"
     assert S.scope_of("risk.tau") == "any"
     assert sorted(k.path for k in S.KEY_LIST if k.scope == "user") == [
-        "mcp.auth_token", "privacy.advisories", "privacy.llm",
+        "mcp.approval_token", "mcp.auth_token", "privacy.advisories", "privacy.llm",
         "privacy.mcp_http_transport"]
 
 

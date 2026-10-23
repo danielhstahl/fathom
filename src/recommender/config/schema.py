@@ -323,8 +323,11 @@ SECTIONS: dict[str, dict] = {
              "doc": "Per-mode user overrides **only**. The canonical binding table is "
                     "ADR-006's; conflict detection and the cheatsheet are `e5.4`'s."},
     "mcp": {"title": "MCP server", "owner": "ADR-005 §4, ADR-002 §6.3",
-            "doc": "Transport and bind address. The token lives here and is user-scoped "
-                   "and redacted: a listener credential from a cloned repo is a gift."},
+            "doc": "Transport, bind address, the write gate (`allow_writes`) and the size one "
+                   "response may reach. The two secrets live here and are user-scoped and "
+                   "redacted — `mcp.auth_token` for a listener, `mcp.approval_token` for a write "
+                   "an agent may make — and a credential a cloned repo could write is a credential "
+                   "already given away."},
     "privacy": {"title": "Network consent", "owner": "ADR-001 §7.5, ADR-002 §6.3",
                 "doc": "The runtime half of the no-network-by-default claim. Every key "
                        "here is user-scoped: a clone may not consent on your behalf."},
@@ -1923,6 +1926,23 @@ KEY_LIST: list[Key] = [
     _k(path="mcp.auth_token", kind="string", default="", scope="user", secret=True,
        doc="Bearer token for the HTTP transport. User-scoped and redacted everywhere: "
            "a token a clone could write is a token that is already leaked.", ticket="e6.4"),
+    _k(path="mcp.allow_writes", kind="boolean", default=False,
+       doc="Turn on the two write tools (`mark_reviewed`, `add_review_note`). Off by default, and while "
+           "off they are absent from `tools/list` rather than present and refusing; while on, every call "
+           "appends an audit line naming the tool, a digest of its arguments and the outcome "
+           "(ADR-005 §4.2).", ticket="e6.4"),
+    _k(path="mcp.approval_token", kind="string", default="", scope="user", secret=True,
+       doc="The secret `mark_reviewed`'s approval token is derived from. User-scoped and redacted like "
+           "`mcp.auth_token`: a token a clone could write is a token already spent. The token itself is "
+           "bound to exactly one change, so it cannot walk a queue signing things off.", ticket="e6.4"),
+    _k(path="mcp.audit_reads", kind="boolean", default=False,
+       doc="Also write an audit line for the read tools. Off by default: a log of what an agent was "
+           "curious about is worth having, and it is the operator's call rather than a side effect.",
+       ticket="e6.4"),
+    _k(path="mcp.max_response_bytes", kind="integer", default=262144, minimum=4096, units="bytes",
+       doc="The ceiling on one MCP response. A page that will not fit is cut and handed back with "
+           "`next_cursor`, which makes truncation a fact the caller can act on instead of a mystery.",
+       ticket="e6.4"),
     # --- query interrupts (budget-linked) ----------------------------------
     _k(path="query.frame_store_budget_ms", kind="integer", default=8, fallback=8,
        budget="query.frame_store_budget.ms", units="ms", minimum=1,

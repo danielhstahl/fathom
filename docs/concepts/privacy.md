@@ -35,7 +35,7 @@ documentation generator and the tests all read.
 |---|---|---|---|
 | `net-advisories` | OSV advisory lookups for dependency risk | `privacy.advisories` | shipped, off by default |
 | `net-llm` | an outbound model call for narrative polish | `privacy.llm` | reserved and **unwired** — spike `s5` measured polish and refused it ([details](narrative-polish.md)) |
-| `net-http-transport` | an MCP transport that *listens* on a socket instead of speaking stdio | `privacy.mcp_http_transport` | marker feature; the listener arrives with `e6.4` |
+| `net-http-transport` | an MCP transport that *listens* on a socket instead of speaking stdio | `privacy.mcp_http_transport` | the stdio server ships without it; the gate is live and asking for `http` refuses, because no listener is compiled in (ADR-002 §10.3) |
 
 Two things fall out of making it a compile-time decision:
 

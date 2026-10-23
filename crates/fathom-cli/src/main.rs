@@ -69,6 +69,7 @@ mod memory;
 // The episode narrative (`e4.7`): the store read and the formatting choice for the prose that
 // `fathom_analyze::narrative` composes. It is a separate verb from `analyze` for the same reason `why` is:
 // a document and the thing you read it for are different jobs.
+mod mcp;
 mod narrative;
 mod output;
 // The diff pane's byte source (`reco-0kw`): the episode's patch, materialised from the store and

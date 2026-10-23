@@ -591,6 +591,38 @@ fn config_identity(root: &Path) -> Option<(String, &'static str)> {
     (!value.trim().is_empty()).then(|| (value.to_owned(), "fathom.toml [review] identity"))
 }
 
+/// The reviewer an MCP `mark_reviewed` names, as a ledger actor (`e6.4`).
+///
+/// `fathom review sign` derives the reviewer from git config, the CLI flag or `fathom.toml`, in that order,
+/// and refuses to invent one. An agent does not get to derive anything: it *names* the human it is acting
+/// for, and that name is recorded as named, with `agent` as the kind so the ledger can never be read as
+/// saying a person typed it. The `unknown` identity the ledger itself refuses is filtered here so the
+/// refusal is the ledger's own, in the ledger's own words, not a paraphrase.
+#[cfg(feature = "sqlite-bundled")]
+pub(crate) fn mcp_actor(named: &str) -> fathom_analyze::ledger::Actor {
+    let display = named.trim();
+    fathom_analyze::ledger::Actor {
+        display: if display.is_empty() || display.eq_ignore_ascii_case("unknown") {
+            "unknown".to_owned()
+        } else {
+            display.to_owned()
+        },
+        kind: fathom_analyze::ledger::ActorKind::Agent,
+    }
+}
+
+/// The episode a caller named, by id or by an unambiguous prefix, for the MCP door (`e6.4`).
+///
+/// The same lookup `fathom review sign` does, with the refusal left to the caller: an MCP tool answers with
+/// a value (ADR-005 §4.1), so it needs `Option` rather than the exit code this verb raises.
+#[cfg(feature = "sqlite-bundled")]
+pub(crate) fn find_episode_for(
+    facts: &[fathom_analyze::ledger::EpisodeFacts],
+    wanted: &str,
+) -> Option<fathom_analyze::ledger::EpisodeFacts> {
+    find_episode(facts, wanted).ok()
+}
+
 /// The episode a caller named, by id or by an unambiguous prefix.
 fn find_episode(facts: &[EpisodeFacts], wanted: &str) -> Result<EpisodeFacts, Pending> {
     if let Some(found) = facts.iter().find(|episode| episode.id == wanted) {

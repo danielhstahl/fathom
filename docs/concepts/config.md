@@ -153,7 +153,7 @@ or write outside `.fathom/`.* Four rules, all executable:
 
 | Rule | Refusal | Why it is a rule and not a convention |
 |---|---|---|
-| `scope = "user"` keys are ignored in a repo file: `privacy.advisories`, `privacy.llm`, `privacy.mcp_http_transport`, `mcp.auth_token` | warning `scope`, value recorded in the trace as `suppressed`, the effective value stays the default | network consent that a repository can grant is not consent (ADR-001 §7.5); a listener token in a cloned file is a token that was already leaked |
+| `scope = "user"` keys are ignored in a repo file: `privacy.advisories`, `privacy.llm`, `privacy.mcp_http_transport`, `mcp.auth_token`, `mcp.approval_token` | warning `scope`, value recorded in the trace as `suppressed`, the effective value stays the default | network consent that a repository can grant is not consent (ADR-001 §7.5); a listener token in a cloned file is a token that was already leaked |
 | `paths.*` from a repo file must resolve inside the repository | exit 5, naming the offending `file:line` | the store is the one thing Fathom writes; a `..`-shaped value is the write primitive an attacker wants |
 | a file declaring a newer `meta.config_version` is refused | exit 5 with "upgrade fathom" | silently ignoring keys from a newer version and then caching analysis under the wrong digest is unrecoverable; ADR-005 §6.6's "never default to the newest version" applied to config |
 | nothing in a config file is executed, imported, shell-parsed, or expanded | no rule needed: there is no interpolation syntax at all | every interpolation feature added is a new channel from "reviewed text file" to "code execution". Environment references are `FATHOM_*` variables, which exist because they are read by the *layer*, not by the parser |
@@ -382,7 +382,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `retention` | ADR-004 §8.2, ADR-005 §6.3 | Windows on the live epoch. ADR-004 §8.2 states these numbers as `fathom.toml`'s `[retention]` defaults; they are restated here from that table and a test refuses drift. |
 | `harness` | ADR-005 §6.3 | The per-session ingest budget that quarantines a runaway hook stream. |
 | `keys` | ADR-006 / e5.4 | Per-mode user overrides **only**. The canonical binding table is ADR-006's; conflict detection and the cheatsheet are `e5.4`'s. |
-| `mcp` | ADR-005 §4, ADR-002 §6.3 | Transport and bind address. The token lives here and is user-scoped and redacted: a listener credential from a cloned repo is a gift. |
+| `mcp` | ADR-005 §4, ADR-002 §6.3 | Transport, bind address, the write gate (`allow_writes`) and the size one response may reach. The two secrets live here and are user-scoped and redacted — `mcp.auth_token` for a listener, `mcp.approval_token` for a write an agent may make — and a credential a cloned repo could write is a credential already given away. |
 | `privacy` | ADR-001 §7.5, ADR-002 §6.3 | The runtime half of the no-network-by-default claim. Every key here is user-scoped: a clone may not consent on your behalf. |
 | `query` | ADR-004 §7.6, §11 | The interrupt budget for one store call on the keystroke path. Exceeding it is a stated partial, not a hang. |
 | `watch` | e1.9 (`reco-949`) | What share of one core `fathom watch` may spend while work is flowing. Past it the poll stretches toward its ceiling and says so, because a watcher that overruns the machine it is watching is the failure this ticket exists to avoid. |
@@ -671,6 +671,10 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `mcp.transport` | `string` | `stdio` | `replace` | `any` | — | — | `e6.4` |
 | `mcp.bind` | `string` | `127.0.0.1` | `replace` | `any` | — | — | `e6.4` |
 | `mcp.auth_token` | `string` | `` | `replace` | `user` | — | — | `e6.4` |
+| `mcp.allow_writes` | `boolean` | `False` | `replace` | `any` | — | — | `e6.4` |
+| `mcp.approval_token` | `string` | `` | `replace` | `user` | — | — | `e6.4` |
+| `mcp.audit_reads` | `boolean` | `False` | `replace` | `any` | — | — | `e6.4` |
+| `mcp.max_response_bytes` | `integer` | `262144` | `replace` | `any` | bytes | — | `e6.4` |
 | `query.frame_store_budget_ms` | `integer` | `8` | `replace` | `any` | ms | — | `e5.1` |
 | `ratchet.baseline` | `path` | `.fathom/ratchet.toml` | `replace` | `any` | — | graph.cycles | `e3.10` |
 | `ratchet.mode` | `string` | `warn` | `replace` | `any` | — | graph.cycles | `e3.10` |

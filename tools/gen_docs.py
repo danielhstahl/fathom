@@ -332,7 +332,7 @@ FEATURE_DOCS = {
     "tui": (["docs/reference/cheatsheet.md", "docs/adr/0006-tui.md"],
             "the terminal UI: every view, the keymap, the layout ladder."),
     "mcp": (["docs/reference/cli.md", "docs/adr/0005-harness-contract.md"],
-            "`fathom mcp serve`, the read-only tools an agent may ask."),
+            "`fathom mcp serve`, the tools an agent may ask; the two write tools are off until `mcp.allow_writes` turns them on and starts their audit trail (ADR-005 §4.2)."),
     "watch": (["docs/recipes/run-beside-the-agent.md"],
               "`fathom watch` and `fathom index --watch`: index as commits land."),
     "sqlite-bundled": (["docs/adr/0004-storage.md"],

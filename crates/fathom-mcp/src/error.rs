@@ -20,6 +20,13 @@ pub enum Error {
         key: &'static str,
     },
 
+    /// The transport itself failed: the pipe closed, the codec disagreed, the session ended.
+    #[error("the MCP session ended: {reason}")]
+    Serve {
+        /// What the transport said, verbatim.
+        reason: String,
+    },
+
     /// A published contract this build does not implement yet.
     #[error("{what} is not implemented yet (owned by {ticket})")]
     NotImplemented {
@@ -35,6 +42,7 @@ impl Diagnosable for Error {
         match self {
             Error::NetworkConsentRequired { .. } => ErrorCode::NetworkConsentRequired,
             Error::NotImplemented { .. } => ErrorCode::NotImplemented,
+            Error::Serve { .. } => ErrorCode::Unknown,
         }
     }
 
@@ -44,6 +52,9 @@ impl Diagnosable for Error {
                 Some("`fathom doctor --privacy` lists every consent key and its state")
             }
             Error::NotImplemented { ticket, .. } => Some(*ticket),
+            Error::Serve { .. } => Some(
+                "stdio is the shipped transport: a client that hangs up ends the session, which is normal",
+            ),
         }
     }
 }

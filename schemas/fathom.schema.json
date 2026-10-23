@@ -1844,8 +1844,33 @@
     },
     "mcp": {
       "additionalProperties": false,
-      "description": "Transport and bind address. The token lives here and is user-scoped and redacted: a listener credential from a cloned repo is a gift.",
+      "description": "Transport, bind address, the write gate (`allow_writes`) and the size one response may reach. The two secrets live here and are user-scoped and redacted \u2014 `mcp.auth_token` for a listener, `mcp.approval_token` for a write an agent may make \u2014 and a credential a cloned repo could write is a credential already given away.",
       "properties": {
+        "allow_writes": {
+          "default": false,
+          "description": "Turn on the two write tools (`mark_reviewed`, `add_review_note`). Off by default, and while off they are absent from `tools/list` rather than present and refusing; while on, every call appends an audit line naming the tool, a digest of its arguments and the outcome (ADR-005 \u00a74.2).",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.4"
+        },
+        "approval_token": {
+          "default": "",
+          "description": "The secret `mark_reviewed`'s approval token is derived from. User-scoped and redacted like `mcp.auth_token`: a token a clone could write is a token already spent. The token itself is bound to exactly one change, so it cannot walk a queue signing things off.",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "user",
+          "x-fathom-secret": true,
+          "x-fathom-ticket": "e6.4"
+        },
+        "audit_reads": {
+          "default": false,
+          "description": "Also write an audit line for the read tools. Off by default: a log of what an agent was curious about is worth having, and it is the operator's call rather than a side effect.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.4"
+        },
         "auth_token": {
           "default": "",
           "description": "Bearer token for the HTTP transport. User-scoped and redacted everywhere: a token a clone could write is a token that is already leaked.",
@@ -1863,6 +1888,16 @@
           "x-fathom-merge": "replace",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e6.4"
+        },
+        "max_response_bytes": {
+          "default": 262144,
+          "description": "The ceiling on one MCP response. A page that will not fit is cut and handed back with `next_cursor`, which makes truncation a fact the caller can act on instead of a mystery.",
+          "minimum": 4096,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.4",
+          "x-fathom-units": "bytes"
         },
         "transport": {
           "default": "stdio",

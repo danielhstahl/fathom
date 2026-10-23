@@ -188,6 +188,36 @@ fn run_spec(root: &Path, asked: &str, args: &CmpArgs) -> eyre::Result<ExitCode> 
     Ok(opened.snapshot.worst_code())
 }
 
+/// One comparison for the MCP server (`e6.4`), by the two endpoints an agent named.
+///
+/// The same walk `fathom cmp` does — resolve, span, compose — with the printing left out and the errors
+/// returned as one sentence instead of as a process exit, because an MCP tool result is a value
+/// (ADR-005 §4.1: "nothing throws at the caller"). One `Source` method uses this for `changes_between`;
+/// there is no second range walk anywhere, which is the point of putting it here rather than writing it
+/// again next door.
+///
+/// # Errors
+///
+/// One sentence per failure: what did not resolve, and the verb that would fix it.
+#[cfg(feature = "sqlite-bundled")]
+pub(crate) fn mcp_compare(
+    root: &Path,
+    from: &str,
+    to: &str,
+) -> Result<fathom_analyze::compare::Comparison, String> {
+    let opened = open(root, &store_path(root)).map_err(|err| err.to_string())?;
+    let store = &opened.store;
+    let repo = fathom_ingest::repo::Repository::discover(root).map_err(|err| err.to_string())?;
+    let from = resolve(store, &repo, from).map_err(|err| err.to_string())?;
+    let to = resolve(store, &repo, to).map_err(|err| err.to_string())?;
+    let span = between(store, &from, &to).map_err(|err| err.to_string())?;
+    let policy = fathom_analyze::detectors::policy_from_toml(
+        &std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default(),
+    )
+    .policy;
+    compose(store, &repo, from.endpoint, to.endpoint, &span, &policy).map_err(|err| err.to_string())
+}
+
 /// `fathom cmp --list`: the saved comparisons this repository has, in the order the palette prints them.
 #[cfg(feature = "sqlite-bundled")]
 fn list(root: &Path, store_path: &Path, as_json: bool) -> eyre::Result<ExitCode> {

@@ -979,8 +979,25 @@ pub struct McpArgs {
 /// `fathom mcp` actions.
 #[derive(Subcommand, Debug)]
 pub enum McpAction {
-    /// Serve the tool surface over stdio, which opens no socket.
+    /// Serve the tool surface over stdio, which opens no socket (`e6.4`).
     Serve,
+    /// Print the tool surface and its bounds as this repository's config resolves them.
+    Tools {
+        /// The repository whose `[mcp]` config and index to read.
+        #[arg(long, default_value = ".")]
+        root: String,
+        /// The surface as one JSON document on stdout (`fathom.mcp.surface/1`).
+        #[arg(long)]
+        json: bool,
+    },
+    /// Mint the token that authorises `mark_reviewed` for exactly one change.
+    ApprovalToken {
+        /// The change to bind the token to: an episode id or a commit.
+        change_id: String,
+        /// The repository whose `[mcp]` config holds the approval secret.
+        #[arg(long, default_value = ".")]
+        root: String,
+    },
 }
 
 /// `fathom tui`
@@ -2051,16 +2068,13 @@ fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
     if !cfg!(feature = "mcp") {
         return Err(feature_absent("fathom mcp serve", "mcp"));
     }
-    match args.action {
-        McpAction::Serve => Err(pending(
-            ExitCode::Error,
-            "the MCP server is compiled in but not implemented yet",
-            Some(
-                "owned by e6.4 (reco-p3i); stdio is the transport that will not need consent"
-                    .to_owned(),
-            ),
-        )),
-    }
+    let root = match &args.action {
+        McpAction::Serve => std::path::Path::new("."),
+        McpAction::Tools { root, .. } | McpAction::ApprovalToken { root, .. } => {
+            std::path::Path::new(root)
+        }
+    };
+    crate::mcp::run(args, root)
 }
 
 /// What this build's SQLite story is, in the one sentence `fathom doctor` prints.
