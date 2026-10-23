@@ -99,9 +99,16 @@ mod scope_creep;
 mod secret_string;
 mod shotgun_edit;
 mod test_weakening;
-mod text;
 mod todo_debt;
 mod untested;
+
+/// The line folding the text detectors share (`e4.3`): `normalise`, `substantive`, the comment dialects.
+///
+/// `pub(crate)` rather than private because `e3.8`'s duplication sweep ([`crate::hotspots::deadcode`])
+/// folds added lines by exactly these rules — the same four refusals, the same blank-line drop — and a
+/// second copy of the fold is a pair of detectors that can disagree about what a duplicate is.
+#[doc(hidden)]
+pub(crate) mod text;
 
 /// The view names a finding's jump may name, public because a surface matches on them.
 pub use finding::view;

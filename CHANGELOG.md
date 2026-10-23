@@ -17,6 +17,50 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Hotspots: which module attention pays off in, and what looks dead (`reco-wky`)
+
+`e3.2` answers *what does this depend on*, `e3.3` answers *what did this turn move*, and neither answers
+the question the reviewer has: *if I send an agent at one module this week, which one pays?* **Hotspots**
+(`crates/fathom-analyze/src/hotspots/`) ranks that, out of six metrics a person can name — fan-in, fan-out,
+instability, size, complexity (from `e3.1`'s spans, and still labelled a proxy) and churn velocity over a
+configurable window — plus the three dead-code sweeps: symbols added inside the window that nobody
+references, code behind a flag this build does not resolve as on, and duplicated blocks that grew in the
+same episode.
+
+* **Explainable is arithmetic, not an adjective.** Each metric goes through one saturating curve
+  (`raw / (raw + knee)`, knee published as `hotspots.knee.<metric>`), the score is a weighted sum in integer
+  hundredths divided by the weight sum over the metrics *actually measured*, and the printed parts add to
+  the printed total. Every row prints its denominator, its weight origins and a reason string in the raw
+  unit (`14 module(s) depend on it`), so a score of 57 is checkable against the file it came from. It is
+  the same arithmetic `e4.4`'s risk score uses, because two scores that both claim to be explainable may
+  not be explainable in two ways.
+* **`—` is not `0`.** A module with no structural record has no size and no complexity: the metric becomes
+  *unmeasured*, its weight moves into the denominator and it prints a sentence. A cold index prints
+  `churn — · no churn window: this revision has no earlier revision to be compared against` rather than a
+  zero that would rank an unread generated file as tiny and stable. Wildcard dependencies and synthetic
+  scopes are caveated as lower bounds instead of being counted as complete caller lists, and an empty graph
+  ranks nothing and says why.
+* **Shape calls, because a score does not tell you what to do.** `god` (fan-in, size, complexity and churn
+  all over the bar), `hub`, `sink`, `giant` (big and complex, nobody depends on it, quiet) and the classic
+  churn × complexity quadrant, so `hot_complex` reads as "a refactor pays off here" and `cold_complex`
+  reads as inventory.
+* **Dead-code candidates carry their doubt.** Each row states its age against the bar (`unreferenced for 4
+  episode(s), past the `dead_code_after` bar of 3`) and its verdict — `firm`, `uncertain` when a named
+  mechanism could explain it away, `unverified` when the window is simply shorter than the bar — and every
+  report prints the permanent list of what no static read can see: reflection, derives and `serde`, dynamic
+  dispatch, callers in another repository, tests and benches. Nothing in it is a delete instruction.
+* **Ten knobs, all refused loudly when wrong.** `[hotspots]` in `fathom.toml` — `window`, `min_history`,
+  `top`, `dead_code_after`, `duplicate_block_lines`, `god_bar`, `flags`, `ignore`, and the two open maps
+  `weights.<metric>` / `knee.<metric>`. A weight that is not a number, a weight name that is not one of the
+  six, a knee on `instability` (a ratio has no curve to bend) and a window below `min_history` are all
+  notices naming the value that was used instead. `hotspots.ignore` exclusions are counted and named, so a
+  candidate list says how much of the repository it declined to read.
+* **The lane reads no store, no filesystem, no clock** (ADR-002 §4.5): the seam is
+  `hotspots::facts_of(graph, naming, files, churn)`, so `crates/fathom-analyze/tests/hotspots.rs` seeds a
+  god module and asserts the entire ranking — and all three dead-code sweeps — in a build with no SQLite
+  and no grammar linked (31 cases, passing `--no-default-features`). Written up in
+  [docs/concepts/hotspots.md](docs/concepts/hotspots.md).
+
 ### The architecture map, with what this turn did to the shape of the system drawn on it (`reco-w3w`)
 
 `fathom` could already answer "what does this depend on?" (`e3.2`) and "what did this turn change?"

@@ -262,6 +262,12 @@ SECTIONS: dict[str, dict] = {
                    "is noise - the ignore and private sets are how the owner says which ones count. "
                    "Reading the source is `[extract]`'s business; this table is the claim about the "
                    "repository."},
+    "hotspots": {"title": "Hotspots and dead-code candidates", "owner": "e3.8 (`reco-wky`)",
+                 "doc": "What the hotspot score is made of: the six metric weights, the knee each "
+                        "saturating curve bends at, the churn window, and how long a new symbol may "
+                        "go unreferenced before it is a candidate. A hotspot is \"expensive to change "
+                        "and widely felt\", not \"bad\", and every knob here moves an explainable "
+                        "number rather than switching a report on or off."},
     "deps": {"title": "Dependencies", "owner": "e2.5 (`reco-j83`) / e2.7 (`reco-yxi`)",
              "doc": "Which ecosystems' manifests and lockfiles are parsed, and what the "
                     "dependency-risk answer does with them: the advisory cache and its "
@@ -1194,6 +1200,63 @@ KEY_LIST: list[Key] = [
            "truncated rather than growing without limit: a bound the report states, not a switch that "
            "turns a feature off. `e3.7`.",
        ticket="e3.7"),
+    # --- hotspots (where architectural attention pays off) -------------------
+    _k(path="hotspots.window", kind="integer", default=30, minimum=1, units="revisions",
+       doc="How many revisions churn velocity is measured over. Thirty episodes is about a working "
+           "month of an agent-driven repository: long enough that a one-commit spike does not top the "
+           "table, short enough that a refactor that stopped three weeks ago stops being blamed. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.min_history", kind="integer", default=2, minimum=1, units="revisions",
+       doc="How much history the store must hold before a churn column is printed at all. Below it "
+           "velocity is *unmeasured* and says so, which is the difference between 'this module is not "
+           "being reworked' and 'this repository is too young to say' - the second is not a zero. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.top", kind="integer", default=20, minimum=1, units="rows",
+       doc="How many ranked modules a surface lists. The modules it drops are counted and printed, so "
+           "'top 20' is a display choice and not a filter nobody chose. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.dead_code_after", kind="integer", default=3, minimum=1, units="episodes",
+       doc="How many episodes a newly added symbol may go unreferenced before it is a dead-code "
+           "candidate. A symbol added last episode has had exactly no chance; below this bar the row is "
+           "listed as `unverified` rather than claimed as dead. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.duplicate_block_lines", kind="integer", default=12, minimum=2, units="lines",
+       doc="How many folded, non-blank lines a repeated block must be to count. Below it `} else {` is "
+           "a duplicate; `e4.3`'s copy-paste detector uses the same bar for the same reason. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.god_bar", kind="number", default=0.5, minimum=0.05, maximum=1.0,
+       doc="The saturated value a metric must reach to count as high for a shape call (god module, hub, "
+           "sink, giant) and for the churn x complexity quadrant. 0.5 is the knee itself, so every bar "
+           "in the report is one sentence: at least the published knee. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.flags", kind="string_list", merge="extend", default=[],
+       doc="Feature flags this repository declares are ON. It is the only input the gated dead-code "
+           "class has, and it is a claim the owner wrote down rather than a resolved build "
+           "configuration: a feature turned on at the command line is invisible to it, and a candidate "
+           "behind a flag stays `uncertain` either way. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.ignore", kind="glob_list", merge="extend", default=[], item_pattern=GLOB_ITEM,
+       doc="Paths excluded from the dead-code sweep - generated code, vendored trees, the fixture "
+           "corpus. A stated exclusion: the count and the patterns travel with the report, so a "
+           "candidate list always says how much of the repository it declined to look at. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.weights.<weight>", kind="number", merge="deep",
+       default={"fan_in": 0.25, "fan_out": 0.10, "instability": 0.10, "size": 0.15,
+                "complexity": 0.20, "churn": 0.20},
+       minimum=0.0, maximum=1.0,
+       doc="Per-metric weights of the hotspot score. `deep`: weighting one metric in a repo file does "
+           "not drop the rest. Values are clamped and never renormalised behind you - the score divides "
+           "by the weight sum over the metrics actually measured, and prints that denominator. An "
+           "unknown weight name is a notice naming the six, not a silent no-op. `e3.8`.",
+       ticket="e3.8"),
+    _k(path="hotspots.knee.<weight>", kind="number", merge="deep",
+       default={"fan_in": 12.0, "fan_out": 12.0, "size": 600.0, "complexity": 120.0, "churn": 2.0},
+       minimum=0.01,
+       doc="Where each metric's saturating curve bends: `value = raw / (raw + knee)`, so the raw number "
+           "equal to the knee is worth exactly 0.5. A published number, printed beside every "
+           "contribution; `instability` has no knee because it is already a ratio, and setting one there "
+           "is refused. `e3.8`.",
+       ticket="e3.8"),
     # --- deps ---------------------------------------------------------------
     _k(path="deps.ecosystems", kind="string_list", merge="extend",
        default=["python", "node", "rust"],

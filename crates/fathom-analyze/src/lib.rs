@@ -95,6 +95,14 @@ pub mod cycles;
 /// [`cycles`]; writes nothing.
 pub mod layering;
 
+/// The hotspots (`e3.8`, `reco-wky`): which modules architectural attention pays off in, ranked by six
+/// explainable metrics — fan-in, fan-out, instability, size, the `e3.1` complexity proxy and `e3.3`'s
+/// churn velocity over a configurable window — with every metric's contribution printed, the churn ×
+/// complexity quadrant and the god-module shape named, and a separate list of dead-code candidates that
+/// states how long each has gone unreferenced and admits every way it could be wrong. Reads [`graph`] and
+/// [`structure`]; writes nothing.
+pub mod hotspots;
+
 /// The episode step of an index run: commits in, reviewable episodes out (`e1.3`).
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod episodes;

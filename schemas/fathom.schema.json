@@ -1643,6 +1643,137 @@
       "x-fathom-owner": "ADR-005 \u00a76.3",
       "x-fathom-section-title": "Harness ingest"
     },
+    "hotspots": {
+      "additionalProperties": false,
+      "description": "What the hotspot score is made of: the six metric weights, the knee each saturating curve bends at, the churn window, and how long a new symbol may go unreferenced before it is a candidate. A hotspot is \"expensive to change and widely felt\", not \"bad\", and every knob here moves an explainable number rather than switching a report on or off.",
+      "properties": {
+        "dead_code_after": {
+          "default": 3,
+          "description": "How many episodes a newly added symbol may go unreferenced before it is a dead-code candidate. A symbol added last episode has had exactly no chance; below this bar the row is listed as `unverified` rather than claimed as dead. `e3.8`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8",
+          "x-fathom-units": "episodes"
+        },
+        "duplicate_block_lines": {
+          "default": 12,
+          "description": "How many folded, non-blank lines a repeated block must be to count. Below it `} else {` is a duplicate; `e4.3`'s copy-paste detector uses the same bar for the same reason. `e3.8`.",
+          "minimum": 2,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8",
+          "x-fathom-units": "lines"
+        },
+        "flags": {
+          "default": [],
+          "description": "Feature flags this repository declares are ON. It is the only input the gated dead-code class has, and it is a claim the owner wrote down rather than a resolved build configuration: a feature turned on at the command line is invisible to it, and a candidate behind a flag stays `uncertain` either way. `e3.8`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8"
+        },
+        "god_bar": {
+          "default": 0.5,
+          "description": "The saturated value a metric must reach to count as high for a shape call (god module, hub, sink, giant) and for the churn x complexity quadrant. 0.5 is the knee itself, so every bar in the report is one sentence: at least the published knee. `e3.8`.",
+          "maximum": 1.0,
+          "minimum": 0.05,
+          "type": "number",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8"
+        },
+        "ignore": {
+          "default": [],
+          "description": "Paths excluded from the dead-code sweep - generated code, vendored trees, the fixture corpus. A stated exclusion: the count and the patterns travel with the report, so a candidate list always says how much of the repository it declined to look at. `e3.8`.",
+          "items": {
+            "pattern": "^!?[^\\x00]+$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8"
+        },
+        "knee": {
+          "additionalProperties": false,
+          "description": "Where each metric's saturating curve bends: `value = raw / (raw + knee)`, so the raw number equal to the knee is worth exactly 0.5. A published number, printed beside every contribution; `instability` has no knee because it is already a ratio, and setting one there is refused. `e3.8`.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_]*$": {
+              "description": "Where each metric's saturating curve bends: `value = raw / (raw + knee)`, so the raw number equal to the knee is worth exactly 0.5. A published number, printed beside every contribution; `instability` has no knee because it is already a ratio, and setting one there is refused. `e3.8`.",
+              "minimum": 0.01,
+              "type": "number",
+              "x-fathom-merge": "deep",
+              "x-fathom-open": [
+                "a risk-weight name (`size`, `test_ratio`, `blast`, \u2026)"
+              ],
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e3.8"
+            }
+          },
+          "type": "object"
+        },
+        "min_history": {
+          "default": 2,
+          "description": "How much history the store must hold before a churn column is printed at all. Below it velocity is *unmeasured* and says so, which is the difference between 'this module is not being reworked' and 'this repository is too young to say' - the second is not a zero. `e3.8`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8",
+          "x-fathom-units": "revisions"
+        },
+        "top": {
+          "default": 20,
+          "description": "How many ranked modules a surface lists. The modules it drops are counted and printed, so 'top 20' is a display choice and not a filter nobody chose. `e3.8`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8",
+          "x-fathom-units": "rows"
+        },
+        "weights": {
+          "additionalProperties": false,
+          "description": "Per-metric weights of the hotspot score. `deep`: weighting one metric in a repo file does not drop the rest. Values are clamped and never renormalised behind you - the score divides by the weight sum over the metrics actually measured, and prints that denominator. An unknown weight name is a notice naming the six, not a silent no-op. `e3.8`.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_]*$": {
+              "description": "Per-metric weights of the hotspot score. `deep`: weighting one metric in a repo file does not drop the rest. Values are clamped and never renormalised behind you - the score divides by the weight sum over the metrics actually measured, and prints that denominator. An unknown weight name is a notice naming the six, not a silent no-op. `e3.8`.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number",
+              "x-fathom-merge": "deep",
+              "x-fathom-open": [
+                "a risk-weight name (`size`, `test_ratio`, `blast`, \u2026)"
+              ],
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e3.8"
+            }
+          },
+          "type": "object"
+        },
+        "window": {
+          "default": 30,
+          "description": "How many revisions churn velocity is measured over. Thirty episodes is about a working month of an agent-driven repository: long enough that a one-commit spike does not top the table, short enough that a refactor that stopped three weeks ago stops being blamed. `e3.8`.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.8",
+          "x-fathom-units": "revisions"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e3.8 (`reco-wky`)",
+      "x-fathom-section-title": "Hotspots and dead-code candidates"
+    },
     "ingest": {
       "additionalProperties": false,
       "description": "The size cap: a bigger blob is recorded as oversized, never slurped.",
@@ -4365,6 +4496,10 @@
       "harness": {
         "owner": "ADR-005 \u00a76.3",
         "title": "Harness ingest"
+      },
+      "hotspots": {
+        "owner": "e3.8 (`reco-wky`)",
+        "title": "Hotspots and dead-code candidates"
       },
       "ingest": {
         "owner": "e1.2",

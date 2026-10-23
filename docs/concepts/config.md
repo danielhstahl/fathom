@@ -363,6 +363,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
 | `layering` | ADR-004 §5.1 / e3.6 (`reco-cfp`) | What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op. |
 | `api` | e3.7 (`reco-p5u`) | Which paths' exports the rest of the world compiles against, and how loudly a change to them speaks. A workspace of nine crates usually has two whose `pub` items are somebody else's contract, and a breaking change reported in the third is noise - the ignore and private sets are how the owner says which ones count. Reading the source is `[extract]`'s business; this table is the claim about the repository. |
+| `hotspots` | e3.8 (`reco-wky`) | What the hotspot score is made of: the six metric weights, the knee each saturating curve bends at, the churn window, and how long a new symbol may go unreferenced before it is a candidate. A hotspot is "expensive to change and widely felt", not "bad", and every knob here moves an explainable number rather than switching a report on or off. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
@@ -538,6 +539,16 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `api.package` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.private` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.max_items_per_package` | `integer` | `20000` | `replace` | `any` | items | — | `e3.7` |
+| `hotspots.window` | `integer` | `30` | `replace` | `any` | revisions | — | `e3.8` |
+| `hotspots.min_history` | `integer` | `2` | `replace` | `any` | revisions | — | `e3.8` |
+| `hotspots.top` | `integer` | `20` | `replace` | `any` | rows | — | `e3.8` |
+| `hotspots.dead_code_after` | `integer` | `3` | `replace` | `any` | episodes | — | `e3.8` |
+| `hotspots.duplicate_block_lines` | `integer` | `12` | `replace` | `any` | lines | — | `e3.8` |
+| `hotspots.god_bar` | `number` | `0.5` | `replace` | `any` | — | — | `e3.8` |
+| `hotspots.flags` | `string_list` | `—` | `extend` | `any` | — | — | `e3.8` |
+| `hotspots.ignore` | `glob_list` | `—` | `extend` | `any` | — | — | `e3.8` |
+| `hotspots.weights.<weight>` | `number` | `churn=0.2, complexity=0.2, fan_in=0.25, fan_out=0.1, instability=0.1, size=0.15` | `deep` | `any` | — | — | `e3.8` |
+| `hotspots.knee.<weight>` | `number` | `churn=2.0, complexity=120.0, fan_in=12.0, fan_out=12.0, size=600.0` | `deep` | `any` | — | — | `e3.8` |
 | `deps.ecosystems` | `string_list` | `python, node, rust` | `extend` | `any` | — | deps.resolve | `e2.5` |
 | `deps.advisories.enabled` | `boolean` | `True` | `replace` | `any` | — | deps.advisories | `e2.7` |
 | `deps.advisories.mode` | `string` | `cache` | `replace` | `any` | — | deps.advisories | `e2.7` |

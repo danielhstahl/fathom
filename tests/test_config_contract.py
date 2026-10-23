@@ -1058,6 +1058,8 @@ REPO_SETTABLE_GLOB_KEYS = [
     "non_code.migration.globs",
     "non_code.migration.model_globs",
     "non_code.iac.globs",
+    # `e3.8`'s dead-code sweep refuses to read what this excludes, and prints how much it refused.
+    "hotspots.ignore",
 ]
 
 
