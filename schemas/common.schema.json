@@ -84,10 +84,43 @@
         "blobs_inline": {
           "type": "integer"
         },
+        "blobs_left_unreachable": {
+          "description": "Blobs no cache row, `blob_ref` or `graph_chunk` names any more — the count §8.7's retention pass starts from. Eviction leaves them; it does not delete them (`reco-93w`).",
+          "minimum": 0,
+          "type": "integer"
+        },
         "blobs_on_disk": {
           "type": "integer"
         },
+        "cache_payload_bytes": {
+          "description": "Payload bytes the `cache` table holds now — the number `cache.budget.mib` is the answer to (`reco-93w`).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_rows": {
+          "description": "Rows in the `cache` table now, across every epoch.",
+          "minimum": 0,
+          "type": "integer"
+        },
         "computed": {
+          "type": "integer"
+        },
+        "evicted_by_analyzer": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Durable cache rows evicted, counted by the analyzer that wrote them — the \"what got evicted\" half of ADR-004 §8.6's observability claim (`reco-93w`).",
+          "type": "object"
+        },
+        "evicted_bytes": {
+          "description": "Payload bytes freed by cache-budget eviction over the store's life (`reco-93w`).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "evicted_rows": {
+          "description": "Durable cache rows evicted to stay inside `cache.budget.mib`, over the store's life.",
+          "minimum": 0,
           "type": "integer"
         },
         "hit_rate": {
@@ -102,6 +135,21 @@
           "type": "integer"
         },
         "lookups": {
+          "type": "integer"
+        },
+        "payload_evicted_bytes": {
+          "description": "Bytes the in-process payload cache gave up to its ceiling (`rss.analyzer_working_set.mib`). In-process counters are flushed into the store when a run closes, so this survives the process that made it (`reco-93w`).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "payload_evictions": {
+          "description": "Entries the in-process payload cache evicted to stay under its ceiling.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "payload_refusals": {
+          "description": "Entries too large to fit under the payload ceiling at all, so they were never held. Non-zero means the ceiling is below the unit of work, which no eviction policy can fix.",
+          "minimum": 0,
           "type": "integer"
         },
         "registered_analyzers": {

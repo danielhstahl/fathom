@@ -122,6 +122,12 @@ patterns = [".github/workflows/**", "benchmarks/budgets.json", "schemas/**", ".p
 
 [graph]
 ignored_dirs = ["node_modules", "__pycache__"]
+# The ceiling on revision graphs one graph lane keeps materialised (`reco-93w`). Eviction is
+# lossless — a snapshot is a fold of the `graph_delta` rows the store already has — so what this
+# buys is not re-walking the anchor chain: ~0.4 ms for a delta apply against ~205 ms for a
+# rebuild (spike `s3`). Sized for a session's worth of timeline navigation, not for the
+# repository: raise it when paging back through yesterday's episodes starts feeling slow.
+snapshot_cache_mib = 32
 
 [layers]
 # The intended architecture, exactly as ADR-002 §3 declares it: every arrow points downhill.
@@ -213,6 +219,22 @@ time_gap_minutes = 30
                                       # something that reads as a repository-relative glob. Nothing in
                                       # this build enforces the scope: it is recorded for `e4.3`'s
                                       # scope-creep detector, which measures the change against it.
+
+# The write pipeline's back-pressure (`reco-93w`). This many normalized batches may sit between
+# the spine and the writer before the spine WAITS instead of allocating: peak spine memory is
+# roughly `queue_batches × commits_per_batch` records. 1 serializes the two stages and costs a
+# cold index the overlap between normalizing batch n+1 and committing batch n; past a handful the
+# queue is a cache with none of a cache's accounting, so the schema stops at 64.
+[write]
+queue_batches = 2
+
+[cache]
+# `cache.budget.mib` is the durable ceiling on class-R cache payloads (ADR-004 §8.6) and comes from the
+# size class, so it is not set here — but §8.6's protection set is, because the default (a day)
+# is a judgement about a person working in a repository rather than a job working through one:
+# nothing used inside this window is evicted, however cold the rest of the table is. Set to 0 for
+# a CI job that wants the budget honoured to the byte in one pass, whatever it then re-computes.
+protect_recent_minutes = 1440
 
 [retention]
 # ADR-004 §8.2's windows, restated here only to widen the store-growth history: the CI budget

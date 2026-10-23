@@ -128,12 +128,19 @@ pub struct MaterialiseReport {
     pub undecoded: usize,
     /// Ops applied from the deltas.
     pub ops_applied: usize,
+    /// The revision was already materialised in this lane's bounded cache, so no chain walk happened
+    /// (`reco-93w`). Reported rather than hidden: `graph.materialise_revision.ms` is a budget about the
+    /// walk, and a run that served half its revisions from a cache did not pay it.
+    pub from_cache: bool,
 }
 
 impl MaterialiseReport {
     /// The sentence for a pane's graph line.
     #[must_use]
     pub fn sentence(&self) -> String {
+        if self.from_cache {
+            return "served from the snapshot cache: no anchor walk, no deltas replayed".to_owned();
+        }
         let base = format!(
             "materialised from anchor {} + {} delta(s): {} row(s) from chunks, {} op(s) applied",
             self.anchor, self.deltas, self.chunk_rows, self.ops_applied
@@ -191,6 +198,14 @@ pub struct Lane<'a> {
     revisions: usize,
     /// Anchors written.
     anchors: usize,
+    /// The bounded cache of materialised revisions (`reco-93w`), under
+    /// [`GraphPolicy::snapshot_cache_bytes`].
+    ///
+    /// A cache of *materialised* graphs is the only kind this lane can have: a revision's rows are
+    /// already durable, so an evicted snapshot is not lost, it is re-folded from its anchor on next use
+    /// — which is the spill, and the reason the ceiling can be tight without being cruel. Interior-
+    /// mutable because `materialise` is a read and the lane is shared as `&self` by the read paths.
+    snapshots: std::cell::RefCell<fathom_core::memory::BoundedCache<String, Graph>>,
 }
 
 impl<'a> Lane<'a> {
@@ -206,6 +221,7 @@ impl<'a> Lane<'a> {
             .iter()
             .map(|(id, node)| (*id, node.layer.clone()))
             .collect();
+        let snapshot_ceiling = builder.policy.snapshot_cache_bytes;
         Ok(Self {
             store,
             builder,
@@ -217,7 +233,24 @@ impl<'a> Lane<'a> {
             depth: 0,
             revisions: 0,
             anchors: 0,
+            snapshots: std::cell::RefCell::new(fathom_core::memory::BoundedCache::new(
+                snapshot_ceiling,
+            )),
         })
+    }
+
+    /// The snapshot cache's counters — hits, misses, high water, and what the ceiling evicted.
+    ///
+    /// The lane returns these rather than writing them anywhere: whether an eviction count becomes a
+    /// printed line, a store counter or nothing is the verb's call (ADR-002 §7).
+    #[must_use]
+    pub fn snapshot_stats(&self) -> fathom_core::memory::CacheStats {
+        self.snapshots.borrow().observe()
+    }
+
+    /// Move the snapshot ceiling, evicting to obey it now.
+    pub fn set_snapshot_ceiling(&self, bytes: u64) -> fathom_core::memory::CacheStats {
+        self.snapshots.borrow().set_limit(bytes)
     }
 
     /// How many revisions this lane has written.
@@ -364,6 +397,19 @@ impl<'a> Lane<'a> {
     /// [`ChainPartial`] when no anchor is reachable — a stated partial whose
     /// [`ChainPartial::sentence`] is the answer a pane prints.
     pub fn materialise(&self, tree_oid: &str) -> Result<(Graph, MaterialiseReport), ChainPartial> {
+        let key = tree_oid.to_owned();
+        if let Some(graph) = self
+            .snapshots
+            .borrow()
+            .get_with(&key, |graph| graph.clone())
+        {
+            let mut report = MaterialiseReport {
+                from_cache: true,
+                ..MaterialiseReport::default()
+            };
+            report.anchor = "cache".to_owned();
+            return Ok((graph, report));
+        }
         let walk = match self
             .store
             .graph_chain_walk(tree_oid, self.builder.policy.max_chain_walk)
@@ -390,6 +436,12 @@ impl<'a> Lane<'a> {
             graph.apply(ops.iter().filter_map(from_store_op));
         }
         report.deltas = walk.deltas.len();
+        self.snapshots.borrow().insert(
+            key,
+            graph.clone(),
+            u64::try_from(graph.heap_bytes()).unwrap_or(u64::MAX),
+            "graph_snapshot",
+        );
         Ok((graph, report))
     }
 

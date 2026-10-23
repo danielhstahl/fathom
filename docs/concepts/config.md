@@ -511,6 +511,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `structure.findings.directory_added` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `structure.findings.move_unconfirmed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
+| `graph.snapshot_cache_mib` | `integer` | `32` | `replace` | `any` | MiB | graph.build | `reco-93w` |
 | `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
@@ -633,6 +634,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `intent.scope_cap` | `integer` | `64` | `replace` | `any` | globs | episode.intent | `e4.2` |
 | `ingest.size_cap_mib` | `integer` | `8` | `replace` | `any` | MiB | ingest.normalize | `e1.2` |
 | `cache.budget.mib` | `integer` | `512` | `replace` | `any` | MiB | — | `e1.4` |
+| `cache.protect_recent_minutes` | `integer` | `1440` | `replace` | `any` | minutes | — | `reco-93w` |
 | `store.wal_cap.mib` | `integer` | `64` | `replace` | `any` | MiB | — | `e1.1` |
 | `store.size.mib` | `integer` | `2048` | `replace` | `any` | MiB | — | `e1.10` |
 | `rss.analyzer_working_set.mib` | `integer` | `128` | `replace` | `any` | MiB | — | `e0.11` |
@@ -643,6 +645,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `write.batch_rows` | `integer` | `5000` | `replace` | `any` | rows | — | `e1.1` |
 | `write.batch_ms` | `integer` | `50` | `replace` | `any` | ms | — | `e1.1` |
 | `write.mandatory_checkpoint_per_commit` | `integer` | `0` | `replace` | `any` | checkpoints | — | `e1.1` |
+| `write.queue_batches` | `integer` | `2` | `replace` | `any` | batches | — | `reco-93w` |
 | `prune.batch_rows` | `integer` | `5000` | `replace` | `any` | rows | — | `e6.1` |
 | `rebuild.disk_ratio` | `number` | `2.0` | `replace` | `any` | ratio | — | `e1.10` |
 | `watch.cpu_share_pct` | `number` | `5.0` | `replace` | `any` | percent of one core | — | `e1.9` |

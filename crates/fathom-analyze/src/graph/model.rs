@@ -422,6 +422,36 @@ impl Graph {
             .collect()
     }
 
+    /// The bytes this materialised revision holds, estimated for the snapshot cache's ceiling
+    /// (`reco-93w`).
+    ///
+    /// Four indexes, counted as what each stores per entry plus a fixed node allowance for the B-tree
+    /// node it lives in: the node map, the edge set, and one adjacency bucket per `(endpoint, kind)`
+    /// group with one `i64` per edge in each direction. It is an estimate in the same sense
+    /// [`fathom_ingest::record::CommitRecord::heap_bytes`] is — enough to bound a cache, not a
+    /// measurement to print as a fact — and it is deliberately the *materialised* cost, which is
+    /// several times the encoded payload's: the point of caching a graph is that the folded form is
+    /// what costs the query lane, and it is also what costs the memory.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        /// A rough B-tree node allowance per entry: the node's occupancy, the key's own slot, and the
+        /// allocator's rounding. Exact accounting would need `malloc_usable_size`, and a cache ceiling
+        /// that needed it would be a ceiling nobody could set.
+        const NODE_ALLOWANCE: usize = 32;
+        let adjacency: usize = self
+            .out
+            .values()
+            .chain(self.inc.values())
+            .map(|bucket| bucket.len() * (std::mem::size_of::<i64>() + NODE_ALLOWANCE))
+            .sum();
+        std::mem::size_of::<Self>()
+            + self.nodes.len() * (std::mem::size_of::<(i64, RowKind)>() + NODE_ALLOWANCE)
+            + self.edges.len() * (std::mem::size_of::<Row>() + NODE_ALLOWANCE)
+            + (self.out.len() + self.inc.len())
+                * (std::mem::size_of::<(i64, RowKind)>() + NODE_ALLOWANCE)
+            + adjacency
+    }
+
     /// Every edge leaving `src` whose kind satisfies `kinds`.
     #[must_use]
     pub fn reached(&self, src: i64, kinds: impl Fn(RowKind) -> bool) -> Vec<(RowKind, i64)> {

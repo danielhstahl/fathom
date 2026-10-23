@@ -1376,6 +1376,11 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     // The boundary knobs come from the repository's own `fathom.toml`. This is the crate ADR-002 §4.5 lets
     // read configuration, and the resolution happens here so that segmentation receives a value.
     let segment = crate::segment::from_repository(root);
+    // The memory ceilings, resolved once for the run and handed downhill as values (`reco-93w`): peak
+    // resident memory is supposed to be a function of these numbers, so there is exactly one place they
+    // are read and no crate below here gets to have an opinion about them.
+    let ceilings = crate::memory::resolve(root);
+    store.set_ceilings(&ceilings.ceilings);
     // The harness event stream, read before the run so the step that captures intent has its evidence
     // (`e4.2`). Absence is the normal case and prints as one, not as a failure.
     let now = crate::clock::now_millis();
@@ -1404,6 +1409,13 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
         // The instant is an argument, not a read, all the way down (ADR-002 §4.4); this is the one place
         // it is read, and every row and counter this run writes carries this one value.
         now: Some(now),
+        // The ceilings, in the one place the spine can use them: the queue depth between normalize and
+        // write, and the cap on one decode buffer.
+        ingest: fathom_ingest::ingest::IngestOptions {
+            walk: fathom_ingest::graph::WalkOptions::head(),
+            ceilings: ceilings.ceilings.clone(),
+            ..fathom_ingest::ingest::IngestOptions::default()
+        },
         // The guided first index (`e5.9`): a row on stderr while the run goes, so a minute of walking
         // a real history is not indistinguishable from a hang. `--json` and `--no-progress` silence it,
         // and a run indexing for a pipe never starts one.
@@ -1436,9 +1448,31 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
     for notice in &segment.notices {
         output::problem(format_args!("config: {notice}"));
     }
+    for notice in &ceilings.notices {
+        output::problem(format_args!("config: {notice}"));
+    }
+    // ADR-004 §8.6's cache budget, enforced after the run that grew the cache. The order is the point:
+    // evicting before an index would throw away the rows the run is about to need, and evicting during
+    // one would make a lookup's cost depend on what else is in the table. When the store is inside its
+    // budget this is two reads and no writes.
+    let eviction = store
+        .cache_enforce(
+            &fathom_store::ceiling::CacheCeiling {
+                budget_bytes: ceilings.ceilings.durable_cache_bytes,
+                protect_recent_ms: ceilings.ceilings.protect_recent_ms,
+                dry_run: false,
+            },
+            now,
+        )
+        .map_err(failed)?;
     if args.rebuild {
         // The other half of §9.3's state machine: the epoch this run filled is the one readers may now see.
         store.settle_epoch().map_err(failed)?;
+    }
+    // A cache that had to be cut back is said, on every output path: a store that got smaller while you
+    // were watching something else is exactly the kind of fact a report owes you.
+    if eviction.over_budget() {
+        output::problem(format_args!("cache: {}", eviction.sentence()));
     }
     let epoch = store.epoch().map_err(failed)?;
 
@@ -1858,6 +1892,15 @@ fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) 
     for (path, reason) in &report.worktree_skipped {
         output::line(format_args!("  not analysed {path}: {reason}"));
     }
+    // The spine's back-pressure line (`reco-93w`): how much was ever in flight, and how often the
+    // normalizer was told to wait. `queue_blocks == 0` on a long run means the ceiling never came into
+    // play, which is a different statement from "the ceiling is not being enforced".
+    output::line(format_args!(
+        "  in flight   {} batch(es) at the peak ({} KiB), {} wait(s) at the hand-off",
+        report.spine.queue_high_water_batches,
+        report.spine.queue_high_water_bytes / 1024,
+        report.spine.queue_blocks,
+    ));
     for failure in &report.failures {
         output::problem(format_args!("  analysis failed: {failure}"));
     }

@@ -244,6 +244,16 @@
             }
           },
           "type": "object"
+        },
+        "protect_recent_minutes": {
+          "default": 1440,
+          "description": "ADR-004 \u00a78.6's protection set, as a recency window: a cache row used inside this window is not evicted, however cold the rest of the table is. The default is a day, because a repository someone is looking at today is a session and not a cold row. Zero disables the protection, which is what a CI job that wants the budget honoured exactly wants.",
+          "minimum": 0,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "reco-93w",
+          "x-fathom-units": "minutes"
         }
       },
       "type": "object",
@@ -1529,6 +1539,17 @@
           "x-fathom-merge": "extend",
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e3.2"
+        },
+        "snapshot_cache_mib": {
+          "default": 32,
+          "description": "Ceiling on the revision graphs one lane keeps materialised in memory (`reco-93w`). Eviction is lossless: a snapshot is a fold of durable `graph_delta` rows, so what this buys with memory is not re-walking the anchor chain - `graph.materialise_revision.ms` paid once instead of per navigation. Set it to the number of revisions a session is expected to page through, not to the size of the repository.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "graph.build",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "reco-93w",
+          "x-fathom-units": "MiB"
         }
       },
       "type": "object",
@@ -4037,6 +4058,17 @@
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e1.1",
           "x-fathom-units": "checkpoints"
+        },
+        "queue_batches": {
+          "default": 2,
+          "description": "How many normalized batches may sit between the ingest pipeline and the writer before the pipeline **waits** instead of allocating (`reco-93w`). This is the back-pressure knob: peak spine memory is roughly `write.queue_batches \u00d7 commits_per_batch`, and a sink that falls behind shrinks the pipeline rather than growing it. One serializes the two stages, which costs a warm index its overlap; anything past a handful is a cache with none of a cache's accounting, so the schema caps it at 64.",
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "reco-93w",
+          "x-fathom-units": "batches"
         }
       },
       "type": "object",

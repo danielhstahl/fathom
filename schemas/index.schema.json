@@ -161,6 +161,14 @@
       "description": "True when the run compared the refs with the store's last snapshot, found they said the same thing, and skipped the history walk, the analysis pass and the episode rebuild instead of repeating them (`reco-7tc`). Read `commits.walked: 0` with this in mind: 0 with true here is a warm store with nothing to do, and 0 with false is a repository with no history.",
       "type": "boolean"
     },
+    "phases_ms": {
+      "additionalProperties": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "description": "Where the run's wall clock went, in whole milliseconds, in run order (`reco-66q`). The keys are the phases of `fathom_analyze::index::run`, so a report that says \"45 s\" also says which 45 seconds they were.",
+      "type": "object"
+    },
     "reason": {
       "type": [
         "string",

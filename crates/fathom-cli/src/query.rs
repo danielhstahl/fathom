@@ -599,6 +599,7 @@ pub fn stats_json(snapshot: &Snapshot) -> serde_json::Value {
         "repository": snapshot.repository,
         "index": snapshot.index,
         "cache": snapshot.cache,
+        "memory": snapshot.memory,
         "degraded": snapshot.worst_code() != ExitCode::Ok,
         "exit_code": snapshot.worst_code().as_i32(),
         "exit_name": snapshot.worst_code().name(),
@@ -741,6 +742,42 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
             cache["rows"].as_u64().unwrap_or(0),
             cache["blobs"].as_u64().unwrap_or(0),
         ));
+        // The budget line, and beside it what the budget cost. A cache cap that is never reached is
+        // free and a cache cap that is reached every run is a slow cache; the two numbers printed
+        // next to each other are how you tell which repository this is (`reco-93w`).
+        let held = cache["cache_payload_bytes"].as_u64().unwrap_or(0);
+        let evicted = cache["evicted_rows"].as_u64().unwrap_or(0);
+        let evicted_bytes = cache["evicted_bytes"].as_u64().unwrap_or(0);
+        out.push(format!(
+            "  budget    {} MiB held, {} row(s) evicted over the store's life ({} MiB freed){}",
+            held / (1024 * 1024),
+            evicted,
+            evicted_bytes / (1024 * 1024),
+            if evicted == 0 {
+                " — the ceiling has never bitten"
+            } else {
+                ""
+            }
+        ));
+        let payloads = cache["payload_evictions"].as_u64().unwrap_or(0);
+        if payloads > 0 || cache["payload_refusals"].as_u64().unwrap_or(0) > 0 {
+            out.push(format!(
+                "  payloads  {} evicted from the in-process cache ({} MiB), {} refused as too large",
+                payloads,
+                cache["payload_evicted_bytes"].as_u64().unwrap_or(0) / (1024 * 1024),
+                cache["payload_refusals"].as_u64().unwrap_or(0),
+            ));
+        }
+        if let Some(by) = cache["evicted_by_analyzer"].as_object()
+            && !by.is_empty()
+        {
+            let parts = by
+                .iter()
+                .map(|(analyzer, rows)| format!("{analyzer} {}", rows.as_u64().unwrap_or(0)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            out.push(format!("  evicted   {parts}"));
+        }
         for row in cache["analyzers"]
             .as_array()
             .map(Vec::as_slice)
@@ -758,6 +795,28 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
                     |rate| format!("hit rate {rate:.1}%")
                 ),
             ));
+        }
+    }
+
+    // The memory section: the ceilings in force and the keys that set them. Printed whether or not
+    // there is a store, because a process with no store still has a resident set.
+    if let Some(memory) = snapshot.memory.as_object() {
+        out.push("memory".to_owned());
+        for line in memory["lines"].as_array().map(Vec::as_slice).unwrap_or(&[]) {
+            if let Some(line) = line.as_str() {
+                // `lines()` comes unindented; this is the section's own column, the same one every
+                // other section in this document pays.
+                out.push(format!("  {line}"));
+            }
+        }
+        for notice in memory["notices"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+        {
+            if let Some(notice) = notice.as_str() {
+                out.push(format!("  notice    {notice}"));
+            }
         }
     }
 

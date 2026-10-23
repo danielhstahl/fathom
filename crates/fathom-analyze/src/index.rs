@@ -438,7 +438,7 @@ fn phase_pairs(marks: Vec<(&'static str, Duration)>) -> Vec<(String, u128)> {
     let mut out = Vec::with_capacity(marks.len());
     let mut previous = Duration::ZERO;
     for (name, at) in marks {
-        let _ = out.push((name.to_owned(), at.saturating_sub(previous).as_millis()));
+        out.push((name.to_owned(), at.saturating_sub(previous).as_millis()));
         previous = at;
     }
     out
@@ -589,6 +589,15 @@ pub fn run(
     }
 
     phases.push((PHASE_ANALYSES, started.elapsed()));
+
+    // 3b. The analysis working set goes back before anything else runs.
+    //
+    // The payload cache existed so the analyzers would not re-read what they had just written. From here
+    // the run reads files and commit rows and never asks for a commit payload again, so holding it would
+    // add a finished phase's worst moment to a later one's: `reco-93w`'s 100 000-commit gate measured the
+    // peak land in the episode rebuild, with a full working set still in hand from a pass that had ended.
+    // §11.8's budget is a peak, not a sum.
+    store.release_payload_cache();
 
     // 4. The worktree (§6.4), unless asked not to look at it or asked to stop.
     let (worktree, worktree_skipped) = if options.worktree == Worktree::Ignore || triggered(options)

@@ -39,6 +39,16 @@ pub const DEFAULT_PATH_MAX_HOPS: usize = 6;
 /// config schema ships.
 pub const DEFAULT_IGNORED_DIRS: [&str; 1] = ["node_modules"];
 
+/// How many materialised revision graphs the lane may hold, in MiB. `graph.snapshot_cache_mib`, and
+/// the ceiling ADR-004 §11 calls the per-analyzer working set when it is measured instead of assumed.
+///
+/// The number is small on purpose: `s3` measured 22 335 B of *stored* bytes per revision, and a
+/// materialised graph is the folded form of that plus two adjacency indexes, so a few dozen revisions
+/// fill a few megabytes. A snapshot that does not fit is re-materialised from the store on next use —
+/// the durable delta chain is the spill — which is the 0.381 ms-to-204.6 ms difference `step` already
+/// reports, paid again, rather than an unbounded resident set.
+pub const DEFAULT_SNAPSHOT_CACHE_MIB: u64 = 32;
+
 /// The knobs the graph lane runs under.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphPolicy {
@@ -50,6 +60,8 @@ pub struct GraphPolicy {
     pub path_max_hops: usize,
     /// `graph.ignored_dirs`.
     pub ignored_dirs: Vec<String>,
+    /// `graph.snapshot_cache_mib` — the byte ceiling on the lane's materialised-snapshot cache.
+    pub snapshot_cache_bytes: u64,
 }
 
 impl Default for GraphPolicy {
@@ -62,6 +74,7 @@ impl Default for GraphPolicy {
                 .iter()
                 .map(|name| (*name).to_string())
                 .collect(),
+            snapshot_cache_bytes: DEFAULT_SNAPSHOT_CACHE_MIB * fathom_core::memory::MIB,
         }
     }
 }
@@ -108,6 +121,23 @@ impl GraphPolicy {
                 continue;
             }
             *slot.0 = usize::try_from(number).unwrap_or(usize::MAX);
+        }
+        // `graph.snapshot_cache_mib` is the one byte-valued knob here, so it is read on its own rather
+        // than through the `usize` slots above: a memory ceiling has a floor (one MiB) and a roof
+        // (`MAX_CEILING_BYTES`) that the shared clamp owns, and the notice has to say which bit.
+        if let Some(value) = knob(table, "snapshot_cache_mib").and_then(TomlItem::as_value)
+            && let Some(number) = value.as_integer()
+        {
+            let mut ceilings = fathom_core::memory::Ceilings::default();
+            match ceilings.set("snapshot_cache_mib", number) {
+                Ok(notice) => {
+                    policy.snapshot_cache_bytes = ceilings.graph_snapshot_bytes;
+                    if let Some(line) = notice {
+                        notices.push(format!("graph.{line}"));
+                    }
+                }
+                Err(err) => notices.push(format!("graph.snapshot_cache_mib: {err}")),
+            }
         }
         if let Some(list) = table
             .get("ignored_dirs")

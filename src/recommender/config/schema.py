@@ -1010,6 +1010,14 @@ KEY_LIST: list[Key] = [
        default=["node_modules"],
        doc="Directory names excluded from the structure/dependency graph entirely.",
        analyzer="graph.build", ticket="e3.2"),
+    _k(path="graph.snapshot_cache_mib", kind="integer", default=32, minimum=1,
+       units="MiB",
+       doc="Ceiling on the revision graphs one lane keeps materialised in memory (`reco-93w`). "
+           "Eviction is lossless: a snapshot is a fold of durable `graph_delta` rows, so what this "
+           "buys with memory is not re-walking the anchor chain - `graph.materialise_revision.ms` "
+           "paid once instead of per navigation. Set it to the number of revisions a session is "
+           "expected to page through, not to the size of the repository.",
+       analyzer="graph.build", ticket="reco-93w"),
     # --- extract ------------------------------------------------------------
     _k(path="extract.max_file_bytes", kind="integer", default=2_000_000, minimum=1,
        units="bytes",
@@ -1743,6 +1751,13 @@ KEY_LIST: list[Key] = [
        budget="cache.budget.mib", units="MiB", minimum=16,
        doc="LRU ceiling on class-R cache rows and their blobs (ADR-004 §11).",
        ticket="e1.4"),
+    _k(path="cache.protect_recent_minutes", kind="integer", default=1440, minimum=0,
+       units="minutes",
+       doc="ADR-004 §8.6's protection set, as a recency window: a cache row used inside this window "
+           "is not evicted, however cold the rest of the table is. The default is a day, because a "
+           "repository someone is looking at today is a session and not a cold row. Zero disables "
+           "the protection, which is what a CI job that wants the budget honoured exactly wants.",
+       ticket="reco-93w"),
     _k(path="store.wal_cap.mib", kind="integer", default=64, fallback=64,
        budget="store.wal_cap.mib", units="MiB", minimum=8,
        doc="WAL size at which the writer warns and forces a passive checkpoint.",
@@ -1782,6 +1797,15 @@ KEY_LIST: list[Key] = [
        budget="write.mandatory_checkpoint_per_commit", units="checkpoints", minimum=0,
        doc="Mandatory `wal_checkpoint(TRUNCATE)` calls per commit. Zero: measured at "
            "0.8 % of a warm budget *per commit*.", ticket="e1.1"),
+    _k(path="write.queue_batches", kind="integer", default=2, minimum=1, maximum=64,
+       units="batches",
+       doc="How many normalized batches may sit between the ingest pipeline and the writer before "
+           "the pipeline **waits** instead of allocating (`reco-93w`). This is the back-pressure "
+           "knob: peak spine memory is roughly `write.queue_batches × commits_per_batch`, and a "
+           "sink that falls behind shrinks the pipeline rather than growing it. One serializes the "
+           "two stages, which costs a warm index its overlap; anything past a handful is a cache "
+           "with none of a cache's accounting, so the schema caps it at 64.",
+       ticket="reco-93w"),
     _k(path="prune.batch_rows", kind="integer", default=5000, fallback=5000,
        budget="prune.batch_rows", units="rows", minimum=1,
        doc="Rows deleted per pruning transaction.", ticket="e6.1"),

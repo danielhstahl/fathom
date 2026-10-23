@@ -714,11 +714,24 @@ pub fn segment(commits: &[CommitFacts], rules: &Rules) -> Vec<Episode> {
     // Attribution is an episode-level question (`e4.1`): a turn whose third commit says
     // `Co-authored-by: Claude` is an agent turn, and reading only the head commit would call it human.
     // One pass over the members, one verdict, and the evidence list says which members carried it.
+    //
+    // The lookup is indexed (`reco-93w`). It used to be `commits.iter().find(...)` per member, which is a
+    // scan of the whole history for every commit in every episode — quadratic in the history, and measured
+    // at well over half an hour on the 100 000-commit gate, where the same pass on 20 000 commits took
+    // seconds. A `BTreeMap` because the answer must not depend on hash order: this loop decides
+    // attribution, and attribution is product output.
+    let mut by_oid: std::collections::BTreeMap<&str, &CommitFacts> =
+        std::collections::BTreeMap::new();
+    for commit in commits.iter() {
+        // First wins, which is what the scan this replaced did: a history that names one oid twice gets
+        // the first reading of it, here and everywhere else.
+        by_oid.entry(commit.oid.as_str()).or_insert(commit);
+    }
     for episode in &mut episodes {
         let members: Vec<CommitFacts> = episode
             .members
             .iter()
-            .filter_map(|oid| commits.iter().find(|commit| commit.oid == *oid))
+            .filter_map(|oid| by_oid.get(oid.as_str()).copied())
             .cloned()
             .collect();
         episode.attribution = crate::attribute::attribute(&members, &rules.attribution);

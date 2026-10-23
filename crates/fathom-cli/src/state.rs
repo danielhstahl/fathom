@@ -191,6 +191,9 @@ pub struct Snapshot {
     pub index: Value,
     /// The cache section: `null` when there is no store to count.
     pub cache: Value,
+    /// The memory section: the ceilings in force for this process and what they cost (`reco-93w`).
+    /// Never `null` — a run always has ceilings, even a run with no store to measure against them.
+    pub memory: Value,
     /// What is wrong, in the order checked.
     pub findings: Vec<Finding>,
 }
@@ -322,11 +325,21 @@ pub fn gather_with(root: &Path, check: Check) -> Snapshot {
     };
 
     findings.extend(index_findings);
+    // The memory section is the second half of the claim the ticket makes: the ceilings are not only
+    // enforced, they are *printable*, with the key that set each one. Read here rather than passed in
+    // because `fathom stats` is a CLI verb and the CLI is the crate that reads configuration.
+    let ceilings = crate::memory::resolve(root);
+    let memory = json!({
+        "ceilings": ceilings.ceilings.observe(),
+        "lines": crate::memory::lines(&ceilings.ceilings),
+        "notices": ceilings.notices,
+    });
     Snapshot {
         root_display: redactor.path(root),
         repository,
         index,
         cache,
+        memory,
         findings,
     }
 }
@@ -726,6 +739,7 @@ fn describe_index(
     let dead = inventory.as_ref().map(|inventory| inventory.dead.clone());
     let runs = store.run_summary().ok();
     let inventory = store.cache_inventory().ok();
+    let cache_footprint = store.cache_footprint().ok();
     let counters = store.counters("cache.").unwrap_or_default();
     let pending = store.pending_derivation().unwrap_or_default();
     let integrity = match check {
@@ -926,7 +940,11 @@ fn describe_index(
         })),
     });
 
-    (index, cache_json(&counters, inventory.as_ref()), findings)
+    (
+        index,
+        cache_json(&counters, inventory.as_ref(), cache_footprint),
+        findings,
+    )
 }
 
 /// The cache section: the counters the store keeps, in the shape `fathom index --stats` prints.
@@ -939,6 +957,7 @@ fn describe_index(
 pub fn cache_json(
     counters: &std::collections::BTreeMap<String, i64>,
     inventory: Option<&fathom_store::inventory::CacheInventory>,
+    footprint: Option<(i64, i64)>,
 ) -> Value {
     use fathom_analyze::index::{ANALYZED, stats_of};
 
@@ -1001,5 +1020,37 @@ pub fn cache_json(
         "blobs_inline": inventory.map_or(0, |inventory| inventory.blobs_inline),
         "blobs_on_disk": inventory.map_or(0, |inventory| inventory.blobs_on_disk),
         "served_bytes": inventory.map_or(0, |inventory| inventory.served_bytes),
+        // The §8.6 budget's own ledger (`reco-93w`): what the `cache` table holds now, and what the
+        // ceiling has already thrown away to keep it there. Without these two lines a bounded cache and
+        // a cache that is quietly full look identical, which is the whole thing an observable bound has
+        // to avoid.
+        "cache_rows": footprint.map_or(0, |(rows, _)| rows),
+        "cache_payload_bytes": footprint.map_or(0, |(_, bytes)| bytes),
+        "evicted_rows": counters.get("cache.evict").copied().unwrap_or(0),
+        "evicted_bytes": counters.get("cache.evict.bytes").copied().unwrap_or(0),
+        "evicted_by_analyzer": counters
+            .iter()
+            .filter(|(name, _)| {
+                name.starts_with("cache.evict.")
+                    && name.as_str() != "cache.evict.bytes"
+                    && name.as_str() != "cache.evict.blobs_dangling"
+            })
+            .map(|(name, value)| {
+                (
+                    name.trim_start_matches("cache.evict.").to_owned(),
+                    Value::from(*value),
+                )
+            })
+            .collect::<serde_json::Map<String, Value>>(),
+        "blobs_left_unreachable": counters
+            .get("cache.evict.blobs_dangling")
+            .copied()
+            .unwrap_or(0),
+        "payload_evictions": counters.get("cache.payload.evict").copied().unwrap_or(0),
+        "payload_evicted_bytes": counters
+            .get("cache.payload.evict.bytes")
+            .copied()
+            .unwrap_or(0),
+        "payload_refusals": counters.get("cache.payload.refused").copied().unwrap_or(0),
     })
 }

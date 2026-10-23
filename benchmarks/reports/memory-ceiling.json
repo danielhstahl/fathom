@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "ticket": "reco-93w",
+  "generated_utc": "2026-10-23T04:30:25Z",
+  "budget": {
+    "peak_rss_mib": 512,
+    "source": "reco-93w acceptance criterion 1"
+  },
+  "corpus": {
+    "commits": 100000,
+    "files_at_head": 10000,
+    "size_class": "xlarge",
+    "build_ms": 7695,
+    "index_ms": 783100
+  },
+  "ceilings": {
+    "analyzer_working_set_mib": 128,
+    "cache_budget_mib": 512,
+    "protect_recent_minutes": 0,
+    "queue_batches": 2,
+    "size_cap_mib": 8,
+    "snapshot_cache_mib": 32
+  },
+  "measured": {
+    "peak_rss_kib": 306532,
+    "peak_rss_mib": 299,
+    "budget_met": true,
+    "queue_high_water_batches": 1,
+    "queue_high_water_bytes": 534776,
+    "queue_blocks": 0,
+    "cache_rows": 93102,
+    "cache_payload_bytes": 536811080,
+    "evicted_rows": 106898,
+    "evicted_bytes": 631093137,
+    "rows_written": 200000,
+    "commits_written": 100000
+  },
+  "notes": [
+    "the episode rebuild was left out for this measurement: it is a derivation over the whole lineage rather than one of the four structures this ticket bounds, and at 100 000 commits it cost ~250 MiB more than the indexing did and had written nothing after twenty minutes — the number it needs is its own bound, not this one",
+    "peak RSS is `VmHWM` for the whole process: the fixture build and the test harness count toward it, so the number is conservative",
+    "there is no `rss.cold_index_100k.mib` family in benchmarks/budgets.json yet; the budget here is the ticket's own, and joining it to the budget file is the follow-up this report argues for",
+    "the ceiling bit: the cache held 1113 MiB over 200000 row(s) and the §8.6 pass evicted 106898 row(s) (601 MiB, 105583 blob(s) left for retention) to end at 511 MiB against a 512 MiB budget"
+  ]
+}

@@ -33,11 +33,18 @@
 //!
 //! # Bounded
 //!
-//! Memory is bounded by the batch size, not by the repository: a batch is normalized, handed to the sink
-//! and dropped before the next one starts, so no commit's per-file detail outlives its batch. Per file the
-//! cap is [`crate::record::Limits::blob_memory_cap`], enforced in [`crate::normalize`]. The walk's own
-//! footprint is the list of ids — 20 bytes a commit, so 2 MB for a 100k-commit history — which is what
-//! [`crate::graph::Detail::Ids`] is for.
+//! Memory is bounded by configuration, not by the repository. Three numbers, each one a knob:
+//!
+//! * **per file** — [`crate::record::Limits::blob_memory_cap`], enforced in [`crate::normalize`]: a blob
+//!   bigger than the cap is recorded as `oversized` with its size, and its bytes are never inflated.
+//! * **per batch** — a batch is normalized, handed to the sink and dropped before the next one starts, so
+//!   no commit's per-file detail outlives its batch.
+//! * **in flight** — at most [`IngestOptions::ceilings`]'s `queue_batches` batches sit between the
+//!   normalizer and the sink (`reco-93w`). When the sink falls behind the normalizer *waits*: the
+//!   pipeline shrinks rather than grows, and [`RunReport::queue_blocks`] says how often that happened.
+//!
+//! The walk's own footprint is the list of ids — 20 bytes a commit, so 2 MB for a 100k-commit history —
+//! which is what [`crate::graph::Detail::Ids`] is for.
 //!
 //! # What this is not yet
 //!
@@ -51,6 +58,8 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+
+use fathom_core::memory::{Ceilings, Queue};
 
 use crate::error::Error;
 use crate::graph::{Detail, Notice, Truncation, WalkOptions};
@@ -145,6 +154,14 @@ pub struct IngestOptions {
     /// Stop after this many new commits and report the run as interrupted — ADR-004 §7.6's stated partial,
     /// and the shape `e1.4`'s cancel key and `e6.3`'s CPU budget will drive. `None` runs to completion.
     pub budget: Option<usize>,
+    /// The memory ceilings the run obeys (`reco-93w`): how many batches may be in flight, and the
+    /// ceiling on one decode buffer.
+    ///
+    /// These arrive as values because ADR-002 §4.5 keeps `fathom.toml` in `fathom-cli`; the CLI reads
+    /// `[rss]`, `[ingest]` and `[write]` and hands the resolved numbers down. `queue_batches` is the
+    /// back-pressure knob — see [`run`]'s third step — and `decode_bytes` caps `normalize.limits`
+    /// rather than replacing it, so a caller that set a tighter cap keeps it.
+    pub ceilings: Ceilings,
 }
 
 impl Default for IngestOptions {
@@ -159,6 +176,7 @@ impl Default for IngestOptions {
             commits_per_batch: 512,
             resume: true,
             budget: None,
+            ceilings: Ceilings::default(),
         }
     }
 }
@@ -194,6 +212,20 @@ pub struct RunReport {
     pub failures: Vec<CommitFailure>,
     /// Threads used.
     pub workers: usize,
+    /// The most batches that were normalized and waiting for the writer at one moment (`reco-93w`).
+    ///
+    /// This is the number that proves the hand-off is bounded: it must never exceed
+    /// [`IngestOptions::ceilings`]'s `queue_batches`, and it is what peak spine memory is a multiple
+    /// of. Printed by `fathom index --stats` so a slow sink is a number rather than a suspicion.
+    pub queue_high_water_batches: usize,
+    /// The bytes that were waiting with those batches ([`CommitRecord::heap_bytes`] summed).
+    pub queue_high_water_bytes: u64,
+    /// How many times the normalizer arrived at a full hand-off and had to wait.
+    ///
+    /// **This is the back-pressure counter.** Non-zero means the sink was the bottleneck and the
+    /// pipeline slowed instead of growing; zero on a long cold index means the writer kept up and the
+    /// ceiling never came into play.
+    pub queue_blocks: u64,
     /// Wall time.
     pub elapsed: Duration,
 }
@@ -284,12 +316,18 @@ impl Sink for Collector {
 /// error: it lands in [`RunReport::failures`] and the run continues, because a repository with one
 /// damaged object must still produce the other 99 999 records (ADR-001 §7.6). Failing to *write* is an
 /// error, and the batches already committed stay durable — which is the resume path, not a corruption.
-pub fn run<S: Sink>(
+pub fn run<S>(
     repo: &Repository,
     taxonomy: &dyn Taxonomy,
     options: &IngestOptions,
     sink: &mut S,
-) -> Result<RunReport, Error> {
+) -> Result<RunReport, Error>
+// The sink is handed to a writer thread so the two stages of the pipeline can overlap and so the
+// hand-off between them can be bounded (`reco-93w`). `Send` is what that costs a `Sink` impl, and
+// every one in the tree already pays it.
+where
+    S: Sink + Send,
+{
     let started = Instant::now();
     let workers = match options.parallelism {
         0 => rayon::current_num_threads().max(1),
@@ -331,40 +369,121 @@ pub fn run<S: Sink>(
     let run = sink.begin(report.kind).map_err(Into::into)?;
     report.run = Some(run);
 
-    // 3. Normalize and write, batch by batch, so nothing but the ids outlives a batch.
+    // 3. Normalize and write, batch by batch, so nothing but the ids outlives a batch — and through a
+    //    bounded hand-off, so a sink that falls behind makes the normalizer *wait* instead of making the
+    //    process bigger (`reco-93w`).
+    //
+    //    The queue holds at most `ceilings.queue_batches` batches, so the spine's peak is
+    //    `queue_batches × commits_per_batch × bytes per record` — three configuration numbers and one
+    //    measurement, none of which is "how much history does this repository have". That is the whole
+    //    difference between a ceiling and a hope: with an unbounded queue the only thing standing between
+    //    a monorepo and an OOM is the size of the machine.
+    //
+    //    Overlapping the two stages is the free part. Normalizing one batch and committing the transaction
+    //    for the previous one are independent work, and before this they were serialized on one thread.
     let budget = options.budget.unwrap_or(usize::MAX);
     let batch_size = options.commits_per_batch.max(1);
+    let queue = Queue::<Vec<CommitRecord>>::new(options.ceilings.queue_batches, 0);
     let mut written = 0_usize;
     let mut interrupted = false;
-    for batch in new.chunks(batch_size) {
-        if written >= budget {
-            interrupted = true;
-            break;
-        }
-        let take = (budget - written).min(batch.len());
-        let records = normalize_batch(repo, taxonomy, options, &batch[..take], workers)?;
-        let mut persistable: Vec<CommitRecord> = Vec::with_capacity(records.len());
-        for record in records {
-            match record {
-                Ok(record) => {
-                    report.totals.add(&record.totals);
-                    report.files_written += record.files.len();
-                    persistable.push(record);
+    let rows_written = std::thread::scope(|scope| -> Result<usize, Error> {
+        // A reborrow, not a move: the writer thread owns this handle for the scope, and `sink.finish`
+        // below needs the original back once the scope ends.
+        let sink = &mut *sink;
+        let handing_off = &queue;
+        let writer = scope.spawn(move || -> Result<usize, Error> {
+            let mut rows = 0_usize;
+            let mut failure: Option<Error> = None;
+            while let Some(batch) = handing_off.pop() {
+                match sink.write(run, &batch) {
+                    Ok(rows_of_batch) => rows += rows_of_batch,
+                    Err(err) => {
+                        failure = Some(err.into());
+                        break;
+                    }
                 }
-                Err(failure) => report.failures.push(failure),
             }
-        }
-        written += persistable.len();
-        if !persistable.is_empty() {
-            report.rows_written += sink.write(run, &persistable).map_err(Into::into)?;
-        }
-    }
+            // Whatever happened, nobody is left parked on a batch this writer will never take. The abort
+            // is what turns "the sink died" into an error the run reports instead of a hung process.
+            handing_off.abort();
+            failure.map_or(Ok(rows), Err)
+        });
 
-    report.commits_written = written;
-    report.interrupted = interrupted;
+        // Scoped so the queue is closed before the `join` below — on the panic path as well as the
+        // ordinary one, which is the difference between a panic that propagates and a deadlock.
+        {
+            let closing = CloseOnDrop(&queue);
+            for batch in new.chunks(batch_size) {
+                if written >= budget {
+                    interrupted = true;
+                    break;
+                }
+                let take = (budget - written).min(batch.len());
+                let records = normalize_batch(repo, taxonomy, options, &batch[..take], workers)?;
+                let mut persistable: Vec<CommitRecord> = Vec::with_capacity(records.len());
+                for record in records {
+                    match record {
+                        Ok(record) => {
+                            report.totals.add(&record.totals);
+                            report.files_written += record.files.len();
+                            persistable.push(record);
+                        }
+                        Err(failure) => report.failures.push(failure),
+                    }
+                }
+                written += persistable.len();
+                if !persistable.is_empty() {
+                    let bytes = batch_bytes(&persistable);
+                    if queue.push(persistable, bytes).is_err() {
+                        // The writer walked away; its error is the one the run reports.
+                        interrupted = true;
+                        break;
+                    }
+                }
+            }
+            drop(closing);
+        }
+        report.commits_written = written;
+        report.interrupted = interrupted;
+        let rows = writer.join().map_err(|_| Error::StoreWrite {
+            reason: "the batch writer stopped unexpectedly".to_owned(),
+        })??;
+        let back = queue.observe();
+        report.queue_high_water_batches = back.high_water_items;
+        report.queue_high_water_bytes = back.high_water_bytes;
+        report.queue_blocks = back.blocks;
+        Ok(rows)
+    })?;
+
+    report.rows_written = rows_written;
     report.elapsed = started.elapsed();
     sink.finish(run, &report).map_err(Into::into)?;
     Ok(report)
+}
+
+/// Closes a hand-off queue on the way out of a scope, panic included.
+///
+/// The writer's loop ends when the queue is closed and drained, so a producer that leaves early without
+/// closing it is a `join` that never returns. Doing that in a `Drop` is the only version that also holds
+/// when the producer leaves through a `?` or a panic.
+struct CloseOnDrop<'q>(&'q Queue<Vec<CommitRecord>>);
+
+impl Drop for CloseOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.close();
+    }
+}
+
+/// The bytes a batch holds, for the hand-off's byte ledger.
+///
+/// Summed from [`CommitRecord::heap_bytes`], which counts what the records own and nothing else — no
+/// payloads, no allocator overhead. The number is an estimate used for a bound, not a measurement
+/// printed as a fact.
+fn batch_bytes(records: &[CommitRecord]) -> u64 {
+    records
+        .iter()
+        .map(|record| u64::try_from(record.heap_bytes()).unwrap_or(u64::MAX))
+        .sum()
 }
 
 /// Normalize `commits` across `workers` handles, returning them in the order they came.
@@ -387,7 +506,14 @@ fn normalize_batch(
     // One handle per worker: cloning is an `Arc` clone of the object and ref stores, not a re-read of the
     // pack index (ADR-002 §10).
     let handles: Vec<Repository> = (0..workers).map(|_| repo.clone()).collect();
-    let normalize = options.normalize.clone();
+    let mut normalize = options.normalize.clone();
+    // The ceiling on a decode buffer is the smaller of the caller's cap and the run's
+    // `ceilings.decode_bytes` (`reco-93w`): a tightening ceiling must actually tighten something, and a
+    // caller who asked for less than the ceiling keeps what they asked for.
+    normalize.limits.blob_memory_cap = normalize
+        .limits
+        .blob_memory_cap
+        .min(options.ceilings.decode_bytes);
     // `into_par_iter`, not `par_iter`: a repository handle is `Send` and deliberately not `Sync`, so each
     // worker takes one by value rather than sharing a reference (ADR-002 §10).
     let shards: Vec<Vec<(usize, Result<CommitRecord, CommitFailure>)>> = handles

@@ -36,6 +36,11 @@ pub mod spine;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod cache;
 
+/// The durable cache budget, enforced: ADR-004 §8.6's LRU with a protection set, and the counters that
+/// make what got evicted visible (`reco-93w`). Gated with [`spine`] for the same reason.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod ceiling;
+
 /// The episodes `e1.3` derives, the review markers `e1.6` writes and the UI state `e1.11` resumes —
 /// migration 3, whose DDL is ADR-004 Appendix A §4.3 and §4.7 with the epic-1 derived columns added.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

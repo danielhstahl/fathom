@@ -17,6 +17,41 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Memory has a ceiling now: bounded caches, back-pressure, and the numbers that say so (`reco-93w`)
+
+The claim is ADR-004 §11.8's, restated as something a person can set: **peak resident memory is a
+function of configuration, not of repository size**. A number in `benchmarks/budgets.json` is a
+measurement of whatever the code happened to do; a ceiling is a container that refuses to grow past a
+figure somebody chose, arriving from `fathom.toml` through the same layers as every other knob.
+
+* **Three pieces, deliberately small** — `fathom_core::memory`: `Ceilings` (six knobs in bytes, each
+  clamped to a range with the clamp *named* in the run's notices, because a silently-clamped budget is
+  a support ticket a week later), `BoundedCache` (a byte-weighted LRU that counts what it evicted, by
+  class), and `Queue` (a bounded, blocking hand-off — a producer whose consumer has fallen behind
+  **waits** instead of allocating, which is the difference between a buffer and a heap with extra steps).
+* **Applied to the four structures that hold a repository's bytes** — the analysis payload cache behind
+  `Store::read_blob` (`rss.analyzer_working_set.mib`), a graph lane's materialised snapshots
+  (`graph.snapshot_cache_mib`), one decode buffer per ingest worker (`ingest.size_cap_mib`), and the
+  batches in flight between normalizing and writing (`write.queue_batches`). Bounding that hand-off is
+  also what let the two stages of the spine overlap, which they previously were not.
+* **The spill is the store, not a second format** — every byte these caches hold is class R
+  (ADR-004 §10): eviction is "stop holding it", and a payload is re-read from the `blob` row while a
+  snapshot is re-folded from its `graph_delta` chain. The durable `cache` table got §8.6's budget with
+  a protection set (`cache.budget.mib`, `cache.protect_recent_minutes`), enforced when a run closes and
+  never inside a lookup — plus migration 9, the two indexes its reachability probe needed after an
+  unindexed one turned out to be a table scan per blob at 200 000 blobs.
+* **Observable, or it did not happen** — `fathom stats` prints the ceilings in force and what they
+  cost: bytes held, rows and bytes evicted over the store's life, the same split per analyzer, the
+  in-process evictions and refusals, and `fathom index --stats` prints batches at the peak and the
+  back-pressure counter beside it. And the working set is *released* when the analyses end, because the
+  budget is a peak: the gate's peak used to land in the episode rebuild, with a full working set in hand
+  from a pass that had already finished.
+* **Measured** — `crates/fathom-analyze/tests/memory_ceiling.rs` indexes a 100 000-commit fixture and
+  asserts the process's own `VmHWM` against 512 MiB, printing the peak as each phase starts so a run
+  that goes over says *where*, and writing the peak, the queue high-water, the cache footprint and where
+  the run's minutes went into `benchmarks/reports/memory-ceiling.json`; knobs and their trade-offs are
+  in [docs/concepts/memory.md](docs/concepts/memory.md).
+
 ### The structural extractor grows a tail: Go, Ruby and Java, and the scan policy to bound them (`reco-dlp.1`)
 
 `e3.1` shipped three of the six grammars spike `s1` measured; the other three each needed a mechanism

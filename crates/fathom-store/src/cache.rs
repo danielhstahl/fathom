@@ -1590,10 +1590,38 @@ impl crate::spine::Store {
     /// Read a payload back, or `None` when it is gone — a missing blob is a miss, not a corruption, and
     /// the caller re-derives.
     ///
+    /// Reads go through the process's bounded payload cache first ([`Store::set_ceilings`]), because a
+    /// monorepo's analysis payloads are content-addressed and therefore deduplicated: a thousand files
+    /// with the same generated stub are a thousand lookups of one blob. The cache returns a copy and
+    /// never a borrow — the win is not paying SQLite or `objects/` again, not avoiding a memcpy — and
+    /// the ceiling bounds what that costs.
+    ///
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] only if the row exists and cannot be read at all.
     pub fn read_blob(&self, sha: &str) -> Result<Option<Vec<u8>>, Error> {
+        let key = sha.to_owned();
+        if let Some(cached) = self.payloads.get_with(&key, |bytes| (**bytes).clone()) {
+            return Ok(Some(cached));
+        }
+        let found = self.read_blob_uncached(sha)?;
+        if let Some(bytes) = &found {
+            self.payloads.insert(
+                key,
+                std::sync::Arc::new(bytes.clone()),
+                u64::try_from(bytes.len()).unwrap_or(u64::MAX),
+                "analysis",
+            );
+        }
+        Ok(found)
+    }
+
+    /// The store's own answer for one payload, cache not consulted.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the row exists and cannot be read at all.
+    fn read_blob_uncached(&self, sha: &str) -> Result<Option<Vec<u8>>, Error> {
         let row = self
             .connection()
             .query_row(

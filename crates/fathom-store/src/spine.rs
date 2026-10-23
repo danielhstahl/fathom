@@ -54,7 +54,11 @@ use sha2::Digest as _;
 /// that banks the interning `s3` projected. Every graph row is class R, so the same argument as
 /// version 7's applies with more force: there is nothing to migrate, and a store that already has
 /// these tables from a `--check` build just re-derives them.
-pub const SCHEMA_VERSION: i64 = 8;
+/// Version 9 is `reco-93w`'s memory ceiling ([`crate::ceiling`]): the durable §8.6 budget, and the two
+/// indexes its reachability probe needs to answer "is this blob still named by anything?" without a
+/// table scan per blob. Same argument as version 8's — every byte under a ceiling is class R, so the
+/// bump migrates nothing and re-derives what it evicts.
+pub const SCHEMA_VERSION: i64 = 9;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -116,6 +120,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (6, crate::episode::MIGRATION_6),
     (7, crate::ledger::MIGRATION_7),
     (8, crate::graph::MIGRATION_8),
+    (9, crate::ceiling::MIGRATION_9),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.
@@ -346,6 +351,19 @@ pub struct Store {
     /// unit of work — the opposite of §7.3's batch discipline. So they accumulate here and go to the
     /// database in one transaction when a run closes, which is also the only moment anyone reads them.
     pending: BTreeMap<String, i64>,
+    /// The in-process analysis payload cache: the decoded bytes a warm read asks for again, bounded by
+    /// `rss.analyzer_working_set.mib` (`reco-93w`).
+    ///
+    /// The spill target is the store itself. A payload is content-addressed and already durable — in the
+    /// `blob` row or in `objects/` beside it — so evicting one costs a re-read and never a re-analysis.
+    /// That is what makes a ceiling on this cache cheap to honour: the alternative to holding a hot
+    /// payload is not losing the answer, it is paying SQLite again for an answer the store still has.
+    pub(crate) payloads: fathom_core::memory::BoundedCache<String, std::sync::Arc<Vec<u8>>>,
+    /// The payload-cache eviction and refusal totals already folded into `pending`, so
+    /// [`flush_counters`](Self::flush_counters) writes each event once: the cache counts from the start
+    /// of the process, the `counter` table counts from the start of the store, and the two only agree
+    /// through this bookkeeping.
+    payloads_folded: (u64, u64, u64),
 }
 
 impl Store {
@@ -404,6 +422,10 @@ impl Store {
             conn,
             path: None,
             pending: BTreeMap::new(),
+            payloads: fathom_core::memory::BoundedCache::new(
+                fathom_core::memory::Ceilings::default().analysis_cache_bytes,
+            ),
+            payloads_folded: (0, 0, 0),
         };
         store.check_compile_options()?;
         store.migrate()?;
@@ -1431,6 +1453,40 @@ impl Store {
         self.set_meta("epoch_status", "ready")
     }
 
+    /// Put the run's memory ceilings on this store (`reco-93w`).
+    ///
+    /// One call, from the composition root, before any analysis reads: the ceilings arrive as values
+    /// because ADR-002 §4.5 keeps `fathom.toml` in `fathom-cli`, and a store that read its own budget
+    /// would be a store whose cache behaviour cannot be reproduced from a bug report.
+    ///
+    /// Lowering the analysis-cache ceiling evicts to obey it now, so the number in the config file is
+    /// the number in the resident set by the time this returns.
+    pub fn set_ceilings(&mut self, ceilings: &fathom_core::memory::Ceilings) {
+        self.payloads.set_limit(ceilings.analysis_cache_bytes);
+    }
+
+    /// The analysis payload cache's counters: hits, misses, high water, and what the ceiling evicted.
+    #[must_use]
+    pub fn payload_stats(&self) -> fathom_core::memory::CacheStats {
+        self.payloads.observe()
+    }
+
+    /// Hand the analysis payload cache back to the allocator, and report the bytes that came back.
+    ///
+    /// The cache exists so the analyzers do not re-read what they just wrote — §11.8's *working set*, the
+    /// one term of the sum that is a cache rather than a structure with a job. When they are done, the
+    /// rest of the run has no use for it: the worktree pass reads files and the episode pass reads commit
+    /// rows, neither of which asks for a commit payload again. A budget that measures the process's peak
+    /// does not care that the phase which needed the bytes has finished, so the caller who knows that says
+    /// so here, and the peak stops being the sum of every phase's worst moment.
+    ///
+    /// Nothing is forgotten: entries are a cache over the `blob` table, so a later miss is a read, and the
+    /// counters are kept — `fathom stats` still says what the cache did while it was in use, and a released
+    /// cache stays distinguishable from an unused one.
+    pub fn release_payload_cache(&self) -> u64 {
+        self.payloads.drain()
+    }
+
     /// Accumulate a counter increment without writing it (§4.8).
     ///
     /// Counters are the observable behind `fathom index --stats` and behind ADR-004 §7.6's "degrade, never
@@ -1456,6 +1512,35 @@ impl Store {
     ///
     /// [`Error::StoreCorrupt`] if the batch fails.
     pub fn flush_counters(&mut self, now: i64) -> Result<usize, Error> {
+        // The payload cache's own ledger goes into the same transaction. It is folded as a delta,
+        // because the cache counts from this process's start and the table counts from the store's;
+        // writing the cumulative total every run would inflate the counter by whatever earlier runs of
+        // the same process had already reported (`reco-93w`).
+        let payloads = self.payloads.observe();
+        let folded = self.payloads_folded;
+        if payloads.evictions > folded.0 {
+            self.bump_counter(
+                "cache.payload.evict",
+                i64::try_from(payloads.evictions - folded.0).unwrap_or(0),
+            );
+        }
+        if payloads.evicted_bytes > folded.1 {
+            self.bump_counter(
+                "cache.payload.evict.bytes",
+                i64::try_from(payloads.evicted_bytes - folded.1).unwrap_or(0),
+            );
+        }
+        if payloads.refusals > folded.2 {
+            self.bump_counter(
+                "cache.payload.refused",
+                i64::try_from(payloads.refusals - folded.2).unwrap_or(0),
+            );
+        }
+        self.payloads_folded = (
+            payloads.evictions,
+            payloads.evicted_bytes,
+            payloads.refusals,
+        );
         if self.pending.is_empty() {
             return Ok(0);
         }

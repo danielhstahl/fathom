@@ -26,6 +26,9 @@ pub mod exit;
 pub mod handoff;
 /// OSC-8 hyperlinks, and the rule about which terminals get them (`e5.8`, `reco-dmw`).
 pub mod links;
+/// The memory ceilings, the byte-weighted LRU that obeys them, and the bounded hand-off that applies
+/// back-pressure (`reco-93w`).
+pub mod memory;
 pub mod privacy;
 /// The progress row's percentage and converging time estimate, shared by the shell and `fathom index`
 /// (`e5.9`).

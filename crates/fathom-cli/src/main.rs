@@ -63,6 +63,9 @@ mod export;
 mod guide;
 mod harness;
 mod hooks;
+/// The run's memory ceilings, read from the layers and handed downhill as values
+/// (`reco-93w`).
+mod memory;
 // The episode narrative (`e4.7`): the store read and the formatting choice for the prose that
 // `fathom_analyze::narrative` composes. It is a separate verb from `analyze` for the same reason `why` is:
 // a document and the thing you read it for are different jobs.

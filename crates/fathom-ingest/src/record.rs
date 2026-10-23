@@ -235,6 +235,17 @@ impl Trailers {
         self.0.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 
+    /// The bytes the trailer strings own, for [`CommitRecord::heap_bytes`].
+    #[must_use]
+    pub(crate) fn heap_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self
+                .0
+                .iter()
+                .map(|(key, value)| key.len() + value.len())
+                .sum::<usize>()
+    }
+
     /// Are there no trailers?
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -782,6 +793,20 @@ impl FileRecord {
     pub fn rename_source(&self) -> Option<&RepoPath> {
         self.rename.as_ref().map(|candidate| &candidate.source)
     }
+
+    /// The bytes this row holds on the heap, estimated the same way
+    /// [`CommitRecord::heap_bytes`] is — owned buffers at their own length, no payload, no allocator
+    /// overhead.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self.path.as_bytes().len()
+            + self
+                .old_path
+                .as_ref()
+                .map_or(0, |path| path.as_bytes().len())
+            + self.hunks.len() * std::mem::size_of::<Hunk>()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -889,6 +914,31 @@ impl CommitRecord {
     #[must_use]
     pub fn churn(&self) -> u64 {
         self.totals.added + self.totals.removed
+    }
+
+    /// The bytes this record holds on the heap, estimated — the number the write queue bounds itself
+    /// with (`reco-93w`).
+    ///
+    /// "Estimated" in a specific sense: every owned buffer the record can be asked to hold is counted at
+    /// its own length (paths, the message head, trailer strings, one `Hunk` per header), plus
+    /// `size_of` for the fixed parts. Allocator overhead, capacity slack and shared data are not, and
+    /// no *payload* is counted because a record never owns one — a blob's bytes are in git, and a
+    /// hunk is a header, not the hunk's text. So this under-reads reality a little and never by orders
+    /// of magnitude, which is the right direction for a queue ceiling: it is the quantity that decides
+    /// when a producer waits, and waiting a batch late costs nothing.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        let signature = |who: &crate::graph::Signature| {
+            std::mem::size_of_val(who) + who.name.len() + who.email.len()
+        };
+        std::mem::size_of::<Self>()
+            + self.parents.len() * std::mem::size_of::<Oid>()
+            + signature(&self.author)
+            + signature(&self.committer)
+            + self.message.head.len()
+            + self.message.hash.len()
+            + self.trailers.heap_bytes()
+            + self.files.iter().map(FileRecord::heap_bytes).sum::<usize>()
     }
 }
 

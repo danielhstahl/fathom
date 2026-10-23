@@ -62,7 +62,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 **Foundations and product** — [thesis](concepts/thesis.md) · [first run and empty states](concepts/onboarding.md) ·
 [the headless verbs](concepts/cli.md) · [config and its five layers](concepts/config.md) ·
 [path taxonomy and noise policy](concepts/paths.md) · [the fixture corpus](concepts/fixtures.md) ·
-[privacy: no network by default](concepts/privacy.md) · [the watch daemon](concepts/watch-daemon.md) ·
+[privacy: no network by default](concepts/privacy.md) · [memory ceilings and bounded caches](concepts/memory.md) ·
+[the watch daemon](concepts/watch-daemon.md) ·
 [release and adoption](concepts/release.md)
 
 **What a change is** — [change classification](concepts/change-classification.md) ·

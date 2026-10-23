@@ -35,6 +35,40 @@
     "index": {
       "$ref": "common.schema.json#/$defs/index"
     },
+    "memory": {
+      "additionalProperties": false,
+      "description": "The memory ceilings this process resolved, and the notices about them (`reco-93w`). Never null: a process with no store still has a resident set, and the point of a ceiling is that you can read it.",
+      "properties": {
+        "ceilings": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Each ceiling in force, in the unit its config key names (MiB, batches, minutes), keyed by that key's last segment.",
+          "type": "object"
+        },
+        "lines": {
+          "description": "The ceilings as the terminal prints them: the number, and the key a person has to edit to move it.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "notices": {
+          "description": "One line per configured value that was clamped or refused — a ceiling a repository asked for that this build will not honour.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ceilings",
+        "lines",
+        "notices"
+      ],
+      "type": "object"
+    },
     "repository": {
       "$ref": "common.schema.json#/$defs/repository"
     },
@@ -48,6 +82,7 @@
     "repository",
     "index",
     "cache",
+    "memory",
     "degraded",
     "exit_code",
     "exit_name",
