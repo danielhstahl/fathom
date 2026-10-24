@@ -426,6 +426,8 @@ fn is_arrow(index: usize, bytes: &[u8]) -> bool {
 }
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
     use super::*;
 
     /// The mask must stay byte-for-byte aligned with `raw`, or every mask-derived offset used to slice `raw`

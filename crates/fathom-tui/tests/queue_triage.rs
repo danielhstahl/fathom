@@ -239,10 +239,10 @@ fn open_count(text: &str) -> usize {
         if line.starts_with("caught up") || line.starts_with("nothing to triage") {
             return 0;
         }
-        if line.contains(" open") {
-            if let Some(open) = number(line) {
-                return open;
-            }
+        if line.contains(" open")
+            && let Some(open) = number(line)
+        {
+            return open;
         }
     }
     panic!("no count line on screen:\n{text}")
@@ -724,7 +724,7 @@ fn clearing_a_hundred_episode_queue_costs_the_shell_seconds_not_minutes() {
             episode(
                 &format!("episode{n:03}"),
                 i64::try_from(n).unwrap_or(0),
-                u64::from(n % 34),
+                n % 34,
             )
         })
         .collect();

@@ -28,6 +28,7 @@
   {
    "keys": "x",
    "note": "`x`: mark it reviewed. The rail's glyph flips `⚑` → `✔`, the card line says `✔ accepted`, and the toast names the episode, the risk and who signed it. This is the state step (d) says a rebase must not lose",
+   "until": "reviewed · signed off",
    "hold": 0.9
   },
   {

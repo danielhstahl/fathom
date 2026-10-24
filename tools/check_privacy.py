@@ -25,7 +25,7 @@ python3 tools/check_privacy.py selftest           # prove the egress trap actual
 | `V01` | the default build's feature closure links a network-capable crate, or enables a `net-*` feature |
 | `V02` | the Rust consent table (`fathom_core::privacy`) and the model's (`tools/workspace_model.py`) are not the same rows — the same drift `tests/test_workspace_contract.py` catches, read from the privacy side |
 | `V03` | a `privacy.*` consent key is not user-scoped, or does not default to false, in the shipped config schema |
-| `V04` | an egress-capable API (`std::net`, an HTTP client) appears in Rust code that a default build compiles |
+| `V04` | an egress-capable API (`std::net`, an HTTP client) appears in Rust code that a default build compiles — except where the only thing named is hanging up a socket already open, which is what `std::net::Shutdown` does |
 | `V05` | a network import appears anywhere in the Python `recommender` package, whose modules may only read what they are handed |
 | `V06` | the privacy page is missing, unlinked from the README or the docs front door, silent about a consent key, or contradicts the sentence `doctor --privacy` prints |
 | `V07` | the SBOM and licence report are not generated per release, or the workflow that publishes them is not wired |
@@ -81,6 +81,14 @@ RUST_EGRESS = (
     "std::net", "TcpStream", "TcpListener", "UdpSocket", "Domain::",
     "reqwest", "ureq::", "hyper::", "rustls", "native_tls", "openssl",
 )
+
+#: `std::net` paths that are not a way to reach another machine, excised from a line before the needles
+#: above are looked for. The one that matters is `Shutdown`: hanging up a socket somebody already
+#: opened grants no reach, and the watch daemon's transport is a **Unix-domain** socket — a named pipe,
+#: not a route off the host — whose `Drop` has to name `std::net::Shutdown` to hang up
+#: (`crates/fathom-ingest/src/daemon/socket.rs`). Everything that *opens* a path to another host —
+#: `TcpStream`, `TcpListener`, `UdpSocket`, `Domain::` — stays on the list, inside this file or any other.
+EGRESS_NOT = ("std::net::Shutdown",)
 
 #: Same rule for the Python half. `recommender` modules are pure: they read what the CLI hands them
 #: (`ADR-002 §4.5`), which is what makes "advisory lookup never blocks a review" testable at all.
@@ -217,11 +225,30 @@ def check_consent_table(problems: list, notes: list) -> None:
     notes.append("V03   every consent key is user-scoped and defaults to false")
 
 
+def egress_hit(line: str) -> str | None:
+    """The first egress-capable name in `line`, or None.
+
+    [`EGRESS_NOT`] is excised first, so a line that only hangs up a socket already open is clean and a
+    line that opens one is not — even the same line. Kept as a function of one line so
+    `tests/test_privacy_contract.py` can aim it at the shapes that must and must not pass, rather than
+    at a tree it would have to damage to prove the point.
+    """
+    probe = line
+    for local in EGRESS_NOT:
+        probe = probe.replace(local, "")
+    for needle in RUST_EGRESS:
+        if needle in probe:
+            return needle
+    return None
+
+
 def check_rust_sources(problems: list, notes: list) -> None:
     """`V04` — no egress-capable call in code a default build compiles.
 
     Files whose *own text* names a `net-` feature are the gated ones and are exempt: that is the whole
-    point of the naming rule. Everything else in a shipped crate has to be clean.
+    point of the naming rule. Everything else in a shipped crate has to be clean. The one thing on the
+    needle list that is not a way to reach another machine is [`EGRESS_NOT`], and it is excised per line
+    rather than per file so a real constructor in the same file still fails the rule.
     """
     shipped = sorted({item.partition("/")[0] for item in M.cli_shipped_default_closure()
                       if (ROOT / "crates" / item.partition("/")[0] / "src").is_dir()})
@@ -236,12 +263,12 @@ def check_rust_sources(problems: list, notes: list) -> None:
                 stripped = line.strip()
                 if stripped.startswith(("///", "//!", "//")):
                     continue  # prose about the ban is not the ban
-                for needle in RUST_EGRESS:
-                    if needle in line:
-                        problems.append(Problem(
-                            "V04", "%s:%d" % (path.relative_to(ROOT), line_no),
-                            "`%s` in default-shipped code with no `net-*` gate in the file "
-                            "(ADR-002 R6)" % needle))
+                probe = egress_hit(line)
+                if probe is not None:
+                    problems.append(Problem(
+                        "V04", "%s:%d" % (path.relative_to(ROOT), line_no),
+                        "`%s` in default-shipped code with no `net-*` gate in the file "
+                        "(ADR-002 R6)" % probe))
     notes.append("V04   %d default-shipped .rs files carry no egress call" % scanned)
 
 

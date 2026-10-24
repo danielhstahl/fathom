@@ -46,8 +46,12 @@ MAKEFILE = ROOT / "Makefile"
 STATISTICS = ("p95", "p50", "peak", "cap", "ceiling", "hard limit", "count")
 
 # | `cold.index.ms` | ms | p95 | 1,500 | 20,000 | 75,000 | 240,000 | this harness | … |
+#
+# The statistic column may carry its denominator with it — `p95 per commit`, `p50 per file row`, the
+# rate budgets of ADR-004 §11.9 — so the keyword is matched at the head of the cell and the rest of the
+# cell is skipped rather than required to be nothing.
 BUDGET_ROW = re.compile(
-    r"^\|\s*`([a-z0-9_.]+)`\s*\|([^|]*)\|\s*(" + "|".join(STATISTICS) + r")\s*\|"
+    r"^\|\s*`([a-z0-9_.]+)`\s*\|([^|]*)\|\s*(" + "|".join(STATISTICS) + r")[^|]*\|"
     r"([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|")
 
 

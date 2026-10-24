@@ -60,7 +60,8 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
     ));
 
     // A real ranking: components, vector, surfaces, blind spots, and a rank within a set.
-    let files = vec![
+    // An array, not a `Vec`: it is borrowed and iterated, never grown, and the row count is the fixture.
+    let files = [
         ("src/store/epoch.rs", 412, 90, false, "source", "none"),
         ("tests/store/epoch.rs", 88, 12, false, "test", "none"),
         ("migrations/0007.sql", 40, 0, false, "migration", "none"),
@@ -583,11 +584,11 @@ fn the_export_is_a_rendering_of_the_one_model() {
         "--episodes",
         "HEAD~1..HEAD",
         "--out",
-        &dir.join("artefact").to_str().expect("a utf-8 path"),
+        dir.join("artefact").to_str().expect("a utf-8 path"),
     ]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let value: Value =
-        serde_json::from_str(&stdout(&out).trim()).expect("export --json prints JSON");
+        serde_json::from_str(stdout(&out).trim()).expect("export --json prints JSON");
     let sections = value["record"]["sections"]
         .as_array()
         .expect("the report carries the sections");
@@ -628,7 +629,7 @@ fn the_export_is_a_rendering_of_the_one_model() {
         "--episodes",
         "HEAD~1..HEAD",
         "--out",
-        &dir.join("artefact").to_str().expect("a utf-8 path"),
+        dir.join("artefact").to_str().expect("a utf-8 path"),
     ]);
     assert_eq!(code(&written), 0, "{}", stderr(&written));
 

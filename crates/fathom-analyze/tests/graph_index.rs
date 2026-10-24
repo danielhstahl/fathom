@@ -21,6 +21,9 @@
 //! so the edges here are the real mechanism rather than a hand-built graph.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+// The fixture module also carries helpers this file does not need; `graph_lane` and `deps_repository`
+// do, and each test binary is compiled on its own, so "unused here" is not "dead".
+#[allow(dead_code)]
 mod common;
 
 use common::Fixture;

@@ -4,6 +4,10 @@
 //! `tests/graph_lane.rs`, which needs a SQLite backend. What lives here needs no store at all, which
 //! is the point: the graph's semantics are a pure function of the per-file substrate, and ADR-002
 //! §6.1 says a build with no SQLite must still be able to say so.
+//!
+//! A test may unwrap: a missing key or an `Err` here is the failure, and there is no `main` to return it
+//! to. The allowance every test file in this workspace states for itself.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use fathom_analyze::structure::{
     Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,

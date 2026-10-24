@@ -939,7 +939,7 @@ fn the_blessed_calibration_report_is_current() {
 /// Writes the blessed calibration report. Deliberately `#[ignore]`d: a blessed file is a diff a human
 /// reads, and the command that writes it prints what it changed.
 #[test]
-#[ignore]
+#[ignore = "rewrites a blessed golden file on purpose; run `cargo test risk_score -- --ignored bless` and read the diff"]
 fn bless_calibration_report() {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),

@@ -138,12 +138,18 @@ def test_the_perf_report_quotes_real_budgets_and_explains_every_gap():
         assert row["budget"] is not None, f"{row['budget_id']} has no published value"
         if row["measured"] is None:
             assert row["blocked_by"], "an unmeasured number must say what blocks it"
-    # The two numbers the acceptance criteria are about, present and stated.
+    # The two numbers the acceptance criteria are about, present and stated. `cold.queue_visible.ms.small`
+    # used to be the blocked row this document was written around, and this assertion was the tripwire that
+    # said so: `reco-c05` handed the queue its episodes, the row measured, and the paragraph under the
+    # table in `docs/demo/README.md` was rewritten in the same change. The tripwire is kept and pointed the
+    # other way, because the finding is the same one arriving from the other direction: a queue that stops
+    # being handed episodes is `e1.12` failing again, and the page would still be describing an answer.
     assert any(row["budget_id"] == "cold.index.ms.small" and row["met"] for row in measured)
-    assert any(row["budget_id"] == "cold.queue_visible.ms.small" and row["blocked_by"]
-               for row in report["measured"]), (
-        "the queue-visibility budget is the one e1.12 depends on; if it ever measures, this test "
-        "says so by failing and the acceptance document must be rewritten")
+    queue = [row for row in report["measured"] if row["budget_id"] == "cold.queue_visible.ms.small"]
+    assert queue, "the queue-visibility budget is not in the report at all"
+    assert all(row["measured"] is not None and row["met"] for row in queue), (
+        "the queue stopped answering: the budget e1.12 depends on is blocked again, and "
+        f"docs/demo/README.md now describes an answer it does not measure: {queue}")
 
 
 def test_the_steps_file_keeps_the_numbers_the_tables_are_rendered_from():

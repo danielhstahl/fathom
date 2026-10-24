@@ -4,6 +4,10 @@
 //! Every fixture here is hand-written on purpose. A drift test generated from a real repository would be
 //! testing what the corpus happens to contain; these test what each rule *claims*, which is the thing a
 //! threshold has to be argued about.
+//!
+//! A test may unwrap: an absent field here is the finding the rule was supposed to make, and saying so
+//! at the call is shorter than saying it in a `main` no one runs.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use fathom_analyze::drift::{
     self, Deviation, Episode, Plan, PlanItem, Policy, Report, Rung, Session, SideKind, overlap,
@@ -462,11 +466,15 @@ fn a_dismissed_contradiction_is_not_reported_and_is_counted() {
         session(vec![e])
     };
     let plain = build();
-    let first = drift::analyse(&[plain.clone()], &Policy::default());
+    let first = drift::analyse(std::slice::from_ref(&plain), &Policy::default());
     let key = first.findings[0].suppression_key.clone();
 
-    let mut policy = Policy::default();
-    policy.dismissed = [key.clone()].into_iter().collect();
+    // A policy is a bag of defaults with one knob turned: the struct-update form says which knob, and
+    // says it once (`clippy::field_reassign_with_default`).
+    let policy = Policy {
+        dismissed: [key.clone()].into_iter().collect(),
+        ..Default::default()
+    };
     let second = drift::analyse(&[build()], &policy);
     assert!(
         second.findings.is_empty(),
@@ -521,13 +529,17 @@ fn the_window_and_the_caps_are_real_bounds_and_they_say_so() {
     episodes.push(last);
 
     let tight = {
-        let mut policy = Policy::default();
-        policy.window = 1;
+        let policy = Policy {
+            window: 1,
+            ..Default::default()
+        };
         drift::analyse(&[session(episodes.clone())], &policy)
     };
     let wide = {
-        let mut policy = Policy::default();
-        policy.window = 8;
+        let policy = Policy {
+            window: 8,
+            ..Default::default()
+        };
         drift::analyse(&[session(episodes.clone())], &policy)
     };
     assert!(
@@ -553,8 +565,10 @@ fn the_window_and_the_caps_are_real_bounds_and_they_say_so() {
         ));
         flood.push(e);
     }
-    let mut policy = Policy::default();
-    policy.max_per_kind = 2;
+    let policy = Policy {
+        max_per_kind: 2,
+        ..Default::default()
+    };
     let capped = drift::analyse(&[session(flood.clone())], &policy);
     assert_eq!(
         capped
@@ -566,9 +580,17 @@ fn the_window_and_the_caps_are_real_bounds_and_they_say_so() {
     );
     assert!(capped.truncated);
     assert!(capped.verdict().contains("the caps cut some"));
-    policy.max_per_kind = 20;
-    policy.max_findings = 3;
-    let squeezed = drift::analyse(&[session(flood)], &policy);
+    // The other cap, on a policy of its own: a `Policy` is built from its defaults in one expression,
+    // not poked at afterwards (`clippy::field_reassign_with_default`). `max_per_kind` is lifted to 20
+    // so that the *total* is what gets cut here.
+    let squeezed = drift::analyse(
+        &[session(flood)],
+        &Policy {
+            max_per_kind: 20,
+            max_findings: 3,
+            ..Default::default()
+        },
+    );
     assert_eq!(squeezed.findings.len(), 3);
     assert!(squeezed.truncated);
 }
@@ -613,8 +635,10 @@ fn a_plan_is_compared_inside_its_own_session_unless_told_otherwise() {
         kinds(&separate)
     );
 
-    let mut policy = Policy::default();
-    policy.cross_session = true;
+    let policy = Policy {
+        cross_session: true,
+        ..Default::default()
+    };
     let joined = drift::analyse(&[earlier, later], &policy);
     assert!(
         !kinds(&joined).contains(&"plan-unimplemented".to_owned()),
@@ -696,8 +720,10 @@ fn the_switches_switch_off_and_say_which_way_the_report_went() {
         ));
         session(vec![e])
     };
-    let mut policy = Policy::default();
-    policy.off = ["plan-unimplemented".to_owned()].into_iter().collect();
+    let policy = Policy {
+        off: ["plan-unimplemented".to_owned()].into_iter().collect(),
+        ..Default::default()
+    };
     let report = drift::analyse(&[build()], &policy);
     assert!(!kinds(&report).contains(&"plan-unimplemented".to_owned()));
     assert!(

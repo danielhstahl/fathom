@@ -358,7 +358,7 @@ fn a_longer_walk_still_answers_and_says_what_it_walked() {
             &oid,
             previous.as_deref(),
             &revision.inputs(),
-            NOW + i64::try_from(index).unwrap(),
+            NOW + i64::from(index),
         )
         .expect("record");
         previous = Some(oid);

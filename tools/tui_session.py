@@ -273,7 +273,8 @@ class Recorder:
 
 
 def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
-          quiet: bool = True, until: str | None = None) -> tuple:
+          quiet: bool = True, until: str | None = None,
+          capture: dict | None = None) -> tuple:
     """Read whatever the terminal produced until it goes quiet or the deadline passes.
 
     Returns `(first, last, changed, found)`: when the first byte of the answer arrived, when the
@@ -282,6 +283,13 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
     and, if the step named an `until` string, when the screen first contained it. That fourth
     number is what makes "time until the first hunk is on screen" a measurement (`reco-0kw`):
     `changed` says the pane moved, `found` says it moved to the thing that was asked about.
+
+    Pass a `capture` dict and the frame that *first* said `until` is kept in `capture["screen"]`.
+    A toast is on the hint row for a fixed number of draws, not for the length of a step (`TOAST_FRAMES`
+    in `fathom-tui/src/app.rs`), so a harness that only keeps the settled frame can watch an act happen
+    and still hold a screenshot in which it did not: `tests/test_review_state_contract.py` needs the
+    toast's own words, and this is the one honest way to hand them over — the frame as it was at the
+    moment it said them.
     """
     first: float | None = None
     last: float | None = None
@@ -295,6 +303,8 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
             changed = now
         if found is None and until is not None and until in text:
             found = now
+            if capture is not None:
+                capture["screen"] = text
 
     before = screen.text()
     while True:
@@ -390,6 +400,8 @@ def main() -> int:
     recorder = Recorder()
     screen = Screen(args.width, args.height)
     timings: list[dict] = []
+    #: step index → (`until`, the frame that first said it), for `--screens`. See `drain`.
+    needle_screens: dict[int, tuple[str, str]] = {}
     command_output: list[dict] = []
     first_paint_ms: float | None = None
     shell_ms: float | None = None
@@ -467,11 +479,18 @@ def main() -> int:
             # which is what makes `paint_ms` the terminal's latency rather than this script's.
             # A step may also name an `until` string; `until_ms` is then the moment the screen first
             # said it — "time until the first hunk is on screen" made measurable (`reco-0kw`).
+            shot: dict = {}
+            needle = step.get("until")
             painted, settled, changed, found = drain(
                 master, time.monotonic() + float(step.get("hold" , step.get("settle", args.settle))),
                 recorder, raw, screen, quiet="hold" not in step,
-                until=step.get("until"))
+                until=step.get("until"), capture=shot)
             time.sleep(float(step.get("sleep", 0.0)))
+            if needle and shot.get("screen"):
+                # The frame as it was the first time it said the step's `until`. Kept beside the
+                # timings rather than inside them: it is a screen, not a number, and it belongs in
+                # `--screens`, where the frames are.
+                needle_screens[index] = (needle, shot["screen"])
             timings.append({
                 "step": index,
                 "note": note,
@@ -537,6 +556,14 @@ def main() -> int:
                 handle.write("\n\n=== step %d (%s) — %.2fs — %s ===\n%s\n"
                              % (timing["step"], timing["keys"] or "-", timing["at_s"], timing["note"],
                                 timing["screen"]))
+                needle = needle_screens.get(timing["step"])
+                if needle and needle[1] != timing["screen"]:
+                    # The frame that first said the step's `until`, kept beside the settled one: a
+                    # toast is on the hint row for forty draws and is gone before the pane settles,
+                    # so the settled frame alone would record an act that did not happen.
+                    handle.write("\n\n=== step %d (%s) — the frame that first said %s ===\n%s\n"
+                                 % (timing["step"], timing["keys"] or "-",
+                                    json.dumps(needle[0]), needle[1]))
 
     # A short human summary: the reviewer's own timeline, with the plain-text screen scrape.
     line = "=" * 78

@@ -147,7 +147,7 @@ no yourself" (`user`).
 | `V01` | the default build's resolved closure links a network-capable crate, or enables a `net-*` feature |
 | `V02` | the consent table in Rust, in `tools/workspace_model.py` and in `schemas/fathom.schema.json` are not one table |
 | `V03` | a `privacy.*` key is not user-scoped, or does not default to `false` |
-| `V04` | an egress-capable call (`std::net`, an HTTP client) appears in default-shipped Rust code with no `net-*` gate in the file |
+| `V04` | an egress-capable call (`std::net`, an HTTP client) appears in default-shipped Rust code with no `net-*` gate in the file — the one exception is `std::net::Shutdown`, which hangs up a socket already open and reaches nothing (the watch daemon's Unix-domain socket has to name it) |
 | `V05` | a Python analysis module imports a network stack, anywhere in the file — the only IO surfaces are the gated CLI edges that perform a consented fetch |
 | `V06` | this page goes missing, stops being linked from the README or the docs front door, or falls silent about a consent key |
 | `V07` | the SBOM and licence report of §6 are not generated, or nothing publishes them per release |

@@ -1922,13 +1922,16 @@ mod tests {
     #[test]
     fn a_chain_is_never_longer_than_the_anchor_interval() {
         // The read cost bound, as a fact about the policy rather than about one repository.
+        // The last one is a fact about two constants, so it is checked where the compiler can read it
+        // (`clippy::assertions_on_constants` would rather it were not a runtime assert); a change to
+        // either number now fails the build instead of failing this test on the next run.
+        const _: () = assert!(
+            INVENTORY_CHAIN_LIMIT > INVENTORY_ANCHOR_EVERY,
+            "a reader must be able to reach an anchor before it gives up and enumerates"
+        );
         assert!(!needs_anchor(0));
         assert!(!needs_anchor(INVENTORY_ANCHOR_EVERY - 1));
         assert!(needs_anchor(INVENTORY_ANCHOR_EVERY));
         assert!(needs_anchor(INVENTORY_ANCHOR_EVERY * 7));
-        assert!(
-            INVENTORY_CHAIN_LIMIT > INVENTORY_ANCHOR_EVERY,
-            "a reader must be able to reach an anchor before it gives up and enumerates"
-        );
     }
 }

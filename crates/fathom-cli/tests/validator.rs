@@ -6,11 +6,13 @@
 //! schemas use — see the module doc of `crates/fathom-analyze/src/insight/schema.rs` for why that
 //! coincidence is deliberate.
 #![allow(dead_code)]
+// A test may unwrap: a schema file that will not parse, or a workspace laid out somewhere other than
+// two levels below itself, is the failure, and there is no `main` here to return it to.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// The schemas live at the workspace root, next to the config schema `e0.8` generates.
 /// Where `schemas/` is, from a crate two levels below the workspace root.
 pub fn schemas_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -29,6 +31,8 @@ pub struct Schema {
 }
 
 impl Schema {
+    /// Read one of the checked-in schemas by file name. The document is kept parsed so a test can
+    /// validate against a fragment of it (`$defs/…`) as well as the whole of it.
     pub fn load(name: &str) -> Schema {
         let dir = schemas_dir();
         let text =
@@ -245,6 +249,10 @@ fn follow(pointer: &str, document: &serde_json::Value) -> serde_json::Value {
     current
 }
 
+/// Does `value` have one of the types a schema's `type` keyword names — a string for `"string"`, an
+/// integer for `"integer"`, and so on? A JSON Schema `type` may be one name or a list of them, and a
+/// name this validator does not know is a pass: an unknown keyword must not fail a document that is
+/// otherwise fine (ADR-011 §6; see `report_is_valid_against_the_schema_as_data` for the consequence).
 pub fn type_matches(types: &serde_json::Value, value: &serde_json::Value) -> bool {
     let candidates: Vec<&str> = match types {
         serde_json::Value::String(name) => vec![name.as_str()],
@@ -263,6 +271,8 @@ pub fn type_matches(types: &serde_json::Value, value: &serde_json::Value) -> boo
     })
 }
 
+/// What a value would be called in an error message: `null`, `boolean`, `object`, whatever it is.
+/// Only a name for a human, never a judgement — `type_matches` is the judgement.
 pub fn kind_of(value: &serde_json::Value) -> &'static str {
     match value {
         serde_json::Value::Null => "null",

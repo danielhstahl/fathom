@@ -593,6 +593,53 @@ def _check_facade(crate: str, ref: str, where: str) -> list[Problem]:
                     % (crate, ref, target, " or ".join("`::%s`" % p.split("::")[1] for p in allowed)))]
 
 
+def string_code(line: str) -> str:
+    """`line` with the inside of every double-quoted string blanked, delimiters kept.
+
+    The source rules are line-shaped greps, and a grep cannot tell code from data: `"todo!()"` in the
+    marker table of the detector that looks for TODOs is not an unbuilt path, and `"pub unsafe fn "` in
+    the module that detects public declarations is not `unsafe`. Blanking a literal's interior is the
+    smallest edit that makes those lines read as what they are — the same reasoning that already skips a
+    `//` comment, and it is length-preserving so a reported column still means something. Char literals
+    and lifetimes are left alone: `'a` is not a string.
+    """
+    out: list[str] = []
+    in_string = False
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if in_string:
+            if ch == "\\":
+                out.append("  ")
+                i += 2
+                continue
+            in_string = ch != '"'
+            out.append(ch if not in_string else " ")
+        else:
+            in_string = ch == '"'
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _public_module_is_where_it_should_be(manifest: Manifest, rel: str, hit: re.Match) -> bool:
+    """`W4`'s second half: a public module must be where a reviewer would look for it.
+
+    `lib.rs` and `mod.rs` are exempt by name, so what reaches here is a declaration in a leaf file. A
+    file-backed `pub mod name;` is fine when the module has the file Rust would resolve it to —
+    `src/risk.rs` may declare `pub mod score;` because `src/risk/score.rs` is the file you open. An
+    inline `pub mod name { … }` block has no file at all, so it is exempt only when the crate and file
+    are named in `M.INLINE_NAMESPACE_MODULES`.
+    """
+    here = manifest.path / rel
+    if hit.group("form") == "{":
+        return rel in M.INLINE_NAMESPACE_MODULES.get(manifest.crate, ())
+    stem = here.parent / here.stem
+    root = stem if stem.is_dir() else here.parent
+    name = hit.group("name")
+    return (root / ("%s.rs" % name)).is_file() or (root / name / "mod.rs").is_file()
+
+
 def scan_sources(manifest: Manifest) -> list[Problem]:
     problems: list[Problem] = []
     model = M.CRATES_BY_NAME.get(manifest.crate)
@@ -613,8 +660,9 @@ def scan_sources(manifest: Manifest) -> list[Problem]:
             where = "%s:%d" % (rel, lineno)
             in_test_block = in_test_at is not None
             stripped = line.strip()
+            code = string_code(line)
             if not stripped.startswith("//"):
-                for match in CRATE_REF.finditer(line):
+                for match in CRATE_REF.finditer(code):
                     ref = match.group(0).split("::{")[0]
                     target = ref.split("::")[0].replace("_", "-")
                     if not target.startswith("fathom-"):
@@ -625,18 +673,25 @@ def scan_sources(manifest: Manifest) -> list[Problem]:
                 for rule in M.SOURCE_RULES:
                     if rule.applies != ("*",) and manifest.crate not in rule.applies:
                         continue
-                    if rel in rule.skip_files:
+                    if rule.skipped(rel):
                         continue
                     if rule.tests_exempt and (in_tests or in_test_block):
                         continue
-                    if re.search(rule.pattern, line):
-                        problems.append(Problem(rule.rule, "%s %s" % (manifest.crate, where), rule.why))
-                if UNSAFE_RE.search(line) and not stripped.startswith("#![") and not in_tests \
+                    hit = re.search(rule.pattern, line if rule.strings_are_code else code)
+                    if not hit:
+                        continue
+                    if rule.rule == "W4" and _public_module_is_where_it_should_be(manifest, rel, hit):
+                        continue
+                    problems.append(Problem(rule.rule, "%s %s" % (manifest.crate, where), rule.why))
+                if UNSAFE_RE.search(code) and not stripped.startswith("#![") and not in_tests \
                         and not in_test_block:
                     problems += _check_unsafe(manifest, rel, where)
             if RUST_TEST_ATTR.search(line):
                 armed_at = depth
-            depth += line.count("{") - line.count("}")
+            # Braces are counted on the string-blanked line, and comment lines are skipped: a `"{"` in a
+            # literal or a `{` in a doc example is not a block opening, and a drifting depth would make
+            # the test-block exemption below wrong in whatever direction it drifted.
+            depth += 0 if stripped.startswith("//") else code.count("{") - code.count("}")
             if armed_at is not None and depth > armed_at:
                 in_test_at, armed_at = armed_at, None
             if in_test_at is not None and depth <= in_test_at:

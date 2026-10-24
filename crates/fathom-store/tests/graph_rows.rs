@@ -7,6 +7,8 @@
 //! manifest is linked by hand. The third — a tree written twice — is a store property before it is a
 //! lane policy.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use fathom_store::graph::{
     ANCHOR_SLOT, CHUNK_KIND_ADJACENCY, CHUNK_KIND_MANIFEST, ChainPartial, DeltaOp, GraphBytes,
     NodeEntry, Op, SnapshotRow,

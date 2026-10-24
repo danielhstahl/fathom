@@ -233,7 +233,8 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   rather than dropped, and the two invisible candidates are *stated* rather than implied.
 * `crates/fathom-cli/tests/risk_rank.rs` — the shipped binary on a twenty-one-commit repository: the
   queue's top three rows are the migration, the three-line workflow change and the turn that deleted
-  its own suite; the 400-line documentation edit is last; the strip names `spine-1`, the count and the
+  its own suite; the 400-line documentation edit is last; the strip names the ranking in force —
+  `queue-1` since `e4.5`, with `spine-1`'s number sitting beside it on every row — the count and the
   ceiling.
 * `fathom-tui/tests/risk_rank.rs` — the shell's obligations, through the real renderer: order the
   rows, keep each row's own reason with its row, hand `w` the whole ceiling, and keep the frame exact
@@ -241,8 +242,10 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
 * `tests/test_risk_ranking_contract.py` — the walkthrough's own question, asked of the shipped binary
   through a pty against the 500-commit fixture: the queue is ranked and not chronological, the
   migration and the CI permission change are on the first screen with their reasons, `w` prints the
-  vector and the ceiling, and the rows nothing ranked print `?` at the bottom of the list instead of
-  a `0` that would read as "safe".
+  vector and the ceiling, and a row nothing ranked prints `?` at the bottom of the list instead of a
+  `0` that would read as "safe" — which this fixture no longer contains, because `queue-1` scores every
+  row, so that test asserts whichever shape the fixture is in and the empty case is built in
+  `crates/fathom-tui/tests/risk_rank.rs`.
 * The acceptance harness measures the pane now that the pane answers. `tools/mvp_acceptance.py`
   records `cold.queue_visible.ms.small` (`q` until the screen printed `order: ` and a `risk` number),
   `query.queue.ms.small` and `query.card.ms.small` as measured numbers; all three were blocked on

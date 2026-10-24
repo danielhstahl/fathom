@@ -365,11 +365,10 @@ fn status_json_conforms_to_its_schema() {
             .is_some_and(|rows| !rows.is_empty()),
         "an absent daemon is a finding with a remedy, not a blank: {report}"
     );
-    assert_eq!(
+    assert!(
         report["diagnostics"][0]["remedy"]
             .as_str()
             .is_some_and(|remedy| remedy.contains("fathom daemon start")),
-        true,
         "the remedy names the verb that starts one: {report}"
     );
     assert_eq!(

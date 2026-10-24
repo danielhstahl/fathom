@@ -344,6 +344,10 @@ MUTATIONS = [
     ("wall clock in core", "crates/fathom-core/src/lib.rs",
      "#![forbid(unsafe_code)]",
      "#![forbid(unsafe_code)]\nfn t() -> std::time::Instant { std::time::Instant::now() }\n", "W2"),
+    # `src/search/` is exempt from `W2` — the search report prints how long the keystroke took — so this
+    # is the proof the exemption is one directory and not the whole crate.
+    ("wall clock in an analysis module", "crates/fathom-analyze/src/insight.rs",
+     "//!", "//!\nfn t() -> u128 { std::time::Instant::now().as_micros() }\n", "W2"),
     ("unsafe in core", "crates/fathom-core/src/lib.rs",
      "#![forbid(unsafe_code)]", "#![forbid(unsafe_code)]\nunsafe fn raw() {}\n", "P02"),
     ("unsafe outside src/raw", "crates/fathom-store/src/lib.rs",
@@ -412,6 +416,57 @@ def test_a_mutation_of_each_rule_fails_the_lint(workspace, name, file, old, new,
 def test_deleting_deny_toml_fails_the_lint(workspace):
     (workspace / "deny.toml").unlink()
     assert "D01" in rules(workspace)
+
+
+# ---------------------------------------------------------------------------
+# the same lint, wrong in the other direction: a rule that fires on data, and a rule
+# relaxed further than the design allows
+# ---------------------------------------------------------------------------
+
+
+def test_a_string_that_quotes_a_marker_is_data_not_a_violation(workspace):
+    """`W4`, `W6` and `P02` read code; a quoted marker is a detector's own table.
+
+    The pathologies that look for `todo!(`, for a `pub mod` and for `unsafe` carry those exact strings in
+    their marker lists, and the grep-level lint read those tables as violations — five false `W6`s and
+    one false `P02` on the shipped tree, next to the eight false `W4`s from the same crate. The fix is
+    `check_workspace.string_code`; this is what keeps it narrow: the literals are excused, and every
+    mutation in `MUTATIONS` above proves the same three rules still fire on code.
+    """
+    edit(workspace, "crates/fathom-analyze/src/insight.rs", "//!",
+         '//!\nconst MARKERS: &[&str] = &["todo!()", "unimplemented!(", "pub mod leak;",\n'
+         '                  "pub unsafe fn "];\n')
+    fired = {p.rule for p in CW.lint(workspace)}
+    assert not {"W4", "W6", "P02"} & fired, "a quoted marker was read as code: %s" % sorted(fired)
+
+
+def test_an_inline_public_module_still_needs_a_file(workspace):
+    """`W4`'s remaining teeth: a public module is a file, or it is named as a namespace.
+
+    The exemption in `workspace_model.INLINE_NAMESPACE_MODULES` is four files deep. A `pub mod x { … }`
+    block anywhere else has no file for a reviewer to open, which is the half of `R9` that survived the
+    workspace growing nested modules.
+    """
+    edit(workspace, "crates/fathom-analyze/src/insight.rs", "//!",
+         '//!\npub mod hidden { pub const X: &str = "x"; }\n')
+    assert "W4" in rules(workspace)
+
+
+def test_the_class_m_files_analyze_may_read_are_the_only_io_it_is_exempt_for(workspace):
+    """`W1`'s carve-out is three paths in `fathom-analyze`, not the crate.
+
+    ADR-002 §3 lets this crate touch the committed markdown that is the record (`src/ledger/`,
+    `src/notes/`, the ratchet baseline in `src/cycles/debt.rs`) and nothing else: a fact arriving by
+    `std::fs` in any other analysis module is still the accident the rule exists to catch.
+    """
+    ledger = workspace / "crates/fathom-analyze/src/ledger"
+    ledger.mkdir(parents=True)
+    (ledger / "format.rs").write_text(
+        '//!\nfn read_it() -> usize { std::fs::read_dir(".").map(|e| e.count()).unwrap_or(0) }\n')
+    assert rules(workspace) == set(), "the class-M reader is exempt by path, and this is the proof"
+    (workspace / "crates/fathom-analyze/src/rank.rs").write_text(
+        '//!\nfn read_it() -> usize { std::fs::read_dir(".").map(|e| e.count()).unwrap_or(0) }\n')
+    assert "W1" in rules(workspace), "the exemption leaked past the three paths it names"
 
 
 def test_unsigned_advisory_ignore_fails_the_lint(workspace):

@@ -20,6 +20,7 @@ import sys
 
 import pytest
 
+import tools.check_privacy as P
 import tools.workspace_model as M
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -56,6 +57,24 @@ def test_the_static_half_is_clean_and_says_which_rules_ran():
     assert result.returncode == 0, result.stdout + result.stderr
     for rule in ("V01", "V02", "V03", "V04", "V05", "V06", "V07"):
         assert rule in result.stdout, "rule %s reported nothing — a silent pass is not a check" % rule
+
+
+def test_the_egress_needles_still_trap_a_constructor_and_only_excuse_hanging_up():
+    """`V04`'s one exemption is `Shutdown`, and it is exactly that wide.
+
+    The rule greps names, so its whole risk is a narrowing that quietly lets a real constructor past.
+    This is the assertion that keeps the exception in `check_privacy.EGRESS_NOT` the size of the claim
+    made for it: a Unix-domain socket closing its own connection is not egress, and everything that
+    *opens* a path to another host still trips, including on a line that also names `Shutdown`.
+    """
+    assert P.egress_hit("        let _ = stream.shutdown(std::net::Shutdown::Both);") is None
+    for line in ("use std::net::TcpStream;",
+                 "let s = TcpStream::connect(host)?;",
+                 "let l = std::net::TcpListener::bind(addr)?;",
+                 "let u = UdpSocket::bind(\"0.0.0.0:53\")?;",
+                 # The shape that would be the quiet way round: open a socket and close it in one line.
+                 "TcpStream::connect(a)?.shutdown(std::net::Shutdown::Both)?;"):
+        assert P.egress_hit(line) is not None, "%s is egress and the rule no longer says so" % line
 
 
 def test_the_egress_trap_actually_traps_here():

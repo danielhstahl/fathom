@@ -5,6 +5,9 @@
 //! nobody external can read is not a fixture, it is a private format, so the binary's agreement is worth
 //! checking even though nothing in the product ever shells out.
 #![allow(dead_code)]
+// A fixture may unwrap: a repository helper that cannot make its commit, or cannot name its own
+// directory, is the failure, and there is no `main` here to return anything to.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -276,7 +276,10 @@ CRATES: tuple[Crate, ...] = (
             "**IO-free by choice, not by accident.** Analysis reads through `fathom-ingest` and "
             "`fathom-store` and is a pure function of (input, config), which is what makes golden tests "
             "and ADR-004 §5's cache keys mean something. Four teams share this crate; the module "
-            "ownership split is in §9.",
+            "ownership split is in §9. The exception is class M, and it is narrow: `src/ledger/`, "
+            "`src/notes/` and the ratchet baseline in `src/cycles/debt.rs` read and write the committed "
+            "markdown that *is* the record (ADR-004 D12), because a file the reviewer can `git diff` is "
+            "the whole point of those three surfaces. `lint` → `W1` enforces exactly that line.",
             "`insight` and `export` are the narrow waist every surface reads through; `fathom-tui` may "
             "also name `search` and `compare` (§5.3), and `fathom-mcp` may not.",
         ),
@@ -528,7 +531,12 @@ NETWORK_CONSENT_KEYS = {
 # §7 purity / style rules the lint enforces
 # ---------------------------------------------------------------------------
 
-#: grep-level rules. `pattern` is a Python regex over a single line of Rust; `except` lines are waived.
+#: grep-level rules. `pattern` is a Python regex over a single line of Rust; `skip` entries are
+#: exempt — an entry is a path (`src/lib.rs`), a directory prefix (`src/ledger/`) or a file name
+#: (`mod.rs`). `tests_exempt` waives `tests/`, `benches/`, `examples/` and anything inside a
+#: `#[cfg(test)]` or `#[test]` block. A match inside a string literal is not a match — the rule reads
+#: code and a quoted marker is data (`check_workspace.string_code`) — except for a rule with
+#: `strings_are_code`, whose pattern is about the text inside the literal in the first place (`W3`).
 @dataclass(frozen=True)
 class SourceRule:
     rule: str                       # stable id used verbatim in lint output
@@ -536,7 +544,13 @@ class SourceRule:
     pattern: str
     why: str
     tests_exempt: bool = True       # `#[cfg(test)]` code and `tests/` files are waived
-    skip_files: tuple[str, ...] = ()
+    strings_are_code: bool = False  # the pattern is about text *inside* a literal (`W3`)
+    skip: tuple[str, ...] = ()      # exempt paths, directory prefixes and file names (see above)
+
+    def skipped(self, rel: str) -> bool:
+        """Is the file `rel` exempt from this rule? `rel` is crate-relative, like `skip` entries."""
+        return any(rel == entry or rel.startswith(entry) or rel.rsplit("/", 1)[-1] == entry
+                   for entry in self.skip)
 
 
 #: Import shapes that mean "this crate names that crate": `use`, `extern crate`, a full path in an
@@ -548,19 +562,41 @@ USE_PATTERNS = (
 )
 
 SOURCE_RULES: tuple[SourceRule, ...] = (
+    # `fathom-analyze` is IO-free by ADR-002 §3, and three shipped surfaces of it are the documented
+    # exception: the review ledger, the notes, and the ratchet baseline. Each is class M — a committed
+    # markdown file that is the authoritative copy (ADR-004 D12) — and `e4.6`, `e6.5` and `e3.10` put
+    # the reader and writer of each one in this crate, which `docs/concepts/review-ledger.md`,
+    # `docs/concepts/review-memory.md` and `docs/concepts/ratchet.md` all describe as this module's
+    # job. Everything else in the crate is still a pure function of (input, config), which is
+    # what the rule is for: a *fact* arriving by `std::fs` in an analysis module is the accident the
+    # rule catches, and a golden file's reader is not.
     SourceRule("W1", ("fathom-core", "fathom-analyze", "fathom-tui", "fathom-mcp"),
                r"\bstd::(fs|net|env|process)\b",
-               "this crate is IO-free by ADR-002 §3; facts arrive as arguments"),
+               "this crate is IO-free by ADR-002 §3; facts arrive as arguments",
+               skip=("src/ledger/", "src/notes/", "src/cycles/debt.rs")),
+    # Same argument, smaller: the search report prints how long the keystroke took (`Report::micros`,
+    # the line a reader is owed), which is a measurement of the call, not an input to it — no golden
+    # and no ADR-004 §5 cache key reads it. The rule still bites everywhere the clock could be an input.
     SourceRule("W2", ("fathom-core", "fathom-analyze"),
                r"\bstd::time::(SystemTime|Instant)\b",
-               "wall clock inside analysis makes golden tests and ADR-004 §5 cache keys meaningless"),
+               "wall clock inside analysis makes golden tests and ADR-004 §5 cache keys meaningless",
+               skip=("src/search/",)),
     SourceRule("W3", ("*",),
                r'#\[path\s*=\s*"\.\./',
-               "`#[path = \"../..\"]` is a crate boundary smuggled past cargo", tests_exempt=False),
+               "`#[path = \"../..\"]` is a crate boundary smuggled past cargo", tests_exempt=False,
+               strings_are_code=True),
+    # `R9`, restated for the layout the workspace actually has. The rule was written when every crate
+    # was flat; epics 3-6 grew nested modules (`src/graph/mod.rs`, `src/risk.rs` + `src/risk/`), which
+    # is how Rust says a module is declared, so "one file per crate's surface" is no longer a thing any
+    # crate is doing. What `W4` therefore checks is the part that is still a choice a reviewer can say
+    # no to: a public module has a file that owns it (see `check_workspace._public_module_is_where_it_
+    # should_be`), and `lib.rs` is still where the crate's top-level surface is listed. `#[path]`
+    # smuggling is `W3`.
     SourceRule("W4", ("*",),
-               r"^\s*pub\s+mod\s+",
-               "public modules are declared in `lib.rs` only, so a crate's surface is one file",
-               skip_files=("src/lib.rs",)),
+               r"^\s*pub\s+mod\s+(?P<name>\w+)\s*(?P<form>[;{])",
+               "a public module is declared by the file that owns it — `lib.rs` at the crate top "
+               "level, `mod.rs` or `<name>.rs` below it — so the surface is a file a reviewer can open",
+               skip=("lib.rs", "mod.rs")),
     SourceRule("W5", ("fathom-core", "fathom-store", "fathom-ingest", "fathom-analyze",
                       "fathom-tui", "fathom-mcp", "fathom-fixtures"),
                r"\beyre::|\bcolor_eyre::",
@@ -601,6 +637,18 @@ REQUIRED_INNER_ATTRS: dict[str, tuple[str, ...]] = {
 #: Where `unsafe` may appear at all.
 UNSAFE_ALLOWED_PATHS: dict[str, tuple[str, ...]] = {
     "fathom-store": ("src/raw/",),
+}
+
+#: The `pub mod NAME { … }` blocks that are a namespace of constants rather than a module with a file,
+#: by crate and file (`W4`, `R9`). Each one is `pub mod name { pub const … }` inside the module that
+#: owns it — the view ids, the change kinds, the synthetic-scope reasons, the daemon's error codes — and
+#: the public path is re-exported from the crate façade in every case, so the surface is where a
+#: reviewer looks for it. Named one file at a time, so the exemption cannot grow by accident: a new
+#: public module with no file of its own fails the lint until someone decides which of the two it is.
+INLINE_NAMESPACE_MODULES: dict[str, tuple[str, ...]] = {
+    "fathom-analyze": ("src/detectors/finding.rs", "src/detectors/model.rs",
+                       "src/structure/model.rs"),
+    "fathom-ingest": ("src/daemon/proto.rs",),
 }
 
 # ---------------------------------------------------------------------------
@@ -873,7 +921,9 @@ def rules_rows() -> list[tuple[str, str]]:
                "socket is named `net-*`, is off by default, and needs runtime consent."),
         ("R7", "`fathom-fixtures` is a dev-dependency and nothing else."),
         ("R8", "One `rust-version`, one `edition`, inherited from `[workspace.package]`."),
-        ("R9", "`pub mod` is declared in `lib.rs` only; `#[path = \"../..\"]` is banned."),
+        ("R9", "A `pub mod` is declared by the file that owns it — `lib.rs` for the crate's top level, "
+               "`mod.rs` or `<name>.rs` below it — and a public module is a file, not a block hidden in "
+               "someone else's file; `#[path = \"../..\"]` is banned."),
         ("R10", "Libraries return `thiserror`; only `fathom-cli` may use `eyre`. No `todo!()` in a "
                 "library crate."),
         ("R11", "The feature list in this ADR is the published list: an undeclared feature fails the "

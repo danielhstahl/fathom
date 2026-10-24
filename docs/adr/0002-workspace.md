@@ -213,7 +213,7 @@ cheapest way to keep them agreeing is to develop on the floor. CI then proves th
 
 **`fathom-analyze`** (L3, lib) — Every analysis: path taxonomy and noise policy, structure and rename deltas, dependency manifest/lockfile parsers, non-code and test surfaces, tree-sitter structural extraction, the module graph, cycles, layering, API surface, hotspots, attribution, intent, pathology detectors, risk scoring, the attention queue, the review ledger's derivation, narratives and export. Also the owner of **`insight`**, the one versioned delta model (§5).
 
-> **IO-free by choice, not by accident.** Analysis reads through `fathom-ingest` and `fathom-store` and is a pure function of (input, config), which is what makes golden tests and ADR-004 §5's cache keys mean something. Four teams share this crate; the module ownership split is in §9.
+> **IO-free by choice, not by accident.** Analysis reads through `fathom-ingest` and `fathom-store` and is a pure function of (input, config), which is what makes golden tests and ADR-004 §5's cache keys mean something. Four teams share this crate; the module ownership split is in §9. The exception is class M, and it is narrow: `src/ledger/`, `src/notes/` and the ratchet baseline in `src/cycles/debt.rs` read and write the committed markdown that *is* the record (ADR-004 D12), because a file the reviewer can `git diff` is the whole point of those three surfaces. `lint` → `W1` enforces exactly that line.
 
 > `insight` and `export` are the narrow waist every surface reads through; `fathom-tui` may also name `search` and `compare` (§5.3), and `fathom-mcp` may not.
 
@@ -363,7 +363,7 @@ That is lint `W1` on `fathom-core`, `fathom-analyze`, `fathom-tui` and `fathom-m
 | **R6** | A default build links zero network-capable crates; every feature that can touch a socket is named `net-*`, is off by default, and needs runtime consent. | `lint` → `N01`–`N05`, `check` → shipped-closure test |
 | **R7** | `fathom-fixtures` is a dev-dependency and nothing else. | `lint` → `E05` |
 | **R8** | One `rust-version`, one `edition`, inherited from `[workspace.package]`. | `lint` → `T01`, `T06` |
-| **R9** | `pub mod` is declared in `lib.rs` only; `#[path = "../.."]` is banned. | `lint` → `W3`, `W4` |
+| **R9** | A `pub mod` is declared by the file that owns it — `lib.rs` for the crate's top level, `mod.rs` or `<name>.rs` below it — and a public module is a file, not a block hidden in someone else's file; `#[path = "../.."]` is banned. | `lint` → `W3`, `W4` |
 | **R10** | Libraries return `thiserror`; only `fathom-cli` may use `eyre`. No `todo!()` in a library crate. | `lint` → `W5`, `W6`; clippy `unwrap_used` |
 | **R11** | The feature list in this ADR is the published list: an undeclared feature fails the lint. | `lint` → `F01` |
 | **R12** | The lint is wired into CI, and CI is checked for it (§8). | `check` → `C01` |

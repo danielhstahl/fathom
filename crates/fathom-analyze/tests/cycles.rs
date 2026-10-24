@@ -823,9 +823,7 @@ fn an_uncovered_cycle_is_news_at_warn_and_a_failure_at_deny() {
         ("deny", true, Some(7)),
     ] {
         let ledger = Ratchet::from_text(
-            &format!(
-                "[[allowance]]\nkind = \"layer\"\nkey = \"other\"\nowner = \"x\"\nreason = \"y\"\n"
-            ),
+            "[[allowance]]\nkind = \"layer\"\nkey = \"other\"\nowner = \"x\"\nreason = \"y\"\n",
             "ratchet.toml",
         );
         let mut ledger = ledger;

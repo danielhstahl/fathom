@@ -11,6 +11,9 @@
 //! corpus rather than the *git* corpus).
 
 #![allow(dead_code)]
+// A fixture may unwrap: a `git` helper that cannot write its own commit is the failure, and there is
+// no `main` here to return anything to.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};

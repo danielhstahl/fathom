@@ -65,17 +65,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      # The shipped code may not unwrap; tests may. Two invocations, in this order, because the strict
-      # one is what would otherwise get lost under `--all-targets` (§8.3). The second one also stops
-      # `print_stdout` — a bench or golden test whose *output is the artefact* (`timeline_bench`,
-      # `deps_bench`, the corpus goldens) has to print, and the lint exists to keep a stray `println!`
-      # out of the shipped binary, where stdout is the user's. Silence about the tests is not what the
-      # lint promised, so the exemption is stated in the invocation rather than paid for file by file.
+      # Two invocations, in this order, because the strict one is what would otherwise get lost under
+      # `--all-targets` (§8.3). The first compiles only the shipped code and denies `unwrap_used` and
+      # `expect_used` there. The second adds tests, benches and examples — and it does **not** re-deny
+      # those two, because `[workspace.lints]` already declares them `warn` and `-D warnings` promotes
+      # every warning anyway: the two lints are live in this invocation too, and that is deliberate. What
+      # says "a test may unwrap" is the test file, with the `#![allow(clippy::unwrap_used,
+      # clippy::expect_used)]` every test file in this workspace carries — the claim belongs next to the
+      # code making it, where a new test file has to make it too. The one exemption stated here is
+      # `print_stdout`: a bench or golden test whose *output is the artefact* (`timeline_bench`,
+      # `deps_bench`, the corpus goldens) has to print, and there is no reason to ask forty files to say
+      # so. A test file that fails this step is a test file that forgot its own line, and the fix is that
+      # line — not an `-A` here, which would silence the claim for every file at once.
       - name: clippy (libs and bins: unwrap_used and expect_used are errors)
         run: >
           cargo clippy --workspace --all-features -- -D warnings
           -D clippy::unwrap_used -D clippy::expect_used
-      - name: clippy (all targets: tests may unwrap, and tests may print)
+      - name: clippy (all targets: tests say for themselves that they may unwrap; none may print)
         run: >
           cargo clippy --workspace --all-targets -- -D warnings
           -A clippy::print_stdout

@@ -63,6 +63,13 @@ ROW = re.compile(
     r"(?:\s+(?P<badge>[\w+]+))?"
 )
 
+# The queue's strip line, as `fathom_analyze::queue::order::QueueOrdering::strip` writes it: the
+# ordering named by the model that produced it, how many rows it covers, and — only when there are
+# any — how many of the open rows it could not score. Grouped so a test can check the arithmetic
+# rather than pattern-match one fixture's numbers.
+QUEUE_STRIP = (r"order: queue-1 = risk × staleness × blast · (\d+) of (\d+) open"
+               r"(?: · (\d+) unranked)?")
+
 
 def _binary() -> Path:
     """Same convention as `test_tui_contract.py`: `FATHOM_BIN`, else release, else debug."""
@@ -213,18 +220,42 @@ def test_w_prints_the_arithmetic_and_the_ceiling(indexed):
     # What the model cannot see is printed, not implied.
     assert "cannot see" in after, f"the blind spots are missing:\n{after}"
     assert "rolled back" in after, f"the first blind spot is not printed:\n{after}"
-    # And the queue still says what the ranking covers, on the same screen.
-    assert re.search(r"order: spine-1, riskiest first, over \d+ ranked of \d+ held", after), \
-        f"no honest strip line:\n{after}"
+    # And the queue still says what the ranking covers, on the same screen. The strip is `e4.5`'s,
+    # not `e1.12`'s: `queue-1` owns the order now, so the strip names *it* and the open count, and
+    # `spine-1` — the score that is the ordering's first factor — is printed above, by `w`.
+    assert re.search(QUEUE_STRIP, after), f"no honest strip line:\n{after}"
 
 
 def test_an_unranked_episode_is_answered_rather_than_fobbed_off(indexed):
-    # The fixture's fifteen zero-file episodes are the real instance of "nothing ranked this", and
-    # the bottom of the queue is where they land: unranked episodes sort last, never first.
+    """A missing ranking is never silent and never a zero — asked of the shipped build.
+
+    The name is kept because `.plan/beta-gate-reco-69u.md` cites it. What it asserts moved: under
+    `e1.12` only the spine was scored, so this fixture's fifteen zero-file episodes reached the
+    queue with no score and the tail of the list was a column of `?`. `e4.5` scored every row through
+    `queue-1`, so "nothing ranked this" is now a *count the strip states* (`· N unranked`) rather than
+    a shape at the bottom of the pane, and this fixture has no unranked rows left to find. The
+    contract is the same in both shapes, so it is asserted in whichever shape the fixture is in; the
+    absent-score rendering itself belongs to `fathom-tui/tests/risk_rank.rs`,
+    ::an_unranked_index_still_draws_a_queue_and_says_what_is_missing, which builds the empty case.
+    """
     binary, repo, _ = indexed
     screen = _run(binary, repo, ["q", "G", "<C-c>"])[1]
-    assert "risk ?" in screen, \
-        f"the unranked rows are silent or, worse, printed as zeros:\n{screen}"
+    strip = re.search(QUEUE_STRIP, screen)
+    assert strip, f"the strip does not name its ranking and what it covers:\n{screen}"
+    ranked, held, unranked = int(strip[1]), int(strip[2]), int(strip[3] or 0)
+    assert ranked == held - unranked, f"the strip does not add up:\n{screen}"
+    # A row with nothing to print shows `?`, and a row that was ranked shows a number. The one shape
+    # that would lie is a zero standing in for an absent score, so it is forbidden either way.
     assert "risk 0" not in screen, f"a missing ranking is printed as zero:\n{screen}"
-    # The queue itself is still described by the ranking, not by the hole in it.
-    assert re.search(r"order: spine-1, riskiest first, over \d+ ranked of \d+ held", screen), screen
+    if unranked:
+        assert "risk ?" in screen, \
+            f"{unranked} rows are unranked and none of them says so:\n{screen}"
+    else:
+        assert "risk ?" not in screen, \
+            f"the strip counts nothing unranked and a row disagrees:\n{screen}"
+    # The tail is the *bottom* of the ranking, not a hole in it: scores do not climb as the reviewer
+    # walks down the last screen, which is what "unranked sorts last" turned into once everything ranked.
+    scores = [int(row["risk"]) for row in _rows(screen)]
+    assert scores, f"no ranked row on the last screen:\n{screen}"
+    assert scores == sorted(scores, reverse=True), \
+        f"the bottom of the queue is not the bottom of the ranking: {scores}"

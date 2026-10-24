@@ -138,7 +138,7 @@ fn search_app() -> App {
     for i in 0..ROWS {
         corpus.push(Entry::episode(
             format!("{i:016x}"),
-            &format!("epoch-safe store read {i}"),
+            format!("epoch-safe store read {i}"),
             "pin the epoch before the read",
             Some("Dana Stahl".to_owned()),
             Some(Timestamp::from_unix_micros(

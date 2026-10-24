@@ -66,10 +66,6 @@ impl Ledger for Recorder {
 }
 
 impl Recorder {
-    fn share(self) -> LedgerHandle {
-        LedgerHandle(Arc::new(self))
-    }
-
     fn written(&self) -> Vec<TriageRecord> {
         self.written
             .lock()

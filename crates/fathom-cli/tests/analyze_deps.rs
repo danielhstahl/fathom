@@ -232,8 +232,8 @@ fn the_episode_that_moved_a_manifest_measures_what_the_tree_now_depends_on() {
     let indexed = run(&["index", root]);
     assert_eq!(0, code(&indexed), "index: {}", stderr(&indexed));
 
-    let id = episode_about(&root, "serde");
-    let document = delta(&root, &id);
+    let id = episode_about(root, "serde");
+    let document = delta(root, &id);
     let section = section(&document, "dependencies");
     assert_eq!(
         section["state"].as_str(),
@@ -288,8 +288,8 @@ fn an_episode_with_nothing_dependency_shaped_says_so_instead_of_printing_a_zero(
     let root = dir.to_str().expect("a temporary path in utf-8");
     assert_eq!(0, code(&run(&["index", root])));
 
-    let id = episode_about(&root, "second observation");
-    let document = delta(&root, &id);
+    let id = episode_about(root, "second observation");
+    let document = delta(root, &id);
     let section = section(&document, "dependencies");
     assert_eq!(
         section["state"].as_str(),
@@ -316,10 +316,10 @@ fn every_figure_of_a_real_document_carries_its_evidence() {
     let root = dir.to_str().expect("a temporary path in utf-8");
     assert_eq!(0, code(&run(&["index", root])));
 
-    let all = episodes(&root);
+    let all = episodes(root);
     assert_eq!(3, all.len(), "three turns, three episodes: {all:?}");
     for (id, _) in all {
-        let document = delta(&root, &id);
+        let document = delta(root, &id);
         assert_eq!(
             document["integrity"]["verified"].as_bool(),
             Some(true),
@@ -367,8 +367,8 @@ fn the_dependency_figures_point_at_a_command_that_runs() {
     let root = dir.to_str().expect("a temporary path in utf-8");
     assert_eq!(0, code(&run(&["index", root])));
 
-    let id = episode_about(&root, "serde");
-    let document = delta(&root, &id);
+    let id = episode_about(root, "serde");
+    let document = delta(root, &id);
     let section = section(&document, "dependencies");
     let named = figure(section, "direct").expect("the direct count")["evidence"]["run"]
         .as_str()

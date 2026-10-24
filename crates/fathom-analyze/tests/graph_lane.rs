@@ -5,6 +5,10 @@
 //! ticket is about: one delta per revision, a shared anchor every `graph.chain_full_every`, a
 //! revision that reconstructs to exactly what a full rebuild would have produced, and a chain that
 //! cannot be walked being a *stated* partial rather than a wrong answer.
+//!
+//! A test may unwrap: an `Err` here is the failure, and saying so at the call is shorter than saying it
+//! in a `main` no one runs. The allowance every test file in this workspace states for itself.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use fathom_analyze::graph::{self, BuildOutcome, Builder, GraphPolicy, Interner, ModuleInput};
 use fathom_analyze::structure::{
@@ -393,7 +397,9 @@ fn every_revision_reconstructs_to_what_a_full_rebuild_would_have_produced() {
     let mut store = Store::open_in_memory().expect("open store");
     let mut lane = graph::Lane::new(&mut store, builder(policy())).expect("lane");
     let oids = replay(&mut lane, &history);
-    let cap = usize::try_from(policy().max_chain_walk).expect("cap");
+    // `max_chain_walk` is already a `usize` in the policy, so there is nothing to convert; what the cap
+    // is for is the assertion it is compared against, not the type of this binding.
+    let cap = policy().max_chain_walk;
     for (index, revision) in history.iter().enumerate() {
         let (graph, report) = lane.materialise(&oids[index]).expect("materialise");
         let rebuilt = lane.rebuild(&revision.inputs()).expect("rebuild");

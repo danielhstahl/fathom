@@ -223,12 +223,19 @@ Declared but not measurable at all from this build: cold.graph.ms / warm.graph.m
 
 <!-- END GENERATED: budgets -->
 
-The blocked rows are the finding, not the gap. `cold.queue_visible.ms.small` is the budget `e1.12`
-actually depends on — its own rationale says it is "the first *useful* answer" — and a queue that is
-never handed episodes does not answer at any latency. The same missing seam still blocks four `query.*`
-families (queue, rail, card, search): no code path yet carries a row from `fathom-store` to those
-`fathom-tui` panes — the diff pane got its path in `reco-0kw`, and its two numbers are the first
-measured `query.*` budgets in this table.
+The blocked rows are the finding, not the gap — but read them as of this run, not as of the run that
+first wrote them. `cold.queue_visible.ms.small` is the budget `e1.12` actually depends on — its own
+rationale says it is "the first *useful* answer" — and it now answers: 3.4 ms against a 3,000 ms
+budget, which is what the queue's first frame costs once it is handed episodes. Two of the four
+`query.*` families that missing seam blocked measure with it (`j` walking the ranked queue, `w`
+explaining a rank); the two still blocked are the two the table names in its own words — the rail, which
+has no query of its own beyond the frame budget, and search, which has no scorer until `e5.2`. The diff
+pane got its path in `reco-0kw`, and its two numbers were the first measured `query.*` budgets here.
+
+A row that goes from blocked to measured is a document rewrite, not a re-render, and
+`tests/test_mvp_acceptance_contract.py::test_the_perf_report_quotes_real_budgets_and_explains_every_gap`
+is what makes it one: it fails if that queue-visibility row ever goes back to unmeasured, which is the
+same finding arriving from the other direction.
 
 Full machine-readable version:
 [`benchmarks/reports/e1-12-mvp-acceptance.json`](../../benchmarks/reports/e1-12-mvp-acceptance.json).

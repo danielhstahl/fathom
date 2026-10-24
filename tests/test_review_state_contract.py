@@ -55,6 +55,10 @@ REWORDED_SUBJECT = "feat: retune module 5 after the review"
 #: The rail's state column, in the two states this file cares about (`ReviewState::glyph`).
 UNREAD, ACCEPTED = "⚑", "✔"
 
+#: The toast an accept prints, in the words `TriageRecord::line` writes: the episode, the act, and what
+#: the act was. Named once, used as the step's needle and as the assertion.
+TOAST = "reviewed · signed off"
+
 
 def _binary() -> Path:
     for candidate in (os.environ.get("FATHOM_BIN"),
@@ -75,8 +79,18 @@ def _fathom(binary: Path, repo: Path, *args: str) -> subprocess.CompletedProcess
     return subprocess.run([str(binary), *args], cwd=repo, capture_output=True, text=True)
 
 
-def _run(binary: Path, repo: Path, keys_each: list[str]) -> list[str]:
-    """Spawn `fathom tui` on a pty, send each keystroke group, and return the screen after each one."""
+def _run(binary: Path, repo: Path, keys_each: list[str],
+         needles: list[str | None] | None = None) -> list[str]:
+    """Spawn `fathom tui` on a pty, send each keystroke group, and return the screen after each one.
+
+    A step may name a `needle`: a string whose *first* appearance is the thing being asserted. The toast
+    an act prints lives forty draws on the hint row (`TOAST_FRAMES` in `fathom-tui/src/app.rs`) and the
+    live pane redraws under it, so the frame that is settled when the terminal goes quiet has already
+    forgotten the act — a screenshot of it would show a keystroke that did nothing. For a step with a
+    needle, the frame as it was the moment it first said the needle is the one returned
+    (`tui_session.drain(capture=…)`), which is the frame the reviewer actually saw.
+    """
+    needles = needles or [None] * len(keys_each)
     screen = T.Screen(132, 40)
     recorder = T.Recorder()
     pid, master = pty.fork()
@@ -95,12 +109,14 @@ def _run(binary: Path, repo: Path, keys_each: list[str]) -> list[str]:
     screens: list[str] = []
     try:
         T.drain(master, time.monotonic() + 1.5, recorder, None, screen)
-        for keys in keys_each:
+        for keys, needle in zip(keys_each, needles):
             for char in T.encode(keys):
                 os.write(master, bytes([char]))
                 time.sleep(0.09)
-            T.drain(master, time.monotonic() + 1.2, recorder, None, screen)
-            screens.append(screen.text())
+            shot: dict = {}
+            T.drain(master, time.monotonic() + 1.2, recorder, None, screen,
+                    until=needle, capture=shot)
+            screens.append(shot.get("screen") or screen.text())
     finally:
         for close in (lambda: os.close(master), lambda: os.waitpid(pid, 0)):
             try:
@@ -181,11 +197,11 @@ def _status(binary: Path, repo: Path) -> dict:
 
 def _mark(binary: Path, repo: Path) -> str:
     """`t`, `x`, quit: mark the newest episode reviewed in the shipped shell, and return the id."""
-    screens = _run(binary, repo, ["t", "x", "<C-c>"])
+    screens = _run(binary, repo, ["t", "x", "<C-c>"], needles=[None, TOAST, None])
     before, after = screens[0], screens[1]
     assert UNREAD in before and ACCEPTED not in before, \
         f"the rail opened with nothing to mark:\n{before}"
-    assert ACCEPTED in after and "reviewed · signed off" in after, \
+    assert ACCEPTED in after and TOAST in after, \
         f"`x` left the frame unchanged:\n{after}"
     return _marked_episode(after)
 
