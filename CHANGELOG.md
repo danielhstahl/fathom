@@ -17,6 +17,113 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The beta loop: one channel, a changelog that cannot forget a commit, and Fathom reviewed by Fathom (`e7.7`, `reco-rny`)
+
+A beta is not a version number, it is a loop: somebody reports, somebody dispositions it, the fix is published
+with the reason, and the tool is pointed at its own repository often enough to be embarrassed. All four parts
+had owners before this ticket and none of them had a gate, which is the difference between a process and an
+intention. Everything below is either a file the tracker serves, a command CI runs, or a register with a
+verdict in it.
+
+- **The changelog is generated from commits, and never regenerated.** `tools/gen_changelog.py` reads `git log`
+  and produces release notes: conventional-commit headers (`feat`/`fix`/`perf`/`refactor`/`docs`/`security`,
+  `build`/`ci`/`test`/`chore` excluded, `!` and `BREAKING CHANGE:` promoted into **Breaking changes**), plus
+  two things this repository needs — `Changelog:` / `Changelog-Section:` trailers for commits whose subject is
+  an essay, and a *fallback ladder* for this repository's actual style, which is prose sentences and not
+  conventional headers. `audit` prints the rung distribution on every run and this file quotes it, so the number
+  cannot silently rot — `header 1, bead 69, key 5, subject 1` over the 76 commits since the alpha, of which the
+  one bare prose subject is the rung where the notes are guessing and is kept rare on purpose, because a
+  generator whose notes are mostly guesses is a generator that gets replaced by a human who is worse at reading
+  `git log`. The gate is coverage,
+  not style: `audit` resolves the previous release (the tag, or — this clone has no remote to push tags to — the
+  commit that added the last `## [version]` heading) and fails on any commit the notes do not account for, by
+  bead ref, plan key, short sha or `Changelog:` text. `cut` runs the audit before it renames a heading, so **a
+  release that dropped a ticket is now a red build rather than a surprise**; exemptions live in
+  `.plan/changelog-coverage.json` with a reason and an owner, and `C07` makes that list shrink-only.
+  `self-test` performs two consecutive cuts — with their refusals — in a throwaway repository, because the
+  criterion is that the process is *followed twice* and one release has been cut on this tree.
+- **Five shipped tickets had no changelog entry, and that is the audit's first finding on its own history.**
+  See the next section: the release body is this file, so an unnamed ticket is a ticket nobody heard about.
+- **One feedback channel, two forms, and a required diagnostic.** `.github/ISSUE_TEMPLATE/` grows
+  *Something is wrong* and *Beta feedback — how it went*, blank issues are switched off, and both forms require
+  `fathom doctor --json` — with the instruction to read it before sending, because it carries the reporter's
+  paths and the whole difference between telemetry and a bug report is that a human looked at it
+  (`docs/concepts/feedback.md` §2). `tools/check_beta_loop.py` makes that structural: `B02` fails a form whose
+  doctor field is not `required: true` or never mentions redaction, `B03` fails the seven dispositions if they
+  differ between code, labels and documents, `B04` fails any page that tells a reader to file something without
+  linking the channel, `B05` fails a cadence with no weekday, no rota, no 14-day `needs-repro` clock or no
+  publication rule, and `--self-test` breaks nine of them on purpose.
+- **The cadence, written down and followed.** `docs/concepts/release.md` §9 is the runbook's cadence: a weekly
+  `alpha.N` cut on Tuesday whether or not anything interesting landed, a patch when a user's defect closes, a
+  minor at an epic's close, plus the two rules that make it cheap (nothing waits for a release, and a published
+  release is never edited). §10 states what a release publishes about itself.
+- **A report becomes a bead by command.** `tools/beta_intake.py draft --report <file>` reads a filed report in
+  the shape the form renders, refuses the six ways a report is unusable (no diagnostic, an un-redacted
+  `/home/maria`, no symptom, an `n/a` on a bug report where nothing was measured…), and prints the `bd create`
+  that captures it — the `triage:ticketed` act, with the release-notes obligation in the bead text. The weekly
+  register is `.plan/intake/<ISO-week>.md` — one row per report, one of seven dispositions, an owner where one
+  is owed, a bead or decision named — and `beta_intake.py ledger` validates it and prints the counts the
+  acceptance criteria are written against.
+- **The first register has 26 rows, and says which criterion it does not meet.**
+  `.plan/intake/2026-W43.md`: 12 findings against Fathom's own repository — 11 from running the built binary over
+  this tree and one from re-running the gate's own recorded red list — 7 of this repository's open defects
+  re-dispositioned, 4 calibration and taxonomy gaps the `m1` gate left open, 3 things CI had said that nobody had
+  re-read: **20 `triage:ticketed`, 2 `triage:fixed`, 4 `triage:by-design`**, no row without a disposition, and a
+  named owner on every row (for most of them the owner is *the rota* — a role, not a person, which is what a project
+  this size can honestly write). And **zero external reporters**, because the alpha is still not installable and the
+  criterion that needs five of them is a tag push and an announcement, not a commit (`m0.1`, `reco-lnd`; `m0.2`,
+  `reco-3gz`).
+- **Twelve defects came out of the tool's own repository**, each filed as a bead the same day it was found, and
+  each one found by a command in the runbook rather than by reading code: the export artefact refusing to
+  certify itself on a multi-episode range (`reco-c2i`), a Python test function reported as a breaking public
+  API removal (`reco-u1i`), a sign-off finding naming an episode id no verb can resolve (`reco-dvu`), a `why`
+  explanation still citing closed tickets (`reco-j1o`), a config weight that configures nothing (`reco-gna`),
+  thirteen ratchet violations that are a module and its own directory or a deliberately cyclic fixture corpus
+  (`reco-wk4`), no `[layering]` rules declared to a tool whose boundaries check is therefore *blocked*
+  (`reco-dg7`), the `[check] mode` decision nobody made (`reco-azy`), `debug_leftover` firing on `tools/*.py`
+  whose job is printing (`reco-pfb`), a per-file diff cache with a 0.1 % hit rate (`reco-3sa`), and attribution
+  calling 102 agent-written episodes human (`reco-0er`) — plus a contract suite whose recorded red list names two
+  tests that are now green while three *other* tests in the same file are red (`reco-2vq`), found by re-running the
+  list instead of trusting it. The record, with the commands and their output:
+  `.plan/evidence/reco-rny/fathom-on-itself.md`; the decisions, with the alternatives they refused,
+  are in `.plan/beta-loop-reco-rny.md`.
+- **The release carries its own review.** `.github/workflows/self-review.yml` runs on `release: published`,
+  indexes this repository with the release-profile binary, and attaches `fathom export`'s markdown, the
+  doctor object and a `self-review.json` of the numbers to the release itself — with the same exit-code
+  contract `dogfood.yml` states (`0` or `7`: a finding is a result, a crash is not). `check_ci_gate.py` grew a
+  rule group for it, and now validates a `fathom` flag behind a path prefix (`./target/release/fathom check`)
+  as eagerly as one on `PATH`.
+
+### Five tickets that shipped without a changelog entry, and the audit that caught them (`e3.7`, `e5.6`, `e7.1`, `e7.8`, `s3`)
+
+The new coverage audit read every commit between the `0.1.0-alpha.1` cut and here — 74 of them — and asked
+whether this file accounts for each one. Five did not appear anywhere, by id or by prose. They are listed here
+in the commit's own words rather than paraphrased, because the point of the entry is that the work happened and
+was not announced, not that this ticket gets to describe somebody else's:
+
+- **`e3.7` (`reco-p5u`)** — *The public API surface: what changed, which change drove it, and what a parser
+  cannot know.* The API-surface detector, its breaking-change classes, and the honesty about the cases a
+  tree-sitter query cannot decide.
+- **`e7.1` (`reco-7f4`, `reco-02s`, `reco-ch4`, `reco-sb0`)** — *index, stats, doctor: make a messy
+  repository's holes visible instead of fatal.* The hardening family: a clone with grafts, loose-object damage
+  and unreadable blobs now says which hole it is looking through instead of printing a confident zero.
+- **`e5.6` (`reco-2fv`)** — *a palette that is measured, and a frame that is the same frame with colour off.*
+  Contrast and colour-vision simulation as floors the theme system has to clear, and `NO_COLOR` keeping every
+  state's shape.
+- **`e7.8` (`reco-41a`)** — *the threat model, read as a register — what a clone may try, and what answers it.*
+  Its findings are described below under privacy and hardening, but never by id, which is how the audit found
+  it: a document that exists in prose and not in the index of this file is invisible to anyone reading a release
+  body for what changed.
+- **`s3`** — *`structure.delta` now stores a chain of deltas, which is what §6.1 R2 always said it did.* A
+  storage correction with a contract consequence, from a commit with no bead ref at all.
+
+Two more commits get no note of their own, and the audit agrees that that is right rather than being fooled:
+`rustfmt: the hunks the three fixes left unformatted` and *The lints the last four tickets left behind, so
+clippy is green again* are housekeeping whose honest release note is nothing, and this paragraph is where they
+are accounted for. `.plan/changelog-coverage.json` is therefore **empty**, deliberately: it is the place for an
+omission a human has accepted with a reason and an owner, it exists for the day the audit is wrong, and `C07`
+fails the next cut if anything in it becomes covered and is not deleted.
+
 ### Epic 6 closes: its three exit criteria are a runnable gate, and the run found a leak (`e6`, `reco-6t7`)
 
 The epic's acceptance criterion is a sentence with three clauses — two working harness adapters, an MCP

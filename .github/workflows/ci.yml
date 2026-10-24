@@ -525,6 +525,20 @@ jobs:
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: python3 tools/check_ci_gate.py
 
+      # `e7.7` (`reco-rny`): the beta loop, as a build. The channel, the forms, the weekly register, the
+      # dispositions and the changelog all exist to be drifted, and a drift here is a beta report that lands
+      # somewhere nobody reads or a release whose notes dropped a ticket. Nothing in this step needs the
+      # binary; `lint` is advisory on purpose — this repository's commit style is a sentence, and a tool that
+      # demanded `fix(area):` before it could describe one would be a tool that gets bypassed.
+      - name: "e7.7 beta loop: one channel, one vocabulary, a register, and a changelog that covers its commits"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: |
+          python3 tools/check_beta_loop.py
+          python3 tools/beta_intake.py ledger
+          python3 tools/gen_changelog.py audit
+          python3 tools/gen_changelog.py lint
+          python3 tools/gen_changelog.py draft --version Unreleased | head -3
+
       # The five-minute criterion, as a run rather than as an adjective: eight steps over the miniature,
       # each asserting its own exit code (two of them 7, on purpose), the whole thing inside 300 s, and
       # the docs page carrying the numbers this run measured.

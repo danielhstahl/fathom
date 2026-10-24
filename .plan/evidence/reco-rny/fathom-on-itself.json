@@ -1,0 +1,123 @@
+{
+  "produced_by": "manual self-review pass for e7.7 (reco-rny); .github/workflows/self-review.yml is the same act per release",
+  "fathom_version": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all minimal net-advisories net-llm net-http-transport schema-gen",
+  "repository": {
+    "head": "defc5f6",
+    "range_checked": "90c2cf42cd20..defc5f6e54de"
+  },
+  "doctor": {
+    "exit": "OK",
+    "findings": 0,
+    "index_commits": 128,
+    "integrity": "ok"
+  },
+  "episodes": {
+    "indexed": 109,
+    "returned": 109,
+    "review_state": {
+      "accepted": 0,
+      "dismissed": 0,
+      "flagged": 0,
+      "read": 0,
+      "snoozed": 0,
+      "unread": 109
+    }
+  },
+  "check": {
+    "outcome": "fail",
+    "exit": 0,
+    "why": "fathom check failed: 16 finding(s) at or above `warning` in 90c2cf42cd20..defc5f6e54de \u2014 worst is error [cycles/crates/fathom-core/src/events.rs|crates/fathom-core/src/events/schema.rs]: crates/fathom-core/src/events.rs \u2192 crates/fathom-core/src/events/schema.rs \u2192 crates/fathom-core/src/events.rs \u2014 no allowance in the baseline for this cycle, introduced by this episode \u2014 `check.mode = warn`, so this is reported and not enforced",
+    "checks": [
+      {
+        "check": "layering",
+        "status": "blocked",
+        "examined": null,
+        "findings": 0
+      },
+      {
+        "check": "cycles",
+        "status": "ran",
+        "examined": 37,
+        "findings": 1
+      },
+      {
+        "check": "api",
+        "status": "ran",
+        "examined": 225,
+        "findings": 1
+      },
+      {
+        "check": "dependencies",
+        "status": "ran",
+        "examined": 166,
+        "findings": 9
+      },
+      {
+        "check": "tests",
+        "status": "ran",
+        "examined": 5,
+        "findings": 4
+      },
+      {
+        "check": "sign-off",
+        "status": "ran",
+        "examined": 5,
+        "findings": 1
+      }
+    ],
+    "by_severity": [
+      {
+        "count": 0,
+        "severity": "note"
+      },
+      {
+        "count": 14,
+        "severity": "warning"
+      },
+      {
+        "count": 2,
+        "severity": "error"
+      }
+    ],
+    "notices": [
+      "fathom.toml declares no [check], so the gate runs on its built-in defaults: mode `warn`, fail at `warning`, every check at its default volume"
+    ]
+  },
+  "architecture_score": 92,
+  "architecture_notes": {
+    "dimensions_measured": "4/5",
+    "boundaries": "unwritten: no [layering] rules declared"
+  },
+  "ratchet": {
+    "uncovered": 13,
+    "allowances": 0
+  },
+  "review_status": {
+    "exit": 7,
+    "lines": [
+      "ledger    1 file(s) \u00b7 3 entries \u00b7 3 fresh \u00b7 0 stale \u00b7 0 orphan \u00b7 0 tampered",
+      "episodes  109 live \u00b7 3 with a fresh sign-off \u00b7 106 without",
+      "verdict   NOT ALL REVIEWED",
+      "  blocks: 106 of 109 live episodes have no fresh sign-off",
+      "  blocks: `.fathom/reviews/ledger.md` has changes that are not committed: what is in the ledger is durable as of the last commit, and these entries are not in it yet"
+    ]
+  },
+  "artefacts": [
+    "fathom-on-itself.md",
+    "fathom-on-itself.json",
+    "intake-register: .plan/intake/2026-W43.md"
+  ],
+  "filed_beads": [
+    "reco-c2i",
+    "reco-u1i",
+    "reco-dvu",
+    "reco-j1o",
+    "reco-gna",
+    "reco-wk4",
+    "reco-dg7",
+    "reco-azy",
+    "reco-pfb",
+    "reco-3sa",
+    "reco-0er"
+  ]
+}

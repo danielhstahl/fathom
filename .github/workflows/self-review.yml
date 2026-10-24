@@ -1,0 +1,235 @@
+# Fathom reviews its own repository, and the review ships with the release (`e7.7`, **reco-rny**).
+#
+# The beta's third acceptance criterion has two halves with different owners. The first — *Fathom runs
+# against its own repository in CI* — has been true since `e6.6` (`check-gate` in `ci.yml`), but it produces
+# a SARIF a code-scanning uploader consumes and a job log: nothing a *user* of the release can read. The
+# second half — *the artefact is published per release* — is this file.
+#
+# # What it asserts, and what it deliberately does not
+#
+# * **It runs on the released tag, not on a branch tip.** `release: published` fires with the tag in hand,
+#   and `workflow_dispatch` takes one as an input, so the numbers below describe the bytes somebody
+#   downloaded and not the working tree of whoever pushed last. The manual dispatch exists for the case this
+#   repository is in right now — no public remote, so no release to be published — and it says out loud that
+#   it did the artefact-only half.
+# * **The artefacts are the product's own verbs, unedited.** `fathom export` for the review record (with its
+#   sign-off block and its self-check verdict intact, failures and all), `fathom doctor --json` for the
+#   machine-readable environment, and one small `self-review.json` of the numbers a stranger would otherwise
+#   re-derive: episodes indexed, findings per check and severity, the architecture score, ledger coverage,
+#   and every non-zero exit with the name it is supposed to have.
+# * **A finding is not a failure.** `[check] mode` in this repository is `warn` — deliberately, until the two
+#   error findings on its own HEAD are dispositioned (`.plan/intake/2026-W43.md` W43-02 and W43-06 name them)
+#   — so `fathom check` returning `7`, and `fathom review status` returning `7` because episodes are unsigned,
+#   are *results*, recorded in the summary. Anything else — `4` (a store that will not open), `5` (a bad
+#   config), `9` (a feature missing from the build), `12` (`INDEX_DEGRADED`), or a crash — is a failure,
+#   because the review did not happen. That is the same distinction `dogfood.yml` makes for the corpus, and
+#   ADR-002 §7.3's rule for the whole gate.
+# * **It says when the loop is not actually being run.** `fathom review status` on this repository printed
+#   `108 of 109 live episodes have no fresh sign-off` the first time this job was written by hand. That number
+#   is in the artefact, because a self-review that hides its own unread backlog is a press release, and the
+#   whole point of dogfooding is that the tool's opinion of its own project is a claim you have to keep.
+#
+# The other self-knowledge pipelines, for contrast: `check-gate` in `ci.yml` (the gate, per commit),
+# `dogfood.yml` (the gate over three repositories this project does not own), and
+# `publish/demo-repo/.github/workflows/fathom.yml` (a third party consuming the published installer).
+
+name: self-review (the release carries Fathom's review of itself)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A tag to review (any ref). Empty reviews the default branch's HEAD."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write   # `gh release upload`, and nothing else
+
+jobs:
+  self-review:
+    name: index, review, and attach the artefact
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The export and the gate both compare two trees, so the history has to be there to compare.
+          fetch-depth: 0
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}
+
+      - name: the ref this review describes
+        id: ref
+        run: |
+          set -eu
+          tag="${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}"
+          echo "ref=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          # The range this release covers: back to the previous release tag when there is one, which is what
+          # `tools/gen_changelog.py` calls the cut, and five commits when there is not (a first release of a
+          # young repository has no previous cut to compare with, and inventing one would be a fiction).
+          base="$(git tag --list 'v*' --sort=-creatordate | sed -n 2p || true)"
+          if [ -z "${base}" ]; then base="$(git rev-parse HEAD~5 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)"; fi
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+          echo "reviewing ${base} .. ${tag}"
+
+      - name: build the binary the release shipped as
+        # The same feature set the release artefacts carry minus `tui`-only extras the headless verbs do not
+        # use: a self-review run by a store-less or graph-less build would report a hole as a clean bill.
+        run: cargo build --release --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all
+
+      - name: index this repository with it
+        run: ./target/release/fathom index --no-progress --json | tail -1
+
+      - name: the doctor object, as one user would send it
+        # The same command the issue template requires of a reporter (`B02`), run by us on ourselves. Read it
+        # if you are going to publish it: it contains the runner's paths, which is precisely why a *user's*
+        # copy is redacted before it is sent and ours is not.
+        run: |
+          set -eu
+          ./target/release/fathom doctor --json > "fathom-doctor-${{ steps.ref.outputs.version }}.json"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print('doctor:', d['exit_name'], d['findings'] and len(d['findings']) or 0, 'finding(s), version', d['version'])" "fathom-doctor-${{ steps.ref.outputs.version }}.json"
+
+      - name: the gate over the release range
+        # `0` or `7`, and nothing else — the rule `dogfood.yml` states at length. The SARIF rides along: the
+        # review is for a human, and the SARIF is for whatever consumes findings mechanically.
+        run: |
+          set -eu
+          set +e
+          ./target/release/fathom check --base '${{ steps.ref.outputs.base }}' --head '${{ steps.ref.outputs.ref }}' \
+            --format json > self-check.json
+          gate=$?
+          ./target/release/fathom check --base '${{ steps.ref.outputs.base }}' --head '${{ steps.ref.outputs.ref }}' \
+            --format sarif --out self-check.sarif --no-summary
+          sarif=$?
+          set -e
+          for pair in "check:$gate" "sarif:$sarif"; do
+            case "${pair#*:}" in
+              0|7) ;;
+              *) echo "::error::${pair%%:*} exited ${pair#*:} — expected 0 or 7 (a finding), not a broken run"; exit 1 ;;
+            esac
+          done
+          echo "gate_exit=${gate}" >> "$GITHUB_ENV"
+
+      - name: the scorecard and the ratchet, as the release sees them
+        run: |
+          set -eu
+          ./target/release/fathom architecture > self-architecture.txt
+          ./target/release/fathom ratchet > self-ratchet.txt
+          ./target/release/fathom review status > self-review-status.txt || true   # exit 7 = unsigned episodes
+          head -3 self-architecture.txt; head -2 self-review-status.txt
+
+      - name: the review artefact
+        # `export` writes its own self-check verdict into the document and exits non-zero when the verdict is
+        # UNVERIFIED. That failure is the artefact's most useful content, so it is recorded, not hidden: the
+        # step prints it and the job keeps going, because a release that cannot ship its own review is the
+        # worse outcome, and W43-01 already has the defect on the board.
+        run: |
+          set +e
+          ./target/release/fathom export --episodes '${{ steps.ref.outputs.base }}..${{ steps.ref.outputs.ref }}' \
+            --format markdown --out "fathom-self-review-${{ steps.ref.outputs.version }}"
+          export_exit=$?
+          set -e
+          echo "export_exit=${export_exit}" >> "$GITHUB_ENV"
+          [ "${export_exit}" -eq 0 ] || echo "::warning::fathom export exited ${export_exit} — the artefact carries its own self-check verdict (see .plan/intake W43-01)"
+
+      - name: the numbers, in one file a stranger can read
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json, os, pathlib, re, subprocess
+
+          def run(*args):
+              return subprocess.run(["./target/release/fathom", *args], capture_output=True, text=True)
+
+          def read_episodes():
+              proc = run("episodes", "--json", "--limit", "500")
+              return json.loads(proc.stdout) if proc.returncode == 0 else {}
+
+          check = {}
+          path = pathlib.Path("self-check.json")
+          if path.exists():
+              doc = json.loads(path.read_text())
+              check = {
+                  "outcome": doc["outcome"],
+                  "exit": doc["exit"],
+                  "why": doc.get("why", ""),
+                  "range": doc.get("range", {}).get("text", ""),
+                  "checks": [{"check": c["check"], "status": c["status"], "examined": c.get("examined"),
+                              "findings": len(c.get("findings") or [])} for c in doc["checks"]],
+                  "by_severity": doc["summary"].get("by_severity", []),
+              }
+          episodes = read_episodes()
+          index = episodes.get("index", {})
+          counts = episodes.get("review_counts", {})
+          architecture = pathlib.Path("self-architecture.txt").read_text()
+          score = re.search(r"architecture (\d+)/100", architecture)
+          ratchet = pathlib.Path("self-ratchet.txt").read_text()
+          uncovered = re.search(r"(\d+) violation\(s\) uncovered", ratchet)
+          summary = {
+              "ref": "${{ steps.ref.outputs.ref }}",
+              "version": "${{ steps.ref.outputs.version }}",
+              "base": "${{ steps.ref.outputs.base }}",
+              "fathom_version": subprocess.run(
+                  ["./target/release/fathom", "--version"], capture_output=True, text=True
+              ).stdout.strip(),
+              "exit_codes": {"check": int(os.environ.get("gate_exit", -1)),
+                             "export": int(os.environ.get("export_exit", -1))},
+              "episodes": {"indexed": index.get("episodes"), "returned": len(episodes.get("episodes", [])),
+                           "review_state": counts},
+              "check": check,
+              "architecture_score": int(score.group(1)) if score else None,
+              "ratchet_uncovered": int(uncovered.group(1)) if uncovered else None,
+              "artefacts": ["fathom-self-review-${{ steps.ref.outputs.version }}.md",
+                            "fathom-doctor-${{ steps.ref.outputs.version }}.json",
+                            "self-check.json", "self-check.sarif", "self-architecture.txt",
+                            "self-ratchet.txt", "self-review-status.txt", "self-review.json"],
+          }
+          pathlib.Path("self-review.json").write_text(json.dumps(summary, indent=2) + "\n")
+          print("self-review:", summary["fathom_version"], "| episodes", summary["episodes"]["indexed"],
+                "| check", summary["check"].get("outcome"), "| architecture", summary["architecture_score"],
+                "| ratchet uncovered", summary["ratchet_uncovered"])
+          PY
+
+      - name: the artefacts are always kept, even when a verdict is uncomfortable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fathom-self-review-${{ steps.ref.outputs.version }}
+          path: |
+            fathom-self-review-*.md
+            fathom-doctor-*.json
+            self-review.json
+            self-check.json
+            self-check.sarif
+            self-architecture.txt
+            self-ratchet.txt
+            self-review-status.txt
+
+      - name: and attached to the release
+        # The criterion's second half, and the only step that needs a secret (`GITHUB_TOKEN`, which a fork has
+        # too). A manual dispatch has no release to attach to: the job says so instead of pretending it
+        # published something, which is the same honesty rule `docs/concepts/release.md` §1.2 applies to
+        # workflow artefacts versus release assets.
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "fathom-self-review-${{ steps.ref.outputs.version }}.md" \
+            "fathom-doctor-${{ steps.ref.outputs.version }}.json" \
+            self-review.json self-check.sarif --clobber
+          echo "attached four files to ${{ github.event.release.tag_name }}"
+
+      - name: what a dispatch did instead of publishing
+        if: github.event_name != 'release'
+        run: |
+          echo "No release to attach to: this was a workflow_dispatch."
+          echo "The artefacts are workflow artefacts for this run, and nothing was published."
+          echo "Per docs/concepts/release.md §10: the publish half needs a tag that reached a public remote."

@@ -54,7 +54,12 @@ by `fathom completions` from the same definitions `--help` is rendered from: `ma
 a `.deb` install, and after an untar with `MANPATH` pointed at the archive.
 
 Then `fathom --version` (prints the version and the compiled-in feature set) and `fathom doctor --json` (the
-one-object report that is safe to attach to a bug report, including what your machine actually has).
+one-object report that is safe to attach to a bug report, including what your machine actually has — read it
+before you send it: it contains your paths). There is no telemetry, so that object and one
+[issue](docs/concepts/feedback.md) are the whole feedback loop, and
+[the channel page](docs/concepts/feedback.md) says what happens to them and when: one tracker, two forms, a
+weekly triage, seven dispositions, and a rule that a fixed report is named in the release notes in the
+reporter's own words.
 
 To see what it does **before pointing it at your own history**: `fathom --demo`. It unpacks a 21-commit
 repository — two people and one agent, with a rename, a dependency bump, a deleted test, a CI job, a cycle

@@ -65,6 +65,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [path taxonomy and noise policy](concepts/paths.md) · [the fixture corpus](concepts/fixtures.md) ·
 [privacy: no network by default](concepts/privacy.md) · [memory ceilings and bounded caches](concepts/memory.md) ·
 [the watch daemon](concepts/watch-daemon.md) ·
+[the beta feedback loop: one channel, one weekly triage](concepts/feedback.md) ·
 [release and adoption](concepts/release.md)
 
 **What a change is** — [change classification](concepts/change-classification.md) ·
@@ -115,6 +116,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav |
 | `python3 tools/five_minute_demo.py check`, `tools/publish_demo_repo.py check`, `tools/demo_acceptance.py check`, `tools/record_demo.py check` | the five-minute tour is **run**, not described: every step's exit code and output is asserted, the whole tour is inside its 300 s budget, the page carries the numbers this run measured, and the demo repository still assembles from the pack the binary ships. The clone half is run too: a `git clone` plus one `fathom` command has to reproduce every documented finding *and* leave every documented gap a gap, and the committed recording has to stay under budget, silent, current with the demo's tag, and full of the exhibits ([the scripted demo](demo/five-minute.md)) |
 | `python3 tools/check_ci_gate.py` | the shipped CI story is one coherent object: `ci/install-fathom.sh` refuses a binary that cannot run the six checks, the reusable `fathom-check` workflow and the dogfood workflow name verbs that exist, and the recipe that tells people to run the installer is not lying about a file that is not there ([the gate](concepts/ci-gate.md)) |
+| `python3 tools/check_beta_loop.py`, `tools/beta_intake.py`, `tools/gen_changelog.py` | the beta loop is one object too: both issue forms still require `fathom doctor --json`, the seven dispositions are the same seven words in the code, the labels and the manual, the weekly register in `.plan/intake/` is well formed and counted, and every commit since the last release is accounted for in the changelog that becomes the release body ([the channel](concepts/feedback.md), [the runbook](concepts/release.md)) |
 | `python3 tools/check_privacy.py check\|offline` | the privacy posture: the default closure, the consent table, the source scan, this page, and a run of the shipped binary with no network egress available ([privacy](concepts/privacy.md)) |
 | `python3 -m recommender.tui doc --check`, `tools/tui_tables.py check` | ADR-006's tables and the Rust TUI's test tables are the Python keymap's, generated |
 

@@ -1,0 +1,54 @@
+# The label set the beta loop uses (`e7.7`, **reco-rny**).
+#
+# This file is data, not decoration: `tools/check_beta_loop.py` (rules B01, B03, B06) reads it and fails
+# if a template applies a label that is not listed here, if a disposition in the intake ledger is not a
+# label, or if the documented vocabulary in `docs/concepts/feedback.md` and this file disagree. Three
+# lists of the same eleven words is exactly the kind of drift this repository would rather catch in CI than
+# discover in a tracker where two of the words quietly stopped being used.
+#
+# Creating them is a one-time act on the repository, and it needs `gh` or the web UI. Nothing in this
+# repository applies this file automatically — an action that creates labels in a clone it does not own is
+# a support promise nobody made — so this file is the *definition* CI checks against, and the rows are what
+# a maintainer types once:
+#
+#     grep -o 'name: "[^"]*"' .github/labels.yml | cut -d'"' -f2   # the eleven names
+#     gh label create "triage:ticketed" --color 1d76db --description "$(… the row's description …)"
+
+# --- what arrived -----------------------------------------------------------------
+- name: "type:bug"
+  color: "d73a4a"
+  description: "Something is wrong: a crash, a wrong number, a finding that is not true, a run that did not finish."
+- name: "type:feedback"
+  color: "7057ff"
+  description: "The beta feedback form: what you were doing, where you lost the plot, what you wish it did."
+- name: "type:docs"
+  color: "0075ca"
+  description: "A document, a --help line or a remedy said the wrong thing. A lying document is a defect with an owner."
+
+# --- what the weekly triage decided ----------------------------------------------
+# The seven dispositions. A report may not be closed without one, and the ledger in
+# .plan/intake/ has one column for it. The definitions live in docs/concepts/feedback.md §4.
+- name: "triage:untriaged"
+  color: "ededed"
+  description: "Arrived, not yet read by the triage rota. Everything starts here; nothing should stay here more than a week."
+- name: "triage:ticketed"
+  color: "1d76db"
+  description: "Accepted as real and captured as a bead with an owner. This is the disposition that means 'we will fix it'."
+- name: "triage:fixed"
+  color: "0e8a16"
+  description: "Acted on in the tree. The release notes name the symptom in the reporter's own words (docs/concepts/feedback.md §5)."
+- name: "triage:duplicate"
+  color: "cfd3d7"
+  description: "Already known. The ledger names the report or bead it duplicates — a duplicate is counted, not deleted."
+- name: "triage:needs-repro"
+  color: "d4c5f9"
+  description: "Something the reporter has to supply. Has an owner and a 14-day clock; when the clock runs out it becomes cannot-reproduce, in writing."
+- name: "triage:by-design"
+  color: "ffffff"
+  description: "Deliberate, and the documents said so or now say so. The no comes with the sentence that decided it."
+- name: "triage:wont-fix"
+  color: "fef2f0"
+  description: "Real, and not happening in v1. The non-goal is named (docs/concepts/thesis.md) rather than implied."
+- name: "triage:cannot-reproduce"
+  color: "fef2f0"
+  description: "Could not be made to happen with what was supplied. Stays on the register: an unanswered report is not a non-event."

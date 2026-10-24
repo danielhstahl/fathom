@@ -30,6 +30,13 @@ reusable workflow rather than re-implementing it: two copies of a gate drift.
 fetcher that owns the pins, and it builds the binary with the installer rather than a hand-rolled
 `cargo build` that could quietly differ from what an outsider gets.
 
+**The self-review job** (`e7.7`, **reco-rny**). It fires on `release: published`, it runs the product's own
+verbs over this repository (`index`, `check`, `doctor --json`, `export`, `review status`), it keeps every
+non-zero exit it considers a *result* (a finding is `7`; a crash is not), and it attaches the artefact to the
+release it was published from — the beta's "the artefact is published per release" half, as a rule instead of
+as a promise. A workflow that says it publishes a review and does not is exactly the class of bug this file
+exists for.
+
 **Documented paths exist.** Every `ci/<file>.sh` and `tools/<file>.py` a page tells someone to run is a
 file that exists and is executable where executability matters. This is the rule whose absence let the
 original bug through.
@@ -49,6 +56,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "ci" / "install-fathom.sh"
 REUSABLE = ROOT / ".github" / "workflows" / "fathom-check.yml"
 DOGFOOD = ROOT / ".github" / "workflows" / "dogfood.yml"
+SELF_REVIEW = ROOT / ".github" / "workflows" / "self-review.yml"
 DEMO_JOB = ROOT / "publish" / "demo-repo" / ".github" / "workflows" / "fathom.yml"
 
 #: The features a CI gate needs, in the words `fathom --version` prints.
@@ -148,7 +156,9 @@ def verbs_in(path: pathlib.Path) -> set[str]:
     """Every `fathom <verb>` the workflow's own steps would execute."""
     verbs: set[str] = set()
     for line in run_lines(path):
-        for match in re.finditer(r"(?:^|[\s;&|(])fathom ([a-z][a-z-]+)", line):
+        # A path prefix is the same promise: `./target/release/fathom check` and `fathom check` are one
+        # verb, and a rule that only sees the PATH form lets a workflow check itself with a different binary.
+        for match in re.finditer(r"(?:^|[\s;&|(/])fathom ([a-z][a-z-]+)", line):
             verbs.add(match.group(1))
     return verbs
 
@@ -274,7 +284,7 @@ def check_flags(problems: list[str], notes: list[str], verbose: bool, binary: pa
         if verbose:
             notes.append("flag check skipped: no binary to ask")
         return
-    for workflow in (REUSABLE, DOGFOOD):
+    for workflow in (REUSABLE, DOGFOOD, SELF_REVIEW):
         if not workflow.is_file():
             continue
         verbs = verbs_in(workflow)
@@ -404,6 +414,35 @@ def check_documented_paths(problems: list[str], notes: list[str], verbose: bool)
         notes.append(f"documented paths: {checked} script references resolve")
 
 
+def check_self_review(problems: list[str], notes: list[str], verbose: bool) -> None:
+    """`e7.7`: the release carries Fathom's review of itself, and the job that does it is not folklore."""
+    if not SELF_REVIEW.is_file():
+        problems.append(".github/workflows/self-review.yml is missing — the beta criterion "
+                        "'the artefact is published per release' has no owner")
+        return
+    text = SELF_REVIEW.read_text(encoding="utf-8")
+    for needed, why in (("release:", "it must fire on a published release, not only on a person"),
+                        ("published", "the trigger is `release: published`; any other event has no artefact to attach to"),
+                        ("gh release upload", "the artefact has to reach the release, or the job is a log"),
+                        ("fathom export", "the review record is the artefact a human reads"),
+                        ("doctor --json", "the machine-readable half, which is the same object a reporter is asked for"),
+                        ("review status", "the artefact has to say how much of the repository was actually reviewed"),
+                        ("upload-artifact", "a dispatch with no release still has to leave the files somewhere")):
+        if needed not in text:
+            problems.append(f".github/workflows/self-review.yml never mentions `{needed}`: {why}")
+    for verb in ("index", "check", "export", "doctor", "architecture", "ratchet", "review status"):
+        if f"fathom {verb}" not in text:
+            problems.append(f".github/workflows/self-review.yml does not run `fathom {verb}`, "
+                            "and the self-review is the sum of those verbs, not of the job's prose")
+    # The same exit-code rule the dogfood job states at length: a finding is a result, a broken run is not.
+    if not re.search(r"0\|7", text):
+        problems.append(".github/workflows/self-review.yml does not state the `0 or 7` rule: a finding is a "
+                        "result and a crash is a failure, and conflating them is how a self-review gets muted")
+    if verbose:
+        notes.append("self-review job: fires on a published release, runs the product's own verbs, "
+                     "keeps the exit-code contract, and attaches the artefact")
+
+
 def check(verbose: bool, binary: pathlib.Path) -> tuple[list[str], list[str]]:
     """Run every rule. Returns `(problems, notes)`, the second being what `--verbose` prints."""
     problems: list[str] = []
@@ -411,6 +450,7 @@ def check(verbose: bool, binary: pathlib.Path) -> tuple[list[str], list[str]]:
     check_installer(problems, notes, verbose, binary)
     check_reusable(problems, notes, verbose, binary)
     check_dogfood(problems, notes, verbose)
+    check_self_review(problems, notes, verbose)
     check_demo_job(problems, notes, verbose)
     check_policy_knobs(problems, notes, verbose)
     check_flags(problems, notes, verbose, binary)
@@ -490,7 +530,7 @@ def main() -> int:
             print(problem, file=sys.stderr)
         print(f"\n{len(problems)} problem(s)", file=sys.stderr)
         return 1
-    print("ci gate OK: installer, reusable workflow, dogfood job, demo job, documented paths")
+    print("ci gate OK: installer, reusable workflow, dogfood job, self-review job, demo job, documented paths")
     return 0
 
 

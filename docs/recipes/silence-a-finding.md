@@ -83,7 +83,7 @@ so put repository-wide silences in the repository's `fathom.toml`.
 Say so where it can be acted on, and do not leave the suppression as the only record:
 
 1. **open an issue** with the finding text, the file's shape and the version line from `fathom --version`
-   ([troubleshooting](../troubleshooting.md#filing-something-worth-reading));
+   ([the channel](../concepts/feedback.md), or [the checklist for filing it](../troubleshooting.md#filing-something-worth-reading));
 2. **note it in the sign-off**, because the ledger keeps reasons and `fathom review sign <episode> --note
    "secret_string false positive: fixture key"` is a record your successor can find:
    ```bash

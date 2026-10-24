@@ -441,3 +441,89 @@ artefact a person can `brew install ./fathom.rb` with, and §1.2 says so instead
 **What a fork should conclude.** Clone, change the repository URL (§3 step 2), and every artefact in §1.2
 builds and installs, unsigned, from your own releases page. Nothing in this project's release path is
 secret; the only thing a fork cannot do is be trusted by strangers, which is a certificate, not a config.
+
+## 9 The cadence, and the changelog process that goes with it
+
+Status: opened by `e7.7` (**reco-rny**). Everything in this section is either a command or a rule a
+command enforces; the sentence *"we release when we feel like it"* is the thing being replaced, because a
+cadence only the author can follow is not a cadence, it is a mood.
+
+**The cadence.** Four clocks, and one person a week who is not necessarily the author:
+
+| Clock | What is cut | What has to be true |
+|---|---|---|
+| **weekly, Tuesday** | `0.1.0-alpha.N+1` from `master` | the release job is green; `[Unreleased]` accounts for every commit since the last tag (`tools/gen_changelog.py audit` refuses anything else); the two graphs and the demo checks are green |
+| **on a merged defect a user hit** | a patch, any day | the defect is a row in [the intake register](feedback.md) with a disposition, and the release notes carry its three sentences (§5 of that page) |
+| **at an epic's close** | a minor | the epic's exit criteria are a runnable gate (`tools/epic6_acceptance.py` is the pattern), and the demo is re-recorded — §3 step 6 |
+| **at 1.0** | the minor that stops the `alpha` suffix | the calibration bars in [false-positive calibration](false-positive-calibration.md) §5 and the two external pipelines this project counts |
+
+Two rules that keep a weekly cut cheap: **nothing waits for a release**, because the cut is Tuesday whether
+or not anything interesting landed, and a release that has to be *worth it* is a release that gets postponed;
+and **a cut is never edited after it is published** — a bad alpha is followed by another alpha, because
+silently rewriting a release body is how a project loses the ability to say what it shipped when.
+
+**The changelog is generated, and never regenerated.** `CHANGELOG.md` stays hand-written prose with arguments
+in it — that is what makes it worth reading, and no commit subject contains the reasoning. What is generated is
+the *checking* of it, by [`tools/gen_changelog.py`](../../tools/gen_changelog.py):
+
+```bash
+python3 tools/gen_changelog.py draft            # what the commits since the last release would say
+python3 tools/gen_changelog.py audit            # CI: does [Unreleased] account for every one of them?
+python3 tools/gen_changelog.py lint             # which commits are conventional-shaped, which took the ladder
+python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the heading, date it, open a new one
+python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
+```
+
+**Conventional commits, and the house style they have to share a file with.** The header grammar is the usual
+one — `feat(scope)!:` / `fix:` / `perf:` / `refactor:` / `docs:` / `deprecated:` / `removed:` / `security:`,
+with `build`/`ci`/`test`/`chore`/`style` kept out of the release notes, `BREAKING CHANGE:` or `!` promoting an
+entry into **Breaking changes**. Two additions, both here because of how this repository actually commits:
+
+* `Changelog: <one sentence>` and `Changelog-Section: Fixed` trailers, for a commit whose subject is an essay
+  (most of them) and should contribute one accurate bullet rather than a truncated one;
+* a **fallback ladder** for the commits that use no header at all: classify from the trailers, else from the
+  bead refs, else from keywords into Fixed or Changed — and `lint` says out loud, per commit, which rung it
+  took. A guess the tool admits is a guess a reviewer can overrule; a guess it hides is the same kind of defect
+  the risk vector refuses to have.
+
+**The gate is coverage, not style.** `audit` reads the commits since the previous release — from the tag if the
+clone has one, which this clone does not (it has no remote to push a tag to), else from the commit that added
+the previous `## [version]` heading — and fails on any commit the release notes do not account for, by bead
+ref, plan key, short sha, or the `Changelog:` text. `C03` is that rule. Known omissions may be exempted in
+`.plan/changelog-coverage.json` with a reason and an owner, and `C07` makes that list **shrink-only**: an
+exemption that has become covered fails until it is deleted. Cutting a release (`cut`) runs the audit first and
+refuses, so the failure this section exists to prevent — a shipped ticket nobody announced — is now a red build.
+
+**Two consecutive releases, and the honest state of that criterion.** The beta's fourth criterion is that this
+process is *followed*, twice. What is true today: the process is documented here, the tool enforces it, the
+audit runs in CI on every commit, and `self-test` performs two consecutive cuts — dated headings, generated
+bodies, a refusal when a commit is missing, a refusal when the version and `Cargo.toml` disagree — in a
+throwaway repository, through the same code path `cut` uses on this tree. On this tree **one release has been
+cut** (`0.1.0-alpha.1`, §6), because a second needs the version bump, a `dist plan` re-capture by a machine
+that has `dist` installed, and a tag pushed to a public remote that does not exist yet. `python3
+tools/check_beta_loop.py --criteria` prints that state as data rather than as a claim, and it will say
+`2` the day someone runs §3 for the second time.
+
+## 10 What a release publishes about itself
+
+The third beta criterion is that **Fathom runs against its own repository in CI and the artefact is published
+per release**, and the two halves had different owners before `e7.7`.
+
+* **In CI, since `e6.6`**: the `check-gate` job in `.github/workflows/ci.yml` builds the headless binary,
+  indexes this repository with a shallow clone, runs `fathom check` twice (the gate, then the SARIF), times it
+  against the 60-second budget and uploads the SARIF. [The dogfood workflow](../../.github/workflows/dogfood.yml)
+  runs the same gate over three repositories this project does not own.
+* **Per release, since `e7.7`**: [`.github/workflows/self-review.yml`](../../.github/workflows/self-review.yml)
+  runs on `release: published` and on `workflow_dispatch`, and attaches three files to the release it is
+  published from: the review artefact for the release range (`fathom export`, markdown, with its sign-off
+  block and its self-check verdict), `fathom doctor --json` for the runner's own build of the released
+  version, and a small `self-review.json` of the numbers a stranger would otherwise have to re-derive —
+  episodes indexed, findings by check and severity, the architecture score, the ledger's coverage, and every
+  non-zero exit code with its name. If no release exists yet (a manual dispatch against a branch), the same
+  three files land as workflow artefacts instead, and the job says which happened rather than failing quietly.
+
+Why it is worth a job at all: the artefact is the product's own claim about itself at the exact bytes a user
+installed, and a release that changed what the tool says about its own repository has to explain the difference
+in the release's own notes. The record of the first manual pass, with its commands and its eleven filed
+defects, is [`.plan/evidence/reco-rny/fathom-on-itself.md`](../../.plan/evidence/reco-rny/fathom-on-itself.md);
+the weekly act that keeps it current is §3 and §6 of [the feedback channel](feedback.md).

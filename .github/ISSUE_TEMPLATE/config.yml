@@ -1,0 +1,37 @@
+# The beta loop's front door (`e7.7`, **reco-rny**).
+#
+# Blank issues are off. A blank issue is a sentence with no version in it, and the first thing every
+# triage pass has to do to one is ask for the version — which is the intake cadence spending its week
+# on typing. The two forms below ask for everything the triage needs *as the first thing it asks*, and
+# `tools/check_beta_loop.py` (rule B02) fails CI if either form ever stops requiring the one field that
+# makes a report diagnosable: the output of `fathom doctor --json`.
+#
+# The two forms are one channel, not two: the same tracker, the same weekly triage, the same
+# dispositions. The split is only about how much is asked of somebody who hit a crash versus somebody
+# who has an opinion. The page that owns all of it is docs/concepts/feedback.md.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: The troubleshooting page — read this before you file
+    url: https://github.com/danielstahl/fathom/blob/master/docs/troubleshooting.md
+    about: >-
+      Symptoms, exit codes, the three things that are not bugs, and the sixty seconds that usually
+      explain a surprising number. If it already has your symptom, the fix is here and not in a new issue.
+  - name: The feedback loop — where reports go, what happens to them, and when
+    url: https://github.com/danielstahl/fathom/blob/master/docs/concepts/feedback.md
+    about: >-
+      The single feedback channel, the weekly triage cadence, the six dispositions a report can end with,
+      and what gets published when something is fixed.
+  - name: Documentation — concepts, recipes, the detector catalogue
+    url: https://github.com/danielstahl/fathom/tree/master/docs
+    about: >-
+      The manual, generated where it can be: the CLI reference is printed from the binary that is on your
+      machine, and the detector catalogue says what each finding means and which switch turns it off.
+  - name: A finding you would rather not put in public
+    url: https://github.com/danielstahl/fathom/security/advisories/new
+    about: >-
+      Private disclosure, and the only route that is not this tracker. Use it for anything that says how
+      to make the tool lie — a crafted repository that produces a false "clean", a path that escapes the
+      sandbox, a report that carries secrets you cannot redact. docs/security/threat-model.md is the
+      register these reports land in.

@@ -115,9 +115,12 @@ redacted reduction of it. Two honest notes about the redaction:
 * **`fathom --demo` reproduces a surprising amount**: if the miniature shows the same wrong figure, you have a
   minimal reproduction and a fix that can be tested against it in CI.
 
-Where to send it: the repository's issue tracker. What happens next is the beta loop (`e7.7`, **reco-rny**) —
-install path, changelog and feedback intake are that ticket's, and this page is the answers side of the same
-machine. When a beta issue gets fixed, its symptom line stays here, because the next person will hit it too.
+Where to send it: **the repository's issue tracker**, through one of its two forms — and
+[the feedback channel](concepts/feedback.md) is the page that owns that sentence: what each form asks for,
+why `fathom doctor --json` is required, the Tuesday triage cadence, and the seven dispositions a report can
+end with (`e7.7`, **reco-rny**). This page is the answers side of the same machine: when a beta issue gets
+fixed, its symptom line stays here, because the next person will hit it too, and a symptom that is written
+twice in two places is a symptom that gets fixed once and contradicted once.
 
 ## If the tool is lying
 

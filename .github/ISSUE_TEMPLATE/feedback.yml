@@ -1,0 +1,109 @@
+name: Beta feedback — how it went
+description: What you were trying to do, where you lost the plot, and what you wish it did.
+title: "[feedback] "
+labels:
+  - "type:feedback"
+  - "triage:untriaged"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        ## The form that is not a bug report
+
+
+        Most of what a beta is for is not crashes. It is "I could not find the thing", "I did not believe
+        that number but could not say why", "I stopped using it on day three". None of those are defects
+        until someone writes them down, and all of them are the difference between a tool that works and a
+        tool people use. This form is five questions, and it is the same channel as the bug form: one
+        tracker, one weekly triage, one list of dispositions (docs/concepts/feedback.md).
+
+
+        There is no telemetry, so nothing about your usage arrives unless you send it. If you would rather
+        say it in person, that is what the alpha ledger in docs/concepts/release.md §5 is for — a handle,
+        the OS, the version, and what broke.
+  - type: textarea
+    id: task
+    attributes:
+      label: What were you trying to do, in the job you were actually doing?
+      description: >-
+        The real task, not the verb. "Decide whether the last hour of agent work was safe to merge" is a
+        task; "I ran fathom queue" is a command. Time-to-confidence is the north-star metric this project
+        is built around (docs/concepts/thesis.md), and it is measured by sentences like yours, not by
+        counters we refuse to ship.
+      placeholder: >-
+        Two agents had been writing for an hour while I was in meetings. I needed to know which of the six
+        episodes I had to actually read before I merged.
+    validations:
+      required: true
+  - type: textarea
+    id: plot
+    attributes:
+      label: Where did you lose the plot?
+      description: >-
+        The moment you stopped trusting it, stopped understanding it, or reached for something it does not
+        have. One paragraph. If you got all the way to the end and it helped, say that too — an empty
+        column here is the only thing a release cycle cannot learn from.
+    validations:
+      required: true
+  - type: textarea
+    id: wish
+    attributes:
+      label: What do you wish it did?
+      description: >-
+        Feature requests live here, not in a third form — one channel means one place to look, and the
+        weekly triage reads both forms together. "So that …" is the useful half of this answer; the
+        v1 non-goals in docs/concepts/thesis.md are already decided and will get a short, honest no.
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Did it print a number or a finding you did not believe?
+      description: >-
+        If yes, name it, paste the row, and say what you thought the truth was. A confident wrong answer is
+        the single most valuable thing a beta can produce, and it outranks every other row at triage. If
+        no, say "no" — a beta that heard no objections is a beta that nobody read.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`fathom doctor --json`, or `n/a`"
+      description: >-
+        **Required**, because the wrong-number reports are the ones that need a machine to be described.
+        Run `fathom doctor --json`, **read it** — it contains your repository's paths, and redacting them is
+        expected, not a problem — and paste it. If this report is a suggestion that involves nothing you
+        measured, type `n/a` on the first line and one word about why (`n/a — wording`); the escape hatch is
+        recorded rather than left as an empty box, which is what tells triage this was a choice.
+      render: json
+      placeholder: |
+        n/a — wording
+    validations:
+      required: true
+      max: 100000
+  - type: dropdown
+    id: onboarding
+    attributes:
+      label: How did you get here, and did the first five minutes work?
+      description: >-
+        One of the things a beta is for is the install path and the first run. `docs/quickstart.md` is the
+        five-minute path and `fathom --demo` is what it promises; if the distance between the two cost you
+        time, that is the finding.
+      options:
+        - "`fathom --demo`, on a machine of my own"
+        - "the quickstart, on one of my repositories"
+        - "I run it against a colleague's or a shared repository"
+        - "the CI gate — `fathom check` in a pipeline"
+        - "through a coding harness (the adapters, the daemon or the MCP server)"
+        - "I could not get it installed or running"
+    validations:
+      required: true
+  - type: checkboxes
+    id: ledger
+    attributes:
+      label: Before you send
+      options:
+        - label: I read the `doctor` output above and redacted what I do not want published.
+          required: true
+        - label: I am happy to be asked a follow-up question here (nothing reaches me any other way).
+          required: false

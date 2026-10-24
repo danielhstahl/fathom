@@ -1,0 +1,132 @@
+name: Something is wrong
+description: A crash, a wrong number, a finding that is not true, a run that never finished.
+title: "[report] "
+labels:
+  - "type:bug"
+  - "triage:untriaged"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        ## There is no telemetry, so this form is the intake
+
+
+        Fathom phones nothing home (`docs/concepts/privacy.md`: no network by default, no identifier, no
+        metrics that leave the machine). That is a deliberate refusal, and the price of it is that the only
+        thing a maintainer can debug is what you paste here. A report that arrives with the four blocks below
+        is usually reproducible the same day; one that arrives with "it looks wrong" costs a week of
+        questions.
+
+
+        **Read the first box before you send it.** `fathom doctor --json` contains your repository's paths.
+        That is the whole difference between telemetry and a bug report: you are looking at it before it
+        leaves your machine. Redact whatever you would not want published — the fields a diagnosis needs are
+        `build`, `features`, `sqlite`, `index`, `config` and `findings`.
+
+
+        Two things before the form: `docs/troubleshooting.md` already has the symptoms we know about, and
+        `fathom --demo` reproduces a surprising amount on a miniature repository that ships inside the
+        binary. If the miniature shows the same wrong figure, you have found the bug and a fixture to test
+        the fix against.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >-
+        In your words, with the words you would use to a colleague. Say "this number is wrong" rather than
+        "this looks odd" — a confident wrong answer is the most valuable report this project can receive,
+        and it is the one class of defect the fixtures exist to catch.
+      placeholder: >-
+        `fathom why ep-…` scored a lockfile-only change as the riskiest episode in the repository. The
+        episode is one Dependabot commit. I expected the noise axis to discount it.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: The exact command line, and what it printed
+      description: >-
+        Copy the whole line, flags and all — `--root`, `--format`, `--detectors`, the theme. Then the output,
+        including the `error:`/`hint:`/`code:` lines if there were any, and the exit code (`echo $?`). The
+        exit code is a contract, not a detail: 7 and 12 mean completely different things.
+      render: shell
+      placeholder: |
+        $ fathom check --base HEAD~5 --format json; echo "exit=$?"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and why
+      description: >-
+        The sentence you believed before you ran it. "I thought `noise` covered lockfiles" is a claim a
+        maintainer can check against the noise policy; "I did not like the number" is not. If a doc, a
+        `--help` line or a message told you the wrong thing, quote it and link it — a document lying is a
+        defect with an owner.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`fathom doctor --json` — read this before you paste it"
+      description: >-
+        **Required.** One command, one JSON object: the version and compiled-in feature set, the OS, arch
+        and terminal, the SQLite build and its capabilities, the index state and its integrity verdict, the
+        config layers in force, and every finding with its remedy. It is the single artefact that turns "on
+        my machine" into a diagnosis, and it is what the weekly triage looks at first.
+
+
+        It contains your repository's paths and your username. Redact them with `sed -i 's#/home/you#~#g'`
+        or by hand — redacting loses nothing a diagnosis needs. Do not paste `fathom analyze --json` or a
+        diff: those carry file bodies and commit subjects, and the verifier will refuse absolute paths in
+        the export anyway.
+      render: json
+      placeholder: |
+        $ fathom doctor --json > /tmp/fathom-doctor.json; $EDITOR /tmp/fathom-doctor.json   # read it
+        $ cat /tmp/fathom-doctor.json                                                     # then paste it
+    validations:
+      required: true
+      max: 100000
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to make it happen again
+      description: >-
+        Optional but worth more than the rest of the form: `fathom --demo` (the miniature), a commit range,
+        an episode id, a repository that is public, or a directory with three commits in it that does it.
+        A reduction that reproduces becomes a fixture, and a fixture is why it stays fixed.
+      value: |
+        - [ ] `fathom --demo` shows it too
+        - [ ] a repository or a range:
+        - [ ] it is intermittent, and this is how often:
+  - type: dropdown
+    id: which
+    attributes:
+      label: Which part of Fathom is wrong
+      description: >-
+        Pick as many as apply. This is the *area*, and it routes the report to the owning crate during
+        triage — it is not a judgement about severity, and "more than one" is a normal answer.
+      multiple: true
+      options:
+        - "the numbers (risk score, delta, architecture, scorecard)"
+        - "a finding (a detector said something that is not true)"
+        - "the queue or the review ledger"
+        - "the TUI (keys, layout, colours, speed)"
+        - "indexing (slow, stuck, wrong, out of memory)"
+        - "export, the PR artefact, SARIF"
+        - "the CI gate (`fathom check`, `fathom ratchet`)"
+        - "the harness adapters, the daemon, or the MCP server"
+        - "install, packaging, completions, man pages"
+        - "the documentation said the wrong thing"
+        - "I do not know"
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you send
+      options:
+        - label: I read the `doctor` output above and redacted what I do not want published.
+          required: true
+        - label: I have no network egress concerns (nothing here is uploaded; this form is the transport).
+          required: false

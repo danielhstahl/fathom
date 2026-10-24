@@ -1,0 +1,4 @@
+{
+  "_why": "Exemptions from `tools/gen_changelog.py audit`'s coverage rule (C03): one entry per commit the release notes are allowed not to describe, each with a `ref` (a bead id or a short sha), a `reason` and an `owner`. Rule C07 makes this list shrink-only: an exemption whose commit has since become covered fails the cut until the row is deleted. Empty means every commit since the last release is accounted for in CHANGELOG.md, which is the state this repository keeps.",
+  "entries": []
+}
