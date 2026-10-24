@@ -60,6 +60,16 @@ globs = ["tests/**", "**/test_*.py"]
 # `python3 -m recommender.testsurface definition` prints those numbers as sentences, and
 # `... policy` prints which layer each one came from.
 
+[api]
+# `e3.12` (reco-u1i) decided that a test file is not a public API surface, and this repository is the
+# case that made the argument: `fathom check` reported the rename of a Python test function in
+# `tests/test_release_contract.py` as the breaking removal of a public item. The built-in table
+# (`crates/fathom-analyze/src/api/testpath.rs`) declines those files now — all 211 of them at this commit — and
+# says so in the report rather than dropping them silently. Nothing is set here on purpose:
+# `track_tests = true` would put a test tree back on the surface of a package nobody imports, and
+# moving them into `ignore` would hide an exclusion this language decides instead of naming it. The
+# one line that *would* belong here is a repository's own unusual claim, and this is not that.
+
 [rename]
 # `e2.4` (reco-a0v) pairs paths across a review window and separates what git asserts from what the
 # content matcher only guesses. The two bars below are the ones spike s4 and this ticket measured, so

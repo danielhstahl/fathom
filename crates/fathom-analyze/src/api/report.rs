@@ -175,6 +175,8 @@ pub fn surface_to_json(surface: &Surface) -> serde_json::Value {
         "files_seen": surface.files_seen,
         "files_parsed": surface.files_parsed,
         "files_ignored": surface.files_ignored,
+        "files_tests": surface.files_tests,
+        "test_paths": surface.test_paths,
         "languages": surface.languages,
         "available_grammars": surface.available,
         "caveats": surface.caveats,

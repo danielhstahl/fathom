@@ -15,13 +15,14 @@
   table and the warning channel), [ADR-002](../adr/0002-workspace.md) §6.5 (grammars behind feature
   flags), [ADR-004](../adr/0004-storage.md) §5 (deterministic digests, sorted lists, no clocks).
 - **In code today**: `crates/fathom-analyze/src/api/` — `policy.rs` (the `[api]` table, and every
-  refusal raised while reading it), `textscan.rs` (bracket-aware scanning of a declaration),
-  `signature.rs` (a declaration decomposed into parameters, return, receiver, members),
-  `package.rs` (which package a file belongs to, per language), `extract.rs` (one revision's
-  surface), `surface.rs` (the surface, its digests, and the fast paths), `diff.rs` (two revisions
-  paired), `classify.rs` (what happened, and whether it breaks a caller), `semver.rs` (the bump and
-  the change that drove it), `episode.rs` (which episode to blame), `report.rs` (the lines and the
-  JSON). 18 unit tests, `tests/api_surface.rs` (21), and a two-revision fixture corpus under
+  refusal raised while reading it), `testpath.rs` (the built-in answer to "is this a test file?",
+  per language, and the one key that can overrule it), `textscan.rs` (bracket-aware scanning of a
+  declaration), `signature.rs` (a declaration decomposed into parameters, return, receiver,
+  members), `package.rs` (which package a file belongs to, per language), `extract.rs` (one
+  revision's surface), `surface.rs` (the surface, its digests, and the fast paths), `diff.rs` (two
+  revisions paired), `classify.rs` (what happened, and whether it breaks a caller), `semver.rs` (the
+  bump and the change that drove it), `episode.rs` (which episode to blame), `report.rs` (the lines
+  and the JSON). 29 unit tests, `tests/api_surface.rs` (28), and a two-revision fixture corpus under
   `crates/fathom-analyze/api/corpus/` for Rust, Python, TypeScript, Go, Ruby and Java.
 - **Read this if**: you want to know why a rename is printed as a removal and an addition in Go and as
   a rename in Python, what makes `impl AsRef<str>` additive while `Option<T>` is not, why a vanished
@@ -118,6 +119,67 @@ Each language is read by its own rule rather than by a heuristic about naming:
 `[api] private = ["fathom-fixtures"]` is the last word: a private package is still extracted and still
 reported, and the recommendation says `internal` rather than proposing a version for a package
 published to nobody.
+
+### A test file is not a surface (`e3.12`)
+
+Before the export rule is applied, the file is asked a prior question: *is this file something a
+caller compiles against at all?* A test file is not, and the claim is each language's rather than a
+convention this tool invented.
+
+The rule was extracted from a false positive on this repository. The api check reported:
+
+```text
+breaking test_the_gate_can_go_red_twelve_ways tests/test_release_contract.py:78
+  — public item removed — fn test_the_gate_can_go_red_twelve_ways was last seen at
+  tests/test_release_contract.py:78 (class: breaking, access: Symbol)
+```
+
+The function had been renamed to say what it now covered, which is the ordinary business of test
+maintenance. Nothing outside that file imports it; the only thing that loads it is the runner that
+collects it by name. The extractor had been reading `tests/` as an exported package because nothing
+had told it not to, and the consequence of leaving it there is not one wrong line: it is the wholesale
+`[api] ignore` of a quarter of the repository to silence a recurring lie, after which the four real
+removals in the library go unreported too. A gate that objects to maintenance is a gate that loses its
+authority.
+
+| Language | What is declined, and why nothing can import it |
+| --- | --- |
+| Rust | `<crate>/tests/**` — cargo compiles each file there as its own crate; nothing can `use` it |
+| Python | `tests/**`, `__tests__/**`, `test_*.py`, `*_test.py`, `conftest.py` — pytest's own collection names |
+| Go | `**/**_test.go`, `tests/**` — built only for `go test` |
+| Ruby | `test/**`, `spec/**`, `*_test.rb`, `*_spec.rb` — minitest's and RSpec's layouts (§5) |
+| Java | `src/test/**`, `*Test.java`, `*IT.java` — not in the published artifact |
+| TypeScript | `test/**`, `__tests__/**`, `spec/**`, `*.test.ts`, `*.spec.tsx` — collected by the runner |
+
+Three edges of the rule are the substance of it, and each is tested:
+
+* **The unit is the file.** A test file contributes no items; a source file contributes its exports as
+  before. No per-symbol guess about what "looks like a test" is made.
+* **The name convention is consulted only where the runner consults it.** pytest collects `test_*.py`
+  files, so a `test_*` callable *inside* one is a case; a function named `test_square` in
+  `src/recommender/testsurface/corpus.py` is a function with a test-shaped name in a module no runner
+  will collect, and it stays on the surface. This repository keeps sample corpora shaped exactly like
+  that on purpose, and a rule about identifiers instead of about callers would have eaten them.
+* **`tests` is a directory marker; `test` is only sometimes one.** Node, Ruby and Maven put tests in
+  `test/`, and Python puts published API there — `django.test` is documented, supported surface, and
+  a rule that swallowed it is the opposite of this one. So Python gets the plural, plus the file
+  names.
+
+The exclusion is **stated, not assumed**, exactly like `[api] ignore`: declined paths are counted and
+named with the rule that claimed them (`tests/test_release_contract.py (test_dir:tests)`), on the byte
+fast path as in the report — which is what lets the cheapest answer say *"1 test file is not surface
+and was not read"* instead of silently not reading it. It is a caveat rather than a gap, because a
+decision about what a surface is does not make the answer incomplete.
+
+`[api] track_tests = true` is the way back, for the rare repository whose tests *are* the published
+artefact — a compliance suite shipped as a package, a conformance suite other projects link. The
+conventions are in code as `api::testpath`, next to the argument.
+
+One deliberate duplication: `[test] globs` asks the same *shape* of question — which paths are this
+repository's tests — for the coverage findings (`e2.9`), and it is answered separately here on purpose.
+They are different claims with different consequences: a path can be a test for coverage purposes and
+still be published API (a test-support package), and a key that silently moved both would let somebody
+tuning a coverage threshold change what the api gate refuses to merge.
 
 ## 4. Breaking is a direction, not a difference
 
@@ -228,6 +290,7 @@ ignore = ["**/tests/**", "crates/fathom-cli/**"]
 package = ["crates/fathom-core = fathom-core", "sdk/ts = @acme/sdk"]
 private = ["fathom-fixtures"]
 max_items_per_package = 20000
+track_tests = false                  # the built-in test table; `true` tracks tests as surface
 ```
 
 A workspace of nine crates usually has two whose `pub` items are somebody else's contract. Reporting a
@@ -236,7 +299,9 @@ reason the one that mattered was scrolled past. Each knob is refused with a line
 written wrong — `mode = "warnn"` names the line and suggests the right spelling — because a policy
 silently ignored is a policy the reviewer believes they have. `off` is reported as "not examined",
 which is deliberately a different answer from "examined and clean": a gate has to be able to tell them
-apart.
+apart. And `ignore` (what *this* owner excludes) is kept distinct from the built-in test table (what
+*this language* excludes, §3) in every count, so a report can never read as "nothing was excluded"
+because a third of the tree was declined by a rule rather than by a line in a file.
 
 ## 9. What is not here
 

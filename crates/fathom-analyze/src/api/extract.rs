@@ -28,7 +28,7 @@
 //!    criterion that says a macro wrote it and only the running program knows.
 
 use crate::api::package::{Attribution, CargoInfo, Manifests, PackageMap, RustdocIndex};
-use crate::api::policy::ApiPolicy;
+use crate::api::policy::{ApiPolicy, Exclusion};
 use crate::api::signature::{
     Field, Header, Signature, deprecation_of, fields_of, header_of, signature_of,
 };
@@ -42,8 +42,9 @@ use std::collections::BTreeMap;
 ///
 /// Distinct from [`crate::api::surface::SCHEMA_VERSION`] (the shape) because a rule change — a wider
 /// member rule, a new widening test — changes what a stored surface *means* without changing its
-/// fields, and a stored row has to be able to say which rules made it.
-pub const RULES_VERSION: u32 = 1;
+/// fields, and a stored row has to be able to say which rules made it. `2` is `reco-u1i`: test files
+/// are not surface, so a row written before the bump carries test items this build will not write.
+pub const RULES_VERSION: u32 = 2;
 
 /// Everything [`surface`] reads. The caller owns every byte: `fathom-ingest` has the work area open,
 /// an analysis does not open files.
@@ -177,6 +178,8 @@ pub fn surface(inputs: &Inputs<'_>) -> Surface {
     let mut builders: BTreeMap<String, Builder> = BTreeMap::new();
     let mut files_ignored = 0usize;
     let mut ignored_paths: Vec<String> = Vec::new();
+    let mut files_tests = 0usize;
+    let mut test_paths: Vec<String> = Vec::new();
     let mut languages: Vec<String> = Vec::new();
     let mut files_parsed = 0usize;
     let mut error_parses: Vec<String> = Vec::new();
@@ -203,6 +206,17 @@ pub fn surface(inputs: &Inputs<'_>) -> Surface {
         }
         if !languages.iter().any(|have| have == language.as_str()) {
             languages.push(language.as_str().to_string());
+        }
+        // A test file is not a surface (`reco-u1i`), and the exclusion is said out loud rather than
+        // left as an absence: the same discipline `[api] ignore` follows two lines above. Below the
+        // language list on purpose — the language *is* present in the corpus whether or not the only
+        // files of it we declined to read were tests.
+        if let Exclusion::TestFile { rule } = inputs.policy.exclusion(language, &record.path) {
+            files_tests += 1;
+            if test_paths.len() < 16 {
+                test_paths.push(format!("{} ({})", record.path, rule.code()));
+            }
+            continue;
         }
         let structure = match &record.structure {
             Some(structure) => structure,
@@ -317,6 +331,23 @@ pub fn surface(inputs: &Inputs<'_>) -> Surface {
             ignored_paths.join(", ")
         ));
     }
+    if files_tests > 0 {
+        // A caveat and not a gap, deliberately. A gap says the answer is incomplete and forbids the
+        // "no public API change" claim; a test tree is not an unread hole, it is a decision about
+        // what a surface is, taken with the language's own convention and reversible with one key.
+        // Three names, because the count is the fact and the names are the evidence: a note that
+        // runs to sixteen paths is a note the reader scrolls past.
+        let mut named: Vec<String> = test_paths.iter().take(3).cloned().collect();
+        if files_tests > named.len() {
+            named.push(format!("… and {} more", files_tests - named.len()));
+        }
+        caveats.push(format!(
+            "{files_tests} path(s) are test files and contribute no items to this surface ({}); a \
+             test is not a name a caller compiles against, and `api.track_tests = true` tracks them \
+             if this repository publishes its tests",
+            named.join(", ")
+        ));
+    }
     if inputs.policy.mode == crate::api::policy::Mode::Off {
         caveats.push(
             "api.mode = off: the surface was extracted, and nothing here is being enforced"
@@ -355,6 +386,8 @@ pub fn surface(inputs: &Inputs<'_>) -> Surface {
         files_parsed,
         files_ignored,
         ignored_paths,
+        files_tests,
+        test_paths,
         languages,
         available: structure::available_languages()
             .into_iter()
@@ -470,12 +503,14 @@ struct RubyRules {
 impl RubyRules {
     fn is_entry_point(&self, path: &str) -> bool {
         let name = path.rsplit('/').next().unwrap_or(path);
-        if name.ends_with("_spec.rb")
-            || name.ends_with("_test.rb")
-            || path.starts_with("test/")
-            || path.starts_with("spec/")
-            || name == "Rakefile"
-        {
+        if name == "Rakefile" {
+            return false;
+        }
+        // The test/spec half of this predicate is now the shared table in
+        // [`crate::api::testpath`] — one definition of "this is a test file", consulted by the
+        // policy before a file ever reaches the Ruby rule. What is left here is Ruby's own
+        // entry-point question: with a `lib/` present, only `lib/` is loadable.
+        if crate::api::testpath::is_test_file(Language::Ruby, path) {
             return false;
         }
         if self.require_lib {

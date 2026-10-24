@@ -17,6 +17,71 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A test function is not a public API removal (`e3.12`, `reco-u1i`)
+
+Pointing the shipped gate at this repository's own history — `fathom check --only api --base c025320^
+--head c025320` — reported one breaking change, and it was not one:
+
+```text
+error [api/breaking] breaking test_the_gate_can_go_red_twelve_ways
+  tests/test_release_contract.py:78 — public item removed — fn test_the_gate_can_go_red_twelve_ways
+  was last seen at tests/test_release_contract.py:78
+```
+
+What happened in that commit was that a test was renamed to say what it now covers, which is what
+maintenance in a test file looks like. Nothing outside the file imports it, the only thing that loads
+it is the runner that collects it by name, and the api extractor had been reading `tests/` as an
+exported package because nothing had ever been told that Python's export rule — *module-level, no
+leading underscore* — is a rule about library modules and says nothing at all about a file pytest
+picked up by name. The cost of leaving it is not one wrong line: it is the run in which somebody
+`[api] ignore`s a quarter of the repository to make the noise stop, after which the removals in the
+library go unreported too. A gate that objects to maintenance is a gate that loses its authority.
+
+* **The decision: a file the language's test convention claims is not on the surface.** Cargo's
+    `tests/`, pytest's `test_*.py` and `conftest.py`, Go's `_test.go`, Maven's `src/test/java`,
+    RSpec's `spec/`, Node's `__tests__` and `*.test.ts` — each declined with the reason it is
+    unimportable, in a table (`api::testpath`) that is documentation and code at once. The ticket asked
+    for a decision rather than a silence, and a decision means saying which of the two it is: the test
+    tree is **not** a surface.
+* **Three edges do the work, and each is tested.** *The unit is the file*, so no per-symbol guess about
+    what "looks like a test" is ever made. *The name convention is consulted only where the runner
+    consults it*: `test_*.py` is a file pattern, so a `def test_square` in an ordinary module stays on
+    the surface — which matters here, because this repository's fixture corpora are full of exactly
+    that shape. And **`tests` is a directory marker where `test` is not**: `django.test` is published,
+    supported API, `django.tests` is not, so Python gets the plural and the file names while Ruby,
+    Java and Node get their `test/`.
+* **Stated, not assumed** — the same discipline `[api] ignore` follows. Declined paths are counted and
+    named with the rule that claimed them (`tests/test_release_contract.py (test_dir:tests)`) on the
+    byte fast path and in the report, so the cheapest answer says *"3 of them are test files, which are
+    not a surface"* instead of quietly not reading them. It is a caveat and never a *gap*: a decision
+    about what a surface is does not make the answer incomplete, and it must not cost the fast path.
+* **`[api] track_tests` is the way back**, because a rule the language makes still has to answer to the
+    repository whose tests *are* the artefact — a compliance suite shipped as a package, a conformance
+    suite other projects link. `false` is the built-in; `true` is a stated claim, and `fathom config
+    explain` prints which layer won.
+* **Both versions are recorded.** `surface::SCHEMA_VERSION` and `extract::RULES_VERSION` go to `2`:
+    a row written before this bump carries test items this build will not write, and a stored answer
+    has to be able to say which rules made it.
+* **Verified on the case that failed, not only on fixtures.** The command above now reports **no api
+    findings** (54 surface items compared, down from 85 — 210 paths declined as test files, named in
+    the note). And because the key is the honest inverse, the *same binary* reproduces the original
+    finding verbatim with `track_tests = true` written in `fathom.toml` — including
+    `crates/fathom-cli/tests/cli.rs` and the contract-test files coming back onto the surface. That is
+    the fix and the escape hatch demonstrated with one build, on the commit that started it.
+* **The plan grew a key.** `e3.12` = `reco-u1i` joins `.plan/keymap.json` — epic 3 owns the surface — and
+    the beta register appends W43-28 as `triage:fixed` citing W43-02, because the register's rule is
+    that a changed disposition is a new row and never an edit.
+
+*Asserted by*: `crates/fathom-analyze/tests/api_surface.rs`
+(`renaming_a_test_function_is_not_a_breaking_removal`, `a_declined_test_tree_is_counted_and_named`,
+`track_tests_puts_the_test_tree_back_on_the_surface`, `a_test_shaped_name_in_an_ordinary_module_is_still_surface`,
+`a_python_module_named_test_is_published_api`, `every_language_owns_its_own_test_convention`,
+`a_declined_test_file_still_counts_as_its_language_being_present`) and the unit
+tests in `crates/fathom-analyze/src/api/testpath.rs` and `src/api/policy.rs`. The first three are the
+fix — they cannot pass against the code before it, and the CLI run above is the same claim at the
+command line. The fourth and fifth pass before *and* after on purpose: they are the boundary that must
+not move, which is the difference between a rule with an edge and a glob with a shrug.
+
 ### The PR artefact refused to certify itself when two episodes shared a finding (`e5.10`, `reco-c2i`)
 
 Pointing the shipped binary at this repository — `fathom export --episodes HEAD~5..HEAD --format markdown` —

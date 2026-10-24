@@ -25,7 +25,7 @@
 //! path the ticket asks for — most episodes touch no public surface, and the answer to those episodes
 //! costs no grammar, no parse and no diff.
 
-use crate::api::policy::ApiPolicy;
+use crate::api::policy::{ApiPolicy, Exclusion};
 use crate::api::signature::{Field, Signature};
 use crate::structure::{Language, SymbolKind, Visibility};
 use serde::Serialize;
@@ -36,8 +36,9 @@ use sha2::{Digest as _, Sha256};
 /// A stored surface row means something different after each bump, for the same reason
 /// [`crate::structure::SCHEMA_VERSION`] exists: the fields of an [`Item`] are the contract a later
 /// revision is diffed against, and a row written before the bump cannot be asked a question only the
-/// new fields can answer.
-pub const SCHEMA_VERSION: u32 = 1;
+/// new fields can answer. `2` is `reco-u1i`: test files are not surface, and the surface gained the
+/// two fields that say how many it declined.
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// What one package's surface is *made of*.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -379,6 +380,12 @@ pub struct Surface {
     pub files_ignored: usize,
     /// The paths excluded by `[api] ignore`, capped.
     pub ignored_paths: Vec<String>,
+    /// Files declined because they are test files (`reco-u1i`). Counted and named for the same
+    /// reason as [`Surface::files_ignored`]: the rule is built in, but it is still a part of the
+    /// repository this answer declined to read.
+    pub files_tests: usize,
+    /// The declined test paths, as `path (rule)`, capped.
+    pub test_paths: Vec<String>,
     /// The languages present in the input, whether or not this build can read them.
     pub languages: Vec<String>,
     /// The grammars this build actually has, as
@@ -522,11 +529,15 @@ pub struct Fingerprint {
     pub path: String,
     /// The digest of the file's bytes.
     pub digest: String,
-    /// Whether this path could carry a public symbol at all: one of the six languages and not excluded
-    /// by `[api] ignore`.
+    /// Whether this path could carry a public symbol at all: one of the six languages, and not
+    /// excluded — neither by `[api] ignore` nor by the built-in test table.
     pub bears_surface: bool,
     /// The detected language, for the report.
     pub language: String,
+    /// *Why* it does not bear a surface, when it does not: `[api] ignore` or the test table
+    /// ([`crate::api::testpath`]). A `Tracked` file of an unknown language still does not bear one,
+    /// and says so by having no grammar rather than by having an exclusion.
+    pub excluded: Exclusion,
 }
 
 /// Hash every input's bytes and say which paths could carry a surface. This is the whole cost of the
@@ -540,12 +551,13 @@ pub fn fingerprint(
         .iter()
         .map(|source| {
             let language = Language::detect(source.path);
-            let bears = language.is_known() && !policy.ignores(source.path);
+            let excluded = policy.exclusion(language, source.path);
             Fingerprint {
                 path: source.path.to_string(),
                 digest: digest_of(&[source.path.to_string(), hex(source.text)]),
-                bears_surface: bears,
+                bears_surface: language.is_known() && !excluded.is_excluded(),
                 language: language.as_str().to_string(),
+                excluded,
             }
         })
         .collect();
@@ -579,6 +591,9 @@ pub enum Quick {
         surface_bearing: usize,
         /// Files excluded by `[api] ignore` — the honest asterisk on "no change".
         ignored: usize,
+        /// Files excluded because they are test files (`reco-u1i`), which is a claim the language
+        /// makes rather than one the repository wrote. Counted, never assumed.
+        test_files: usize,
     },
     /// These paths changed and could carry a surface, so the surface has to be extracted and diffed.
     NeedsSurfaceDiff {
@@ -588,6 +603,8 @@ pub enum Quick {
         /// `README.md` is not an API question, and a report that listed it would train the reader to
         /// ignore the report.
         other_changed: usize,
+        /// How many of those `other_changed` paths are test files, and so changed on purpose.
+        test_files_changed: usize,
     },
 }
 
@@ -600,12 +617,19 @@ impl Quick {
                 files,
                 surface_bearing,
                 ignored,
+                test_files,
             } => {
                 let mut out = format!(
                     "no public API change: {files} file(s) hashed, {surface_bearing} of them \
                      able to carry a surface, none of them changed — no grammar was opened and \
                      nothing was parsed"
                 );
+                if *test_files > 0 {
+                    out.push_str(&format!(
+                        "; {test_files} test file(s) are not surface and were not read (\
+                         `api.track_tests = true` if this repository publishes its tests)"
+                    ));
+                }
                 if *ignored > 0 {
                     out.push_str(&format!(
                         "; {ignored} path(s) were excluded by `[api] ignore`"
@@ -616,6 +640,7 @@ impl Quick {
             Quick::NeedsSurfaceDiff {
                 changed,
                 other_changed,
+                test_files_changed,
             } => {
                 let mut out = format!(
                     "{} surface-bearing path(s) changed, so the surface has to be read: {}",
@@ -634,6 +659,12 @@ impl Quick {
                 if *other_changed > 0 {
                     out.push_str(&format!(
                         "; {other_changed} other file(s) changed and cannot carry a surface"
+                    ));
+                }
+                if *test_files_changed > 0 {
+                    out.push_str(&format!(
+                        "; {test_files_changed} of them are test files, which are not a surface (\
+                         `api.track_tests = true` tracks them)"
                     ));
                 }
                 out
@@ -675,15 +706,21 @@ pub fn quick(before: &[Fingerprint], after: &[Fingerprint]) -> Quick {
     }
     changed.sort();
     changed.dedup();
-    // Paths that are one of the six languages but were excluded by `[api] ignore`: the asterisk that
-    // has to be printed with "no change", because that half of the repository was not examined.
-    let ignored = before
-        .iter()
-        .chain(after.iter())
-        .filter(|entry| !entry.bears_surface && Language::detect(&entry.path).is_known())
-        .map(|entry| entry.path.as_str())
-        .collect::<std::collections::BTreeSet<_>>()
-        .len();
+    // Paths that are one of the six languages but were excluded from the surface. Two different
+    // reasons, both of which are the honest asterisk that has to be printed with "no change", because
+    // that half of the repository was not examined: a pattern the repository wrote (`[api] ignore`)
+    // and a rule the language wrote (a test file, `reco-u1i`).
+    let excluded = |which: fn(&Exclusion) -> bool| {
+        before
+            .iter()
+            .chain(after.iter())
+            .filter(|entry| !entry.bears_surface && which(&entry.excluded))
+            .map(|entry| entry.path.as_str())
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+    };
+    let ignored = excluded(|why| matches!(why, Exclusion::Ignored { .. }));
+    let test_files = excluded(|why| matches!(why, Exclusion::TestFile { .. }));
     let all_before: std::collections::BTreeMap<&str, &str> = before
         .iter()
         .map(|entry| (entry.path.as_str(), entry.digest.as_str()))
@@ -693,17 +730,24 @@ pub fn quick(before: &[Fingerprint], after: &[Fingerprint]) -> Quick {
         .map(|entry| (entry.path.as_str(), entry.digest.as_str()))
         .collect();
     let mut other_changed = 0usize;
+    let mut test_files_changed = 0usize;
     for entry in after.iter().filter(|entry| !entry.bears_surface) {
         if all_before
             .get(entry.path.as_str())
             .is_none_or(|previous| *previous != entry.digest)
         {
             other_changed += 1;
+            if matches!(entry.excluded, Exclusion::TestFile { .. }) {
+                test_files_changed += 1;
+            }
         }
     }
     for entry in before.iter().filter(|entry| !entry.bears_surface) {
         if !all_after.contains_key(entry.path.as_str()) {
             other_changed += 1;
+            if matches!(entry.excluded, Exclusion::TestFile { .. }) {
+                test_files_changed += 1;
+            }
         }
     }
     if changed.is_empty() {
@@ -711,11 +755,13 @@ pub fn quick(before: &[Fingerprint], after: &[Fingerprint]) -> Quick {
             files: before.len().max(after.len()),
             surface_bearing: surface_after.len(),
             ignored,
+            test_files,
         }
     } else {
         Quick::NeedsSurfaceDiff {
             changed,
             other_changed,
+            test_files_changed,
         }
     }
 }

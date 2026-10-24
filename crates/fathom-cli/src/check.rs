@@ -1379,6 +1379,18 @@ fn gather_api(
             for gap in &diff.gaps {
                 notes.push(format!("the read had a gap: {gap}"));
             }
+            // The caveats are the part of the answer a reader needs in order to not over-read it:
+            // "no breaking change" and "211 test files were declined from the surface" are one
+            // sentence, not two findings. Capped, because a note list nobody reads is a footnote.
+            for caveat in diff.caveats.iter().take(4) {
+                notes.push(caveat.clone());
+            }
+            if diff.caveats.len() > 4 {
+                notes.push(format!(
+                    "… and {} further caveat(s) in the api report",
+                    diff.caveats.len() - 4
+                ));
+            }
         }
     }
     let mut run = CheckRun::ran(Check::Api, Some(volume), examined, findings);

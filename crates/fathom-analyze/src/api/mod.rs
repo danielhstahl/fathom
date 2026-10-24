@@ -19,6 +19,7 @@
 //! | semver recommendation per affected package, with its driver | [`semver`] |
 //! | which episode made each change, and the `file:line` | [`episode`], and [`Item::location`](crate::api::surface::Item::location) |
 //! | the prose and the JSON every surface reads | [`report`] |
+//! | test files are not a surface, and say so when they decline one | [`testpath`] |
 //!
 //! # The acceptance criteria, as mechanisms
 //!
@@ -81,6 +82,7 @@ pub mod report;
 pub mod semver;
 pub mod signature;
 pub mod surface;
+pub mod testpath;
 pub(crate) mod textscan;
 
 pub use crate::api::classify::{Class, Detail, Reason};
@@ -88,12 +90,13 @@ pub use crate::api::diff::{Answered, Change, Cost, Diff, PackageDiff};
 pub use crate::api::episode::{Episode, Trail, attributed};
 pub use crate::api::extract::{Inputs, RULES_VERSION, surface as extract_surface};
 pub use crate::api::package::{Attribution, CargoInfo, Manifests, PackageMap, RustdocIndex};
-pub use crate::api::policy::{ApiPolicy, Mode};
+pub use crate::api::policy::{ApiPolicy, DEFAULT_TRACK_TESTS, Exclusion, Mode};
 pub use crate::api::semver::{Bump, Counts, Recommendation};
 pub use crate::api::surface::{
     Access, Fingerprint, Identity, Item, ItemId, Origin, Package, Quick, SCHEMA_VERSION, Surface,
     fingerprint, quick,
 };
+pub use crate::api::testpath::{TestRule, is_test_file};
 
 /// The answer to "what did this episode do to the public API", from the two revisions' inputs, with the
 /// fast path taken *for* the caller rather than left as a suggestion.

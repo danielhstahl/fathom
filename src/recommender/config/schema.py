@@ -259,9 +259,10 @@ SECTIONS: dict[str, dict] = {
             "doc": "Which paths' exports the rest of the world compiles against, and how loudly a "
                    "change to them speaks. A workspace of nine crates usually has two whose `pub` "
                    "items are somebody else's contract, and a breaking change reported in the third "
-                   "is noise - the ignore and private sets are how the owner says which ones count. "
-                   "Reading the source is `[extract]`'s business; this table is the claim about the "
-                   "repository."},
+                   "is noise - the ignore and private sets are how the owner says which ones count, "
+                   "and `api.track_tests` is where the built-in answer to `is this a test file?` "
+                   "(`e3.12`) can be overruled. Reading the source is `[extract]`'s business; this "
+                   "table is the claim about the repository."},
     "check": {"title": "CI gate policy", "owner": "e6.6 (`reco-ngk`)",
               "doc": "What `fathom check` enforces in this repository, and where the run turns red. One "
                      "table holds the layout version, the gate's volume, the threshold that exits 7, each "
@@ -1241,6 +1242,16 @@ KEY_LIST: list[Key] = [
            "still reported; the semver recommendation says *internal* instead of proposing a version "
            "bump for a package no caller can install. `e3.7`.",
        ticket="e3.7"),
+    _k(path="api.track_tests", kind="boolean", default=False,
+       doc="Whether test files are public surface, and `False` is a decision rather than an omission. "
+           "Nothing outside a test file can import it, cargo compiles `tests/` as a crate nothing can "
+           "`use`, and the only importer of `tests/test_x.py` is the runner that collects it by name - "
+           "so renaming one is maintenance, not a breaking removal (`e3.12` / `reco-u1i`, which is "
+           "what happened when this check called a Python test function a removed public item). The "
+           "rule is each language's own (cargo's `tests/`, pytest's `test_*.py`, Go's `_test.go`, "
+           "Maven's `src/test/java`, RSpec's `spec/`); declined paths are counted and named in every "
+           "report, and `True` puts them back for a repository whose tests are the published artefact.",
+       ticket="e3.12"),
     _k(path="api.max_items_per_package", kind="integer", default=20000, minimum=1, units="items",
        doc="The ceiling on how many public items one package carries. Above it the package says it is "
            "truncated rather than growing without limit: a bound the report states, not a switch that "

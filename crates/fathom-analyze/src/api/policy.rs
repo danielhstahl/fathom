@@ -6,7 +6,7 @@
 //! noise that will be ignored, which is worse than reporting nothing: the four files that were
 //! ignored on purpose are the reason the one that mattered was scrolled past.
 //!
-//! So three knobs, each refused loudly when written wrong (the same discipline
+//! So a handful of knobs, each refused loudly when written wrong (the same discipline
 //! [`crate::layering::rules`] applies to a rule that can match nothing):
 //!
 //! ```toml
@@ -16,6 +16,7 @@
 //! package = ["crates/fathom-core = fathom-core", "sdk/ts = @acme/sdk"]
 //! private = ["fathom-fixtures"]
 //! max_items_per_package = 20000
+//! track_tests = false                 # the built-in test table; `true` tracks tests as surface
 //! ```
 //!
 //! * [`ApiPolicy::ignore`] — paths whose exports are not tracked at all. A *stated* exclusion: an
@@ -27,13 +28,69 @@
 //! * [`ApiPolicy::private`] — packages that exist and are published to nobody: their surface is
 //!   still extracted, and its changes are still reported, but the semver recommendation says
 //!   *internal* rather than proposing a version bump for a crate nobody outside downloads.
+//! * [`ApiPolicy::track_tests`] — the one knob here that is *not* the owner's claim: the built-in test
+//!   table ([`crate::api::testpath`]) declines a test file because the language says nothing can import
+//!   it, not because anybody wrote a line saying so. It applies by default (`reco-u1i`: this check
+//!   reported the rename of a Python test function as a removed public item), it can be overruled with
+//!   one key, and the files it declines are counted and named rather than silently dropped — which is
+//!   what keeps `[api] ignore` (the owner's exclusion) a different sentence in the report from this
+//!   one.
 
+use crate::api::testpath::{self, TestRule};
 use crate::graph::layers::glob_match;
+use crate::structure::Language;
 use serde::Serialize;
 
 /// The built-in ceiling on items per package. It is a memory bound, not a correctness bound: above
 /// it the package says so instead of growing without limit ([`crate::api::Package::truncated`]).
 pub const DEFAULT_MAX_ITEMS_PER_PACKAGE: usize = 20_000;
+
+/// Whether test files are public surface unless the repository says otherwise.
+///
+/// `false`, and the argument is [`crate::api::testpath`]: a test function is not a contract, and a
+/// gate that calls the renaming of one a breaking change is a gate that gets switched off.
+pub const DEFAULT_TRACK_TESTS: bool = false;
+
+/// Why a path is not on the tracked surface.
+///
+/// Carried as data rather than as a `bool`, because the report has to say *which* rule declined to
+/// look at a file: an exclusion a reader cannot check is a hole in the answer that reads as a clean
+/// bill of health.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case", tag = "exclusion")]
+pub enum Exclusion {
+    /// The path is tracked: nothing excluded it.
+    Tracked,
+    /// `[api] ignore` named it — the repository owner's own exclusion.
+    Ignored {
+        /// The pattern that matched, as written in `fathom.toml`.
+        pattern: String,
+    },
+    /// The built-in test table claimed it ([`crate::api::testpath`]); `[api] ignore` did not have to
+    /// say so. `reco-u1i`.
+    TestFile {
+        /// The convention that claimed it, per language.
+        rule: TestRule,
+    },
+}
+
+impl Exclusion {
+    /// Whether this path is off the surface.
+    #[must_use]
+    pub fn is_excluded(&self) -> bool {
+        !matches!(self, Exclusion::Tracked)
+    }
+
+    /// The short reason a report prints beside a path.
+    #[must_use]
+    pub fn reason(&self) -> String {
+        match self {
+            Exclusion::Tracked => "tracked".to_string(),
+            Exclusion::Ignored { pattern } => format!("`[api] ignore` pattern {pattern:?}"),
+            Exclusion::TestFile { rule } => format!("test file {}", rule.code()),
+        }
+    }
+}
 
 /// How loudly an API change speaks. The three modes are `layering.mode`'s, and they mean the same
 /// thing here: the volume, never the facts.
@@ -113,6 +170,12 @@ pub struct ApiPolicy {
     pub private: Vec<String>,
     /// The memory ceiling, per package.
     pub max_items_per_package: usize,
+    /// Whether files the built-in test table claims are tracked as public surface.
+    ///
+    /// `false` by default — see [`crate::api::testpath`] for the argument. A repository whose tests
+    /// *are* the published artefact sets this to `true` and gets the pre-`reco-u1i` behaviour back,
+    /// with the exclusion counted and named either way.
+    pub track_tests: bool,
 }
 
 impl Default for ApiPolicy {
@@ -138,6 +201,7 @@ impl ApiPolicy {
             pins: Vec::new(),
             private: Vec::new(),
             max_items_per_package: DEFAULT_MAX_ITEMS_PER_PACKAGE,
+            track_tests: DEFAULT_TRACK_TESTS,
         }
     }
 
@@ -175,6 +239,28 @@ impl ApiPolicy {
         }
         policy.ignore = string_list(table, "ignore");
         policy.private = string_list(table, "private");
+        if let Some(item) = table.get("track_tests").and_then(|v| v.as_value()) {
+            match item.as_bool() {
+                Some(track) => policy.track_tests = track,
+                None => {
+                    let written = match (item.as_str(), item.as_integer()) {
+                        (Some(text), _) => format!("the string {text:?}"),
+                        (_, Some(number)) => format!("the number {number}"),
+                        _ => "a value that is not a bool".to_string(),
+                    };
+                    notices.push(format!(
+                        "api.track_tests is {written}, which is not a boolean; test files stay {} \
+                         (write `track_tests = true` to track them as surface, `false` to exclude \
+                         them)",
+                        if DEFAULT_TRACK_TESTS {
+                            "excluded from the surface"
+                        } else {
+                            "tracked as surface"
+                        }
+                    ));
+                }
+            }
+        }
         if let Some(item) = table
             .get("max_items_per_package")
             .and_then(|v| v.as_value())
@@ -232,16 +318,50 @@ impl ApiPolicy {
     /// Whether a file's exports are tracked at all.
     #[must_use]
     pub fn ignores(&self, path: &str) -> bool {
-        self.ignore.iter().any(|pattern| {
+        self.ignore_pattern(path).is_some()
+    }
+
+    /// The `[api] ignore` pattern claiming `path`, if one does. A prefix matches only at a path
+    /// boundary, so `crates/api` never swallows `crates/apifoo`.
+    fn ignore_pattern(&self, path: &str) -> Option<&String> {
+        self.ignore.iter().find(|pattern| {
+            let pattern: &str = pattern.as_str();
             if is_glob(pattern) {
                 glob_match(pattern, path)
             } else {
-                path == *pattern
+                path == pattern
                     || path
                         .strip_prefix(pattern)
                         .is_some_and(|rest| rest.starts_with('/'))
             }
         })
+    }
+
+    /// Why this path is off the tracked surface, or [`Exclusion::Tracked`].
+    ///
+    /// The two exclusions are kept apart on purpose. `[api] ignore` is a claim the repository's owner
+    /// makes and can walk back; the test table is a claim the *language* makes, and a report that
+    /// merged the two would let a repository conclude that nothing had been excluded when in fact a
+    /// third of its files were declined by a built-in rule.
+    #[must_use]
+    pub fn exclusion(&self, language: Language, path: &str) -> Exclusion {
+        if let Some(pattern) = self.ignore_pattern(path) {
+            return Exclusion::Ignored {
+                pattern: pattern.clone(),
+            };
+        }
+        if !self.track_tests
+            && let Some(rule) = testpath::rule(language, path)
+        {
+            return Exclusion::TestFile { rule };
+        }
+        Exclusion::Tracked
+    }
+
+    /// Whether a file's exports are tracked at all, by either rule.
+    #[must_use]
+    pub fn excludes(&self, language: Language, path: &str) -> bool {
+        self.exclusion(language, path).is_excluded()
     }
 
     /// The pinned package for a path, if a pin claims it.
@@ -278,6 +398,12 @@ impl ApiPolicy {
                 self.private.join(", ")
             ));
         }
+        out.push_str(if self.track_tests {
+            "; `api.track_tests = true`, so test files are tracked as surface like any other file"
+        } else {
+            "; test files are not surface (the built-in table in `api::testpath`), counted and named \
+             when a report declines them — `api.track_tests = true` tracks them anyway"
+        });
         if self.pins.is_empty() && self.ignore.is_empty() && self.private.is_empty() {
             out.push_str(
                 "; no [api] table, so every path with a grammar is tracked as public surface — \
@@ -399,5 +525,46 @@ mod tests {
             !policy.ignores("crates/apifoo/lib.rs"),
             "a prefix that is not a directory boundary must not swallow a sibling"
         );
+    }
+
+    #[test]
+    fn test_files_are_off_the_surface_by_default_and_the_says_so() {
+        let policy = ApiPolicy::default_policy();
+        assert!(!policy.track_tests);
+        assert!(policy.excludes(Language::Python, "tests/test_release_contract.py"));
+        assert!(!policy.excludes(Language::Python, "src/recommender/api/extract.py"));
+        // The two exclusions stay distinguishable, because a reader has to be able to tell a rule
+        // the repository wrote from a rule the language wrote.
+        let stated = ApiPolicy {
+            ignore: vec!["vendor/**".to_string()],
+            ..ApiPolicy::default_policy()
+        };
+        assert!(matches!(
+            stated.exclusion(Language::Python, "vendor/lib/thing.py"),
+            Exclusion::Ignored { .. }
+        ));
+        assert!(matches!(
+            stated.exclusion(Language::Python, "tests/test_thing.py"),
+            Exclusion::TestFile { .. }
+        ));
+        assert!(policy.sentence().contains("test files are not surface"));
+    }
+
+    #[test]
+    fn track_tests_true_puts_the_test_tree_back_on_the_surface() {
+        let text = "[api]\ntrack_tests = true\n";
+        let (policy, notices) = ApiPolicy::from_repo_config_text(text);
+        assert!(notices.is_empty(), "{notices:?}");
+        assert!(policy.track_tests);
+        assert!(!policy.excludes(Language::Python, "tests/test_release_contract.py"));
+        assert!(policy.sentence().contains("api.track_tests = true"));
+    }
+
+    #[test]
+    fn a_track_tests_that_is_not_a_boolean_is_refused() {
+        let (policy, notices) = ApiPolicy::from_repo_config_text("[api]\ntrack_tests = \"yes\"\n");
+        assert!(!policy.track_tests, "a wrong value keeps the built-in");
+        assert_eq!(notices.len(), 1, "{notices:?}");
+        assert!(notices[0].contains("api.track_tests"), "{notices:?}");
     }
 }

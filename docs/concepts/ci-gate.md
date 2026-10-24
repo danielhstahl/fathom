@@ -345,6 +345,10 @@ Three smaller things came out of the same ticket, because a gate that is debugga
   `warning` and not `error`.
 * **`api` follows each surface's own scope rules**, which for Rust means the package's crate root — a
   `pub fn` in a nested module that the crate root does not re-export is not public API, and the check says
-  "no API change" rather than inventing a finding.
+  "no API change" rather than inventing a finding. And a file that the language's own test convention claims
+  is not on the surface at all (`e3.12`): cargo compiles `tests/` as a crate nothing can `use`, and pytest
+  is the only thing that loads `tests/test_x.py`, so renaming a test is maintenance and the gate declines to
+  read it — with the declined count named in the run's notes, because "no API change" has to say how much of
+  the repository it did not look at.
 * **the risk model is features-1** and does not yet use the co-change lane, so `sign-off` flags what looks
   risky by shape rather than what this repository's history says is risky.

@@ -505,6 +505,7 @@ fn the_fast_path_answers_before_anything_is_parsed() {
             files,
             surface_bearing,
             ignored,
+            test_files,
         } => {
             assert_eq!(
                 files, 4,
@@ -512,6 +513,7 @@ fn the_fast_path_answers_before_anything_is_parsed() {
             );
             assert_eq!(surface_bearing, 4);
             assert_eq!(ignored, 0);
+            assert_eq!(test_files, 0);
         }
         Quick::NeedsSurfaceDiff { changed, .. } => {
             panic!("identical revisions asked for a surface diff: {changed:?}")
@@ -1030,7 +1032,9 @@ fn the_json_export_carries_the_codes() {
         assert!(text.contains(code), "{code} missing from {text}");
     }
     assert_eq!(json["answered"], "items");
-    assert_eq!(json["schema_version"], 1);
+    // 2 is `reco-u1i`: test files are not surface, and the shape gained the two counts that say how
+    // many paths it declined. A reader that pins this is pinning what a stored row means.
+    assert_eq!(json["schema_version"], 2);
     let changes = json["packages"][0]["changes"].as_array().expect("changes");
     assert!(
         changes.iter().all(|change| change["location"].is_string()
@@ -1102,7 +1106,14 @@ fn one_revisions_surface_speaks_for_itself() {
     assert!(joined.contains("grammars in this build"));
     assert!(joined.contains("Rust:"));
     let json = report::surface_to_json(&surface);
-    assert_eq!(json["schema_version"], 1);
+    assert_eq!(
+        json["schema_version"], 2,
+        "see `api::surface::SCHEMA_VERSION`"
+    );
+    assert!(
+        json["files_tests"].is_number() && json["test_paths"].is_array(),
+        "the surface JSON says how many test paths it declined: {json}"
+    );
     assert!(
         json["policy"].is_string(),
         "the policy is echoed as its own sentence: {}",
@@ -1186,4 +1197,339 @@ fn java_public_types_and_the_package_private_row() {
         .expect("the package");
     assert_eq!(package_diff.identity, Identity::Unit);
     assert_eq!(package_diff.recommendation.bump, Bump::Major);
+}
+
+// ==============================================================================================
+// 6. a test file is not a surface (`reco-u1i`)
+// ==============================================================================================
+//
+// The ticket: `fathom check`'s api check reported a Python test function as a breaking public API
+// removal —
+//
+// ```text
+// breaking test_the_gate_can_go_red_twelve_ways tests/test_release_contract.py:78
+//   — public item removed
+// ```
+//
+// The decision, written down in [`fathom_analyze::api::testpath`]: a file the language's own test
+// convention claims is not on the surface. These tests are that decision, in both directions — the
+// test tree is declined, and the three things that must *not* be declined alongside it are not.
+
+/// Before: the test function under the name it had before the rename that started the ticket.
+const TEST_BEFORE: &str = "\
+def test_the_gate_can_go_red_twelve_ways():
+    result = run(\"--self-test\")
+    assert result.returncode == 0
+";
+
+/// After: the same test, renamed to say what it now covers. Ordinary maintenance.
+const TEST_AFTER: &str = "\
+def test_the_gate_can_go_red_every_way_it_can():
+    result = run(\"--self-test\")
+    assert result.returncode == 0
+";
+
+fn test_tree_pair(policy: &ApiPolicy) -> (Inputs<'static>, Inputs<'static>) {
+    let library = ("src/geo.py", "def area(w, h):\n    return w * h\n");
+    (
+        inputs_of(
+            &inline(&[library, ("tests/test_release_contract.py", TEST_BEFORE)]),
+            policy,
+        ),
+        inputs_of(
+            &inline(&[library, ("tests/test_release_contract.py", TEST_AFTER)]),
+            policy,
+        ),
+    )
+}
+
+/// The acceptance criterion, as the finding that must never appear again: renaming a test function
+/// is not a surface change at all, and the fast path is the one that says so.
+#[test]
+fn renaming_a_test_function_is_not_a_breaking_removal() {
+    let policy = ApiPolicy::default_policy();
+    let (before, after) = test_tree_pair(&policy);
+    match fathom_analyze::api::compare(&before, &after, None) {
+        Answer::NoPublicApiChange { quick } => match quick {
+            Quick::NoPublicApiChange {
+                surface_bearing,
+                test_files,
+                ..
+            } => {
+                assert_eq!(
+                    surface_bearing, 1,
+                    "the library module is the only surface-bearing file"
+                );
+                assert_eq!(
+                    test_files, 1,
+                    "the one test file is declined, and the answer says so"
+                );
+            }
+            other => panic!("the fast path changed its mind: {other:?}"),
+        },
+        Answer::Changed { diff, .. } => panic!(
+            "renaming a test function was reported as a surface change: {:?}",
+            names(&diff, Class::Breaking)
+        ),
+    }
+    // …and the same answer from the slow path, so the behaviour does not ride on the fast path alone.
+    let surface_diff =
+        fathom_analyze::api::diff::diff(&extract_surface(&before), &extract_surface(&after), None);
+    assert!(
+        surface_diff
+            .packages
+            .iter()
+            .flat_map(|package| &package.changes)
+            .all(|change| !change.item.name.starts_with("test_")),
+        "the item-level diff still saw the test rename: {:?}",
+        names(&surface_diff, Class::Breaking)
+    );
+}
+
+/// The exclusion is stated, not assumed: counted, named with the rule that claimed the file, and
+/// *not* a gap, because a decision about what a surface is does not make the answer incomplete.
+#[test]
+fn a_declined_test_tree_is_counted_and_named() {
+    let policy = ApiPolicy::default_policy();
+    let surface = extract_surface(&inputs_of(
+        &inline(&[
+            ("src/geo.py", "def area(w, h):\n    return w * h\n"),
+            ("tests/test_release_contract.py", TEST_BEFORE),
+            ("tests/conftest.py", "import pytest\n"),
+        ]),
+        &policy,
+    ));
+    assert_eq!(surface.files_tests, 2);
+    assert_eq!(surface.test_paths.len(), 2, "{:?}", surface.test_paths);
+    assert!(
+        surface
+            .test_paths
+            .iter()
+            .any(|path| path == "tests/test_release_contract.py (test_dir:tests)"),
+        "the report has to name the rule that declined a path: {:?}",
+        surface.test_paths
+    );
+    assert_eq!(
+        surface.public_count(),
+        1,
+        "only the library's `area` is on the surface"
+    );
+    assert!(
+        surface.gaps.is_empty(),
+        "declining a test tree is a decision, not a hole: {:?}",
+        surface.gaps
+    );
+    assert!(surface.complete(), "the answer is still a complete answer");
+    assert!(
+        surface
+            .caveats
+            .iter()
+            .any(|caveat| caveat.contains("test files and contribute no items")),
+        "the caveat is where the decision is told: {:?}",
+        surface.caveats
+    );
+    assert!(
+        surface
+            .caveats
+            .iter()
+            .any(|caveat| caveat.contains("api.track_tests")),
+        "the way back has to be named where the exclusion is: {:?}",
+        surface.caveats
+    );
+}
+
+/// The way back, tested: a repository whose tests *are* the published artefact gets the finding it
+/// asked for, and the report says which key decided it.
+#[test]
+fn track_tests_puts_the_test_tree_back_on_the_surface() {
+    let policy = ApiPolicy {
+        track_tests: true,
+        ..ApiPolicy::default_policy()
+    };
+    let (before, after) = test_tree_pair(&policy);
+    let surface_before = extract_surface(&before);
+    assert_eq!(surface_before.files_tests, 0, "nothing was declined");
+    assert!(
+        surface_before
+            .policy
+            .sentence()
+            .contains("api.track_tests = true"),
+        "{}",
+        surface_before.policy.sentence()
+    );
+    let diff = fathom_analyze::api::diff::diff(&surface_before, &extract_surface(&after), None);
+    assert!(
+        names(&diff, Class::Breaking).contains(&"test_the_gate_can_go_red_twelve_ways".to_string()),
+        "`track_tests = true` asked for the old behaviour and must get it: {:?}",
+        names(&diff, Class::Breaking)
+    );
+}
+
+/// The name convention is consulted only where the runner consults it. A function with a test-shaped
+/// name in an ordinary module — which is what a fixture corpus is full of — is a function.
+#[test]
+fn a_test_shaped_name_in_an_ordinary_module_is_still_surface() {
+    let policy = ApiPolicy::default_policy();
+    let before = inputs_of(
+        &inline(&[(
+            "src/recommender/testsurface/corpus.py",
+            "def test_standalone():\n    return 1\n",
+        )]),
+        &policy,
+    );
+    let after = inputs_of(
+        &inline(&[(
+            "src/recommender/testsurface/corpus.py",
+            "def not_a_case_standalone():\n    return 1\n",
+        )]),
+        &policy,
+    );
+    let diff =
+        fathom_analyze::api::diff::diff(&extract_surface(&before), &extract_surface(&after), None);
+    assert!(
+        names(&diff, Class::Breaking).contains(&"test_standalone".to_string()),
+        "a module no runner collects is an ordinary module: {:?}",
+        names(&diff, Class::Breaking)
+    );
+}
+
+/// `django.test` is published, supported API. This is the counter-example that decides the table:
+/// the plural `tests` is a test tree, the singular `test` is somebody's package.
+#[test]
+fn a_python_module_named_test_is_published_api() {
+    let policy = ApiPolicy::default_policy();
+    let before = extract_surface(&inputs_of(
+        &inline(&[(
+            "django/test/client.py",
+            "def get(path):\n    return None\n\n\ndef post(path):\n    return None\n",
+        )]),
+        &policy,
+    ));
+    let after = extract_surface(&inputs_of(
+        &inline(&[(
+            "django/test/client.py",
+            "def post(path):\n    return None\n",
+        )]),
+        &policy,
+    ));
+    assert_eq!(
+        before.files_tests, 0,
+        "`test/` is not a test tree in Python"
+    );
+    let diff = fathom_analyze::api::diff::diff(&before, &after, None);
+    assert!(
+        names(&diff, Class::Breaking).contains(&"get".to_string()),
+        "a removal from a published module is a removal: {:?}",
+        names(&diff, Class::Breaking)
+    );
+}
+
+/// The other languages' conventions, in one place: cargo's `tests/`, Go's `_test.go`, Java's
+/// `src/test/java`, Node's `__tests__`. Each is a fact about what a consumer can import, and each
+/// leaves the library's own removals reported.
+#[test]
+fn every_language_owns_its_own_test_convention() {
+    let policy = ApiPolicy::default_policy();
+    let cases: [(&str, [(&str, &str); 2], &str); 4] = [
+        (
+            "rust",
+            [
+                (
+                    "shapes/Cargo.toml",
+                    "[package]\nname = \"shapes\"\nversion = \"0.1.0\"\n",
+                ),
+                (
+                    "shapes/tests/api.rs",
+                    "use shapes::area;\n\n#[test]\nfn area_works() {\n    assert!(area() > 0);\n}\n",
+                ),
+            ],
+            "shapes/tests/api.rs",
+        ),
+        (
+            "go",
+            [
+                ("store/go.mod", "module example.com/store\n\ngo 1.22\n"),
+                (
+                    "store/table_test.go",
+                    "package store\n\nfunc TestTable() {\n}\n",
+                ),
+            ],
+            "store/table_test.go",
+        ),
+        (
+            "java",
+            [
+                (
+                    "src/test/java/com/acme/WidgetTest.java",
+                    "package com.acme;\n\npublic class WidgetTest {\n    public void checks() {\n    }\n}\n",
+                ),
+                (
+                    "src/main/java/com/acme/Widget.java",
+                    "package com.acme;\n\npublic class Widget {\n}\n",
+                ),
+            ],
+            "src/test/java/com/acme/WidgetTest.java",
+        ),
+        (
+            "ts",
+            [
+                (
+                    "pkg/package.json",
+                    "{ \"name\": \"@acme/pkg\", \"version\": \"1.0.0\" }\n",
+                ),
+                (
+                    "pkg/__tests__/widget.spec.ts",
+                    "export function checks(): void {}\n",
+                ),
+            ],
+            "pkg/__tests__/widget.spec.ts",
+        ),
+    ];
+    for (language, files, unread) in cases {
+        let surface = extract_surface(&inputs_of(
+            &inline(&[
+                files[0],
+                files[1],
+                ("shapes/src/lib.rs", "pub fn area() -> u32 {\n    2\n}\n"),
+            ]),
+            &policy,
+        ));
+        assert!(
+            surface.items().all(|item| item.id.path != unread),
+            "{language}: {unread} contributed items to the surface"
+        );
+        assert!(
+            surface
+                .test_paths
+                .iter()
+                .any(|path| path.starts_with(unread)),
+            "{language}: {unread} was not counted as declined: {:?}",
+            surface.test_paths
+        );
+    }
+}
+
+/// Declining a language's only test file does not make the language absent. "Languages present" is a
+/// fact about the corpus, not about what this reader chose to read — and the missing-grammar gap is
+/// computed from that list, so getting this wrong would silence a real hole.
+#[test]
+fn a_declined_test_file_still_counts_as_its_language_being_present() {
+    let policy = ApiPolicy::default_policy();
+    let surface = extract_surface(&inputs_of(
+        &inline(&[
+            ("store/go.mod", "module example.com/store\n\ngo 1.22\n"),
+            (
+                "store/table_test.go",
+                "package store\n\nfunc TestTable() {\n}\n",
+            ),
+        ]),
+        &policy,
+    ));
+    assert_eq!(surface.files_tests, 1, "the one test file was declined");
+    assert_eq!(surface.files_parsed, 0, "and nothing was parsed");
+    assert!(
+        surface.languages.iter().any(|found| found == "go"),
+        "the corpus still contains Go: {:?}",
+        surface.languages
+    );
 }
