@@ -17,6 +17,65 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The changelog quoted a number that could only have been true for the commit that wrote it (`e7.9`, `reco-0ip`)
+
+The suite had exactly one red and it was the beta loop's own gate:
+`test_beta_loop_contract.py::test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from`
+demanded that `CHANGELOG.md` contain `tools/gen_changelog.py audit`'s rung-distribution line **as of right
+now**. That line counts the commits since the last cut, so it moves with every commit that lands, while the
+quote sits in prose under `[Unreleased]` describing the tree that introduced the generator. Verified at
+`1e51073`: the file said `header 1, bead 70, key 5, subject 1` over 77 commits, the audit printed `bead 71`
+over 78. The sentence was true when it was written and false from the next commit onwards, and the only
+commit that could have made it green was one that edited the quote to include *itself* — predicting its own
+rung before it existed — which would have gone red again one commit later. That is not a stale file waiting
+to be refreshed, it is a self-reference, and a red nobody can clear is a red that stops being read: the next
+contributor learns to ignore the one failure the suite has, which is exactly the failure that was worth
+reading.
+
+- **The claim now names its tree.** The number is no longer a sentence about now. It lives in a marked block
+  — `<!-- gen_changelog:rungs from <sha> to <sha> -->`, the audit's own line, a closing marker — and the
+  marker carries the two endpoints of the range that was counted. The claim is then "these notes were true
+  for the tree they were written against", which is checkable on every commit forever and rots into a named
+  commit rather than into a failure. The block in `reco-rny`'s entry names `c05860b`, and the commit reading
+  it is already one past that tree — that is the normal state, not a red, and the note says so.
+- **Refreshing it is a tool act.** `python3 tools/gen_changelog.py audit --bless` re-counts the live range
+  and rewrites the block in `[Unreleased]`, then audits as usual. The reason it is a command and not a hand
+  edit is the same trap seen from the other side: a human updating a quoted count by hand cannot know the
+  number that includes the commit they are about to make, so the hand edit is always one behind — which is
+  precisely the thing that made the prose version unfixable.
+- **`C06` reads the claim back, in the file that quotes it.** `audit` resolves each block's endpoints,
+  counts the range again and fails on a mismatch with both numbers in the message and the remedy named; it
+  also prints how many commits behind HEAD the claim has fallen, because staleness is information and
+  wrongness is a defect, and the gate is only allowed to refuse the second. Marker fragments that do not
+  parse are a complaint too, so a half-typed block cannot quietly become an unchecked no-op.
+- **A released section's claim is frozen with its release.** `--bless` touches `[Unreleased]` alone: the
+  numbers under `## [0.1.0-alpha.2]` describe the tree that release shipped, and rewriting them would be
+  revising history rather than re-reading it. Frozen is not exempt — `C06` still counts those ranges on
+  every run, and `self-test` proves a tampered number inside a cut release goes red.
+- **What the prose says now.** `reco-rny`'s entry used to promise that "this file quotes it, so the number
+  cannot silently rot". It now says what is actually true: the number rots on schedule, the block names the
+  tree it rotted at, and the test is the thing left complaining — which is the whole point of having it.
+- **What did not move is the ladder's actual promise.** Every commit since the cut still has to be accounted
+  for (`C03`), the exemption list is still shrink-only (`C07`), and the guessing rung is still kept rare —
+  `audit` still refuses a release where bare prose subjects reach a tenth of the range. Only the *quoting*
+  of the distribution changed: it is a diagnostic printed from a named range, and no longer a fact pasted
+  into a paragraph.
+- **The plan grew a key.** `e7.9` = `reco-0ip` joins `.plan/keymap.json`, because the rule that [the release
+    runbook](docs/concepts/release.md) now states names the ticket behind it, and `tools/check_docs.py`
+    refuses a document that cites a bead the plan has never heard of — which is the same rule from the other
+    side: a citation a reader cannot look up is a citation that will silently rot.
+
+*Asserted by*: `tests/test_beta_loop_contract.py` —
+`test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from` (the live distribution is
+still rare-on-the-guess-side and still printed, and every claim in the changelog is now checked against the
+range it names rather than against HEAD) and
+`test_a_hand_edited_rung_distribution_in_the_changelog_is_refused` (a quoted number that its own range does
+not count is a `C06`, and `audit --bless` is what fixes it — run on a copy, so the repository's own block
+is never touched by its own test). `python3 tools/gen_changelog.py self-test` grew the fifth control for
+the same reason: a hand-written claim with wrong numbers is refused, blessing re-records it for the range
+it names, blessing twice writes the same bytes, a newer commit does not invalidate it, and a tampered claim
+inside a *released* section still fails.
+
 ### The queue's contract went red because the harness read the screen before there was a screen on it (`e1.12`, `reco-2vq`)
 
 Three tests in `tests/test_risk_ranking_contract.py` were red on a clean tree, all three saying the same
@@ -200,11 +259,16 @@ verdict in it.
   `build`/`ci`/`test`/`chore` excluded, `!` and `BREAKING CHANGE:` promoted into **Breaking changes**), plus
   two things this repository needs — `Changelog:` / `Changelog-Section:` trailers for commits whose subject is
   an essay, and a *fallback ladder* for this repository's actual style, which is prose sentences and not
-  conventional headers. `audit` prints the rung distribution on every run and this file quotes it, so the number
-  cannot silently rot — `header 1, bead 70, key 5, subject 1` over the 77 commits since the alpha, of which the
-  one bare prose subject is the rung where the notes are guessing and is kept rare on purpose, because a
-  generator whose notes are mostly guesses is a generator that gets replaced by a human who is worse at reading
-  `git log`. The gate is coverage,
+  conventional headers. `audit` prints the rung distribution on every run, and this file quotes it — in a
+  generated block that **names the range it counted**, which is the shape `reco-0ip` had to give it: a
+  distribution counts commits, so a copy of it pasted into prose is true for exactly one commit, the one that
+  wrote it, and false in every commit after. So read the block below as a claim about the tree it names and
+  not about the moment you are reading it; `audit` counts that range again on every run (`C06`) and says how
+  far behind HEAD it has fallen, and `audit --bless` is the act that re-records it, because a human cannot
+  be asked to guess a number that includes the commit they are about to make. The `subject` rung — the one
+  where the notes are guessing at what happened — is kept rare on purpose, the gate refusing a release where
+  it reaches a tenth of the range, because a generator whose notes are mostly guesses is a generator that
+  gets replaced by a human who is worse at reading `git log`. The gate is coverage,
   not style: `audit` resolves the previous release (the tag, or — this clone has no remote to push tags to — the
   commit that added the last `## [version]` heading) and fails on any commit the notes do not account for, by
   bead ref, plan key, short sha or `Changelog:` text. `cut` runs the audit before it renames a heading, so **a
@@ -212,6 +276,11 @@ verdict in it.
   `.plan/changelog-coverage.json` with a reason and an owner, and `C07` makes that list shrink-only.
   `self-test` performs two consecutive cuts — with their refusals — in a throwaway repository, because the
   criterion is that the process is *followed twice* and one release has been cut on this tree.
+
+  <!-- gen_changelog:rungs from 0f7495f3b5f35fed82982551d9b380c9e4a392b7 to c05860b6c6ddf8d95224a624ea4882101ef453e4 -->
+  which rung of the fallback ladder produced each commit's bullet: header 1, bead 72, key 5, subject 1
+  <!-- /gen_changelog:rungs -->
+
 - **Five shipped tickets had no changelog entry, and that is the audit's first finding on its own history.**
   See the next section: the release body is this file, so an unnamed ticket is a ticket nobody heard about.
 - **One feedback channel, two forms, and a required diagnostic.** `.github/ISSUE_TEMPLATE/` grows

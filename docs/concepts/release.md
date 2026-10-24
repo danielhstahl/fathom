@@ -469,6 +469,7 @@ the *checking* of it, by [`tools/gen_changelog.py`](../../tools/gen_changelog.py
 ```bash
 python3 tools/gen_changelog.py draft            # what the commits since the last release would say
 python3 tools/gen_changelog.py audit            # CI: does [Unreleased] account for every one of them?
+python3 tools/gen_changelog.py audit --bless    # ... and re-record this file's own rung claim while you are here
 python3 tools/gen_changelog.py lint             # which commits are conventional-shaped, which took the ladder
 python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the heading, date it, open a new one
 python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
@@ -493,6 +494,19 @@ ref, plan key, short sha, or the `Changelog:` text. `C03` is that rule. Known om
 `.plan/changelog-coverage.json` with a reason and an owner, and `C07` makes that list **shrink-only**: an
 exemption that has become covered fails until it is deleted. Cutting a release (`cut`) runs the audit first and
 refuses, so the failure this section exists to prevent — a shipped ticket nobody announced — is now a red build.
+
+**The rung distribution is a claim about a tree, never about now.** The ladder is honest about how much of the
+release it had to guess at, so `audit` prints the count per rung on every run — trailer, header, bead, key,
+bare subject. `CHANGELOG.md` quotes that line in a **generated block whose marker names the two endpoints of
+the range it counted**, because the line counts commits and therefore moves with every commit that lands: a
+copy of it pasted into prose is true for exactly one commit, the one that wrote it, and false for every commit
+after. That is `reco-0ip`, whose gate compared the quote against the live line and so could only ever be green
+in a commit that predicted its own rung — a red nobody could clear, which is a red that stops being read. So
+now `audit` re-counts every block's own range on every run (`C06`) and prints how far behind HEAD that block
+has fallen, staleness being information and wrongness being a defect; `audit --bless` re-records the block in
+`[Unreleased]`, and a released section's block stays frozen with its release — checked, never rewritten.
+Refreshing the number is a tool act for the same reason the rest of this file is: a hand cannot type a number
+that includes the commit it is typing it in.
 
 **Two consecutive releases, and the honest state of that criterion.** The beta's fourth criterion is that this
 process is *followed*, twice. What is true today: the process is documented here, the tool enforces it, the

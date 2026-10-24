@@ -9,6 +9,7 @@ Keep a Changelog sections, and refuses a release whose notes do not account for 
     python3 tools/gen_changelog.py draft                    # what the next release would say
     python3 tools/gen_changelog.py draft --json > draft.json
     python3 tools/gen_changelog.py audit                     # what CI runs: does [Unreleased] cover it?
+    python3 tools/gen_changelog.py audit --bless             # re-record the changelog's own rung claim
     python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename [Unreleased], start a new one
     python3 tools/gen_changelog.py lint                      # are the commits shaped the way the tool reads?
     python3 tools/gen_changelog.py self-test                 # two real release cuts in a throwaway repo
@@ -50,11 +51,23 @@ is `C03`. Known gaps are allowed to be listed in `.plan/changelog-coverage.json`
 owner, and `C07` makes that list only ever shrink: a baseline entry that *is* now covered fails until it
 is pruned, so the exemption file cannot quietly become the design.
 
+**The rung distribution, and what this file is allowed to quote about it.** `audit` prints which rung of the
+fallback ladder produced each commit's bullet — trailer, header, bead, key, bare subject — because a
+generator whose notes are mostly guesses is a generator that gets replaced by a human worse at reading
+`git log`. That number counts commits, so it moves with every commit that lands, and a copy of it pasted
+into prose is true for exactly one commit: the one that wrote it. `reco-0ip` is the test that enforced
+exactly that, and that could only be made green by a commit predicting its own rung. So the number is not
+prose any more: `audit --bless` writes it into a marked block in `[Unreleased]` **naming the range it
+counted**, `audit` counts that range again on every run (`C06`) and says how far behind HEAD the block is,
+and a claim inside a released section is frozen with the release it was cut from. Re-recording the reading
+is a tool act, and the claim is about a tree rather than about now.
+
 **Two consecutive releases, proven.** The beta criterion is that the changelog process is *followed*, and a
 process claim needs a run rather than an intention, so `self-test` builds a throwaway repository, gives it
 conventional and legacy commits, cuts `0.1.0-alpha.1` and `0.1.0-alpha.2` through the same `cut` code CI
-runs on the real tree, and then breaks four things on purpose (a commit with no entry, a version that does
-not match `Cargo.toml`, an undated heading, an exemption that no longer applies) to show the gate bites.
+runs on the real tree, and then breaks five things on purpose (a commit with no entry, a version that does
+not match `Cargo.toml`, an undated heading, an exemption that no longer applies, a rung claim whose numbers
+do not match the range it names) to show the gate bites.
 On the real tree, `audit` is what makes the same claim about the one release that has been cut.
 
 Exit: 0 clean, 1 a rule failed, 2 bad usage or unreadable inputs.
@@ -129,6 +142,30 @@ INTERNAL_TYPES = {"build", "ci", "test", "chore", "style"}
 
 #: Where a release's notes come from, per version: `cut` writes them and `audit` reads them.
 UNRELEASED = "Unreleased"
+
+#: The order the rung distribution prints in — the rungs that took the trouble first, the guesses last.
+RUNG_ORDER = ["trailer", "header", "bead", "key", "subject", "none"]
+#: The sentence `audit` prints, and the sentence a changelog quotes. One constant, so the two cannot drift.
+RUNG_HEADLINE = "which rung of the fallback ladder produced each commit's bullet: "
+#: What a claim over a range with nothing in it says, so a freshly cut `[Unreleased]` has something to be
+#: true about instead of a blank line pretending to be a distribution.
+RUNG_EMPTY = "no commits in the range, so there is nothing to count"
+#: The changelog's own rung claim, as a generated block written by `audit --bless`. **The marker names the
+#: range the numbers counted**, which is the whole point: a distribution counts commits, so a quoted number
+#: that means "since the last release, up to right now" is true for exactly one commit — the one that wrote
+#: it — and the next commit makes it a lie (**reco-0ip**). Naming the endpoints turns the claim into a claim
+#: about a tree: re-checkable forever, and it ages into a named commit instead of into a red build.
+RUNG_CLAIM = re.compile(
+    r"(?P<indent>[ \t]*)<!--[ \t]*gen_changelog:rungs[ \t]+from[ \t]+(?P<from>[0-9a-f]{7,40}|whole-history)"
+    r"[ \t]+to[ \t]+(?P<to>[0-9a-f]{7,40})[ \t]*-->[ \t]*\n"
+    r"[ \t]*(?P<line>\S[^\n]*)\n"
+    r"[ \t]*<!--[ \t]*/gen_changelog:rungs[ \t]*-->")
+#: What a `from` says when the range starts at the beginning of the history (a repository with no release yet).
+RUNG_WHOLE = "whole-history"
+#: A claim *starts here*, at the beginning of a line (after its indent), which is how `--bless` writes it. A
+#: marker mentioned mid-sentence — inside the code span of the entry that documents the block, say — is prose
+#: about a claim, not a half-typed claim, so only line-initial ones have to parse.
+RUNG_MARKER = re.compile(r"^[ \t]*<!--[ \t]*gen_changelog:rungs", re.M)
 
 
 def _run(args: list[str], cwd: pathlib.Path) -> subprocess.CompletedProcess:
@@ -344,20 +381,27 @@ def read_commits(root: pathlib.Path, since: str, until: str = "HEAD") -> list[Co
 # ---------------------------------------------------------------------------
 
 
+def section_spans(text: str) -> list[tuple[str, str | None, int, int]]:
+    """Every `## [x]` heading as (version, date, body starts, body ends) offsets, in file order."""
+    out: list[tuple[str, str | None, int, int]] = []
+    matches = list(SECTION_HEADING.finditer(text))
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        out.append((match.group(1).strip(), match.group(2), match.end(), end))
+    return out
+
+
 def sections(path: pathlib.Path = CHANGELOG) -> dict[str, dict]:
     """Every `## [x]` section of the changelog, in file order, with its body text."""
     text = path.read_text() if path.exists() else ""
     out: dict[str, dict] = {}
-    matches = list(SECTION_HEADING.finditer(text))
-    for index, match in enumerate(matches):
-        version = match.group(1).strip()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        body = text[match.end():end]
+    for version, date, start, end in section_spans(text):
+        body = text[start:end]
         if version in out:
-            out[version] = {"duplicate": True, "date": match.group(2),
+            out[version] = {"duplicate": True, "date": date,
                             "body": out[version]["body"] + body}
             continue
-        out[version] = {"date": match.group(2), "body": body, "duplicate": False}
+        out[version] = {"date": date, "body": body, "duplicate": False}
     return out
 
 
@@ -485,10 +529,8 @@ def audit(root: pathlib.Path, version: str | None, from_ref: str = "", to_ref: s
 
     gaps: list[dict] = []
     internal = 0
-    rungs: dict[str, int] = {}
+    rungs = count_rungs(commits)
     for commit in commits:
-        rung = commit.rung()
-        rungs[rung] = rungs.get(rung, 0) + 1
         if commit.is_internal():
             internal += 1
             continue
@@ -533,12 +575,176 @@ def audit(root: pathlib.Path, version: str | None, from_ref: str = "", to_ref: s
     # The honest half of the fallback ladder, printed every time: which rung each commit's bullet came from.
     # A generator whose notes are mostly guesses is a generator that will be replaced by a human who is worse
     # at reading `git log`, so the guess rate is a number the gate states rather than a detail of the code.
-    order = ["trailer", "header", "bead", "key", "subject", "none"]
-    notes.append("which rung of the fallback ladder produced each commit's bullet: "
-                 + ", ".join("%s %d" % (r, rungs[r]) for r in order if r in rungs))
+    notes.append(RUNG_HEADLINE + rung_line(rungs))
+    # C06 read back: anything this file quotes about its own ladder has to be true for the range it names.
+    claim_problems, claim_notes = check_rung_claims(root, section_path)
+    problems.extend(claim_problems)
+    notes.extend(claim_notes)
     return problems, notes, {"range": "%s..%s" % (since, to_ref), "commits": len(commits),
                              "internal": internal, "gaps": gaps, "rungs": rungs,
+                             "rung_line": rung_line(rungs),
                              "exemptions": len(baseline["entries"]), "section": target}
+
+
+# ---------------------------------------------------------------------------
+# the rung distribution, and the claim a changelog makes about it
+# ---------------------------------------------------------------------------
+
+
+def count_rungs(commits: list[Commit]) -> dict[str, int]:
+    """How many commits each rung of the fallback ladder produced."""
+    rungs: dict[str, int] = {}
+    for commit in commits:
+        rung = commit.rung()
+        rungs[rung] = rungs.get(rung, 0) + 1
+    return rungs
+
+
+def rung_line(rungs: dict[str, int]) -> str:
+    """A rung distribution as one line: `header 1, bead 70, key 5, subject 1`."""
+    return ", ".join("%s %d" % (r, rungs[r]) for r in RUNG_ORDER if r in rungs)
+
+
+def rung_claim_text(from_ref: str, to_ref: str, rungs: dict[str, int], commits: int,
+                    indent: str = "") -> str:
+    """The generated block itself — the only place a rung distribution is allowed to be written by a tool."""
+    line = RUNG_HEADLINE + rung_line(rungs) if commits else RUNG_EMPTY
+    return ("%s<!-- gen_changelog:rungs from %s to %s -->\n"
+            "%s%s\n"
+            "%s<!-- /gen_changelog:rungs -->" % (indent, from_ref or RUNG_WHOLE, to_ref, indent, line, indent))
+
+
+def rung_claims(path: pathlib.Path = CHANGELOG) -> list[dict]:
+    """Every rung claim in a changelog, with the section holding it and the span it occupies."""
+    text = path.read_text() if path.exists() else ""
+    spans = section_spans(text)
+    out: list[dict] = []
+    for match in RUNG_CLAIM.finditer(text):
+        section = next((v for v, _date, start, end in spans if start <= match.start() < end), "")
+        out.append({"from": match.group("from"), "to": match.group("to"),
+                    "line": match.group("line").strip(), "section": section,
+                    "indent": match.group("indent"), "span": match.span()})
+    return out
+
+
+def quoted_rung_line(line: str) -> str:
+    """The distribution inside a quoted line, without the sentence around it."""
+    quoted = line.strip().strip("`").strip()
+    return quoted[len(RUNG_HEADLINE):].strip() if quoted.startswith(RUNG_HEADLINE) else quoted
+
+
+def check_rung_claims(root: pathlib.Path = ROOT, path: pathlib.Path = CHANGELOG) -> tuple[list[Problem],
+                                                                                          list[str]]:
+    """C06, read back: every rung claim in the changelog is true for the range it names.
+
+    The distribution is a diagnostic about a *range of commits*, and a claim printed into prose can only
+    name one range by accident — the range as of the commit that wrote it. That is `reco-0ip`: the test that
+    compared the quote against the live distribution could only be satisfied by a commit that predicted its
+    own rung, so the suite was red for everybody, always, and a permanent red is a red nobody reads. So the
+    claim names its endpoints and this counts that range again: the number rots on schedule, into a named
+    tree rather than into a failure, and `audit --bless` is the act that re-records it.
+    """
+    problems: list[Problem] = []
+    notes: list[str] = []
+    if not path.exists():
+        return problems, notes
+    text = path.read_text()
+    claims = rung_claims(path)
+    stray = len(RUNG_MARKER.findall(text)) - len(claims)
+    if stray:
+        problems.append(Problem("C06", path.name,
+                                "%d claim(s) start but do not parse: a block is "
+                                "`<!-- gen_changelog:rungs from <sha> to <sha> -->`, then the audit's line, "
+                                "then `<!-- /gen_changelog:rungs -->` — or run `audit --bless`"
+                                % abs(stray)))
+    for claim in claims:
+        where = "%s%s" % (("`[%s]` " % claim["section"]) if claim["section"] else "", claim["to"][:12])
+        start = "" if claim["from"] == RUNG_WHOLE else claim["from"]
+        unresolved = [ref for ref in (start, claim["to"])
+                      if ref and _run(["rev-parse", "--verify", "--quiet", ref], root).returncode != 0]
+        if unresolved:
+            problems.append(Problem("C06", where,
+                                    "names %s, which this clone cannot resolve: a claim outlives the branch "
+                                    "it was written on, but not the objects it counts"
+                                    % ", ".join(r[:12] for r in unresolved)))
+            continue
+        commits = read_commits(root, start, claim["to"])
+        expected = rung_line(count_rungs(commits)) if commits else RUNG_EMPTY
+        quoted = quoted_rung_line(claim["line"])
+        if quoted != expected:
+            problems.append(Problem("C06", where,
+                                    "quotes `%s` for `%s..%s`, which counts `%s`; the numbers are generated, "
+                                    "not hand-edited — run `python3 tools/gen_changelog.py audit --bless`"
+                                    % (quoted, claim["from"][:12], claim["to"][:12], expected)))
+            continue
+        behind = len(read_commits(root, claim["to"], "HEAD"))
+        notes.append("the rung claim in `[%s]` is true for the range it names: %d commit(s) in `%s..%s`, "
+                     "%d behind HEAD — %s"
+                     % (claim["section"] or "?", len(commits), claim["from"][:12], claim["to"][:12],
+                        behind, expected))
+    if not claims:
+        notes.append("no rung claim in %s; `audit --bless` writes one, so that the distribution is a fact "
+                     "about a named tree rather than a sentence about now" % path.name)
+    return problems, notes
+
+
+def bless_rungs(root: pathlib.Path = ROOT, path: pathlib.Path = CHANGELOG, since: str = "",
+                until: str = "HEAD", dry_run: bool = False) -> tuple[list[Problem], list[str], dict]:
+    """Re-record the changelog's own rung claim for the range `audit` is measuring.
+
+    Claims inside a released section are left alone: a released section describes the tree it was cut from,
+    and rewriting its numbers is revising history rather than refreshing a reading. Claims in `[Unreleased]`
+    are the live reading, and a claim that has never been written is written at the end of that section.
+    The point of the tool act is that a human never has to guess a number which includes the commit they are
+    about to make — which is the trap `reco-0ip` is about.
+    """
+    problems: list[Problem] = []
+    notes: list[str] = []
+    text = path.read_text()
+    spans = section_spans(text)
+    unreleased = next(((start, end) for v, _date, start, end in spans if v == UNRELEASED), None)
+    if unreleased is None:
+        return ([Problem("C01", path.name, "no `## [%s]` section; there is no live range to bless" % UNRELEASED)],
+                notes, {})
+    previous = resolve_previous(root, None, path)
+    start = since or release_anchor(root, previous)[0]
+    end = until
+    to_sha = _run(["rev-parse", "--verify", "--quiet", end], root).stdout.strip() if end else ""
+    if end and not to_sha:
+        raise SystemExit("%s is not a commit this clone can resolve" % end)
+    commits = read_commits(root, start, end)
+    rungs = count_rungs(commits)
+
+    claims = rung_claims(path)
+    live = [c for c in claims if c["section"] == UNRELEASED]
+    frozen = len(claims) - len(live)
+    pieces: list[tuple[int, int, str]] = []
+    if live:
+        for claim in live:
+            pieces.append((claim["span"][0], claim["span"][1],
+                           rung_claim_text(start, to_sha, rungs, len(commits), claim["indent"])))
+    else:
+        pieces.append((unreleased[1], unreleased[1],
+                       "\n\n" + rung_claim_text(start, to_sha, rungs, len(commits)) + "\n"))
+    new_text = text
+    for begin, finish, replacement in sorted(pieces, key=lambda p: p[0], reverse=True):
+        if begin == finish:  # an insertion point, not a span
+            new_text = new_text[:begin].rstrip("\n") + replacement + new_text[begin:].lstrip("\n")
+        else:
+            new_text = new_text[:begin] + replacement + new_text[finish:]
+    if not dry_run:
+        path.write_text(new_text)
+    notes.append("%s the rung claim for `%s..%s` (%d commit(s)): %s%s"
+                 % ("rewrote" if live else "wrote", (start or RUNG_WHOLE)[:12], to_sha[:12], len(commits),
+                    rung_line(rungs) if commits else RUNG_EMPTY,
+                    " (dry run: nothing written)" if dry_run else ""))
+    if frozen:
+        notes.append("%d claim(s) inside released sections left exactly as they are — a cut release "
+                     "describes the tree it was cut from" % frozen)
+    # What was written is true by construction — it was just counted from the range it names. Whether the
+    # *rest* of the file is honest is `audit`'s question, and `audit --bless` runs it afterwards.
+    return problems, notes, {"range": "%s..%s" % (start or RUNG_WHOLE, to_sha), "commits": len(commits),
+                             "rungs": rungs, "rewrote": len(live), "frozen": frozen}
 
 
 # ---------------------------------------------------------------------------
@@ -759,6 +965,7 @@ def self_test() -> int:
         git("add", "-A")
         git("commit", "-m", "release: 0.1.0-alpha.1")
         git("tag", "v0.1.0-alpha.1")
+        alpha1 = git("rev-parse", "v0.1.0-alpha.1")
 
         # ---- between the releases -----------------------------------------------------------------
         (repo / "Cargo.toml").write_text('[workspace.package]\nname = "x"\nversion = "0.1.0-alpha.2"\n')
@@ -769,6 +976,34 @@ def self_test() -> int:
                 "is held (`reco-ddd`)\n"))
         git("add", "-A")
         git("commit", "-m", "docs: the changelog entry for reco-ddd")
+
+        # ---- C06: the changelog's own rung claim, and the tool act that re-records it ---------------
+        # A rung distribution counts commits, so a copy of it in prose is true for exactly one commit — the
+        # one that wrote it — and `reco-0ip` is the test that demanded exactly that impossible thing. The
+        # claim names the range it counted, so it can be checked forever; and it is generated, so a human
+        # never has to guess a number that includes the commit they are about to make. Both halves bite.
+        head_now = git("rev-parse", "HEAD")
+        hand_written = rung_claim_text(alpha1, head_now, {"bead": 9}, 9)
+        (repo / "CHANGELOG.md").write_text((repo / "CHANGELOG.md").read_text().replace(
+            "## [Unreleased]\n", "## [Unreleased]\n\n" + hand_written + "\n", 1))
+        problems, _ = check_rung_claims(repo, repo / "CHANGELOG.md")
+        expect(any(p.rule == "C06" and "bead 9" in p.message for p in problems),
+               "C06 refuses a hand-written rung claim whose numbers are not the range's: %s"
+               % [p.message for p in problems])
+        expect(not any(p.rule != "C06" for p in problems),
+               "and C06 is the only complaint: %s" % [p.line() for p in problems])
+        problems, notes, data = bless_rungs(repo, repo / "CHANGELOG.md")
+        expect(not problems and data["rewrote"] == 1,
+               "`audit --bless` re-records it for the live range: %s" % [p.line() for p in problems])
+        blessed = (repo / "CHANGELOG.md").read_text()
+        problems, notes = check_rung_claims(repo, repo / "CHANGELOG.md")
+        expect(not problems, "and the re-recorded claim is true for the range it names: %s"
+               % [p.line() for p in problems])
+        expect(rung_line(count_rungs(read_commits(repo, alpha1, head_now))) in blessed,
+               "and what it wrote is the distribution of that range and not of HEAD: %s" % rung_line(data["rungs"]))
+        bless_rungs(repo, repo / "CHANGELOG.md")
+        expect((repo / "CHANGELOG.md").read_text() == blessed,
+               "and blessing twice writes the same bytes — the block is generated, not appended to")
 
         # ---- release 2, and the negative controls --------------------------------------------------
         problems, notes, announcement2 = cut(repo, "0.1.0-alpha.2", "2026-10-25",
@@ -824,6 +1059,45 @@ def self_test() -> int:
                                section_path=repo / "CHANGELOG.md")
         expect(any(p.rule == "C07" for p in problems), "C07 refuses an exemption with no reason or owner")
 
+        # C06: a rung claim whose numbers are not the range's. The claim survived the cut — the block is
+        # inside `## [0.1.0-alpha.2]` now, frozen with the release — and being frozen is not being wrong.
+        frozen_line = rung_line(count_rungs(read_commits(repo, alpha1, head_now)))
+
+        def c06() -> None:
+            problems, _ = check_rung_claims(repo, repo / "CHANGELOG.md")
+            expect(any(p.rule == "C06" for p in problems),
+                   "C06 fails a rung claim whose numbers do not match the range it names, even inside a "
+                   "released section")
+
+        control("C06", lambda t: t.replace(frozen_line, "trailer 99"), c06)
+
+        # And the rule about *describing* the marker: the file that owns the block has to spell it out to
+        # explain it, and documentation of a claim is not a second, unparsable claim.
+        def c06documented() -> None:
+            problems, _ = check_rung_claims(repo, repo / "CHANGELOG.md")
+            expect(not any(p.rule == "C06" for p in problems),
+                   "a marker written inside a code span is documentation about the block, not a fragment: %s"
+                   % [p.line() for p in problems])
+
+        control("C06 (documented)", lambda t: t + "\nSpelled out: `<!-- gen_changelog:rungs from <sha> to "
+                "<sha> -->`, then the audit's line, then `<!-- /gen_changelog:rungs -->`.\n", c06documented)
+        expect("## [Unreleased]" in stash and frozen_line in stash,
+               "the claim travelled with the heading it was under when it was blessed")
+        _, bless_notes, bless_data = bless_rungs(repo, repo / "CHANGELOG.md", dry_run=True)
+        expect(bless_data["rewrote"] == 0 and bless_data["frozen"] == 1,
+               "and bless leaves a released section's claim alone, live range or no live range: %s / %s"
+               % (bless_data, bless_notes))
+        expect((repo / "CHANGELOG.md").read_text() == stash, "and a dry run writes nothing")
+
+        # The commit that carries a claim is already past the tree the claim names, and that is the normal
+        # state rather than a red: the tree it counted has not moved. A `chore:` commit, because
+        # re-recording a reading is not a release note.
+        git("add", "-A")
+        git("commit", "-m", "chore: re-record the changelog's rung claim")
+        problems, notes = check_rung_claims(repo, repo / "CHANGELOG.md")
+        expect(not problems and any("1 behind HEAD" in n for n in notes),
+               "a claim stays true when a newer commit lands, and says how far behind it is: %s" % notes)
+
         # The fallback ladder, and what it refuses to guess about.
         ladder = Commit(sha=legacy, subject="Cold-index cost was quadratic in the cache, because a "
                         "diagnostic query missed its index (reco-ccc)", body="", date="2026-10-20")
@@ -842,7 +1116,7 @@ def self_test() -> int:
         for name in failures:
             print("  - %s" % name)
         return 1
-    print("\nself-test passed: two releases cut, four negative controls caught, the ladder and its "
+    print("\nself-test passed: two releases cut, five negative controls caught, the ladder and its "
           "refusals both confirmed")
     return 0
 
@@ -894,6 +1168,9 @@ def main(argv: list[str] | None = None) -> int:
     audit_p = common(sub.add_parser("audit", help="fail unless every commit is accounted for (CI)"))
     audit_p.add_argument("--version", default="", help="audit a released section instead of [Unreleased]")
     audit_p.add_argument("--baseline", default=str(BASELINE), help="the exemption file")
+    audit_p.add_argument("--bless", action="store_true",
+                         help="re-record the changelog's own rung claim for the range being audited, then "
+                              "audit as usual (the claim is generated, never hand-edited: `C06`)")
 
     cut_p = sub.add_parser("cut", help="rename [Unreleased] to a version and start a new one")
     cut_p.add_argument("--version", required=True)
@@ -942,6 +1219,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.mode == "audit":
+            if args.bless:
+                bless_problems, bless_notes, _ = bless_rungs(ROOT, path, since=args.since, until=args.until)
+                for problem in bless_problems:
+                    print(problem.line())
+                for note in bless_notes:
+                    print("  ok  %s" % note)
+                if bless_problems:
+                    return 1
             problems, notes, data = audit(ROOT, args.version or None, from_ref=args.since,
                                           to_ref=args.until,
                                           baseline_path=pathlib.Path(args.baseline), section_path=path)

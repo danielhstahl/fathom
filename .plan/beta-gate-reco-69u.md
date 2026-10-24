@@ -260,12 +260,32 @@ it.
     in the contract ever said which one it assumed.
     This suite reads whatever binary exists (`FATHOM_BIN`, release, else debug), and latency is the perf
     gate's contract; this file's is what the pane says once it has been drawn.
-  * The one red left is
+  * The one red left was
     `test_beta_loop_contract.py::test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from`,
     and it is `e7.7`'s own machinery: the changelog quotes `tools/gen_changelog.py audit`'s rung distribution
     line, and that line counts commits, so it moves on every commit that lands — the quote can only be true
     for the commit that wrote it. Filed as **`reco-0ip`** with the three ways out. Nothing in `reco-2vq`
     touches it.
+
+    **Closed by `reco-0ip`, which took the second way out and kept the first one's honesty.** The quoted
+    distribution is a generated block now, and the block *names the range it counted*: `audit --bless` writes
+    it into `[Unreleased]`, `audit` counts that range again on every run and calls a mismatch `C06`, a block
+    inside a released section is frozen with that release (checked, never rewritten), and the note prints how
+    far behind HEAD the claim has fallen — staleness is information, wrongness is a defect, and only the
+    second is allowed to be red. So the claim became "these notes were true for the tree they name", which
+    is checkable on every commit forever, instead of "true as of now", which was true for exactly one commit
+    and false for every commit after it. Re-run the same way after the fix (`python3 -m pytest -q`, binaries
+    built from this tree): **2,140 passed, 2 skipped, none failed** — the two skips are the unchanged pair
+    that need a live pi session and an installer rehearsal, and they have always skipped. The known-red list
+    is empty, which is a state worth doubting: it is empty because somebody re-ran it, not because nothing
+    was ever on it.
+
+    One thing that looks like a red and is not, recorded so the next reader does not file it:
+    `test_packaging_contract.py::test_the_committed_shell_artefacts_are_what_the_binary_prints` fails when the
+    local binary is built with default features, because `packaging/man/man1/fathom.1` carries the
+    `--all-features` version line and CI runs that check on the leg that built `--all-features` (the
+    build-test job). `cargo build -p fathom-cli --all-features` makes it green; nothing in `reco-0ip` touches
+    the CLI, and it failed identically with this ticket's changes stashed.
 
   The quiet-before-the-first-frame pattern — an initial drain that returns on the first quiet tick, then keys
   — is also in `test_diff_open_contract.py`, `test_frame_report_contract.py`, `test_review_state_contract.py`

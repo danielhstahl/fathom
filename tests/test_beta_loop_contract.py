@@ -14,8 +14,9 @@ first:
   every row, an owner on the rows that need one, a bead or decision on the rows that claim one — and the
   counts are the counts the acceptance criteria are written against;
 * **a changelog that cannot forget a commit**: `tools/gen_changelog.py audit` accounts for every commit since
-  the last release, its two consecutive release cuts are performed in `self-test`, and the exemption list is
-  empty-or-shrinking;
+  the last release, its two consecutive release cuts are performed in `self-test`, the exemption list is
+  empty-or-shrinking, and the rung distribution the file quotes about its own generator names the range it
+  counted instead of pretending to be about now (`reco-0ip`);
 * **the release carries the review of itself**: `.github/workflows/self-review.yml` exists, runs the
   product's own verbs, keeps the `0 or 7` exit-code contract and uploads to the release — asserted through
   `check_ci_gate`'s own rule, so the workflow and its checker cannot drift apart.
@@ -189,12 +190,31 @@ def test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_f
         "too many release notes are being guessed from a prose subject; the fix is a `Changelog:` trailer: "
         + str(rungs))
     assert any("rung" in note for note in notes), notes
-    # The changelog quotes the generator's own line, so the quoted numbers are checked against the live ones
-    # rather than waved at. When this fails, the release notes are describing a tree that is not this one.
-    line = ", ".join("%s %d" % (rung, rungs[rung])
-                     for rung in ("trailer", "header", "bead", "key", "subject", "none") if rung in rungs)
-    assert line in (ROOT / "CHANGELOG.md").read_text(), (
-        "the changelog does not quote the audit's current rung distribution (`%s`)" % line)
+    # What the changelog quotes about its own ladder is checked against the range that quote names, and not
+    # against this checkout (`reco-0ip`). A rung distribution counts commits, so the live line is true for
+    # exactly one commit — the one that writes it down — and the old assertion could only be satisfied by a
+    # commit predicting its own rung, which is a red that never stops being red. The claim names its tree,
+    # so it ages into a named commit instead of into a failure, and it says how far behind HEAD it fell.
+    problems, claim_notes = gen_changelog.check_rung_claims(ROOT, ROOT / "CHANGELOG.md")
+    assert not problems, "the changelog quotes a rung distribution that its own range does not count:\n" \
+                         + "\n".join(p.line() for p in problems)
+    assert any("behind HEAD" in note for note in claim_notes), claim_notes
+
+
+def test_a_hand_edited_rung_distribution_in_the_changelog_is_refused(tmp_path):
+    """The quoted numbers are generated, so a hand-edited one is a defect with a name on it."""
+    text = (ROOT / "CHANGELOG.md").read_text()
+    claims = gen_changelog.rung_claims(ROOT / "CHANGELOG.md")
+    assert claims, "the changelog quotes no rung distribution at all; `audit --bless` writes the block"
+    copy = tmp_path / "CHANGELOG.md"
+    copy.write_text(text.replace(claims[0]["line"], gen_changelog.RUNG_HEADLINE + "trailer 99"))
+    problems, _ = gen_changelog.check_rung_claims(ROOT, copy)
+    assert any(p.rule == "C06" and "trailer 99" in p.message for p in problems), \
+        "a quoted distribution that its own range does not count has to be refused: %s" % (
+            [p.line() for p in problems])
+    gen_changelog.bless_rungs(ROOT, copy)
+    assert not gen_changelog.check_rung_claims(ROOT, copy)[0], \
+        "and `audit --bless` is the act that fixes it, not a hand on the numbers"
 
 
 def test_two_consecutive_release_cuts_are_performed_and_the_gate_bites():
