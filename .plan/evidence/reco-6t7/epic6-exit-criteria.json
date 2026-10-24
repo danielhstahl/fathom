@@ -1,0 +1,297 @@
+{
+  "producer": "tools/epic6_acceptance.py",
+  "ticket": "reco-6t7",
+  "binary": "/workspace/target/release/fathom",
+  "live_pi": true,
+  "elapsed_s": 10.62,
+  "verdict": "pass",
+  "criteria": [
+    {
+      "clause": "adapters",
+      "text": "a working adapter for at least two real harnesses",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "git post-commit: one event per changed path, none missing",
+          "ok": true,
+          "detail": "3 event(s) for 3 changed path(s) over 2 real commits"
+        },
+        {
+          "check": "git post-commit: nothing was refused",
+          "ok": true,
+          "detail": "0 refusal(s)"
+        },
+        {
+          "check": "git post-commit: no file body crossed",
+          "ok": true,
+          "detail": "the canary is a path and a digest only"
+        },
+        {
+          "check": "git post-commit: the stream replays as commits",
+          "ok": true,
+          "detail": "stream ok=True, quarantined=0"
+        },
+        {
+          "check": "envelope adapter ran over the recorded capture",
+          "ok": true,
+          "detail": "exit 0"
+        },
+        {
+          "check": "envelope capture: every line was accepted",
+          "ok": true,
+          "detail": "14 event(s), 0 refusal(s)"
+        },
+        {
+          "check": "envelope capture: turn boundaries rebuilt",
+          "ok": true,
+          "detail": "4 turn(s) opened"
+        },
+        {
+          "check": "pi hooks (native events): the session produced a clean stream",
+          "ok": true,
+          "detail": "13 event(s), 0 refusal(s), 3 turn(s)"
+        },
+        {
+          "check": "pi hooks (native events): the index saw the harness",
+          "ok": true,
+          "detail": "index reported 3 turn(s), 13 event(s) from the stream"
+        },
+        {
+          "check": "pi hooks (native events): no file body crossed",
+          "ok": true,
+          "detail": "the canary stayed in the repository"
+        },
+        {
+          "check": "pi through the envelope driver: the session produced a clean stream",
+          "ok": true,
+          "detail": "10 event(s), 0 refusal(s), 2 turn(s)"
+        },
+        {
+          "check": "pi through the envelope driver: the index saw the harness",
+          "ok": true,
+          "detail": "index reported 2 turn(s), 10 event(s) from the stream"
+        },
+        {
+          "check": "pi through the envelope driver: no file body crossed",
+          "ok": true,
+          "detail": "the canary stayed in the repository"
+        },
+        {
+          "check": "at least two harness adapters produced a clean stream",
+          "ok": true,
+          "detail": "4 clean: git post-commit (live commits); stdin envelope (replay of a live capture); pi hooks (native events) (live session); pi through the envelope driver (live session)"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "clean_adapters": [
+          "git post-commit (live commits)",
+          "stdin envelope (replay of a live capture)",
+          "pi hooks (native events) (live session)",
+          "pi through the envelope driver (live session)"
+        ],
+        "live_pi": true
+      }
+    },
+    {
+      "clause": "mcp",
+      "text": "an MCP session where the agent queries 'what did I just change and is it risky'",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the repository indexed",
+          "ok": true,
+          "detail": "exit 0"
+        },
+        {
+          "check": "a real session opened over stdio with the shipped config",
+          "ok": true,
+          "detail": "fathom fathom-mcp/0.1.0-alpha.1, protocol 2025-06-18"
+        },
+        {
+          "check": "the read surface is what the docs promise",
+          "ok": true,
+          "detail": "explain_episode, changes_between, architecture_delta, dependency_delta, risk_report, search_history, review_memory"
+        },
+        {
+          "check": "the write tools are off, and not even advertised",
+          "ok": true,
+          "detail": "tools/list offers no door that would refuse"
+        },
+        {
+          "check": "`explain_episode` names the change",
+          "ok": true,
+          "detail": "episode ep-37c84499239302ccec63 over 1 commit(s)"
+        },
+        {
+          "check": "it says what moved, by path",
+          "ok": true,
+          "detail": "both changed paths appear in the answer"
+        },
+        {
+          "check": "it says who wrote it",
+          "ok": true,
+          "detail": "author_kind=agent"
+        },
+        {
+          "check": "`risk_report` ranked this change first",
+          "ok": true,
+          "detail": "top row is ep-37c84499239302ccec63 of 2 row(s)"
+        },
+        {
+          "check": "the risk answer is a number with factors",
+          "ok": true,
+          "detail": "spine-1 49 = surfaces 36 + author 8 + size 3 + breadth 2 \u00b7 tier medium"
+        },
+        {
+          "check": "the risky change is called risky",
+          "ok": true,
+          "detail": "tier medium at score 49 \u2014 a dependency bump, agent-authored, untested"
+        },
+        {
+          "check": "the risk answer cites its evidence",
+          "ok": true,
+          "detail": "episode:ep-37c84499239302ccec63, model:spine-1 \u00b7 model spine-1"
+        },
+        {
+          "check": "the risk answer says how it was produced",
+          "ok": true,
+          "detail": "heuristic \u2014 no trained model exists (reco-884's calibration bar is unmet)"
+        },
+        {
+          "check": "`explain_episode` carries its cost, bound and unknowns",
+          "ok": true,
+          "detail": "14028 bytes in 8 ms, degraded=True, 8 unknown(s)"
+        },
+        {
+          "check": "`explain_episode` returned no file body",
+          "ok": true,
+          "detail": "forbidden fields: none"
+        },
+        {
+          "check": "`risk_report` carries its cost, bound and unknowns",
+          "ok": true,
+          "detail": "2782 bytes in 2 ms, degraded=True, 7 unknown(s)"
+        },
+        {
+          "check": "`risk_report` returned no file body",
+          "ok": true,
+          "detail": "forbidden fields: none"
+        },
+        {
+          "check": "a credential in the change came back redacted",
+          "ok": true,
+          "detail": "the subject carried a key; the answer says [REDACTED:aws-access-key]"
+        },
+        {
+          "check": "a write asked for in-session is refused with a code, not a crash",
+          "ok": true,
+          "detail": "error=no_capability"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "tools_offered": [
+          "explain_episode",
+          "changes_between",
+          "architecture_delta",
+          "dependency_delta",
+          "risk_report",
+          "search_history",
+          "review_memory"
+        ],
+        "question": "what did I just change, and is it risky",
+        "answer": {
+          "episode": "ep-37c84499239302ccec63",
+          "risk_vector": "spine-1 49 = surfaces 36 + author 8 + size 3 + breadth 2",
+          "risk_tier": "medium",
+          "risk_factors": [
+            "surfaces 36/50",
+            "author 8/8",
+            "size 3/16",
+            "breadth 2/12"
+          ],
+          "evidence": [
+            "episode:ep-37c84499239302ccec63",
+            "model:spine-1"
+          ],
+          "grounding": "heuristic \u2014 no trained model exists (reco-884's calibration bar is unmet)"
+        }
+      }
+    },
+    {
+      "clause": "gate",
+      "text": "a CI job that fails only on new violations",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the repository indexed, graph lane included",
+          "ok": true,
+          "detail": "exit 0"
+        },
+        {
+          "check": "run 1: a new violation exits 7",
+          "ok": true,
+          "detail": "exit 7, outcome fail, 1 finding(s)"
+        },
+        {
+          "check": "run 1: the finding names the edge",
+          "ok": true,
+          "detail": "rules: ['no_upward::src/low/base.py->src/high/up.py']"
+        },
+        {
+          "check": "run 1: 'why did CI fail' is one sentence pointing at evidence",
+          "ok": true,
+          "detail": "fathom check failed: 1 finding(s) at or above `warning` in 53ac135d3b37..758f64fe7387 \u2014 worst is error [layering/no_upward::src/low/base.py->src/high/up.py] at "
+        },
+        {
+          "check": "`fathom ratchet` wrote the baseline",
+          "ok": true,
+          "detail": "decision note nt-cedb0a9f6a8e303a \u2014 the reason is in the review memory as well as the file"
+        },
+        {
+          "check": "run 2: the same range passes once the violation is baselined",
+          "ok": true,
+          "detail": "exit 0, outcome pass, found 0"
+        },
+        {
+          "check": "run 2: it is said to be debt rather than quietly ignored",
+          "ok": true,
+          "detail": "{\"check\": \"layering\", \"examined\": 3, \"findings\": [], \"findings_total\": 0, \"notes\": [\"1 violation(s) are baselined in .fathom/ratchet.toml, so they were not news to this range\", \"compared graph revisio"
+        },
+        {
+          "check": "run 3: a quiet range passes",
+          "ok": true,
+          "detail": "exit 0, outcome pass"
+        },
+        {
+          "check": "run 4: the new violation fails the run",
+          "ok": true,
+          "detail": "exit 7, found 1"
+        },
+        {
+          "check": "run 4: only the new violation is reported",
+          "ok": true,
+          "detail": "rules: ['no_upward::src/low/extra.py->src/high/up.py'] \u2014 `no_upward::src/low/base.py->src/high/up.py` is debt, not news"
+        },
+        {
+          "check": "the whole range also reports only the new violation",
+          "ok": true,
+          "detail": "exit 7, rules: ['no_upward::src/low/extra.py->src/high/up.py']"
+        },
+        {
+          "check": "every run finished inside the gate's 60s budget",
+          "ok": true,
+          "detail": "slowest run 0.03s over 5 runs"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "slowest_run_s": 0.028,
+        "runs": 5,
+        "baselined_key": "no_upward::src/low/base.py->src/high/up.py",
+        "new_key": "no_upward::src/low/extra.py->src/high/up.py"
+      }
+    }
+  ]
+}

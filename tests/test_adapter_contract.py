@@ -374,6 +374,54 @@ def test_the_envelope_adapter_digests_what_it_is_handed(tmp_path: Path) -> None:
     assert record["payload"]["tool_input"]["content_chars"] == len(CANARY)
 
 
+def test_a_body_under_a_vendor_spelling_of_content_is_still_digested(tmp_path: Path) -> None:
+    """§4.3 is about the bytes, not about the key name the vendor happened to use.
+
+    Found by the epic-6 live run (`reco-6t7`): `adapters/fathom-envelope-driver.ts` re-spells a live
+    tool result the way Claude Code does — body under `structuredContent`, blocks under `content` —
+    and the adapter, which recognised a fixed list of spellings, copied `structuredContent` into the
+    stream verbatim. A canary in a file therefore reached `.fathom/events.jsonl` as prose. The
+    recognizer is now normalised and suffix-matched, and it digests a content key whatever its type.
+    """
+    repo = _scratch_repo(tmp_path)
+    events = repo / ".fathom" / "events.jsonl"
+    envelope = {
+        "hook_event_name": "PostToolUse",
+        "session_id": "s2",
+        "cwd": str(repo),
+        "tool_name": "Read",
+        "tool_input": {"file_path": "secret.txt"},
+        "tool_response": {
+            # The Claude Code spelling, the one that leaked.
+            "structuredContent": f"the file said: {CANARY}",
+            # Content as a block list, and as a container: a body is a body whatever wraps it.
+            "content": [{"type": "text", "text": f"and again: {CANARY}"}],
+            "commandOutput": {"raw": CANARY},
+            # Two more spellings, spelled the way four different vendors spell them.
+            "file_body": CANARY,
+            "outputText": CANARY,
+            # And the thing that is not content and must survive: the flag the `file_edit`
+            # derivation reads (ADR-005 §2.1).
+            "created": True,
+        },
+    }
+    subprocess.run(
+        [sys.executable, str(PYTHON_ADAPTER), "--harness", "test", "--events", str(events), "--cwd", str(repo)],
+        input=json.dumps(envelope),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    text = events.read_text(encoding="utf-8")
+    assert CANARY not in text, "a body crossed the boundary because nobody had heard of its key name"
+    response = _records(events)[0]["payload"]["tool_response"]
+    assert response["structuredContent_sha256"] and response["structuredContent_chars"] > 0
+    assert response["content_sha256"] and response["commandOutput_sha256"]
+    assert response["file_body_sha256"] and response["outputText_sha256"]
+    assert "raw" not in json.dumps(response), "the container's own keys survived alongside the digest"
+    assert response["created"] is True, "a flag is not content, and the derivation needs it"
+
+
 # --------------------------------------------------------------------------- the git hook
 
 

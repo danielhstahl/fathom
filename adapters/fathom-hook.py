@@ -187,6 +187,55 @@ CONTENT_KEYS = {
     "last_assistant_message",
     "transcript_summary",
 }
+
+# The set above is a list of spellings, and a list of spellings is a list a vendor can step outside.
+# Two rules close that gap, and both of them came from a live run rather than from reading the spec:
+#
+# * keys are **tokenised** — `structuredContent`, `structured_content` and `Structured-Content` are one
+#   name, and the token count does not depend on how a vendor likes its separators — and
+# * a key is content when its **last token** is a content noun, so `structuredContent`, `file_body`,
+#   `outputText` and `commandOutput` are the same promise spelled four more ways. Matching a bare
+#   suffix would be sloppier in both directions: `context` ends in the letters `text`, and a rule that
+#   digested it would be quietly throwing evidence away.
+#
+# `adapters/fathom-envelope-driver.ts` supplied the first case: it re-spells a live tool result the
+# way Claude Code does, with the body under `structuredContent`, and the adapter wrote it out
+# verbatim under the rule above alone. A key naming is not a permission to copy a body; §4.3 is
+# about the bytes, so the recognizer has to be wider than the spellings anyone thought of.
+CONTENT_SUFFIXES = frozenset(
+    (
+        "content",
+        "contents",
+        "body",
+        "text",
+        "diff",
+        "patch",
+        "stdout",
+        "stderr",
+        "output",
+        "transcript",
+        "prompt",
+    )
+)
+
+
+def tokens(name) -> list[str]:
+    """A key name taken apart: separators dropped, camel humps separated, everything lower-cased."""
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", str(name))
+    return [part.lower() for part in re.split(r"[^A-Za-z0-9]+", spaced) if part]
+
+
+CONTENT_KEYS_FLAT = frozenset("".join(tokens(key)) for key in CONTENT_KEYS)
+
+
+def content_key(name) -> bool:
+    """Does this key name *content*, in any spelling a vendor is likely to invent?"""
+    if "".join(tokens(name)) in CONTENT_KEYS_FLAT:
+        return True
+    parts = tokens(name)
+    return bool(parts) and parts[-1] in CONTENT_SUFFIXES
+
+
 SECRET_KEY = re.compile(
     r"(secret|token|password|passwd|api[-_]?key|authorization|cookie|credential|private[-_]?key)$",
     re.I,
@@ -380,9 +429,15 @@ def scrub(value: Any, _depth: int = 0) -> Any:
             name = str(key)
             if SECRET_KEY.search(name):
                 out[name] = "[REDACTED:key]"
-            elif name in CONTENT_KEYS and isinstance(item, str):
-                out[f"{name}_sha256"] = hashlib.sha256(item.encode("utf-8", "replace")).hexdigest()
-                out[f"{name}_chars"] = len(item)
+            elif content_key(name):
+                # Digested whatever its type. A body under a content key is a body whether the vendor
+                # sent it as a string, a list of blocks or an object: recursing into a container and
+                # trusting the inner key names is how the first version leaked `structuredContent`.
+                text = item if isinstance(item, str) else json.dumps(
+                    item, sort_keys=True, ensure_ascii=False, default=str
+                )
+                out[f"{name}_sha256"] = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()
+                out[f"{name}_chars"] = len(text)
             else:
                 out[name] = scrub(item, _depth + 1)
         return out

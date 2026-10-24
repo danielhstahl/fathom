@@ -17,6 +17,39 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Epic 6 closes: its three exit criteria are a runnable gate, and the run found a leak (`e6`, `reco-6t7`)
+
+The epic's acceptance criterion is a sentence with three clauses — two working harness adapters, an MCP
+session where the agent asks "what did I just change and is it risky", and a CI job that fails only on new
+violations. Close reasons fade, so the clauses are now code: **`tools/epic6_acceptance.py`** runs all three
+against the built binary and prints one verdict per clause, and `tests/test_epic6_contract.py` makes CI run
+it (including a check that the gate can go red). Clause 1 measures four adapters and keeps the live/replay
+distinction visible: git `post-commit` on real commits, `fathom-hook.py` over the recorded live capture, and
+— under `--live-pi`, because they need the vendor — a real headless `pi` session through
+`fathom-pi-hooks.ts` and through `fathom-envelope-driver.ts`. Clause 2 opens one stdio session against a
+repository whose last change is deliberately risky and asserts the answer: `spine-1 49 = surfaces 36 +
+author 8 + size 3 + breadth 2`, tier and factors, evidence ids, `grounding` saying the ranking is heuristic,
+writes refused with `no_capability`, the credential in the commit subject redacted, no file-body field in
+any response. Clause 3 runs the gate five times over one repository and reports `7, 0, 0, 7, 7`: a new layering
+edge fails it, the **same range** passes once `fathom ratchet` baselines that edge with an owner and an
+expiry, and a second, unbaselined edge fails it again while the baselined one stays counted and silent.
+
+- **A file body was crossing the envelope adapter, and no test could see it.** The live run's canary check
+  caught `structuredContent` — the key Claude Code puts a tool result's text under — copied verbatim into
+  `.fathom/events.jsonl`, because `adapters/fathom-hook.py` digested a fixed list of key spellings and nobody
+  had named that one. The recognizer now tokenises the key (`structuredContent`, `structured_content` and
+  `Structured-Content` are one name) and calls it content when the **last token** is a content noun, and it
+  digests a content key whatever its type, so `file_body`, `outputText` and a body inside a container are the
+  same promise — while `context`, which merely ends in the letters `text`, keeps its evidence. The `created`
+  flag that derives a `file_edit` still survives, asserted. Pinned by
+  `test_a_body_under_a_vendor_spelling_of_content_is_still_digested`.
+- **Two things the gate found and did not fix, written down instead** (`.plan/evidence/reco-6t7/epic6-exit-criteria.md` §4):
+  `fathom ratchet`'s default "newest graph revision" is a coin flip when two commits share a second (the gate
+  spaces its fixture commit dates for exactly that reason), and a baselined layering result can outlive its
+  ledger row in an index that has since grown — both are candidate tickets, not epics' business.
+- The record, with transcripts: `.plan/evidence/reco-6t7/epic6-exit-criteria.md` and its
+  `epic6-exit-criteria.json`.
+
 ### Extensibility: the detector API, an out-of-tree example, and the event stream (`e6.7`, `reco-raw`)
 
 A detector is a pure function over one episode, which is the only reason any of this can be safe: code this
