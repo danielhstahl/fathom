@@ -1,0 +1,31 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ANALYZE 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-analyze \- Print one episode\*(Aqs delta document — the model the TUI, the export and an agent all read
+.SH SYNOPSIS
+\fBfathom analyze\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-schema\fR] [\fB\-\-check\fR] [\fB\-\-write\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIEPISODE\fR] 
+.SH DESCRIPTION
+Print one episode\*(Aqs delta document — the model the TUI, the export and an agent all read
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the delta document as JSON on stdout, and nothing else there
+.TP
+\fB\-\-schema\fR
+Print `schemas/episode\-delta.schema.json`, the JSON Schema for the document, and stop
+.TP
+\fB\-\-check\fR
+Check the checked\-in schema against what this build generates; the CI form of `\-\-schema`
+.TP
+\fB\-\-write\fR
+Write the generated schema to `schemas/`, replacing the checked\-in copy
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIEPISODE\fR]
+The episode to analyse: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `\-\-schema`, which prints the contract instead of an answer

@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NARRATIVE 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-narrative \- Read one episode: the narrative every claim in it cites its evidence from (`e4.7`)
+.SH SYNOPSIS
+\fBfathom narrative\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-markdown\fR] [\fB\-\-explain\fR] [\fB\-\-top\fR] [\fB\-\-attribution\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIEPISODE\fR] 
+.SH DESCRIPTION
+Read one episode: the narrative every claim in it cites its evidence from (`e4.7`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the claims, citations and weights as JSON on stdout, and nothing else there
+.TP
+\fB\-\-markdown\fR
+Print the Markdown artefact body — the exact text `fathom export` will carry
+.TP
+\fB\-\-explain\fR
+Print the ranking beside the prose: every claim\*(Aqs weight, so the order can be argued with
+.TP
+\fB\-\-top\fR \fI<N>\fR
+How many claims the *Read this first* paragraph holds (1 to 6)
+.TP
+\fB\-\-attribution\fR
+Print whether a model wrote any of this, and the five gates a polish path must clear. Needs no index and no episode
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIEPISODE\fR]
+The episode to read: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `\-\-attribution`, which answers a question about the build instead of an episode

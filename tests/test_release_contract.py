@@ -3,11 +3,12 @@
 `m0` (`reco-n1j`) is the alpha gate, and "alpha artefacts installable on three OSes" is the acceptance
 criterion that a commit cannot satisfy on its own: it needs a public remote, four runners and three
 humans. What a commit *can* do is make the release path correct and checked now, so that the tag is a
-formality rather than an expedition. `tools/check_release.py` is that gate (twelve rules plus a tag
-pre-flight); this file is the contract on the gate:
+formality rather than an expedition. `tools/check_release.py` is that gate (seventeen rules plus a tag
+pre-flight, `R14`–`R17` being `e7.4`'s packaging half — see
+[`test_packaging_contract.py`](test_packaging_contract.py)); this file is the contract on the gate:
 
 * it is **green** on this tree, right now, with no `dist`, no credentials and no network;
-* it **can go red** — twelve mutations, each one a way a real release pipeline quietly rots, and every
+* it **can go red** — twenty-two mutations, each one a way a real release pipeline quietly rots, and every
   one detected (`e0.11`'s argument: a gate nobody has seen fail is decoration);
 * the **version is one number in five places** — `[workspace.package]`, the seven path-dependency
   requirements, `Cargo.lock`, the changelog section that *is* the release body, and the captured plan —
@@ -75,7 +76,7 @@ def test_the_release_gate_is_green_on_this_tree():
     assert "release path OK" in result.stdout
 
 
-def test_the_gate_can_go_red_twelve_ways():
+def test_the_gate_can_go_red_every_way_it_can():
     """Every rule that is worth writing is worth watching fire on a deliberate break."""
     result = run("--self-test")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -85,7 +86,8 @@ def test_the_gate_can_go_red_twelve_ways():
 
 def test_the_self_test_covers_every_rule_that_can_break_silently():
     """The rules with a self-test case are named, so a rule added without a case is visible."""
-    covered = {"R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11", "R12"}
+    covered = {"R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11", "R12",
+               "R14", "R15", "R16", "R17"}
     text = TOOL.read_text()
     for rule in sorted(covered):
         assert '"%s"' % rule in text, "%s has no self-test case" % rule
@@ -164,11 +166,19 @@ def test_the_target_set_covers_three_operating_systems():
 
 
 def test_both_installers_exist_and_the_plan_names_the_runners():
-    assert set(dist_config()["installers"]) == {"shell", "powershell"}
+    # The two script installers are `m0`'s criterion; the msi and the formula are `e7.4`'s, and an
+    # installer that stops being configured stops existing, so the set is asserted whole rather than
+    # "at least these two".
+    assert set(dist_config()["installers"]) == {"shell", "powershell", "msi", "homebrew"}
     captured = json.loads(CAPTURED.read_text())
     runners = {t["triple"]: t["runner"] for t in captured["targets"]}
-    assert len(runners) == 4
+    assert len(runners) == 6, "six targets: three operating systems, both Apple silicon and Intel, and " \
+                               "an arm64 and a static Linux"
     assert all(runners.values()), "every target needs a runner, or nothing builds it"
+    # arm64 Linux is built on an arm64 runner, natively: the alternative is a cross-compile of C that
+    # `e7.4` chose not to ship as a claim.
+    arm = [t for t in captured["targets"] if t["triple"] == "aarch64-unknown-linux-gnu"]
+    assert arm and "arm" in arm[0]["runner"], "arm64 Linux on an x86 runner is a cross-compile, said loudly"
     for target in captured["targets"]:
         assert target["archive"].endswith((".tar.xz", ".zip"))
         assert target["checksum"] == target["archive"] + ".sha256"
@@ -199,7 +209,9 @@ def test_readme_quotes_the_url_the_installers_bake():
 def test_the_release_document_carries_the_generated_blocks():
     text = CONCEPT.read_text()
     names = {m.group(1) for m in R.MARK.finditer(text)}
-    assert names == {"targets", "artefacts", "installer_env", "gates"}
+    # `secrets` is `e7.4`'s: the ticket asked for a *stated* list of the steps that need a maintainer's
+    # credentials, and a generated table is the only version of a list that cannot be quietly reworded.
+    assert names == {"targets", "artefacts", "installer_env", "secrets", "gates"}
     # The blocks are not empty shells: each one rendered at least one row from the captured plan.
     for match in R.MARK.finditer(text):
         body = match.group(2)

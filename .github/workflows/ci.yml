@@ -193,11 +193,14 @@ jobs:
   # The release skeleton is generated from `dist-workspace.toml`; this job is what stops the generated
   # workflow and the config it came from from drifting apart, which is the same argument §8.4 makes about
   # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables. The second
-  # step is the rest of the release path (`m0`/`reco-n1j`): the three operating systems still being
-  # covered, both installers still existing, one version in one place, the changelog section that *is*
-  # the release body, README quoting the URL the installers bake, and the captured plan still describing
-  # the config. `dist generate --check` compares a workflow to its config; `check_release.py` compares
-  # the release to what its users are told, and needs neither `dist` nor a network.
+  # step is the rest of the release path (`m0`/`reco-n1j`, extended by `e7.4`/`reco-3q4`): the three
+  # operating systems still being covered, the installers still existing (both scripts, the msi, the
+  # formula), the msi's `upgrade-guid` surviving, the system packages being named for the version being
+  # released, the completions and man pages being `include`d, the document still saying which steps need a
+  # maintainer-only secret, one version in one place, the changelog section that *is* the release body,
+  # README quoting the URL the installers bake, and the captured plan still describing the config. `dist
+  # generate --check` compares a workflow to its config; `check_release.py` compares the release to what
+  # its users are told, and needs neither `dist` nor a network.
   release-skeleton:
     name: release skeleton matches dist-workspace.toml
     runs-on: ubuntu-latest
@@ -210,8 +213,78 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: The release path (R01-R12)
+      - name: The release path (R01-R17)
         run: python3 tools/check_release.py
+      # The packager needs no toolchain to prove its own rules: `--self-test` builds a throwaway tree in
+      # a temp directory and requires five corruptions of it to be refused.
+      - name: the .deb/.rpm packager's negative controls
+        run: python3 tools/package_release.py --self-test
+
+  # ---------------------------------------------------------------------------
+  # `e7.4` (`reco-3q4`): the packaging, and the install that consumes it. Three claims, in order of how
+  # expensive each is to discover wrong:
+  #
+  #   1. the `.deb` is a `.deb` — written by hand here, so `dpkg-deb` (Debian's own reader) has to accept
+  #      it, and `dpkg --install` has to put a working `fathom` on `PATH`; a control member with a wrong
+  #      size "unpacks" happily and fails at configure time, which is the least legible way to be wrong;
+  #   2. the curl installer's contract holds — right archive for the machine, digest verified, version
+  #      right — against a local mirror, which is the only way to test it before there is a release;
+  #   3. the completions and man pages committed under `packaging/` are what the binary prints, byte for
+  #      byte (checked in the docs leg, where the binary is already built).
+  #
+  # Runs on ubuntu-latest because `rpmbuild` is installable there (the packager installs it) and because
+  # the archive for this runner's triple is one `dist build` away.
+  # ---------------------------------------------------------------------------
+  packaging:
+    name: packaging (deb, rpm, and the installer that fetches them)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The same installer the release workflow uses, so the rehearsal exercises a `dist` of the pinned
+      # version rather than whatever is convenient. `DIST_VERSION` is the pin in `dist-workspace.toml`.
+      - name: install cargo-dist (pinned)
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.33.0/cargo-dist-installer.sh | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: cargo build (release, the profile the artefacts come from)
+        run: cargo build --release -p fathom-cli --locked
+      # The archive for this runner's own triple — what a `.deb` is repacked from. Not `--artifacts=all`:
+      # the complete release set is six targets and one runner is not six machines, and the global phase
+      # would then insist on `.deb`s for an architecture this job never built (which is right, and is why
+      # the installer rehearsal below runs with that stage lifted out).
+      - name: dist build (this runner's archive)
+        run: dist build --artifacts=local
+      - name: the installer rehearsal, and its negative controls
+        run: |
+          python3 tools/rehearse_installer.py --no-extra-artifacts
+          python3 tools/rehearse_installer.py --skip-build --self-test
+      - name: the packager's own rules (five negative controls)
+        run: python3 tools/package_release.py --self-test
+      - name: build the system packages from the archive dist just made
+        run: python3 tools/package_release.py
+      # Debian's own reader, then Debian's own installer: the file has to survive both, and the binary it
+      # lays down has to be the one the manifest says. `0.1.0-alpha.1` is the version `dpkg` sees as
+      # `0.1.0~alpha.1`, because `-` is not legal in an upstream version.
+      - name: install the .deb the way a user would, and run what it put on PATH
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import tomllib;print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
+          pkg="target/packaging/fathom_${version/-/~}_amd64.deb"
+          test -f "$pkg" || { echo "no $pkg"; exit 1; }
+          dpkg-deb --show "$pkg"
+          dpkg-deb --contents "$pkg" | grep -q 'usr/share/man/man1/fathom.1.gz'
+          dpkg-deb --contents "$pkg" | grep -q 'usr/share/bash-completion/completions/fathom'
+          sudo dpkg --install "$pkg"
+          test "$(fathom --version | head -1 | awk '{print $2}')" = "$version"
+      - name: read the .rpm with rpm's own reader
+        run: rpm -qip target/packaging/fathom-*.rpm
 
   # ---------------------------------------------------------------------------
   # `e6.6` (`reco-ngk`): the gate runs as a gate. The point of this job is not that `fathom check` finds
@@ -384,6 +457,16 @@ jobs:
         run: |
           python3 tools/gen_docs.py check --page cli
           python3 tools/check_docs_site.py
+
+      # `e7.4` (reco-3q4): the same argument one directory over. `packaging/completions` and
+      # `packaging/man` are committed so `dist` can put them in an archive without running a binary in the
+      # release job — which means they can go stale, and a stale completion is a flag that exists in
+      # `--help` and not in your shell. They are generated from the same `clap::Command` the binary parses
+      # with, so the only honest check is "regenerate and diff", and it runs on the leg that just built the
+      # binary for the same reason (§8.4: a generated file is checked by regenerating it).
+      - name: "e7.4 packaging: the completions and man pages are the binary's own grammar"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: python3 tools/gen_shell_artifacts.py check
 
       - name: the binary answers, on every platform
         run: |

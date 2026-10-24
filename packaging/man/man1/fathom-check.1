@@ -1,0 +1,73 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_CHECK 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-check \- Run the checks CI cares about; findings above the threshold exit 7
+.SH SYNOPSIS
+\fBfathom check\fR [\fB\-\-root\fR] [\fB\-\-base\fR] [\fB\-\-head\fR] [\fB\-\-range\fR] [\fB\-\-format\fR] [\fB\-\-json\fR] [\fB\-\-out\fR] [\fB\-\-summary\fR] [\fB\-\-no\-summary\fR] [\fB\-\-no\-annotations\fR] [\fB\-\-fail\-on\fR] [\fB\-\-severity\fR] [\fB\-\-only\fR] [\fB\-\-skip\fR] [\fB\-\-require\fR] [\fB\-\-ignore\fR] [\fB\-\-max\fR] [\fB\-\-explain\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Run the checks CI cares about; findings above the threshold exit 7
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to check
+.TP
+\fB\-\-base\fR \fI<REV>\fR
+The far end of the range: what the change is compared against.
+
+Defaults to `[check] base` in `fathom.toml`, and to `HEAD~1` when the file says nothing. A shallow clone that does not have it is not an error: the two checks that need both trees report themselves blocked, with the fetch command that fixes them.
+.TP
+\fB\-\-head\fR \fI<REV>\fR
+The near end of the range. Defaults to `[check] head`, then to `HEAD`
+.TP
+\fB\-\-range\fR \fI<BASE..HEAD>\fR
+The range as one argument, `base..head` — what a reviewer pastes into a message
+.TP
+\fB\-\-format\fR \fI<FMT>\fR [default: human]
+The output format: `human`, `json`, `sarif`, `github` (step annotations) or `markdown` (job summary)
+.TP
+\fB\-\-json\fR
+Print the JSON document — the same thing as `\-\-format json`
+.TP
+\fB\-\-out\fR \fI<PATH>\fR
+Write the artefact to this file instead of to stdout
+.TP
+\fB\-\-summary\fR \fI<PATH>\fR
+Where to append the markdown job summary. Defaults to `$GITHUB_STEP_SUMMARY` when the runner set one
+.TP
+\fB\-\-no\-summary\fR
+Do not write a job summary at all, even with `$GITHUB_STEP_SUMMARY` set
+.TP
+\fB\-\-no\-annotations\fR
+Do not print GitHub step annotations beside the report
+.TP
+\fB\-\-fail\-on\fR \fI<LEVEL>\fR
+The severity at or above which the run exits 7: `note`, `warning`, `error` or `never`.
+
+Overrides `[check] fail_on`. `never` makes the gate a reporter: findings are listed, nothing fails.
+.TP
+\fB\-\-severity\fR \fI<CHECK=LEVEL>\fR
+Set one check\*(Aqs volume for this run, e.g. `\-\-severity tests=off`. Repeatable
+.TP
+\fB\-\-only\fR \fI<CHECK>\fR
+Run only these checks. Repeatable; the others are reported as off, not omitted
+.TP
+\fB\-\-skip\fR \fI<CHECK>\fR
+Do not run these checks. Repeatable
+.TP
+\fB\-\-require\fR \fI<CHECK>\fR
+Checks that must *run*: one that cannot is a failure rather than a notice. Repeatable
+.TP
+\fB\-\-ignore\fR \fI<CHECK[:RULE]>\fR
+Silence one finding or family for this run: `tests`, or `layering:no_upward`. Repeatable.
+
+The command\-line twin of `[check] ignore`, and it obeys the same rule — the family half must name a check, because a pattern that silences nothing is discovered at review time otherwise.
+.TP
+\fB\-\-max\fR \fI<N>\fR
+Cap the findings listed per check (the counts stay whole). Overrides `[check] max_findings`
+.TP
+\fB\-\-explain\fR
+Print the policy in force — every check\*(Aqs volume, every threshold — and exit 0 without checking
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

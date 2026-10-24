@@ -61,6 +61,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`ratchet`](#fathom-ratchet)** | The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (e3.10) | shipped | [*ratchet*](../concepts/ratchet.md) · [*cycle-detection*](../concepts/cycle-detection.md) |
 | **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
 | **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
+| **[`completions`](#fathom-completions)** | Print the shell's own copy of this grammar: completion scripts and man pages (e7.4) | shipped | [*release*](../concepts/release.md) · [*cli*](../concepts/cli.md) |
 <!-- END GENERATED: verbs -->
 
 ## Global flags
@@ -1838,6 +1839,158 @@ Options:
   -V, --version            Print version
 ```
 <!-- END GENERATED: help.note.verify -->
+## `fathom completions`
+
+The shell's own copy of this grammar, printed by the binary that parses it. Every completion script and
+every man page in a fathom artefact comes from here, which is the only way they cannot disagree with
+`--help`: the same `clap::Command` (`verbs::command()`) that dispatches this verb renders them, so a flag
+cannot exist in the parser and be missing from the script ([release.md §1.3](../concepts/release.md)).
+
+```bash
+fathom completions bash > ~/.local/share/bash-completion/completions/fathom
+fathom completions zsh  > _fathom            # rename to _fathom; clap prints the crate name otherwise
+fathom completions fish > ~/.config/fish/completions/fathom.fish
+fathom completions man --out packaging/man   # one roff page per verb: fathom-check.1, ...
+```
+
+| Form | Writes | Where a package puts it |
+|---|---|---|
+| `completions bash\|zsh\|fish` | the script, on stdout or to `--out <FILE>` | `/usr/share/bash-completion/completions/fathom`, `…/zsh/(vendor-completions\|site-functions)/_fathom`, `…/fish/vendor_completions.d/fathom.fish` |
+| `completions man [--out DIR]` | `DIR/man1/fathom*.1`, one page per verb and subverb | `/usr/share/man/man1/`, gzipped, in the `.deb` and `.rpm` |
+
+The pages are named the way `man` finds them (`fathom-review-sign.1`, not `fathom review sign.1`), each
+one states the version it was generated from, and `python3 tools/gen_shell_artifacts.py check` in CI fails
+if the copy committed under `packaging/` no longer matches the binary — which is what `--out` taking a
+*directory* is for: the generator owns the file names, not a person with a redirect.
+
+The scripts complete verbs and flags. They do not complete a path out of your index: this is the shell,
+not fathom, and the shell already knows your files.
+
+<!-- BEGIN GENERATED: help.completions -->
+```text
+Print the shell's own copy of this grammar: completion scripts and man pages (`e7.4`)
+
+Usage: fathom completions [OPTIONS] <COMMAND>
+
+Commands:
+  bash  The completion script for bash, to drop in `.../bash-completion/completions/fathom`
+  zsh   The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
+  fish  The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom.fish`
+  man   The man pages, rendered from the same grammar
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.completions -->
+
+### `fathom completions bash`
+
+<!-- BEGIN GENERATED: help.completions.bash -->
+```text
+The completion script for bash, to drop in `.../bash-completion/completions/fathom`
+
+Usage: fathom completions bash [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.completions.bash -->
+
+### `fathom completions zsh`
+
+<!-- BEGIN GENERATED: help.completions.zsh -->
+```text
+The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
+
+Usage: fathom completions zsh [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.completions.zsh -->
+
+### `fathom completions fish`
+
+<!-- BEGIN GENERATED: help.completions.fish -->
+```text
+The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom.fish`
+
+Usage: fathom completions fish [OPTIONS]
+
+Options:
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.completions.fish -->
+
+### `fathom completions man`
+
+One roff page per verb and subverb — `fathom.1`, `fathom-check.1`, `fathom-review-sign.1` — which is what
+`.TH`-based `man` lookups need, and what the `.deb` and `.rpm` compress into `/usr/share/man/man1/`.
+
+<!-- BEGIN GENERATED: help.completions.man -->
+```text
+The man pages, rendered from the same grammar
+
+Usage: fathom completions man [OPTIONS]
+
+Options:
+      --out <DIR>          Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout
+      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --page <NAME>        Just this page — `--page fathom-check` — instead of every verb
+      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress        never print the index's progress row, even on a terminal
+      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+  -h, --help               Print help (see more with '--help')
+  -V, --version            Print version
+```
+<!-- END GENERATED: help.completions.man -->
+
 
 ---
 

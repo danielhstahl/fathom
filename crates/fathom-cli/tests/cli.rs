@@ -773,6 +773,10 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         vec!["mcp", "serve", "--help"],
         vec!["mcp", "tools", "--help"],
         vec!["mcp", "approval-token", "--help"],
+        // `e7.4`'s verb, in the snapshot like every other one: the completion scripts and man pages a
+        // release ships are rendered from this grammar, so a reworded flag here is a reworded page there.
+        vec!["completions", "--help"],
+        vec!["completions", "man", "--help"],
     ] {
         let out = fathom(&args);
         assert_eq!(code(&out), 0, "fathom {:?}: {}", args, stderr(&out));

@@ -1,0 +1,23 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_MCP 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-mcp \- Speak MCP to a coding agent
+.SH SYNOPSIS
+\fBfathom mcp\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Speak MCP to a coding agent
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+fathom\-mcp\-serve(1)
+Serve the tool surface over stdio, which opens no socket (`e6.4`)
+.TP
+fathom\-mcp\-tools(1)
+Print the tool surface and its bounds as this repository\*(Aqs config resolves them
+.TP
+fathom\-mcp\-approval\-token(1)
+Mint the token that authorises `mark_reviewed` for exactly one change

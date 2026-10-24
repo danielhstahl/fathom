@@ -1,0 +1,38 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NOTE 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-note \- The review memory: notes, decisions, questions and follow\-ups, committed under `.fathom/reviews/` (`e6.5`)
+.SH SYNOPSIS
+\fBfathom note\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+The review memory: notes, decisions, questions and follow\-ups, committed under `.fathom/reviews/` (`e6.5`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+fathom\-note\-add(1)
+Record a note, decision, question or follow\-up against an episode or a path
+.TP
+fathom\-note\-list(1)
+List what is recorded, oldest first
+.TP
+fathom\-note\-show(1)
+Show one note with its evidence and its link verdict
+.TP
+fathom\-note\-answer(1)
+Answer a question or close a follow\-up by appending the note that closes it
+.TP
+fathom\-note\-withdraw(1)
+Take a recorded decision back, by appending the note that retracts it
+.TP
+fathom\-note\-verify(1)
+Re\-hash every note against its own `digest:` line — tampering, and nothing else

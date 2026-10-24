@@ -1,0 +1,53 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_INDEX 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-index \- Index the repository so every other verb has something to read
+.SH SYNOPSIS
+\fBfathom index\fR [\fB\-\-stats\fR] [\fB\-\-json\fR] [\fB\-\-refresh\fR] [\fB\-\-rebuild\fR] [\fB\-\-watch\fR] [\fB\-\-committed\-only\fR] [\fB\-\-prune\fR] [\fB\-\-no\-graph\fR] [\fB\-\-dry\-run\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIROOT\fR] 
+.SH DESCRIPTION
+Index the repository so every other verb has something to read
+.SH OPTIONS
+.TP
+\fB\-\-stats\fR
+Print the per\-analyzer cache table (ADR\-004 §4.8)
+.TP
+\fB\-\-json\fR
+Print the run report as JSON on stdout, and nothing else there
+.TP
+\fB\-\-refresh\fR
+Look up every stored unit, and recompute the ones that hit too.
+
+This is the pass that *measures* ADR\-004 §6\*(Aqs invalidation matrix instead of trusting it: after a version or config bump it prints exactly the rows that moved, and after an unremarkable commit it prints 100% hits.
+.TP
+\fB\-\-rebuild\fR
+Throw the epoch away and rebuild every analysis from scratch.
+
+The old epoch\*(Aqs rows stay on disk and are marked dead (ADR\-004 §6.3), so a rebuild that is interrupted is recoverable by definition; the staging file and atomic swap of §9.3 arrive with the daemon that has a concurrent reader to protect.
+.TP
+\fB\-\-watch\fR
+Index once, then keep watching and index as the repository changes.
+
+The one\-shot form a script wants, and the same thing as `fathom watch` with an initial index.
+.TP
+\fB\-\-committed\-only\fR
+Do not analyse uncommitted paths (ADR\-004 §6.4)
+.TP
+\fB\-\-prune\fR
+Remove the commit rows no ref can reach — what a rebase, an `\-\-amend` or a force\-push leaves behind.
+
+The only verb that deletes anything (ADR\-004 §8.1). It runs after this run, against the ref tips this run just read, and it refuses rather than guesses: rows the store cannot prove are dead stay, and so does any row a review or a sign\-off points at. `fathom stats` prints the count and names this flag.
+.TP
+\fB\-\-no\-graph\fR
+Do not write the module graph (`e3.11`).
+
+The escape hatch for a run that cannot afford it: one revision\*(Aqs graph costs one structural pass over its live source corpus, which is the expensive thing this index does. `[graph] enabled = false` in the repository\*(Aqs own `fathom.toml` is the durable form of the same refusal, and `graph.window` / `graph.max_corpus_mib` are the knobs that make it affordable instead of off. With either, the architecture surfaces say they have no graph rather than guessing without one.
+.TP
+\fB\-\-dry\-run\fR
+With `\-\-prune`: print what would be removed and remove nothing
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+[\fIROOT\fR] [default: .]
+The repository to index

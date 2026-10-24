@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_MCP_TOOLS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-mcp\-tools \- Print the tool surface and its bounds as this repository\*(Aqs config resolves them
+.SH SYNOPSIS
+\fBfathom mcp tools\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Print the tool surface and its bounds as this repository\*(Aqs config resolves them
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository whose `[mcp]` config and index to read
+.TP
+\fB\-\-json\fR
+The surface as one JSON document on stdout (`fathom.mcp.surface/1`)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DOCTOR 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-doctor \- Describe this build, its environment and its index, with a remedy per finding
+.SH SYNOPSIS
+\fBfathom doctor\fR [\fB\-\-privacy\fR] [\fB\-\-json\fR] [\fB\-\-deep\fR] [\fB\-\-strict\fR] [\fB\-\-root\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Describe this build, its environment and its index, with a remedy per finding
+.SH OPTIONS
+.TP
+\fB\-\-privacy\fR
+Print the network\-feature and consent table
+.TP
+\fB\-\-json\fR
+Print the same report as JSON, for a machine
+.TP
+\fB\-\-deep\fR
+Run the whole\-database `integrity_check` rather than `quick_check` (ADR\-004 §9.6)
+.TP
+\fB\-\-strict\fR
+Exit with the code of the worst finding instead of 0 — what CI and a pre\-flight check want
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to report on
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

@@ -109,6 +109,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | Mechanism | What it guarantees |
 |---|---|
 | `python3 tools/gen_docs.py write\|check` | the CLI, cheatsheet, features and detector pages are **generated**: from `fathom --help` off the binary, from the keymap module, from `features.rs`, and from the detector fixtures. CI runs `check`, so a change that forgot to regenerate the docs is a red build |
+| `python3 tools/gen_shell_artifacts.py write\|check`, `tools/package_release.py --self-test`, `tools/rehearse_installer.py` | the same argument one directory over, for what a release *ships*: the completion scripts and man pages in `packaging/` are printed by `fathom completions` and re-diffed in CI, the `.deb`/`.rpm` packager asserts nine claims about its own output, and the curl installer is rehearsed against a local mirror with four deliberate corruptions ([release and adoption](concepts/release.md)) |
 | `python3 tools/check_docs.py` | every glossary term resolves once, every plan and beads reference exists in `.plan/keymap.json`, and every relative link resolves to a file |
 | `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav |
 | `python3 tools/check_privacy.py check\|offline` | the privacy posture: the default closure, the consent table, the source scan, this page, and a run of the shipped binary with no network egress available ([privacy](concepts/privacy.md)) |

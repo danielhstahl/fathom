@@ -1,0 +1,52 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_WATCH 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-watch \- Watch the repository and index as it changes
+.SH SYNOPSIS
+\fBfathom watch\fR [\fB\-\-json\fR] [\fB\-\-once\fR] [\fB\-\-max\-cycles\fR] [\fB\-\-deadline\fR] [\fB\-\-backend\fR] [\fB\-\-interval\-ms\fR] [\fB\-\-debounce\-ms\fR] [\fB\-\-heartbeat\-ms\fR] [\fB\-\-chunk\-units\fR] [\fB\-\-worktree\fR] [\fB\-\-no\-status\-file\fR] [\fB\-\-quiet\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIROOT\fR] 
+.SH DESCRIPTION
+Watch the repository and index as it changes
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print one JSON object per state change on stdout, and nothing else there
+.TP
+\fB\-\-once\fR
+Index once, then exit: what a script or a CI check wants from `watch`
+.TP
+\fB\-\-max\-cycles\fR \fI<MAX_CYCLES>\fR
+Stop after this many looks at the filesystem
+.TP
+\fB\-\-deadline\fR \fI<DEADLINE>\fR
+Stop after this many seconds
+.TP
+\fB\-\-backend\fR \fI<BACKEND>\fR [default: auto]
+Which change source to use: `auto`, `notify` or `poll`
+.TP
+\fB\-\-interval\-ms\fR \fI<INTERVAL_MS>\fR
+The debounced polling interval in milliseconds
+.TP
+\fB\-\-debounce\-ms\fR \fI<DEBOUNCE_MS>\fR
+The quiescence window in milliseconds: how long the filesystem must be quiet before a change is read
+.TP
+\fB\-\-heartbeat\-ms\fR \fI<HEARTBEAT_MS>\fR
+The liveness beat in milliseconds: how often the state is rewritten while nothing changes
+.TP
+\fB\-\-chunk\-units\fR \fI<CHUNK_UNITS>\fR [default: 2000]
+Analysis units per index chunk — the watcher\*(Aqs slice of the CPU
+.TP
+\fB\-\-worktree\fR
+Also re\-index uncommitted paths when only the index moved
+.TP
+\fB\-\-no\-status\-file\fR
+Do not write `.fathom/watch/status.json`
+.TP
+\fB\-\-quiet\fR
+Print nothing to stdout but errors; the state machine still goes to the status file
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIROOT\fR] [default: .]
+The repository to watch

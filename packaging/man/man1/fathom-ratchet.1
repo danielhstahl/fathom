@@ -1,0 +1,52 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_RATCHET 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-ratchet \- The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (`e3.10`)
+.SH SYNOPSIS
+\fBfathom ratchet\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-update\-baseline\fR] [\fB\-\-reason\fR] [\fB\-\-owner\fR] [\fB\-\-granted\-by\fR] [\fB\-\-expires\fR] [\fB\-\-key\fR] [\fB\-\-dry\-run\fR] [\fB\-\-revision\fR] [\fB\-\-no\-note\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (`e3.10`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the report as one JSON line on stdout (`fathom\-ratchet/1`)
+.TP
+\fB\-\-update\-baseline\fR
+Raise the baseline: write the violations that have no allowance as new rows.
+
+The one flag that makes the file looser, which is why it asks for a reason in the same breath.
+.TP
+\fB\-\-reason\fR \fI<REASON>\fR
+Why the baseline is being raised — required by `\-\-update\-baseline`, recorded in the file, the diff and the review memory
+.TP
+\fB\-\-owner\fR \fI<OWNER>\fR
+Who owns the new allowances; bare, the reviewer\*(Aqs own identity (`\-\-identity`, `$FATHOM_REVIEWER`, `git config user.name`)
+.TP
+\fB\-\-granted\-by\fR \fI<WHO>\fR
+Who is asking, recorded beside the owner as `granted_by`; bare, the same identity as `\-\-owner`
+.TP
+\fB\-\-expires\fR \fI<DATE|never>\fR
+The last day an allowance is live, `YYYY\-MM\-DD`, or `never` for a row with no expiry.
+
+Bare, `+90` days: an allowance with no end is what the file exists to refuse, so the default is a quarter and saying `never` is a sentence a reviewer gets to read.
+.TP
+\fB\-\-key\fR \fI<KEY>\fR
+Grant only this key (repeatable): a violation key as the report prints it, or `kind=key`
+.TP
+\fB\-\-dry\-run\fR
+Report what would change and write nothing — not even the automatic tightening
+.TP
+\fB\-\-revision\fR \fI<TREE>\fR
+Judge this graph revision rather than the newest the index holds: an oid or an unambiguous prefix
+.TP
+\fB\-\-no\-note\fR
+Do not write a `decision` note into the review memory when the baseline is raised.
+
+The interlock is on by default: the reason a cycle is allowed is exactly the knowledge a TOML row cannot carry on its own (`e6.5`\*(Aqs memory, `e3.10`\*(Aqs write).
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

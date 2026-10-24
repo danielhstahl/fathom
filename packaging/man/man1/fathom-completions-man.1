@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_COMPLETIONS_MAN 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-completions\-man \- The man pages, rendered from the same grammar
+.SH SYNOPSIS
+\fBfathom completions man\fR [\fB\-\-out\fR] [\fB\-\-page\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+The man pages, rendered from the same grammar
+.SH OPTIONS
+.TP
+\fB\-\-out\fR \fI<DIR>\fR
+Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout
+.TP
+\fB\-\-page\fR \fI<NAME>\fR
+Just this page — `\-\-page fathom\-check` — instead of every verb
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

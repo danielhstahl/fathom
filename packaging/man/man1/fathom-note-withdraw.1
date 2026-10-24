@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NOTE_WITHDRAW 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-note\-withdraw \- Take a recorded decision back, by appending the note that retracts it
+.SH SYNOPSIS
+\fBfathom note withdraw\fR [\fB\-\-author\fR] [\fB\-\-agent\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIID\fR> <\fITEXT\fR> 
+.SH DESCRIPTION
+Take a recorded decision back, by appending the note that retracts it
+.SH OPTIONS
+.TP
+\fB\-\-author\fR \fI<AUTHOR>\fR
+Who is retracting it
+.TP
+\fB\-\-agent\fR \fI<AGENT>\fR
+Record the retraction as an agent\*(Aqs act on someone\*(Aqs behalf
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIID\fR>
+The note being retracted (`nt\-…`)
+.TP
+<\fITEXT\fR>
+Why it no longer holds

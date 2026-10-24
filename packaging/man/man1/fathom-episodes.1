@@ -1,0 +1,48 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_EPISODES 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-episodes \- List the episodes — the rail\*(Aqs rows, headless (`reco\-11b`)
+.SH SYNOPSIS
+\fBfathom episodes\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-limit\fR] [\fB\-\-offset\fR] [\fB\-\-author\fR] [\fB\-\-kind\fR] [\fB\-\-state\fR] [\fB\-\-path\fR] [\fB\-\-since\fR] [\fB\-\-until\fR] [\fB\-\-include\-dead\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+List the episodes — the rail\*(Aqs rows, headless (`reco\-11b`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the list as one JSON value on stdout (`fathom.cli.episodes/1`), and nothing else there
+.TP
+\fB\-\-limit\fR \fI<N>\fR [default: 500]
+How many rows to print, newest first; `0` is every row the filters select.
+
+The rail can only ever hold 500 rows at a time; this verb is not a rail, so a larger page is allowed, and `page.truncated` says when the index held more than the page.
+.TP
+\fB\-\-offset\fR \fI<N>\fR [default: 0]
+Skip this many rows before printing, for paging with `\-\-limit`
+.TP
+\fB\-\-author\fR \fI<NAME>\fR
+Only episodes by this author, exactly as git recorded the name; repeatable
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR
+Only episodes whose author kind is this — `agent`, `human` or `unknown`; repeatable
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Only episodes in this review state: `unread`, `read`, `accepted`, `flagged`, `dismissed`, `snoozed`
+.TP
+\fB\-\-path\fR \fI<FRAGMENT>\fR
+Only episodes that touched a path containing this fragment
+.TP
+\fB\-\-since\fR \fI<WHEN>\fR
+Only episodes whose last commit is at or after this date — `7d`, `2w`, `today`, `yesterday`, `2026\-10\-01`: the same grammar `fathom search since:` takes
+.TP
+\fB\-\-until\fR \fI<WHEN>\fR
+Only episodes whose last commit is before this date, in the same grammar as `\-\-since`
+.TP
+\fB\-\-include\-dead\fR
+Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force\-push left
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

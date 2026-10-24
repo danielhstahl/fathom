@@ -1,0 +1,31 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_SEARCH 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-search \- Search the whole index from one box, in the shell\*(Aqs own ranking (`e5.2`)
+.SH SYNOPSIS
+\fBfathom search\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-limit\fR] [\fB\-\-save\fR] [\fB\-\-list\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIQUERY\fR] 
+.SH DESCRIPTION
+Search the whole index from one box, in the shell\*(Aqs own ranking (`e5.2`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the report as one JSON line on stdout (`fathom.search/1`)
+.TP
+\fB\-\-limit\fR \fI<LIMIT>\fR [default: 20]
+How many hits to print
+.TP
+\fB\-\-save\fR \fI<NAME>\fR
+Keep this query under a name, so the `,` palette can offer it again
+.TP
+\fB\-\-list\fR
+List the saved searches and exit
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIQUERY\fR]
+The query, with the same filter tokens `/` takes (`author:`, `since:`, `risk>`, `path:`, `dep:`, …)

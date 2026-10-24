@@ -1,0 +1,22 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ATTRIBUTION_FORGET 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-attribution\-forget \- Forget one stored correction
+.SH SYNOPSIS
+\fBfathom attribution forget\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIIDENTITY\fR> 
+.SH DESCRIPTION
+Forget one stored correction
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to write to
+.TP
+\fB\-\-json\fR
+Print the result as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIIDENTITY\fR>
+The identity key to forget, as `fathom attribution list` prints it

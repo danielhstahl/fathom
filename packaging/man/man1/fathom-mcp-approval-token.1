@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_MCP_APPROVAL_TOKEN 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-mcp\-approval\-token \- Mint the token that authorises `mark_reviewed` for exactly one change
+.SH SYNOPSIS
+\fBfathom mcp approval token\fR [\fB\-\-root\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fICHANGE_ID\fR> 
+.SH DESCRIPTION
+Mint the token that authorises `mark_reviewed` for exactly one change
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository whose `[mcp]` config holds the approval secret
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fICHANGE_ID\fR>
+The change to bind the token to: an episode id or a commit

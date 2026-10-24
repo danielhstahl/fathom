@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_EXPORT 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-export \- Write a review artefact for a pull request or an audit
+.SH SYNOPSIS
+\fBfathom export\fR [\fB\-\-format\fR] [\fB\-\-out\fR] [\fB\-\-episodes\fR] [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-stdout\fR] [\fB\-\-strict\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Write a review artefact for a pull request or an audit
+.SH OPTIONS
+.TP
+\fB\-\-format\fR \fI<FORMAT>\fR [default: markdown]
+The artefact format: markdown, html or json
+.TP
+\fB\-\-out\fR \fI<OUT>\fR [default: fathom\-review]
+The file stem to write, or a file name that already carries the format\*(Aqs extension
+.TP
+\fB\-\-episodes\fR \fI<EPISODES>\fR [default: HEAD]
+The episode range to export, e.g. `HEAD~9..HEAD`, one commit, or one episode id
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the report as JSON on stdout, and nothing else there
+.TP
+\fB\-\-stdout\fR
+Write the artefact to stdout instead of a file; the report goes to stderr
+.TP
+\fB\-\-strict\fR
+Exit 7 while the artefact\*(Aqs checklist still has an open item — the form a CI gate wants
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

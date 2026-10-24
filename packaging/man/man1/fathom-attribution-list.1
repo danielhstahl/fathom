@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ATTRIBUTION_LIST 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-attribution\-list \- List the stored corrections, which are the keys the classifier honours
+.SH SYNOPSIS
+\fBfathom attribution list\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+List the stored corrections, which are the keys the classifier honours
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the corrections as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

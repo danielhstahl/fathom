@@ -1,0 +1,43 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_AMBIENT 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-ambient \- The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco\-8bx`)
+.SH SYNOPSIS
+\fBfathom ambient\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-once\fR] [\fB\-\-plain\fR] [\fB\-\-interval\-ms\fR] [\fB\-\-deadline\fR] [\fB\-\-no\-index\fR] [\fB\-\-chunk\-units\fR] [\fB\-\-width\fR] [\fB\-\-self\-check\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco\-8bx`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the pane as one JSON object per change (machine contract `fathom.cli.ambient/1`)
+.TP
+\fB\-\-once\fR
+Print the pane once and exit; never take the screen
+.TP
+\fB\-\-plain\fR
+Draw the pane as text with no terminal taken (ADR\-006 §6.7)
+.TP
+\fB\-\-interval\-ms\fR \fI<INTERVAL_MS>\fR [default: 400]
+How often to look, in milliseconds. 400 is what meets the "under a second" promise at near\-zero cost
+.TP
+\fB\-\-deadline\fR \fI<DEADLINE>\fR
+Stop after this many seconds
+.TP
+\fB\-\-no\-index\fR
+Never index from the pane: read whatever the last index run left, whoever ran it
+.TP
+\fB\-\-chunk\-units\fR \fI<CHUNK_UNITS>\fR [default: 200]
+Episodes to index per slice when this pane is the one keeping the index current
+.TP
+\fB\-\-width\fR \fI<WIDTH>\fR
+Render at this width instead of the terminal\*(Aqs — for a pipe, a test, or a tmux status line
+.TP
+\fB\-\-self\-check\fR
+Run to the deadline and print what the pane cost: polls, redraws and this process\*(Aqs own CPU share. Exits `11` if it blew the budget of 1 % of a core
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

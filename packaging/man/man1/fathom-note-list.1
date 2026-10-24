@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NOTE_LIST 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-note\-list \- List what is recorded, oldest first
+.SH SYNOPSIS
+\fBfathom note list\fR [\fB\-\-kind\fR] [\fB\-\-status\fR] [\fB\-\-limit\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] 
+.SH DESCRIPTION
+List what is recorded, oldest first
+.SH OPTIONS
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR
+Only this kind: `decision`, `question`, `follow\-up`, `annotation`
+.TP
+\fB\-\-status\fR \fI<STATUS>\fR
+Only notes in this status: `open`, `answered`, `withdrawn`
+.TP
+\fB\-\-limit\fR \fI<LIMIT>\fR [default: 0]
+How many to print, oldest first; `0` is every note
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fITARGET\fR]
+Only notes attached to this episode or touching this path

@@ -395,6 +395,157 @@ def check_captured(root: pathlib.Path, version: str, dist_config: dict) -> tuple
     return problems, notes
 
 
+def load_packaging(root: pathlib.Path, config: dict, version: str) -> tuple[list[Problem], list[str]]:
+    """`R14`-`R17`: the artefact set a stranger can install, and the secrets story that goes with it.
+
+    `e0.7`'s skeleton built an archive per OS. `e7.4` (**reco-3q4**) is the ticket that made the answer
+    *installable*, and each rule here is one way the bigger set quietly fails to exist:
+
+    * `R14` — an installer or a target that disappeared, or the one artefact that cannot be built at all
+      because the identity `dist` generated for it once was deleted (an `msi` whose `upgrade-guid` is
+      gone is not a rebuild, it is a second product on the user's machine);
+    * `R15` — the `.deb`/`.rpm` list in `dist-workspace.toml` and the version that has to appear in it,
+      which is the naming rule `dpkg` and `dnf` enforce and a version bump forgets;
+    * `R16` — the completions and man pages that are supposed to ride in every archive, present and
+      non-empty, with `include` actually naming them;
+    * `R17` — the secrets table: the ticket's fourth criterion is a *documented* list of what a fork
+      cannot do, so it is data (`SECRETS`), rendered into the document, and checked for the rows the
+      enabled installers imply.
+
+    All four run with no network, no `dist`, and no built binary.
+    """
+    problems: list[Problem] = []
+    notes: list[str] = []
+    dist = config.get("dist", {})
+    installers = {str(i) for i in dist.get("installers", [])}
+    targets = [str(t) for t in dist.get("targets", [])]
+    cli_path = root / "crates" / BIN_CRATE / "Cargo.toml"
+    cli = tomllib.loads(cli_path.read_text()) if cli_path.exists() else {}
+    package = cli.get("package", {})
+
+    # R14 — an archive is not an installer, and "three operating systems" is not yet six triples.
+    for installer, why in EXTRA_INSTALLERS.items():
+        if installer not in installers:
+            problems.append(Problem("R14", "dist-workspace.toml",
+                                    "installers is missing %r, which is %s" % (installer, why)))
+    for triple, why in REQUIRED_TARGETS.items():
+        if triple not in targets:
+            problems.append(Problem("R14", "dist-workspace.toml",
+                                    "targets is missing %s: %s" % (triple, why)))
+
+    # R14b — the msi needs the identity `dist` generated once. `upgrade-guid` is what tells Windows "this
+    # is an upgrade of the product you already have"; regenerating it after a published msi leaves the
+    # user with two entries in Add/Remove Programs and no way to merge them.
+    if "msi" in installers:
+        wix = package.get("metadata", {}).get("wix", {})
+        for key in ("upgrade-guid", "path-guid"):
+            if not wix.get(key):
+                problems.append(Problem("R14", "crates/%s/Cargo.toml" % BIN_CRATE,
+                                        "[package.metadata.wix] has no %s, so the msi cannot be built. "
+                                        "`dist init` generates both once; regenerating them after an msi "
+                                        "has shipped splits the product in two on the user's machine"
+                                        % key))
+        if not (root / "crates" / BIN_CRATE / "wix" / "main.wxs").exists():
+            problems.append(Problem("R14", "crates/%s/wix/main.wxs" % BIN_CRATE,
+                                    "missing: the msi template `dist` owns. It is generated, so `dist "
+                                    "init` regenerates it; hand-editing it is the other way to be wrong"))
+        if not package.get("authors"):
+            problems.append(Problem("R14", "crates/%s/Cargo.toml" % BIN_CRATE,
+                                    "WiX reads the msi's manufacturer from package.authors and fails "
+                                    "without it (it is what the user sees in Add/Remove Programs)"))
+
+    # R14c — a Homebrew formula without a tap is a file on a release page; without a homepage it is a
+    # package a reviewer cannot look at before installing it; and a formula named after the *crate* is a
+    # user typing `brew install fathom-cli` and getting nothing.
+    if "homebrew" in installers:
+        if not dist.get("tap"):
+            problems.append(Problem("R14", "dist-workspace.toml",
+                                    "homebrew is an installer but `tap` is not set, so nothing can "
+                                    "publish the formula and `brew install` has no address"))
+        if not package.get("homepage"):
+            problems.append(Problem("R14", "crates/%s/Cargo.toml" % BIN_CRATE,
+                                    "no homepage, so the Homebrew formula has nowhere to point"))
+        if str(dist.get("formula", "")) != BIN_NAME:
+            problems.append(Problem("R14", "dist-workspace.toml",
+                                    "formula should be %r: the crate is a package name, and %s is what "
+                                    "a person types" % (BIN_NAME, BIN_NAME)))
+        if "homebrew" in [str(j) for j in dist.get("publish-jobs", [])] and not dist.get("tap"):
+            problems.append(Problem("R14", "dist-workspace.toml",
+                                    "publish-jobs names homebrew but there is no tap to publish to"))
+
+    # R15 — the system packages: `dist` has no deb or rpm target, so they are `extra-artifacts`, and the
+    # contract is three things at once (a builder that exists, names that carry the version, and output
+    # under target/ so a generated package can never be committed by accident).
+    extras = dist.get("extra-artifacts", [])
+    if not extras:
+        problems.append(Problem("R15", "dist-workspace.toml",
+                                "no [[dist.extra-artifacts]]: nothing builds the .deb and .rpm the "
+                                "ticket asked for"))
+    package_version = version.replace("-", "~", 1)
+    for extra in extras:
+        build = [str(part) for part in (extra.get("build") or [])]
+        if not build or not (root / build[0]).exists():
+            problems.append(Problem("R15", "dist-workspace.toml",
+                                    "extra-artifacts build command %r is not a file in the tree, so the "
+                                    "release fails in its global phase instead of here" % (build or [])))
+        for path in extra.get("artifacts", []):
+            name = str(path).rsplit("/", 1)[-1]
+            if name.endswith((".deb", ".rpm")) and package_version not in name:
+                problems.append(Problem("R15", "dist-workspace.toml",
+                                        "%s does not carry the package version %s. dpkg and dnf read the "
+                                        "file name; a bump that forgets this list misnames the package "
+                                        "or (better) fails the release, which is why it is a rule"
+                                        % (name, package_version)))
+            if not str(path).startswith("target/"):
+                problems.append(Problem("R15", "dist-workspace.toml",
+                                        "extra artefact %s is not under target/: a generated package "
+                                        "must not be something someone commits" % path))
+
+    # R16 — the shell artefacts. They are generated, committed, and `include`d; any one of those three
+    # links missing means the archive a user downloads has no man page in it, which is a silent loss.
+    include = [str(i) for i in dist.get("include", [])]
+    for want in INCLUDE_DIRS:
+        if want not in include:
+            problems.append(Problem("R16", "dist-workspace.toml",
+                                    "include does not name %s, so no archive carries the shell "
+                                    "artefacts and the .deb/.rpm step has nothing to relocate" % want))
+    for rel in SHELL_ARTEFACTS:
+        artefact = root / rel
+        if not artefact.exists():
+            problems.append(Problem("R16", rel, "missing; run `python3 tools/gen_shell_artifacts.py write`"))
+        elif artefact.stat().st_size == 0:
+            problems.append(Problem("R16", rel, "is empty, which `gen_shell_artifacts.py check` would "
+                                    "have called drift"))
+    pages = sorted((root / "packaging" / "man" / "man1").glob("*.1"))
+    if len(pages) < 2:
+        problems.append(Problem("R16", "packaging/man/man1",
+                                "has %d page(s); the generator writes one per verb, so this is a stale "
+                                "or half-deleted tree" % len(pages)))
+
+    # R17 — the secrets. The criterion is a *stated* list, so the check is that the document carries it
+    # and that it still says the three names a maintainer would be hunted for.
+    concept = root / "docs" / "concepts" / "release.md"
+    text = concept.read_text() if concept.exists() else ""
+    blocks = {m.group(1): m.group(2) for m in MARK.finditer(text)}
+    if "secrets" not in blocks:
+        problems.append(Problem("R17", "docs/concepts/release.md",
+                                "renders no `secrets` block: \"which steps need maintainer-only "
+                                "secrets\" is an acceptance criterion, and a paragraph someone rewords "
+                                "into silence is not one"))
+    else:
+        for name in REQUIRED_SECRETS:
+            if name not in blocks["secrets"]:
+                problems.append(Problem("R17", "docs/concepts/release.md",
+                                        "the secrets table no longer names %s, so the gap it documents "
+                                        "has become invisible" % name))
+    if problems:
+        return problems, notes
+    notes.append("%d installers, %d targets, %d extra artefact(s), %d man page(s), %d secret(s) documented"
+                 % (len(installers), len(targets), sum(len(e.get("artifacts", [])) for e in extras),
+                    len(pages), len(SECRETS)))
+    return problems, notes
+
+
 # ---------------------------------------------------------------------------
 # the generated documents
 # ---------------------------------------------------------------------------
@@ -424,6 +575,16 @@ def render_blocks(captured: dict) -> dict[str, str]:
     for row in captured.get("installer_env", []):
         env.append("| `%s` | %s |" % (row.get("name"), _esc(row.get("what"))))
 
+    # The signing and publishing secrets, as data (`SECRETS` in this file) rather than as prose someone
+    # can reword out of existence. The `fork` column is the ticket's criterion: "which steps need
+    # maintainer-only secrets" is only useful if it also says what a fork gets instead.
+    secrets = ["| Secret | What it unlocks | Who holds it | What a fork sees | State today |",
+               "|---|---|---|---|---|"]
+    for row in SECRETS:
+        secrets.append("| %s | %s | %s | %s | %s |"
+                       % (_esc(row["secret"]), _esc(row["step"]), _esc(row["who"]),
+                          _esc(row["fork"]), _esc(row["state"])))
+
     # The gate verdicts come from the constant below, not from the captured file: they are an editorial
     # claim about a milestone, not a measurement, and they belong in a diff rather than a re-capture.
     status = ["| Gate | What proves it | State |", "|---|---|---|"]
@@ -434,6 +595,7 @@ def render_blocks(captured: dict) -> dict[str, str]:
         "targets": "\n".join(rows),
         "artefacts": "\n".join(artifacts),
         "installer_env": "\n".join(env),
+        "secrets": "\n".join(secrets),
         "gates": "\n".join(status),
     }
 
@@ -596,6 +758,103 @@ def command_capture(root: pathlib.Path, stream) -> int:
     return 0
 
 
+#: The installers a stranger on each OS expects once "installable" means packaging rather than an
+#: archive to untar. `R03` already insists on the two script installers.
+EXTRA_INSTALLERS = {
+    "msi": "the Windows installer, the \"Add or remove programs\" entry, the upgrade-in-place path",
+    "homebrew": "`brew install`, for the reviewers who will not pipe a script into a shell",
+}
+
+#: The triples beyond "one per operating system", and the sentence each one buys.
+REQUIRED_TARGETS = {
+    "x86_64-unknown-linux-musl": "the static build: no glibc assumption on an old LTS or a container "
+                                 "image somebody pinned in 2019",
+    "aarch64-unknown-linux-gnu": "arm64 Linux, which is servers and boards now, not an experiment",
+}
+
+#: What the shell-integration artefacts have to be, so an archive cannot be shipped without them.
+SHELL_ARTEFACTS = [
+    "packaging/completions/bash/fathom",
+    "packaging/completions/zsh/_fathom",
+    "packaging/completions/fish/fathom.fish",
+    "packaging/man/man1/fathom.1",
+]
+
+#: ...and the two directories `dist`'s `include` has to carry them through into every archive.
+INCLUDE_DIRS = ["packaging/completions", "packaging/man"]
+
+#: The secrets the release path would use, the step each one unlocks, and - the column that makes this a
+#: document instead of a wishlist - what somebody running a fork sees instead. This table *is* the
+#: ticket's fourth acceptance criterion ("*contributor docs state which release steps need
+#: maintainer-only secrets*"), kept as data so `docs/concepts/release.md` renders it and `R17` notices a
+#: row going missing. Nothing here is aspirational: each row states what is wired today, and what a fork
+#: gets when it is not.
+SECRETS = [
+    {
+        "secret": "`GITHUB_TOKEN`",
+        "step": "create the release and upload every artefact to it",
+        "who": "Actions provides it",
+        "fork": "works: it is the fork's own token on its own releases page",
+        "state": "wired (`permissions: contents: write` in `release.yml`)",
+    },
+    {
+        "secret": "`HOMEBREW_TAP_TOKEN`",
+        "step": "push the generated formula to the tap repository",
+        "who": "maintainer-only: a `repo`-scoped token for the tap",
+        "fork": "no publish. The `.rb` is still an artefact on the release; `brew install` from a tap "
+                "simply is not this release's install path",
+        "state": "not wired: `publish-jobs = [\"homebrew\"]` is commented out until the tap repository "
+                 "exists, because a publish job whose secret is missing fails the release rather than "
+                 "skipping",
+    },
+    {
+        "secret": "`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`",
+        "step": "codesign the macOS binaries with a Developer ID",
+        "who": "maintainer-only: an Apple Developer ID certificate, exported and base64'd",
+        "fork": "nothing to lose: the artefacts are unsigned today, so a fork is no worse off than "
+                "upstream",
+        "state": "not wired, and not one line: `cargo-dist` 0.33 has no macOS signing hook, so this "
+                 "needs a build wrapper (`github-build-setup`, or `package.build-command`) that runs "
+                 "`codesign` before `dist` archives the binary",
+    },
+    {
+        "secret": "`APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`",
+        "step": "notarise the macOS artefacts, so Gatekeeper does not call the installer an "
+                "unidentified developer",
+        "who": "maintainer-only: an Apple Developer account, an app-specific password, the team id",
+        "fork": "nothing, as above. The user workaround for an unsigned binary is right-click -> Open, "
+                "which is what every install of this release asks for today",
+        "state": "not wired: `xcrun notarytool` runs after the artefacts exist and then `staple`s, so "
+                 "it belongs in the same wrapper as codesigning rather than in a `dist` setting",
+    },
+    {
+        "secret": "`SSLDOTCOM_USERNAME`, `SSLDOTCOM_PASSWORD`, `SSLDOTCOM_CREDENTIAL_ID`, "
+                  "`SSLDOTCOM_TOTP_SECRET`",
+        "step": "sign the Windows `.exe` and `.msi`",
+        "who": "maintainer-only: an SSL.com code-signing certificate (or an Azure Artifact Signing "
+               "certificate profile, which is `azure-windows-sign` instead)",
+        "fork": "nothing: unsigned today",
+        "state": "not wired. `ssldotcom-windows-sign` / `azure-windows-sign` are `dist` settings, so "
+                 "this half is a config line once a certificate exists; until then SmartScreen may warn "
+                 "about an unsigned msi, which is the honest current behaviour and not a bug to hide",
+    },
+    {
+        "secret": "*none*",
+        "step": "build every artefact and publish a release of your own",
+        "who": "nobody: no build step needs a secret",
+        "fork": "the row that matters for a fork: the tarballs, msi, formula, `.deb` and `.rpm` all "
+                "build with no credentials, and `publish = false` means there is no crates.io token to "
+                "be missing",
+        "state": "by design (ADR-002 §10.1: no published crates in v1)",
+    },
+]
+
+
+#: The secret names `R17` insists the document still names: one per family of signing/publishing that
+#: this project cannot do without a maintainer's credentials.
+REQUIRED_SECRETS = ["HOMEBREW_TAP_TOKEN", "APPLE_CERTIFICATE", "APPLE_ID", "SSLDOTCOM_USERNAME"]
+
+
 #: The alpha gate's own four criteria, kept as data so the document and the checker quote the same
 #: verdict. `bd show reco-n1j` is the authority; this is the in-repo mirror of it, and `--tag` prints it.
 GATES = [
@@ -647,6 +906,9 @@ def check_all(root: pathlib.Path) -> tuple[list[Problem], list[str]]:
     captured_problems, captured_notes = check_captured(root, version, config)
     problems += captured_problems
     notes += captured_notes
+    packaging_problems, packaging_notes = load_packaging(root, config, version)
+    problems += packaging_problems
+    notes += packaging_notes
 
     concept = root / "docs" / "concepts" / "release.md"
     if not concept.exists():
@@ -704,7 +966,12 @@ def command_self_test(root: pathlib.Path) -> int:
     """
     cases = [
         ("R02", lambda r: _drop_target(r, "aarch64-apple-darwin"), "an Apple silicon machine gets no artefact"),
-        ("R02", lambda r: _drop_target(r, "x86_64-unknown-linux-gnu"), "Linux gets no artefact"),
+        # All three Linux triples: with arm64 Linux and the static build in the set (since `e7.4`),
+        # dropping one leaves Linux covered, and `R02` is about the operating system, not about a
+        # particular machine class. Which triples are *individually* required is `R14`'s business.
+        ("R02", lambda r: tuple(_drop_target(r, triple) for triple in
+                                ("x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+                                 "x86_64-unknown-linux-musl")), "Linux gets no artefact"),
         ("R03", lambda r: _drop_installer(r, "powershell"), "Windows users are told to run a shell script"),
         ("R04", lambda r: _set_dist(r, "pr-run-mode", "plan"), "PRs stop building the artefacts"),
         ("R05", lambda r: _set_version(r, "9.9.9"), "the version moved and the path deps did not"),
@@ -715,6 +982,17 @@ def command_self_test(root: pathlib.Path) -> int:
         ("R10", lambda r: _stale_capture(r), "the config moved and the captured plan did not"),
         ("R11", lambda r: _drop_block(r, "targets"), "the document dropped its generated block"),
         ("R12", lambda r: _force_latest(r), "a prerelease would publish itself as latest"),
+        ("R14", lambda r: _drop_installer(r, "msi"), "Windows users are back to a zip and no installer"),
+        ("R14", lambda r: _drop_installer(r, "homebrew"), "the formula stopped being built"),
+        ("R14", lambda r: _drop_target(r, "x86_64-unknown-linux-musl"),
+         "the static build disappeared and old glibc is someone's problem"),
+        ("R14", lambda r: _drop_target(r, "aarch64-unknown-linux-gnu"), "arm64 Linux stopped being built"),
+        ("R14", lambda r: _drop_wix_guids(r), "the msi lost the identity that makes it an upgrade"),
+        ("R15", lambda r: _stale_package_names(r), "the version moved and the .deb names did not"),
+        ("R15", lambda r: _drop_extra_artifacts(r), "nothing builds the system packages any more"),
+        ("R16", lambda r: _drop_include(r, "packaging/man"), "no archive carries the man pages"),
+        ("R16", lambda r: _empty_completion(r), "a committed completion script went empty"),
+        ("R17", lambda r: _drop_block(r, "secrets"), "the document stopped saying what needs a secret"),
     ]
     failures = 0
     with tempfile_tree() as base:
@@ -751,7 +1029,11 @@ def tempfile_tree():
 
 INPUTS = ["dist-workspace.toml", "Cargo.toml", "CHANGELOG.md", "README.md",
           ".github/workflows/release.yml", ".github/workflows/ci.yml",
-          "docs/concepts/release.md", "benchmarks/reports/dist-release-plan.json"]
+          "docs/concepts/release.md", "benchmarks/reports/dist-release-plan.json",
+          "crates/fathom-cli/wix/main.wxs", "packaging/linux-packages.sh",
+          "packaging/completions/bash/fathom", "packaging/completions/zsh/_fathom",
+          "packaging/completions/fish/fathom.fish", "packaging/man/man1/fathom.1",
+          "packaging/man/man1/fathom-check.1"]
 
 
 def _copy_inputs(root: pathlib.Path, tree: pathlib.Path) -> None:
@@ -775,12 +1057,49 @@ def _rewrite_dist(tree: pathlib.Path, edit) -> None:
 
 
 def _drop_target(tree: pathlib.Path, triple: str) -> None:
-    _rewrite_dist(tree, lambda t: t.replace('  "%s",\n' % triple, ""))
+    _rewrite_dist(tree, lambda t: t.replace('  "%s",\n' % triple, "").replace('"%s", ' % triple, "")
+                  .replace(', "%s"' % triple, ""))
+
+
+def _drop_wix_guids(tree: pathlib.Path) -> None:
+    """The msi's identity, gone: the build would fail on the runner, so the gate has to see it here."""
+    path = tree / "crates" / BIN_CRATE / "Cargo.toml"
+    path.write_text("\n".join(line for line in path.read_text().splitlines()
+                              if not line.startswith("upgrade-guid")))
+
+
+def _stale_package_names(tree: pathlib.Path) -> None:
+    """The bump that moved `Cargo.toml` and not the artefact list — the misnamed-package failure."""
+    _set_version(tree, "9.9.9")
+
+
+def _drop_extra_artifacts(tree: pathlib.Path) -> None:
+    text = (tree / "dist-workspace.toml").read_text()
+    start = text.index("[[dist.extra-artifacts]]")
+    end = text.index("[dist.dependencies.apt]")
+    (tree / "dist-workspace.toml").write_text(text[:start] + text[end:])
+
+
+def _drop_include(tree: pathlib.Path, want: str) -> None:
+    text = (tree / "dist-workspace.toml").read_text()
+    (tree / "dist-workspace.toml").write_text(text.replace('"%s"' % want, '"packaging/other"'))
+
+
+def _empty_completion(tree: pathlib.Path) -> None:
+    (tree / "packaging/completions/zsh/_fathom").write_text("")
 
 
 def _drop_installer(tree: pathlib.Path, installer: str) -> None:
-    _rewrite_dist(tree, lambda t: t.replace('["%s", "powershell"]' % installer, '["shell"]')
-                  .replace('["shell", "%s"]' % installer, '["shell"]'))
+    """Pull one name out of the `installers` array, whatever shape the array is in today."""
+    def edit(text: str) -> str:
+        match = re.search(r"^installers = \[(.*?)\]", text, flags=re.M | re.S)
+        if not match:
+            return text
+        left = [part for part in re.findall(r"\"([^\"]+)\"", match.group(1)) if part != installer]
+        return text[:match.start()] + "installers = [%s]" % ", ".join('"%s"' % x for x in left) \
+            + text[match.end():]
+
+    _rewrite_dist(tree, edit)
 
 
 def _set_dist(tree: pathlib.Path, key: str, value: str) -> None:
@@ -834,9 +1153,16 @@ def _force_latest(tree: pathlib.Path) -> None:
 
 
 def _drop_block(tree: pathlib.Path, name: str) -> None:
+    """Delete one generated block from the copied document.
+
+    Note the absence of `count=1`: `sub`'s count limits how many *matches* the callback sees, not how many
+    it replaces, so with a count the callback only ever inspects the first block and a mutation aimed at a
+    later one silently mutates nothing — a self-test case that passes because it did nothing, which is the
+    exact failure mode this whole file exists to prevent.
+    """
     path = tree / "docs" / "concepts" / "release.md"
     text = path.read_text()
-    path.write_text(MARK.sub(lambda m: "" if m.group(1) == name else m.group(0), text, count=1))
+    path.write_text(MARK.sub(lambda m: "" if m.group(1) == name else m.group(0), text))
 
 
 def _version_of(tree: pathlib.Path) -> str:

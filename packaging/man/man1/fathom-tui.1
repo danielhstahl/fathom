@@ -1,0 +1,42 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_TUI 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-tui \- Print the terminal UI\*(Aqs keymap, or open the UI itself
+.SH SYNOPSIS
+\fBfathom tui\fR [\fB\-\-show\-keys\fR] [\fB\-\-show\-session\fR] [\fB\-\-json\fR] [\fB\-\-stats\fR] [\fB\-\-show\-theme\fR] [\fB\-\-audit\fR] [\fB\-\-list\-themes\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Print the terminal UI\*(Aqs keymap, or open the UI itself
+.SH OPTIONS
+.TP
+\fB\-\-show\-keys\fR
+Print the merged keymap — defaults plus your `keys.overrides` — and exit, taking no terminal
+.TP
+\fB\-\-show\-session\fR
+Print the session state stored for this repository, and exit, taking no terminal (`e1.11`).
+
+The rows, when each was written, and what this build would apply — which is the only way to see what a resumed session is resuming *from*, and the reader for the keys no landed view draws yet.
+.TP
+\fB\-\-json\fR
+With `\-\-show\-session`: the rows as JSON on stdout, and nothing else there.
+
+Without it, `\-\-json` is the same as `\-\-stats`: the run\*(Aqs own frame numbers, as one object (`reco\-08r`).
+.TP
+\fB\-\-stats\fR
+Print the run\*(Aqs own frame numbers — draws, events, p99, worst, over\-budget — as one JSON object on stdout when the shell gives the screen back (`reco\-08r`).
+
+The same numbers the shell prints as one line on stderr on the way out, and the same ones it leaves in `.fathom/frame\-report.json` for `fathom doctor`; a script that wants them as data asks for them this way instead of measuring the process from outside a pty.
+.TP
+\fB\-\-show\-theme\fR
+Print the theme this run would paint with, and exit, taking no terminal (`e5.6`).
+
+The face table, the measured contrast of every face against the background the theme paints, and how far the added/removed/violation pairs stay apart when protanopia and deuteranopia are simulated. `\-\-audit` makes a failed floor an error exit, so a palette can be gated the way a codebase is.
+.TP
+\fB\-\-audit\fR
+With `\-\-show\-theme`: treat a failed contrast or separation floor as an error exit (exit 7)
+.TP
+\fB\-\-list\-themes\fR
+Print every theme Fathom can see — the built\-ins and the files in your theme directories — and exit, taking no terminal (`e5.6`)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

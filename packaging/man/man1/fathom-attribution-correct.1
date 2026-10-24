@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ATTRIBUTION_CORRECT 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-attribution\-correct \- Store a correction: these identities were written by an agent / by a person
+.SH SYNOPSIS
+\fBfathom attribution correct\fR [\fB\-\-root\fR] <\fB\-\-kind\fR> [\fB\-\-agent\fR] [\fB\-\-note\fR] [\fB\-\-identity\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] 
+.SH DESCRIPTION
+Store a correction: these identities were written by an agent / by a person
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to write to
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR
+`agent`, `human` or `unknown`
+.TP
+\fB\-\-agent\fR \fI<AGENT>\fR
+Which agent the identity is, when `\-\-kind agent`
+.TP
+\fB\-\-note\fR \fI<NOTE>\fR
+Why the label was overruled, for whoever reads it next
+.TP
+\fB\-\-identity\fR \fI<IDENTITY>\fR
+Correct one identity key directly (`identity:<address>`), instead of deriving them from a commit
+.TP
+\fB\-\-json\fR
+Print the result as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fITARGET\fR]
+The commit whose identities are being corrected: a rev, an oid prefix, or `\-` for nothing

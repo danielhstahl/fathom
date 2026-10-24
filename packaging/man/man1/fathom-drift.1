@@ -1,0 +1,43 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DRIFT 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-drift \- What the plan said against what the session did — the contradictions, both sides linked (`e4.8`)
+.SH SYNOPSIS
+\fBfathom drift\fR [\fB\-\-root\fR] [\fB\-\-session\fR] [\fB\-\-all\fR] [\fB\-\-window\fR] [\fB\-\-min\-overlap\fR] [\fB\-\-max\fR] [\fB\-\-dismiss\fR] [\fB\-\-off\fR] [\fB\-\-json\fR] [\fB\-\-fail\-on\-findings\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+What the plan said against what the session did — the contradictions, both sides linked (`e4.8`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-session\fR \fI<S>\fR
+Compare one harness session only — its id, or `lineage:refs/heads/main` for the episodes no session was named for
+.TP
+\fB\-\-all\fR
+Read every episode in the index instead of the newest ones. A long read, and a longer report
+.TP
+\fB\-\-window\fR \fI<N>\fR
+How many episodes past a plan item to look for the change that did it
+.TP
+\fB\-\-min\-overlap\fR \fI<F>\fR
+The token overlap at which a plan item counts as addressed (0.05 to 1.0)
+.TP
+\fB\-\-max\fR \fI<N>\fR
+The cap on the report
+.TP
+\fB\-\-dismiss\fR \fI<KEY>\fR
+A suppression key already argued about; its contradiction is counted, not re\-reported. Repeatable
+.TP
+\fB\-\-off\fR \fI<KIND>\fR
+Switch one kind off, in the published spelling (`plan\-unimplemented`, …). Repeatable
+.TP
+\fB\-\-json\fR
+Print the report as JSON on stdout, and nothing else there
+.TP
+\fB\-\-fail\-on\-findings\fR
+Exit 7 when anything was found, so a CI step can gate on it
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

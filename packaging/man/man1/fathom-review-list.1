@@ -1,0 +1,16 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_REVIEW_LIST 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-review\-list \- List the ledger\*(Aqs entries with their verdicts
+.SH SYNOPSIS
+\fBfathom review list\fR [\fB\-\-state\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+List the ledger\*(Aqs entries with their verdicts
+.SH OPTIONS
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Show only entries in this state: `fresh`, `stale`, `orphan` or `unknown`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

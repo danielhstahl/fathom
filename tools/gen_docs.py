@@ -453,6 +453,12 @@ VERB_DOCS = {
               "what the plan promised against what landed"),
     "why": (["docs/concepts/risk-score.md", "docs/concepts/risk-scoring.md"],
             "the risk score as an auditable sum"),
+    # `e7.4` (reco-3q4): the verb that prints the shell's own copy of this grammar. It is in VERB_DOCS
+    # for the same reason every verb is: a shipped verb with no page is an undocumented feature, and this
+    # one is the source of `packaging/completions` and `packaging/man`, so the page that explains the
+    # packaging is also the page that explains the verb.
+    "completions": (["docs/concepts/release.md", "docs/concepts/cli.md"],
+                    "print the completion scripts and man pages the packages install"),
     "stats": (["docs/concepts/cli.md", "docs/adr/0004-storage.md"],
               "scale, index state, cache hit rate"),
     "check": (["docs/concepts/ci-gate.md", "docs/recipes/gate-a-pipeline.md"],

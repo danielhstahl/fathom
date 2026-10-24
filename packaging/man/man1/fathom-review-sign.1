@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_REVIEW_SIGN 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-review\-sign \- Sign an episode off, appending one entry to `.fathom/reviews/ledger.md`
+.SH SYNOPSIS
+\fBfathom review sign\fR [\fB\-\-decision\fR] [\fB\-\-note\fR] [\fB\-\-identity\fR] [\fB\-\-agent\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIEPISODE\fR> 
+.SH DESCRIPTION
+Sign an episode off, appending one entry to `.fathom/reviews/ledger.md`
+.SH OPTIONS
+.TP
+\fB\-\-decision\fR \fI<DECISION>\fR [default: accepted]
+What the decision is; `accepted` is the one that means *reviewed*
+.TP
+\fB\-\-note\fR \fI<NOTE>\fR
+A note, committed with the entry and folded onto one line
+.TP
+\fB\-\-identity\fR \fI<IDENTITY>\fR
+Who is signing, when git config and `fathom.toml` do not say
+.TP
+\fB\-\-agent\fR \fI<AGENT>\fR
+Record the act as an agent\*(Aqs verdict on someone\*(Aqs behalf, not as a human acceptance
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIEPISODE\fR>
+The episode to sign off, or an unambiguous prefix of its id

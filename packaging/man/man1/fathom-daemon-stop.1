@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DAEMON_STOP 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-daemon\-stop \- Ask the daemon to finish its pass, checkpoint and release the lease
+.SH SYNOPSIS
+\fBfathom daemon stop\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-socket\fR] [\fB\-\-reason\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Ask the daemon to finish its pass, checkpoint and release the lease
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository whose daemon to stop
+.TP
+\fB\-\-json\fR
+Print the outcome as one JSON line (`fathom.cli.daemon.stop/1`)
+.TP
+\fB\-\-socket\fR \fI<PATH>\fR
+Ask the daemon at this endpoint instead of the derived one
+.TP
+\fB\-\-reason\fR \fI<REASON>\fR [default: fathom daemon stop]
+Who is asking, recorded in the daemon\*(Aqs last line
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

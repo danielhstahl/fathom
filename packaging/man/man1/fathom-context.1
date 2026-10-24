@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_CONTEXT 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-context \- What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
+.SH SYNOPSIS
+\fBfathom context\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fITARGET\fR> 
+.SH DESCRIPTION
+What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the answer as one JSON line on stdout (`fathom.cli.context/1`)
+.TP
+\fB\-\-all\fR
+Include answered and withdrawn notes in the lists, not just the live ones
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fITARGET\fR>
+The path or episode to ask about. A path may be a file or a directory fragment

@@ -1,0 +1,31 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_CMP 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-cmp \- Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
+.SH SYNOPSIS
+\fBfathom cmp\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-save\fR] [\fB\-\-note\fR] [\fB\-\-list\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fISPEC\fR] 
+.SH DESCRIPTION
+Compare any two episodes or revisions: the composed delta over a range (`e5.3`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the comparison as one JSON line on stdout (`fathom.compare/1`)
+.TP
+\fB\-\-save\fR \fI<NAME>\fR
+Keep this comparison under a name, so the next person says `since\-the\-refactor` instead of typing the endpoints
+.TP
+\fB\-\-note\fR \fI<NOTE>\fR
+Why the name exists, kept with it
+.TP
+\fB\-\-list\fR
+List the saved comparisons and exit
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fISPEC\fR]
+The comparison: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`, or a saved name

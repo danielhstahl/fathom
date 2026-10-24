@@ -1,0 +1,2703 @@
+#compdef fathom
+
+autoload -U is-at-least
+
+_fathom() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'--demo[Review a miniature repository that ships inside this binary, then say what to do next (\`e5.9\`)]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom_commands" \
+"*::: :->fathom" \
+&& ret=0
+    case $state in
+    (fathom)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-command-$line[1]:"
+        case $line[1] in
+            (index)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--stats[Print the per-analyzer cache table (ADR-004 §4.8)]' \
+'--json[Print the run report as JSON on stdout, and nothing else there]' \
+'--refresh[Look up every stored unit, and recompute the ones that hit too]' \
+'--rebuild[Throw the epoch away and rebuild every analysis from scratch]' \
+'--watch[Index once, then keep watching and index as the repository changes]' \
+'--committed-only[Do not analyse uncommitted paths (ADR-004 §6.4)]' \
+'--prune[Remove the commit rows no ref can reach — what a rebase, an \`--amend\` or a force-push leaves behind]' \
+'--no-graph[Do not write the module graph (\`e3.11\`)]' \
+'--dry-run[With \`--prune\`\: print what would be removed and remove nothing]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository to index:_default' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the episode as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':episode -- The episode to show\: a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix:_default' \
+&& ret=0
+;;
+(episodes)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--limit=[How many rows to print, newest first; \`0\` is every row the filters select]:N:_default' \
+'--offset=[Skip this many rows before printing, for paging with \`--limit\`]:N:_default' \
+'*--author=[Only episodes by this author, exactly as git recorded the name; repeatable]:NAME:_default' \
+'*--kind=[Only episodes whose author kind is this — \`agent\`, \`human\` or \`unknown\`; repeatable]:KIND:_default' \
+'--state=[Only episodes in this review state\: \`unread\`, \`read\`, \`accepted\`, \`flagged\`, \`dismissed\`, \`snoozed\`]:STATE:_default' \
+'--path=[Only episodes that touched a path containing this fragment]:FRAGMENT:_default' \
+'--since=[Only episodes whose last commit is at or after this date — \`7d\`, \`2w\`, \`today\`, \`yesterday\`, \`2026-10-01\`\: the same grammar \`fathom search since\:\` takes]:WHEN:_default' \
+'--until=[Only episodes whose last commit is before this date, in the same grammar as \`--since\`]:WHEN:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the list as one JSON value on stdout (\`fathom.cli.episodes/1\`), and nothing else there]' \
+'--include-dead[Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(attribution)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__attribution_commands" \
+"*::: :->attribution" \
+&& ret=0
+
+    case $state in
+    (attribution)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-attribution-command-$line[1]:"
+        case $line[1] in
+            (correct)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to write to]:ROOT:_default' \
+'--kind=[\`agent\`, \`human\` or \`unknown\`]:KIND:_default' \
+'--agent=[Which agent the identity is, when \`--kind agent\`]:AGENT:_default' \
+'--note=[Why the label was overruled, for whoever reads it next]:NOTE:_default' \
+'--identity=[Correct one identity key directly (\`identity\:<address>\`), instead of deriving them from a commit]:IDENTITY:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the result as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::target -- The commit whose identities are being corrected\: a rev, an oid prefix, or `-` for nothing:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the corrections as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(forget)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to write to]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the result as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':identity -- The identity key to forget, as `fathom attribution list` prints it:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__attribution__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-attribution-help-command-$line[1]:"
+        case $line[1] in
+            (correct)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(forget)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(review)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__review_commands" \
+"*::: :->review" \
+&& ret=0
+
+    case $state in
+    (review)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-review-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(sign)
+_arguments "${_arguments_options[@]}" : \
+'--decision=[What the decision is; \`accepted\` is the one that means *reviewed*]:DECISION:_default' \
+'--note=[A note, committed with the entry and folded onto one line]:NOTE:_default' \
+'--identity=[Who is signing, when git config and \`fathom.toml\` do not say]:IDENTITY:_default' \
+'--agent=[Record the act as an agent'\''s verdict on someone'\''s behalf, not as a human acceptance]:AGENT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':episode -- The episode to sign off, or an unambiguous prefix of its id:_default' \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--dry-run[Report what would be rendered, write nothing]' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--state=[Show only entries in this state\: \`fresh\`, \`stale\`, \`orphan\` or \`unknown\`]:STATE:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__review__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-review-help-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sign)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(analyze)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the delta document as JSON on stdout, and nothing else there]' \
+'--schema[Print \`schemas/episode-delta.schema.json\`, the JSON Schema for the document, and stop]' \
+'--check[Check the checked-in schema against what this build generates; the CI form of \`--schema\`]' \
+'(--check)--write[Write the generated schema to \`schemas/\`, replacing the checked-in copy]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::episode -- The episode to analyse\: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--schema`, which prints the contract instead of an answer:_default' \
+&& ret=0
+;;
+(narrative)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--top=[How many claims the *Read this first* paragraph holds (1 to 6)]:N:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the claims, citations and weights as JSON on stdout, and nothing else there]' \
+'--markdown[Print the Markdown artefact body — the exact text \`fathom export\` will carry]' \
+'--explain[Print the ranking beside the prose\: every claim'\''s weight, so the order can be argued with]' \
+'--attribution[Print whether a model wrote any of this, and the five gates a polish path must clear. Needs no index and no episode]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::episode -- The episode to read\: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--attribution`, which answers a question about the build instead of an episode:_default' \
+&& ret=0
+;;
+(drift)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--session=[Compare one harness session only — its id, or \`lineage\:refs/heads/main\` for the episodes no session was named for]:S:_default' \
+'--window=[How many episodes past a plan item to look for the change that did it]:N:_default' \
+'--min-overlap=[The token overlap at which a plan item counts as addressed (0.05 to 1.0)]:F:_default' \
+'--max=[The cap on the report]:N:_default' \
+'*--dismiss=[A suppression key already argued about; its contradiction is counted, not re-reported. Repeatable]:KEY:_default' \
+'*--off=[Switch one kind off, in the published spelling (\`plan-unimplemented\`, …). Repeatable]:KIND:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--all[Read every episode in the index instead of the newest ones. A long read, and a longer report]' \
+'--json[Print the report as JSON on stdout, and nothing else there]' \
+'--fail-on-findings[Exit 7 when anything was found, so a CI step can gate on it]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(why)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--calibrate=[Print the calibration report — precision and recall at the top of the queue, as shipped and as retuned — instead of a score. With a path, that JSON set is measured; without one, the set shipped with the binary]::SET:_default' \
+'*--weight=[Override one weight for this run only\: \`--weight findings=0.25\`. Repeatable. Nothing is written to \`fathom.toml\`; the score says which weights were overridden]:NAME=VALUE:_default' \
+'--tau=[Override the flag line for this run only, 0 to 100]:TAU:_default' \
+'--cut=[How deep the queue is, as a fraction, for \`--calibrate\`. Defaults to 0.1 — the top ten percent]:FRACTION:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the same answer as JSON, for a machine]' \
+'--weights[Print the feature names this build can score, and stop]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::episode -- The episode to score\: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--calibrate`, which reports on the weights instead of on an episode:_default' \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the same report as JSON, for a machine]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository to report on:_default' \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to check]:ROOT:_default' \
+'--base=[The far end of the range\: what the change is compared against]:REV:_default' \
+'--head=[The near end of the range. Defaults to \`\[check\] head\`, then to \`HEAD\`]:REV:_default' \
+'--range=[The range as one argument, \`base..head\` — what a reviewer pastes into a message]:BASE..HEAD:_default' \
+'--format=[The output format\: \`human\`, \`json\`, \`sarif\`, \`github\` (step annotations) or \`markdown\` (job summary)]:FMT:_default' \
+'--out=[Write the artefact to this file instead of to stdout]:PATH:_default' \
+'--summary=[Where to append the markdown job summary. Defaults to \`\$GITHUB_STEP_SUMMARY\` when the runner set one]:PATH:_default' \
+'--fail-on=[The severity at or above which the run exits 7\: \`note\`, \`warning\`, \`error\` or \`never\`]:LEVEL:_default' \
+'*--severity=[Set one check'\''s volume for this run, e.g. \`--severity tests=off\`. Repeatable]:CHECK=LEVEL:_default' \
+'*--only=[Run only these checks. Repeatable; the others are reported as off, not omitted]:CHECK:_default' \
+'*--skip=[Do not run these checks. Repeatable]:CHECK:_default' \
+'*--require=[Checks that must *run*\: one that cannot is a failure rather than a notice. Repeatable]:CHECK:_default' \
+'*--ignore=[Silence one finding or family for this run\: \`tests\`, or \`layering\:no_upward\`. Repeatable]:CHECK[:RULE]:_default' \
+'--max=[Cap the findings listed per check (the counts stay whole). Overrides \`\[check\] max_findings\`]:N:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the JSON document — the same thing as \`--format json\`]' \
+'--no-summary[Do not write a job summary at all, even with \`\$GITHUB_STEP_SUMMARY\` set]' \
+'--no-annotations[Do not print GitHub step annotations beside the report]' \
+'--explain[Print the policy in force — every check'\''s volume, every threshold — and exit 0 without checking]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to report on]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--privacy[Print the network-feature and consent table]' \
+'--json[Print the same report as JSON, for a machine]' \
+'--deep[Run the whole-database \`integrity_check\` rather than \`quick_check\` (ADR-004 §9.6)]' \
+'--strict[Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+'--format=[The artefact format\: markdown, html or json]:FORMAT:_default' \
+'--out=[The file stem to write, or a file name that already carries the format'\''s extension]:OUT:_default' \
+'--episodes=[The episode range to export, e.g. \`HEAD~9..HEAD\`, one commit, or one episode id]:EPISODES:_default' \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as JSON on stdout, and nothing else there]' \
+'(--json)--stdout[Write the artefact to stdout instead of a file; the report goes to stderr]' \
+'--strict[Exit 7 while the artefact'\''s checklist still has an open item — the form a CI gate wants]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(mcp)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__mcp_commands" \
+"*::: :->mcp" \
+&& ret=0
+
+    case $state in
+    (mcp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-mcp-command-$line[1]:"
+        case $line[1] in
+            (serve)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(tools)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository whose \`\[mcp\]\` config and index to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[The surface as one JSON document on stdout (\`fathom.mcp.surface/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(approval-token)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository whose \`\[mcp\]\` config holds the approval secret]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':change_id -- The change to bind the token to\: an episode id or a commit:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__mcp__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-mcp-help-command-$line[1]:"
+        case $line[1] in
+            (serve)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(tools)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(approval-token)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+'--max-cycles=[Stop after this many looks at the filesystem]:MAX_CYCLES:_default' \
+'--deadline=[Stop after this many seconds]:DEADLINE:_default' \
+'--backend=[Which change source to use\: \`auto\`, \`notify\` or \`poll\`]:BACKEND:_default' \
+'--interval-ms=[The debounced polling interval in milliseconds]:INTERVAL_MS:_default' \
+'--debounce-ms=[The quiescence window in milliseconds\: how long the filesystem must be quiet before a change is read]:DEBOUNCE_MS:_default' \
+'--heartbeat-ms=[The liveness beat in milliseconds\: how often the state is rewritten while nothing changes]:HEARTBEAT_MS:_default' \
+'--chunk-units=[Analysis units per index chunk — the watcher'\''s slice of the CPU]:CHUNK_UNITS:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print one JSON object per state change on stdout, and nothing else there]' \
+'--once[Index once, then exit\: what a script or a CI check wants from \`watch\`]' \
+'--worktree[Also re-index uncommitted paths when only the index moved]' \
+'--no-status-file[Do not write \`.fathom/watch/status.json\`]' \
+'--quiet[Print nothing to stdout but errors; the state machine still goes to the status file]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository to watch:_default' \
+&& ret=0
+;;
+(ambient)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--interval-ms=[How often to look, in milliseconds. 400 is what meets the "under a second" promise at near-zero cost]:INTERVAL_MS:_default' \
+'--deadline=[Stop after this many seconds]:DEADLINE:_default' \
+'--chunk-units=[Episodes to index per slice when this pane is the one keeping the index current]:CHUNK_UNITS:_default' \
+'--width=[Render at this width instead of the terminal'\''s — for a pipe, a test, or a tmux status line]:WIDTH:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the pane as one JSON object per change (machine contract \`fathom.cli.ambient/1\`)]' \
+'--once[Print the pane once and exit; never take the screen]' \
+'--plain[Draw the pane as text with no terminal taken (ADR-006 §6.7)]' \
+'--no-index[Never index from the pane\: read whatever the last index run left, whoever ran it]' \
+'--self-check[Run to the deadline and print what the pane cost\: polls, redraws and this process'\''s own CPU share. Exits \`11\` if it blew the budget of 1 % of a core]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(hooks)
+_arguments "${_arguments_options[@]}" : \
+'--events=[Read this events file instead of the configured one (ADR-005 §3.1'\''s first choice)]:EVENTS:_default' \
+'--max=[With \`--tail\`\: print at most this many records]:MAX:_default' \
+'--trailer=[Print the \`Agent-Session\:\` / \`Agent-Turn\:\` trailer pair for \`<session>\:<turn-index>\`]:SESSION:TURN:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'(--replay --tail --trailer)--check[Report the stream and change nothing. This is the default; the flag exists so a script can say what it means]' \
+'--replay[Rebuild everything from byte 0 and rewrite the offset\: what an index rebuild does first]' \
+'--tail[Read forward from the durable offset, advancing it, and print what arrived]' \
+'--json[Print the same report as JSON on stdout, and nothing else there]' \
+'--strict[Exit 7 when the stream is not healthy — the form a CI gate wants]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository whose `.fathom/events.jsonl` to read:_default' \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-daemon-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to watch and index]:ROOT:_default' \
+'--socket=[Where to listen, instead of the endpoint derived from the repository (ADR-004 §7.2)]:PATH:_default' \
+'--supervisor=[Who is supervising this daemon, recorded in the health document (\`systemd\`, \`docker\`, \`ci\`)]:SUPERVISOR:_default' \
+'--cpu-share-pct=[The CPU ceiling, as a percent of one core. 25 is ADR-004 §7.2'\''s background default]:CPU_SHARE_PCT:_default' \
+'--slice=[Analysis units per pass while nothing is talking to the daemon]:SLICE:_default' \
+'--yield-slice=[Analysis units per pass while a foreground client has just been heard — the yield slice]:YIELD_SLICE:_default' \
+'--queue-depth=[How many distinct index requests may wait before new ones are refused rather than queued]:QUEUE_DEPTH:_default' \
+'--hook-bytes=[Harness-stream bytes per pass — the back-pressure knob of ADR-005 §6.5]:HOOK_BYTES:_default' \
+'--backend=[Which change source to use\: \`auto\`, \`notify\` or \`poll\`. The daemon is a watcher, so it takes the watcher'\''s flags for the same meaning]:BACKEND:_default' \
+'--interval-ms=[The debounced polling interval in milliseconds]:INTERVAL_MS:_default' \
+'--debounce-ms=[The quiescence window in milliseconds]:DEBOUNCE_MS:_default' \
+'--heartbeat-ms=[The liveness beat in milliseconds, for the heartbeat file and the lease]:HEARTBEAT_MS:_default' \
+'--deadline=[Stop after this many seconds — the supervisor'\''s \`TimeoutStopSec\` seam and a test'\''s]:DEADLINE:_default' \
+'--max-cycles=[Stop after this many loop passes. A test seam, and the way to use the daemon as a one-shot indexer]:MAX_CYCLES:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the health document as JSON instead of lines, and print it once the first pass has run]' \
+'--quiet[Print nothing but the health document; the heartbeat file is still written]' \
+'--foreground[Run in this process, so a supervisor can supervise it (\`e6.3\`, ADR-004 §7.1)]' \
+'--detach[Detach into a new session (\`setsid\`), so a terminal'\''s Ctrl-C cannot reach the daemon later]' \
+'--require-socket[Refuse to start rather than run with no IPC endpoint]' \
+'--worktree[Also re-index uncommitted paths when only git'\''s index moved]' \
+'--no-status-file[Do not write \`.fathom/watch/status.json\`]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository whose daemon to stop]:ROOT:_default' \
+'--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
+'--reason=[Who is asking, recorded in the daemon'\''s last line]:REASON:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the outcome as one JSON line (\`fathom.cli.daemon.stop/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line (machine contract \`fathom.cli.status/1\`)]' \
+'--index[Ask for a pass and wait for it, then report the state after it — the way to make \`fathom status\` mean "up to date" rather than "as of whenever"]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository to report on:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__daemon__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-daemon-help-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line (machine contract \`fathom.cli.status/1\`)]' \
+'--index[Ask for a pass and wait for it, then report the state after it — the way to make \`fathom status\` mean "up to date" rather than "as of whenever"]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::root -- The repository to report on:_default' \
+&& ret=0
+;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--show-keys[Print the merged keymap — defaults plus your \`keys.overrides\` — and exit, taking no terminal]' \
+'--show-session[Print the session state stored for this repository, and exit, taking no terminal (\`e1.11\`)]' \
+'(--show-keys --show-theme --list-themes)--json[With \`--show-session\`\: the rows as JSON on stdout, and nothing else there]' \
+'(--show-keys --show-theme --list-themes --show-session)--stats[Print the run'\''s own frame numbers — draws, events, p99, worst, over-budget — as one JSON object on stdout when the shell gives the screen back (\`reco-08r\`)]' \
+'--show-theme[Print the theme this run would paint with, and exit, taking no terminal (\`e5.6\`)]' \
+'--audit[With \`--show-theme\`\: treat a failed contrast or separation floor as an error exit (exit 7)]' \
+'--list-themes[Print every theme Fathom can see — the built-ins and the files in your theme directories — and exit, taking no terminal (\`e5.6\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(open)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--path=[Which of the episode'\''s files to open, by path or by a unique suffix of it]:PATH:_default' \
+'--line=[Which line, overriding the line the first \`@@\` header says]:N:_default' \
+'--editor=[Which editor to use for this run, overriding \`\$FATHOM_EDITOR\`, \`\$VISUAL\` and \`\$EDITOR\`]:PROGRAM [ARGS…]:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--print[Print the command and the reason for it, and run nothing]' \
+'--list[List every file the episode touched with the line each would jump to, and open nothing]' \
+'--json[Print the decision as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::episode -- The episode to jump into\: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix — the same grammar `fathom show`, `analyze` and `why` accept. With no argument, `HEAD`:_default' \
+&& ret=0
+;;
+(difftool)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--path=[Which of the episode'\''s files to show, by path or by a unique suffix of it]:PATH:_default' \
+'--tool=[Which difftool to use, overriding \`\$FATHOM_DIFFTOOL\` and your user config]:NAME:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--print[Print the command and the reason for it, and run nothing. The two files stay on disk]' \
+'--list[List every file the episode touched with the line each would jump to, and show nothing]' \
+'--keep[Leave the two staged files behind and say where they are]' \
+'--json[Print the decision as JSON on stdout, and nothing else there]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::episode -- The episode whose file to show\: the same handle grammar as every other verb. With no argument, `HEAD`:_default' \
+&& ret=0
+;;
+(cmp)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--save=[Keep this comparison under a name, so the next person says \`since-the-refactor\` instead of typing the endpoints]:NAME:_default' \
+'--note=[Why the name exists, kept with it]:NOTE:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the comparison as one JSON line on stdout (\`fathom.compare/1\`)]' \
+'--list[List the saved comparisons and exit]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::spec -- The comparison\: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`, or a saved name:_default' \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--limit=[How many hits to print]:LIMIT:_default' \
+'--save=[Keep this query under a name, so the \`,\` palette can offer it again]:NAME:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.search/1\`)]' \
+'--list[List the saved searches and exit]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'*::query -- The query, with the same filter tokens `/` takes (`author\:`, `since\:`, `risk>`, `path\:`, `dep\:`, …):_default' \
+&& ret=0
+;;
+(architecture)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--revision=[Score this revision rather than the newest the graph holds\: a full tree oid or an unambiguous prefix]:TREE:_default' \
+'--backfill=[Score this many unscored revisions first, newest first, before reporting (\`0\`\: report what is stored)]:N:_default' \
+'--history=[How many scored revisions the trend reads; bare, or \`0\`, is every row the index holds]::N:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom-architecture/1\`)]' \
+'--refresh[Forget every stored scorecard first, and re-derive what this run needs]' \
+'--read-only[Do not write anything\: read the stored rows and score only what this run needs]' \
+'--explain[Print the knobs in force — the weights, the curves and their published constants — and exit]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(ratchet)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--reason=[Why the baseline is being raised — required by \`--update-baseline\`, recorded in the file, the diff and the review memory]:REASON:_default' \
+'--owner=[Who owns the new allowances; bare, the reviewer'\''s own identity (\`--identity\`, \`\$FATHOM_REVIEWER\`, \`git config user.name\`)]:OWNER:_default' \
+'--granted-by=[Who is asking, recorded beside the owner as \`granted_by\`; bare, the same identity as \`--owner\`]:WHO:_default' \
+'--expires=[The last day an allowance is live, \`YYYY-MM-DD\`, or \`never\` for a row with no expiry]:DATE|never:_default' \
+'*--key=[Grant only this key (repeatable)\: a violation key as the report prints it, or \`kind=key\`]:KEY:_default' \
+'--revision=[Judge this graph revision rather than the newest the index holds\: an oid or an unambiguous prefix]:TREE:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom-ratchet/1\`)]' \
+'--update-baseline[Raise the baseline\: write the violations that have no allowance as new rows]' \
+'--dry-run[Report what would change and write nothing — not even the automatic tightening]' \
+'--no-note[Do not write a \`decision\` note into the review memory when the baseline is raised]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(context)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the answer as one JSON line on stdout (\`fathom.cli.context/1\`)]' \
+'--all[Include answered and withdrawn notes in the lists, not just the live ones]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':target -- The path or episode to ask about. A path may be a file or a directory fragment:_default' \
+&& ret=0
+;;
+(note)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read]:ROOT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__note_commands" \
+"*::: :->note" \
+&& ret=0
+
+    case $state in
+    (note)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-note-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'(--path)--episode=[The episode to attach it to, or an unambiguous prefix of its id]:EPISODE:_default' \
+'--path=[The path to attach it to, optionally \`path\:line\`. Resolved to the newest episode that touched it when the index knows one]:PATH:_default' \
+'--kind=[What kind of note this is\: \`decision\`, \`question\`, \`follow-up\`, \`annotation\` (\`note\` and \`flag\` are accepted as \`annotation\`)]:KIND:_default' \
+'--author=[Who is writing, when git config and \`fathom.toml\` do not say]:AUTHOR:_default' \
+'--agent=[Record the note as an agent'\''s act on someone'\''s behalf, not as a human'\''s]:AGENT:_default' \
+'--about=[The note this one answers, by \`nt-…\` id]:ABOUT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::text -- The text of the note. One line in the file either way\: paragraph breaks are folded, never wrapped:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--kind=[Only this kind\: \`decision\`, \`question\`, \`follow-up\`, \`annotation\`]:KIND:_default' \
+'--status=[Only notes in this status\: \`open\`, \`answered\`, \`withdrawn\`]:STATUS:_default' \
+'--limit=[How many to print, oldest first; \`0\` is every note]:LIMIT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::target -- Only notes attached to this episode or touching this path:_default' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':id -- The note id (`nt-…`):_default' \
+&& ret=0
+;;
+(answer)
+_arguments "${_arguments_options[@]}" : \
+'--author=[Who is answering]:AUTHOR:_default' \
+'--agent=[Record the answer as an agent'\''s act on someone'\''s behalf]:AGENT:_default' \
+'--kind=[The kind of the answering note\: a \`decision\` is an answer that settles it, an \`annotation\` is an answer that informs it]:KIND:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':id -- The question or follow-up being answered (`nt-…`):_default' \
+':text -- The answer:_default' \
+&& ret=0
+;;
+(withdraw)
+_arguments "${_arguments_options[@]}" : \
+'--author=[Who is retracting it]:AUTHOR:_default' \
+'--agent=[Record the retraction as an agent'\''s act on someone'\''s behalf]:AGENT:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':id -- The note being retracted (`nt-…`):_default' \
+':text -- Why it no longer holds:_default' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__note__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-note-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(answer)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(withdraw)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_fathom__subcmd__completions_commands" \
+"*::: :->completions" \
+&& ret=0
+
+    case $state in
+    (completions)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-completions-command-$line[1]:"
+        case $line[1] in
+            (bash)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(zsh)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(fish)
+_arguments "${_arguments_options[@]}" : \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(man)
+_arguments "${_arguments_options[@]}" : \
+'--out=[Write them under \`DIR\` (as \`DIR/man1/*.1\`) instead of printing one page on stdout]:DIR:_default' \
+'--page=[Just this page — \`--page fathom-check\` — instead of every verb]:NAME:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__completions__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-completions-help-command-$line[1]:"
+        case $line[1] in
+            (bash)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(zsh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(fish)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(man)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-command-$line[1]:"
+        case $line[1] in
+            (index)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(episodes)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(attribution)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__attribution_commands" \
+"*::: :->attribution" \
+&& ret=0
+
+    case $state in
+    (attribution)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-attribution-command-$line[1]:"
+        case $line[1] in
+            (correct)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(forget)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(review)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__review_commands" \
+"*::: :->review" \
+&& ret=0
+
+    case $state in
+    (review)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-review-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sign)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(analyze)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(narrative)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(drift)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(why)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(mcp)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__mcp_commands" \
+"*::: :->mcp" \
+&& ret=0
+
+    case $state in
+    (mcp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-mcp-command-$line[1]:"
+        case $line[1] in
+            (serve)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(tools)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(approval-token)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ambient)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(hooks)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-daemon-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(open)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(difftool)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cmp)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(architecture)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ratchet)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(context)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(note)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__note_commands" \
+"*::: :->note" \
+&& ret=0
+
+    case $state in
+    (note)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-note-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(answer)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(withdraw)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+":: :_fathom__subcmd__help__subcmd__completions_commands" \
+"*::: :->completions" \
+&& ret=0
+
+    case $state in
+    (completions)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:fathom-help-completions-command-$line[1]:"
+        case $line[1] in
+            (bash)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(zsh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(fish)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(man)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_fathom_commands] )) ||
+_fathom_commands() {
+    local commands; commands=(
+'index:Index the repository so every other verb has something to read' \
+'show:Show one episode in full' \
+'episodes:List the episodes — the rail'\''s rows, headless (\`reco-11b\`)' \
+'attribution:Report or correct who Fathom thinks wrote a commit (\`e4.1\`)' \
+'review:The review ledger\: sign-offs that outlive the history they were written about (\`e4.6\`)' \
+'analyze:Print one episode'\''s delta document — the model the TUI, the export and an agent all read' \
+'narrative:Read one episode\: the narrative every claim in it cites its evidence from (\`e4.7\`)' \
+'drift:What the plan said against what the session did — the contradictions, both sides linked (\`e4.8\`)' \
+'why:Print one episode'\''s risk score with every feature, its weight and its contribution (\`e4.4\`)' \
+'stats:Report repo scale, index state and cache hit rate' \
+'check:Run the checks CI cares about; findings above the threshold exit 7' \
+'doctor:Describe this build, its environment and its index, with a remedy per finding' \
+'export:Write a review artefact for a pull request or an audit' \
+'mcp:Speak MCP to a coding agent' \
+'watch:Watch the repository and index as it changes' \
+'ambient:The glance pane for the terminal beside the agent\: latest episode, queue, index, one reason (\`reco-8bx\`)' \
+'hooks:Report on the harness event stream\: lag, offset, rejections, replay (\`e6.1\`)' \
+'daemon:The one process per repository that watches, tails the harness stream and indexes (\`e6.3\`)' \
+'status:Who is keeping this index current, what it costs, and what is left (\`e6.3\`)' \
+'tui:Print the terminal UI'\''s keymap, or open the UI itself' \
+'open:Open an episode'\''s file at its line in \`\$EDITOR\` — jump out, do not read around it (\`e5.8\`)' \
+'difftool:Show one file'\''s two sides in your own difftool — difftastic, meld, kdiff3, \`vim -d\` (\`e5.8\`)' \
+'cmp:Compare any two episodes or revisions\: the composed delta over a range (\`e5.3\`)' \
+'search:Search the whole index from one box, in the shell'\''s own ranking (\`e5.2\`)' \
+'architecture:The architecture scorecard\: five dimensions, one number, and the drift since your last review (\`e3.9\`)' \
+'ratchet:The ratchet\: the committed allowance ledger, which tightens on its own and widens only when told to (\`e3.10\`)' \
+'context:What this repository knows about a path or an episode\: the recorded decisions and the open questions (\`e6.5\`)' \
+'note:The review memory\: notes, decisions, questions and follow-ups, committed under \`.fathom/reviews/\` (\`e6.5\`)' \
+'completions:Print the shell'\''s own copy of this grammar\: completion scripts and man pages (\`e7.4\`)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__ambient_commands] )) ||
+_fathom__subcmd__ambient_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom ambient commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__analyze_commands] )) ||
+_fathom__subcmd__analyze_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom analyze commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__architecture_commands] )) ||
+_fathom__subcmd__architecture_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom architecture commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution_commands] )) ||
+_fathom__subcmd__attribution_commands() {
+    local commands; commands=(
+'correct:Store a correction\: these identities were written by an agent / by a person' \
+'list:List the stored corrections, which are the keys the classifier honours' \
+'forget:Forget one stored correction' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom attribution commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__correct_commands] )) ||
+_fathom__subcmd__attribution__subcmd__correct_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution correct commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__forget_commands] )) ||
+_fathom__subcmd__attribution__subcmd__forget_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution forget commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__help_commands] )) ||
+_fathom__subcmd__attribution__subcmd__help_commands() {
+    local commands; commands=(
+'correct:Store a correction\: these identities were written by an agent / by a person' \
+'list:List the stored corrections, which are the keys the classifier honours' \
+'forget:Forget one stored correction' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom attribution help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__help__subcmd__correct_commands] )) ||
+_fathom__subcmd__attribution__subcmd__help__subcmd__correct_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution help correct commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__help__subcmd__forget_commands] )) ||
+_fathom__subcmd__attribution__subcmd__help__subcmd__forget_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution help forget commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__attribution__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__help__subcmd__list_commands] )) ||
+_fathom__subcmd__attribution__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution help list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__attribution__subcmd__list_commands] )) ||
+_fathom__subcmd__attribution__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom attribution list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__check_commands] )) ||
+_fathom__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom check commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__cmp_commands] )) ||
+_fathom__subcmd__cmp_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom cmp commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions_commands] )) ||
+_fathom__subcmd__completions_commands() {
+    local commands; commands=(
+'bash:The completion script for bash, to drop in \`.../bash-completion/completions/fathom\`' \
+'zsh:The completion script for zsh, to drop in a \`\$fpath\` directory as \`_fathom\`' \
+'fish:The completion script for fish, to drop in \`.../fish/vendor_completions.d/fathom.fish\`' \
+'man:The man pages, rendered from the same grammar' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom completions commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__bash_commands] )) ||
+_fathom__subcmd__completions__subcmd__bash_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions bash commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__fish_commands] )) ||
+_fathom__subcmd__completions__subcmd__fish_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions fish commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help_commands] )) ||
+_fathom__subcmd__completions__subcmd__help_commands() {
+    local commands; commands=(
+'bash:The completion script for bash, to drop in \`.../bash-completion/completions/fathom\`' \
+'zsh:The completion script for zsh, to drop in a \`\$fpath\` directory as \`_fathom\`' \
+'fish:The completion script for fish, to drop in \`.../fish/vendor_completions.d/fathom.fish\`' \
+'man:The man pages, rendered from the same grammar' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom completions help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help__subcmd__bash_commands] )) ||
+_fathom__subcmd__completions__subcmd__help__subcmd__bash_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions help bash commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help__subcmd__fish_commands] )) ||
+_fathom__subcmd__completions__subcmd__help__subcmd__fish_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions help fish commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__completions__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help__subcmd__man_commands] )) ||
+_fathom__subcmd__completions__subcmd__help__subcmd__man_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions help man commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__help__subcmd__zsh_commands] )) ||
+_fathom__subcmd__completions__subcmd__help__subcmd__zsh_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions help zsh commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__man_commands] )) ||
+_fathom__subcmd__completions__subcmd__man_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions man commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__completions__subcmd__zsh_commands] )) ||
+_fathom__subcmd__completions__subcmd__zsh_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom completions zsh commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__context_commands] )) ||
+_fathom__subcmd__context_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom context commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon_commands] )) ||
+_fathom__subcmd__daemon_commands() {
+    local commands; commands=(
+'start:Take the writer lease and watch this repository from this process, or from a detached one' \
+'stop:Ask the daemon to finish its pass, checkpoint and release the lease' \
+'status:The daemon'\''s own health report (\`fathom status\` is the same question at the top level)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom daemon commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__help_commands] )) ||
+_fathom__subcmd__daemon__subcmd__help_commands() {
+    local commands; commands=(
+'start:Take the writer lease and watch this repository from this process, or from a detached one' \
+'stop:Ask the daemon to finish its pass, checkpoint and release the lease' \
+'status:The daemon'\''s own health report (\`fathom status\` is the same question at the top level)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom daemon help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__daemon__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__help__subcmd__start_commands] )) ||
+_fathom__subcmd__daemon__subcmd__help__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon help start commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__help__subcmd__status_commands] )) ||
+_fathom__subcmd__daemon__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon help status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__help__subcmd__stop_commands] )) ||
+_fathom__subcmd__daemon__subcmd__help__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon help stop commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__start_commands] )) ||
+_fathom__subcmd__daemon__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon start commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__status_commands] )) ||
+_fathom__subcmd__daemon__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__daemon__subcmd__stop_commands] )) ||
+_fathom__subcmd__daemon__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom daemon stop commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__difftool_commands] )) ||
+_fathom__subcmd__difftool_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom difftool commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__doctor_commands] )) ||
+_fathom__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom doctor commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__drift_commands] )) ||
+_fathom__subcmd__drift_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom drift commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__episodes_commands] )) ||
+_fathom__subcmd__episodes_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom episodes commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__export_commands] )) ||
+_fathom__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom export commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help_commands] )) ||
+_fathom__subcmd__help_commands() {
+    local commands; commands=(
+'index:Index the repository so every other verb has something to read' \
+'show:Show one episode in full' \
+'episodes:List the episodes — the rail'\''s rows, headless (\`reco-11b\`)' \
+'attribution:Report or correct who Fathom thinks wrote a commit (\`e4.1\`)' \
+'review:The review ledger\: sign-offs that outlive the history they were written about (\`e4.6\`)' \
+'analyze:Print one episode'\''s delta document — the model the TUI, the export and an agent all read' \
+'narrative:Read one episode\: the narrative every claim in it cites its evidence from (\`e4.7\`)' \
+'drift:What the plan said against what the session did — the contradictions, both sides linked (\`e4.8\`)' \
+'why:Print one episode'\''s risk score with every feature, its weight and its contribution (\`e4.4\`)' \
+'stats:Report repo scale, index state and cache hit rate' \
+'check:Run the checks CI cares about; findings above the threshold exit 7' \
+'doctor:Describe this build, its environment and its index, with a remedy per finding' \
+'export:Write a review artefact for a pull request or an audit' \
+'mcp:Speak MCP to a coding agent' \
+'watch:Watch the repository and index as it changes' \
+'ambient:The glance pane for the terminal beside the agent\: latest episode, queue, index, one reason (\`reco-8bx\`)' \
+'hooks:Report on the harness event stream\: lag, offset, rejections, replay (\`e6.1\`)' \
+'daemon:The one process per repository that watches, tails the harness stream and indexes (\`e6.3\`)' \
+'status:Who is keeping this index current, what it costs, and what is left (\`e6.3\`)' \
+'tui:Print the terminal UI'\''s keymap, or open the UI itself' \
+'open:Open an episode'\''s file at its line in \`\$EDITOR\` — jump out, do not read around it (\`e5.8\`)' \
+'difftool:Show one file'\''s two sides in your own difftool — difftastic, meld, kdiff3, \`vim -d\` (\`e5.8\`)' \
+'cmp:Compare any two episodes or revisions\: the composed delta over a range (\`e5.3\`)' \
+'search:Search the whole index from one box, in the shell'\''s own ranking (\`e5.2\`)' \
+'architecture:The architecture scorecard\: five dimensions, one number, and the drift since your last review (\`e3.9\`)' \
+'ratchet:The ratchet\: the committed allowance ledger, which tightens on its own and widens only when told to (\`e3.10\`)' \
+'context:What this repository knows about a path or an episode\: the recorded decisions and the open questions (\`e6.5\`)' \
+'note:The review memory\: notes, decisions, questions and follow-ups, committed under \`.fathom/reviews/\` (\`e6.5\`)' \
+'completions:Print the shell'\''s own copy of this grammar\: completion scripts and man pages (\`e7.4\`)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__ambient_commands] )) ||
+_fathom__subcmd__help__subcmd__ambient_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help ambient commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__analyze_commands] )) ||
+_fathom__subcmd__help__subcmd__analyze_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help analyze commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__architecture_commands] )) ||
+_fathom__subcmd__help__subcmd__architecture_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help architecture commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__attribution_commands] )) ||
+_fathom__subcmd__help__subcmd__attribution_commands() {
+    local commands; commands=(
+'correct:Store a correction\: these identities were written by an agent / by a person' \
+'list:List the stored corrections, which are the keys the classifier honours' \
+'forget:Forget one stored correction' \
+    )
+    _describe -t commands 'fathom help attribution commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__attribution__subcmd__correct_commands] )) ||
+_fathom__subcmd__help__subcmd__attribution__subcmd__correct_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help attribution correct commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__attribution__subcmd__forget_commands] )) ||
+_fathom__subcmd__help__subcmd__attribution__subcmd__forget_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help attribution forget commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__attribution__subcmd__list_commands] )) ||
+_fathom__subcmd__help__subcmd__attribution__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help attribution list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__check_commands] )) ||
+_fathom__subcmd__help__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help check commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__cmp_commands] )) ||
+_fathom__subcmd__help__subcmd__cmp_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help cmp commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__completions_commands] )) ||
+_fathom__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=(
+'bash:The completion script for bash, to drop in \`.../bash-completion/completions/fathom\`' \
+'zsh:The completion script for zsh, to drop in a \`\$fpath\` directory as \`_fathom\`' \
+'fish:The completion script for fish, to drop in \`.../fish/vendor_completions.d/fathom.fish\`' \
+'man:The man pages, rendered from the same grammar' \
+    )
+    _describe -t commands 'fathom help completions commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__completions__subcmd__bash_commands] )) ||
+_fathom__subcmd__help__subcmd__completions__subcmd__bash_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help completions bash commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__completions__subcmd__fish_commands] )) ||
+_fathom__subcmd__help__subcmd__completions__subcmd__fish_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help completions fish commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__completions__subcmd__man_commands] )) ||
+_fathom__subcmd__help__subcmd__completions__subcmd__man_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help completions man commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__completions__subcmd__zsh_commands] )) ||
+_fathom__subcmd__help__subcmd__completions__subcmd__zsh_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help completions zsh commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__context_commands] )) ||
+_fathom__subcmd__help__subcmd__context_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help context commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__daemon_commands] )) ||
+_fathom__subcmd__help__subcmd__daemon_commands() {
+    local commands; commands=(
+'start:Take the writer lease and watch this repository from this process, or from a detached one' \
+'stop:Ask the daemon to finish its pass, checkpoint and release the lease' \
+'status:The daemon'\''s own health report (\`fathom status\` is the same question at the top level)' \
+    )
+    _describe -t commands 'fathom help daemon commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__daemon__subcmd__start_commands] )) ||
+_fathom__subcmd__help__subcmd__daemon__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help daemon start commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__daemon__subcmd__status_commands] )) ||
+_fathom__subcmd__help__subcmd__daemon__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help daemon status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__daemon__subcmd__stop_commands] )) ||
+_fathom__subcmd__help__subcmd__daemon__subcmd__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help daemon stop commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__difftool_commands] )) ||
+_fathom__subcmd__help__subcmd__difftool_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help difftool commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__doctor_commands] )) ||
+_fathom__subcmd__help__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help doctor commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__drift_commands] )) ||
+_fathom__subcmd__help__subcmd__drift_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help drift commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__episodes_commands] )) ||
+_fathom__subcmd__help__subcmd__episodes_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help episodes commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__export_commands] )) ||
+_fathom__subcmd__help__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help export commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__hooks_commands] )) ||
+_fathom__subcmd__help__subcmd__hooks_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help hooks commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__index_commands] )) ||
+_fathom__subcmd__help__subcmd__index_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help index commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__mcp_commands] )) ||
+_fathom__subcmd__help__subcmd__mcp_commands() {
+    local commands; commands=(
+'serve:Serve the tool surface over stdio, which opens no socket (\`e6.4\`)' \
+'tools:Print the tool surface and its bounds as this repository'\''s config resolves them' \
+'approval-token:Mint the token that authorises \`mark_reviewed\` for exactly one change' \
+    )
+    _describe -t commands 'fathom help mcp commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__mcp__subcmd__approval-token_commands] )) ||
+_fathom__subcmd__help__subcmd__mcp__subcmd__approval-token_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help mcp approval-token commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__mcp__subcmd__serve_commands] )) ||
+_fathom__subcmd__help__subcmd__mcp__subcmd__serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help mcp serve commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__mcp__subcmd__tools_commands] )) ||
+_fathom__subcmd__help__subcmd__mcp__subcmd__tools_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help mcp tools commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__narrative_commands] )) ||
+_fathom__subcmd__help__subcmd__narrative_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help narrative commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note_commands] )) ||
+_fathom__subcmd__help__subcmd__note_commands() {
+    local commands; commands=(
+'add:Record a note, decision, question or follow-up against an episode or a path' \
+'list:List what is recorded, oldest first' \
+'show:Show one note with its evidence and its link verdict' \
+'answer:Answer a question or close a follow-up by appending the note that closes it' \
+'withdraw:Take a recorded decision back, by appending the note that retracts it' \
+'verify:Re-hash every note against its own \`digest\:\` line — tampering, and nothing else' \
+    )
+    _describe -t commands 'fathom help note commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__add_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note add commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__answer_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__answer_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note answer commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__list_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__show_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note show commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__verify_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__note__subcmd__withdraw_commands] )) ||
+_fathom__subcmd__help__subcmd__note__subcmd__withdraw_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help note withdraw commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__open_commands] )) ||
+_fathom__subcmd__help__subcmd__open_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help open commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__ratchet_commands] )) ||
+_fathom__subcmd__help__subcmd__ratchet_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help ratchet commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review_commands] )) ||
+_fathom__subcmd__help__subcmd__review_commands() {
+    local commands; commands=(
+'status:The verdict\: is every episode covered by a sign-off that still matches (exit \`7\` when it is not)' \
+'sign:Sign an episode off, appending one entry to \`.fathom/reviews/ledger.md\`' \
+'sync:Render the queue'\''s acts that the ledger has never seen' \
+'list:List the ledger'\''s entries with their verdicts' \
+'verify:Re-hash every entry against its own \`digest\:\` line — tampering, and nothing else' \
+    )
+    _describe -t commands 'fathom help review commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review__subcmd__list_commands] )) ||
+_fathom__subcmd__help__subcmd__review__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help review list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review__subcmd__sign_commands] )) ||
+_fathom__subcmd__help__subcmd__review__subcmd__sign_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help review sign commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review__subcmd__status_commands] )) ||
+_fathom__subcmd__help__subcmd__review__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help review status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review__subcmd__sync_commands] )) ||
+_fathom__subcmd__help__subcmd__review__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help review sync commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__review__subcmd__verify_commands] )) ||
+_fathom__subcmd__help__subcmd__review__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help review verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__search_commands] )) ||
+_fathom__subcmd__help__subcmd__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help search commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__show_commands] )) ||
+_fathom__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help show commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__stats_commands] )) ||
+_fathom__subcmd__help__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help stats commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__status_commands] )) ||
+_fathom__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__tui_commands] )) ||
+_fathom__subcmd__help__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help tui commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__watch_commands] )) ||
+_fathom__subcmd__help__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help watch commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__why_commands] )) ||
+_fathom__subcmd__help__subcmd__why_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help why commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__hooks_commands] )) ||
+_fathom__subcmd__hooks_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom hooks commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__index_commands] )) ||
+_fathom__subcmd__index_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom index commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp_commands] )) ||
+_fathom__subcmd__mcp_commands() {
+    local commands; commands=(
+'serve:Serve the tool surface over stdio, which opens no socket (\`e6.4\`)' \
+'tools:Print the tool surface and its bounds as this repository'\''s config resolves them' \
+'approval-token:Mint the token that authorises \`mark_reviewed\` for exactly one change' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom mcp commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__approval-token_commands] )) ||
+_fathom__subcmd__mcp__subcmd__approval-token_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp approval-token commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__help_commands] )) ||
+_fathom__subcmd__mcp__subcmd__help_commands() {
+    local commands; commands=(
+'serve:Serve the tool surface over stdio, which opens no socket (\`e6.4\`)' \
+'tools:Print the tool surface and its bounds as this repository'\''s config resolves them' \
+'approval-token:Mint the token that authorises \`mark_reviewed\` for exactly one change' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom mcp help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__help__subcmd__approval-token_commands] )) ||
+_fathom__subcmd__mcp__subcmd__help__subcmd__approval-token_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp help approval-token commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__mcp__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__help__subcmd__serve_commands] )) ||
+_fathom__subcmd__mcp__subcmd__help__subcmd__serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp help serve commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__help__subcmd__tools_commands] )) ||
+_fathom__subcmd__mcp__subcmd__help__subcmd__tools_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp help tools commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__serve_commands] )) ||
+_fathom__subcmd__mcp__subcmd__serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp serve commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__mcp__subcmd__tools_commands] )) ||
+_fathom__subcmd__mcp__subcmd__tools_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom mcp tools commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__narrative_commands] )) ||
+_fathom__subcmd__narrative_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom narrative commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note_commands] )) ||
+_fathom__subcmd__note_commands() {
+    local commands; commands=(
+'add:Record a note, decision, question or follow-up against an episode or a path' \
+'list:List what is recorded, oldest first' \
+'show:Show one note with its evidence and its link verdict' \
+'answer:Answer a question or close a follow-up by appending the note that closes it' \
+'withdraw:Take a recorded decision back, by appending the note that retracts it' \
+'verify:Re-hash every note against its own \`digest\:\` line — tampering, and nothing else' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom note commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__add_commands] )) ||
+_fathom__subcmd__note__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note add commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__answer_commands] )) ||
+_fathom__subcmd__note__subcmd__answer_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note answer commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help_commands] )) ||
+_fathom__subcmd__note__subcmd__help_commands() {
+    local commands; commands=(
+'add:Record a note, decision, question or follow-up against an episode or a path' \
+'list:List what is recorded, oldest first' \
+'show:Show one note with its evidence and its link verdict' \
+'answer:Answer a question or close a follow-up by appending the note that closes it' \
+'withdraw:Take a recorded decision back, by appending the note that retracts it' \
+'verify:Re-hash every note against its own \`digest\:\` line — tampering, and nothing else' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom note help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__add_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help add commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__answer_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__answer_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help answer commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__list_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__show_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help show commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__verify_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__help__subcmd__withdraw_commands] )) ||
+_fathom__subcmd__note__subcmd__help__subcmd__withdraw_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note help withdraw commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__list_commands] )) ||
+_fathom__subcmd__note__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__show_commands] )) ||
+_fathom__subcmd__note__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note show commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__verify_commands] )) ||
+_fathom__subcmd__note__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__note__subcmd__withdraw_commands] )) ||
+_fathom__subcmd__note__subcmd__withdraw_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom note withdraw commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__open_commands] )) ||
+_fathom__subcmd__open_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom open commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__ratchet_commands] )) ||
+_fathom__subcmd__ratchet_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom ratchet commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review_commands] )) ||
+_fathom__subcmd__review_commands() {
+    local commands; commands=(
+'status:The verdict\: is every episode covered by a sign-off that still matches (exit \`7\` when it is not)' \
+'sign:Sign an episode off, appending one entry to \`.fathom/reviews/ledger.md\`' \
+'sync:Render the queue'\''s acts that the ledger has never seen' \
+'list:List the ledger'\''s entries with their verdicts' \
+'verify:Re-hash every entry against its own \`digest\:\` line — tampering, and nothing else' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom review commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help_commands] )) ||
+_fathom__subcmd__review__subcmd__help_commands() {
+    local commands; commands=(
+'status:The verdict\: is every episode covered by a sign-off that still matches (exit \`7\` when it is not)' \
+'sign:Sign an episode off, appending one entry to \`.fathom/reviews/ledger.md\`' \
+'sync:Render the queue'\''s acts that the ledger has never seen' \
+'list:List the ledger'\''s entries with their verdicts' \
+'verify:Re-hash every entry against its own \`digest\:\` line — tampering, and nothing else' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'fathom review help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__help_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help help commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__list_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__sign_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__sign_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help sign commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__status_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__sync_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help sync commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__help__subcmd__verify_commands] )) ||
+_fathom__subcmd__review__subcmd__help__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review help verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__list_commands] )) ||
+_fathom__subcmd__review__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review list commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__sign_commands] )) ||
+_fathom__subcmd__review__subcmd__sign_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review sign commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__status_commands] )) ||
+_fathom__subcmd__review__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__sync_commands] )) ||
+_fathom__subcmd__review__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review sync commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__review__subcmd__verify_commands] )) ||
+_fathom__subcmd__review__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom review verify commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__search_commands] )) ||
+_fathom__subcmd__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom search commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__show_commands] )) ||
+_fathom__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom show commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__stats_commands] )) ||
+_fathom__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom stats commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__status_commands] )) ||
+_fathom__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom status commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__tui_commands] )) ||
+_fathom__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom tui commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__watch_commands] )) ||
+_fathom__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom watch commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__why_commands] )) ||
+_fathom__subcmd__why_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom why commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_fathom" ]; then
+    _fathom "$@"
+else
+    compdef _fathom fathom
+fi

@@ -1,0 +1,77 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DAEMON_START 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-daemon\-start \- Take the writer lease and watch this repository from this process, or from a detached one
+.SH SYNOPSIS
+\fBfathom daemon start\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-quiet\fR] [\fB\-\-foreground\fR] [\fB\-\-socket\fR] [\fB\-\-require\-socket\fR] [\fB\-\-supervisor\fR] [\fB\-\-cpu\-share\-pct\fR] [\fB\-\-slice\fR] [\fB\-\-yield\-slice\fR] [\fB\-\-queue\-depth\fR] [\fB\-\-hook\-bytes\fR] [\fB\-\-backend\fR] [\fB\-\-interval\-ms\fR] [\fB\-\-debounce\-ms\fR] [\fB\-\-heartbeat\-ms\fR] [\fB\-\-worktree\fR] [\fB\-\-no\-status\-file\fR] [\fB\-\-deadline\fR] [\fB\-\-max\-cycles\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Take the writer lease and watch this repository from this process, or from a detached one
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to watch and index
+.TP
+\fB\-\-json\fR
+Print the health document as JSON instead of lines, and print it once the first pass has run
+.TP
+\fB\-\-quiet\fR
+Print nothing but the health document; the heartbeat file is still written
+.TP
+\fB\-\-foreground\fR
+Run in this process, so a supervisor can supervise it (`e6.3`, ADR\-004 §7.1).
+
+This is the form systemd, a container `init` and a CI step want: stdout and stderr stay attached, and the process leaves on SIGTERM the same way it leaves on `fathom daemon stop`. Without it, `start` spawns the detached form and waits for its socket to answer.
+.TP
+\fB\-\-socket\fR \fI<PATH>\fR
+Where to listen, instead of the endpoint derived from the repository (ADR\-004 §7.2)
+.TP
+\fB\-\-require\-socket\fR
+Refuse to start rather than run with no IPC endpoint.
+
+Off by default, because a filesystem that cannot host a socket (an SMB share, some container bind mount) is a reason to publish less, not a reason to have no daemon: the lease and the heartbeat file still answer `fathom status`.
+.TP
+\fB\-\-supervisor\fR \fI<SUPERVISOR>\fR
+Who is supervising this daemon, recorded in the health document (`systemd`, `docker`, `ci`)
+.TP
+\fB\-\-cpu\-share\-pct\fR \fI<CPU_SHARE_PCT>\fR [default: 25]
+The CPU ceiling, as a percent of one core. 25 is ADR\-004 §7.2\*(Aqs background default
+.TP
+\fB\-\-slice\fR \fI<SLICE>\fR [default: 2000]
+Analysis units per pass while nothing is talking to the daemon
+.TP
+\fB\-\-yield\-slice\fR \fI<YIELD_SLICE>\fR [default: 50]
+Analysis units per pass while a foreground client has just been heard — the yield slice
+.TP
+\fB\-\-queue\-depth\fR \fI<QUEUE_DEPTH>\fR [default: 64]
+How many distinct index requests may wait before new ones are refused rather than queued
+.TP
+\fB\-\-hook\-bytes\fR \fI<HOOK_BYTES>\fR [default: 1048576]
+Harness\-stream bytes per pass — the back\-pressure knob of ADR\-005 §6.5
+.TP
+\fB\-\-backend\fR \fI<BACKEND>\fR [default: auto]
+Which change source to use: `auto`, `notify` or `poll`. The daemon is a watcher, so it takes the watcher\*(Aqs flags for the same meaning
+.TP
+\fB\-\-interval\-ms\fR \fI<INTERVAL_MS>\fR
+The debounced polling interval in milliseconds
+.TP
+\fB\-\-debounce\-ms\fR \fI<DEBOUNCE_MS>\fR
+The quiescence window in milliseconds
+.TP
+\fB\-\-heartbeat\-ms\fR \fI<HEARTBEAT_MS>\fR
+The liveness beat in milliseconds, for the heartbeat file and the lease
+.TP
+\fB\-\-worktree\fR
+Also re\-index uncommitted paths when only git\*(Aqs index moved
+.TP
+\fB\-\-no\-status\-file\fR
+Do not write `.fathom/watch/status.json`
+.TP
+\fB\-\-deadline\fR \fI<DEADLINE>\fR
+Stop after this many seconds — the supervisor\*(Aqs `TimeoutStopSec` seam and a test\*(Aqs
+.TP
+\fB\-\-max\-cycles\fR \fI<MAX_CYCLES>\fR
+Stop after this many loop passes. A test seam, and the way to use the daemon as a one\-shot indexer
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

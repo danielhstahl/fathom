@@ -1,0 +1,22 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_SHOW 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-show \- Show one episode in full
+.SH SYNOPSIS
+\fBfathom show\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIEPISODE\fR> 
+.SH DESCRIPTION
+Show one episode in full
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the episode as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIEPISODE\fR>
+The episode to show: a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix

@@ -6,6 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
+# One author, because one person is cutting the alpha: this line is not a contributor list, it is the
+# **manufacturer** the Windows msi reports in "Add or remove programs" (WiX reads `authors`, and the msi
+# build fails without it). When that list becomes longer than one name, the first entry is the one the
+# installer will keep saying, so changing it after the first msi ships is a rename users have to watch.
+authors = ["danielstahl"]
 
 # cargo-dist needs a home for the artefacts before there is a public remote to point at — the same
 # pattern ADR-002 §10.1 used for `license`: a documented default so `e0.7` is not blocked by an open
@@ -13,6 +18,10 @@ publish = false
 # pushes the repository: the installer scripts, the release body and `dist-manifest.json` all take their
 # base from it, so a wrong value is a broken install rather than a cosmetic one.
 repository = "https://github.com/danielstahl/fathom"
+# The same placeholder, in its second place: `cargo-dist` puts it in the Homebrew formula's `homepage`,
+# and a formula without one is a package a reviewer cannot look at before installing it. Replace it in
+# the same PR that replaces `repository` (`docs/concepts/release.md` §3 step 2).
+homepage = "https://github.com/danielstahl/fathom"
 
 [[bin]]
 name = "fathom"
@@ -23,12 +32,24 @@ path = "src/main.rs"
 [package.metadata.dist]
 dist = true
 
+# The msi's two identities: `upgrade-guid` says "this is the same product as the one you have installed"
+# and `path-guid` says "this is the same install directory". `dist` generated both once (`dist init`),
+# and the *only* rule about them is that they must never be regenerated after an msi has been published:
+# a new upgrade-guid means a user's next install is a second product beside the first instead of an
+# upgrade of it. `crates/fathom-cli/wix/main.wxs` is the other half, and `dist` owns that file too.
+[package.metadata.wix]
+upgrade-guid = "6D7047EA-D319-4302-A5DB-3107F367B40C"
+path-guid = "A0229A50-9C5B-489F-A8EB-1A1A49807A56"
+license = false
+eula = false
+
 [lints]
 workspace = true
 
 [dependencies]
 clap.workspace = true
 clap_complete.workspace = true
+clap_mangen.workspace = true
 eyre.workspace = true
 color-eyre.workspace = true
 # The daemon's stop flags (`e6.3`): `signal-hook`'s flag API is the only async-signal-safe way to turn a

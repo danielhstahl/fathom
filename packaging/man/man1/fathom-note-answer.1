@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NOTE_ANSWER 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-note\-answer \- Answer a question or close a follow\-up by appending the note that closes it
+.SH SYNOPSIS
+\fBfathom note answer\fR [\fB\-\-author\fR] [\fB\-\-agent\fR] [\fB\-\-kind\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIID\fR> <\fITEXT\fR> 
+.SH DESCRIPTION
+Answer a question or close a follow\-up by appending the note that closes it
+.SH OPTIONS
+.TP
+\fB\-\-author\fR \fI<AUTHOR>\fR
+Who is answering
+.TP
+\fB\-\-agent\fR \fI<AGENT>\fR
+Record the answer as an agent\*(Aqs act on someone\*(Aqs behalf
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR [default: decision]
+The kind of the answering note: a `decision` is an answer that settles it, an `annotation` is an answer that informs it
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIID\fR>
+The question or follow\-up being answered (`nt\-…`)
+.TP
+<\fITEXT\fR>
+The answer

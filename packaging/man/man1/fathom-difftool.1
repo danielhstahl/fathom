@@ -1,0 +1,39 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DIFFTOOL 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-difftool \- Show one file\*(Aqs two sides in your own difftool — difftastic, meld, kdiff3, `vim \-d` (`e5.8`)
+.SH SYNOPSIS
+\fBfathom difftool\fR [\fB\-\-root\fR] [\fB\-\-path\fR] [\fB\-\-tool\fR] [\fB\-\-print\fR] [\fB\-\-list\fR] [\fB\-\-keep\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIEPISODE\fR] 
+.SH DESCRIPTION
+Show one file\*(Aqs two sides in your own difftool — difftastic, meld, kdiff3, `vim \-d` (`e5.8`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+Which of the episode\*(Aqs files to show, by path or by a unique suffix of it
+.TP
+\fB\-\-tool\fR \fI<NAME>\fR
+Which difftool to use, overriding `$FATHOM_DIFFTOOL` and your user config.
+
+A name from the table (`difftastic`, `meld`, `kdiff3`, `nvim`, `vim`, `vscode`, …) or any program on `PATH`, which gets the two files as its last two arguments.
+.TP
+\fB\-\-print\fR
+Print the command and the reason for it, and run nothing. The two files stay on disk
+.TP
+\fB\-\-list\fR
+List every file the episode touched with the line each would jump to, and show nothing
+.TP
+\fB\-\-keep\fR
+Leave the two staged files behind and say where they are
+.TP
+\fB\-\-json\fR
+Print the decision as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+[\fIEPISODE\fR]
+The episode whose file to show: the same handle grammar as every other verb. With no argument, `HEAD`

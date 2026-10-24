@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_STATS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-stats \- Report repo scale, index state and cache hit rate
+.SH SYNOPSIS
+\fBfathom stats\fR [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIROOT\fR] 
+.SH DESCRIPTION
+Report repo scale, index state and cache hit rate
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print the same report as JSON, for a machine
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIROOT\fR] [default: .]
+The repository to report on

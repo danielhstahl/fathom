@@ -1,0 +1,43 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_OPEN 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-open \- Open an episode\*(Aqs file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
+.SH SYNOPSIS
+\fBfathom open\fR [\fB\-\-root\fR] [\fB\-\-path\fR] [\fB\-\-line\fR] [\fB\-\-editor\fR] [\fB\-\-print\fR] [\fB\-\-list\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIEPISODE\fR] 
+.SH DESCRIPTION
+Open an episode\*(Aqs file at its line in `$EDITOR` — jump out, do not read around it (`e5.8`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+Which of the episode\*(Aqs files to open, by path or by a unique suffix of it.
+
+With more than one file in the episode and no `\-\-path`, the biggest non\-noise change is chosen — and printed, so a surprise is at least a visible one.
+.TP
+\fB\-\-line\fR \fI<N>\fR
+Which line, overriding the line the first `@@` header says
+.TP
+\fB\-\-editor\fR \fI<PROGRAM [ARGS…]>\fR
+Which editor to use for this run, overriding `$FATHOM_EDITOR`, `$VISUAL` and `$EDITOR`.
+
+The whole spec is used, arguments included, so `\-\-editor "nvim \-p"` splits a tab open across your command line and this flag.
+.TP
+\fB\-\-print\fR
+Print the command and the reason for it, and run nothing.
+
+The door that works with no editor installed, which is what makes "no `$EDITOR`" an explainable state rather than a broken one.
+.TP
+\fB\-\-list\fR
+List every file the episode touched with the line each would jump to, and open nothing
+.TP
+\fB\-\-json\fR
+Print the decision as JSON on stdout, and nothing else there
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+[\fIEPISODE\fR]
+The episode to jump into: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix — the same grammar `fathom show`, `analyze` and `why` accept. With no argument, `HEAD`

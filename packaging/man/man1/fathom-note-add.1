@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_NOTE_ADD 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-note\-add \- Record a note, decision, question or follow\-up against an episode or a path
+.SH SYNOPSIS
+\fBfathom note add\fR [\fB\-\-episode\fR] [\fB\-\-path\fR] [\fB\-\-kind\fR] [\fB\-\-author\fR] [\fB\-\-agent\fR] [\fB\-\-about\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITEXT\fR] 
+.SH DESCRIPTION
+Record a note, decision, question or follow\-up against an episode or a path
+.SH OPTIONS
+.TP
+\fB\-\-episode\fR \fI<EPISODE>\fR
+The episode to attach it to, or an unambiguous prefix of its id
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+The path to attach it to, optionally `path:line`. Resolved to the newest episode that touched it when the index knows one
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR [default: annotation]
+What kind of note this is: `decision`, `question`, `follow\-up`, `annotation` (`note` and `flag` are accepted as `annotation`)
+.TP
+\fB\-\-author\fR \fI<AUTHOR>\fR
+Who is writing, when git config and `fathom.toml` do not say
+.TP
+\fB\-\-agent\fR \fI<AGENT>\fR
+Record the note as an agent\*(Aqs act on someone\*(Aqs behalf, not as a human\*(Aqs
+.TP
+\fB\-\-about\fR \fI<ABOUT>\fR
+The note this one answers, by `nt\-…` id
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fITEXT\fR]
+The text of the note. One line in the file either way: paragraph breaks are folded, never wrapped

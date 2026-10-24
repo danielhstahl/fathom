@@ -17,6 +17,22 @@
       "what": "the source tree a distro or an auditor builds from, with its own `.sha256`"
     },
     {
+      "name": "fathom_0.1.0~alpha.1_amd64.deb",
+      "what": ""
+    },
+    {
+      "name": "fathom_0.1.0~alpha.1_arm64.deb",
+      "what": ""
+    },
+    {
+      "name": "fathom-0.1.0~alpha.1-1.x86_64.rpm",
+      "what": ""
+    },
+    {
+      "name": "fathom-0.1.0~alpha.1-1.aarch64.rpm",
+      "what": ""
+    },
+    {
       "name": "fathom-cli-installer.sh",
       "what": "the `curl \u2026 | sh` script for Linux and macOS; picks the target from the machine"
     },
@@ -25,8 +41,16 @@
       "what": "the `irm \u2026 | iex` script for Windows, so a Windows user is not told to use bash"
     },
     {
+      "name": "fathom.rb",
+      "what": ""
+    },
+    {
       "name": "sha256.sum",
       "what": "one digest per artefact, so a download can be checked without trusting the transport"
+    },
+    {
+      "name": "fathom-cli-x86_64-pc-windows-msvc.msi",
+      "what": ""
     }
   ],
   "hosting": {
@@ -78,6 +102,8 @@
     }
   ],
   "installers": [
+    "homebrew",
+    "msi",
     "powershell",
     "shell"
   ],
@@ -89,11 +115,27 @@
       "contents": [
         "CHANGELOG.md",
         "README.md",
-        "fathom"
+        "completions",
+        "fathom",
+        "man"
       ],
       "dist_args": "--artifacts=local --target=aarch64-apple-darwin",
       "runner": "macos-14",
       "triple": "aarch64-apple-darwin"
+    },
+    {
+      "archive": "fathom-cli-aarch64-unknown-linux-gnu.tar.xz",
+      "checksum": "fathom-cli-aarch64-unknown-linux-gnu.tar.xz.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "completions",
+        "fathom",
+        "man"
+      ],
+      "dist_args": "--artifacts=local --target=aarch64-unknown-linux-gnu",
+      "runner": "ubuntu-24.04-arm",
+      "triple": "aarch64-unknown-linux-gnu"
     },
     {
       "archive": "fathom-cli-x86_64-apple-darwin.tar.xz",
@@ -101,7 +143,9 @@
       "contents": [
         "CHANGELOG.md",
         "README.md",
-        "fathom"
+        "completions",
+        "fathom",
+        "man"
       ],
       "dist_args": "--artifacts=local --target=x86_64-apple-darwin",
       "runner": "macos-15-intel",
@@ -113,7 +157,9 @@
       "contents": [
         "CHANGELOG.md",
         "README.md",
-        "fathom"
+        "completions",
+        "fathom",
+        "man"
       ],
       "dist_args": "--artifacts=local --target=x86_64-pc-windows-msvc",
       "runner": "windows-2022",
@@ -125,11 +171,27 @@
       "contents": [
         "CHANGELOG.md",
         "README.md",
-        "fathom"
+        "completions",
+        "fathom",
+        "man"
       ],
       "dist_args": "--artifacts=local --target=x86_64-unknown-linux-gnu",
       "runner": "ubuntu-22.04",
       "triple": "x86_64-unknown-linux-gnu"
+    },
+    {
+      "archive": "fathom-cli-x86_64-unknown-linux-musl.tar.xz",
+      "checksum": "fathom-cli-x86_64-unknown-linux-musl.tar.xz.sha256",
+      "contents": [
+        "CHANGELOG.md",
+        "README.md",
+        "completions",
+        "fathom",
+        "man"
+      ],
+      "dist_args": "--artifacts=local --target=x86_64-unknown-linux-musl",
+      "runner": "ubuntu-22.04",
+      "triple": "x86_64-unknown-linux-musl"
     }
   ],
   "what": "What `cargo dist plan` actually said about this repository's release path, measured on a real tree. Refresh: `dist plan --output-format=json | python3 tools/check_release.py capture`. Checked by `python3 tools/check_release.py` (R10), rendered into docs/concepts/release.md by `... write`."

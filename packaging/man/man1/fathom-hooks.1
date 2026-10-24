@@ -1,0 +1,44 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_HOOKS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-hooks \- Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
+.SH SYNOPSIS
+\fBfathom hooks\fR [\fB\-\-events\fR] [\fB\-\-check\fR] [\fB\-\-replay\fR] [\fB\-\-tail\fR] [\fB\-\-max\fR] [\fB\-\-trailer\fR] [\fB\-\-json\fR] [\fB\-\-strict\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIROOT\fR] 
+.SH DESCRIPTION
+Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
+.SH OPTIONS
+.TP
+\fB\-\-events\fR \fI<EVENTS>\fR
+Read this events file instead of the configured one (ADR\-005 §3.1\*(Aqs first choice)
+.TP
+\fB\-\-check\fR
+Report the stream and change nothing. This is the default; the flag exists so a script can say what it means
+.TP
+\fB\-\-replay\fR
+Rebuild everything from byte 0 and rewrite the offset: what an index rebuild does first.
+
+Replay is deterministic by contract — the same file yields the same turns and the same commit linkage — which is what makes it safe to key a review to a turn id across a rebuild.
+.TP
+\fB\-\-tail\fR
+Read forward from the durable offset, advancing it, and print what arrived
+.TP
+\fB\-\-max\fR \fI<MAX>\fR
+With `\-\-tail`: print at most this many records
+.TP
+\fB\-\-trailer\fR \fI<SESSION:TURN>\fR
+Print the `Agent\-Session:` / `Agent\-Turn:` trailer pair for `<session>:<turn\-index>`.
+
+The turn id is session\-qualified on the way out, which is what keeps two sessions\*(Aq turn 3 from reading as one turn (ADR\-003 §9.1, §18.2 **D4**).
+.TP
+\fB\-\-json\fR
+Print the same report as JSON on stdout, and nothing else there
+.TP
+\fB\-\-strict\fR
+Exit 7 when the stream is not healthy — the form a CI gate wants
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+[\fIROOT\fR] [default: .]
+The repository whose `.fathom/events.jsonl` to read

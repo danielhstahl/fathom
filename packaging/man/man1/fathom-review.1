@@ -1,0 +1,37 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_REVIEW 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-review \- The review ledger: sign\-offs that outlive the history they were written about (`e4.6`)
+.SH SYNOPSIS
+\fBfathom review\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+The review ledger: sign\-offs that outlive the history they were written about (`e4.6`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`).
+
+Global so `fathom review \-\-json sign …` and `fathom review sign … \-\-json` are the same command; a reviewer should not have to remember which side of the subverb a flag lives on.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.SH SUBCOMMANDS
+.TP
+fathom\-review\-status(1)
+The verdict: is every episode covered by a sign\-off that still matches (exit `7` when it is not)
+.TP
+fathom\-review\-sign(1)
+Sign an episode off, appending one entry to `.fathom/reviews/ledger.md`
+.TP
+fathom\-review\-sync(1)
+Render the queue\*(Aqs acts that the ledger has never seen
+.TP
+fathom\-review\-list(1)
+List the ledger\*(Aqs entries with their verdicts
+.TP
+fathom\-review\-verify(1)
+Re\-hash every entry against its own `digest:` line — tampering, and nothing else

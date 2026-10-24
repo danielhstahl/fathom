@@ -17,6 +17,65 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Cross-platform packaging: an artefact set a stranger can install, and the secrets that are not wired (`reco-3q4`)
+
+`e0.7` built the release pipeline and `m0` cut the alpha out of it; both left the word *packaging* to this
+ticket. The acceptance criteria were four — installers for macOS, Linux and Windows, Linux system packages,
+completions and a man page generated from the CLI definitions so they cannot drift, and contributor docs
+that say which release steps need a maintainer-only secret — and three of them are a mechanism, which means
+they can be built and gated here rather than promised. The fourth is a table, and it is in the changelog
+before it is in a wiki.
+
+- **Six targets, four installers, one binary.** `dist-workspace.toml` now builds `x86_64`/`aarch64` Linux
+  (GNU) plus `x86_64-unknown-linux-musl` as the **static** build, both Apple triples, and `x86_64-pc-windows-msvc`,
+  and produces a shell script, a PowerShell script, an **msi** and a **Homebrew formula**
+  (`formula = "fathom"`, so a person types the binary's name, not the crate's). arm64 Linux builds natively
+  on `ubuntu-24.04-arm`, declared in `dist.github-custom-runners` so `dist` does not reach for a
+  cross-compiler it does not need; `aarch64-pc-windows-msvc` stays out, because an arm64 Windows runner does
+  not exist and this document would rather not make a claim whose only evidence is a green tick.
+- **`.deb` and `.rpm`, repacked from the release rather than recompiled by it.** `cargo-dist` has no system-package
+  target, so `[[dist.extra-artifacts]]` runs `packaging/linux-packages.sh` in the global phase — after every
+  per-target archive has been downloaded back into `target/distrib/` — and `tools/package_release.py` relocates
+  the archive's own bytes into each format's FHS layout (`/usr/bin`, `/usr/share/{bash-completion,zsh,fish}`,
+  gzipped `/usr/share/man/man1`, `/usr/share/doc/fathom` plus a Debian `copyright`). The `.deb` is written
+  here with zero timestamps and re-read by this tool and by `dpkg-deb`; the `.rpm` is written by `rpmbuild`,
+  which the script installs because the runner image lacks it. `--self-test` asserts nine claims about the
+  output, including the two that are invisible until a user hits them: a control member whose declared size
+  is wrong unpacks happily and fails at configure time, and a file name that disagrees with the binary's
+  `--version` is a package `dpkg -i` mislabels. `0.1.0-alpha.1` is `0.1.0~alpha.1` in a file name, because
+  `-` is not legal in an upstream version and `~` is how both package managers spell "sorts before".
+- **`fathom completions`: the CLI prints its own grammar, so nothing can drift.** `bash`, `zsh` and `fish`
+  scripts via `clap_complete`, and one roff page per verb and subverb via `clap_mangen`
+  (`fathom-review-sign.1`, each page naming the version it was cut from). `tools/gen_shell_artifacts.py
+  write` commits them under `packaging/`, `dist`'s `include` puts them in every archive, `package_release.py`
+  relocates them into the packages, and `check` regenerates and diffs in CI — the same argument `gen_docs.py`
+  makes about `--help`, one directory over. The verb is in `docs/reference/cli.md` like every other verb,
+  because a shipped verb with no page is an undocumented feature.
+- **The installer's promise is rehearsed, with negative controls.** `tools/rehearse_installer.py` mirrors
+  `target/distrib/` over `http://127.0.0.1`, runs the README's one-liner against it with only the host
+  changed (`FATHOM_CLI_DOWNLOAD_URL`, `FATHOM_CLI_INSTALL_DIR`, `FATHOM_CLI_NO_MODIFY_PATH`), and insists the
+  right archive was fetched, its digest matches, and the installed binary reports the version the manifest
+  carries. `--self-test` then corrupts the mirror four ways — bad digest, missing artefact, an installer that
+  fetches something else, a binary from another release — and requires all four to be caught, because a
+  rehearsal that cannot fail is theatre.
+- **Five more rules on the release gate: `R14`–`R17`.** The installer set and the two extra targets present;
+  the msi still buildable, which means its `upgrade-guid` survived (regenerating that after a published msi
+  splits the product in two on the user's machine); the system packages still named for the version being
+  released, with their builder a file in the tree and their output under `target/`; the completions and man
+  pages present, non-empty and actually `include`d; and the secrets table still rendered with its three
+  signing names in it. 22 mutation cases now, all detected, `tools/check_release.py --self-test`.
+- **§8 of the release document is the answer to "which steps need a maintainer-only secret"** — generated
+  from a table in the checker rather than prose, with a *what a fork sees* column: nothing in the build needs
+  a credential, so every artefact here builds unsigned from a fork's own releases page; `HOMEBREW_TAP_TOKEN`
+  is why `publish-jobs = ["homebrew"]` is a commented line instead of a failing job; and macOS codesigning
+  and notarisation are **not** a `cargo-dist` setting in 0.33 (they run between the build and the archiving,
+  then `staple`), so they need a wrapper that cannot be tested without the certificate — which is why it is
+  documented rather than half-wired.
+- **What this does not claim.** That the msi, the formula or the `.rpm` are *right* rather than built (only
+  WiX, Homebrew and `rpm -qp` can say, and CI runs the last); that anything is signed; that `brew install`
+  works from a tap that does not exist yet; and that the artefact another OS receives works — that stays the
+  runbook's step 5, on three machines, with a ledger row each.
+
 ### Epic 2 closes: the episode says what it now depends on, and the fold is on the record (`reco-tx0`)
 
 Epic 2's exit criterion is one sentence — *every episode answers where the change landed and what it now

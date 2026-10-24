@@ -1,0 +1,37 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_WHY 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-why \- Print one episode\*(Aqs risk score with every feature, its weight and its contribution (`e4.4`)
+.SH SYNOPSIS
+\fBfathom why\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-calibrate\fR] [\fB\-\-weight\fR] [\fB\-\-tau\fR] [\fB\-\-cut\fR] [\fB\-\-weights\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIEPISODE\fR] 
+.SH DESCRIPTION
+Print one episode\*(Aqs risk score with every feature, its weight and its contribution (`e4.4`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the same answer as JSON, for a machine
+.TP
+\fB\-\-calibrate\fR [\fI<SET>\fR]
+Print the calibration report — precision and recall at the top of the queue, as shipped and as retuned — instead of a score. With a path, that JSON set is measured; without one, the set shipped with the binary
+.TP
+\fB\-\-weight\fR \fI<NAME=VALUE>\fR
+Override one weight for this run only: `\-\-weight findings=0.25`. Repeatable. Nothing is written to `fathom.toml`; the score says which weights were overridden
+.TP
+\fB\-\-tau\fR \fI<TAU>\fR
+Override the flag line for this run only, 0 to 100
+.TP
+\fB\-\-cut\fR \fI<FRACTION>\fR
+How deep the queue is, as a fraction, for `\-\-calibrate`. Defaults to 0.1 — the top ten percent
+.TP
+\fB\-\-weights\fR
+Print the feature names this build can score, and stop
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIEPISODE\fR]
+The episode to score: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `\-\-calibrate`, which reports on the weights instead of on an episode

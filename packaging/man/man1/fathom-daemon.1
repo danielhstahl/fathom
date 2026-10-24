@@ -1,0 +1,23 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DAEMON 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-daemon \- The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
+.SH SYNOPSIS
+\fBfathom daemon\fR [\fB\-h\fR|\fB\-\-help\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+The one process per repository that watches, tails the harness stream and indexes (`e6.3`)
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+fathom\-daemon\-start(1)
+Take the writer lease and watch this repository from this process, or from a detached one
+.TP
+fathom\-daemon\-stop(1)
+Ask the daemon to finish its pass, checkpoint and release the lease
+.TP
+fathom\-daemon\-status(1)
+The daemon\*(Aqs own health report (`fathom status` is the same question at the top level)

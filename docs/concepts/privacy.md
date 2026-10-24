@@ -205,8 +205,12 @@ neither replaces the licence policy itself.
 * **The harness event stream is yours.** `.fathom/events.jsonl` is written by your agent's hooks
   ([ADR-005 §2](../adr/0005-harness-contract.md)); Fathom reads it and never sends it anywhere, but the
   agent that writes it is a program of your choosing with its own policy.
-* **Signed artefacts and per-PR artefact hosting** are `e7.4` (**reco-3q4**); `sha256.sum` is integrity,
-  not authenticity ([release.md](release.md)).
+* **Signed artefacts and per-PR artefact hosting**: `e7.4` (**reco-3q4**) shipped the packaging — an msi,
+  `.deb` and `.rpm`, a Homebrew formula, a static `musl` build — and [release.md §8](release.md) now names
+  every signing and publishing step next to the maintainer-only secret in front of it. None of those
+  secrets exist here, so nothing is signed: `sha256.sum` is integrity, not authenticity, and a macOS binary
+  arrives unsigned and Gatekeeper-wary. A per-PR download that needs no login still needs an object store
+  this project does not have ([release.md §1.2](release.md)).
 * **A security review** is `e7.8` (**reco-41a**), which reads this page as its starting position rather
   than as its conclusion.
 

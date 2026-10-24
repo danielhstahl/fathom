@@ -155,6 +155,10 @@ clap = { version = "4", features = ["derive"] }    # default features on: this i
                                                    # clap's own colour/help/error text is the product's
                                                    # first words (ADR-005 §6)
 clap_complete = { version = "4" }
+# The man page, from the same `clap::Command` the parser runs on (`e7.4`, reco-3q4). `clap_complete` and
+# this are a matched pair: one grammar, three shells and a roff page, none of which can disagree with
+# `--help` because they are rendered from the same object `fathom` parses with.
+clap_mangen = { version = "0.2" }
 eyre = { version = "0.6" }                                       # only `fathom-cli` may name this crate (lint W5)
 color-eyre = { version = "0.6" }
 

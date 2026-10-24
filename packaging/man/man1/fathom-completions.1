@@ -1,0 +1,26 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_COMPLETIONS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-completions \- Print the shell\*(Aqs own copy of this grammar: completion scripts and man pages (`e7.4`)
+.SH SYNOPSIS
+\fBfathom completions\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Print the shell\*(Aqs own copy of this grammar: completion scripts and man pages (`e7.4`)
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+fathom\-completions\-bash(1)
+The completion script for bash, to drop in `.../bash\-completion/completions/fathom`
+.TP
+fathom\-completions\-zsh(1)
+The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
+.TP
+fathom\-completions\-fish(1)
+The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom.fish`
+.TP
+fathom\-completions\-man(1)
+The man pages, rendered from the same grammar

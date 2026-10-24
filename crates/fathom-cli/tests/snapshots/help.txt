@@ -32,6 +32,7 @@ Commands:
   ratchet       The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (`e3.10`)
   context       What this repository knows about a path or an episode: the recorded decisions and the open questions (`e6.5`)
   note          The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/` (`e6.5`)
+  completions   Print the shell's own copy of this grammar: completion scripts and man pages (`e7.4`)
   help          Print this message or the help of the given subcommand(s)
 
 Options:
@@ -2304,6 +2305,129 @@ Options:
 
       --no-alt-screen
           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
+      --theme <NAME|PATH>
+          Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
+          
+          `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+===== fathom completions --help =====
+Print the shell's own copy of this grammar: completion scripts and man pages (`e7.4`)
+
+Usage: fathom completions [OPTIONS] <COMMAND>
+
+Commands:
+  bash  The completion script for bash, to drop in `.../bash-completion/completions/fathom`
+  zsh   The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
+  fish  The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom.fish`
+  man   The man pages, rendered from the same grammar
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+      --plain
+          Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7).
+          
+          Chosen automatically when stdout is not a terminal, so a redirected run degrades by itself.
+
+      --no-alt-screen
+          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --fresh
+          Ignore the session this repository has stored, and start from defaults (`e1.11`).
+          
+          The escape hatch for a session that came back wrong: a filter that hides the episode you are looking for, a cursor on a row that moved. The stored state is not destroyed — a run that changes nothing writes nothing — it is simply not applied to this one.
+
+      --mouse
+          Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1).
+          
+          Off by default, because capturing the pointer takes the terminal's own text selection away for the length of the run. Every gesture it adds is also a key, and the status line says `mouse on` while it is armed.
+
+      --lines
+          With `--plain`: print the frame in reading order, one block per pane, instead of side by side.
+          
+          Two panes drawn next to each other is the right shape for eyes and the wrong shape for a log, a pipe or a screen reader (ADR-006 §6.7). Same facts, same order, one per line.
+
+      --theme <NAME|PATH>
+          Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`).
+          
+          `dark`, `light` and `ansi` are built in, and all three are measured — for contrast against the background they paint, and for how far the added / removed / violation pairs stay apart when protanopia and deuteranopia are simulated. Anything else is `<name>.toml` in `$FATHOM_THEME_DIR` or `~/.config/fathom/themes/`, or a path. `$FATHOM_THEME` and `[theme] name` in your own config are the same knob one layer down; a repository's `fathom.toml` is deliberately not a layer at all, because a clone does not get to repaint your terminal. With colour off — `NO_COLOR`, or a terminal that has none — the theme is not applied and every state keeps its shape and its word. `fathom tui --list-themes` lists what Fathom can see; `--show-theme` prints the one in force with its measurements, and `--show-theme --audit` exits 7 if a palette fails a floor.
+
+      --progress
+          Print the index's progress row even where stderr is not a terminal (`e5.9`).
+          
+          On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --no-progress
+          Never print the index's progress row, even on a terminal (`e5.9`).
+          
+          The other half of the same choice: a script with its own progress line, or a run whose output is being tee'd somewhere, turns it off explicitly instead of discovering it on.
+
+      --no-watch
+          Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
+          
+          An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+===== fathom completions man --help =====
+The man pages, rendered from the same grammar
+
+Usage: fathom completions man [OPTIONS]
+
+Options:
+      --out <DIR>
+          Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout
+
+      --plain
+          Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7).
+          
+          Chosen automatically when stdout is not a terminal, so a redirected run degrades by itself.
+
+      --no-alt-screen
+          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+
+      --page <NAME>
+          Just this page — `--page fathom-check` — instead of every verb
 
       --fresh
           Ignore the session this repository has stored, and start from defaults (`e1.11`).

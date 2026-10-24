@@ -41,6 +41,18 @@ Windows PowerShell:
 irm https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.ps1 | iex
 ```
 
+Or take the artefact off the release page directly: a `.tar.xz` per platform — including a **static**
+`x86_64-unknown-linux-musl` build, for the container image whose glibc somebody pinned in 2019 — an `.msi`
+for Windows, `.deb` and `.rpm` packages for amd64 and arm64 Linux, and a Homebrew formula. The formula is
+not published to a tap yet, and [docs/concepts/release.md §8](docs/concepts/release.md) says so plainly
+instead of implying it; the same section names every signing step and the maintainer-only secret in front
+of it. Nothing is signed today: each artefact has its own `.sha256`, the release has one `sha256.sum`, and
+that is integrity, not authenticity.
+
+Every archive and package carries the shell completions (bash, zsh, fish) and a man page per verb, printed
+by `fathom completions` from the same definitions `--help` is rendered from: `man fathom-check` works after
+a `.deb` install, and after an untar with `MANPATH` pointed at the archive.
+
 Then `fathom --version` (prints the version and the compiled-in feature set) and `fathom doctor --json` (the
 one-object report that is safe to attach to a bug report, including what your machine actually has).
 
@@ -147,7 +159,7 @@ of which half is code and which half is not.
 | Delivery plan (94 tickets, 8 epics, 5 spikes) | [.plan/README.md](.plan/README.md), tracked as beads (`reco-*`) | active |
 | Rust workspace layout, crate boundaries, feature gates, MSRV | [docs/adr/0002-workspace.md](docs/adr/0002-workspace.md), `tools/workspace_model.py`, `tools/check_workspace.py` | ADR-002 accepted |
 | The cargo workspace itself: eight compiling stub crates, shared lint config, three-OS CI, `cargo-dist` release skeleton | `Cargo.toml`, `crates/`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`dist-workspace.toml`](dist-workspace.toml), [`.github/workflows/release.yml`](.github/workflows/release.yml) | `e0.7` (`reco-e77`) built: `cargo build/test --workspace` green on linux/macOS/windows, `fmt` + `clippy -D warnings` + `cargo deny` are hard gates, every PR builds a `fathom` binary per platform |
-| Release artefacts (install scripts, per-platform archives), and the alpha cut | [docs/concepts/release.md](docs/concepts/release.md), `dist-workspace.toml`, [`.github/workflows/release.yml`](.github/workflows/release.yml), `tools/check_release.py`, [benchmarks/reports/dist-release-plan.json](benchmarks/reports/dist-release-plan.json) | `e0.7` (`reco-e77`) built the skeleton; `m0` (`reco-n1j`) cut `0.1.0-alpha.1` and put the path behind a gate: `cargo dist generate --check` plus `tools/check_release.py` (12 rules — three operating systems still covered, both installers present, one releasable crate, one version, the changelog section that *is* the release body, README quoting the URL the installers bake, prerelease-never-latest), all of it re-measured into `dist-release-plan.json` and rendered into the release document. Per-PR artefacts are workflow artefacts (login needed to download), the auth-free artefact is the GitHub release a tag creates; `aarch64-linux`/`aarch64-windows`/musl targets are `e7.4`'s |
+| Release artefacts (install scripts, per-platform archives, system packages), and the alpha cut | [docs/concepts/release.md](docs/concepts/release.md), `dist-workspace.toml`, [`.github/workflows/release.yml`](.github/workflows/release.yml), `tools/check_release.py`, [benchmarks/reports/dist-release-plan.json](benchmarks/reports/dist-release-plan.json) | `e0.7` (`reco-e77`) built the skeleton; `m0` (`reco-n1j`) cut `0.1.0-alpha.1` and put the path behind a gate: `cargo dist generate --check` plus `tools/check_release.py` (17 rules — three operating systems still covered, every installer present, one releasable crate, one version, the changelog section that *is* the release body, README quoting the URL the installers bake, prerelease-never-latest), all of it re-measured into `dist-release-plan.json` and rendered into the release document. `e7.4` (`reco-3q4`) made the answer *installable*: six targets including a static `musl` build and native arm64 Linux, an msi, a Homebrew formula, `.deb`/`.rpm` repacked from the release archives by `tools/package_release.py`, completion scripts and 54 man pages printed by `fathom completions` and re-diffed in CI, and §8 of the release document naming every signing step and the maintainer-only secret it needs (none wired, all stated). Per-PR artefacts are workflow artefacts (login needed to download); the auth-free artefact is the GitHub release a tag creates |
 
 ## What it does, in five lines
 

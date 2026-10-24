@@ -1,5 +1,5 @@
 # The release skeleton: `cargo-dist`'s workspace config. ADR-002 §10.1 hands the artefact set to `e0.7`;
-# `e7.4`/`reco-3q4` extends it once there is a product to ship.
+# `e7.4`/`reco-3q4` extends it into the artefact set a stranger can actually install.
 #
 # Kept honest by the tool that reads it: `cargo dist generate` writes `.github/workflows/release.yml`
 # from this file, and CI runs `cargo dist generate --check`, so a hand-edited workflow — the usual way a
@@ -19,20 +19,10 @@
 # generate. Per-PR links that need no login need an object store this project does not have yet, so that
 # half of the criterion is recorded as infrastructure `e7.4` owns rather than quietly narrowed.
 #
-# The targets are the four a stock GitHub runner compiles natively. `aarch64-unknown-linux-gnu`,
-# `aarch64-pc-windows-msvc` and a static `x86_64-unknown-linux-musl` are deliberately absent: the six
-# tree-sitter grammars and the bundled SQLite have to be C-compiled per target, so those three need a
-# cross-toolchain (zigbuild, or a native arm64 runner) — `e7.4`'s work, not a line in a config file.
-# `deny.toml`'s `[graph] targets` does list all six triples the ADR cares about, so dependency and
-# licence resolution is checked across the whole platform set either way.
-#
-# Runner labels are not written here: `dist` computes them at plan time. Measured at landing with
-# `cargo dist plan --output-format=json` (`ci.github.artifacts_matrix`), the four targets map to
-# `ubuntu-22.04`, `windows-2022`, `macos-14` and `macos-15-intel` — each building its own triple
-# natively, which is the property that makes the per-PR job pass rather than cross-compile-and-hope. If
-# GitHub retires an Intel macOS runner, dropping `x86_64-apple-darwin` from the list below is the whole
-# fix; `cargo dist generate --check` (a CI job) then forces `release.yml` to be regenerated in the same
-# PR that changes it.
+# The whole artefact set, and the section of `docs/concepts/release.md` that explains each row: six
+# targets (§1.1), two script installers, an msi, a Homebrew formula, a source tarball, a set of Linux
+# system packages and a shell-integration bundle built by `tools/package_release.py`, and `sha256.sum`.
+# Signing is deliberately absent and §8 of that document says which secrets it would need.
 
 [workspace]
 members = ["cargo:."]
@@ -43,12 +33,43 @@ members = ["cargo:."]
 cargo-dist-version = "0.33.0"
 # CI backends to support
 ci = "github"
-# The installers to generate for each app: `curl -fsSL <install.sh> | sh`, and the PowerShell equivalent
-# for the Windows users who should not have to reach for a shell.
-installers = ["shell", "powershell"]
-# Target platforms to build apps for (Rust target-triple syntax)
+# The installers to generate for each app:
+#
+#   * `shell` — the `curl -fsSL <install.sh> | sh` script for Linux and macOS;
+#   * `powershell` — the `irm … | iex` equivalent, so a Windows user is never told to run a shell script;
+#   * `msi` — a Windows installer, for the users who expect one: it registers in "Add or remove programs",
+#     offers a PATH checkbox and upgrades in place. Made by WiX v3, which is preinstalled on the Windows
+#     runner (see `wix/main.wxs`, which dist owns and regenerates);
+#   * `homebrew` — a formula, so a macOS (or Linux-with-brew) reviewer can `brew install` instead of
+#     piping a script into a shell. See `tap` below: the formula is *built* here, and *published* only
+#     once a tap repository and a token exist.
+installers = ["shell", "powershell", "msi", "homebrew"]
+# Target platforms to build apps for (Rust target-triple syntax).
+#
+# Six, which is the whole platform set ADR-002 §10.1 cares about and the set `deny.toml`'s
+# `[graph] targets` already resolves licences and advisories across:
+#
+#   * `x86_64-unknown-linux-gnu` — the glibc tarball most Linux users get;
+#   * `aarch64-unknown-linux-gnu` — the same, on arm64 servers and boards. Built on a native arm64
+#     runner (below) rather than cross-compiled, because the six tree-sitter grammars and the bundled
+#     SQLite are C and a native C toolchain is not a cross wrapper's best day;
+#   * `x86_64-unknown-linux-musl` — the **static** build: no glibc version assumptions, which is the
+#     difference between "works on the LTS" and "works on the container image someone chose in 2019".
+#     Needs `musl-tools` on the runner (declared under `[dist.dependencies.apt]` below) because the
+#     same C has to be compiled against musl;
+#   * `x86_64-apple-darwin` and `aarch64-apple-darwin` — both Macs. An x86_64-only Mac build is a broken
+#     install on every Apple-silicon machine, and the failure is a stranger following a README one-liner;
+#   * `x86_64-pc-windows-msvc` — the zip, and the msi.
+#
+# `aarch64-unknown-linux-musl` and `aarch64-pc-windows-msvc` are the two that are still missing, and both
+# are missing for the same reason: an arm64 Windows runner does not exist, and an arm64 musl build would
+# be a second cross-target whose only evidence would be a green tick. Adding either is a `targets` line
+# plus a runner in `[dist.github-custom-runners]`; `tools/check_release.py` R02 is what notices if any
+# of the six below quietly disappears.
 targets = [
   "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
   "x86_64-apple-darwin",
   "aarch64-apple-darwin",
   "x86_64-pc-windows-msvc",
@@ -61,3 +82,78 @@ pr-run-mode = "upload"
 dispatch-releases = true
 # The source tarball is the artefact distros want, and it costs nothing to produce.
 source-tarball = true
+
+# The Homebrew tap to publish the formula to. Conventional: the repo name starts with `homebrew-`, and
+# `brew install danielstahl/fathom/fathom` drops the prefix. Like `package.repository` (ADR-002 §10.3)
+# this is a **placeholder** — the public remote does not exist yet — and it is the reason
+# `publish-jobs` is commented out below rather than set: the formula is a release artefact today, and
+# publishing it needs a repository and a maintainer-only token (`HOMEBREW_TAP_TOKEN`) that a fork cannot
+# have. `tools/check_release.py` R15 fails if the two ever disagree.
+tap = "danielstahl/homebrew-fathom"
+# The formula is `fathom`, not `fathom-cli`: the crate is a package name and the thing a person types is
+# `brew install fathom`. `formula` is the one line that keeps the two apart.
+formula = "fathom"
+
+# What goes *inside* every archive besides the binary. `auto-includes` already puts README, LICENSE and
+# CHANGELOG beside it; these two directories are the shell story — completions for bash/zsh/fish and a
+# man page — and both are generated from the clap definitions by `tools/gen_shell_artifacts.py`, which
+# CI runs in `check` mode, so a flag can no more disappear from the completions than from `--help`.
+# Installers install binaries only, so these arrive as files next to the binary rather than littering
+# the install directory; `fathom completions` is the same content on demand.
+include = ["packaging/completions", "packaging/man"]
+
+# The Linux system packages, and the shell-integration bundle. `dist` has no deb or rpm target of its
+# own, so these are `extra-artifacts`: `dist` runs the `build` command during the global phase — after
+# every per-target archive has been downloaded back into `target/distrib/`, which is what makes a package
+# built from the release archive rather than from a second compile of the tree — and then uploads each
+# listed path to the release beside the tarballs.
+#
+# The filenames carry the version, because that is what `dpkg -i` and `dnf install` want to see, and a
+# `.deb`/`.rpm` upstream version may not contain `-`: `0.1.0-alpha.1` becomes `0.1.0~alpha.1`, which is
+# also how both package managers spell "sorts before 0.1.0". The two places the version is written
+# (here, and the version the packages declare) are checked against `Cargo.toml` by
+# `tools/check_release.py` `R15` and by `tools/package_release.py` itself, which refuses to write a
+# package whose name and `--version` disagree. Each package gets a `.sha256` of its own because `dist`
+# checksums the artefacts it knows about and these are the ones it does not.
+[[dist.extra-artifacts]]
+artifacts = [
+  "target/packaging/fathom_0.1.0~alpha.1_amd64.deb",
+  "target/packaging/fathom_0.1.0~alpha.1_amd64.deb.sha256",
+  "target/packaging/fathom_0.1.0~alpha.1_arm64.deb",
+  "target/packaging/fathom_0.1.0~alpha.1_arm64.deb.sha256",
+  "target/packaging/fathom-0.1.0~alpha.1-1.x86_64.rpm",
+  "target/packaging/fathom-0.1.0~alpha.1-1.x86_64.rpm.sha256",
+  "target/packaging/fathom-0.1.0~alpha.1-1.aarch64.rpm",
+  "target/packaging/fathom-0.1.0~alpha.1-1.aarch64.rpm.sha256",
+]
+# A script rather than the Python module, because the first thing the script does is say out loud which
+# package the global runner is missing: `dist` installs `[dist.dependencies]` on the *per-target* build
+# jobs only, and the packages here are assembled on the global job, where no such step exists.
+build = ["packaging/linux-packages.sh"]
+
+# The static musl target needs a musl C toolchain: the bundled SQLite and the six tree-sitter grammars
+# are C, and `cc` looks for `musl-gcc` / `x86_64-linux-musl-gcc` when the target is a musl triple.
+# Scoped to that one target so the glibc jobs do not pay for a package they will not use.
+[dist.dependencies.apt]
+musl-tools = { targets = ["x86_64-unknown-linux-musl"] }
+
+# Runner labels for the two triples a stock GitHub runner does not natively build. Measured with
+# `cargo dist plan --output-format=json` (`ci.github.artifacts_matrix`) rather than remembered: the
+# other four map to `ubuntu-22.04`, `windows-2022`, `macos-14` and `macos-15-intel` by dist's own
+# table, and a stale label here is a job that queues forever rather than one that fails.
+#
+# arm64 Linux is native now (`ubuntu-24.04-arm`), which is why the `host` is stated: without it `dist`
+# would assume the runner is the x86_64 image it shipped knowledge of and reach for `cargo-zigbuild`
+# to cross-compile a target the runner could build natively in half the time.
+[dist.github-custom-runners.aarch64-unknown-linux-gnu]
+runner = "ubuntu-24.04-arm"
+host = "aarch64-unknown-linux-gnu"
+
+# Publishing the Homebrew formula, once the tap exists:
+#
+#     publish-jobs = ["homebrew"]
+#
+# plus a `HOMEBREW_TAP_TOKEN` secret on the repository (a fine-grained token that can push to the tap
+# repo). Left off until both exist, because a publish job whose secret is missing fails the *release*
+# rather than skipping, and an alpha whose release went red because of a tap nobody created is a bad
+# way to find out. `docs/concepts/release.md` §8 is the list of every secret this pipeline would use.

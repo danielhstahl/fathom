@@ -1,0 +1,43 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ARCHITECTURE 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-architecture \- The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+.SH SYNOPSIS
+\fBfathom architecture\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-revision\fR] [\fB\-\-backfill\fR] [\fB\-\-history\fR] [\fB\-\-refresh\fR] [\fB\-\-read\-only\fR] [\fB\-\-explain\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+The architecture scorecard: five dimensions, one number, and the drift since your last review (`e3.9`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read
+.TP
+\fB\-\-json\fR
+Print the report as one JSON line on stdout (`fathom\-architecture/1`)
+.TP
+\fB\-\-revision\fR \fI<TREE>\fR
+Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix
+.TP
+\fB\-\-backfill\fR \fI<N>\fR [default: 0]
+Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored).
+
+Each one costs a graph materialisation, which is why the default is none: a trend that recomputed every revision on every run would be a trend nobody runs.
+.TP
+\fB\-\-history\fR [\fI<N>\fR] [default: 0]
+How many scored revisions the trend reads; bare, or `0`, is every row the index holds
+.TP
+\fB\-\-refresh\fR
+Forget every stored scorecard first, and re\-derive what this run needs.
+
+The recovery path for a row that disagrees with its revision — the honest fix for a derived fact is to re\-derive it, not to patch it.
+.TP
+\fB\-\-read\-only\fR
+Do not write anything: read the stored rows and score only what this run needs.
+
+A dashboard polling on a schedule, or anyone reading a store another process is writing.
+.TP
+\fB\-\-explain\fR
+Print the knobs in force — the weights, the curves and their published constants — and exit
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_DAEMON_STATUS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-daemon\-status \- The daemon\*(Aqs own health report (`fathom status` is the same question at the top level)
+.SH SYNOPSIS
+\fBfathom daemon status\fR [\fB\-\-json\fR] [\fB\-\-socket\fR] [\fB\-\-index\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIROOT\fR] 
+.SH DESCRIPTION
+The daemon\*(Aqs own health report (`fathom status` is the same question at the top level)
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print the report as one JSON line (machine contract `fathom.cli.status/1`)
+.TP
+\fB\-\-socket\fR \fI<PATH>\fR
+Ask the daemon at this endpoint instead of the derived one
+.TP
+\fB\-\-index\fR
+Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIROOT\fR] [default: .]
+The repository to report on

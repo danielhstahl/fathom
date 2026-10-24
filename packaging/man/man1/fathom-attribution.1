@@ -1,0 +1,23 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_ATTRIBUTION 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-attribution \- Report or correct who Fathom thinks wrote a commit (`e4.1`)
+.SH SYNOPSIS
+\fBfathom attribution\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Report or correct who Fathom thinks wrote a commit (`e4.1`)
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+fathom\-attribution\-correct(1)
+Store a correction: these identities were written by an agent / by a person
+.TP
+fathom\-attribution\-list(1)
+List the stored corrections, which are the keys the classifier honours
+.TP
+fathom\-attribution\-forget(1)
+Forget one stored correction

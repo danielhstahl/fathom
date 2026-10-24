@@ -9,7 +9,7 @@
 use crate::diagnose;
 use crate::output;
 use crate::query;
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Command, CommandFactory, Parser, Subcommand};
 use fathom_core::error::Diagnosable;
 use fathom_core::exit::ExitCode;
 
@@ -205,6 +205,65 @@ pub enum Verb {
     /// The review memory: notes, decisions, questions and follow-ups, committed under `.fathom/reviews/`
     /// (`e6.5`)
     Note(NoteArgs),
+    /// Print the shell's own copy of this grammar: completion scripts and man pages (`e7.4`)
+    Completions(CompletionsArgs),
+}
+
+/// The one [`Command`] this binary is: the derived grammar, plus the long version that states the
+/// resolved feature set (ADR-002 §6.4).
+///
+/// `main` parses with it and [`crate::completions`] renders with it, which is the only reason a
+/// completion script, a man page and `--help` cannot disagree about a flag: there is one grammar object
+/// in the process, and two printers of it. A second `Cli::command()` call site with its own long
+/// version is the way that stops being true.
+pub fn command() -> Command {
+    // `long_version` is clap's "`--version` says more than `-V`" hook, which is exactly §6.4's split: a
+    // parseable short version, and a long one that states the resolved feature set. The `leak()` is one
+    // small string, once per process, because clap keeps the reference as a `&'static str`.
+    let long_version: &'static str = crate::features::version_line().leak();
+    Cli::command().long_version(long_version)
+}
+
+/// `fathom completions` — the completion scripts and man pages, from the grammar that answers (`e7.4`,
+/// **reco-3q4**).
+///
+/// The verb exists so that the artefacts can be *generated from the thing they describe* rather than
+/// maintained beside it: `tools/gen_shell_artifacts.py` runs these three shells and the man renderer,
+/// commits what comes out under `packaging/`, and CI re-runs the same command and fails on a byte of
+/// difference. The shipped files are therefore the parser, printed — which is also why there is no
+/// `--json` here: the output *is* the machine-readable form.
+#[derive(Args, Debug)]
+pub struct CompletionsArgs {
+    /// What to print.
+    #[command(subcommand)]
+    pub action: CompletionsAction,
+}
+
+/// The shells `fathom` completes for, and the man page.
+///
+/// One variant per shell rather than one positional that takes a name: clap then refuses a typo with the
+/// list of what it does support, and adding a fourth shell is a change with a test attached to it.
+#[derive(Subcommand, Debug)]
+pub enum CompletionsAction {
+    /// The completion script for bash, to drop in `.../bash-completion/completions/fathom`
+    Bash,
+    /// The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
+    Zsh,
+    /// The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom.fish`
+    Fish,
+    /// The man pages, rendered from the same grammar
+    Man(CompletionsManArgs),
+}
+
+/// `fathom completions man` — the roff pages.
+#[derive(Args, Debug)]
+pub struct CompletionsManArgs {
+    /// Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout.
+    #[arg(long, value_name = "DIR")]
+    pub out: Option<String>,
+    /// Just this page — `--page fathom-check` — instead of every verb.
+    #[arg(long, value_name = "NAME")]
+    pub page: Option<String>,
 }
 
 /// `fathom cmp` — compare two endpoints (`e5.3`, `reco-ifo`).
@@ -1590,6 +1649,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Ratchet(args)) => crate::ratchet::run(args),
         Some(Verb::Context(args)) => crate::notes::context(args),
         Some(Verb::Note(args)) => crate::notes::note(args),
+        Some(Verb::Completions(args)) => crate::completions::run(&args.action),
     }
 }
 
