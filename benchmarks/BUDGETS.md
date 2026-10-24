@@ -137,13 +137,17 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 ## Recorded breaches
 
 A budget that currently fails is not deleted from the page and is not quietly green: it is
-listed here with the defect that owns it and the ceiling it may not grow past. The gate fails
-the moment one of these grows beyond its ceiling, and the entry is removed by hand when the
-defect closes — which is when the budget starts gating again.
+listed here with the defect that owns it, the ceiling it may not grow past and the date the
+grace runs out. The gate fails the moment one of these grows beyond its ceiling; the ledger
+in ADR-004 §11.10 is the same table, and `tools/epic7_acceptance.py` fails the epic if a row
+has stopped biting or an expiry has gone by. An entry is removed by hand when the defect
+closes — which is when the budget starts gating again.
 
-| measurement | budget | ceiling | owner | why |
-|---|---|---|---|---|
-| (none) | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
+| measurement | budget | ceiling | owner | expires | why |
+|---|---|---|---|---|---|
+| `store.bytes_per_commit_spine.small` | 4,096 | 10,500 (1.15 × tolerance) | `reco-7yq` | 2026-12-15 | the harness bills every non-cache table to a budget whose byte model is the commit tables: on this corpus at the epic's close `graph_*` is 6,865 B/commit of the ~8,275 measured (49.8 % of the store is the graph lane), while `git_commit` + `git_commit_file` + `ref_tip` are 1,376 B/commit. The number also moves with how much of the lane one gate run happens to write (8,289 at 3 samples, 10,446 at 5), which is the same defect talking. ADR-004 §11.6 gives the lane its own budget (`store.bytes_per_commit_graph`, 32 KiB/revision) and `perf_gate.py` has never measured it. ADR-004 §11.10; delete this row when reco-7yq gives `store_split` the ADR's three denominators. |
+| `warm.reindex.ms.small` | 150 | 1,750 (1.25 × tolerance) | `reco-r3x` | 2026-12-15 | the run is not a warm re-index, it is a graph backfill wearing one: a cold index leaves `graph.window`-sized debt (340 owed revisions on this corpus), and the next ten runs each settle 32 of them at ~1 s. At rest the same measurement is ~100 ms (`episodes` 46-54 ms, `graph` ~40 ms) and passes the 150 ms budget. Measured and written up in ADR-004 §11.10; delete this row when reco-r3x closes. |
+| `warm.reindex.noop.ms.small` | 10 | 1,250 (1.25 × tolerance) | `reco-r3x` | 2026-12-15 | a run that reports `nothing_new: true` still runs the graph backfill, so §6.6 R1's ~1 ms store-side no-op costs ~1 s until the owed list empties (then it is 2-4 ms). The budget is right and the run is wrong; `reco-7tc`'s no-op is intact once the lane is at rest. ADR-004 §11.10; delete this row when reco-r3x closes. |
 
 ## Proving the gate can fail
 

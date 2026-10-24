@@ -17,6 +17,88 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### An epic's exit criteria stopped being a close reason and became a command (`e7`, `reco-2ah`)
+
+Epic 7 closes on one sentence with four clauses in it — *published binaries for three OSes, docs a
+stranger can follow in five minutes, perf budgets met or consciously relaxed with a written rationale, and
+a closed beta feedback loop* — and a sentence like that is unfalsifiable in exactly the way an epic close
+needs it not to be. So the close is `tools/epic7_acceptance.py`: four clauses, 48 checks, one JSON report,
+`--skip-perf` for the fast pass. Each clause is measured by the seam a release actually walks rather than
+by the ticket that owns it — release config → generated workflow → `.deb` → `dpkg-deb` → the binary on
+`/usr/bin` → the version the changelog cut; documentation → the binary that prints it → the five minutes a
+stranger has; a budget in an ADR → the harness that measures it → the disposition when it does not hold; a
+report somebody filed → the bead it became → the commit that fixed it → the release note they read back.
+Writing it found three defects and one thing deliberately left unfixed, all of them below.
+
+- **The binaries clause distinguishes three levels of claim and refuses to flatten them.** *Declared*: six
+  `dist` targets on three OS families, both Apple triples, a static musl build, four installers. *Built and
+  read back here*: `.deb`s written from the release binary, `dpkg-deb -f Version` agreeing on
+  `0.1.0~alpha.1`, the package laying down binary + man page + bash/zsh/fish completions, and the extracted
+  binary answering `fathom 0.1.0-alpha.1` from the path it was laid down at, with every artefact's sha256
+  recomputed. *Not done here*: the publish, and executing anything on macOS or Windows — no public remote
+  exists, so the release is built and **rehearsed**, and that is a `note` in the report naming `reco-3gz`
+  and `reco-lnd`, not a pass. Also found and deliberately not fixed: `packaging/man/man1/fathom.1`'s VERSION
+  line prints the *compiled-in* feature set, so the committed page is reproducible only from the
+  `--all-features` build CI's docs leg uses; regenerating it from the release binary would print a diff that
+  is a feature list and call it a documentation defect.
+- **The five-minute clause runs the five minutes.** The scripted tour (8 steps, 0.2 s against a 300 s
+  budget, every step's claim asserted), the clone-and-one-command demo reproducing all 27 commits and five
+  pathologies of `docs/demo/five-minute.md`, the committed recording staying current, silent and in frame,
+  132 documented invocations parsed by clap, and the quickstart naming the six nouns with the page that
+  defines each — including what an episode *is* ("the change of one agent turn") and what it is *not* (not a
+  commit, not a branch, not a pull request, not a session). The human half, three outside users doing it
+  unaided, is `reco-lnd`'s and is named as blocked rather than claimed.
+- **A budget may be over its ceiling only in writing, and the writing has to be alive.** The perf clause
+  fails unless every red budget has a row in ADR-004 §11.10 *and* an entry in `perf-gate.json`'s
+  `known_breaches`, and it fails the other way too: a relaxation about a breach that has stopped biting has
+  to be deleted, not kept. Five separate ways to rot are each a named problem — register and prose
+  disagreeing, an unwritten breach, a quiet row, an expired row, an ownerless row — plus the ceiling the row
+  itself sets. `tests/test_epic7_contract.py` provokes all six with inputs, because a discipline that only
+  ever passes on the committed tree is a discipline nobody has tested.
+- **Two of the three consciously-accepted budgets were never a warm-path problem.** `warm.reindex.ms.small`
+  at ~1,560 ms against 150 ms and `warm.reindex.noop.ms.small` at ~1,050 ms against a 10 ms no-op budget are
+  the same thing: a cold index leaves `graph.window`-sized debt (340 owed revisions on the fixture corpus)
+  and every subsequent quiet `fathom index` settles 32 of them at about a second — including the runs that
+  answer `nothing_new: true`. At rest the same two measurements are ~100 ms and 2–4 ms, and both pass.
+  **`reco-r3x`** owns the backfill; §6.6 R1's no-op is intact and the budget was right all along.
+- **The third was a denominator, not a size.** `store.bytes_per_commit_spine` measured 8,273 B/commit
+  against 4,096 B, of which 6,865 B/commit is `graph_*` — 49.8 % of the store is the graph lane while the
+  commit tables are 1,376 B/commit — and ADR-004 §11.6's own budget for the lane
+  (`store.bytes_per_commit_graph`, 32 KiB/revision) had *never been measured by the harness at all*.
+  **`reco-7yq`** owns giving `store_split` the ADR's three denominators.
+- **The third finding is about the gate, and it is the one that will bite next.** `query.metrics.ms.small`
+  measured **14.8, 14.9 and 21.6 ms** in three identical runs of one tree: bimodal, and wider than a ±15 %
+  two-sided ratchet with a 5 ms floor can see — and there is no middle of the spread to bless, because every
+  sample is one mode or the other. Nothing was loosened. The fixture gate is now re-run once when it comes
+  back red and the verdict must agree twice (a real regression is red both times), which the tool states in
+  its own notes, and **`reco-dkr`** owns the fix: more samples on the read verbs, a per-measurement noise
+  floor, or finding out why `fathom stats --json` has two modes.
+- **The baseline was re-blessed at `36b011f`, with its basis intact.** `--bless` was run *without*
+  `--skip-benches`, which matters: a `--skip-benches` bless quietly rewrites the baseline as 17 measurements
+  instead of 22 and drops the five criterion rows, and `test_the_baseline_blesses_every_measurement_the_gate_runs`
+  is the test that catches it — that test was red mid-close here and is the reason the bless was redone.
+  `benchmarks/BUDGETS.md` now renders the breach register with its ceilings and expiries, so the page a
+  stranger reads and the file the gate reads cannot disagree, and `tools/gen_budgets.py check` is one of the
+  clause's 48 checks.
+- **A gate that crashes writes no report, so it no longer crashes.** Pointed at a file that is not a
+  binary, `subprocess` raises `OSError` — "permission denied", "exec format error" — and the clause died
+  with `the clause ran without an internal error` where its verdict belonged. Running the candidate now goes
+  through one helper that turns the OS refusing into exit 127 with the reason, so every clause that needs a
+  working binary goes red with a sentence, the JSON is still written, and the exit code is the clause's, not
+  the interpreter's.
+- **What this close does not prove is in the report, not in a footnote.** One OS executed; nothing published;
+  the real-repository numbers are one machine, one corpus, one commit, with two repositories cut by a
+  deadline and reported as bounds; `0 external reporters`, because this repository is its own beta
+  population until there is something to install; and 111 of 114 live episodes still unsigned, which
+  `fathom review status` prints with exit 7 every time anyone asks.
+
+*Asserted by*: `tests/test_epic7_contract.py` — the four clauses end to end against the release binary, the
+harness pointed at a file that is not a binary (red, exit 1, report written, no crash), and six provoked
+mutations of the perf ledger. `tools/epic7_acceptance.py` prints and writes all of it;
+`docs/concepts/release.md` §9 now names it as the second epic-exit gate after `tools/epic6_acceptance.py`,
+ADR-004 §11.10 carries the reasoning behind every relaxed number, and `.plan/keymap.json` grew `e7.10`
+(`reco-r3x`), `e7.11` (`reco-7yq`) and `e7.12` (`reco-dkr`).
+
 ### The changelog quoted a number that could only have been true for the commit that wrote it (`e7.9`, `reco-0ip`)
 
 The suite had exactly one red and it was the beta loop's own gate:

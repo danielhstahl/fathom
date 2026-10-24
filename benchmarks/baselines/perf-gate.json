@@ -1,31 +1,59 @@
 {
- "blessed_commit": "89f7198",
+ "blessed_commit": "36b011f",
  "blessed_environment": {
   "binary": "target/release/fathom",
-  "commit": "89f7198",
+  "commit": "36b011f",
   "cpu_count": 8,
   "git": "git version 2.47.3",
-  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Sun Sep 20 16:14:09 UTC 2026",
+  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026",
   "profile": "release",
   "python": "3.14.5",
   "ram_mib": 7934
  },
- "blessed_utc": "2026-10-17T23:55:04Z",
+ "blessed_utc": "2026-10-24T23:27:21Z",
  "calibration": {
   "bench": "calibrate: 100k-row batched insert + 10k FTS queries",
   "passes_ms": [
-   425.6,
-   424.94,
-   428.09
+   441.46,
+   438.29,
+   433.71
   ],
-  "reference_ms": 425.6
+  "reference_ms": 438.29
  },
  "corpus": {
   "commits": 500,
   "shape": "the `e0.10`/`e1.12` deterministic 500-commit agent fixture",
   "size_class": "small"
  },
- "known_breaches": {},
+ "known_breaches": {
+  "store.bytes_per_commit_spine.small": {
+   "budget": 4096.0,
+   "ceiling": 10500.0,
+   "expires": "2026-12-15",
+   "owner": "reco-7yq",
+   "status": "known breach, bounded, awaiting its fix",
+   "tolerance": 1.15,
+   "why": "the harness bills every non-cache table to a budget whose byte model is the commit tables: on this corpus at the epic's close `graph_*` is 6,865 B/commit of the ~8,275 measured (49.8 % of the store is the graph lane), while `git_commit` + `git_commit_file` + `ref_tip` are 1,376 B/commit. The number also moves with how much of the lane one gate run happens to write (8,289 at 3 samples, 10,446 at 5), which is the same defect talking. ADR-004 \u00a711.6 gives the lane its own budget (`store.bytes_per_commit_graph`, 32 KiB/revision) and `perf_gate.py` has never measured it. ADR-004 \u00a711.10; delete this row when reco-7yq gives `store_split` the ADR's three denominators."
+  },
+  "warm.reindex.ms.small": {
+   "budget": 150.0,
+   "ceiling": 1750.0,
+   "expires": "2026-12-15",
+   "owner": "reco-r3x",
+   "status": "known breach, bounded, awaiting its fix",
+   "tolerance": 1.25,
+   "why": "the run is not a warm re-index, it is a graph backfill wearing one: a cold index leaves `graph.window`-sized debt (340 owed revisions on this corpus), and the next ten runs each settle 32 of them at ~1 s. At rest the same measurement is ~100 ms (`episodes` 46-54 ms, `graph` ~40 ms) and passes the 150 ms budget. Measured and written up in ADR-004 \u00a711.10; delete this row when reco-r3x closes."
+  },
+  "warm.reindex.noop.ms.small": {
+   "budget": 10.0,
+   "ceiling": 1250.0,
+   "expires": "2026-12-15",
+   "owner": "reco-r3x",
+   "status": "known breach, bounded, awaiting its fix",
+   "tolerance": 1.25,
+   "why": "a run that reports `nothing_new: true` still runs the graph backfill, so \u00a76.6 R1's ~1 ms store-side no-op costs ~1 s until the owed list empties (then it is 2-4 ms). The budget is right and the run is wrong; `reco-7tc`'s no-op is intact once the lane is at rest. ADR-004 \u00a711.10; delete this row when reco-r3x closes."
+  }
+ },
  "measurements": {
   "calibrate: 100k-row batched insert + 10k FTS queries": {
    "budget": null,
@@ -33,7 +61,7 @@
    "how": "ADR-004 \u00a711.8's runner characterisation; not a budget",
    "scaled": true,
    "unit": "ms",
-   "value": 425.6
+   "value": 438.29
   },
   "cold.index.ms.small": {
    "budget": "cold.index.ms.small",
@@ -41,7 +69,7 @@
    "how": "`fathom index` into a deleted store; p95 of the samples",
    "scaled": true,
    "unit": "ms",
-   "value": 411.3
+   "value": 1340.8
   },
   "cold.queue_visible.ms.small": {
    "budget": "cold.queue_visible.ms.small",
@@ -49,7 +77,7 @@
    "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 26.6
+   "value": 138.3
   },
   "query.card.ms.cli.small": {
    "budget": "query.card.ms.small",
@@ -57,7 +85,7 @@
    "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end",
    "scaled": true,
    "unit": "ms",
-   "value": 18.5
+   "value": 15.3
   },
   "query.card.ms/episode_and_files/1000 commits": {
    "budget": "query.card.ms.small",
@@ -65,7 +93,7 @@
    "how": "criterion: query.card.ms/episode_and_files/1000 commits (20 samples, p95 of per-iteration times)",
    "scaled": true,
    "unit": "ms",
-   "value": 0.0568
+   "value": 0.0705
   },
   "query.diff_first_hunk.ms.small": {
    "budget": "query.diff_first_hunk.ms.small",
@@ -73,7 +101,7 @@
    "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 6.4
+   "value": 4.3
   },
   "query.diff_open.ms.small": {
    "budget": "query.diff_open.ms.small",
@@ -81,7 +109,7 @@
    "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 4.7
+   "value": 2.9
   },
   "query.frame_store_budget.ms/count_episodes/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
@@ -89,7 +117,7 @@
    "how": "criterion: query.frame_store_budget.ms/count_episodes/1000 commits (20 samples, p95 of per-iteration times)",
    "scaled": true,
    "unit": "ms",
-   "value": 0.0115
+   "value": 0.0127
   },
   "query.frame_store_budget.ms/episode_paths/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
@@ -97,7 +125,7 @@
    "how": "criterion: query.frame_store_budget.ms/episode_paths/1000 commits (20 samples, p95 of per-iteration times)",
    "scaled": true,
    "unit": "ms",
-   "value": 0.9864
+   "value": 1.0791
   },
   "query.metrics.ms.small": {
    "budget": "query.metrics.ms.small",
@@ -105,7 +133,7 @@
    "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names",
    "scaled": true,
    "unit": "ms",
-   "value": 17.9
+   "value": 15.1
   },
   "query.queue.ms.small": {
    "budget": "query.queue.ms.small",
@@ -113,7 +141,7 @@
    "how": "`j` written to the grid changed: the rail's ordering read (median of 3 pty probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 1.5
+   "value": 1.8
   },
   "query.queue.ms.visible.small": {
    "budget": null,
@@ -121,7 +149,7 @@
    "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 2.1
+   "value": 2.8
   },
   "query.timeline.ms.small": {
    "budget": "query.timeline.ms.small",
@@ -129,7 +157,7 @@
    "how": "`t` written to the grid changed: one page of the rail (median of 3 pty probe(s))",
    "scaled": true,
    "unit": "ms",
-   "value": 0.8
+   "value": 1.8
   },
   "query.timeline.ms/rail_page/1000 commits": {
    "budget": "query.timeline.ms.small",
@@ -137,7 +165,7 @@
    "how": "criterion: query.timeline.ms/rail_page/1000 commits (20 samples, p95 of per-iteration times)",
    "scaled": true,
    "unit": "ms",
-   "value": 0.6857
+   "value": 0.779
   },
   "rss.cold_index.peak_mib.small": {
    "budget": "rss.cold_index.peak_mib.small",
@@ -145,7 +173,7 @@
    "how": "VmHWM of the index child, sampled while it ran",
    "scaled": false,
    "unit": "MiB",
-   "value": 20.4
+   "value": 32.2
   },
   "rss.tui.mib.small": {
    "budget": "rss.tui.mib.small",
@@ -153,7 +181,7 @@
    "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
    "scaled": false,
    "unit": "MiB",
-   "value": 10.87
+   "value": 30.82
   },
   "rss.warm_reindex.peak_mib.small": {
    "budget": null,
@@ -161,15 +189,15 @@
    "how": "VmHWM of the warm index child (trend: no RSS budget names the warm path alone)",
    "scaled": false,
    "unit": "MiB",
-   "value": 12.1
+   "value": 24.2
   },
   "store.bytes_per_commit_spine.small": {
    "budget": "store.bytes_per_commit_spine.small",
    "higher_is_better": false,
-   "how": "1,679,360 spine bytes over 503 commits, `dbstat` pages; 688,128 more bytes of cache and session rows are not charged here",
+   "how": "4,161,536 spine bytes over 503 commits, `dbstat` pages; 782,336 more bytes of cache and session rows are not charged here",
    "scaled": false,
    "unit": "bytes",
-   "value": 3338
+   "value": 8273
   },
   "store.size.mib.small": {
    "budget": "store.size.mib.small",
@@ -177,7 +205,7 @@
    "how": "the whole `.fathom/index.sqlite3`",
    "scaled": false,
    "unit": "MiB",
-   "value": 2.258
+   "value": 4.715
   },
   "warm.reindex.ms.small": {
    "budget": "warm.reindex.ms.small",
@@ -185,15 +213,15 @@
    "how": "one new commit with unique content, then `fathom index`",
    "scaled": true,
    "unit": "ms",
-   "value": 49.7
+   "value": 1577.6
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",
    "higher_is_better": false,
-   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 3 runs timed fork to exit are 16.5 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
+   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 3 runs timed fork to exit are 1066.3 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
    "scaled": true,
    "unit": "ms",
-   "value": 2.0
+   "value": 1049.0
   },
   "write.batch_rows/one_batch_at_the_cap": {
    "budget": null,
@@ -201,9 +229,9 @@
    "how": "criterion: one batched transaction at the `write.batch_rows` cap",
    "scaled": true,
    "unit": "rows/s",
-   "value": 237096.9
+   "value": 232406.8
   }
  },
- "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-machine units (runner factor 1.0); a time budget gets the factor as headroom at gate time and an RSS budget never does (ADR-004 \u00a711.8). One row was re-measured in place rather than re-blessed wholesale: `warm.reindex.noop.ms.small` is 2.0 ms of store-side `elapsed_ms` since `reco-7tc` skipped the walk, where it was 48.3 ms of whole-process time, and the two are different quantities that must not gate each other. A whole `make bench-bless` from the same box would have carried seven unrelated rows that measure red against this bless into the baseline as though they were intended; that is the gate's business, not `reco-7tc`'s.",
+ "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-machine units (runner factor 1.0); a time budget gets the factor as headroom at gate time and an RSS budget never does (ADR-004 \u00a711.8).",
  "schema": 1
 }

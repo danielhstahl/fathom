@@ -1,0 +1,387 @@
+{
+  "producer": "tools/epic7_acceptance.py",
+  "ticket": "reco-2ah",
+  "binary": "target/release/fathom",
+  "binary_commit": "6ddb9bc",
+  "head": "6ddb9bcbd82c275f8ea12f5babba4d06b45e0374",
+  "elapsed_s": 77.1,
+  "verdict": "pass",
+  "clauses_passed": 4,
+  "clauses": [
+    {
+      "clause": "artifacts",
+      "text": "published binaries for three operating systems",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the release gate is green (`R01`\u2013`R17`)",
+          "ok": true,
+          "detail": "release path OK: one binary (fathom) at 0.1.0-alpha.1, three OS families, every rule green"
+        },
+        {
+          "check": "the release gate can go red",
+          "ok": true,
+          "detail": "self-test OK: 22 ways to be red, all of them detected"
+        },
+        {
+          "check": "three operating-system families are declared",
+          "ok": true,
+          "detail": "targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-unknown-linux-musl, x86_64-apple-darwin, aarch64-apple-darwin, x86_64-pc-windows-msvc"
+        },
+        {
+          "check": "both Apple triples are there, and Linux has a static build",
+          "ok": true,
+          "detail": "x86_64-unknown-linux-musl, x86_64-apple-darwin, aarch64-apple-darwin"
+        },
+        {
+          "check": "every family has an installer of its own",
+          "ok": true,
+          "detail": "installers ['shell', 'powershell', 'msi', 'homebrew']: shell \u2192 linux+macos, powershell \u2192 windows"
+        },
+        {
+          "check": "the captured `dist` plan describes this config",
+          "ok": true,
+          "detail": "plan 6 target(s), config 6: identical"
+        },
+        {
+          "check": "each family is built on a machine of that operating system",
+          "ok": true,
+          "detail": "aarch64-apple-darwin \u2192 macos-14; aarch64-unknown-linux-gnu \u2192 ubuntu-24.04-arm; x86_64-apple-darwin \u2192 macos-15-intel; x86_64-pc-windows-msvc \u2192 windows-2022; x86_64-unknown-linux-gnu \u2192 ubuntu-22.04; x86_64-unknown-linux-musl \u2192 ubuntu-22.04"
+        },
+        {
+          "check": "the release workflow is the generated one, and it builds from the plan",
+          "ok": true,
+          "detail": "`.github/workflows/release.yml` (304 lines) is cargo-dist's own generated job: it plans, builds `matrix.targets` on the plan's runners, and publishes only when the plan says so"
+        },
+        {
+          "check": "the system packages build and read back",
+          "ok": true,
+          "detail": "2 package(s) written"
+        },
+        {
+          "check": "Debian's own reader accepts the package and agrees on the version",
+          "ok": true,
+          "detail": "`dpkg-deb -f Version` says `0.1.0~alpha.1`; the workspace version is 0.1.0-alpha.1, which dpkg spells 0.1.0~alpha.1"
+        },
+        {
+          "check": "the package lays down the binary, a man page and a completion",
+          "ok": true,
+          "detail": "missing nothing; completions: bash-completion, zsh/vendor-completions, fish/vendor_completions"
+        },
+        {
+          "check": "the installed binary runs from the path it was laid down at, and says the released version",
+          "ok": true,
+          "detail": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all \u2014 expected 0.1.0-alpha.1"
+        },
+        {
+          "check": "every artefact has a sha256 that recomputes",
+          "ok": true,
+          "detail": "2 sidecar(s) checked"
+        },
+        {
+          "check": "the SBOM and the licence report are current",
+          "ok": true,
+          "detail": "gen_sbom: SBOM and licence report are current and every component's licence is allowed"
+        },
+        {
+          "check": "completions and man pages are regenerated from the CLI, and they match",
+          "ok": true,
+          "detail": "shell artefacts OK: 3 completions + 55 man pages are the binary's own grammar (/workspace/target/debug/fathom)"
+        },
+        {
+          "check": "the residue is written where a maintainer would read it",
+          "ok": true,
+          "detail": "`docs/concepts/release.md` \u00a78 names codesign, notar, HOMEBREW_TAP_TOKEN, WiX among its un-wired steps"
+        }
+      ],
+      "notes": [
+        "that check names `target/debug/fathom` on purpose while this clause measures the release binary: the committed completions and man pages are rendered by CI's docs leg, which builds `--all-features`, and a man page's VERSION line carries the compiled-in feature set of whatever wrote it. Regenerating them from the release binary would show a diff that is a feature list, not a documentation defect.",
+        "the release is *built and rehearsed* here, not *published*: no public remote exists, so the installer URL the docs print is still a placeholder and `dist`'s publish stage stays commented out with its reason. Owners: `reco-3gz` (announcement + install path), `reco-lnd` (the tag on a public remote), and the secrets table in `docs/concepts/release.md` \u00a78.",
+        "`rpmbuild` is not installed here, so the `.rpm` was not written by this run; CI's packaging job builds it and reads it with `rpm -qip` (`ci.yml`, job `packaging`).",
+        "`cargo-dist` is not installed here, so `tools/rehearse_installer.py` (a localhost mirror of the release page, the shell installer, and four deliberate corruptions that must be caught) ran on CI's packaging job and not in this run. The `.deb` here is staged from the built binary, which the packager prints as a REHEARSAL line: its version is the release's, its contents are today's build.",
+        "three humans on three machines are still the missing half of `release.md` \u00a75's ledger: a `curl | sh` that works on a runner is not one that worked on a stranger's laptop.",
+        "found here and deliberately not fixed: `packaging/man/man1/fathom.1`'s VERSION line prints the *compiled-in* feature set, so the committed page is only reproducible from the feature set that wrote it \u2014 CI's docs leg feeds it an `--all-features` build while `gen_shell_artifacts.py`'s own docstring (and ADR-002 \u00a76.1) name the default build as the product. `check` passes on the leg that built the file and fails on a default-feature build of the same commit. The candidate fix is one line in the generator \u2014 render the declared feature set from `features.rs` instead of the compiled one \u2014 and it belongs with `e7.4`."
+      ],
+      "data": {
+        "targets": [
+          "x86_64-unknown-linux-gnu",
+          "aarch64-unknown-linux-gnu",
+          "x86_64-unknown-linux-musl",
+          "x86_64-apple-darwin",
+          "aarch64-apple-darwin",
+          "x86_64-pc-windows-msvc"
+        ],
+        "families": [
+          "linux",
+          "macos",
+          "windows"
+        ],
+        "version": "0.1.0-alpha.1",
+        "packages": [
+          "fathom_0.1.0~alpha.1_amd64.deb",
+          "fathom_0.1.0~alpha.1_arm64.deb"
+        ],
+        "sidecars": 2
+      }
+    },
+    {
+      "clause": "docs",
+      "text": "documentation a stranger can follow in five minutes",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the generated pages are what the binary prints",
+          "ok": true,
+          "detail": "docs pages OK: cheatsheet, detectors, features"
+        },
+        {
+          "check": "no shipped verb, feature, view or detector is undocumented",
+          "ok": true,
+          "detail": "docs site OK (86 pages)"
+        },
+        {
+          "check": "every command the docs tell a reader to type is a command clap accepts",
+          "ok": true,
+          "detail": "documented commands OK: 132 invocation(s) parsed by clap"
+        },
+        {
+          "check": "every link lands and every plan reference exists",
+          "ok": true,
+          "detail": "docs OK: 99 glossary terms, 87 documents checked"
+        },
+        {
+          "check": "the scripted tour runs, every step's claim holds, and it fits the five minutes",
+          "ok": true,
+          "detail": "8 steps in 0.2s against the 300s budget (ok: 8 steps in 0.2s (budget 300s))"
+        },
+        {
+          "check": "clone + one command reproduces what the demo page promises",
+          "ok": true,
+          "detail": "5 pathologies, 27 commits, 0.8s (budget 300s)"
+        },
+        {
+          "check": "the recording is current, silent, and shows what the page says it shows",
+          "ok": true,
+          "detail": "five-minute.cast: 60 events, 37.4s of silent film, tagged demo-v0.1, every promised finding in frame"
+        },
+        {
+          "check": "the quickstart names the six nouns and links the pages that define them",
+          "ok": true,
+          "detail": "linked 6/6: concepts/episode.md, concepts/delta.md, concepts/risk-score.md, concepts/review-ledger.md, concepts/ratchet.md, concepts/ambient-mode.md"
+        },
+        {
+          "check": "it says what an episode *is*, and what it is not",
+          "ok": true,
+          "detail": "defined as the change of one agent turn; excludes not a commit, not a branch, not a pull request, not a session"
+        }
+      ],
+      "notes": [
+        "the human half of the criterion \u2014 three outside users completing this unaided \u2014 is `m0`'s (`reco-lnd`), exactly as `reco-60m`'s AC3 said when it shipped it. What is gated here is every mechanical thing that could make a stranger fail."
+      ],
+      "data": {
+        "tour_seconds": 0.2,
+        "steps": [
+          "version",
+          "index",
+          "episodes",
+          "why",
+          "check-enforce",
+          "sign",
+          "review-status",
+          "export"
+        ],
+        "demo_seconds": 0.767,
+        "demo_commits": 27,
+        "demo_tag": "demo-v0.1"
+      }
+    },
+    {
+      "clause": "perf",
+      "text": "perf budgets met, or consciously relaxed with a written rationale",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the published budgets are the ADR's numbers",
+          "ok": true,
+          "detail": "budgets OK: 192 budgets, 4 size classes, budgets.json and BUDGETS.md in sync"
+        },
+        {
+          "check": "the fixture gate is green (budgets and the \u00b115 % ratchet together)",
+          "ok": true,
+          "detail": "exit 0, verdict pass: all measured numbers are inside budget (or the breach is on the register) and within 15.0 % of the blessed baseline (35 s)"
+        },
+        {
+          "check": "the gate kept its own 300s promise",
+          "ok": true,
+          "detail": "35s, runner factor \u00d71.0"
+        },
+        {
+          "check": "the perf gate can go red",
+          "ok": true,
+          "detail": "self-test ok: the gate is red on a 400 ms injection, green on none, does not scale RSS, does scale wall clocks, demands a re-bless on improvement, and reads a throughput drop as a regression"
+        },
+        {
+          "check": "the written ledger and the machine register are the same rows",
+          "ok": true,
+          "detail": "register ['store.bytes_per_commit_spine.small', 'warm.reindex.ms.small', 'warm.reindex.noop.ms.small']; ADR-004 \u00a711.10 ['store.bytes_per_commit_spine.small', 'warm.reindex.ms.small', 'warm.reindex.noop.ms.small']"
+        },
+        {
+          "check": "the written relaxations are the register, and every one of them is alive, bounded and biting",
+          "ok": true,
+          "detail": "3 row(s) on the register, 3 biting; worst expiry 2026-12-15"
+        },
+        {
+          "check": "every breach has an owner, and the owner exists",
+          "ok": true,
+          "detail": "owners: reco-7yq, reco-r3x"
+        },
+        {
+          "check": "no breach has grown past its own ceiling",
+          "ok": true,
+          "detail": "3 bounded breach(es), each inside its ceiling"
+        },
+        {
+          "check": "every real-repository miss is named in ADR-004 \u00a711.9",
+          "ok": true,
+          "detail": "15 verdict(s) on aws/aws-sdk-go, 8 failing"
+        },
+        {
+          "check": "the runs that did not finish are reported as bounds, not as ratios",
+          "ok": true,
+          "detail": "2 repositories were cut by a deadline and say so (git/git, tensorflow/tensorflow)"
+        },
+        {
+          "check": "a 100 000-commit repository indexes inside the memory ceiling",
+          "ok": true,
+          "detail": "100,000 commits, 10000 files at HEAD, peak RSS 299 MiB against 512 MiB"
+        },
+        {
+          "check": "every ceiling is a documented knob with its trade-off written next to it",
+          "ok": true,
+          "detail": "6/6 knobs in `docs/concepts/memory.md`"
+        }
+      ],
+      "notes": [
+        "consciously relaxed: `store.bytes_per_commit_spine.small` is over a budget of 4,096 and accepted up to 10,500 (\u00d71.15 tolerance) until 2026-12-15, owned by `reco-7yq` \u2014 ADR-004 \u00a711.10 carries the reasoning.",
+        "consciously relaxed: `warm.reindex.ms.small` is over a budget of 150 and accepted up to 1,750 (\u00d71.25 tolerance) until 2026-12-15, owned by `reco-r3x` \u2014 ADR-004 \u00a711.10 carries the reasoning.",
+        "consciously relaxed: `warm.reindex.noop.ms.small` is over a budget of 10 and accepted up to 1,250 (\u00d71.25 tolerance) until 2026-12-15, owned by `reco-r3x` \u2014 ADR-004 \u00a711.10 carries the reasoning.",
+        "the criterion half of `perf_gate.py` was skipped (`--skip-benches`); CI's `perf` job runs it, and this run measured the end-to-end half, which is the half the budgets are written in \u2014 keystrokes, indexes and RSS, not microbenchmarks.",
+        "the baseline was blessed at 36b011f (2026-10-24T23:27:21Z); ADR-004 \u00a711.10 says which numbers moved at that commit and why, and which three are breaches rather than passes.",
+        "the episode rebuild is outside that ceiling on purpose, and the report says so: at 100 000 commits it costs ~250 MiB more and is a whole-lineage derivation, not one of the four structures `reco-93w` bounded. The same O(store) term is why `warm.reindex.ms` is held and failing on a real repository (\u00a711.9)."
+      ],
+      "data": {
+        "fixture_gate": "pass",
+        "duration_s": 35.0,
+        "breaches": [
+          "warm.reindex.ms.small",
+          "warm.reindex.noop.ms.small",
+          "store.bytes_per_commit_spine.small"
+        ],
+        "ledger": {
+          "warm.reindex.ms.small": "1,750 ms",
+          "warm.reindex.noop.ms.small": "1,250 ms",
+          "store.bytes_per_commit_spine.small": "10,500 B"
+        },
+        "blessed_commit": "36b011f",
+        "real_repos": {
+          "report_commit": "3a08088",
+          "failing_on_aws": [
+            "cold.index.ms",
+            "query.card.ms.cli",
+            "query.diff_first_hunk.ms",
+            "rss.cold_index.peak_mib",
+            "rss.tui.mib",
+            "store.bytes_per_commit_spine",
+            "warm.reindex.ms",
+            "warm.reindex.noop.ms"
+          ],
+          "not_completed": 2
+        },
+        "memory": {
+          "peak_rss_mib": 299,
+          "evicted_rows": 106898,
+          "generated": "2026-10-23T04:30:25Z"
+        }
+      }
+    },
+    {
+      "clause": "beta",
+      "text": "a closed beta feedback loop",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the loop's own promises hold (channel, diagnostic, vocabulary, cadence)",
+          "ok": true,
+          "detail": "4 clause(s) of the loop checked, 7 note(s), 0 problem(s)"
+        },
+        {
+          "check": "the loop's gates can go red",
+          "ok": true,
+          "detail": "check_beta_loop self-test passed: the nine ways a beta loop rots are each caught by a named rule, gen_changelog self-test passed: two releases cut, five negative controls caught, the ladder and its refusals both confirmed, beta_intake self-test passed: six broken reports refused, one accepted, six rotten registers caught"
+        },
+        {
+          "check": "the register parses and every row is counted",
+          "ok": true,
+          "detail": "34 row(s) across 1 week(s)"
+        },
+        {
+          "check": "every `triage:fixed` row ends in a fix this tree contains",
+          "ok": true,
+          "detail": "6 fixed row(s), 24 ticketed row(s)"
+        },
+        {
+          "check": "the register counts its external reports honestly",
+          "ok": true,
+          "detail": "0 external reporter(s) named, 34 rows triaged \u2014 the criterion that names five external users is blocked on the install path (`reco-lnd`, `reco-3gz`), and the register says so in its own digest"
+        },
+        {
+          "check": "the changelog is generated from commits and cannot forget one",
+          "ok": true,
+          "detail": "ok  the rung claim in `[Unreleased]` is true for the range it names: 79 commit(s) in `0f7495f3b5f3..c05860b6c6dd`, 2 behind HEAD \u2014 header 1, bead 72, key 5, subject 1"
+        },
+        {
+          "check": "the self-review ships with the release it reviewed",
+          "ok": true,
+          "detail": "`.github/workflows/self-review.yml` runs on `release: published` (and on a dispatched ref, which is the only option while no public remote exists) and attaches the artefacts"
+        },
+        {
+          "check": "every workflow in the repository is one something runs",
+          "ok": true,
+          "detail": "ci gate OK: installer, reusable workflow, dogfood job, self-review job, demo job, documented paths"
+        },
+        {
+          "check": "Fathom reviews its own repository and reports findings rather than breaking",
+          "ok": true,
+          "detail": "index exit 0; `fathom check` exit 0; `fathom review status` exit 7 \u2014 in 18s"
+        },
+        {
+          "check": "the review prints its own unread backlog instead of hiding it",
+          "ok": true,
+          "detail": "  blocks: 112 of 115 live episodes have no fresh sign-off"
+        },
+        {
+          "check": "a human has actually signed something off in the repository's own ledger",
+          "ok": true,
+          "detail": "3 entry/entries committed in `.fathom/reviews/ledger.md`"
+        }
+      ],
+      "notes": [
+        "`check_beta_loop`: 2 form(s), 11 label(s) on file, blank issues off",
+        "`check_beta_loop`: every form requires the doctor object and says who has to read it first",
+        "`check_beta_loop`: the 7 dispositions are the same 7 words in code, labels and documents",
+        "the loop is closed and the loop is small: this repository is its own beta population until a public install path exists. That is stated in `.plan/intake/2026-W43.md` in the same breath as the counts, and it is the honest reading of `0 external reporters`."
+      ],
+      "data": {
+        "rows": 34,
+        "fixed_rows": 6,
+        "ticketed_rows": 24,
+        "beads_closed": 12,
+        "board_readable": true,
+        "check_exit": 0,
+        "check_why": "fathom check failed: 1 finding(s) at or above `warning` in 36b011faac3e..6ddb9bcbd82c \u2014 worst is warning [tests/untested-logic] at tools/epic7_acceptance.py (index:episode ep-9efe630d0): episode ep-9e",
+        "review_status_exit": 7,
+        "self_review_seconds": 17.8
+      }
+    }
+  ]
+}

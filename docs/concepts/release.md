@@ -454,7 +454,7 @@ cadence only the author can follow is not a cadence, it is a mood.
 |---|---|---|
 | **weekly, Tuesday** | `0.1.0-alpha.N+1` from `master` | the release job is green; `[Unreleased]` accounts for every commit since the last tag (`tools/gen_changelog.py audit` refuses anything else); the two graphs and the demo checks are green |
 | **on a merged defect a user hit** | a patch, any day | the defect is a row in [the intake register](feedback.md) with a disposition, and the release notes carry its three sentences (§5 of that page) |
-| **at an epic's close** | a minor | the epic's exit criteria are a runnable gate (`tools/epic6_acceptance.py` is the pattern), and the demo is re-recorded — §3 step 6 |
+| **at an epic's close** | a minor | the epic's exit criteria are a runnable gate — `tools/epic6_acceptance.py` is the pattern and `tools/epic7_acceptance.py` is the second one, with the rule that a gate whose clauses are prose is not a gate — and the demo is re-recorded, §3 step 6 |
 | **at 1.0** | the minor that stops the `alpha` suffix | the calibration bars in [false-positive calibration](false-positive-calibration.md) §5 and the two external pipelines this project counts |
 
 Two rules that keep a weekly cut cheap: **nothing waits for a release**, because the cut is Tuesday whether

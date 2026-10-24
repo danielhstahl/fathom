@@ -465,24 +465,27 @@ def render_markdown() -> str:
             "## Recorded breaches",
             "",
             "A budget that currently fails is not deleted from the page and is not quietly green: it is",
-            "listed here with the defect that owns it and the ceiling it may not grow past. The gate fails",
-            "the moment one of these grows beyond its ceiling, and the entry is removed by hand when the",
-            "defect closes — which is when the budget starts gating again.",
+            "listed here with the defect that owns it, the ceiling it may not grow past and the date the",
+            "grace runs out. The gate fails the moment one of these grows beyond its ceiling; the ledger",
+            "in ADR-004 §11.10 is the same table, and `tools/epic7_acceptance.py` fails the epic if a row",
+            "has stopped biting or an expiry has gone by. An entry is removed by hand when the defect",
+            "closes — which is when the budget starts gating again.",
             "",
-            "| measurement | budget | ceiling | owner | why |",
-            "|---|---|---|---|---|",
+            "| measurement | budget | ceiling | owner | expires | why |",
+            "|---|---|---|---|---|---|",
         ]
         if known:
             for name, entry in sorted(known.items()):
-                lines.append("| `%s` | %s | %s (%s × tolerance) | `%s` | %s |" % (
+                lines.append("| `%s` | %s | %s (%s × tolerance) | `%s` | %s | %s |" % (
                     name, format(float(entry["budget"]), ",g"), format(float(entry["ceiling"]), ",g"),
                     format(float(entry.get("tolerance", 1.25)), "g"), entry.get("owner", "?"),
+                    entry.get("expires", "—"),
                     entry.get("why", "").replace("|", "\\|")))
         else:
             # The register can only speak for what it holds. Claiming "every measured number is inside its
             # budget" from an empty register is a claim about the last gate run, and the last gate run is
             # not in this file — `make bench-check` is where that verdict lives.
-            lines.append("| (none) | — | — | — | nothing is on the register; "
+            lines.append("| (none) | — | — | — | — | nothing is on the register; "
                          "`make bench-check` is the word on what is inside its budget |")
 
     lines += [
