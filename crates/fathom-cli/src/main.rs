@@ -50,6 +50,12 @@ mod attribution;
 mod clock;
 mod demo;
 mod diagnose;
+/// The event stream's IO half (`e6.7`, `reco-raw`): the `[events]` table, the file, the filter and the
+/// redaction — everything `fathom_core::events` may not do because it may not read a file or a clock.
+pub mod events;
+/// The `--detectors` / `--enable-detector` / `--disable-detector` / `--events` flags, resolved once
+/// (`e6.7`) so no verb can apply them twice or forget them.
+mod extens;
 // Plan versus execution (`e4.8`): the store reads that turn an index into the sessions
 // `fathom_analyze::drift` compares. The rules live there, so that every finding has a fixture; this module
 // owns only what a terminal sees.
@@ -194,6 +200,12 @@ fn run() -> ExitCode {
         lines: cli.lines,
         theme: cli.theme,
         no_watch: cli.no_watch,
+        extens: extens::Extensibility::new(
+            &cli.detectors,
+            &cli.enable_detector,
+            &cli.disable_detector,
+            cli.events.clone(),
+        ),
     };
 
     // The panic hook has restored the screen and printed the report by the time this returns; catching

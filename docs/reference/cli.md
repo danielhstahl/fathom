@@ -62,6 +62,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
 | **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
 | **[`completions`](#fathom-completions)** | Print the shell's own copy of this grammar: completion scripts and man pages (e7.4) | shipped | [*release*](../concepts/release.md) · [*cli*](../concepts/cli.md) |
+| **[`events`](#fathom-events)** | Read the analysis event stream a run wrote: what happened, in order (e6.7) | shipped | [*extensibility*](../concepts/extensibility.md) · [*pathology-detectors*](../concepts/pathology-detectors.md) |
 <!-- END GENERATED: verbs -->
 
 ## Global flags
@@ -120,6 +121,24 @@ is not, so a log gets one line per update and a pipe gets none.
           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`).
           
           An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+
+      --detectors <SPEC>
+          Which detectors run, moved off the file's answer (`e6.7`).
+          
+          A comma-separated spec: `id` or `+id` runs one as well, `-id` turns one off even if it ships on, `all` bases the set on every built-in detector, and `none` bases it on nothing. So `--detectors none,+churn_loop` is one detector and `--detectors all,-secret_string` is eleven. It is the same grammar as `detectors.enabled` and `detectors.disable` in `fathom.toml`, applied after it, and it names a plugin detector by its namespaced id (`--detectors +acme.untested_agent_logic`). A `--detectors` line is what a CI job uses to ask one narrow question without editing a file.
+
+      --enable-detector <ID>
+          Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+
+      --disable-detector <ID>
+          Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`).
+          
+          This is the switch for a built-in you have decided about: the row stays in the report as `disabled`, so "did it look?" still has an answer, and `detectors.suppress` stays the switch for a finding whose family you have muted rather than a detector you have turned off.
+
+      --events <FILE>
+          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`).
+          
+          One JSON object per line, versioned, appended: what started, what each detector did, what every finding said, and how the run ended. `[events] enabled = true` turns the stream on for a repository; this turns it on for one run, over whatever the file says. `fathom events` reads it back.
 
   -h, --help
           Print help (see a summary with '-h')
@@ -192,26 +211,30 @@ Arguments:
   [ROOT]  The repository to index [default: .]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --stats              Print the per-analyzer cache table (ADR-004 §4.8)
-      --json               Print the run report as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --refresh            Look up every stored unit, and recompute the ones that hit too
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --rebuild            Throw the epoch away and rebuild every analysis from scratch
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --watch              Index once, then keep watching and index as the repository changes
-      --committed-only     Do not analyse uncommitted paths (ADR-004 §6.4)
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --prune              Remove the commit rows no ref can reach — what a rebase, an `--amend` or a force-push leaves behind
-      --no-graph           Do not write the module graph (`e3.11`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --dry-run            With `--prune`: print what would be removed and remove nothing
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --stats                  Print the per-analyzer cache table (ADR-004 §4.8)
+      --json                   Print the run report as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --refresh                Look up every stored unit, and recompute the ones that hit too
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --rebuild                Throw the epoch away and rebuild every analysis from scratch
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --watch                  Index once, then keep watching and index as the repository changes
+      --committed-only         Do not analyse uncommitted paths (ADR-004 §6.4)
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --prune                  Remove the commit rows no ref can reach — what a rebase, an `--amend` or a force-push leaves behind
+      --no-graph               Do not write the module graph (`e3.11`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --dry-run                With `--prune`: print what would be removed and remove nothing
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.index -->
 
@@ -232,19 +255,23 @@ Arguments:
   <EPISODE>  The episode to show: a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the episode as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the episode as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.show -->
 
@@ -272,28 +299,32 @@ List the episodes — the rail's rows, headless (`reco-11b`)
 Usage: fathom episodes [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the list as one JSON value on stdout (`fathom.cli.episodes/1`), and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --limit <N>          How many rows to print, newest first; `0` is every row the filters select [default: 500]
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --offset <N>         Skip this many rows before printing, for paging with `--limit` [default: 0]
-      --author <NAME>      Only episodes by this author, exactly as git recorded the name; repeatable
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --kind <KIND>        Only episodes whose author kind is this — `agent`, `human` or `unknown`; repeatable
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --state <STATE>      Only episodes in this review state: `unread`, `read`, `accepted`, `flagged`, `dismissed`, `snoozed`
-      --path <FRAGMENT>    Only episodes that touched a path containing this fragment
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --since <WHEN>       Only episodes whose last commit is at or after this date — `7d`, `2w`, `today`, `yesterday`, `2026-10-01`: the same grammar `fathom search since:` takes
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-      --until <WHEN>       Only episodes whose last commit is before this date, in the same grammar as `--since`
-      --include-dead       Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the list as one JSON value on stdout (`fathom.cli.episodes/1`), and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <N>              How many rows to print, newest first; `0` is every row the filters select [default: 500]
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --offset <N>             Skip this many rows before printing, for paging with `--limit` [default: 0]
+      --author <NAME>          Only episodes by this author, exactly as git recorded the name; repeatable
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --kind <KIND>            Only episodes whose author kind is this — `agent`, `human` or `unknown`; repeatable
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --state <STATE>          Only episodes in this review state: `unread`, `read`, `accepted`, `flagged`, `dismissed`, `snoozed`
+      --path <FRAGMENT>        Only episodes that touched a path containing this fragment
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --since <WHEN>           Only episodes whose last commit is at or after this date — `7d`, `2w`, `today`, `yesterday`, `2026-10-01`: the same grammar `fathom search since:` takes
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --until <WHEN>           Only episodes whose last commit is before this date, in the same grammar as `--since`
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --include-dead           Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.episodes -->
 
@@ -317,17 +348,21 @@ Commands:
   help     Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.attribution -->
 
@@ -343,23 +378,27 @@ Arguments:
   [TARGET]  The commit whose identities are being corrected: a rev, an oid prefix, or `-` for nothing
 
 Options:
-      --plain                Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>          The repository to write to [default: .]
-      --kind <KIND>          `agent`, `human` or `unknown`
-      --no-alt-screen        Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --agent <AGENT>        Which agent the identity is, when `--kind agent`
-      --fresh                Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse                Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --note <NOTE>          Why the label was overruled, for whoever reads it next
-      --identity <IDENTITY>  Correct one identity key directly (`identity:<address>`), instead of deriving them from a commit
-      --lines                With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --json                 Print the result as JSON on stdout, and nothing else there
-      --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress          never print the index's progress row, even on a terminal
-      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help                 Print help (see more with '--help')
-  -V, --version              Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to write to [default: .]
+      --kind <KIND>            `agent`, `human` or `unknown`
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --agent <AGENT>          Which agent the identity is, when `--kind agent`
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --note <NOTE>            Why the label was overruled, for whoever reads it next
+      --identity <IDENTITY>    Correct one identity key directly (`identity:<address>`), instead of deriving them from a commit
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --json                   Print the result as JSON on stdout, and nothing else there
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.attribution.correct -->
 
@@ -372,19 +411,23 @@ List the stored corrections, which are the keys the classifier honours
 Usage: fathom attribution list [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the corrections as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the corrections as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.attribution.list -->
 
@@ -400,19 +443,23 @@ Arguments:
   <IDENTITY>  The identity key to forget, as `fathom attribution list` prints it
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to write to [default: .]
-      --json               Print the result as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to write to [default: .]
+      --json                   Print the result as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.attribution.forget -->
 
@@ -436,19 +483,23 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review -->
 
@@ -461,18 +512,22 @@ The verdict: is every episode covered by a sign-off that still matches (exit `7`
 Usage: fathom review status [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review.status -->
 
@@ -488,22 +543,26 @@ Arguments:
   <EPISODE>  The episode to sign off, or an unambiguous prefix of its id
 
 Options:
-      --decision <DECISION>  What the decision is; `accepted` is the one that means *reviewed* [default: accepted]
-      --plain                Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json                 Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen        Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --note <NOTE>          A note, committed with the entry and folded onto one line
-      --fresh                Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --identity <IDENTITY>  Who is signing, when git config and `fathom.toml` do not say
-      --agent <AGENT>        Record the act as an agent's verdict on someone's behalf, not as a human acceptance
-      --mouse                Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines                With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress          never print the index's progress row, even on a terminal
-      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help                 Print help (see more with '--help')
-  -V, --version              Print version
+      --decision <DECISION>    What the decision is; `accepted` is the one that means *reviewed* [default: accepted]
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --note <NOTE>            A note, committed with the entry and folded onto one line
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --identity <IDENTITY>    Who is signing, when git config and `fathom.toml` do not say
+      --agent <AGENT>          Record the act as an agent's verdict on someone's behalf, not as a human acceptance
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review.sign -->
 
@@ -516,19 +575,23 @@ Render the queue's acts that the ledger has never seen
 Usage: fathom review sync [OPTIONS]
 
 Options:
-      --dry-run            Report what would be rendered, write nothing
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --dry-run                Report what would be rendered, write nothing
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review.sync -->
 
@@ -541,19 +604,23 @@ List the ledger's entries with their verdicts
 Usage: fathom review list [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --state <STATE>      Show only entries in this state: `fresh`, `stale`, `orphan` or `unknown`
-      --json               Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --state <STATE>          Show only entries in this state: `fresh`, `stale`, `orphan` or `unknown`
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review.list -->
 
@@ -566,18 +633,22 @@ Re-hash every entry against its own `digest:` line — tampering, and nothing el
 Usage: fathom review verify [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the verdict and every entry as one JSON line (machine contract `fathom.cli.review/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.review.verify -->
 
@@ -598,22 +669,26 @@ Arguments:
   [EPISODE]  The episode to analyse: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--schema`, which prints the contract instead of an answer
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the delta document as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --schema             Print `schemas/episode-delta.schema.json`, the JSON Schema for the document, and stop
-      --check              Check the checked-in schema against what this build generates; the CI form of `--schema`
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --write              Write the generated schema to `schemas/`, replacing the checked-in copy
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the delta document as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --schema                 Print `schemas/episode-delta.schema.json`, the JSON Schema for the document, and stop
+      --check                  Check the checked-in schema against what this build generates; the CI form of `--schema`
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --write                  Write the generated schema to `schemas/`, replacing the checked-in copy
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.analyze -->
 
@@ -634,23 +709,27 @@ Arguments:
   [EPISODE]  The episode to read: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--attribution`, which answers a question about the build instead of an episode
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the claims, citations and weights as JSON on stdout, and nothing else there
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --markdown           Print the Markdown artefact body — the exact text `fathom export` will carry
-      --explain            Print the ranking beside the prose: every claim's weight, so the order can be argued with
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --top <N>            How many claims the *Read this first* paragraph holds (1 to 6)
-      --attribution        Print whether a model wrote any of this, and the five gates a polish path must clear. Needs no index and no episode
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the claims, citations and weights as JSON on stdout, and nothing else there
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --markdown               Print the Markdown artefact body — the exact text `fathom export` will carry
+      --explain                Print the ranking beside the prose: every claim's weight, so the order can be argued with
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --top <N>                How many claims the *Read this first* paragraph holds (1 to 6)
+      --attribution            Print whether a model wrote any of this, and the five gates a polish path must clear. Needs no index and no episode
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.narrative -->
 
@@ -668,27 +747,31 @@ What the plan said against what the session did — the contradictions, both sid
 Usage: fathom drift [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --session <S>        Compare one harness session only — its id, or `lineage:refs/heads/main` for the episodes no session was named for
-      --all                Read every episode in the index instead of the newest ones. A long read, and a longer report
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --window <N>         How many episodes past a plan item to look for the change that did it
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --min-overlap <F>    The token overlap at which a plan item counts as addressed (0.05 to 1.0)
-      --max <N>            The cap on the report
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --dismiss <KEY>      A suppression key already argued about; its contradiction is counted, not re-reported. Repeatable
-      --off <KIND>         Switch one kind off, in the published spelling (`plan-unimplemented`, …). Repeatable
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --json               Print the report as JSON on stdout, and nothing else there
-      --no-progress        never print the index's progress row, even on a terminal
-      --fail-on-findings   Exit 7 when anything was found, so a CI step can gate on it
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --session <S>            Compare one harness session only — its id, or `lineage:refs/heads/main` for the episodes no session was named for
+      --all                    Read every episode in the index instead of the newest ones. A long read, and a longer report
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --window <N>             How many episodes past a plan item to look for the change that did it
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --min-overlap <F>        The token overlap at which a plan item counts as addressed (0.05 to 1.0)
+      --max <N>                The cap on the report
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --dismiss <KEY>          A suppression key already argued about; its contradiction is counted, not re-reported. Repeatable
+      --off <KIND>             Switch one kind off, in the published spelling (`plan-unimplemented`, …). Repeatable
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --json                   Print the report as JSON on stdout, and nothing else there
+      --no-progress            never print the index's progress row, even on a terminal
+      --fail-on-findings       Exit 7 when anything was found, so a CI step can gate on it
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.drift -->
 
@@ -709,24 +792,28 @@ Arguments:
   [EPISODE]  The episode to score: an episode id, a commit, a rev (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix. Omitted with `--calibrate`, which reports on the weights instead of on an episode
 
 Options:
-      --plain                Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>          The repository to read [default: .]
-      --json                 Print the same answer as JSON, for a machine
-      --no-alt-screen        Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --calibrate [<SET>]    Print the calibration report — precision and recall at the top of the queue, as shipped and as retuned — instead of a score. With a path, that JSON set is measured; without one, the set shipped with the binary
-      --fresh                Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse                Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --weight <NAME=VALUE>  Override one weight for this run only: `--weight findings=0.25`. Repeatable. Nothing is written to `fathom.toml`; the score says which weights were overridden
-      --lines                With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --tau <TAU>            Override the flag line for this run only, 0 to 100
-      --cut <FRACTION>       How deep the queue is, as a fraction, for `--calibrate`. Defaults to 0.1 — the top ten percent
-      --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --weights              Print the feature names this build can score, and stop
-      --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress          never print the index's progress row, even on a terminal
-      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help                 Print help (see more with '--help')
-  -V, --version              Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the same answer as JSON, for a machine
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --calibrate [<SET>]      Print the calibration report — precision and recall at the top of the queue, as shipped and as retuned — instead of a score. With a path, that JSON set is measured; without one, the set shipped with the binary
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --weight <NAME=VALUE>    Override one weight for this run only: `--weight findings=0.25`. Repeatable. Nothing is written to `fathom.toml`; the score says which weights were overridden
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --tau <TAU>              Override the flag line for this run only, 0 to 100
+      --cut <FRACTION>         How deep the queue is, as a fraction, for `--calibrate`. Defaults to 0.1 — the top ten percent
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --weights                Print the feature names this build can score, and stop
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.why -->
 
@@ -745,18 +832,22 @@ Arguments:
   [ROOT]  The repository to report on [default: .]
 
 Options:
-      --json               Print the same report as JSON, for a machine
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --json                   Print the same report as JSON, for a machine
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.stats -->
 
@@ -793,9 +884,13 @@ Options:
       --no-summary              Do not write a job summary at all, even with `$GITHUB_STEP_SUMMARY` set
       --no-annotations          Do not print GitHub step annotations beside the report
       --no-watch                Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>        Which detectors run, moved off the file's answer (`e6.7`)
       --fail-on <LEVEL>         The severity at or above which the run exits 7: `note`, `warning`, `error` or `never`
+      --enable-detector <ID>    Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
       --severity <CHECK=LEVEL>  Set one check's volume for this run, e.g. `--severity tests=off`. Repeatable
+      --disable-detector <ID>   Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
       --only <CHECK>            Run only these checks. Repeatable; the others are reported as off, not omitted
+      --events <FILE>           Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
       --skip <CHECK>            Do not run these checks. Repeatable
       --require <CHECK>         Checks that must *run*: one that cannot is a failure rather than a notice. Repeatable
       --ignore <CHECK[:RULE]>   Silence one finding or family for this run: `tests`, or `layering:no_upward`. Repeatable
@@ -819,22 +914,26 @@ Describe this build, its environment and its index, with a remedy per finding
 Usage: fathom doctor [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --privacy            Print the network-feature and consent table
-      --json               Print the same report as JSON, for a machine
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --deep               Run the whole-database `integrity_check` rather than `quick_check` (ADR-004 §9.6)
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --strict             Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --root <ROOT>        The repository to report on [default: .]
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --privacy                Print the network-feature and consent table
+      --json                   Print the same report as JSON, for a machine
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --deep                   Run the whole-database `integrity_check` rather than `quick_check` (ADR-004 §9.6)
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --strict                 Exit with the code of the worst finding instead of 0 — what CI and a pre-flight check want
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --root <ROOT>            The repository to report on [default: .]
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.doctor -->
 
@@ -851,24 +950,28 @@ Write a review artefact for a pull request or an audit
 Usage: fathom export [OPTIONS]
 
 Options:
-      --format <FORMAT>      The artefact format: markdown, html or json [default: markdown]
-      --plain                Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen        Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --out <OUT>            The file stem to write, or a file name that already carries the format's extension [default: fathom-review]
-      --episodes <EPISODES>  The episode range to export, e.g. `HEAD~9..HEAD`, one commit, or one episode id [default: HEAD]
-      --fresh                Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse                Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --root <ROOT>          The repository to read [default: .]
-      --json                 Print the report as JSON on stdout, and nothing else there
-      --lines                With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --stdout               Write the artefact to stdout instead of a file; the report goes to stderr
-      --theme <NAME|PATH>    Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --strict               Exit 7 while the artefact's checklist still has an open item — the form a CI gate wants
-      --progress             print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress          never print the index's progress row, even on a terminal
-      --no-watch             Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help                 Print help (see more with '--help')
-  -V, --version              Print version
+      --format <FORMAT>        The artefact format: markdown, html or json [default: markdown]
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --out <OUT>              The file stem to write, or a file name that already carries the format's extension [default: fathom-review]
+      --episodes <EPISODES>    The episode range to export, e.g. `HEAD~9..HEAD`, one commit, or one episode id [default: HEAD]
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the report as JSON on stdout, and nothing else there
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --stdout                 Write the artefact to stdout instead of a file; the report goes to stderr
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --strict                 Exit 7 while the artefact's checklist still has an open item — the form a CI gate wants
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.export -->
 
@@ -903,17 +1006,21 @@ Commands:
   help            Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.mcp -->
 
@@ -926,17 +1033,21 @@ Serve the tool surface over stdio, which opens no socket (`e6.4`)
 Usage: fathom mcp serve [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.mcp.serve -->
 
@@ -951,19 +1062,23 @@ Print the tool surface and its bounds as this repository's config resolves them
 Usage: fathom mcp tools [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository whose `[mcp]` config and index to read [default: .]
-      --json               The surface as one JSON document on stdout (`fathom.mcp.surface/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository whose `[mcp]` config and index to read [default: .]
+      --json                   The surface as one JSON document on stdout (`fathom.mcp.surface/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.mcp.tools -->
 
@@ -983,18 +1098,22 @@ Arguments:
   <CHANGE_ID>  The change to bind the token to: an episode id or a commit
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository whose `[mcp]` config holds the approval secret [default: .]
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository whose `[mcp]` config holds the approval secret [default: .]
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.mcp.approval-token -->
 
@@ -1037,8 +1156,12 @@ Options:
       --no-progress                  never print the index's progress row, even on a terminal
       --no-watch                     Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --worktree                     Also re-index uncommitted paths when only the index moved
+      --detectors <SPEC>             Which detectors run, moved off the file's answer (`e6.7`)
       --no-status-file               Do not write `.fathom/watch/status.json`
+      --enable-detector <ID>         Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
       --quiet                        Print nothing to stdout but errors; the state machine still goes to the status file
+      --disable-detector <ID>        Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>                Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
   -h, --help                         Print help (see more with '--help')
   -V, --version                      Print version
 ```
@@ -1065,20 +1188,24 @@ Arguments:
   [ROOT]  The repository to report on [default: .]
 
 Options:
-      --json               Print the report as one JSON line (machine contract `fathom.cli.status/1`)
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --index              Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --json                   Print the report as one JSON line (machine contract `fathom.cli.status/1`)
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --socket <PATH>          Ask the daemon at this endpoint instead of the derived one
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --index                  Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.status -->
 
@@ -1104,17 +1231,21 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.daemon -->
 
@@ -1152,10 +1283,14 @@ Options:
       --no-progress                    never print the index's progress row, even on a terminal
       --no-watch                       Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --slice <SLICE>                  Analysis units per pass while nothing is talking to the daemon [default: 2000]
+      --detectors <SPEC>               Which detectors run, moved off the file's answer (`e6.7`)
       --yield-slice <YIELD_SLICE>      Analysis units per pass while a foreground client has just been heard — the yield slice [default: 50]
+      --enable-detector <ID>           Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
       --queue-depth <QUEUE_DEPTH>      How many distinct index requests may wait before new ones are refused rather than queued [default: 64]
+      --disable-detector <ID>          Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
       --hook-bytes <HOOK_BYTES>        Harness-stream bytes per pass — the back-pressure knob of ADR-005 §6.5 [default: 1048576]
       --backend <BACKEND>              Which change source to use: `auto`, `notify` or `poll`. The daemon is a watcher, so it takes the watcher's flags for the same meaning [default: auto]
+      --events <FILE>                  Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
       --interval-ms <INTERVAL_MS>      The debounced polling interval in milliseconds
       --debounce-ms <DEBOUNCE_MS>      The quiescence window in milliseconds
       --heartbeat-ms <HEARTBEAT_MS>    The liveness beat in milliseconds, for the heartbeat file and the lease
@@ -1180,21 +1315,25 @@ Ask the daemon to finish its pass, checkpoint and release the lease
 Usage: fathom daemon stop [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository whose daemon to stop [default: .]
-      --json               Print the outcome as one JSON line (`fathom.cli.daemon.stop/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --reason <REASON>    Who is asking, recorded in the daemon's last line [default: "fathom daemon stop"]
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository whose daemon to stop [default: .]
+      --json                   Print the outcome as one JSON line (`fathom.cli.daemon.stop/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --socket <PATH>          Ask the daemon at this endpoint instead of the derived one
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --reason <REASON>        Who is asking, recorded in the daemon's last line [default: "fathom daemon stop"]
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.daemon.stop -->
 
@@ -1213,20 +1352,24 @@ Arguments:
   [ROOT]  The repository to report on [default: .]
 
 Options:
-      --json               Print the report as one JSON line (machine contract `fathom.cli.status/1`)
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --socket <PATH>      Ask the daemon at this endpoint instead of the derived one
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --index              Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --json                   Print the report as one JSON line (machine contract `fathom.cli.status/1`)
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --socket <PATH>          Ask the daemon at this endpoint instead of the derived one
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --index                  Ask for a pass and wait for it, then report the state after it — the way to make `fathom status` mean "up to date" rather than "as of whenever"
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.daemon.status -->
 
@@ -1267,6 +1410,10 @@ Options:
       --width <WIDTH>              Render at this width instead of the terminal's — for a pipe, a test, or a tmux status line
       --no-watch                   Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
       --self-check                 Run to the deadline and print what the pane cost: polls, redraws and this process's own CPU share. Exits `11` if it blew the budget of 1 % of a core
+      --detectors <SPEC>           Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>       Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>      Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>              Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
   -h, --help                       Print help (see more with '--help')
   -V, --version                    Print version
 ```
@@ -1306,10 +1453,58 @@ Options:
       --strict                  Exit 7 when the stream is not healthy — the form a CI gate wants
       --no-progress             never print the index's progress row, even on a terminal
       --no-watch                Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>        Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>    Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>   Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
   -h, --help                    Print help (see more with '--help')
   -V, --version                 Print version
 ```
 <!-- END GENERATED: help.hooks -->
+
+## `fathom events`
+
+The analysis event stream, read back: what a run asked for, what each detector did, what every finding said,
+and how the run ended ([extensibility](../concepts/extensibility.md)). The stream is written only when the
+repository or the reviewer asks for it — `[events] enabled = true`, or `--events <file>` / `--events -` on
+one run — and this verb is the reader that ships with the writer, so the format has a consumer in the same
+binary that made it.
+
+A line this build cannot read is reported on stderr and skipped, never fatal: a run killed mid-write leaves
+one torn line at the end of the file, and every event before it is still worth having. `--explain` prints
+where the stream is, whether it is switched on, and what was refused, which is the answer to "why is this
+stream so short".
+
+<!-- BEGIN GENERATED: help.events -->
+```text
+Read the analysis event stream a run wrote: what happened, in order (`e6.7`)
+
+Usage: fathom events [OPTIONS]
+
+Options:
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read the stream of [default: .]
+      --json                   Print the raw JSONL instead of one line per event
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --tail <N>               Print only the last N events
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --on <PATTERN>           Which kinds to print, repeating or comma-separated: `analysis.*`, `detector.finished`, `*`
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --path <FILE>            Read this file instead of the repository's configured stream
+      --explain                Print where the stream is, whether it is switched on, and what was refused — then leave
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
+```
+<!-- END GENERATED: help.events -->
+
 
 ## `fathom tui`
 
@@ -1326,24 +1521,28 @@ Print the terminal UI's keymap, or open the UI itself
 Usage: fathom tui [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --show-keys          Print the merged keymap — defaults plus your `keys.overrides` — and exit, taking no terminal
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --show-session       Print the session state stored for this repository, and exit, taking no terminal (`e1.11`)
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --json               With `--show-session`: the rows as JSON on stdout, and nothing else there
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --stats              Print the run's own frame numbers — draws, events, p99, worst, over-budget — as one JSON object on stdout when the shell gives the screen back (`reco-08r`)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --show-theme         Print the theme this run would paint with, and exit, taking no terminal (`e5.6`)
-      --audit              With `--show-theme`: treat a failed contrast or separation floor as an error exit (exit 7)
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --list-themes        Print every theme Fathom can see — the built-ins and the files in your theme directories — and exit, taking no terminal (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --show-keys              Print the merged keymap — defaults plus your `keys.overrides` — and exit, taking no terminal
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --show-session           Print the session state stored for this repository, and exit, taking no terminal (`e1.11`)
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --json                   With `--show-session`: the rows as JSON on stdout, and nothing else there
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --stats                  Print the run's own frame numbers — draws, events, p99, worst, over-budget — as one JSON object on stdout when the shell gives the screen back (`reco-08r`)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --show-theme             Print the theme this run would paint with, and exit, taking no terminal (`e5.6`)
+      --audit                  With `--show-theme`: treat a failed contrast or separation floor as an error exit (exit 7)
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --list-themes            Print every theme Fathom can see — the built-ins and the files in your theme directories — and exit, taking no terminal (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.tui -->
 
@@ -1386,6 +1585,10 @@ Options:
       --progress                  print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
       --no-progress               never print the index's progress row, even on a terminal
       --no-watch                  Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>          Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>      Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>     Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>             Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
   -h, --help                      Print help (see more with '--help')
   -V, --version                   Print version
 ```
@@ -1411,24 +1614,28 @@ Arguments:
   [EPISODE]  The episode whose file to show: the same handle grammar as every other verb. With no argument, `HEAD`
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --path <PATH>        Which of the episode's files to show, by path or by a unique suffix of it
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --tool <NAME>        Which difftool to use, overriding `$FATHOM_DIFFTOOL` and your user config
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --print              Print the command and the reason for it, and run nothing. The two files stay on disk
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --list               List every file the episode touched with the line each would jump to, and show nothing
-      --keep               Leave the two staged files behind and say where they are
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --json               Print the decision as JSON on stdout, and nothing else there
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --path <PATH>            Which of the episode's files to show, by path or by a unique suffix of it
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --tool <NAME>            Which difftool to use, overriding `$FATHOM_DIFFTOOL` and your user config
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --print                  Print the command and the reason for it, and run nothing. The two files stay on disk
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list                   List every file the episode touched with the line each would jump to, and show nothing
+      --keep                   Leave the two staged files behind and say where they are
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --json                   Print the decision as JSON on stdout, and nothing else there
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.difftool -->
 
@@ -1451,22 +1658,26 @@ Arguments:
   [SPEC]  The comparison: `HEAD~9..HEAD`, `77aa0c..e8f1a2`, `main@1a2b3c..feat/x@9f8e7d`, or a saved name
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the comparison as one JSON line on stdout (`fathom.compare/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --save <NAME>        Keep this comparison under a name, so the next person says `since-the-refactor` instead of typing the endpoints
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --note <NOTE>        Why the name exists, kept with it
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --list               List the saved comparisons and exit
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the comparison as one JSON line on stdout (`fathom.compare/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --save <NAME>            Keep this comparison under a name, so the next person says `since-the-refactor` instead of typing the endpoints
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --note <NOTE>            Why the name exists, kept with it
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list                   List the saved comparisons and exit
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.cmp -->
 
@@ -1489,22 +1700,26 @@ Arguments:
   [QUERY]...  The query, with the same filter tokens `/` takes (`author:`, `since:`, `risk>`, `path:`, `dep:`, …)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the report as one JSON line on stdout (`fathom.search/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --limit <LIMIT>      How many hits to print [default: 20]
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --save <NAME>        Keep this query under a name, so the `,` palette can offer it again
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --list               List the saved searches and exit
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the report as one JSON line on stdout (`fathom.search/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <LIMIT>          How many hits to print [default: 20]
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --save <NAME>            Keep this query under a name, so the `,` palette can offer it again
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --list                   List the saved searches and exit
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.search -->
 
@@ -1526,25 +1741,29 @@ The architecture scorecard: five dimensions, one number, and the drift since you
 Usage: fathom architecture [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the report as one JSON line on stdout (`fathom-architecture/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --revision <TREE>    Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix
-      --backfill <N>       Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored) [default: 0]
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --history [<N>]      How many scored revisions the trend reads; bare, or `0`, is every row the index holds [default: 0]
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --refresh            Forget every stored scorecard first, and re-derive what this run needs
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --read-only          Do not write anything: read the stored rows and score only what this run needs
-      --explain            Print the knobs in force — the weights, the curves and their published constants — and exit
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the report as one JSON line on stdout (`fathom-architecture/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --revision <TREE>        Score this revision rather than the newest the graph holds: a full tree oid or an unambiguous prefix
+      --backfill <N>           Score this many unscored revisions first, newest first, before reporting (`0`: report what is stored) [default: 0]
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --history [<N>]          How many scored revisions the trend reads; bare, or `0`, is every row the index holds [default: 0]
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --refresh                Forget every stored scorecard first, and re-derive what this run needs
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --read-only              Do not write anything: read the stored rows and score only what this run needs
+      --explain                Print the knobs in force — the weights, the curves and their published constants — and exit
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.architecture -->
 
@@ -1568,28 +1787,32 @@ The ratchet: the committed allowance ledger, which tightens on its own and widen
 Usage: fathom ratchet [OPTIONS]
 
 Options:
-      --plain                 Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>           The repository to read [default: .]
-      --json                  Print the report as one JSON line on stdout (`fathom-ratchet/1`)
-      --no-alt-screen         Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh                 Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --update-baseline       Raise the baseline: write the violations that have no allowance as new rows
-      --mouse                 Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --reason <REASON>       Why the baseline is being raised — required by `--update-baseline`, recorded in the file, the diff and the review memory
-      --lines                 With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --owner <OWNER>         Who owns the new allowances; bare, the reviewer's own identity (`--identity`, `$FATHOM_REVIEWER`, `git config user.name`)
-      --granted-by <WHO>      Who is asking, recorded beside the owner as `granted_by`; bare, the same identity as `--owner`
-      --theme <NAME|PATH>     Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --expires <DATE|never>  The last day an allowance is live, `YYYY-MM-DD`, or `never` for a row with no expiry
-      --key <KEY>             Grant only this key (repeatable): a violation key as the report prints it, or `kind=key`
-      --progress              print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --dry-run               Report what would change and write nothing — not even the automatic tightening
-      --no-progress           never print the index's progress row, even on a terminal
-      --no-watch              Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-      --revision <TREE>       Judge this graph revision rather than the newest the index holds: an oid or an unambiguous prefix
-      --no-note               Do not write a `decision` note into the review memory when the baseline is raised
-  -h, --help                  Print help (see more with '--help')
-  -V, --version               Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the report as one JSON line on stdout (`fathom-ratchet/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --update-baseline        Raise the baseline: write the violations that have no allowance as new rows
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --reason <REASON>        Why the baseline is being raised — required by `--update-baseline`, recorded in the file, the diff and the review memory
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --owner <OWNER>          Who owns the new allowances; bare, the reviewer's own identity (`--identity`, `$FATHOM_REVIEWER`, `git config user.name`)
+      --granted-by <WHO>       Who is asking, recorded beside the owner as `granted_by`; bare, the same identity as `--owner`
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --expires <DATE|never>   The last day an allowance is live, `YYYY-MM-DD`, or `never` for a row with no expiry
+      --key <KEY>              Grant only this key (repeatable): a violation key as the report prints it, or `kind=key`
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --dry-run                Report what would change and write nothing — not even the automatic tightening
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --revision <TREE>        Judge this graph revision rather than the newest the index holds: an oid or an unambiguous prefix
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --no-note                Do not write a `decision` note into the review memory when the baseline is raised
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.ratchet -->
 
@@ -1610,20 +1833,24 @@ Arguments:
   <TARGET>  The path or episode to ask about. A path may be a file or a directory fragment
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the answer as one JSON line on stdout (`fathom.cli.context/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --all                Include answered and withdrawn notes in the lists, not just the live ones
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the answer as one JSON line on stdout (`fathom.cli.context/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --all                    Include answered and withdrawn notes in the lists, not just the live ones
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.context -->
 
@@ -1649,19 +1876,23 @@ Commands:
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --root <ROOT>        The repository to read [default: .]
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>            The repository to read [default: .]
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note -->
 
@@ -1677,21 +1908,25 @@ Arguments:
   [TARGET]  Only notes attached to this episode or touching this path
 
 Options:
-      --kind <KIND>        Only this kind: `decision`, `question`, `follow-up`, `annotation`
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --status <STATUS>    Only notes in this status: `open`, `answered`, `withdrawn`
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --limit <LIMIT>      How many to print, oldest first; `0` is every note [default: 0]
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --kind <KIND>            Only this kind: `decision`, `question`, `follow-up`, `annotation`
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --status <STATUS>        Only notes in this status: `open`, `answered`, `withdrawn`
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --limit <LIMIT>          How many to print, oldest first; `0` is every note [default: 0]
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.list -->
 
@@ -1707,24 +1942,28 @@ Arguments:
   [TEXT]  The text of the note. One line in the file either way: paragraph breaks are folded, never wrapped
 
 Options:
-      --episode <EPISODE>  The episode to attach it to, or an unambiguous prefix of its id
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --path <PATH>        The path to attach it to, optionally `path:line`. Resolved to the newest episode that touched it when the index knows one
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --kind <KIND>        What kind of note this is: `decision`, `question`, `follow-up`, `annotation` (`note` and `flag` are accepted as `annotation`) [default: annotation]
-      --author <AUTHOR>    Who is writing, when git config and `fathom.toml` do not say
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --agent <AGENT>      Record the note as an agent's act on someone's behalf, not as a human's
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --about <ABOUT>      The note this one answers, by `nt-…` id
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --episode <EPISODE>      The episode to attach it to, or an unambiguous prefix of its id
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --path <PATH>            The path to attach it to, optionally `path:line`. Resolved to the newest episode that touched it when the index knows one
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --kind <KIND>            What kind of note this is: `decision`, `question`, `follow-up`, `annotation` (`note` and `flag` are accepted as `annotation`) [default: annotation]
+      --author <AUTHOR>        Who is writing, when git config and `fathom.toml` do not say
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --agent <AGENT>          Record the note as an agent's act on someone's behalf, not as a human's
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --about <ABOUT>          The note this one answers, by `nt-…` id
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.add -->
 
@@ -1740,18 +1979,22 @@ Arguments:
   <ID>  The note id (`nt-…`)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.show -->
 
@@ -1768,21 +2011,25 @@ Arguments:
   <TEXT>  The answer
 
 Options:
-      --author <AUTHOR>    Who is answering
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --agent <AGENT>      Record the answer as an agent's act on someone's behalf
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --kind <KIND>        The kind of the answering note: a `decision` is an answer that settles it, an `annotation` is an answer that informs it [default: decision]
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --author <AUTHOR>        Who is answering
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --agent <AGENT>          Record the answer as an agent's act on someone's behalf
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --kind <KIND>            The kind of the answering note: a `decision` is an answer that settles it, an `annotation` is an answer that informs it [default: decision]
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.answer -->
 
@@ -1799,20 +2046,24 @@ Arguments:
   <TEXT>  Why it no longer holds
 
 Options:
-      --author <AUTHOR>    Who is retracting it
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --agent <AGENT>      Record the retraction as an agent's act on someone's behalf
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --author <AUTHOR>        Who is retracting it
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --agent <AGENT>          Record the retraction as an agent's act on someone's behalf
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.withdraw -->
 
@@ -1825,18 +2076,22 @@ Re-hash every note against its own `digest:` line — tampering, and nothing els
 Usage: fathom note verify [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --json               Print the report as one JSON line on stdout (`fathom.cli.note/1`)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --json                   Print the report as one JSON line on stdout (`fathom.cli.note/1`)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.note.verify -->
 ## `fathom completions`
@@ -1880,17 +2135,21 @@ Commands:
   help  Print this message or the help of the given subcommand(s)
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.completions -->
 
@@ -1903,17 +2162,21 @@ The completion script for bash, to drop in `.../bash-completion/completions/fath
 Usage: fathom completions bash [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.completions.bash -->
 
@@ -1926,17 +2189,21 @@ The completion script for zsh, to drop in a `$fpath` directory as `_fathom`
 Usage: fathom completions zsh [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.completions.zsh -->
 
@@ -1949,17 +2216,21 @@ The completion script for fish, to drop in `.../fish/vendor_completions.d/fathom
 Usage: fathom completions fish [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.completions.fish -->
 
@@ -1975,19 +2246,23 @@ The man pages, rendered from the same grammar
 Usage: fathom completions man [OPTIONS]
 
 Options:
-      --out <DIR>          Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --page <NAME>        Just this page — `--page fathom-check` — instead of every verb
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --out <DIR>              Write them under `DIR` (as `DIR/man1/*.1`) instead of printing one page on stdout
+      --plain                  Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --no-alt-screen          Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --page <NAME>            Just this page — `--page fathom-check` — instead of every verb
+      --fresh                  Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --mouse                  Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --lines                  With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --theme <NAME|PATH>      Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --progress               print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --no-progress            never print the index's progress row, even on a terminal
+      --no-watch               Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --detectors <SPEC>       Which detectors run, moved off the file's answer (`e6.7`)
+      --enable-detector <ID>   Run one more detector, by id — the long form of `--detectors +id` (`e6.7`)
+      --disable-detector <ID>  Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`)
+      --events <FILE>          Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`)
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
 ```
 <!-- END GENERATED: help.completions.man -->
 

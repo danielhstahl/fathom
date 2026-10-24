@@ -55,6 +55,9 @@ _fathom() {
             fathom,episodes)
                 cmd="fathom__subcmd__episodes"
                 ;;
+            fathom,events)
+                cmd="fathom__subcmd__events"
+                ;;
             fathom,export)
                 cmd="fathom__subcmd__export"
                 ;;
@@ -222,6 +225,9 @@ _fathom() {
                 ;;
             fathom__subcmd__help,episodes)
                 cmd="fathom__subcmd__help__subcmd__episodes"
+                ;;
+            fathom__subcmd__help,events)
+                cmd="fathom__subcmd__help__subcmd__events"
                 ;;
             fathom__subcmd__help,export)
                 cmd="fathom__subcmd__help__subcmd__export"
@@ -455,13 +461,29 @@ _fathom() {
 
     case "${cmd}" in
         fathom)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --demo --progress --no-progress --no-watch --help --version index show episodes attribution review analyze narrative drift why stats check doctor export mcp watch ambient hooks daemon status tui open difftool cmp search architecture ratchet context note completions help"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --demo --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version index show episodes attribution review analyze narrative drift why stats check doctor export mcp watch ambient hooks daemon status tui open difftool cmp search architecture ratchet context note completions events help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -473,7 +495,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__ambient)
-            opts="-h -V --root --json --once --plain --interval-ms --deadline --no-index --chunk-units --width --self-check --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --once --plain --interval-ms --deadline --no-index --chunk-units --width --self-check --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -503,6 +525,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -511,7 +549,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__analyze)
-            opts="-h -V --root --json --schema --check --write --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --schema --check --write --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -525,6 +563,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -533,7 +587,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__architecture)
-            opts="-h -V --root --json --revision --backfill --history --refresh --read-only --explain --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --revision --backfill --history --refresh --read-only --explain --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -559,6 +613,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -567,13 +637,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__attribution)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version correct list forget help"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version correct list forget help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -585,7 +671,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__attribution__subcmd__correct)
-            opts="-h -V --root --kind --agent --note --identity --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --kind --agent --note --identity --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -615,6 +701,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -623,7 +725,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__attribution__subcmd__forget)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -634,6 +736,22 @@ _fathom() {
                     return 0
                     ;;
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -715,7 +833,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__attribution__subcmd__list)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -729,6 +847,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -737,7 +871,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__check)
-            opts="-h -V --root --base --head --range --format --json --out --summary --no-summary --no-annotations --fail-on --severity --only --skip --require --ignore --max --explain --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --base --head --range --format --json --out --summary --no-summary --no-annotations --fail-on --severity --only --skip --require --ignore --max --explain --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -803,6 +937,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -811,7 +961,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__cmp)
-            opts="-h -V --root --json --save --note --list --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --save --note --list --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -833,6 +983,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -841,13 +1007,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__completions)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version bash zsh fish man help"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version bash zsh fish man help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -859,13 +1041,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__completions__subcmd__bash)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -877,13 +1075,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__completions__subcmd__fish)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -979,7 +1193,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__completions__subcmd__man)
-            opts="-h -V --out --page --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --out --page --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -997,6 +1211,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1005,13 +1235,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__completions__subcmd__zsh)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -1023,7 +1269,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__context)
-            opts="-h -V --root --json --all --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --all --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1037,6 +1283,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1045,13 +1307,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__daemon)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version start stop status help"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version start stop status help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -1133,7 +1411,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__daemon__subcmd__start)
-            opts="-h -V --root --json --quiet --foreground --detach --socket --require-socket --supervisor --cpu-share-pct --slice --yield-slice --queue-depth --hook-bytes --backend --interval-ms --debounce-ms --heartbeat-ms --worktree --no-status-file --deadline --max-cycles --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --quiet --foreground --detach --socket --require-socket --supervisor --cpu-share-pct --slice --yield-slice --queue-depth --hook-bytes --backend --interval-ms --debounce-ms --heartbeat-ms --worktree --no-status-file --deadline --max-cycles --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1199,6 +1477,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1207,7 +1501,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__daemon__subcmd__status)
-            opts="-h -V --json --socket --index --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --socket --index --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1221,6 +1515,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1229,7 +1539,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__daemon__subcmd__stop)
-            opts="-h -V --root --json --socket --reason --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --socket --reason --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1251,6 +1561,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1259,7 +1585,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__difftool)
-            opts="-h -V --root --path --tool --print --list --keep --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --path --tool --print --list --keep --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1281,6 +1607,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1289,7 +1631,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__doctor)
-            opts="-h -V --privacy --json --deep --strict --root --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --privacy --json --deep --strict --root --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1303,6 +1645,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1311,7 +1669,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__drift)
-            opts="-h -V --root --session --all --window --min-overlap --max --dismiss --off --json --fail-on-findings --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --session --all --window --min-overlap --max --dismiss --off --json --fail-on-findings --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1349,6 +1707,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1357,7 +1731,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__episodes)
-            opts="-h -V --root --json --limit --offset --author --kind --state --path --since --until --include-dead --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --limit --offset --author --kind --state --path --since --until --include-dead --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1403,6 +1777,72 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        fathom__subcmd__events)
+            opts="-h -V --root --json --tail --on --path --explain --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --root)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --tail)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --on)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --path)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1411,7 +1851,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__export)
-            opts="-h -V --format --out --episodes --root --json --stdout --strict --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --format --out --episodes --root --json --stdout --strict --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1437,6 +1877,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -1445,7 +1901,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__help)
-            opts="index show episodes attribution review analyze narrative drift why stats check doctor export mcp watch ambient hooks daemon status tui open difftool cmp search architecture ratchet context note completions help"
+            opts="index show episodes attribution review analyze narrative drift why stats check doctor export mcp watch ambient hooks daemon status tui open difftool cmp search architecture ratchet context note completions events help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1767,6 +2223,20 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__help__subcmd__episodes)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        fathom__subcmd__help__subcmd__events)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -2215,7 +2685,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__hooks)
-            opts="-h -V --events --check --replay --tail --max --trailer --json --strict --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --events --check --replay --tail --max --trailer --json --strict --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2237,6 +2707,18 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2245,13 +2727,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__index)
-            opts="-h -V --stats --json --refresh --rebuild --watch --committed-only --prune --no-graph --dry-run --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --stats --json --refresh --rebuild --watch --committed-only --prune --no-graph --dry-run --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2263,13 +2761,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__mcp)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version serve tools approval-token help"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version serve tools approval-token help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2281,7 +2795,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__mcp__subcmd__approval__subcmd__token)
-            opts="-h -V --root --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2292,6 +2806,22 @@ _fathom() {
                     return 0
                     ;;
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2373,13 +2903,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__mcp__subcmd__serve)
-            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2391,7 +2937,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__mcp__subcmd__tools)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2405,6 +2951,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2413,7 +2975,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__narrative)
-            opts="-h -V --root --json --markdown --explain --top --attribution --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --markdown --explain --top --attribution --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2431,6 +2993,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2439,7 +3017,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version add list show answer withdraw verify help"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version add list show answer withdraw verify help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2453,6 +3031,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2461,7 +3055,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__add)
-            opts="-h -V --episode --path --kind --author --agent --about --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --episode --path --kind --author --agent --about --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2495,6 +3089,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2503,7 +3113,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__answer)
-            opts="-h -V --author --agent --kind --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --author --agent --kind --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2522,6 +3132,22 @@ _fathom() {
                     return 0
                     ;;
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2645,7 +3271,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__list)
-            opts="-h -V --kind --status --limit --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --kind --status --limit --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2667,6 +3293,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2675,13 +3317,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__show)
-            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2693,13 +3351,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__verify)
-            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2711,7 +3385,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__note__subcmd__withdraw)
-            opts="-h -V --author --agent --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --author --agent --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2729,6 +3403,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2737,7 +3427,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__open)
-            opts="-h -V --root --path --line --editor --print --list --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --path --line --editor --print --list --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2763,6 +3453,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2771,7 +3477,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__ratchet)
-            opts="-h -V --root --json --update-baseline --reason --owner --granted-by --expires --key --dry-run --revision --no-note --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --update-baseline --reason --owner --granted-by --expires --key --dry-run --revision --no-note --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2809,6 +3515,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2817,7 +3539,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version status sign sync list verify help"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version status sign sync list verify help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2828,6 +3550,22 @@ _fathom() {
                     return 0
                     ;;
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -2937,7 +3675,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review__subcmd__list)
-            opts="-h -V --state --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --state --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2951,6 +3689,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2959,7 +3713,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review__subcmd__sign)
-            opts="-h -V --decision --note --identity --agent --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --decision --note --identity --agent --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2985,6 +3739,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -2993,13 +3763,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review__subcmd__status)
-            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -3011,13 +3797,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review__subcmd__sync)
-            opts="-h -V --dry-run --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --dry-run --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -3029,13 +3831,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__review__subcmd__verify)
-            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -3047,7 +3865,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__search)
-            opts="-h -V --root --json --limit --save --list --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --limit --save --list --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3069,6 +3887,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -3077,7 +3911,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__show)
-            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3091,6 +3925,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -3099,13 +3949,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__stats)
-            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -3117,7 +3983,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__status)
-            opts="-h -V --json --socket --index --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --socket --index --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3131,6 +3997,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -3139,13 +4021,29 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__tui)
-            opts="-h -V --show-keys --show-session --json --stats --show-theme --audit --list-themes --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --show-keys --show-session --json --stats --show-theme --audit --list-themes --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -3157,7 +4055,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__watch)
-            opts="-h -V --json --once --max-cycles --deadline --backend --interval-ms --debounce-ms --heartbeat-ms --chunk-units --worktree --no-status-file --quiet --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --json --once --max-cycles --deadline --backend --interval-ms --debounce-ms --heartbeat-ms --chunk-units --worktree --no-status-file --quiet --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3195,6 +4093,22 @@ _fathom() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -3203,7 +4117,7 @@ _fathom() {
             return 0
             ;;
         fathom__subcmd__why)
-            opts="-h -V --root --json --calibrate --weight --tau --cut --weights --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --help --version"
+            opts="-h -V --root --json --calibrate --weight --tau --cut --weights --plain --no-alt-screen --fresh --mouse --lines --theme --progress --no-progress --no-watch --detectors --enable-detector --disable-detector --events --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3230,6 +4144,22 @@ _fathom() {
                     return 0
                     ;;
                 --theme)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --detectors)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --enable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --disable-detector)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --events)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

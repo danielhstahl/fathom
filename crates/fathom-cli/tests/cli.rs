@@ -777,6 +777,9 @@ fn the_help_text_matches_the_checked_in_snapshot() {
         // release ships are rendered from this grammar, so a reworded flag here is a reworded page there.
         vec!["completions", "--help"],
         vec!["completions", "man", "--help"],
+        // `e6.7`'s verb, and the four global flags it shares with every other verb (`--detectors`,
+        // `--enable-detector`, `--disable-detector`, `--events`), in the snapshot for the same reason.
+        vec!["events", "--help"],
     ] {
         let out = fathom(&args);
         assert_eq!(code(&out), 0, "fathom {:?}: {}", args, stderr(&out));

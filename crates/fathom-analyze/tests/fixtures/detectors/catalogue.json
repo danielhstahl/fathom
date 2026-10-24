@@ -112,6 +112,7 @@
   "knobs": {
     "detectors.churn.min_episodes": "3",
     "detectors.copy.min_block_lines": "12",
+    "detectors.disable": "",
     "detectors.enabled": "debug_leftover,generated_edit,lint_escape,scope_creep,secret_string,test_weakening,todo_debt,untested_new_logic",
     "detectors.max_findings": "12",
     "detectors.rework.min_overlap": "0.60",

@@ -17,6 +17,45 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Extensibility: the detector API, an out-of-tree example, and the event stream (`e6.7`, `reco-raw`)
+
+A detector is a pure function over one episode, which is the only reason any of this can be safe: code this
+repository has never seen can call it, and a fixture can check what it said. This is the ticket that makes
+that a published surface instead of an internal shape.
+
+- **`fathom_analyze::plugin` is the API**: a `Detector` trait (`meta` + `detect`), an `Input` that borrows a
+  delta document and nothing else — no store, no `git`, no clock, no network, by shape rather than by policy
+  — and a `Registry` that runs registered detectors under eight containment rules (R1–R8). An unknown
+  finding-schema version, an undeclared finding type, an empty subject: each is dropped with its reason
+  printed, never fatal to the run. A hostile plugin costs the reader its own findings and nothing else.
+- **Plugin findings are namespaced and versioned**: `acme.untested_agent_logic`, never a bare id, so no plugin
+  can take a built-in's name, and `schema_version` is in the payload rather than only in the schema's `$id`.
+  `suppression_key` is inside the plugin's own namespace, so `detectors.suppress` mutes a plugin's family and
+  no plugin reaches outside its own. Published as `schemas/plugin-finding.schema.json`, generated and blessed
+  like every schema here.
+- **`detectors.disable`, `--disable-detector`, `--detectors all,-id,none,+id`**: the switch for a *detector*,
+  as distinct from `detectors.suppress`'s switch for a *finding*. A disabled built-in keeps its row in every
+  report, spelled `disabled`, so "did it look?" stays answerable. Documented in
+  [docs/concepts/extensibility.md](docs/concepts/extensibility.md), whose last section is the stability policy
+  an external consumer can build against.
+- **`fathom_core::events` is the bus; `fathom events` is the reader.** One versioned JSON object per line —
+  `run.started`, `selection.resolved`, `analysis.*`, `detector.finished`/`detector.skipped`, `finding.raised`,
+  `notice.raised`, `run.finished`/`run.failed`. A panicking subscriber is counted and delivery continues; a
+  line from a newer build is refused by name and the rest of the stream still reads — published as
+  `schemas/fathom-analysis-events.schema.json`, generated from the types that own it. Off by default, because
+  the product writes no file a repository did not ask for; `[events] enabled = true` or `--events -` (stderr,
+  so `--json`'s stdout stays parseable) turns it on, and a repository's config may not point the stream outside
+  the repository.
+- **`plugins/acme-detectors` is a second cargo workspace**, excluded from the root one, depending on
+  `fathom-analyze` by path — and CI builds *and runs* it in its own `out-of-tree-plugin` job, which is what
+  makes "usable from outside" a checked fact. Its two rules, `acme.untested_agent_logic` and
+  `acme.unseen_reach`, are chosen because one needs a single delta field and the other speaks precisely when
+  the data is missing.
+- Contracts: `tests/test_extensibility_contract.py` (every declared event kind documented and every documented
+  kind declared, the R-rules present in code, tests and docs, the new knobs in `e0.8`'s schema, the plugin
+  excluded from the workspace and wired into CI), `crates/fathom-core/tests/events.rs`,
+  `crates/fathom-analyze/tests/plugin_api.rs`, `crates/fathom-cli/tests/extensibility_verb.rs`.
+
 ### The demo repository: five seeded pathologies, a scripted tour, a recorded five minutes (`e7.6`, `reco-3qr`)
 
 A clone plus one command has to reproduce every documented finding, and the only version of that sentence

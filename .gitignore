@@ -30,4 +30,8 @@ benchmarks/trend/
 # discovered inputs and crash artefacts, none of which belongs in git.
 fuzz/target/
 fuzz/fuzz/
+# The out-of-tree example plugin (`e6.7`, reco-raw) is a second workspace, and its build output is the
+# same kind of noise: `plugins/*/Cargo.lock` is committed (a lock for a path dependency is a reproducible
+# example), its `target/` is not.
+plugins/*/target/
 # --- end fuzzing ------------------------------------------------------------------------------

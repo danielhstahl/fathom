@@ -238,7 +238,8 @@ be reproduced, and refused by name when a value would make a detector unable to 
 | key | default | what it holds |
 |---|---|---|
 | `detectors.enabled` | *(see `e2.7`'s key)* | membership only — it cannot remove a default; an id this build does not know is a notice naming a valid one |
-| `detectors.suppress` | *(empty)* | the off switch: detector ids, exact keys, or globs over keys |
+| `detectors.disable` | *(empty)* | membership going the other way: ids to hold back, and the only key that can hold back a default (`--disable-detector` at the command line) |
+| `detectors.suppress` | *(empty)* | the off switch below a detector: detector ids, exact keys, or globs over keys |
 | `detectors.max_findings` | `12` | per-detector row cap; what it hides is counted, not dropped |
 | `detectors.untested.min_added_lines` | `20` | how big a new public surface has to be to owe a test |
 | `detectors.todo.min_new` | `1` | new markers before `todo_debt` speaks (`0` is a real threshold) |
@@ -254,8 +255,21 @@ repository's `fathom.toml` costs that repository a knob, not its review.
 test-surface finding ids (`test_deletion` among them), which are Python findings with knobs and not
 catalogue rows. The two lists are one key today and they are not reconciled here, because the reconciliation
 belongs to the ticket that persists findings and has to read both. Until then: an id this build's catalogue
-does not know is a notice naming a valid id, `enabled` can only add membership, and
-`detectors.suppress` is the only switch that turns one of these eight off.
+does not know is a notice naming a valid id, and `enabled` can only add membership.
+
+Two switches turn a detector off, and they are different questions (**e6.7**, **reco-raw**):
+
+```toml
+detectors.disable = ["copy_paste_growth"]   # do not run it: cheaper, and it reports nothing
+suppress = ["todo_debt:src/parse/lexer.py"]  # run it, then hide this row: counted, and visible
+```
+
+Disabling stops the scan, so nothing is computed, nothing is counted, and the answer simply does not
+mention the detector beyond a line saying it was held back. Suppressing runs it and mutes the row on the
+way out, so the receipts still say it fired and was muted — which is the difference between "we do not
+look for that here" and "we look for that here and this repository has decided about it". The full
+difference, and the `--detectors` grammar that writes both, is in
+[Extensibility](extensibility.md).
 
 ## Where the findings go
 

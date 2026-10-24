@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "evidence": {
+      "additionalProperties": true,
+      "description": "Why the plugin thinks so — the same shape the built-in catalogue emits, so a surface renders one evidence type and not two. `grade` is ADR-004's: `observed` quotes the lines, `inferred` derived the claim, `asserted` is the repository's own statement, `absent` is a stated absence.",
+      "properties": {
+        "detail": {
+          "description": "What is there, quoted or stated, bounded by the detector.",
+          "type": "string"
+        },
+        "grade": {
+          "description": "How the detector knows.",
+          "enum": [
+            "observed",
+            "inferred",
+            "asserted",
+            "absent"
+          ],
+          "type": "string"
+        },
+        "kind": {
+          "description": "What kind of locator `locator` is.",
+          "enum": [
+            "range",
+            "hunk",
+            "test",
+            "config_key",
+            "path",
+            "episode"
+          ],
+          "type": "string"
+        },
+        "locator": {
+          "description": "A resolvable pointer: `src/parser.rs:240-262`, a path, an episode id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "locator",
+        "detail",
+        "grade"
+      ],
+      "type": "object"
+    },
+    "jump": {
+      "additionalProperties": true,
+      "description": "Where the surface opens when the reviewer accepts the finding. A view this build has no such name for is replaced with the episode and said out loud (rule R7) rather than guessed at.",
+      "properties": {
+        "target": {
+          "description": "What to open in it: `<episode>` or `<episode>#<path-or-region>`.",
+          "type": "string"
+        },
+        "view": {
+          "description": "One of ADR-006 §4's registry ids.",
+          "enum": [
+            "queue",
+            "timeline",
+            "diff",
+            "structure",
+            "graph"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "view",
+        "target"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://fathom.dev/schemas/plugin-finding.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "One finding raised by a detector written outside this repository (`e6.7`). The four parts every finding in this product carries — a sentence, a jump, a confidence, one key that mutes it — plus the version and the namespace that make a third-party claim safe to print beside a built-in's. Unknown fields are ignored on read; a finding whose `schema_version` this build cannot read, whose `finding_type` its plugin did not declare, or whose message or subject is empty is ignored with a notice naming it, and the run continues. The rules and the numbers they move are in `fathom_analyze::plugin::finding`.",
+  "properties": {
+    "confidence": {
+      "description": "`0..=1`. A value outside the range is clamped and said (rule R5), and `1.0` on a claim whose evidence is every piece `inferred` is reduced to `0.95` — the price the built-in catalogue pays for the same claim.",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "type": "number"
+    },
+    "episode_id": {
+      "description": "The episode the finding is about.",
+      "type": "string"
+    },
+    "evidence": {
+      "description": "Why the plugin thinks so. A `high` with an empty list here is demoted to `medium` and the notice says so (rule R4).",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "type": "array"
+    },
+    "finding_type": {
+      "description": "`namespace.id`. A plugin may only raise types inside its own namespace and only ones it declared at registration (rule R2); the bare, dotless spelling belongs to the built-in catalogue, so a plugin cannot take a built-in's suppression family.",
+      "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$",
+      "type": "string"
+    },
+    "jump": {
+      "$ref": "#/$defs/jump"
+    },
+    "message": {
+      "description": "The claim, in one sentence a person wrote. Empty is not a finding (rule R3).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "plugin": {
+      "description": "The plugin that raised it, as it named itself.",
+      "type": "string"
+    },
+    "plugin_version": {
+      "description": "The plugin's own version, so a re-run after the plugin changed is distinguishable from the last one.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "description": "The version of this shape the finding was written against. A number greater than the reader's is a refusal, not a partial read.",
+      "enum": [
+        1
+      ],
+      "type": "integer"
+    },
+    "severity": {
+      "description": "ADR-004 Appendix A's `finding.severity` CHECK, and the only severity vocabulary in the product with a constraint behind it. There is no fourth word.",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "type": "string"
+    },
+    "subject": {
+      "description": "What within the episode: a path, a symbol, a test name. Empty is not a finding (rule R3).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "suppression_key": {
+      "description": "The one key that silences this finding: `<type>` or `<type>:<subject>`. A key outside the plugin's own namespace is rewritten (rule R6) — a plugin may mute its own findings and nothing else.",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "finding_type",
+    "plugin",
+    "plugin_version",
+    "episode_id",
+    "subject",
+    "message",
+    "severity",
+    "confidence",
+    "jump",
+    "suppression_key"
+  ],
+  "title": "Fathom plugin finding",
+  "type": "object",
+  "x-fathom": {
+    "capability": "fathom_analyze::plugin::Detector::detect",
+    "compatibility": "additive changes keep the version; breaking changes bump it; an unreadable version is ignored with a notice",
+    "consumer": [
+      "fathom-cli (e6.7)",
+      "out-of-tree plugin crates",
+      "export (e5.7) via the delta document"
+    ],
+    "contract": "fathom-plugin-finding",
+    "delta_contract": "fathom-delta/1",
+    "owner": "e6.7",
+    "reader_ignores_unknown_fields": true,
+    "severity_vocabulary": [
+      "high",
+      "medium",
+      "low"
+    ],
+    "version": 1,
+    "views": [
+      "queue",
+      "timeline",
+      "diff",
+      "structure",
+      "graph"
+    ]
+  }
+}

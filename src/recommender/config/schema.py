@@ -294,6 +294,11 @@ SECTIONS: dict[str, dict] = {
                     "`delta.compose` and nothing else (ADR-004 §6)."},
     "detectors": {"title": "Detectors", "owner": "e2.7",
                   "doc": "Which finding detectors run."},
+    "events": {"title": "Analysis event stream", "owner": "e6.7 (`reco-raw`)",
+               "doc": "Whether a run publishes the analysis lifecycle — what started, what each detector "
+                      "did, what every finding said, how the run ended — as versioned JSONL an external "
+                      "tool can read. Off until the repository says otherwise; the path is "
+                      "`paths.analysis_events`."},
     "blast": {"title": "Blast radius", "owner": "e2.10",
               "doc": "How far the blast-radius walk goes before it declares a partial, the "
                      "confidence attached to each basis, and the path-heuristic weights that "
@@ -403,6 +408,12 @@ KEY_LIST: list[Key] = [
     _k(path="paths.export", kind="path", default=".fathom/export",
        doc="Where `fathom export` writes review artefacts.", pattern=r"^[^\x00]+$",
        ticket="e5.7"),
+    _k(path="paths.analysis_events", kind="path", default=".fathom/analysis-events.jsonl",
+       doc="Append-only analysis event stream: what a run asked for, what each detector did, what every "
+           "finding said, how the run ended (`e6.7`, docs/concepts/extensibility.md). Written only when "
+           "`[events] enabled` is true; `fathom events` reads it back. A repo file may not point it "
+           "outside the repository.",
+       pattern=r"^[^\x00]+$", ticket="e6.7", analyzer=""),
     # --- noise / taxonomy inputs (e0.9 consumes these, does not own them) ----
     _k(path="noise.globs", kind="glob_list", merge="extend",
        default=["**/dist/**", "**/*.snap"], item_pattern=GLOB_ITEM,
@@ -1802,6 +1813,12 @@ KEY_LIST: list[Key] = [
        default=["test_deletion", "untested_new_logic", "debug_leftover"],
        doc="Detectors that run. Unknown detector ids are a warning naming a valid id.",
        analyzer="findings.detect", ticket="e2.7"),
+    _k(path="detectors.disable", kind="string_list", merge="extend", default=[],
+       doc="The off switch for a detector, as opposed to `detectors.suppress`'s off switch for a finding: "
+           "an id here does not run, and its row in every report says `disabled` — so the question "
+           "'did it look?' still has an answer. Applied after `detectors.enabled`, so it wins a collision, "
+           "and it is the same grammar as `--disable-detector` / `--detectors -id`. `e6.7`.",
+       analyzer="findings.detect", ticket="e6.7"),
     _k(path="detectors.suppress", kind="string_list", merge="extend", default=[],
        doc="The off switch: a detector id, an exact suppression key, or a glob over keys. Keys are "
            "`detector:subject`, printed by every finding, and contain no episode id and no timestamp so "
@@ -1846,6 +1863,18 @@ KEY_LIST: list[Key] = [
            "copied block. Ships disabled; this is the knob `e4.3a` tunes first, because a table-driven "
            "test and a duplicated idea are the same twelve lines. `e4.3`.",
        analyzer="findings.detect", ticket="e4.3"),
+    # --- analysis event stream (e6.7 `reco-raw`) ----------------------------
+    _k(path="events.enabled", kind="boolean", default=False,
+       doc="Write the analysis event stream when a verb analyses: one versioned JSON object per line, "
+           "appended to `paths.analysis_events`. Off by default because the product writes no file a "
+           "repository did not ask for (ADR-001 §4.6); `--events FILE` turns it on for one run, and "
+           "`--events -` sends the same lines to stderr. `e6.7`.",
+       analyzer="", ticket="e6.7"),
+    _k(path="events.on", kind="string_list", merge="extend", default=[],
+       doc="Which event kinds to write: an exact kind (`detector.finished`) or a family with `*` "
+           "(`analysis.*`, `*`). An empty list means every kind. A pattern that will not parse is a notice "
+           "and the whole stream, never a silent narrowing. `e6.7`.",
+       analyzer="", ticket="e6.7"),
     _k(path="blast.hops", kind="integer", default=1, minimum=0, maximum=4, units="hops",
        doc="Rings counted *beyond* the direct one: the direct ring is always counted, so the "
            "default of 1 answers 'direct + one hop' and 0 answers 'direct only'. Anything "

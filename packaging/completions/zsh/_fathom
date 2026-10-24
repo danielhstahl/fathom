@@ -16,6 +16,10 @@ _fathom() {
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -41,6 +45,10 @@ _fathom() {
             (index)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--stats[Print the per-analyzer cache table (ADR-004 §4.8)]' \
 '--json[Print the run report as JSON on stdout, and nothing else there]' \
 '--refresh[Look up every stored unit, and recompute the ones that hit too]' \
@@ -69,6 +77,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the episode as JSON on stdout, and nothing else there]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -97,6 +109,10 @@ _arguments "${_arguments_options[@]}" : \
 '--since=[Only episodes whose last commit is at or after this date — \`7d\`, \`2w\`, \`today\`, \`yesterday\`, \`2026-10-01\`\: the same grammar \`fathom search since\:\` takes]:WHEN:_default' \
 '--until=[Only episodes whose last commit is before this date, in the same grammar as \`--since\`]:WHEN:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the list as one JSON value on stdout (\`fathom.cli.episodes/1\`), and nothing else there]' \
 '--include-dead[Include episodes no live commit belongs to — the ghosts a rebase, an amend or a force-push left]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -116,6 +132,10 @@ _arguments "${_arguments_options[@]}" : \
 (attribution)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -146,6 +166,10 @@ _arguments "${_arguments_options[@]}" : \
 '--note=[Why the label was overruled, for whoever reads it next]:NOTE:_default' \
 '--identity=[Correct one identity key directly (\`identity\:<address>\`), instead of deriving them from a commit]:IDENTITY:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the result as JSON on stdout, and nothing else there]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -166,6 +190,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the corrections as JSON on stdout, and nothing else there]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -185,6 +213,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to write to]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the result as JSON on stdout, and nothing else there]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -241,6 +273,10 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -267,6 +303,10 @@ _arguments "${_arguments_options[@]}" : \
             (status)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -289,6 +329,10 @@ _arguments "${_arguments_options[@]}" : \
 '--identity=[Who is signing, when git config and \`fathom.toml\` do not say]:IDENTITY:_default' \
 '--agent=[Record the act as an agent'\''s verdict on someone'\''s behalf, not as a human acceptance]:AGENT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -308,6 +352,10 @@ _arguments "${_arguments_options[@]}" : \
 (sync)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--dry-run[Report what would be rendered, write nothing]' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -328,6 +376,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--state=[Show only entries in this state\: \`fresh\`, \`stale\`, \`orphan\` or \`unknown\`]:STATE:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -346,6 +398,10 @@ _arguments "${_arguments_options[@]}" : \
 (verify)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the verdict and every entry as one JSON line (machine contract \`fathom.cli.review/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -409,6 +465,10 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the delta document as JSON on stdout, and nothing else there]' \
 '--schema[Print \`schemas/episode-delta.schema.json\`, the JSON Schema for the document, and stop]' \
 '--check[Check the checked-in schema against what this build generates; the CI form of \`--schema\`]' \
@@ -433,6 +493,10 @@ _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--top=[How many claims the *Read this first* paragraph holds (1 to 6)]:N:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the claims, citations and weights as JSON on stdout, and nothing else there]' \
 '--markdown[Print the Markdown artefact body — the exact text \`fathom export\` will carry]' \
 '--explain[Print the ranking beside the prose\: every claim'\''s weight, so the order can be argued with]' \
@@ -462,6 +526,10 @@ _arguments "${_arguments_options[@]}" : \
 '*--dismiss=[A suppression key already argued about; its contradiction is counted, not re-reported. Repeatable]:KEY:_default' \
 '*--off=[Switch one kind off, in the published spelling (\`plan-unimplemented\`, …). Repeatable]:KIND:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--all[Read every episode in the index instead of the newest ones. A long read, and a longer report]' \
 '--json[Print the report as JSON on stdout, and nothing else there]' \
 '--fail-on-findings[Exit 7 when anything was found, so a CI step can gate on it]' \
@@ -487,6 +555,10 @@ _arguments "${_arguments_options[@]}" : \
 '--tau=[Override the flag line for this run only, 0 to 100]:TAU:_default' \
 '--cut=[How deep the queue is, as a fraction, for \`--calibrate\`. Defaults to 0.1 — the top ten percent]:FRACTION:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the same answer as JSON, for a machine]' \
 '--weights[Print the feature names this build can score, and stop]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -507,6 +579,10 @@ _arguments "${_arguments_options[@]}" : \
 (stats)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the same report as JSON, for a machine]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -540,6 +616,10 @@ _arguments "${_arguments_options[@]}" : \
 '*--ignore=[Silence one finding or family for this run\: \`tests\`, or \`layering\:no_upward\`. Repeatable]:CHECK[:RULE]:_default' \
 '--max=[Cap the findings listed per check (the counts stay whole). Overrides \`\[check\] max_findings\`]:N:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the JSON document — the same thing as \`--format json\`]' \
 '--no-summary[Do not write a job summary at all, even with \`\$GITHUB_STEP_SUMMARY\` set]' \
 '--no-annotations[Do not print GitHub step annotations beside the report]' \
@@ -562,6 +642,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to report on]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--privacy[Print the network-feature and consent table]' \
 '--json[Print the same report as JSON, for a machine]' \
 '--deep[Run the whole-database \`integrity_check\` rather than \`quick_check\` (ADR-004 §9.6)]' \
@@ -587,6 +671,10 @@ _arguments "${_arguments_options[@]}" : \
 '--episodes=[The episode range to export, e.g. \`HEAD~9..HEAD\`, one commit, or one episode id]:EPISODES:_default' \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as JSON on stdout, and nothing else there]' \
 '(--json)--stdout[Write the artefact to stdout instead of a file; the report goes to stderr]' \
 '--strict[Exit 7 while the artefact'\''s checklist still has an open item — the form a CI gate wants]' \
@@ -607,6 +695,10 @@ _arguments "${_arguments_options[@]}" : \
 (mcp)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -632,6 +724,10 @@ _arguments "${_arguments_options[@]}" : \
             (serve)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -650,6 +746,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository whose \`\[mcp\]\` config and index to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[The surface as one JSON document on stdout (\`fathom.mcp.surface/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -669,6 +769,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository whose \`\[mcp\]\` config holds the approval secret]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -730,6 +834,10 @@ _arguments "${_arguments_options[@]}" : \
 '--heartbeat-ms=[The liveness beat in milliseconds\: how often the state is rewritten while nothing changes]:HEARTBEAT_MS:_default' \
 '--chunk-units=[Analysis units per index chunk — the watcher'\''s slice of the CPU]:CHUNK_UNITS:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print one JSON object per state change on stdout, and nothing else there]' \
 '--once[Index once, then exit\: what a script or a CI check wants from \`watch\`]' \
 '--worktree[Also re-index uncommitted paths when only the index moved]' \
@@ -758,6 +866,10 @@ _arguments "${_arguments_options[@]}" : \
 '--chunk-units=[Episodes to index per slice when this pane is the one keeping the index current]:CHUNK_UNITS:_default' \
 '--width=[Render at this width instead of the terminal'\''s — for a pipe, a test, or a tmux status line]:WIDTH:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the pane as one JSON object per change (machine contract \`fathom.cli.ambient/1\`)]' \
 '--once[Print the pane once and exit; never take the screen]' \
 '--plain[Draw the pane as text with no terminal taken (ADR-006 §6.7)]' \
@@ -782,6 +894,9 @@ _arguments "${_arguments_options[@]}" : \
 '--max=[With \`--tail\`\: print at most this many records]:MAX:_default' \
 '--trailer=[Print the \`Agent-Session\:\` / \`Agent-Turn\:\` trailer pair for \`<session>\:<turn-index>\`]:SESSION:TURN:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
 '(--replay --tail --trailer)--check[Report the stream and change nothing. This is the default; the flag exists so a script can say what it means]' \
 '--replay[Rebuild everything from byte 0 and rewrite the offset\: what an index rebuild does first]' \
 '--tail[Read forward from the durable offset, advancing it, and print what arrived]' \
@@ -805,6 +920,10 @@ _arguments "${_arguments_options[@]}" : \
 (daemon)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -844,6 +963,10 @@ _arguments "${_arguments_options[@]}" : \
 '--deadline=[Stop after this many seconds — the supervisor'\''s \`TimeoutStopSec\` seam and a test'\''s]:DEADLINE:_default' \
 '--max-cycles=[Stop after this many loop passes. A test seam, and the way to use the daemon as a one-shot indexer]:MAX_CYCLES:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the health document as JSON instead of lines, and print it once the first pass has run]' \
 '--quiet[Print nothing but the health document; the heartbeat file is still written]' \
 '--foreground[Run in this process, so a supervisor can supervise it (\`e6.3\`, ADR-004 §7.1)]' \
@@ -871,6 +994,10 @@ _arguments "${_arguments_options[@]}" : \
 '--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
 '--reason=[Who is asking, recorded in the daemon'\''s last line]:REASON:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the outcome as one JSON line (\`fathom.cli.daemon.stop/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -890,6 +1017,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line (machine contract \`fathom.cli.status/1\`)]' \
 '--index[Ask for a pass and wait for it, then report the state after it — the way to make \`fathom status\` mean "up to date" rather than "as of whenever"]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -947,6 +1078,10 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '--socket=[Ask the daemon at this endpoint instead of the derived one]:PATH:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line (machine contract \`fathom.cli.status/1\`)]' \
 '--index[Ask for a pass and wait for it, then report the state after it — the way to make \`fathom status\` mean "up to date" rather than "as of whenever"]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -967,6 +1102,10 @@ _arguments "${_arguments_options[@]}" : \
 (tui)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--show-keys[Print the merged keymap — defaults plus your \`keys.overrides\` — and exit, taking no terminal]' \
 '--show-session[Print the session state stored for this repository, and exit, taking no terminal (\`e1.11\`)]' \
 '(--show-keys --show-theme --list-themes)--json[With \`--show-session\`\: the rows as JSON on stdout, and nothing else there]' \
@@ -995,6 +1134,10 @@ _arguments "${_arguments_options[@]}" : \
 '--line=[Which line, overriding the line the first \`@@\` header says]:N:_default' \
 '--editor=[Which editor to use for this run, overriding \`\$FATHOM_EDITOR\`, \`\$VISUAL\` and \`\$EDITOR\`]:PROGRAM [ARGS…]:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--print[Print the command and the reason for it, and run nothing]' \
 '--list[List every file the episode touched with the line each would jump to, and open nothing]' \
 '--json[Print the decision as JSON on stdout, and nothing else there]' \
@@ -1019,6 +1162,10 @@ _arguments "${_arguments_options[@]}" : \
 '--path=[Which of the episode'\''s files to show, by path or by a unique suffix of it]:PATH:_default' \
 '--tool=[Which difftool to use, overriding \`\$FATHOM_DIFFTOOL\` and your user config]:NAME:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--print[Print the command and the reason for it, and run nothing. The two files stay on disk]' \
 '--list[List every file the episode touched with the line each would jump to, and show nothing]' \
 '--keep[Leave the two staged files behind and say where they are]' \
@@ -1044,6 +1191,10 @@ _arguments "${_arguments_options[@]}" : \
 '--save=[Keep this comparison under a name, so the next person says \`since-the-refactor\` instead of typing the endpoints]:NAME:_default' \
 '--note=[Why the name exists, kept with it]:NOTE:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the comparison as one JSON line on stdout (\`fathom.compare/1\`)]' \
 '--list[List the saved comparisons and exit]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -1067,6 +1218,10 @@ _arguments "${_arguments_options[@]}" : \
 '--limit=[How many hits to print]:LIMIT:_default' \
 '--save=[Keep this query under a name, so the \`,\` palette can offer it again]:NAME:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.search/1\`)]' \
 '--list[List the saved searches and exit]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -1091,6 +1246,10 @@ _arguments "${_arguments_options[@]}" : \
 '--backfill=[Score this many unscored revisions first, newest first, before reporting (\`0\`\: report what is stored)]:N:_default' \
 '--history=[How many scored revisions the trend reads; bare, or \`0\`, is every row the index holds]::N:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom-architecture/1\`)]' \
 '--refresh[Forget every stored scorecard first, and re-derive what this run needs]' \
 '--read-only[Do not write anything\: read the stored rows and score only what this run needs]' \
@@ -1119,6 +1278,10 @@ _arguments "${_arguments_options[@]}" : \
 '*--key=[Grant only this key (repeatable)\: a violation key as the report prints it, or \`kind=key\`]:KEY:_default' \
 '--revision=[Judge this graph revision rather than the newest the index holds\: an oid or an unambiguous prefix]:TREE:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom-ratchet/1\`)]' \
 '--update-baseline[Raise the baseline\: write the violations that have no allowance as new rows]' \
 '--dry-run[Report what would change and write nothing — not even the automatic tightening]' \
@@ -1141,6 +1304,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the answer as one JSON line on stdout (\`fathom.cli.context/1\`)]' \
 '--all[Include answered and withdrawn notes in the lists, not just the live ones]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
@@ -1162,6 +1329,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--root=[The repository to read]:ROOT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1194,6 +1365,10 @@ _arguments "${_arguments_options[@]}" : \
 '--agent=[Record the note as an agent'\''s act on someone'\''s behalf, not as a human'\''s]:AGENT:_default' \
 '--about=[The note this one answers, by \`nt-…\` id]:ABOUT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1216,6 +1391,10 @@ _arguments "${_arguments_options[@]}" : \
 '--status=[Only notes in this status\: \`open\`, \`answered\`, \`withdrawn\`]:STATUS:_default' \
 '--limit=[How many to print, oldest first; \`0\` is every note]:LIMIT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1235,6 +1414,10 @@ _arguments "${_arguments_options[@]}" : \
 (show)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1257,6 +1440,10 @@ _arguments "${_arguments_options[@]}" : \
 '--agent=[Record the answer as an agent'\''s act on someone'\''s behalf]:AGENT:_default' \
 '--kind=[The kind of the answering note\: a \`decision\` is an answer that settles it, an \`annotation\` is an answer that informs it]:KIND:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1279,6 +1466,10 @@ _arguments "${_arguments_options[@]}" : \
 '--author=[Who is retracting it]:AUTHOR:_default' \
 '--agent=[Record the retraction as an agent'\''s act on someone'\''s behalf]:AGENT:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1299,6 +1490,10 @@ _arguments "${_arguments_options[@]}" : \
 (verify)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--json[Print the report as one JSON line on stdout (\`fathom.cli.note/1\`)]' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
@@ -1365,6 +1560,10 @@ esac
 (completions)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -1390,6 +1589,10 @@ _arguments "${_arguments_options[@]}" : \
             (bash)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -1407,6 +1610,10 @@ _arguments "${_arguments_options[@]}" : \
 (zsh)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -1424,6 +1631,10 @@ _arguments "${_arguments_options[@]}" : \
 (fish)
 _arguments "${_arguments_options[@]}" : \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -1443,6 +1654,10 @@ _arguments "${_arguments_options[@]}" : \
 '--out=[Write them under \`DIR\` (as \`DIR/man1/*.1\`) instead of printing one page on stdout]:DIR:_default' \
 '--page=[Just this page — \`--page fathom-check\` — instead of every verb]:NAME:_default' \
 '--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
 '--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
 '--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
 '--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
@@ -1496,6 +1711,33 @@ esac
         esac
     ;;
 esac
+;;
+(events)
+_arguments "${_arguments_options[@]}" : \
+'--root=[The repository to read the stream of]:ROOT:_default' \
+'--tail=[Print only the last N events]:N:_default' \
+'*--on=[Which kinds to print, repeating or comma-separated\: \`analysis.*\`, \`detector.finished\`, \`*\`]:PATTERN:_default' \
+'--path=[Read this file instead of the repository'\''s configured stream]:FILE:_default' \
+'--theme=[Paint the frame with this theme\: a built-in name, a theme file, or a path to one (\`e5.6\`)]:NAME|PATH:_default' \
+'*--detectors=[Which detectors run, moved off the file'\''s answer (\`e6.7\`)]:SPEC:_default' \
+'*--enable-detector=[Run one more detector, by id — the long form of \`--detectors +id\` (\`e6.7\`)]:ID:_default' \
+'*--disable-detector=[Do not run one detector, by id — the long form of \`--detectors -id\` (\`e6.7\`)]:ID:_default' \
+'--events=[Write this run'\''s analysis event stream to a file, or to stderr with \`-\` (\`e6.7\`)]:FILE:_default' \
+'--json[Print the raw JSONL instead of one line per event]' \
+'--explain[Print where the stream is, whether it is switched on, and what was refused — then leave]' \
+'--plain[Draw as text, with no terminal taken\: for pipes, CI logs and screen readers (ADR-006 §6.7)]' \
+'--no-alt-screen[Draw in place instead of taking the alternate screen, which keeps the shell'\''s scrollback]' \
+'--fresh[Ignore the session this repository has stored, and start from defaults (\`e1.11\`)]' \
+'--mouse[Take the mouse\: click selects, double-click drills, the wheel scrolls (\`e5.5\`, ADR-006 §10.1)]' \
+'--lines[With \`--plain\`\: print the frame in reading order, one block per pane, instead of side by side]' \
+'(--no-progress)--progress[print the index'\''s progress row even when stderr is not a terminal (\`index\` and \`--demo\`)]' \
+'--no-progress[never print the index'\''s progress row, even on a terminal]' \
+'--no-watch[Do not watch the repository from an open frame\: show what the index holds, and say so (\`reco-bpc\`)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
 ;;
 (help)
 _arguments "${_arguments_options[@]}" : \
@@ -1793,6 +2035,10 @@ _arguments "${_arguments_options[@]}" : \
     ;;
 esac
 ;;
+(events)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
 (help)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
@@ -1838,6 +2084,7 @@ _fathom_commands() {
 'context:What this repository knows about a path or an episode\: the recorded decisions and the open questions (\`e6.5\`)' \
 'note:The review memory\: notes, decisions, questions and follow-ups, committed under \`.fathom/reviews/\` (\`e6.5\`)' \
 'completions:Print the shell'\''s own copy of this grammar\: completion scripts and man pages (\`e7.4\`)' \
+'events:Read the analysis event stream a run wrote\: what happened, in order (\`e6.7\`)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'fathom commands' commands "$@"
@@ -2069,6 +2316,11 @@ _fathom__subcmd__episodes_commands() {
     local commands; commands=()
     _describe -t commands 'fathom episodes commands' commands "$@"
 }
+(( $+functions[_fathom__subcmd__events_commands] )) ||
+_fathom__subcmd__events_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom events commands' commands "$@"
+}
 (( $+functions[_fathom__subcmd__export_commands] )) ||
 _fathom__subcmd__export_commands() {
     local commands; commands=()
@@ -2106,6 +2358,7 @@ _fathom__subcmd__help_commands() {
 'context:What this repository knows about a path or an episode\: the recorded decisions and the open questions (\`e6.5\`)' \
 'note:The review memory\: notes, decisions, questions and follow-ups, committed under \`.fathom/reviews/\` (\`e6.5\`)' \
 'completions:Print the shell'\''s own copy of this grammar\: completion scripts and man pages (\`e7.4\`)' \
+'events:Read the analysis event stream a run wrote\: what happened, in order (\`e6.7\`)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'fathom help commands' commands "$@"
@@ -2237,6 +2490,11 @@ _fathom__subcmd__help__subcmd__drift_commands() {
 _fathom__subcmd__help__subcmd__episodes_commands() {
     local commands; commands=()
     _describe -t commands 'fathom help episodes commands' commands "$@"
+}
+(( $+functions[_fathom__subcmd__help__subcmd__events_commands] )) ||
+_fathom__subcmd__help__subcmd__events_commands() {
+    local commands; commands=()
+    _describe -t commands 'fathom help events commands' commands "$@"
 }
 (( $+functions[_fathom__subcmd__help__subcmd__export_commands] )) ||
 _fathom__subcmd__help__subcmd__export_commands() {

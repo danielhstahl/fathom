@@ -1,0 +1,62 @@
+# The worked third-party example (`e6.7`, `reco-raw`).
+#
+# This is **not a member of the workspace at the repository root**. The `[workspace]` table below detaches
+# it, exactly as `fuzz/Cargo.toml` does, and for the same reason plus one: a crate inside the workspace can
+# reach a `pub(crate)` helper and can be built by `cargo build --workspace` before anyone has proven it
+# builds from the outside. This one cannot, so it fails for the reasons a stranger's crate fails — which is
+# the only way an example can be evidence that the API works rather than an illustration that it might.
+#
+# What it is: two detectors over the immutable delta document, and a binary that reads one on stdin (or
+# from a file) and prints its findings as JSONL. CI builds it, tests it, runs it against its blessed
+# fixture, and runs it again against a document the freshly compiled `fathom analyze --json` printed
+# minutes earlier — see the `out-of-tree plugin` job in `.github/workflows/ci.yml`.
+#
+# The dependency below is the whole contract as it ships today: a path into the workspace rather than a
+# crates.io version, because ADR-002 §10.1 refuses to publish these crates for v1 and this directory's
+# own README explains what changes when that amendment lands. Everything the crate can name is what
+# `fathom_analyze::plugin` publishes — see docs/concepts/extensibility.md.
+
+[workspace]
+
+# The lints a third party would set for itself, set here so the example is not an example of sloppy style,
+# and deliberately *not* the root workspace's list. The product denies `unwrap_used` and `expect_used`
+# outright, which is the right rule for a shipped binary and the wrong rule for an example whose `Meta` is
+# built from two literals in this file: the honest answer there is a literal and a message, not a
+# `Result` handed to a trait method that has no way to report one. A downstream author takes whichever of
+# the two policies fits their own risk, which is itself the point of an out-of-tree crate.
+[workspace.lints.rust]
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+# Deliberately no `print_stdout` here, unlike the product: `acme-detectors --json` *is* stdout — one finding
+# per line, on the assumption that a pipe is reading it. fathom routes printing through one module because
+# it has a terminal, a progress rail and a `--json` contract all in one process; a two-hundred-line example
+# with one output mode would be copywork, not a lesson.
+
+[package]
+name = "acme-detectors"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.0"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "A third-party Fathom detector crate: two rules over the delta document, built out-of-tree against the plugin API."
+
+[lints]
+workspace = true
+
+[dependencies]
+# The version is written as well as the path, so that the day ADR-002 §10.1 is amended and these crates are
+# published, this line loses `path` and keeps `version` — a deletion, not a guess about which version had
+# the API this crate was written against. Until then cargo resolves the path and ignores the requirement.
+fathom-analyze = { path = "../../crates/fathom-analyze", version = "0.1.0-alpha.1" }
+serde_json = "1"
+
+[[bin]]
+name = "acme-detectors"
+path = "src/main.rs"
+
+[profile.release]
+# The same refusal the product makes: a binary whose panic message is `internal error: entered unreachable
+# code` in a stack track is a binary whose user files a ticket with no sentence in it.
+panic = "unwind"

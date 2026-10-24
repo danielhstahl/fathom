@@ -377,6 +377,62 @@ jobs:
         run: cargo test --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all --test check_verb
 
   # ---------------------------------------------------------------------------
+  # The extensibility criterion, as a build (`e6.7`, `reco-raw`): the example plugin is a *second
+  # workspace*, excluded from the root one, that depends on `fathom-analyze` the way a third party's
+  # manifest does. Nothing else in this file catches a plugin API that only works from inside the
+  # workspace it lives in — a `pub(crate)` that leaked, a type a plugin cannot name, a helper that is
+  # actually a private path dependency. Here it fails as a stranger fails.
+  #
+  # It is its own job rather than a step in the matrix because the criterion is about the *boundary*, and a
+  # boundary check that only runs after a nine-minute build is a boundary check that nobody reads.
+  # ---------------------------------------------------------------------------
+  out-of-tree-plugin:
+    name: out-of-tree-plugin (the example plugin builds and runs against the published crate)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The root workspace, for the `fathom-cli` build at the end of the job.
+          workspaces: .
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # And its own: its own lock file, its own target directory, its own cache. The point of the job is
+          # that this is not the root workspace.
+          workspaces: plugins/acme-detectors
+      - name: and lint it under its own lint set
+        # Its own `#![warn]` list, not the workspace's — see `plugins/acme-detectors/Cargo.toml`. A third
+        # party's code style is its own business; what the job checks is that it is not silently broken.
+        run: cargo clippy --manifest-path plugins/acme-detectors/Cargo.toml --all-targets -- -D warnings
+      - name: build and test the plugin in its own workspace
+        run: cargo test --manifest-path plugins/acme-detectors/Cargo.toml
+      - name: run it the way a reviewer does — a delta document in, findings out
+        run: |
+          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --list
+          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --             --delta plugins/acme-detectors/fixtures/miniature.json             --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
+      - name: and refuse a document that is not a delta document, with a sentence that says so
+        # The pipeline's failure mode: `fathom analyze` printed an error instead of a document, and the
+        # plugin's stderr is the only thing the reviewer will read.
+        run: |
+          if echo 'not a delta document' | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --; then
+            echo "the plugin accepted a document that is not one" >&2; exit 1
+          fi
+      - name: and against a delta document the freshly built binary printed, byte for byte
+        # The fixture above is a checked-in document, which is the right thing for a unit test and the wrong
+        # thing for the acceptance criterion. This is the criterion: the *product's own* published document,
+        # printed by the binary built from this checkout, put on the plugin's stdin in a shell pipeline,
+        # yields the findings the plugin is blessed to yield. `--demo` is the miniature repository embedded
+        # in the binary (`assets/fathom-demo.pack`), so this needs no network and no fixture repository.
+        run: |
+          cargo build --locked -p fathom-cli
+          cargo run --quiet -p fathom-cli -- --demo analyze ep-7090b6693637812919bd --json 2>/dev/null \
+            | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --json \
+                --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
+
+  # ---------------------------------------------------------------------------
   # The matrix: three operating systems × {stable, MSRV}, per §8.3.
   # ---------------------------------------------------------------------------
   build-test:

@@ -4,7 +4,7 @@
 .SH NAME
 fathom \- Review an agent\-driven repository before it merges.
 .SH SYNOPSIS
-\fBfathom\fR [\fB\-\-plain\fR] [\fB\-\-no\-alt\-screen\fR] [\fB\-\-fresh\fR] [\fB\-\-mouse\fR] [\fB\-\-lines\fR] [\fB\-\-theme\fR] [\fB\-\-demo\fR] [\fB\-\-progress\fR] [\fB\-\-no\-progress\fR] [\fB\-\-no\-watch\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIsubcommands\fR]
+\fBfathom\fR [\fB\-\-plain\fR] [\fB\-\-no\-alt\-screen\fR] [\fB\-\-fresh\fR] [\fB\-\-mouse\fR] [\fB\-\-lines\fR] [\fB\-\-theme\fR] [\fB\-\-demo\fR] [\fB\-\-progress\fR] [\fB\-\-no\-progress\fR] [\fB\-\-no\-watch\fR] [\fB\-\-detectors\fR] [\fB\-\-enable\-detector\fR] [\fB\-\-disable\-detector\fR] [\fB\-\-events\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Review an agent\-driven repository before it merges.
 .SH OPTIONS
@@ -56,6 +56,24 @@ The other half of the same choice: a script with its own progress line, or a run
 Do not watch the repository from an open frame: show what the index holds, and say so (`reco\-bpc`).
 
 An open shell watches its repository by default, so a commit made in another terminal arrives by itself. This turns that off, and the frame then says `snapshot` and what would move it rather than letting a still rail be read as a quiet repository. The other way to get the same picture, cheaper, is to run `fathom watch` in a second terminal and let it own the indexing.
+.TP
+\fB\-\-detectors\fR \fI<SPEC>\fR
+Which detectors run, moved off the file\*(Aqs answer (`e6.7`).
+
+A comma\-separated spec: `id` or `+id` runs one as well, `\-id` turns one off even if it ships on, `all` bases the set on every built\-in detector, and `none` bases it on nothing. So `\-\-detectors none,+churn_loop` is one detector and `\-\-detectors all,\-secret_string` is eleven. It is the same grammar as `detectors.enabled` and `detectors.disable` in `fathom.toml`, applied after it, and it names a plugin detector by its namespaced id (`\-\-detectors +acme.untested_agent_logic`). A `\-\-detectors` line is what a CI job uses to ask one narrow question without editing a file.
+.TP
+\fB\-\-enable\-detector\fR \fI<ID>\fR
+Run one more detector, by id — the long form of `\-\-detectors +id` (`e6.7`)
+.TP
+\fB\-\-disable\-detector\fR \fI<ID>\fR
+Do not run one detector, by id — the long form of `\-\-detectors \-id` (`e6.7`).
+
+This is the switch for a built\-in you have decided about: the row stays in the report as `disabled`, so "did it look?" still has an answer, and `detectors.suppress` stays the switch for a finding whose family you have muted rather than a detector you have turned off.
+.TP
+\fB\-\-events\fR \fI<FILE>\fR
+Write this run\*(Aqs analysis event stream to a file, or to stderr with `\-` (`e6.7`).
+
+One JSON object per line, versioned, appended: what started, what each detector did, what every finding said, and how the run ended. `[events] enabled = true` turns the stream on for a repository; this turns it on for one run, over whatever the file says. `fathom events` reads it back.
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)
@@ -150,5 +168,8 @@ The review memory: notes, decisions, questions and follow\-ups, committed under 
 .TP
 fathom\-completions(1)
 Print the shell\*(Aqs own copy of this grammar: completion scripts and man pages (`e7.4`)
+.TP
+fathom\-events(1)
+Read the analysis event stream a run wrote: what happened, in order (`e6.7`)
 .SH VERSION
-v0.1.0\-alpha.1 features: tui mcp watch sqlite\-bundled langs\-all deps\-all
+v0.1.0\-alpha.1 features: tui mcp watch sqlite\-bundled langs\-all deps\-all minimal net\-advisories net\-llm net\-http\-transport schema\-gen

@@ -369,6 +369,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
 | `risk` | e2.9 / e2.10 | The ranking knobs. Changing these changes `risk.score` and `delta.compose` and nothing else (ADR-004 §6). |
 | `detectors` | e2.7 | Which finding detectors run. |
+| `events` | e6.7 (`reco-raw`) | Whether a run publishes the analysis lifecycle — what started, what each detector did, what every finding said, how the run ended — as versioned JSONL an external tool can read. Off until the repository says otherwise; the path is `paths.analysis_events`. |
 | `blast` | e2.10 | How far the blast-radius walk goes before it declares a partial, the confidence attached to each basis, and the path-heuristic weights that decide what counts as reached. |
 | `card` | e2.10 (`reco-4ey`) | The one-screen answer per episode. Row caps, how loud a finding has to be to earn an attention row, and one switch per section - because a repository narrowing its own card is a different thing from a card quietly losing a question, and the card prints which happened. |
 | `rename` | e1.6 / e2.4 (`reco-a0v`) | Two questions with two bars. `rename.threshold` is what the diff pane prints as a rename; the `fact_bar`/`guess_floor` pair decides what the pairing engine asserts, what it labels a guess, and what it costs. |
@@ -402,6 +403,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `paths.objects` | `path` | `.fathom/objects` | `replace` | `any` | — | — | `e1.2` |
 | `paths.events` | `path` | `.fathom/events.jsonl` | `replace` | `any` | — | — | `e6.1` |
 | `paths.export` | `path` | `.fathom/export` | `replace` | `any` | — | — | `e5.7` |
+| `paths.analysis_events` | `path` | `.fathom/analysis-events.jsonl` | `replace` | `any` | — | — | `e6.7` |
 | `noise.globs` | `glob_list` | `**/dist/**, **/*.snap` | `extend` | `any` | — | taxonomy.path | `e0.9` |
 | `taxonomy.classes.<class-name>` | `glob_list` | `—` | `extend` | `any` | — | taxonomy.path | `e0.9` |
 | `noise.builtins_version` | `integer` | `1` | `replace` | `any` | version | taxonomy.path | `e0.9` |
@@ -644,6 +646,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `risk.weights.<weight>` | `number` | `blast=0.3, size=0.4, test_ratio=0.3` | `deep` | `any` | — | findings.detect | `e2.9` |
 | `risk.tau` | `integer` | `40` | `replace` | `any` | score | risk.score | `e2.10` |
 | `detectors.enabled` | `string_list` | `test_deletion, untested_new_logic, debug_leftover` | `extend` | `any` | — | findings.detect | `e2.7` |
+| `detectors.disable` | `string_list` | `—` | `extend` | `any` | — | findings.detect | `e6.7` |
 | `detectors.suppress` | `string_list` | `—` | `extend` | `any` | — | findings.detect | `e4.3` |
 | `detectors.max_findings` | `integer` | `12` | `replace` | `any` | rows | findings.detect | `e4.3` |
 | `detectors.untested.min_added_lines` | `integer` | `20` | `replace` | `any` | lines | findings.detect | `e4.3` |
@@ -652,6 +655,8 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `detectors.rework.min_overlap` | `number` | `0.6` | `replace` | `any` | 0-1 | findings.detect | `e4.3` |
 | `detectors.shotgun.min_clusters` | `integer` | `4` | `replace` | `any` | clusters | findings.detect | `e4.3` |
 | `detectors.copy.min_block_lines` | `integer` | `12` | `replace` | `any` | lines | findings.detect | `e4.3` |
+| `events.enabled` | `boolean` | `False` | `replace` | `any` | — | — | `e6.7` |
+| `events.on` | `string_list` | `—` | `extend` | `any` | — | — | `e6.7` |
 | `blast.hops` | `integer` | `1` | `replace` | `any` | hops | blast_radius | `e2.10` |
 | `blast.confidence.graph` | `number` | `0.9` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |
 | `blast.confidence.heuristic` | `number` | `0.4` | `replace` | `any` | 0-1 | blast_radius | `e2.10` |

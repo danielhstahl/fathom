@@ -457,6 +457,11 @@ VERB_DOCS = {
     # for the same reason every verb is: a shipped verb with no page is an undocumented feature, and this
     # one is the source of `packaging/completions` and `packaging/man`, so the page that explains the
     # packaging is also the page that explains the verb.
+    # `e6.7` (`reco-raw`): the reader for the analysis event stream. It is in VERB_DOCS for the reason
+    # every verb is — a shipped verb with no page is an undocumented feature — and its page is the one that
+    # states the event contract, because a format nobody can read in the docs is a format nobody adopts.
+    "events": (["docs/concepts/extensibility.md", "docs/concepts/pathology-detectors.md"],
+               "read the analysis event stream a run wrote, in order"),
     "completions": (["docs/concepts/release.md", "docs/concepts/cli.md"],
                     "print the completion scripts and man pages the packages install"),
     "stats": (["docs/concepts/cli.md", "docs/adr/0004-storage.md"],

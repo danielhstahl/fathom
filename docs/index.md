@@ -88,7 +88,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [the architecture scorecard](concepts/scorecard.md)
 
 **Findings and their cost** — [pathology detectors](concepts/pathology-detectors.md) ·
-[false-positive calibration](concepts/false-positive-calibration.md)
+[false-positive calibration](concepts/false-positive-calibration.md) ·
+[extensibility: plugins, disable, events](concepts/extensibility.md)
 
 **The screen** — [timeline](concepts/timeline.md) · [diff viewer](concepts/diff-viewer.md) ·
 [the exits out of the reader](concepts/handoff.md) · [background materialisation](concepts/materialization.md) ·

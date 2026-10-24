@@ -25,9 +25,15 @@
 //! (`fathom-store::cache::ANALYZERS`), which is what makes a config change invalidate the stored
 //! findings and nothing else (ADR-004 §5.5).
 //!
+//! The same membership answers the `--detectors`, `--enable-detector` and `--disable-detector` flags
+//! (`e6.7`, `reco-raw`), which are the same three knobs typed once at a prompt: [`Selection`] is the
+//! resolved form, [`resolve`] applies it, and a detector switched off at the command line lands in the
+//! report as `disabled` for exactly the same reason a detector switched off in the file does.
+//!
 //! | Key | Default | What it moves |
 //! |---|---|---|
 //! | `detectors.enabled` | the built-in set | detector ids that run, in addition to the defaults |
+//! | `detectors.disable` | `[]` | built-in detector ids that do **not** run, defaults included |
 //! | `detectors.suppress` | `[]` | suppression keys, or bare detector ids, to silence |
 //! | `detectors.max_findings` | `12` | rows one detector may print per episode, past which it says so |
 //! | `detectors.churn.min_episodes` | `3` | how many episodes re-touching a region is a churn loop |
@@ -75,9 +81,13 @@ pub const DEFAULT_EVIDENCE_LINES: usize = 4;
 /// Everything a detector is allowed to be told about the repository's wishes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Policy {
-    /// The detector ids that will run. Defaults plus `detectors.enabled`, minus nothing — the off switch
-    /// is [`Policy::suppress`].
+    /// The detector ids that will run. Defaults plus `detectors.enabled`, minus
+    /// [`Policy::disabled_ids`].
     pub enabled: BTreeSet<String>,
+    /// The ids switched off by `detectors.disable` (or by `--disable-detector`), kept beside the set
+    /// rather than folded into it so a report can say *why* a detector did not run: never enabled, or
+    /// switched off on purpose. Those are different answers to a reviewer's question.
+    pub disabled_ids: BTreeSet<String>,
     /// The suppression patterns in force. Matched by [`Suppressions`].
     pub suppress: Vec<String>,
     /// Rows per detector per episode.
@@ -104,6 +114,7 @@ impl Default for Policy {
     fn default() -> Self {
         Policy {
             enabled: crate::detectors::default_enabled(),
+            disabled_ids: BTreeSet::new(),
             suppress: Vec::new(),
             max_findings: DEFAULT_MAX_FINDINGS,
             name_cap: DEFAULT_NAME_CAP,
@@ -119,6 +130,19 @@ impl Default for Policy {
 }
 
 impl Policy {
+    /// Turn one id off, and say whether it was running before.
+    pub fn disable(&mut self, detector_id: &str) -> bool {
+        let was = self.enabled.remove(detector_id);
+        self.disabled_ids.insert(detector_id.to_owned());
+        was
+    }
+
+    /// Turn one id on: out of the off list and into the running set.
+    pub fn enable(&mut self, detector_id: &str) {
+        self.disabled_ids.remove(detector_id);
+        self.enabled.insert(detector_id.to_owned());
+    }
+
     /// A policy with **every** detector in the catalogue enabled, defaults otherwise.
     ///
     /// This is what the calibration harness (`e4.3a`) and the per-detector fixtures use: a measurement of
@@ -147,7 +171,14 @@ impl Policy {
     /// Whether a detector runs under this policy.
     #[must_use]
     pub fn enabled(&self, detector_id: &str) -> bool {
-        self.enabled.iter().any(|id| id == detector_id)
+        !self.disabled_ids.iter().any(|id| id == detector_id)
+            && self.enabled.iter().any(|id| id == detector_id)
+    }
+
+    /// Whether this id was switched off on purpose, which is a different fact from "never came on".
+    #[must_use]
+    pub fn disabled(&self, detector_id: &str) -> bool {
+        self.disabled_ids.iter().any(|id| id == detector_id)
     }
 
     /// The knobs, printed with the values in force — the receipts pattern every analysis in this crate
@@ -158,6 +189,14 @@ impl Policy {
             (
                 "detectors.enabled",
                 self.enabled.iter().cloned().collect::<Vec<_>>().join(","),
+            ),
+            (
+                "detectors.disable",
+                self.disabled_ids
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(","),
             ),
             ("detectors.suppress", self.suppress.join(",")),
             ("detectors.max_findings", self.max_findings.to_string()),
@@ -207,6 +246,54 @@ impl Resolved {
     pub fn defaults() -> Self {
         Resolved::default()
     }
+
+    /// The set that resulted, in one line, for whatever prints the knobs in force — a report's receipt, or
+    /// one `selection.resolved` event (`e6.7`).
+    ///
+    /// It names the built-ins that were switched off on purpose as well as the count that remains, because
+    /// "eleven of twelve, `secret_string` disabled" is the answer a reviewer is actually asking, and a
+    /// count alone cannot be checked against a config file.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let catalogue = super::CATALOGUE;
+        let running: Vec<&str> = catalogue
+            .iter()
+            .map(|descriptor| descriptor.id)
+            .filter(|id| self.policy.enabled(id))
+            .collect();
+        let mut text = format!(
+            "{} of {} built-in detector(s) running",
+            running.len(),
+            catalogue.len()
+        );
+        let switched_off = self.disabled_ids_named();
+        let off: Vec<&str> = switched_off.iter().map(String::as_str).collect();
+        if !off.is_empty() {
+            text.push_str(&format!("; switched off: {}", off.join(", ")));
+        }
+        if !self.policy.suppress.is_empty() {
+            text.push_str(&format!(
+                "; suppressing {} pattern(s)",
+                self.policy.suppress.len()
+            ));
+        }
+        text
+    }
+
+    /// The built-ins that were switched off by name, whether they ship on or not.
+    #[must_use]
+    pub fn disabled_ids_named(&self) -> Vec<String> {
+        self.policy
+            .disabled_ids
+            .iter()
+            .filter(|id| {
+                super::CATALOGUE
+                    .iter()
+                    .any(|descriptor| descriptor.id == id.as_str())
+            })
+            .cloned()
+            .collect()
+    }
 }
 
 /// Parse the `[detectors]` table out of `fathom.toml` text.
@@ -254,6 +341,43 @@ pub fn policy_from_toml(text: &str) -> Resolved {
                 }
                 None => out.notices.push(format!(
                     "detectors.enabled names `{name}`, which is not in this build's catalogue; it is \
+                     ignored. Valid ids: {}",
+                    crate::detectors::ids().join(", ")
+                )),
+            }
+        }
+    }
+
+    // The off switch that is not a suppression (`e6.7`). Read after `enabled` so a file that both names a
+    // detector and turns it off ends with it off: the off switch losing to nothing is the whole point of
+    // calling it an off switch.
+    if let Some(entries) = table.get("disable").and_then(toml_edit::Item::as_array) {
+        for entry in entries.iter() {
+            let Some(name) = entry.as_str() else {
+                out.notices.push(
+                    "detectors.disable holds a non-string entry, which is not a detector id"
+                        .to_owned(),
+                );
+                continue;
+            };
+            let name = name.trim();
+            if name.is_empty() {
+                out.notices
+                    .push("detectors.disable holds an empty detector id".to_owned());
+                continue;
+            }
+            match crate::detectors::by_id(name) {
+                Some(descriptor) => {
+                    let was = out.policy.disable(descriptor.id);
+                    if was {
+                        out.notices.push(format!(
+                            "detectors.disable turned `{}` off for this repository",
+                            descriptor.id
+                        ));
+                    }
+                }
+                None => out.notices.push(format!(
+                    "detectors.disable names `{name}`, which is not in this build's catalogue; it is \
                      ignored. Valid ids: {}",
                     crate::detectors::ids().join(", ")
                 )),
@@ -357,10 +481,16 @@ pub fn policy_from_toml(text: &str) -> Resolved {
     // month of findings it cannot explain.
     for key in table.iter() {
         let name = key.0;
-        let known = ["enabled", "suppress", "max_findings", "rework.min_overlap"]
-            .into_iter()
-            .chain(KNOBS)
-            .any(|knob| knob == name || knob.split('.').next() == name.split('.').next());
+        let known = [
+            "enabled",
+            "disable",
+            "suppress",
+            "max_findings",
+            "rework.min_overlap",
+        ]
+        .into_iter()
+        .chain(KNOBS)
+        .any(|knob| knob == name || knob.split('.').next() == name.split('.').next());
         if !known {
             out.notices.push(format!(
                 "detectors.{name} is not a knob this build reads; the catalogue's knobs are {}",
@@ -470,6 +600,254 @@ impl Suppressions {
                 || self.set.as_ref().is_some_and(|set| set.is_match(key))
         })
     }
+}
+
+/// The `--detectors` / `--enable-detector` / `--disable-detector` grammar, resolved (`e6.7`, `reco-raw`).
+///
+/// One shape for three flags, because "which detectors run" has one answer and the product may not have two
+/// ways to spell it that disagree. A spec is a comma-separated list of:
+///
+/// | token | meaning |
+/// |---|---|
+/// | `id` or `+id` | run this detector as well |
+/// | `-id` | do not run this detector, even if it ships on |
+/// | `all` | the base is every built-in detector, defaults aside |
+/// | `none` | the base is nothing; list what you want with `+id` |
+///
+/// `all` and `none` set the *base* and the rest move it, so `--detectors none,+churn_loop` is one detector
+/// and `--detectors all,-secret_string` is eleven. A plugin detector's id is namespaced
+/// (`acme.orphan_test`, [plugin API](crate::plugin)) and `all` never claims a plugin: an out-of-tree
+/// detector is opted into by name, which is the same rule [`Meta::default_on`] states for a plugin that
+/// ships itself on.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Selection {
+    /// Ids named on (`+id`, `--enable-detector`).
+    pub enable: BTreeSet<String>,
+    /// Ids named off (`-id`, `--disable-detector`).
+    pub disable: BTreeSet<String>,
+    /// `Some` when `all` or `none` replaced the default set instead of moving it.
+    pub base: Option<BTreeSet<String>>,
+    /// One line per token this build could not use. A bad token never changes the answer for the good ones.
+    pub notices: Vec<String>,
+}
+
+impl Selection {
+    /// The names that carry a namespace — a plugin's `acme.thing`, which no built-in id can look like.
+    ///
+    /// A host that links no plugins still has to say something when asked to run one, because the silence
+    /// otherwise reads as "it ran and found nothing" (`e6.7`). No built-in id is ever dotted, so this list
+    /// is complete, and a plugin host reads the same selection ([`crate::plugin::Registry::run`]).
+    #[must_use]
+    pub fn namespaced(&self) -> Vec<String> {
+        self.enable
+            .iter()
+            .chain(self.disable.iter())
+            .filter(|id| id.contains('.'))
+            .cloned()
+            .collect()
+    }
+    /// Parse one `--detectors` value.
+    #[must_use]
+    pub fn parse(spec: &str) -> Self {
+        let mut out = Selection::default();
+        for token in spec.split(',') {
+            let token = token.trim();
+            if token.is_empty() {
+                continue;
+            }
+            out.push(token);
+        }
+        if out.enable.is_empty()
+            && out.disable.is_empty()
+            && out.base.is_none()
+            && !spec.trim().is_empty()
+        {
+            out.notices.push(format!(
+                "`{spec}` named no detector; every token is an id, `+id`, `-id`, `all` or `none`"
+            ));
+        }
+        out
+    }
+
+    /// Parse the repeatable `--enable-detector` and `--disable-detector` flags.
+    #[must_use]
+    pub fn from_flags<S: AsRef<str>>(specs: &[S], enabled: &[S], disabled: &[S]) -> Self {
+        let mut out = Selection::default();
+        for spec in specs {
+            out.merge(&Selection::parse(spec.as_ref()));
+        }
+        for id in enabled {
+            for token in id.as_ref().split(',') {
+                let token = token.trim();
+                if !token.is_empty() {
+                    out.push(&token.replace('+', ""));
+                }
+            }
+        }
+        for id in disabled {
+            for token in id.as_ref().split(',') {
+                let token = token.trim();
+                if !token.is_empty() {
+                    out.push(&format!("-{}", token.trim_start_matches('-')));
+                }
+            }
+        }
+        out
+    }
+
+    /// One token.
+    fn push(&mut self, token: &str) {
+        match token {
+            "all" => {
+                self.base = Some(
+                    crate::detectors::ids()
+                        .into_iter()
+                        .map(str::to_owned)
+                        .collect(),
+                );
+            }
+            "none" => {
+                self.base = Some(BTreeSet::new());
+            }
+            _ if token.starts_with('-') => {
+                self.disable.insert(token[1..].to_owned());
+            }
+            _ if token.starts_with('+') => {
+                self.enable.insert(token[1..].to_owned());
+            }
+            _ => {
+                self.enable.insert(token.to_owned());
+            }
+        }
+    }
+
+    /// Fold another selection in, later tokens winning: a flag beats a flag later on the same line, and a
+    /// flag beats the file because [`resolve`] applies this after the file.
+    pub fn merge(&mut self, other: &Selection) {
+        self.enable.extend(other.enable.clone());
+        self.disable.extend(other.disable.clone());
+        if other.base.is_some() {
+            self.base = other.base.clone();
+        }
+        self.notices.extend(other.notices.clone());
+    }
+
+    /// Whether nothing was asked, which is the ordinary case and the one that changes no answer.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.enable.is_empty() && self.disable.is_empty() && self.base.is_none()
+    }
+
+    /// Whether one detector runs under this selection.
+    ///
+    /// `default_on` is the catalogue's answer — [`Descriptor::default_on`] for a built-in,
+    /// [`Meta::default_on`](crate::plugin::Meta) for a plugin — because "does it run" is a question about
+    /// the default set and the three moves made on top of it, in that order and no other.
+    #[must_use]
+    pub fn allows(&self, id: &str, default_on: bool) -> bool {
+        if self.disable.iter().any(|disabled| disabled == id) {
+            return false;
+        }
+        if let Some(base) = &self.base {
+            return base.iter().any(|member| member == id) || self.enable.iter().any(|on| on == id);
+        }
+        default_on || self.enable.iter().any(|on| on == id)
+    }
+
+    /// The printed form, for the receipts a report carries.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(base) = &self.base {
+            parts.push(if base.is_empty() {
+                "none".to_owned()
+            } else {
+                format!("all({})", base.len())
+            });
+        }
+        if !self.enable.is_empty() {
+            parts.push(format!(
+                "+{}",
+                self.enable.iter().cloned().collect::<Vec<_>>().join("+")
+            ));
+        }
+        if !self.disable.is_empty() {
+            parts.push(format!(
+                "-{}",
+                self.disable.iter().cloned().collect::<Vec<_>>().join("-")
+            ));
+        }
+        if parts.is_empty() {
+            "(file defaults)".to_owned()
+        } else {
+            parts.join(" ")
+        }
+    }
+}
+
+/// `policy_from_toml`, with a [`Selection`] applied on top — the flags' whole path into the policy.
+///
+/// Precedence is the file, then the flags, because a flag is typed at a prompt by the person who wants a
+/// different answer *today*. An id that is neither a built-in nor namespaced is a notice, not a guess: a
+/// run that silently ignored `--disable-detector secrt_string` would tell the reviewer their detector was
+/// off when it was not.
+#[must_use]
+pub fn resolve(text: &str, selection: &Selection) -> Resolved {
+    let mut out = policy_from_toml(text);
+    out.notices.extend(selection.notices.clone());
+    if selection.is_empty() {
+        return out;
+    }
+    if let Some(base) = &selection.base {
+        out.policy.enabled = BTreeSet::new();
+        out.policy.disabled_ids = BTreeSet::new();
+        for id in base {
+            out.policy.enabled.insert(id.clone());
+        }
+    }
+    for id in &selection.enable {
+        match crate::detectors::by_id(id) {
+            Some(descriptor) => {
+                out.policy.enable(descriptor.id);
+            }
+            None if id.contains('.') => {
+                // A namespaced id belongs to the plugin registry, which reads this same selection.
+                out.policy.enabled.insert(id.clone());
+            }
+            None => out.notices.push(format!(
+                "`{id}` is not a detector this build has: the built-ins are {}, and a plugin detector \
+                 is named `namespace.id`",
+                crate::detectors::ids().join(", ")
+            )),
+        }
+    }
+    for id in &selection.disable {
+        match crate::detectors::by_id(id) {
+            Some(descriptor) => {
+                if out.policy.disable(descriptor.id) {
+                    out.notices.push(format!(
+                        "`--detectors` turned `{}` off for this run",
+                        descriptor.id
+                    ));
+                }
+            }
+            // A namespaced id belongs to the plugin registry, which reads this same selection. Anything
+            // else is a typo, and a run that quietly ignored `--disable-detector secrt_string` would tell
+            // the reviewer their detector was off when it was running the whole time.
+            None if id.contains('.') => {
+                out.policy.disable(id);
+            }
+            None => {
+                out.policy.disable(id);
+                out.notices.push(format!(
+                    "`{id}` is not a detector this build has, so nothing was turned off: the built-ins \
+                     are {}, and a plugin detector is named `namespace.id`",
+                    crate::detectors::ids().join(", ")
+                ));
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]

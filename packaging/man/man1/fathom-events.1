@@ -1,0 +1,31 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH FATHOM_EVENTS 1  "fathom 0.1.0-alpha.1" 
+.SH NAME
+fathom\-events \- Read the analysis event stream a run wrote: what happened, in order (`e6.7`)
+.SH SYNOPSIS
+\fBfathom events\fR [\fB\-\-root\fR] [\fB\-\-json\fR] [\fB\-\-tail\fR] [\fB\-\-on\fR] [\fB\-\-path\fR] [\fB\-\-explain\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Read the analysis event stream a run wrote: what happened, in order (`e6.7`)
+.SH OPTIONS
+.TP
+\fB\-\-root\fR \fI<ROOT>\fR [default: .]
+The repository to read the stream of
+.TP
+\fB\-\-json\fR
+Print the raw JSONL instead of one line per event
+.TP
+\fB\-\-tail\fR \fI<N>\fR
+Print only the last N events
+.TP
+\fB\-\-on\fR \fI<PATTERN>\fR
+Which kinds to print, repeating or comma\-separated: `analysis.*`, `detector.finished`, `*`
+.TP
+\fB\-\-path\fR \fI<FILE>\fR
+Read this file instead of the repository\*(Aqs configured stream
+.TP
+\fB\-\-explain\fR
+Print where the stream is, whether it is switched on, and what was refused — then leave
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help

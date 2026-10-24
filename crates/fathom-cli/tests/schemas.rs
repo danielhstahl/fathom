@@ -611,10 +611,15 @@ fn the_contract_id_in_a_payload_is_the_id_its_schema_declares() {
 /// A schema that is not valid JSON is caught by `Schema::load`; this catches a schema file going missing.
 ///
 /// One file per verb, plus one file per *model*: `episode-delta.schema.json` describes the delta document
-/// `fathom analyze` publishes rather than a verb's wrapper, and it is in the same directory because it is
-/// the same kind of promise — a checked-in contract a consumer pins, generated rather than hand-edited, and
-/// version-governed (`tools/check_delta_compat.py`). It is listed here so a fifth verb's schema cannot go
-/// missing and this one cannot go missing either.
+/// `fathom analyze` publishes rather than a verb's wrapper, and `plugin-finding.schema.json` describes one
+/// finding a detector outside this repository hands back, and they are in the same directory because they
+/// are the same kind of promise — a checked-in contract a consumer pins, generated rather than hand-edited,
+/// and version-governed (`tools/check_delta_compat.py`). It is listed here so a fifth verb's schema cannot go
+/// missing and these two cannot go missing either.
+///
+/// `fathom-analysis-events.schema.json` is held out of this list for a different reason and says so in the
+/// file's own `$comment`: it describes one *line* of a `.jsonl` stream rather than a payload envelope, and
+/// `crates/fathom-core/tests/events.rs` is what diffs it against the types that own it.
 #[test]
 fn the_schema_directory_holds_one_file_per_verb() {
     let dir = schemas_dir();
@@ -623,6 +628,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
         .flatten()
         .filter_map(|entry| entry.file_name().to_str().map(str::to_owned))
         .filter(|name| name.ends_with(".schema.json") && name != "fathom.schema.json")
+        .filter(|name| name != "fathom-analysis-events.schema.json")
         .collect();
     names.sort();
     assert_eq!(
@@ -637,6 +643,7 @@ fn the_schema_directory_holds_one_file_per_verb() {
             "export.schema.json",
             "hooks.schema.json",
             "index.schema.json",
+            "plugin-finding.schema.json",
             "ratchet.schema.json",
             "show.schema.json",
             "stats.schema.json",

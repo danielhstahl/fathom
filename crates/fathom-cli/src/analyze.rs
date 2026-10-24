@@ -45,6 +45,7 @@ pub fn analyze(
     schema: bool,
     check: bool,
     write: bool,
+    extens: &crate::extens::Extensibility,
 ) -> eyre::Result<ExitCode> {
     if schema {
         return print_schema(check, write);
@@ -65,7 +66,7 @@ pub fn analyze(
 
     #[cfg(not(feature = "sqlite-bundled"))]
     {
-        let _ = (root, target, as_json);
+        let _ = (root, target, as_json, extens);
         return Err(crate::verbs::feature_absent(
             "fathom analyze",
             "sqlite-bundled",
@@ -82,6 +83,18 @@ pub fn analyze(
         let root_path = std::path::Path::new(root);
         let snapshot = state::gather(root_path, false);
         let redactor = crate::sanitize::Redactor::for_root(root_path);
+        // The run's own line on the event bus (`e6.7`). `fathom analyze` composes a delta rather than
+        // scanning one, so what the stream carries about this verb is which episode was read, how big it
+        // was, and how the run ended — which is exactly what a subscriber watching a CI job wants. A
+        // repository that switched events off pays nothing for it: the bus has no subscribers.
+        let (run, stream_notices) = crate::events::Run::start("analyze", root_path, extens);
+        for notice in stream_notices {
+            output::problem(format_args!("fathom analyze: {notice}"));
+        }
+        for notice in extens.plugin_notices() {
+            run.notice("analyze", &notice);
+            output::problem(format_args!("fathom analyze: {notice}"));
+        }
         let store_path = fathom_analyze::index::default_store_path(root_path);
         if !store_path.exists() {
             return Err(Pending::new(
@@ -216,7 +229,24 @@ pub fn analyze(
                 output::line(format_args!("  remedy: {}", state::REMEDY_UNREADABLE));
             }
         }
-        Ok(snapshot.worst_code())
+        // The delta's own shape on the bus, then the run's ending (`e6.7`). The counts are the totals the
+        // document already publishes, so a subscriber that only reads events and a consumer that only reads
+        // `--json` cannot disagree about how big the episode was.
+        let episode = delta.episode.id.clone();
+        run.publish(
+            fathom_core::events::Event::new(fathom_core::events::kind::ANALYSIS_STARTED, &episode)
+                .count("files", delta.totals.n_files)
+                .count("added", delta.totals.n_add)
+                .count("deleted", delta.totals.n_del)
+                .count("gaps", i64::try_from(delta.gaps.len()).unwrap_or(i64::MAX)),
+        );
+        run.publish(
+            fathom_core::events::Event::new(fathom_core::events::kind::ANALYSIS_FINISHED, &episode)
+                .outcome("ok"),
+        );
+        let code = snapshot.worst_code();
+        run.finished(code.as_i32());
+        Ok(code)
     }
 }
 

@@ -21,6 +21,10 @@
 #![deny(missing_docs)]
 
 pub mod error;
+/// The analysis lifecycle as a stream other programs can read (`e6.7`, `reco-raw`): the versioned event
+/// shapes, the bus that hands them to subscribers, and the line-oriented wire format they travel in once
+/// they leave the process. No IO and no clock here — `fathom-cli` owns both and supplies them as arguments.
+pub mod events;
 pub mod exit;
 /// The editor and difftool plans Fathom hands off to (`e5.8`, `reco-dmw`): what to run, and why that.
 pub mod handoff;

@@ -1575,6 +1575,19 @@
           },
           "type": "object"
         },
+        "disable": {
+          "default": [],
+          "description": "The off switch for a detector, as opposed to `detectors.suppress`'s off switch for a finding: an id here does not run, and its row in every report says `disabled` \u2014 so the question 'did it look?' still has an answer. Applied after `detectors.enabled`, so it wins a collision, and it is the same grammar as `--disable-detector` / `--detectors -id`. `e6.7`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-analyzer": "findings.detect",
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.7"
+        },
         "enabled": {
           "default": [
             "test_deletion",
@@ -1791,6 +1804,35 @@
       "type": "object",
       "x-fathom-owner": "ADR-003 / e1.3",
       "x-fathom-section-title": "Episode segmentation"
+    },
+    "events": {
+      "additionalProperties": false,
+      "description": "Whether a run publishes the analysis lifecycle \u2014 what started, what each detector did, what every finding said, how the run ended \u2014 as versioned JSONL an external tool can read. Off until the repository says otherwise; the path is `paths.analysis_events`.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Write the analysis event stream when a verb analyses: one versioned JSON object per line, appended to `paths.analysis_events`. Off by default because the product writes no file a repository did not ask for (ADR-001 \u00a74.6); `--events FILE` turns it on for one run, and `--events -` sends the same lines to stderr. `e6.7`.",
+          "type": "boolean",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.7"
+        },
+        "on": {
+          "default": [],
+          "description": "Which event kinds to write: an exact kind (`detector.finished`) or a family with `*` (`analysis.*`, `*`). An empty list means every kind. A pattern that will not parse is a notice and the whole stream, never a silent narrowing. `e6.7`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "x-fathom-merge": "extend",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.7"
+        }
+      },
+      "type": "object",
+      "x-fathom-owner": "e6.7 (`reco-raw`)",
+      "x-fathom-section-title": "Analysis event stream"
     },
     "extract": {
       "additionalProperties": false,
@@ -3344,6 +3386,15 @@
       "additionalProperties": false,
       "description": "The four paths Fathom writes to. Every relative path is resolved against the repository root and must stay inside it.",
       "properties": {
+        "analysis_events": {
+          "default": ".fathom/analysis-events.jsonl",
+          "description": "Append-only analysis event stream: what a run asked for, what each detector did, what every finding said, how the run ended (`e6.7`, docs/concepts/extensibility.md). Written only when `[events] enabled` is true; `fathom events` reads it back. A repo file may not point it outside the repository.",
+          "pattern": "^[^\\x00]+$",
+          "type": "string",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e6.7"
+        },
         "events": {
           "default": ".fathom/events.jsonl",
           "description": "Append-only harness event stream the hook adapters write (ADR-005 \u00a72).",
@@ -5000,6 +5051,10 @@
       "episode": {
         "owner": "ADR-003 / e1.3",
         "title": "Episode segmentation"
+      },
+      "events": {
+        "owner": "e6.7 (`reco-raw`)",
+        "title": "Analysis event stream"
       },
       "extract": {
         "owner": "e3.1 (`reco-zoz`)",

@@ -53,6 +53,7 @@ pub fn why(
     overrides: &[String],
     tau: Option<u8>,
     cut: Option<f64>,
+    extens: &crate::extens::Extensibility,
 ) -> eyre::Result<ExitCode> {
     if let Some(path) = calibrate {
         return calibration(root, path, as_json, cut);
@@ -71,13 +72,13 @@ pub fn why(
 
     #[cfg(not(feature = "sqlite-bundled"))]
     {
-        let _ = (root, target, as_json, overrides, tau);
+        let _ = (root, target, as_json, overrides, tau, extens);
         return Err(crate::verbs::feature_absent("fathom why", "sqlite-bundled"));
     }
 
     #[cfg(feature = "sqlite-bundled")]
     {
-        score_one(root, target, as_json, overrides, tau)
+        score_one(root, target, as_json, overrides, tau, extens)
     }
 }
 
@@ -89,6 +90,7 @@ fn score_one(
     as_json: bool,
     overrides: &[String],
     tau: Option<u8>,
+    extens: &crate::extens::Extensibility,
 ) -> eyre::Result<ExitCode> {
     use crate::state::{self, REMEDY_INDEX};
     use crate::verbs::{Pending, failed};
@@ -99,6 +101,13 @@ fn score_one(
     use fathom_store::spine::Store;
 
     let root_path = std::path::Path::new(root);
+    // The run's line on the event bus, opened before anything that can fail, so that a verb which gives up
+    // half-way still leaves a terminal event behind (`e6.7`). A repository that switched events off pays
+    // nothing: the bus has no subscribers, and every publish is a lock on an empty list.
+    let (run, stream_notices) = crate::events::Run::start("why", root_path, extens);
+    for notice in stream_notices {
+        output::problem(format_args!("fathom why: {notice}"));
+    }
     let snapshot = state::gather(root_path, false);
     let store_path = fathom_analyze::index::default_store_path(root_path);
     if !store_path.exists() {
@@ -151,7 +160,20 @@ fn score_one(
     // Configuration, read here and handed down as values (ADR-002 §4.5).
     let config = std::fs::read_to_string(root_path.join("fathom.toml")).unwrap_or_default();
     let mut resolved = weights::weights_from_toml(&config);
-    let policy = fathom_analyze::detectors::policy_from_toml(&config).policy;
+    // Which detectors run, in the order the product resolves everything: the built-in default set, then
+    // `fathom.toml`, then the command line (`e6.7`). A `detectors.disable` or a `--disable-detector` that
+    // named nothing this build knows is a notice, never a failure — the same rule `detectors.enabled`
+    // already follows, because a repository that upgrades should never be unable to ask a question.
+    let resolved_policy = extens.apply_to(&config);
+    let describe = resolved_policy.describe();
+    let policy = resolved_policy.policy;
+    for notice in &resolved_policy.notices {
+        resolved.notice(notice.clone());
+    }
+    run.selection(&describe);
+    for notice in extens.plugin_notices() {
+        resolved.notice(notice);
+    }
     for token in overrides {
         let (name, value) = weights::parse_weight_flag(token).map_err(|reason| {
             Pending::new(
@@ -209,6 +231,17 @@ fn score_one(
         .into());
     };
 
+    // The scan's own account of itself, on the bus: every detector that was asked, every finding that
+    // survived, and every gap (`e6.7`). This is the stream an external subscriber reads, so it carries the
+    // whole truth of the scan and not only the part the terminal prints.
+    run.analysis_started(&id, read.report.runs.len());
+    run.detectors(&read.report);
+    run.findings(&read.report);
+    for gap in &read.report.gaps {
+        run.notice(&id, gap);
+    }
+    run.analysis_finished(&read.report);
+
     let scored = risk_score::score(&read.vector, &resolved.weights);
     let row = store.episode(&id).map_err(failed)?;
     if as_json {
@@ -242,7 +275,9 @@ fn score_one(
             }
         }
     }
-    Ok(snapshot.worst_code())
+    let code = snapshot.worst_code();
+    run.finished(code.as_i32());
+    Ok(code)
 }
 
 /// The `--json` payload: the envelope the other verbs use, and the score's own structure inside it.

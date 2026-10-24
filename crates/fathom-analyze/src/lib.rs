@@ -42,6 +42,11 @@ pub mod export;
 /// cannot drift apart.
 pub mod hardening;
 pub mod insight;
+/// The plugin API (`e6.7`, `reco-raw`): the public detector trait over the immutable delta model, the
+/// versioned namespaced finding it returns, the registry that applies the finding rules, and the
+/// enable/disable grammar the built-in catalogue shares. `plugins/acme-detectors` is the worked example,
+/// compiled out-of-tree against this crate.
+pub mod plugin;
 
 pub mod drift;
 /// The review ledger: sign-offs as committed markdown under `.fathom/reviews/`, the four digests that let a

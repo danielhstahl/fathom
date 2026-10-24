@@ -104,6 +104,33 @@ pub struct Cli {
     /// is to run `fathom watch` in a second terminal and let it own the indexing.
     #[arg(long = "no-watch", global = true)]
     pub no_watch: bool,
+    /// Which detectors run, moved off the file's answer (`e6.7`).
+    ///
+    /// A comma-separated spec: `id` or `+id` runs one as well, `-id` turns one off even if it ships on,
+    /// `all` bases the set on every built-in detector, and `none` bases it on nothing. So
+    /// `--detectors none,+churn_loop` is one detector and `--detectors all,-secret_string` is eleven. It is
+    /// the same grammar as `detectors.enabled` and `detectors.disable` in `fathom.toml`, applied after it,
+    /// and it names a plugin detector by its namespaced id (`--detectors +acme.untested_agent_logic`). A
+    /// `--detectors` line is what a CI job uses to ask one narrow question without editing a file.
+    #[arg(long = "detectors", global = true, value_name = "SPEC")]
+    pub detectors: Vec<String>,
+    /// Run one more detector, by id — the long form of `--detectors +id` (`e6.7`).
+    #[arg(long = "enable-detector", global = true, value_name = "ID")]
+    pub enable_detector: Vec<String>,
+    /// Do not run one detector, by id — the long form of `--detectors -id` (`e6.7`).
+    ///
+    /// This is the switch for a built-in you have decided about: the row stays in the report as `disabled`,
+    /// so "did it look?" still has an answer, and `detectors.suppress` stays the switch for a finding whose
+    /// family you have muted rather than a detector you have turned off.
+    #[arg(long = "disable-detector", global = true, value_name = "ID")]
+    pub disable_detector: Vec<String>,
+    /// Write this run's analysis event stream to a file, or to stderr with `-` (`e6.7`).
+    ///
+    /// One JSON object per line, versioned, appended: what started, what each detector did, what every
+    /// finding said, and how the run ended. `[events] enabled = true` turns the stream on for a repository;
+    /// this turns it on for one run, over whatever the file says. `fathom events` reads it back.
+    #[arg(long = "events", global = true, value_name = "FILE")]
+    pub events: Option<String>,
     /// The verb to run. With no verb, fathom opens the terminal UI — if it was compiled in.
     #[command(subcommand)]
     pub verb: Option<Verb>,
@@ -144,6 +171,9 @@ pub struct Globals {
     /// Resolved to a palette by `crate::theme`, which is also where the precedence over the environment
     /// and the user config lives; nothing downstream of that reads a name.
     pub theme: Option<String>,
+    /// What the `--detectors` / `--enable-detector` / `--disable-detector` / `--events` flags asked for
+    /// (`e6.7`), resolved once here so a verb cannot apply the flags twice or forget them entirely.
+    pub extens: crate::extens::Extensibility,
 }
 
 /// The verbs fathom answers to. ADR-005 §6 owns the full list and `e1.10` ships the headless half of it;
@@ -212,6 +242,38 @@ pub enum Verb {
     Note(NoteArgs),
     /// Print the shell's own copy of this grammar: completion scripts and man pages (`e7.4`)
     Completions(CompletionsArgs),
+    /// Read the analysis event stream a run wrote: what happened, in order (`e6.7`)
+    Events(EventsArgs),
+}
+
+/// `fathom events` — the analysis event stream, read back (`e6.7`, **reco-raw**).
+///
+/// The stream is what an external tool reads: one versioned JSON object per line, appended by a run that
+/// had `[events] enabled = true` or `--events`. This verb is the reader the product ships, so that the
+/// format has a consumer inside the repository that wrote it and a reader can ask "what happened" without
+/// installing anything. It is deliberately the same reader the bus's own tests use: a line it cannot read
+/// is reported and skipped, never fatal, because a run killed mid-write leaves a half line at the end and
+/// every event before it is still worth having.
+#[derive(Args, Debug)]
+pub struct EventsArgs {
+    /// The repository to read the stream of.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// Print the raw JSONL instead of one line per event.
+    #[arg(long)]
+    pub json: bool,
+    /// Print only the last N events.
+    #[arg(long, value_name = "N")]
+    pub tail: Option<usize>,
+    /// Which kinds to print, repeating or comma-separated: `analysis.*`, `detector.finished`, `*`.
+    #[arg(long = "on", value_name = "PATTERN")]
+    pub on: Vec<String>,
+    /// Read this file instead of the repository's configured stream.
+    #[arg(long, value_name = "FILE")]
+    pub path: Option<String>,
+    /// Print where the stream is, whether it is switched on, and what was refused — then leave.
+    #[arg(long)]
+    pub explain: bool,
 }
 
 /// The one [`Command`] this binary is: the derived grammar, plus the long version that states the
@@ -1578,6 +1640,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
             args.schema,
             args.check,
             args.write,
+            &globals.extens,
         ),
         Some(Verb::Narrative(args)) => crate::narrative::narrate(
             &args.root,
@@ -1613,6 +1676,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
                 &args.weight,
                 args.tau,
                 args.cut,
+                &globals.extens,
             )
         }
         Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
@@ -1655,6 +1719,14 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
         Some(Verb::Context(args)) => crate::notes::context(args),
         Some(Verb::Note(args)) => crate::notes::note(args),
         Some(Verb::Completions(args)) => crate::completions::run(&args.action),
+        Some(Verb::Events(args)) => crate::events::read(
+            std::path::Path::new(&args.root),
+            args.path.as_deref(),
+            args.tail,
+            &args.on,
+            args.json,
+            args.explain,
+        ),
     }
 }
 
