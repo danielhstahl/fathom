@@ -69,10 +69,10 @@ pub fn human(gate: &Gate, cap: usize) -> Vec<String> {
             findings
         ));
         if let Some(remedy) = run.status.remedy() {
-            out.push(format!("    remedy: {remedy}"));
+            out.push(fold("    remedy: ", remedy, LINE));
         }
         for note in &run.notes {
-            out.push(format!("    note: {note}"));
+            out.push(fold("    note: ", note, LINE));
         }
     }
 
@@ -104,14 +104,14 @@ pub fn human(gate: &Gate, cap: usize) -> Vec<String> {
         out.push(String::new());
         out.push("notices".to_owned());
         for notice in &gate.notices {
-            out.push(format!("  {notice}"));
+            out.push(fold("  ", notice, LINE));
         }
     }
     out.push(String::new());
     out.push(gate.sentence());
     if let Some(run) = gate.blocked_required().first() {
         if let Some(remedy) = run.status.remedy() {
-            out.push(format!("remedy: {remedy}"));
+            out.push(fold("remedy: ", remedy, LINE));
         }
     } else if !gate.failing().is_empty() {
         out.push(
@@ -121,6 +121,50 @@ pub fn human(gate: &Gate, cap: usize) -> Vec<String> {
         );
     }
     out
+}
+
+/// The width the human log folds at.
+///
+/// A fixed number rather than the terminal's width: this output is read in a CI log as often as in a shell,
+/// and a CI log has no width to ask.
+const LINE: usize = 100;
+
+/// Prefix one value with a label, folding long values onto continuation lines.
+///
+/// Remedies and notes are written by whoever found the problem, at varying lengths, and an unfolded 300-
+/// character line is the difference between a log a reader scans and one they skip. Continuation lines are
+/// indented to the label's own content so the label stays the thing that starts the line.
+fn fold(prefix: &str, value: &str, width: usize) -> String {
+    let text = value.trim();
+    if text.len() + prefix.len() <= width {
+        return format!("{prefix}{text}");
+    }
+    let pad = " ".repeat(prefix.len());
+    let mut lines = String::from(prefix);
+    let mut column = prefix.len();
+    let mut first = true;
+    for word in text.split_whitespace() {
+        // `checked_*` rather than bare arithmetic: a prefix longer than `width` is a caller's mistake, and
+        // the answer should be an ugly line, not a panic in the thing that prints diagnostics.
+        let fits = first
+            || column
+                .checked_add(1 + word.len())
+                .is_some_and(|end| end <= width);
+        if !fits {
+            lines.push('\n');
+            lines.push_str(&pad);
+            column = prefix.len();
+            first = true;
+        }
+        if !first {
+            lines.push(' ');
+            column += 1;
+        }
+        lines.push_str(word);
+        column += word.len();
+        first = false;
+    }
+    lines
 }
 
 /// The volume column: `off` only for the state, never for a row that ran.
@@ -307,4 +351,64 @@ fn truncate(text: &str, width: usize) -> String {
     let mut out: String = text.chars().take(width.saturating_sub(1)).collect();
     out.push('…');
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fold;
+
+    /// A short value is one line, unchanged.
+    #[test]
+    fn a_value_that_fits_is_left_alone() {
+        assert_eq!(
+            fold("note: ", "one short thing", 100),
+            "note: one short thing"
+        );
+    }
+
+    /// A long value wraps onto continuation lines aligned under the value, not under the label — the
+    /// property that makes a remedy scannable in a CI log, where the label is the thing the eye looks for.
+    #[test]
+    fn a_long_value_folds_aligned_under_its_label() {
+        let value = "word ".repeat(40).trim().to_string();
+        let folded = fold("    remedy: ", &value, 60);
+        let lines: Vec<&str> = folded.split('\n').collect();
+        assert!(lines.len() > 2, "a 200-character value does not fit in 60");
+        assert!(lines[0].starts_with("    remedy: word"));
+        let pad = " ".repeat("    remedy: ".len());
+        for line in &lines[1..] {
+            assert!(
+                line.starts_with(&pad) && !line[pad.len()..].starts_with(' '),
+                "continuation lines start at the value's column: {line:?}"
+            );
+        }
+        for line in &lines {
+            assert!(
+                line.len() <= 60,
+                "a fold that overflows its width is a wrap with extra steps: {line}"
+            );
+        }
+        // Nothing lost or duplicated in the folding, which is the other way this could be wrong.
+        let body = &folded["    remedy: ".len()..];
+        assert_eq!(
+            body.split_whitespace().collect::<Vec<_>>(),
+            value.split_whitespace().collect::<Vec<_>>()
+        );
+    }
+
+    /// A one-word value longer than the line cannot be folded, and must not crash trying. The first
+    /// implementation of this helper panicked with "attempt to subtract with overflow" on a similar shape.
+    #[test]
+    fn a_value_wider_than_the_line_survives() {
+        assert_eq!(
+            fold("note: ", "aaaaaaaaaaaaaaaaaaaaaaaaaa", 10),
+            "note: aaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        // As does a label already at or past the width: ugly output beats a panic in the thing that
+        // prints diagnostics.
+        assert!(
+            fold("a very long label indeed: ", "word", 10)
+                .starts_with("a very long label indeed: word")
+        );
+    }
 }
