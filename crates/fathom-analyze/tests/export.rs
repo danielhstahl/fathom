@@ -13,7 +13,8 @@
 //!   sign-offs feed, because the two are the same answer at different zoom.
 //!
 //! Plus the two claims the design rests on and that nothing else would catch: the artefact carries *no
-//! clock*, and its self-check is a check rather than a decoration.
+//! clock*, and its self-check is a check rather than a decoration. And a third, added the hard way
+//! (`reco-c2i`): the checklist's ids are keys, so no two of them may collide however the range is shaped.
 //!
 //! The fixtures are built from the delta model's own constructors, so a change in the model shows up here
 //! as a changed artefact rather than as a test that stopped matching its own copy of the model.
@@ -336,7 +337,22 @@ fn note(
 }
 
 fn render(format: Format) -> String {
-    export::render(format, &export::build(&input()))
+    render_of(format, &input())
+}
+
+/// The same rendering of a range the caller assembled.
+fn render_of(format: Format, source: &Input) -> String {
+    export::render(format, &export::build(source))
+}
+
+/// The range `reco-c2i` was filed for: two episodes, the same file, the same detector firing in both.
+///
+/// This is what a week of work looks like — `tools/gen_docs.py` hand-edited in one episode and hand-edited
+/// again in another is one finding per episode and one question for the reviewer, not an impossible one.
+fn shared_finding_input() -> Input {
+    let mut shared = input();
+    shared.episodes[1].findings = vec![finding("ep-bbbb2222", "secret-string", "high")];
+    shared
 }
 
 /// The columns of a markdown table row: an escaped `\|` is text, a bare `|` is a separator.
@@ -995,6 +1011,136 @@ fn a_ledger_that_reports_a_problem_becomes_a_checklist_item() {
         record.checklist
     );
     assert!(render(Format::Markdown).contains("not an entry"));
+}
+
+// --- the checklist id has to be a key, not a label (`reco-c2i`) ------------------------------------------------
+
+#[test]
+fn two_episodes_sharing_a_finding_export_verified() {
+    // The self-dogfood pass ran the shipped binary over this repository and got an artefact that refused to
+    // certify itself: five episodes, the same detector on the same path in more than one of them, and the
+    // checklist id `finding:<kind>:<path>` naming two different items. An artefact that travels to a PR has
+    // to be the certifiable one, so the id has to be as complete a key as the finding row's own print key.
+    let source = shared_finding_input();
+    let record = export::build(&source);
+    assert!(
+        record.verify().is_empty(),
+        "a range whose episodes share a finding still has to vouch for itself: {:?}",
+        record.verify()
+    );
+    assert!(record.integrity.verified);
+    let markdown = render_of(Format::Markdown, &source);
+    assert!(
+        markdown.contains(" verified:") && !markdown.contains("UNVERIFIED"),
+        "the verdict the artefact prints is the verdict its own checks reached: {markdown}"
+    );
+    let html = render_of(Format::Html, &source);
+    assert!(!html.contains("UNVERIFIED"));
+}
+
+#[test]
+fn a_finding_two_episodes_share_is_one_checklist_item_per_episode() {
+    // The granularity the fix chose, written down as an assertion rather than as a comment: one item per
+    // (episode, kind, subject). Per episode rather than merged-and-counted, because the ask is per episode —
+    // each copy is closed by *that* episode's decision, names that episode, and jumps to that episode's diff.
+    let record = export::build(&shared_finding_input());
+    let items: Vec<_> = record
+        .checklist
+        .iter()
+        .filter(|item| item.kind == "finding")
+        .collect();
+    assert_eq!(
+        items.len(),
+        2,
+        "one finding per episode in scope: {:?}",
+        record.checklist
+    );
+    // The episode comes first and the subject last: a subject is a path, a path is allowed to contain a
+    // colon, and a key whose free-form part sits in the middle cannot be read back.
+    let ids: Vec<&str> = items.iter().map(|item| item.id.as_str()).collect();
+    assert_eq!(
+        ids,
+        [
+            "finding:ep-aaaa1111:secret-string:src/store/epoch.rs:88",
+            "finding:ep-bbbb2222:secret-string:src/store/epoch.rs:88",
+        ]
+    );
+    // …and each copy keeps the episode it came from, which is what its closure, its detail and its jump
+    // are all keyed off.
+    for (item, episode) in items.iter().zip(["ep-aaaa1111", "ep-bbbb2222"]) {
+        assert_eq!(item.episode.as_deref(), Some(episode));
+        assert!(
+            item.detail
+                .as_deref()
+                .is_some_and(|detail| detail.starts_with(episode)),
+            "the detail line names which episode this copy belongs to: {item:?}"
+        );
+        assert!(
+            item.how.as_deref().is_some_and(|how| how.contains(episode)),
+            "the jump opens that episode's diff, not the other one's: {item:?}"
+        );
+    }
+    assert_eq!(
+        record.summary.open_actions,
+        record
+            .checklist
+            .iter()
+            .filter(|item| item.is_open())
+            .count(),
+        "both copies are counted, because both are asks"
+    );
+}
+
+#[test]
+fn no_two_checklist_items_ever_share_an_id() {
+    // The backstop. Every source builds its id from the whole key of the fact it came from, which is what
+    // makes a collision rare; this is what makes one impossible, so that no future source — a plugin that
+    // reports the same subject twice inside one episode, a ledger that prints the same problem on two
+    // lines — can hand the artefact a reason to distrust itself.
+    let mut twice = input();
+    twice.episodes[0].findings = vec![
+        finding("ep-aaaa1111", "secret-string", "high"),
+        finding("ep-aaaa1111", "secret-string", "high"),
+    ];
+    let record = export::build(&twice);
+    let ids: Vec<&str> = record
+        .checklist
+        .iter()
+        .map(|item| item.id.as_str())
+        .collect();
+    let unique: std::collections::BTreeSet<&str> = ids.iter().copied().collect();
+    assert_eq!(
+        unique.len(),
+        ids.len(),
+        "two checklist items share an id: {ids:?}"
+    );
+    assert!(record.verify().is_empty(), "{:?}", record.verify());
+    // The suffix is positional in the print order, so the same input writes the same ids twice over.
+    assert_eq!(
+        export::build(&twice).checklist,
+        record.checklist,
+        "a re-build wrote different ids for the same input"
+    );
+
+    // And a suffix cannot break the order the record promises. `CHECKLIST_ORDER` sorts by id, a suffix changes
+    // an id, and `…p#10` sorts before `…p#2` as text — so the order is re-established after the disambiguation
+    // rather than assumed. Contrived input, and the only way this file can reach it.
+    let mut awkward = input();
+    let mut plain = finding("ep-aaaa1111", "secret-string", "high");
+    plain.subject = "src/p".to_owned();
+    let mut tens = finding("ep-aaaa1111", "secret-string", "high");
+    tens.subject = "src/p#10".to_owned();
+    awkward.episodes[0].findings = vec![plain.clone(), plain, tens];
+    let awkward = export::build(&awkward);
+    assert!(
+        awkward.verify().is_empty(),
+        "suffixed ids still print in the claimed order: {:?}",
+        awkward
+            .checklist
+            .iter()
+            .map(|item| item.id.as_str())
+            .collect::<Vec<_>>()
+    );
 }
 
 // --- the rest of the record ----------------------------------------------------------------------------------

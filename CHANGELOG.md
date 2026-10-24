@@ -17,6 +17,51 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The PR artefact refused to certify itself when two episodes shared a finding (`e5.10`, `reco-c2i`)
+
+Pointing the shipped binary at this repository — `fathom export --episodes HEAD~5..HEAD --format markdown` —
+wrote the artefact and then declined to vouch for it: *self-check: UNVERIFIED — 4 problem(s) … checklist item
+`finding:untested_new_logic:crates/fathom-cli/src/verbs.rs` appears twice*. The range is five episodes, the
+same detector fires on the same path in more than one of them, and the checklist id was built from
+`(kind, subject)` alone — so one id named two items, and the self-check, which reads an id as the identity of
+the ask it belongs to, had nothing honest left to do but refuse the document. The artefact is the one thing in
+this product a reviewer is obliged to trust, and the shape that broke it was the shape a release review is
+about: a week of work, five episodes, the same generated file hand-edited twice. A one-episode export was
+clean, which is why nobody had seen it.
+
+* **A finding's checklist id is `finding:<episode>:<kind>:<subject>` now** — the same tuple the findings' own
+    print order uses, with the subject last because a path is allowed to contain a colon. One item per
+    `(episode, kind, subject)` rather than one merged line with a count, because the ask is per episode: each
+    copy is closed by *that* episode's decision, names that episode in its detail line, and jumps to that
+    episode's diff. A count would have kept the symptom and thrown away the closure, and the closure is the
+    half a reviewer can act on.
+* **And no two checklist items can share an id, at all.** Every source builds its id from the whole key of the
+    fact it came from, which is what makes a collision rare; `checklist_of` now ends with a pass that gives any
+    collision left a positional suffix (`…#2`), counted in the print order the record already promises, so two
+    builds of one input still write the same bytes. That covers what no source can rule out from here — a
+    plugin that reports one subject twice inside an episode, a ledger that prints the same problem twice.
+* **The self-check says so out loud.** `CHECKS` grows a ninth line — *no two checklist items share an id, so
+    every ask is one line and one line only* — so the guarantee is printed in the artefact next to the verdict
+    rather than enforced silently by code a reader cannot see.
+* **Fixed on the real case, not only on a fixture.** The same command over `HEAD~20..HEAD` of this repository
+    — 18 episodes, 177 findings, nine `(kind, path)` pairs that appear in more than one episode — went from
+    `UNVERIFIED — 17 problem(s)` to ``verified: 18 episode(s), 177 finding(s), 2 sign-off(s), 9 check(s)``,
+    with 177 checklist items and 177 distinct finding ids.
+* **The beta register moved with it.** W43-01 was `triage:ticketed`; this appends W43-27 as `triage:fixed`
+    citing it, because the register's rule is that a changed disposition is a new row and never an edit
+    ([`.plan/intake/README.md`](.plan/intake/README.md)).
+* **And the ticket got a plan key.** A discovered ticket the documents want to name takes the next key in the
+    scheme of the epic that owns the thing — epic 5 owns the artefact, so `e5.10` = `reco-c2i` joins
+    `.plan/keymap.json`, which is what `tools/check_docs.py` checks a citation against.
+
+*Asserted by*: `crates/fathom-analyze/tests/export.rs`
+(`two_episodes_sharing_a_finding_export_verified`,
+`a_finding_two_episodes_share_is_one_checklist_item_per_episode`, `no_two_checklist_items_ever_share_an_id`)
+and `crates/fathom-cli/tests/export_verb.rs`
+(`a_range_whose_episodes_share_a_finding_still_certifies_itself`: a two-episode repository in which both
+episodes put a `TODO` on `src/lib.rs`, exported end to end, required to certify itself and to print one ask
+per episode). All four fail against the code before the fix and pass after it.
+
 ### The beta loop: one channel, a changelog that cannot forget a commit, and Fathom reviewed by Fathom (`e7.7`, `reco-rny`)
 
 A beta is not a version number, it is a loop: somebody reports, somebody dispositions it, the fix is published
@@ -31,7 +76,7 @@ verdict in it.
   two things this repository needs — `Changelog:` / `Changelog-Section:` trailers for commits whose subject is
   an essay, and a *fallback ladder* for this repository's actual style, which is prose sentences and not
   conventional headers. `audit` prints the rung distribution on every run and this file quotes it, so the number
-  cannot silently rot — `header 1, bead 69, key 5, subject 1` over the 76 commits since the alpha, of which the
+  cannot silently rot — `header 1, bead 70, key 5, subject 1` over the 77 commits since the alpha, of which the
   one bare prose subject is the rung where the notes are guessing and is kept rare on purpose, because a
   generator whose notes are mostly guesses is a generator that gets replaced by a human who is worse at reading
   `git log`. The gate is coverage,

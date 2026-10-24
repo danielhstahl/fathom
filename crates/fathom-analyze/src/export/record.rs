@@ -575,6 +575,12 @@ pub struct RenameRow {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChecklistItem {
     /// A stable id, derived from the item's kind and subject rather than from a counter.
+    ///
+    /// The id is a key and not a caption: [`Record::verify`] treats two items under one id as a record that
+    /// has lost track of what it is asking, so the id carries as much of the fact's own key as that fact has
+    /// — a finding's is `(episode, kind, subject)`, the same tuple the findings' print order uses, because
+    /// one detector firing on one path in two episodes of a range is two findings and not a duplicate
+    /// (`reco-c2i`). Any id that still collides gets a positional suffix in [`checklist_of`].
     pub id: String,
     /// `review`, `finding`, `sign-off`, `ledger` or `surface` — what kind of thing this asks for.
     pub kind: String,
@@ -693,13 +699,14 @@ pub struct Integrity {
 }
 
 /// What was checked, printed with every artefact (`e2.11`'s rule that a self-check names itself).
-pub const CHECKS: [&str; 8] = [
+pub const CHECKS: [&str; 9] = [
     "every episode's delta document verifies, and every episode is in the stated scope",
     "episodes, findings, sign-offs and checklist items are printed in the order the record claims",
     "every narrative is the bytes the composer produces for the same document",
     "every finding belongs to an episode in scope and carries at least one piece of evidence",
     "every sign-off belongs to an episode in scope and carries its tamper digest",
     "every closed checklist item names the entry that closed it",
+    "no two checklist items share an id, so every ask is one line and one line only",
     "no absolute path, no generated timestamp and no control character is in the record",
     "the summary's counts are the counts of the rows it summarises",
 ];
@@ -1214,7 +1221,7 @@ fn checklist_of(
             .and_then(|episode| episode.accepted_by.clone());
         let closed = closed_by.is_some();
         items.push(ChecklistItem {
-            id: format!("finding:{}:{}", finding.kind, finding.subject),
+            id: format!("finding:{}:{}:{}", finding.episode, finding.kind, finding.subject),
             kind: "finding".to_owned(),
             state: if closed { STATE_DONE } else { STATE_OPEN }.to_owned(),
             text: format!("{} on `{}`: {}", finding.kind, finding.subject, finding.message),
@@ -1391,7 +1398,42 @@ fn checklist_of(
     }
 
     items.sort_by_key(checklist_key);
+    make_ids_unique(&mut items);
+    // The suffix is part of the id, and the id is the third thing the print order claims to be sorted by, so
+    // the order is re-established after the disambiguation rather than assumed. With no collision to fix —
+    // which is every collision-free record, which is every record this module builds by itself — the second
+    // sort is a no-op.
+    items.sort_by_key(checklist_key);
     items
+}
+
+/// Give every checklist item an id of its own, in the order the items print.
+///
+/// The id is the identity [`Record::verify`] counts on, so a collision is not a cosmetic problem: it is the
+/// artefact refusing to certify itself, which is what a five-episode range did on this repository the first
+/// time anybody exported a week of work (`reco-c2i`). Each source in [`checklist_of`] builds its id from the
+/// whole key of the fact it came from, which is what makes a collision rare; this pass is what makes one
+/// impossible, so that no later source can reintroduce the defect — a plugin that reports one subject twice
+/// inside an episode, a ledger that prints the same problem on two lines, a figure repeated in two rows.
+///
+/// The suffix is the copy's position among the items that share the base id, counted in the print order the
+/// record already promises — a fact about the record and not about the run, so two builds of one input still
+/// write the same bytes.
+fn make_ids_unique(items: &mut [ChecklistItem]) {
+    let mut issued: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for item in items {
+        if issued.insert(item.id.clone()) {
+            continue;
+        }
+        let base = item.id.clone();
+        for copy in 2_u32.. {
+            let candidate = format!("{base}#{copy}");
+            if issued.insert(candidate.clone()) {
+                item.id = candidate;
+                break;
+            }
+        }
+    }
 }
 
 /// The newest entry recorded for one episode, whatever it decided.

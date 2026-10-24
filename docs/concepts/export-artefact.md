@@ -65,7 +65,7 @@ The order is the order a reviewer works in: verdict, then the episodes, then the
 | Dependency delta | what the tree now depends on that it did not, **for the range** (not per episode) | `fathom_analyze::deps`, compared between the range's endpoints |
 | Architecture delta | directories touched, renames, deletions, binaries, surfaces, noise folded away | the delta documents' file rows |
 | Findings with evidence | every detector finding, worst first, each with its evidence lines and its suppress key | `fathom_analyze::risk::collect` |
-| Operator-action checklist | what is still being asked of a human, open first, each with what to type | decisions, findings, ledger problems |
+| Operator-action checklist | what is still being asked of a human, open first, each with what to type — one line per episode·kind·subject, so a finding two episodes share is two lines (§5c) | decisions, findings, ledger problems |
 | Sign-offs | reviewer, kind, instant, decision, scope, dismissal reason, note, digests, and whether the content still matches | `.fathom/reviews/` through `fathom_analyze::ledger` |
 | Review memory | every note the range carries: kind, status, author, instant, its words as written, how it is attached now (including after a rewrite), and its digests | `.fathom/reviews/notes.md` through `fathom_analyze::notes` (`e6.5`, `reco-552`) |
 | Commits | every commit in scope, with author, instant, its episode and a web link when the remote makes one derivable | the store's commit rows |
@@ -159,14 +159,39 @@ while a reviewer's question is still sitting in the memory file. A note whose ep
 stays in the artefact and says so: an orphan is a fact, and a note that vanished from the export would read
 as a note that was deleted.
 
+## 5c. The operator-action checklist, and what one line means
+
+Six sources feed the checklist: an episode with no decision, a finding with no disposition, a surface that
+needs acting on outside the review, a sign-off whose content has moved, a ledger or memory file that reported
+a problem about itself, and an allowance whose own date has gone by before the change under review. Every line
+names its owner and, where there is a command, what to type; a line already closed names the entry that closed
+it, which is what lets the same list serve as the audit.
+
+**The granularity is one item per `(episode, kind, subject)`, not one per `(kind, subject)`.** A range is a set
+of episodes, and the same detector firing on the same file in two of them is an ordinary week — `generated_edit`
+on `tools/gen_docs.py`, twice. So a finding's id is
+`finding:<episode>:<kind>:<subject>`, the same tuple the findings' own print order uses, with the subject last
+because a path may contain a colon. The two copies stay two lines because the ask is per episode: each is
+closed by *that* episode's decision, names that episode, and jumps to that episode's diff. Collapsing them
+into one line with a count would keep the symptom and lose the closure, and the closure is the part a reviewer
+can act on.
+
+No two checklist items may share an id, because the self-check reads an id as the identity of the ask it
+belongs to — an artefact that printed the same ask twice has lost track of what it is asking, and has to say
+so rather than be believed. Each source builds its id from the whole key of the fact it came from, which makes
+a collision rare; `checklist_of` then gives any remaining one a positional suffix, which makes one impossible.
+Both halves are here because exporting five episodes of this repository once produced a 205 KB artefact that
+refused to certify itself (**reco-c2i**, `e5.10` — the first row the beta self-dogfood pass of `e7.7` filed).
+
 ## 6. The self-check is a check
 
 Every artefact prints `integrity` — the verdict and the list of checks — and `Record::verify` is run at build
 time, so `integrity.problems` is a result rather than a claim. The checks are `export::record::CHECKS`: the
 delta documents verify and are in the stated scope; the ordering matches what the record says it used; every
 narrative is the bytes the composer produces for its own document; every finding and sign-off belongs to an
-episode in scope; closed checklist items name the entry that closed them; no absolute path, generated
-timestamp or control byte leaks; and the summary's counts are the counts of the rows it summarises.
+episode in scope; closed checklist items name the entry that closed them, and no two of them share an id; no
+absolute path, generated timestamp or control byte leaks; and the summary's counts are the counts of the rows it
+summarises.
 
 The tamper tests plant each fault — a finding for an episode outside the range, a summary that disagrees with
 its episodes, a sign-off for nothing, a host path in `provenance.store` — and require the check to name it.

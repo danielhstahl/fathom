@@ -68,11 +68,8 @@ fn git(root: &Path, args: &[&str]) {
     );
 }
 
-/// A repository with three episodes, the middle one carrying a hostile subject.
-///
-/// The dates are pinned to the epoch so the artefact's instants are fixed, and the branch name is asked for
-/// rather than assumed — a runner configured for `master` must build the same fixture.
-fn repository(name: &str) -> PathBuf {
+/// An empty git repository with the fixture's author configured and nothing committed.
+fn fresh(name: &str) -> PathBuf {
     static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let dir = std::env::temp_dir().join(format!(
         "fathom-export-{name}-{}-{}",
@@ -84,6 +81,15 @@ fn repository(name: &str) -> PathBuf {
     git(&dir, &["init", "-q", "--initial-branch=main"]);
     git(&dir, &["config", "user.name", "Dana Ruiz"]);
     git(&dir, &["config", "user.email", "dana@example.invalid"]);
+    dir
+}
+
+/// A repository with three episodes, the middle one carrying a hostile subject.
+///
+/// The dates are pinned to the epoch so the artefact's instants are fixed, and the branch name is asked for
+/// rather than assumed — a runner configured for `master` must build the same fixture.
+fn repository(name: &str) -> PathBuf {
+    let dir = fresh(name);
     write(&dir, "src/lib.rs", "fn a() {}\n");
     write(&dir, "tests/lib.rs", "#[test] fn a_works() {}\n");
     git(&dir, &["add", "-A"]);
@@ -134,6 +140,139 @@ fn read(dir: &Path, name: &str) -> String {
 /// The `--out` stem's suffix-free name for a format.
 fn artifact(dir: &Path, stem: &str, extension: &str) -> PathBuf {
     dir.join(format!("{stem}.{extension}"))
+}
+
+// --- the checklist id as a key (`reco-c2i`) -----------------------------------------------------------------
+
+/// A repository whose last two episodes each put unfinished work on the same path.
+///
+/// This is the shape a range of real work is: one file, one detector, more than one episode. The
+/// self-dogfood pass met it by accident while exporting `HEAD~5..HEAD` of this very repository and got back
+/// an artefact that refused to certify itself, so the accident is a fixture now.
+fn shared_finding_repository() -> PathBuf {
+    let dir = fresh("shared-finding");
+    write(&dir, "src/lib.rs", "fn a() {}\n");
+    write(&dir, "tests/lib.rs", "#[test] fn a_works() {}\n");
+    git(&dir, &["add", "-A"]);
+    git(
+        &dir,
+        &[
+            "commit",
+            "-q",
+            "--date=1700000000 +0000",
+            "-m",
+            "feat: open the store",
+        ],
+    );
+    for (index, date) in ["1700014400", "1700028800"].iter().enumerate() {
+        let letter = char::from(b'b' + u8::try_from(index).expect("two episodes"));
+        write(
+            &dir,
+            "src/lib.rs",
+            &format!("fn a() {{}}\nfn {letter}() {{}}\n// TODO: finish fn {letter}\n"),
+        );
+        git(&dir, &["add", "-A"]);
+        git(
+            &dir,
+            &[
+                "commit",
+                "-q",
+                &format!("--date={date} +0000"),
+                "-m",
+                &format!("wip: the {letter} path"),
+            ],
+        );
+    }
+    dir
+}
+
+#[test]
+fn a_range_whose_episodes_share_a_finding_still_certifies_itself() {
+    // The bar `reco-c2i` set: a range whose episodes share a finding exports VERIFIED. The finding is one
+    // ask per (episode, detector, path) rather than one merged line, because what closes it is that episode's
+    // decision, and the two copies jump to two different diffs.
+    let dir = shared_finding_repository();
+    assert_eq!(code(&fathom(&dir, &["index"])), 0, "index");
+
+    let out = fathom(
+        &dir,
+        &[
+            "export",
+            "--episodes",
+            "HEAD~2..HEAD",
+            "--format",
+            "json",
+            "--out",
+            "shared",
+            "--json",
+        ],
+    );
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let payload: serde_json::Value = serde_json::from_str(stdout(&out).trim()).expect("JSON");
+    assert_eq!(
+        payload["scope"]["episodes"].as_u64(),
+        Some(2),
+        "the range is two episodes: {payload}"
+    );
+    assert_eq!(
+        payload["record"]["integrity"]["verified"],
+        serde_json::Value::Bool(true),
+        "the artefact that travels to the PR has to vouch for itself: {}",
+        payload["record"]["integrity"]["problems"]
+    );
+
+    // …and the record says so with one item per episode, each keyed by the episode it belongs to.
+    let record: serde_json::Value =
+        serde_json::from_str(&read(&dir, "shared.json")).expect("the artefact is the record");
+    let findings: Vec<&serde_json::Value> = record["checklist"]
+        .as_array()
+        .expect("a checklist")
+        .iter()
+        .filter(|item| item["kind"] == "finding")
+        .collect();
+    assert!(
+        findings.len() >= 2,
+        "two episodes, one shared finding each: {}",
+        record["checklist"]
+    );
+    let ids: Vec<&str> = findings
+        .iter()
+        .map(|item| item["id"].as_str().expect("an id"))
+        .collect();
+    let unique: std::collections::BTreeSet<&str> = ids.iter().copied().collect();
+    assert_eq!(unique.len(), ids.len(), "shared checklist id: {ids:?}");
+    for item in &findings {
+        let id = item["id"].as_str().expect("an id");
+        let episode = item["episode"].as_str().expect("an episode");
+        assert!(
+            id.contains(episode),
+            "{id} is not keyed by the episode {episode} it asks about"
+        );
+    }
+
+    // The markdown says the same thing in the verdict a reviewer reads, and prints both asks.
+    fathom(
+        &dir,
+        &[
+            "export",
+            "--episodes",
+            "HEAD~2..HEAD",
+            "--format",
+            "markdown",
+            "--out",
+            "shared",
+        ],
+    );
+    let text = read(&dir, "shared.md");
+    assert!(
+        !text.contains("UNVERIFIED") && text.contains(" verified:"),
+        "{text}"
+    );
+    assert!(
+        text.matches("- [ ] **`finding`**").count() >= 2,
+        "both episodes' copy of the finding is on the checklist:\n{text}"
+    );
+    std::fs::remove_dir_all(&dir).ok();
 }
 
 // --- the three formats, twice -------------------------------------------------------------------------------
