@@ -1054,6 +1054,27 @@ KEY_LIST: list[Key] = [
            "paid once instead of per navigation. Set it to the number of revisions a session is "
            "expected to page through, not to the size of the repository.",
        analyzer="graph.build", ticket="e7.3"),
+    _k(path="graph.enabled", kind="boolean", default=True,
+       doc="Write a graph row per revision at index time (`e3.11`, `reco-dlp`). On by default; the two "
+           "ways off are this key and the index's `--no-graph` flag, and either is a stated choice rather "
+           "than a fault — every architecture surface says which it was. Off by accident more often than on "
+           "purpose: this pass is what `fathom architecture`, `check`'s layering and cycle checks, "
+           "`architecture_delta` and `boundary_scan` read, and none of them can judge anything without it.",
+       analyzer="graph.build", ticket="e3.11"),
+    _k(path="graph.window", kind="integer", default=32, minimum=1, units="revisions",
+       doc="Revisions the index runs the graph pass for in one go, oldest first (`e3.11`). A cost bound and "
+           "nothing else: two new commits pay for two revisions, and a store that has never had a graph pass "
+           "says so and works off the tail rather than running a walk a foreground index cannot finish. It "
+           "raises its hand in the report when it stops short; `graph.chain_full_every` decides separately "
+           "how often the anchor is repeated.",
+       analyzer="graph.build", ticket="e3.11"),
+    _k(path="graph.max_corpus_mib", kind="integer", default=64, minimum=1, units="MiB",
+       doc="The refusal that stops the graph pass costing more than the index that called it (`e3.11`). One "
+           "revision's graph needs one structural pass over its whole live source corpus — an import is only "
+           "resolvable against the set of files that exist, so an unchanged file's edges change when a "
+           "neighbour appears. Above this size the pass declines, in the report and in `graph.partial`, and "
+           "touches nothing already stored.",
+       analyzer="graph.build", ticket="e3.11"),
     # --- extract ------------------------------------------------------------
     _k(path="extract.max_file_bytes", kind="integer", default=2_000_000, minimum=1,
        units="bytes",

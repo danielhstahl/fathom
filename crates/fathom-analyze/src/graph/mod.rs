@@ -82,6 +82,11 @@ pub mod query;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod lane;
 
+/// The index's writer: turning a repository revision into graph rows. Present with the lane, because
+/// a writer with no lane has nothing to write.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod revise;
+
 pub use crate::graph::build::{BuildOutcome, BuildSummary, Builder, ModuleInput, ModuleRows};
 pub use crate::graph::delta::{EdgeDelta, changed_modules, module_key, module_ops, revision_ops};
 pub use crate::graph::diff::{
@@ -94,7 +99,8 @@ pub use crate::graph::model::{
     FreshEntry, Graph, Interner, Op, Row, RowKind, SCHEMA_VERSION, Vertex, decode_rows, encode_rows,
 };
 pub use crate::graph::policy::{
-    DEFAULT_CHAIN_FULL_EVERY, DEFAULT_IGNORED_DIRS, DEFAULT_MAX_CHAIN_WALK, DEFAULT_PATH_MAX_HOPS,
+    DEFAULT_CHAIN_FULL_EVERY, DEFAULT_ENABLED, DEFAULT_IGNORED_DIRS, DEFAULT_MAX_CHAIN_WALK,
+    DEFAULT_MAX_CORPUS_MIB, DEFAULT_PATH_MAX_HOPS, DEFAULT_SNAPSHOT_CACHE_MIB, DEFAULT_WINDOW,
     GraphPolicy,
 };
 pub use crate::graph::query::{

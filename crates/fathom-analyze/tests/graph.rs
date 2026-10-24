@@ -660,6 +660,79 @@ fn the_policy_reads_its_config_and_notes_what_it_refused() {
 }
 
 #[test]
+fn the_pass_reads_its_own_three_knobs() {
+    // `e3.11`/`reco-dlp`: the switch, the window and the corpus cap are read from the repository's own
+    // `fathom.toml`, and a value that will not parse is a notice plus the default, never a stopped index.
+    let (policy, notices) = graph::GraphPolicy::from_repo_config_text(
+        "[graph]\nenabled = false\nwindow = 4\nmax_corpus_mib = 8\n",
+    );
+    assert!(!policy.enabled, "`enabled = false` is read: {policy:?}");
+    assert_eq!(policy.window, 4);
+    assert_eq!(
+        policy.max_corpus_bytes,
+        8 * fathom_core::memory::MIB as usize
+    );
+    assert!(notices.is_empty(), "{notices:?}");
+    let why = policy
+        .disabled_reason()
+        .expect("a disabled lane says which key disabled it");
+    assert!(why.contains("graph.enabled"), "{why}");
+
+    let (default, _) = graph::GraphPolicy::from_repo_config_text("");
+    assert!(
+        default.enabled,
+        "a repository with no config file gets the lane, not a shrug"
+    );
+    assert_eq!(
+        default.window,
+        graph::DEFAULT_WINDOW,
+        "one anchor period, so every revision in the lane is within one chain walk of an anchor"
+    );
+    assert_eq!(
+        default.max_corpus_bytes,
+        graph::DEFAULT_MAX_CORPUS_MIB * fathom_core::memory::MIB as usize
+    );
+    assert_eq!(
+        default.disabled_reason(),
+        None,
+        "and the default has nothing to refuse"
+    );
+
+    let (typo, notices) = graph::GraphPolicy::from_repo_config_text(
+        "[graph]\nenabled = \"off\"\nwindow = 0\nmax_corpus_mib = -2\n",
+    );
+    assert!(typo.enabled, "a string is not a refusal: {typo:?}");
+    assert_eq!(
+        typo.window, 0,
+        "`0` is a legitimate value — every owed revision — not a typo to be rescued from"
+    );
+    assert_eq!(
+        typo.max_corpus_bytes,
+        graph::DEFAULT_MAX_CORPUS_MIB * fathom_core::memory::MIB as usize,
+        "a negative cap is not 'read no bytes'"
+    );
+    assert_eq!(
+        notices.len(),
+        3,
+        "two refusals and an explanation of a legal but expensive value: {notices:?}"
+    );
+    assert!(
+        notices
+            .iter()
+            .any(|n| n.contains("graph.enabled") && n.contains("stayed on")),
+        "{notices:?}"
+    );
+    assert!(
+        notices.iter().any(|n| n.contains("graph.max_corpus_mib")),
+        "{notices:?}"
+    );
+    assert!(
+        notices.iter().any(|n| n.contains("every owed revision")),
+        "a `0` is not an error, but it is worth saying what it buys: {notices:?}"
+    );
+}
+
+#[test]
 fn a_policy_whose_walk_cap_exceeds_the_anchor_period_says_so() {
     let policy = graph::GraphPolicy {
         chain_full_every: 16,

@@ -141,6 +141,50 @@ pub struct Options {
     /// how long it thinks that will take; `--json` installs nothing, because that stream belongs to the
     /// run report alone (ADR-002 §7.5).
     pub progress: Option<ProgressSink>,
+    /// Whether this run writes the module graph, and from which config (`e3.11`, `reco-dlp`).
+    ///
+    /// [`GraphPass::Off`] is the default because a library caller that has not said which repository it
+    /// means must not be writing a graph for one — the same reason [`Options::now`] refuses to guess a
+    /// clock and [`Options::segment`] arrives as a value: ADR-002 §4.5 gives the CLI the config file, and
+    /// every knob of this pass (`graph.enabled`, `graph.window`, `graph.max_corpus_mib`, `[layers]`,
+    /// `[extract]`) lives in it.
+    pub graph: GraphPass,
+}
+
+/// Whether a run writes the module graph (`e3.11`, `reco-dlp`).
+///
+/// Two states, spelled as states rather than as a boolean beside a string, because the two only mean
+/// something together: a pass with no config text has no `[layers]` to tag its nodes with and no window to
+/// obey, so "enabled, and here is nothing to obey" is not a thing that can be true.
+#[derive(Debug, Clone, Default)]
+pub enum GraphPass {
+    /// Write no graph rows. What every library caller gets by default, and what `fathom index --no-graph`
+    /// asks for.
+    #[default]
+    Off,
+    /// Write a graph row for every owed revision, reading `[graph]`, `[layers]` and `[extract]` from the
+    /// repository's own `fathom.toml` text — handed over as a value, because this crate does not open it.
+    On {
+        /// The repository's `fathom.toml`, verbatim. Empty text is a legitimate value — a repository with
+        /// no config file — and every knob then takes its built-in default.
+        config_text: String,
+    },
+}
+
+impl GraphPass {
+    /// The pass, on, with the repository's `fathom.toml` text as its policy source.
+    #[must_use]
+    pub fn on(config_text: impl Into<String>) -> Self {
+        GraphPass::On {
+            config_text: config_text.into(),
+        }
+    }
+
+    /// Is the pass on?
+    #[must_use]
+    pub fn is_on(&self) -> bool {
+        matches!(self, GraphPass::On { .. })
+    }
 }
 
 /// Which part of the run a [`Tick`] is reporting on (`e5.9`).
@@ -158,6 +202,8 @@ pub enum Phase {
     Worktree,
     /// Re-deriving the episode set (ADR-003 §4.3).
     Episodes,
+    /// Writing the module graph (`e3.11`), which is a pass over revisions rather than commits.
+    Graph,
 }
 
 impl Phase {
@@ -172,6 +218,7 @@ impl Phase {
             Phase::Analysing => "analysing",
             Phase::Worktree => "reading the worktree",
             Phase::Episodes => "deriving episodes",
+            Phase::Graph => "building the module graph",
         }
     }
 
@@ -182,6 +229,9 @@ impl Phase {
             Phase::Walking | Phase::Analysing => "commit",
             Phase::Worktree => "path",
             Phase::Episodes => "episode",
+            // Revisions, not commits: the graph is keyed by tree, and two commits on one tree are one
+            // revision. Saying "commit" here would promise a row per commit that the phase does not do.
+            Phase::Graph => "revision",
         }
     }
 }
@@ -248,6 +298,7 @@ impl Default for Options {
             episodes: true,
             park_after_units: None,
             progress: None,
+            graph: GraphPass::default(),
         }
     }
 }
@@ -261,6 +312,9 @@ impl Options {
                 walk: WalkOptions::head(),
                 ..IngestOptions::default()
             },
+            // No graph, because `head()` is the options a caller that has named a repository and nothing
+            // else gets: it has not handed over a `fathom.toml` to obey (`e3.11`).
+            graph: GraphPass::Off,
             ..Options::default()
         }
     }
@@ -288,6 +342,9 @@ pub struct Report {
     pub quiet: bool,
     /// What the episode step did (`e1.3`); all zeroes when `Options::episodes` is off.
     pub episodes: crate::episodes::Report,
+    /// What the module-graph pass did (`e3.11`); all zeroes when `Options::graph` is `Off`, and also when
+    /// the store already held a graph for every revision this run could reach.
+    pub graph: crate::graph::revise::Report,
     /// Per-analyzer counters for *this run*, keyed by analyzer id.
     pub analyzers: BTreeMap<String, AnalyzerStats>,
     /// The provisional records (§6.4).
@@ -430,6 +487,8 @@ pub const PHASE_ANALYSES: &str = "analyses";
 pub const PHASE_WORKTREE: &str = "worktree";
 /// The episode rebuild (§4.3), which is a query over the commit rows and not a second walk.
 pub const PHASE_EPISODES: &str = "episodes";
+/// The module-graph pass (`e3.11`), which is a pass over *revisions* — a tree, not a commit.
+pub const PHASE_GRAPH: &str = "graph";
 /// Closing the `index_run` row and flushing the counters (§9.2).
 pub const PHASE_CLOSE: &str = "close";
 
@@ -661,6 +720,24 @@ pub fn run(
 
     phases.push((PHASE_EPISODES, started.elapsed()));
 
+    // 4d. The module graph (`e3.11`, `reco-dlp`). Deliberately last: it is the only pass that reads the
+    //     whole live corpus rather than one commit's changed paths, so it is the one whose cost a reader
+    //     most needs to see as its own number, and a run cancelled or budgeted before it still leaves a
+    //     complete spine, a complete set of analyses and a complete episode set behind. The pass takes its
+    //     work list from the store, not from this run, so an interrupted graph is finished by the next
+    //     ordinary `fathom index` instead of being lost with the run that stopped.
+    let graph_from = started.elapsed();
+    let mut graph = if options.graph.is_on() && interrupted.is_none() {
+        crate::graph::revise::run(repo, store, options, now)?
+    } else {
+        crate::graph::revise::Report::default()
+    };
+    // The pass does not own a clock: this is the crate's index driver, and one clock here is what keeps
+    // every phase number, and the graph's own, comparable with every other (`--stats`, `phases_ms`).
+    let graph_to = started.elapsed();
+    graph.elapsed = graph_to.saturating_sub(graph_from);
+    phases.push((PHASE_GRAPH, graph_to));
+
     // 4c. Close the `index_run` row, and only now. Closing it when the commit rows landed would stamp `ok`
     //     on a run whose analyses were then interrupted, and §9.2's whole recovery argument is that this
     //     stamp is the truth: a run that lies `ok` is a run whose unfinished work nobody asks about again,
@@ -702,6 +779,7 @@ pub fn run(
         commits_considered: targets.len(),
         spine,
         episodes,
+        graph,
         analyzers,
         worktree,
         worktree_skipped,
@@ -858,6 +936,26 @@ fn quiet_report(
     store.flush_counters(now)?;
     let delta = delta(&before, &store.counters("cache.")?);
     let episodes = crate::episodes::tally(store)?;
+
+    // The module graph, on the quiet path too (`e3.11`) — and this is the path that matters for the
+    // upgrade case. A store indexed before the lane had a writer is, by `nothing_new`'s own test,
+    // perfectly up to date: every ref matches, no commit owes a derivation. If the graph pass ran only on
+    // the walking path, `fathom index` would answer "nothing new" forever and the architecture surfaces
+    // would stay empty in a repository that had done everything right. The pass reads its work list from
+    // the store, so a quiet run is exactly a backfill run.
+    let graph_from = started.elapsed();
+    let mut graph = if options.graph.is_on() {
+        crate::graph::revise::run(repo, store, options, now)?
+    } else {
+        crate::graph::revise::Report::default()
+    };
+    let graph_to = started.elapsed();
+    graph.elapsed = graph_to.saturating_sub(graph_from);
+    let phases = if graph.wrote_anything() {
+        vec![(PHASE_WORKTREE, graph_to), (PHASE_GRAPH, graph_to)]
+    } else {
+        vec![(PHASE_WORKTREE, graph_to)]
+    };
     Ok(Report {
         kind: RunKind::Warm,
         commits_walked: 0,
@@ -867,6 +965,7 @@ fn quiet_report(
         // The store's own tally, because a rebuild did not run to produce a fresh one. Printing zeroes here
         // would be printing a sentence about the repository that is not true of it.
         episodes,
+        graph,
         analyzers: ANALYZED
             .iter()
             .map(|id| ((*id).to_owned(), stats_of(&delta, id)))
@@ -877,8 +976,9 @@ fn quiet_report(
         reason: None,
         failures: Vec::new(),
         elapsed: started.elapsed(),
-        // The phases a quiet run has: the check itself, and the worktree pass it still does (§6.4).
-        phases: phase_pairs(vec![(PHASE_WORKTREE, started.elapsed())]),
+        // The phases a quiet run has: the check itself, the worktree pass it still does (§6.4), and the
+        // graph pass when it had work the store still owed.
+        phases: phase_pairs(phases),
         quiet: true,
     })
 }

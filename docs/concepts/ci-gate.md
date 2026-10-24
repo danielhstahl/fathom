@@ -282,13 +282,13 @@ Three smaller things came out of the same ticket, because a gate that is debugga
 
 ## Limits, honestly
 
-* **`fathom index` does not yet write architecture graph snapshots.** Layering and cycles therefore report
-  `blocked` on a repository that has only ever been indexed — which is an honest `blocked`, with the fix, and
-  not a pass. The remedy those two rows print says exactly that, and deliberately does **not** tell you to run
-  `fathom index`, because re-indexing cannot fix it; until the lane is wired into indexing, `--skip layering
-  --skip cycles` is the way to run the other four in CI without a `blocked` row failing a required check. The
-  snapshots themselves are real and are recorded by `fathom_analyze::graph::Lane::record` (as
-  `crates/fathom-cli/tests/check_verb.rs` does), so the two checks are exercised end to end today.
+* **the two graph checks need the lane, and the lane has a cost.** `fathom index` writes the module graph
+  (`e3.11`), so on a repository that has been indexed `layering` and `cycles` judge rather than reporting
+  `blocked`. What can still make them `blocked` is a refusal: `--no-graph`, `graph.enabled = false`, or a pass
+  that stopped at `graph.window` or `graph.max_corpus_mib` and said so in the index report. A store indexed
+  before the pass existed is backfilled by the next ordinary `fathom index`, quiet run included. The
+  remedy those two rows print names the pass and the knobs that bound it, so a reader who is sent to the
+  indexer is also told what might make it decline.
 * **`tests` is a heuristic about file names, not about behaviour.** It cannot tell that a change was tested by
   a test in another language, or that a "logic" file is actually generated. That is why its default volume is
   `warning` and not `error`.

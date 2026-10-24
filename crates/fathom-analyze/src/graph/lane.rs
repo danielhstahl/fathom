@@ -259,6 +259,20 @@ impl<'a> Lane<'a> {
         self.revisions
     }
 
+    /// Which revision the lane's cursor sits on, if any (`e3.11`).
+    ///
+    /// A writer has to ask. `record` computes a delta against the cursor it is *holding*, and stamping a
+    /// `base_tree` the cursor is not on would write a delta that claims a base it was never computed from
+    /// — a chain that decodes into the wrong graph, silently. So the rule the writer follows is: pass a
+    /// base only when this says exactly that base, and pass `None` (an anchor) otherwise.
+    #[must_use]
+    pub fn cursor_tree(&self) -> Option<&str> {
+        self.cursor
+            .as_ref()
+            .map(|cursor| cursor.tree_oid.as_str())
+            .filter(|tree| !tree.is_empty())
+    }
+
     /// The store behind the lane, read-only.
     ///
     /// A surface that has a lane should not have to keep a second handle to the same store in order

@@ -591,6 +591,15 @@ pub struct IndexArgs {
     /// does any row a review or a sign-off points at. `fathom stats` prints the count and names this flag.
     #[arg(long)]
     pub prune: bool,
+    /// Do not write the module graph (`e3.11`).
+    ///
+    /// The escape hatch for a run that cannot afford it: one revision's graph costs one structural pass
+    /// over its live source corpus, which is the expensive thing this index does. `[graph] enabled = false`
+    /// in the repository's own `fathom.toml` is the durable form of the same refusal, and `graph.window` /
+    /// `graph.max_corpus_mib` are the knobs that make it affordable instead of off. With either, the
+    /// architecture surfaces say they have no graph rather than guessing without one.
+    #[arg(long = "no-graph")]
+    pub no_graph: bool,
     /// With `--prune`: print what would be removed and remove nothing.
     #[arg(long, requires = "prune")]
     pub dry_run: bool,
@@ -1780,6 +1789,12 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
         } else {
             Worktree::Analyse
         },
+        // The module graph (`e3.11`, `reco-dlp`): on unless this run or this repository said not to, and
+        // reading its knobs out of the repository's own `fathom.toml` — the CLI is the crate ADR-002 §4.5
+        // lets open that file, and everything downstream gets the text as a value.
+        graph: graph_pass(root, args.no_graph, &|line: String| {
+            output::problem(format_args!("config: {line}"))
+        }),
         ..index::Options::head()
     };
     let report = index::run(&repository, &mut store, &Unclassified, &options);
@@ -1935,6 +1950,9 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                 report.worktree_skipped.len()
             ));
         }
+        // The module graph (`e3.11`): the line that says whether the architecture surfaces have anything
+        // to read, and what it cost.
+        graph_lines(&report.graph, &say);
         if let Some(prune) = &prune {
             for line in prune_lines(prune) {
                 say(format_args!("{line}"));
@@ -1984,6 +2002,59 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
         _ if !report.failures.is_empty() => ExitCode::IndexDegraded,
         _ => ExitCode::Ok,
     })
+}
+
+/// The module-graph pass an index run should do (`e3.11`, `reco-dlp`).
+///
+/// Three things can stop it, and each says which it was, because "there is no graph" is a state a reviewer
+/// has to be able to tell the difference between: a flag on this run, a knob in the repository's own
+/// `fathom.toml`, or nothing at all — the ordinary case, where it simply runs.
+///
+/// Gated with the lane it writes: without a store build there is no `index` module to hand a pass to.
+#[cfg(feature = "sqlite-bundled")]
+pub(crate) fn graph_pass(
+    root: &std::path::Path,
+    no_graph: bool,
+    mut notice: impl FnMut(String),
+) -> fathom_analyze::index::GraphPass {
+    if no_graph {
+        notice(
+            "graph: not this run (--no-graph); the architecture surfaces will say the graph is missing"
+                .to_string(),
+        );
+        return fathom_analyze::index::GraphPass::Off;
+    }
+    let text = std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default();
+    let (policy, notices) = fathom_analyze::graph::GraphPolicy::from_repo_config_text(&text);
+    for line in notices {
+        notice(line);
+    }
+    if let Some(why) = policy.disabled_reason() {
+        notice(format!("graph: off — {why}"));
+        return fathom_analyze::index::GraphPass::Off;
+    }
+    fathom_analyze::index::GraphPass::on(text)
+}
+
+/// The module-graph lines of a run report: what it wrote, and the notices it brought back.
+///
+/// Printed only when there is something to print. A run that wrote no graph rows because the store already
+/// had every revision is not a run that failed to write them, and a line saying "module graph: 0
+/// revisions" in every ordinary warm index would teach people to stop reading it.
+#[cfg(feature = "sqlite-bundled")]
+fn graph_lines(
+    graph: &fathom_analyze::graph::revise::Report,
+    mut say: impl FnMut(std::fmt::Arguments),
+) {
+    // Printed whenever there is a sentence: a pass that wrote nothing *because it refused* has the most
+    // important thing to say in the whole report.
+    let sentence = graph.sentence();
+    if !sentence.is_empty() {
+        say(format_args!("  {sentence}"));
+    }
+    for notice in &graph.notices {
+        say(format_args!("  graph: {notice}"));
+    }
 }
 
 /// The seven-character prefix every verb here prints a commit id as, spelled once.
@@ -2084,6 +2155,11 @@ fn json_report(
                 .map(|(phase, ms)| (phase.clone(), json!(ms)))
                 .collect::<serde_json::Map<_, _>>(),
         ),
+        // The module graph pass (`e3.11`, `reco-dlp`): what it wrote, what it refused, and why it stopped.
+        // `null` when the pass was off (`--no-graph`, `graph.enabled = false`) — "not asked" is not the same
+        // statement as "asked, and the store already held every revision", and a CI consumer has to be able
+        // to tell them apart before it can gate on either.
+        "graph": report.graph.json(),
         "commits": {
             "walked": report.commits_walked,
             "new": report.commits_new,

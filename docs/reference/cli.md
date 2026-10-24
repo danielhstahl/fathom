@@ -204,8 +204,9 @@ Options:
       --committed-only     Do not analyse uncommitted paths (ADR-004 §6.4)
       --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
       --prune              Remove the commit rows no ref can reach — what a rebase, an `--amend` or a force-push leaves behind
-      --dry-run            With `--prune`: print what would be removed and remove nothing
+      --no-graph           Do not write the module graph (`e3.11`)
       --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --dry-run            With `--prune`: print what would be removed and remove nothing
       --no-progress        never print the index's progress row, even on a terminal
       --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
   -h, --help               Print help (see more with '--help')

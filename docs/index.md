@@ -122,10 +122,12 @@ to prove it can fail.
 
 **Alpha.** The git spine — index, episodes, timeline, diff, queue, session — is usable for daily review; the
 `0.1.0-alpha.1` artefact has not been published, so the install URL is not yet live; four detectors ship
-switched off because their false-positive rate has not been measured on real repositories; the architecture
-graph (`e3.x`) is built as an engine but its snapshots are not written by `fathom index` yet, which is why
-`blast` leaves the risk denominator rather than guessing and why the gate's two graph checks report
-themselves *blocked* on an unpopulated index ([the CI gate](concepts/ci-gate.md)). [Release status](concepts/release.md) is the detail.
+switched off because their false-positive rate has not been measured on real repositories. The module graph
+is written by `fathom index` (`e3.11`) — one revision per commit, bounded by `graph.window` and
+`graph.max_corpus_mib`, and an index that declines says which knob refused it — so the architecture surfaces
+and the gate's two graph checks judge instead of reporting themselves *blocked*, and a store that predates
+the pass is backfilled by the next ordinary `fathom index` run.
+ [Release status](concepts/release.md) is the detail.
 
 ---
 

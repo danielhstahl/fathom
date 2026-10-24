@@ -291,7 +291,11 @@ impl Repo {
     }
 
     fn reindex(&self) {
-        let out = fathom(&self.dir, &["index", "."]);
+        // `--no-graph` because every graph these tests read is one they wrote themselves with
+        // `Repo::record_graph`: a store that already holds a revision's real graph would keep it and ignore
+        // the synthetic one, and the synthetic one is the whole point — it is the only way a three-commit
+        // fixture can say "this turn added a cycle" (`reco-dlp` made `fathom index` write the graph).
+        let out = fathom(&self.dir, &["index", ".", "--no-graph"]);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
     }
 
@@ -1230,12 +1234,12 @@ fn a_run_over_a_repo_with_forty_commits_finishes_in_well_under_a_minute() {
     );
 }
 
-/// The remedy for a repository that has been indexed but has no module graph must not be "run `fathom
-/// index`", because `fathom index` does not write `graph_snapshot` rows. This test is here because that
-/// advice is *plausible* — the store is what the check reads, so the store is what a reader reaches for —
-/// and plausible wrong advice in a CI log costs an afternoon of re-indexing.
+/// A store the indexer filled but that has no module graph — which, since `reco-dlp`, takes an explicit
+/// `--no-graph` or a `graph.enabled = false` to arrange. The remedy may now be `fathom index`, because that
+/// command really does write the lane; what it must also do is say *which* knob could make the index decline,
+/// so the reader is not left re-running a command that refuses for a reason the gate never mentioned.
 #[test]
-fn an_index_with_no_module_graph_says_so_without_blaming_the_index() {
+fn an_index_with_no_module_graph_names_the_lane_and_the_knobs_that_bound_it() {
     let dir = std::env::temp_dir().join(format!("fathom-check-cli-nograph-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("fixture dir");
@@ -1268,8 +1272,9 @@ fn an_index_with_no_module_graph_says_so_without_blaming_the_index() {
         "2026-06-02T10:00:00+00:00",
     );
 
-    // Indexed, and deliberately *not* `Repo::record`ed: this is what a real `fathom index` leaves behind.
-    let out = fathom(&dir, &["index", "."]);
+    // Indexed with the graph pass held back, which is the only way left to arrive at "a store the indexer
+    // has filled and that still has no module graph" (`reco-dlp`).
+    let out = fathom(&dir, &["index", ".", "--no-graph"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
 
     let out = fathom(
@@ -1289,13 +1294,19 @@ fn an_index_with_no_module_graph_says_so_without_blaming_the_index() {
             .expect("the row");
         assert_eq!(row["status"], "blocked", "{name} has nothing to read");
         let remedy = row["remedy"].as_str().expect("a remedy");
-        // Not `!remedy.contains("fathom index")`: the honest sentence has to *name* the command in order to
-        // say it will not help. What must not appear is the instruction.
+        // `fathom index` is the remedy now, and it is allowed to be — but only alongside the reason it might
+        // not help: the pass caps itself, and a reader who is told "run the indexer" and gets a refusal back
+        // has been sent somewhere without being told what to look for there.
         assert!(
-            !remedy.starts_with("run `fathom index")
-                && !remedy.contains("`fathom index` in this repository"),
-            "{name} told the reader to run the command that cannot write a module graph: {remedy}"
+            remedy.starts_with("run `fathom index"),
+            "{name} should send the reader to the pass that writes the lane: {remedy}"
         );
+        for knob in ["graph.window", "graph.max_corpus_mib"] {
+            assert!(
+                remedy.contains(knob),
+                "{name}'s remedy does not name {knob}, the cap that would make that run decline: {remedy}"
+            );
+        }
         assert!(
             remedy.contains("module graph"),
             "{name} says which lane is missing, not just that something is: {remedy}"

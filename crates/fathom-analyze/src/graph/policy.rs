@@ -49,6 +49,34 @@ pub const DEFAULT_IGNORED_DIRS: [&str; 1] = ["node_modules"];
 /// reports, paid again, rather than an unbounded resident set.
 pub const DEFAULT_SNAPSHOT_CACHE_MIB: u64 = 32;
 
+/// Whether `fathom index` writes the module graph at all. `graph.enabled`, on by default.
+///
+/// The switch exists because the work it turns on is not free: a revision's graph costs one
+/// structural pass over the live corpus (see [`crate::graph::revise`] for why it cannot be less than
+/// that today). A repository that cannot afford it turns it off and says so, in its own
+/// `fathom.toml`, instead of getting a silent shrug from every architecture surface.
+pub const DEFAULT_ENABLED: bool = true;
+
+/// How many of the newest revisions one pass will write. `graph.window`, and
+/// [`DEFAULT_CHAIN_FULL_EVERY`] for a reason: the window is then exactly one anchor period, so every
+/// revision in the lane is within one chain walk of an anchor, and the three 30-revision windows this
+/// tool reads (the scorecard's, the churn window, the hotspot window) all fit inside it.
+///
+/// It is a *backfill* window, not a retention one: a warm run adds its own new revisions and leaves the
+/// older ones alone, so the lane grows history as the repository does. What the cap bounds is what one
+/// cold pass costs.
+///
+/// `0` means every owed revision, for a repository that wants the whole trend and can pay for it.
+pub const DEFAULT_WINDOW: usize = DEFAULT_CHAIN_FULL_EVERY;
+
+/// How much source one revision's structural pass may read, in MiB. `graph.max_corpus_mib`.
+///
+/// The cost guard on the guard: a repository with 400 MiB of source would spend minutes per revision,
+/// and an index that takes minutes per commit gets switched off. Refusing with a named knob is better
+/// than a slow surprise — this is the same shape as `ingest.file_size_cap.mib`, which refuses one file
+/// for the same reason.
+pub const DEFAULT_MAX_CORPUS_MIB: usize = 64;
+
 /// The knobs the graph lane runs under.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphPolicy {
@@ -62,6 +90,12 @@ pub struct GraphPolicy {
     pub ignored_dirs: Vec<String>,
     /// `graph.snapshot_cache_mib` — the byte ceiling on the lane's materialised-snapshot cache.
     pub snapshot_cache_bytes: u64,
+    /// `graph.enabled` — whether the index writes the module graph at all.
+    pub enabled: bool,
+    /// `graph.window` — how many of the newest revisions one pass writes; `0` is all of them.
+    pub window: usize,
+    /// `graph.max_corpus_mib`, in bytes: what one revision's structural pass may read.
+    pub max_corpus_bytes: usize,
 }
 
 impl Default for GraphPolicy {
@@ -75,6 +109,25 @@ impl Default for GraphPolicy {
                 .map(|name| (*name).to_string())
                 .collect(),
             snapshot_cache_bytes: DEFAULT_SNAPSHOT_CACHE_MIB * fathom_core::memory::MIB,
+            enabled: DEFAULT_ENABLED,
+            window: DEFAULT_WINDOW,
+            max_corpus_bytes: DEFAULT_MAX_CORPUS_MIB * (fathom_core::memory::MIB as usize),
+        }
+    }
+}
+
+impl GraphPolicy {
+    /// Whether the lane is off, with the sentence that says why (`graph.enabled = false`).
+    ///
+    /// Every surface that cannot answer an architecture question owes a reason, and this is the one reason
+    /// that is the repository's own choice rather than a missing index: a reader who set the knob should be
+    /// told they set it, not sent to `fathom index`.
+    #[must_use]
+    pub fn disabled_reason(&self) -> Option<&'static str> {
+        if self.enabled {
+            None
+        } else {
+            Some("`graph.enabled = false` in this repository's `fathom.toml`")
         }
     }
 }
@@ -103,6 +156,10 @@ impl GraphPolicy {
             ("chain_full_every", Slot(&mut policy.chain_full_every)),
             ("query.max_chain_walk", Slot(&mut policy.max_chain_walk)),
             ("query.path_max_hops", Slot(&mut policy.path_max_hops)),
+            // `graph.window = 0` is legal — it means "every owed revision" — so the zero that would
+            // bound the lane to nothing is refused for the other two knobs only. Handled by the
+            // per-knob check below rather than by making the loop lie about which zeros mean nothing.
+            ("window", Slot(&mut policy.window)),
         ] {
             let Some(value) = knob(table, path).and_then(TomlItem::as_value) else {
                 continue;
@@ -113,12 +170,19 @@ impl GraphPolicy {
                 ));
                 continue;
             };
-            if number < 1 {
+            if number < 0 || (number == 0 && path != "window") {
                 notices.push(format!(
                     "graph.{path} is {number}, which would bound the lane to nothing; kept the \
                      built-in default"
                 ));
                 continue;
+            }
+            if number == 0 && path == "window" {
+                notices.push(
+                    "graph.window = 0 means every owed revision: the first pass over a long history \
+                     will be slow, which is what the knob is for"
+                        .to_string(),
+                );
             }
             *slot.0 = usize::try_from(number).unwrap_or(usize::MAX);
         }
@@ -137,6 +201,31 @@ impl GraphPolicy {
                     }
                 }
                 Err(err) => notices.push(format!("graph.snapshot_cache_mib: {err}")),
+            }
+        }
+        // `graph.enabled` is the only boolean in the table, so it is read on its own rather than
+        // through the integer slots: the notice has to name the thing a repository asked for, which for
+        // a flag is "off, and every architecture surface will say so".
+        if let Some(value) = knob(table, "enabled").and_then(TomlItem::as_value) {
+            match value.as_bool() {
+                Some(enabled) => policy.enabled = enabled,
+                None => notices.push(
+                    "graph.enabled is not true or false, so the module graph stayed on".to_string(),
+                ),
+            }
+        }
+        // The corpus guard, read like `snapshot_cache_mib` because it is a memory/size ceiling with the
+        // same clamp, minus the floor: 0 would refuse every repository, so the minimum is 1 MiB.
+        if let Some(value) = knob(table, "max_corpus_mib").and_then(TomlItem::as_value)
+            && let Some(number) = value.as_integer()
+        {
+            if number < 1 {
+                notices.push(
+                    "graph.max_corpus_mib is below 1, so the built-in 64 MiB stood".to_string(),
+                );
+            } else {
+                let mib = usize::try_from(number).unwrap_or(usize::MAX / 1_048_576);
+                policy.max_corpus_bytes = mib.saturating_mul(fathom_core::memory::MIB as usize);
             }
         }
         if let Some(list) = table

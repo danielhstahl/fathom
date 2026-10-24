@@ -213,6 +213,22 @@ impl Graph {
         parts.join(" · ")
     }
 
+    /// The half of [`Self::handed`] that is a notice rather than a fact: what the read **left out**.
+    ///
+    /// `None` when the hand is whole. The whole sentence — revision, module count, cost — stays in the
+    /// pane's own detail, because it is a fact about the picture; counting it as a notice would light the
+    /// status strip's `⚠` badge on every repository whose index holds a module graph, which since `e3.11`
+    /// is every repository that has been indexed, and a badge that is always lit is a badge nobody reads.
+    /// What the read could not fit is different: it is the reason the map is smaller than the repository,
+    /// and the reviewer is owed it before they conclude the codebase is simple.
+    #[must_use]
+    pub fn handed_truncation(&self) -> Option<String> {
+        let hand = self.hand.as_ref()?;
+        hand.truncated
+            .as_ref()
+            .map(|truncated| format!("module graph: {}", truncated.sentence()))
+    }
+
     /// Why the pane has nothing, in the words ADR-006 §10.3 requires: a fact and a next action.
     #[must_use]
     pub fn empty_statement(&self) -> String {

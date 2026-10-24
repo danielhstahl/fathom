@@ -1931,6 +1931,15 @@
       "additionalProperties": false,
       "description": "Directories excluded from the dependency and structure graph.",
       "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Write a graph row per revision at index time (`e3.11`, `reco-dlp`). On by default; the two ways off are this key and the index's `--no-graph` flag, and either is a stated choice rather than a fault \u2014 every architecture surface says which it was. Off by accident more often than on purpose: this pass is what `fathom architecture`, `check`'s layering and cycle checks, `architecture_delta` and `boundary_scan` read, and none of them can judge anything without it.",
+          "type": "boolean",
+          "x-fathom-analyzer": "graph.build",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.11"
+        },
         "ignored_dirs": {
           "default": [
             "node_modules"
@@ -1946,6 +1955,17 @@
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e3.2"
         },
+        "max_corpus_mib": {
+          "default": 64,
+          "description": "The refusal that stops the graph pass costing more than the index that called it (`e3.11`). One revision's graph needs one structural pass over its whole live source corpus \u2014 an import is only resolvable against the set of files that exist, so an unchanged file's edges change when a neighbour appears. Above this size the pass declines, in the report and in `graph.partial`, and touches nothing already stored.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "graph.build",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.11",
+          "x-fathom-units": "MiB"
+        },
         "snapshot_cache_mib": {
           "default": 32,
           "description": "Ceiling on the revision graphs one lane keeps materialised in memory (`reco-93w`). Eviction is lossless: a snapshot is a fold of durable `graph_delta` rows, so what this buys with memory is not re-walking the anchor chain - `graph.materialise_revision.ms` paid once instead of per navigation. Set it to the number of revisions a session is expected to page through, not to the size of the repository.",
@@ -1956,6 +1976,17 @@
           "x-fathom-scope": "any",
           "x-fathom-ticket": "e7.3",
           "x-fathom-units": "MiB"
+        },
+        "window": {
+          "default": 32,
+          "description": "Revisions the index runs the graph pass for in one go, oldest first (`e3.11`). A cost bound and nothing else: two new commits pay for two revisions, and a store that has never had a graph pass says so and works off the tail rather than running a walk a foreground index cannot finish. It raises its hand in the report when it stops short; `graph.chain_full_every` decides separately how often the anchor is repeated.",
+          "minimum": 1,
+          "type": "integer",
+          "x-fathom-analyzer": "graph.build",
+          "x-fathom-merge": "replace",
+          "x-fathom-scope": "any",
+          "x-fathom-ticket": "e3.11",
+          "x-fathom-units": "revisions"
         }
       },
       "type": "object",

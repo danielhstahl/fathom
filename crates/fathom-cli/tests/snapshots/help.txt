@@ -158,13 +158,18 @@ Options:
           
           The only verb that deletes anything (ADR-004 §8.1). It runs after this run, against the ref tips this run just read, and it refuses rather than guesses: rows the store cannot prove are dead stay, and so does any row a review or a sign-off points at. `fathom stats` prints the count and names this flag.
 
-      --dry-run
-          With `--prune`: print what would be removed and remove nothing
+      --no-graph
+          Do not write the module graph (`e3.11`).
+          
+          The escape hatch for a run that cannot afford it: one revision's graph costs one structural pass over its live source corpus, which is the expensive thing this index does. `[graph] enabled = false` in the repository's own `fathom.toml` is the durable form of the same refusal, and `graph.window` / `graph.max_corpus_mib` are the knobs that make it affordable instead of off. With either, the architecture surfaces say they have no graph rather than guessing without one.
 
       --progress
           Print the index's progress row even where stderr is not a terminal (`e5.9`).
           
           On a terminal the row is on by default, one row overwriting itself; this asks for it in a log, a CI step or a `watch -n 1` wrapper, where one line per update is the point. It applies to `fathom index` and to the indexing `fathom --demo` does on your behalf — no other verb has a row to print — and `--json` refuses it, because that stream belongs to the run report and a row beside a machine-readable document is how a parser dies.
+
+      --dry-run
+          With `--prune`: print what would be removed and remove nothing
 
       --no-progress
           Never print the index's progress row, even on a terminal (`e5.9`).

@@ -160,6 +160,37 @@ pub const CHUNK_KIND_ADJACENCY: &str = "adjacency";
 /// strategy it kept room for would use more than one.
 pub const ANCHOR_SLOT: i64 = 0;
 
+/// One revision the graph lane owes a row for (`Store::graph_pending_revisions`).
+///
+/// A writer needs the *commit* as well as the tree, because the live file list of a revision is built from
+/// the file rows its commit touched (`git_commit_file`), and because the tree alone says nothing about
+/// what changed on the way to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingRevision {
+    /// The commit row this revision came from.
+    pub commit_oid: String,
+    /// The revision itself: `graph_snapshot`'s key.
+    pub tree_oid: String,
+    /// The first parent's tree, when this store has a row for it.
+    pub first_parent_tree: Option<String>,
+    /// The committer's date, unix millis — the order the writer walks.
+    pub when: i64,
+}
+
+/// The graph lane's work list: the revisions to write, and how many are waiting behind them.
+///
+/// The count is not decoration. A writer that quietly does the newest 32 of 4 000 owed revisions has
+/// answered the reviewer's question for today and said nothing about being 3 968 revisions behind;
+/// `owed - revisions.len()` is the number the report prints, and it is the store's number rather than an
+/// estimate the writer made on the way past the cap.
+#[derive(Debug, Clone, Default)]
+pub struct PendingWork {
+    /// The revisions to write, oldest first.
+    pub revisions: Vec<PendingRevision>,
+    /// Every revision the lane owes, capped or not.
+    pub owed: usize,
+}
+
 /// `add` or `remove`: the only two things a delta row can say.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Op {
@@ -892,6 +923,197 @@ impl Store {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| corrupt("listing graph revisions", &err))?;
         Ok(rows)
+    }
+
+    /// Every committed revision the graph lane does not have a row for, newest `newest` of them, oldest
+    /// first (`Store::graph_pending_revisions`' caller walks a chain, so it needs the order).
+    ///
+    /// This is the writer's work list (`e3.11`, `reco-dlp`). Three things the caller does not have to
+    /// re-check:
+    ///
+    /// * **liveness** — the rows are the commits a stored ref reaches, the same root rule as
+    ///   [`crate::inventory`]'s reachability walk, so a rebased-away commit does not get a graph of its
+    ///   own. When the store holds no ref tips at all there is nothing to be live relative to, and the
+    ///   walk is skipped rather than answering "nothing exists".
+    /// * **which end** — the cap takes the *newest* revisions. A writer capped at the oldest ones would
+    ///   never catch up on a repository that is behind: it would spend every run on the same ancient
+    ///   window and the reviewer's question, which is always about today, would never be answerable.
+    /// * **order** — committer date ascending, then oid, which is first-parent order for the linear
+    ///   histories that make up nearly every repository, and a decent approximation everywhere else.
+    ///   The writer re-reads a tree when the chain breaks; it is never wrong, only occasionally slower.
+    ///
+    /// `first_parent_tree` is the *first* parent's tree, because that is the side the spine diffed a merge
+    /// against — the two lanes must not disagree about what a merge changed. It is null for a root commit
+    /// and for a parent this store has no row for (a shallow boundary), which is the same "no base" answer
+    /// the lane takes as "this revision is an anchor".
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn graph_pending_revisions(&self, newest: usize) -> Result<PendingWork, Error> {
+        const ROWS: &str = " \
+            WITH RECURSIVE live(oid) AS ( \
+                SELECT oid FROM ref_tip WHERE kind IN ('head','branch','remote') \
+                UNION \
+                SELECT parent.value FROM live \
+                JOIN git_commit c ON c.oid = live.oid \
+                JOIN json_each(c.parent_oids) AS parent \
+            ), owed AS ( \
+                SELECT c.oid AS oid, c.tree_oid AS tree_oid, c.committer_utc AS when_ms, \
+                       (SELECT pc.tree_oid FROM json_each(c.parent_oids) AS p \
+                          JOIN git_commit pc ON pc.oid = p.value \
+                         WHERE p.key = 0) AS first_parent_tree \
+                FROM git_commit c \
+                WHERE (NOT EXISTS (SELECT 1 FROM ref_tip \
+                                    WHERE kind IN ('head','branch','remote')) \
+                       OR c.oid IN (SELECT oid FROM live)) \
+                  AND NOT EXISTS (SELECT 1 FROM graph_snapshot g WHERE g.tree_oid = c.tree_oid) \
+            ) \
+            SELECT oid, tree_oid, when_ms, first_parent_tree FROM owed \
+            ORDER BY when_ms DESC, oid DESC LIMIT ?1";
+        const COUNT: &str = " \
+            WITH RECURSIVE live(oid) AS ( \
+                SELECT oid FROM ref_tip WHERE kind IN ('head','branch','remote') \
+                UNION \
+                SELECT parent.value FROM live \
+                JOIN git_commit c ON c.oid = live.oid \
+                JOIN json_each(c.parent_oids) AS parent \
+            ) \
+            SELECT count(*) FROM git_commit c \
+            WHERE (NOT EXISTS (SELECT 1 FROM ref_tip \
+                                WHERE kind IN ('head','branch','remote')) \
+                   OR c.oid IN (SELECT oid FROM live)) \
+              AND NOT EXISTS (SELECT 1 FROM graph_snapshot g WHERE g.tree_oid = c.tree_oid)";
+        let cap = i64::try_from(newest).unwrap_or(i64::MAX);
+        let mut stmt = self
+            .connection()
+            .prepare(ROWS)
+            .map_err(|err| corrupt("listing the revisions the graph lane owes", &err))?;
+        let mut rows = stmt
+            .query_map(params![cap], |row| {
+                Ok(PendingRevision {
+                    commit_oid: row.get(0)?,
+                    tree_oid: row.get(1)?,
+                    when: row.get(2)?,
+                    first_parent_tree: row.get(3)?,
+                })
+            })
+            .map_err(|err| corrupt("listing the revisions the graph lane owes", &err))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| corrupt("listing the revisions the graph lane owes", &err))?;
+        // Newest first out of SQLite, because that is how a cap works; the chain order out of here.
+        rows.reverse();
+        let owed = self
+            .connection()
+            .query_row(COUNT, [], |row| row.get::<_, i64>(0))
+            .map_err(|err| corrupt("counting the revisions the graph lane owes", &err))?;
+        Ok(PendingWork {
+            revisions: Self::chain_order(rows),
+            owed: usize::try_from(owed).unwrap_or(usize::MAX),
+        })
+    }
+
+    /// The work list in the order a delta chain is written: every revision immediately after its first parent,
+    /// oldest branch first.
+    ///
+    /// Committer date is what a human expects and it is the tie-break here, but it cannot be the primary key:
+    /// `git` stores two commits with the same committer date without complaining (a rebase, a bot applying a
+    /// series in one second, every test fixture that pins a date), and then a date order is an arbitrary order
+    /// — and a writer handed revisions out of chain order must anchor each one, because nothing tells it the
+    /// previous row was the base. That turns a delta chain into a pile of full manifests and quietly multiplies
+    /// the cost of the pass by the anchor period. The first-parent links are already in the store, so the chain
+    /// order is derived rather than guessed.
+    ///
+    /// Revisions whose first parent is not in the list — the usual case at a `graph.window` boundary, and the
+    /// only case a store with no ref tips can have — are roots, and roots come in date order. Anything caught in
+    /// a parent cycle (which the store should not be able to hold, and which is worth more than a panic if it
+    /// does) is emitted once, in the order it arrived.
+    fn chain_order(rows: Vec<PendingRevision>) -> Vec<PendingRevision> {
+        // Indexed by position so the borrows stay simple: `rows` is moved out of at the end.
+        let mut position: BTreeMap<&str, usize> = BTreeMap::new();
+        for (index, row) in rows.iter().enumerate() {
+            let _ = position.insert(row.tree_oid.as_str(), index);
+        }
+        let parent = rows
+            .iter()
+            .map(|row| {
+                row.first_parent_tree
+                    .as_deref()
+                    .and_then(|tree| position.get(tree).copied())
+            })
+            .collect::<Vec<_>>();
+        let mut children: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        for (index, parent) in parent.iter().enumerate() {
+            if let Some(base) = parent {
+                children.entry(*base).or_default().push(index);
+            }
+        }
+        // `rows` arrives newest-first, so walking it backwards hands the roots over oldest-first and the stack
+        // below has to push them newest-first for the pop order to come out oldest-first.
+        let mut stack: Vec<usize> = (0..rows.len())
+            .filter(|index| parent[*index].is_none())
+            .collect();
+        let mut order = Vec::with_capacity(rows.len());
+        let mut emitted = vec![false; rows.len()];
+        while let Some(index) = stack.pop() {
+            if std::mem::replace(&mut emitted[index], true) {
+                continue;
+            }
+            order.push(index);
+            if let Some(kids) = children.get(&index) {
+                // Newest child first on the stack, so the oldest is popped next and the main line stays ahead of
+                // anything branched off it.
+                for kid in kids {
+                    stack.push(*kid);
+                }
+            }
+        }
+        // A cycle in the stored parent links leaves its members unreachable from any root. Emit them rather than
+        // dropping the revisions: the writer will anchor them, which is the honest answer about a base it cannot
+        // see, and the count in `PendingWork::owed` still adds up.
+        for (index, seen) in emitted.iter().enumerate() {
+            if !seen {
+                order.push(index);
+            }
+        }
+        order.into_iter().map(|index| rows[index].clone()).collect()
+    }
+
+    /// Throw away every derived graph row, and say what was there.
+    ///
+    /// The graph lane is derived data, and ADR-004 §9.5's rule for derived data is that it is recomputed
+    /// rather than migrated: there is no sensible edit to a chain of deltas when the rules it was built
+    /// under change, and a half-updated chain is a graph that lies. So the answer is deletion, and the
+    /// writer's next pass re-derives all of it — which is why this is a whole-lane reset rather than a
+    /// per-tree delete: a chain is only intact from an anchor, and dropping one revision out of the
+    /// middle orphans every delta above it.
+    ///
+    /// `graph_node` goes with them. The dictionary is an interning convenience, not a record — the ids it
+    /// mints mean nothing without the rows that use them, and `Lane::new` seeds its interner from it.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if a delete fails.
+    pub fn graph_reset(&mut self) -> Result<BTreeMap<String, i64>, Error> {
+        let mut removed = BTreeMap::new();
+        // Children first. The foreign keys are `ON DELETE CASCADE`, and a delete that names a child table
+        // *and* fires the cascade is only correct by accident. A chunk nothing links to is a chunk nothing
+        // will ever read again, so `graph_chunk` is emptied rather than decremented.
+        for table in [
+            "graph_delta",
+            "graph_chunk_link",
+            "graph_chunk",
+            "graph_node",
+            "graph_snapshot",
+        ] {
+            let deleted = self
+                .conn_mut()
+                .execute(&format!("DELETE FROM {table}"), [])
+                .map_err(|err| corrupt("clearing a graph table", &err))?;
+            let _ = removed.insert(table.to_owned(), i64::try_from(deleted).unwrap_or(i64::MAX));
+        }
+        self.bump_counter("graph.reset", 1);
+        Ok(removed)
     }
 
     /// Write a revision's op rows.

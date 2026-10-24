@@ -46,6 +46,79 @@
     "failures": {
       "type": "array"
     },
+    "graph": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The module graph pass (`e3.11`, `reco-dlp`): what one revision's graph cost and what the pass refused. `null` when the run did not ask for a graph \u2014 `--no-graph`, or `graph.enabled = false` \u2014 because \"not asked\" is not the same statement as \"asked, and the store already held every revision\".",
+      "additionalProperties": false,
+      "properties": {
+        "anchors": {
+          "type": "integer",
+          "description": "Revisions written as full anchors: the first of a pass, a break in the first-parent chain, or a chain that reached `graph.chain_full_every`. An anchor costs one manifest row plus the chunks that are new."
+        },
+        "edges": {
+          "type": "integer",
+          "description": "Edges in the newest revision this pass wrote, as the graph stores them: module-to-module, import, wildcard and package-granular kinds together."
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "description": "Wall time of the graph pass alone. It is also its own entry in `phases_ms`, and this is the number a slow index is argued about."
+        },
+        "modules": {
+          "type": "integer",
+          "description": "Modules in the newest revision this pass wrote, after `graph.ignored_dirs` is applied."
+        },
+        "nodes": {
+          "type": "integer",
+          "description": "Nodes in the newest revision: modules and their exported symbols."
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What the pass refused and why: a knob that did not parse, a file over `extract.max_file_bytes`, a blob git would not serve. Capped at six, because the count is `unavailable` and the notices are examples."
+        },
+        "partial": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why the pass stopped short of the work list \u2014 the window, the corpus cap, a cancellation \u2014 or null when it finished what it owed. A graph that stopped halfway must not read as a graph that is finished."
+        },
+        "revisions": {
+          "type": "integer",
+          "description": "Revisions this pass wrote a graph for."
+        },
+        "reset_rows": {
+          "type": "integer",
+          "description": "Derived graph rows deleted because `--refresh` asked the lane to be re-derived (ADR-004 \u00a79.5: derived data is recomputed, not migrated). Zero on every other run."
+        },
+        "skipped": {
+          "type": "integer",
+          "description": "Files the tree held that are not modules: not one of the six grammars, or under `graph.ignored_dirs`."
+        },
+        "unavailable": {
+          "type": "integer",
+          "description": "Modules kept in the graph with no structural record: over `extract.max_file_bytes`, not UTF-8, or an object git would not serve. Counted, never guessed at."
+        }
+      },
+      "required": [
+        "revisions",
+        "anchors",
+        "modules",
+        "nodes",
+        "edges",
+        "unavailable",
+        "skipped",
+        "reset_rows",
+        "elapsed_ms",
+        "partial",
+        "notices"
+      ]
+    },
     "interrupted": {
       "type": "boolean"
     },
@@ -263,7 +336,8 @@
     "worktree",
     "worktree_skipped",
     "failures",
-    "unreadable"
+    "unreadable",
+    "graph"
   ],
   "title": "fathom index --json",
   "type": "object",

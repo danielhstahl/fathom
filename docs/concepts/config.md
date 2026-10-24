@@ -517,6 +517,9 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `structure.findings.move_unconfirmed` | `boolean` | `True` | `replace` | `any` | — | — | `e2.3` |
 | `graph.ignored_dirs` | `string_list` | `node_modules` | `extend` | `any` | — | graph.build | `e3.2` |
 | `graph.snapshot_cache_mib` | `integer` | `32` | `replace` | `any` | MiB | graph.build | `e7.3` |
+| `graph.enabled` | `boolean` | `True` | `replace` | `any` | — | graph.build | `e3.11` |
+| `graph.window` | `integer` | `32` | `replace` | `any` | revisions | graph.build | `e3.11` |
+| `graph.max_corpus_mib` | `integer` | `64` | `replace` | `any` | MiB | graph.build | `e3.11` |
 | `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |

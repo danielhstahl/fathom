@@ -158,6 +158,14 @@ impl IndexJob {
                 // against the one denominator a run can state up front — which is why the frame's producer
                 // reads these rather than counting commits from the outside (`reco-j7t`).
                 progress: self.ticks.clone(),
+                // The watcher writes the graph too (`e3.11`, `reco-dlp`): a daemon that kept everything else
+                // current and let the module graph rot would leave `fathom architecture` and `fathom check`
+                // answering from a stale lane without ever saying it. Same knobs as the CLI's own run, read
+                // from the repository's `fathom.toml` each tick — which is what lets a `[layers]` edit work
+                // by re-ticking rather than by restarting the daemon.
+                graph: crate::verbs::graph_pass(&self.root, false, |line| {
+                    tracing::debug!(target: "fathom::watch", "{line}");
+                }),
                 ..index::Options::head()
             };
             let report = index::run(&repository, &mut store, &Unclassified, &options)

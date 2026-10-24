@@ -605,8 +605,9 @@ impl Source for Review {
         if graph_is_empty {
             return Err(Failure::NoModel(
                 "this index holds no module graph, so no architecture delta can be computed from it; \
-                 the indexer does not write graph snapshots in this build, so `nodes`, `edges` and \
-                 `layers` are unknowns here rather than empty"
+                 `fathom index` writes the lane, and declines to when `--no-graph` or \
+                 `graph.enabled = false` says not to — `nodes`, `edges` and `layers` are unknowns here \
+                 rather than empty"
                     .to_owned(),
             ));
         }

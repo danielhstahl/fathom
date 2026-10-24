@@ -182,7 +182,11 @@ impl Repo {
             commit(&dir, &format!("step {step}: add {file}"), step);
             trees.push(git(&dir, &["rev-parse", "HEAD^{tree}"]));
         }
-        let out = fathom(&dir, &["index", "."]);
+        // Indexed with the graph pass held back (`reco-dlp` wired `fathom index` to write the module graph,
+        // and a store that already has a revision's graph will not take the one this file seeds). The graphs
+        // here are the test's own: synthetic, deliberately worsening, keyed to these trees — which is the
+        // only way a scorecard's trend has a direction on a three-commit fixture.
+        let out = fathom(&dir, &["index", ".", "--no-graph"]);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         Repo { dir, trees }
     }

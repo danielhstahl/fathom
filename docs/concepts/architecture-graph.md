@@ -86,6 +86,32 @@ Reading it costs:
 * **stepping onto a revision no stored chain connects** — reconstruct it, and say so: `s3` measured the
   difference between the two paths at roughly a thousand times.
 
+## Who writes it
+
+`fathom index` does (`e3.11`). Every surface on this page reads a lane that the index pass produced:
+after the spine and the episode pass, `fathom_analyze::graph::revise` asks the store which live
+revisions have no `graph_snapshot` row — the same reachability rule the dead-row prune uses, so a
+rebased-away commit is not owed a graph — and writes one per revision, oldest first, stamped with each
+commit's own date so a cold backfill still lists its newest revision first.
+
+One revision's graph is a function of the whole corpus, not of the files that commit touched: an import
+resolves against the set of modules that exist at that revision, so a module's edges move when a
+neighbour appears without its own bytes changing. The pass therefore enumerates the revision's tree,
+reads the blobs of its source files (subject to `extract.max_file_bytes`), and extracts the corpus once
+per revision. That is the expensive thing the index does, and it is bounded rather than pretended away:
+
+| Knob | What it refuses |
+|---|---|
+| `graph.enabled` | the whole lane, for a repository that cannot afford it; every surface then says the graph is off rather than reporting an empty one |
+| `graph.window` | how many revisions one pass writes; the rest stay owed and the next run picks them up, newest first |
+| `graph.max_corpus_mib` | a revision whose source corpus is too big to be worth a structural pass, declined before the blobs are read |
+
+Every refusal is printed by the run that made it and counted in `fathom index --json`'s `graph` section
+(`revisions`, `modules`, `edges`, `unavailable`, `partial`), because a lane that quietly stopped half
+way through a history is a lane whose trend line is a fiction. `--refresh` deletes the lane and derives
+it again, which is the documented way a `[layers]` edit or an extractor bump reaches stored rows: derived
+data is recomputed, not patched (ADR-004 §9.5).
+
 ## What did this revision do to the architecture
 
 `changed_edges` answers which rows differ. A reviewer asks a different question — *what happened* — and
@@ -173,6 +199,9 @@ to read one from.
 [graph]
 chain_full_every = 32   # revisions between anchors
 ignored_dirs = ["node_modules"]
+enabled = true          # `fathom index` writes the lane (e3.11)
+window = 32             # revisions one pass will write, newest first
+max_corpus_mib = 64     # and the corpus size at which it declines to try
 
 [graph.query]
 max_chain_walk = 32     # and no more; equal to the anchor period on purpose

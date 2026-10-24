@@ -791,8 +791,12 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     app.compare = options.compare.clone();
     // ...and the architecture map gets its graph the same way (`e3.4`): the read happens once, at startup,
     // because a chain walk per keystroke would be a chain walk the reviewer pays for with a frozen frame.
-    if let Some(said) = app.install_graph(options.graph.clone()) {
-        app.notices.push(said);
+    // The hand sentence is not pushed as a notice: the pane prints it in its own detail, and a notice is a
+    // thing the shell had to work around, not a fact about a picture that is now simply there (`e3.11`).
+    // What the read left out **is** a notice, because it is the reason the map is smaller than the module.
+    app.install_graph(options.graph.clone());
+    if let Some(left_out) = app.graph.handed_truncation() {
+        app.notices.push(left_out);
     }
     // ...and the map's arrows get their citations the same way: the shell asks for the one arrow the cursor
     // is on, and this provider is the only party that can read the record behind it (`e3.4`).
@@ -958,8 +962,9 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     // The same for a piped frame: `--plain` promises the frame the terminal would have been given, and
     // that frame answers `c` (`e5.3`).
     app.compare = options.compare.clone();
-    if let Some(said) = app.install_graph(options.graph.clone()) {
-        app.notices.push(said);
+    app.install_graph(options.graph.clone());
+    if let Some(left_out) = app.graph.handed_truncation() {
+        app.notices.push(left_out);
     }
     app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);

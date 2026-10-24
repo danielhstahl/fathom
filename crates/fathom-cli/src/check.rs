@@ -522,18 +522,32 @@ fn gather_graph(
         }
     };
     if revisions.is_empty() {
-        // The remedy here is deliberately *not* `REMEDY_INDEX`. `fathom index` walks commits, blobs and
-        // structure — it does not write `graph_snapshot` rows (only `graph::Lane::record` does, and nothing
-        // in the shipped CLI calls it), so "run `fathom index`" would send a reader around a loop that
-        // cannot terminate. A remedy the reader can try and that does not work is worse than an honest "not
-        // available yet": the first teaches them to distrust the gate, the second tells them what to expect
-        // from it. See docs/concepts/ci-gate.md "Limits, honestly".
+        // The remedy here is deliberately *not* a shrug. `fathom index` walks commits, blobs and
+        // structure, and since `e3.11` it also runs the graph pass that writes `graph_snapshot` rows, so
+        // "run `fathom index`" is a remedy the reader can try and that works.
+        // The remedy here is `fathom index`, and since `e3.11` (`reco-dlp`) that is a remedy that works:
+        // the index's graph pass is what writes these rows. Two states are still said separately, because
+        // each has a different next act: a repository that turned the pass off (`graph.enabled = false`)
+        // has made a choice rather than left work undone, and an index that has every revision but the one
+        // being judged is a window problem, not an index problem.
+        let disabled = fathom_analyze::graph::GraphPolicy::from_repo_config_text(config)
+            .0
+            .disabled_reason()
+            .map(str::to_owned);
         return blocked_pair_with(
             policy,
             "this index holds no module graph, so neither layering nor cycles can be judged",
-            "the module graph lane is not written by `fathom index` yet; until it is, these two checks \
-             cannot run in CI — the other four do not need it, and `--skip layering --skip cycles` says \
-             the same thing out loud instead of waiting for `blocked` to fail a required check",
+            match disabled {
+                Some(why) => format!(
+                    "the graph pass is switched off for this repository — {why}. Set it back to true and \
+                     run `fathom index`, or pass `--skip layering --skip cycles` to say out loud that \
+                     these two checks are not part of this gate"
+                ),
+                None => "run `fathom index`: the module graph is written by its graph pass, which caps \
+                        itself at `graph.window` revisions and `graph.max_corpus_mib` of source, so a \
+                        refusal there is printed by the index and not invented here"
+                    .to_owned(),
+            },
         );
     }
     // The pair to compare, in the store's own spellings (tree oids, newest first). A revision the index

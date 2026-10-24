@@ -95,6 +95,9 @@ pub fn prepare() -> Result<Demo> {
 /// same sink), so what a reviewer watches on the demo is what they will watch on their own history.
 pub fn index(demo: &Demo, globals: &crate::verbs::Globals) -> Result<()> {
     let args = IndexArgs {
+        // The miniature is small and the architecture map is the point of the demo, so the graph
+        // pass runs here exactly as it does on a real history (`e3.11`).
+        no_graph: false,
         root: demo.root.display().to_string(),
         stats: false,
         json: false,
