@@ -99,10 +99,19 @@ fn one(
     }
     let store = Store::open(&store_path).map_err(failed)?;
 
+    // As in `fathom analyze`: the clone is what lets `e2.6`'s dependency delta reach the document this
+    // narrative is written from, so the story and the numbers cannot disagree about what the episode made
+    // the tree depend on.
+    let repository = Repository::discover(root_path).ok();
+
     // The same handle grammar as `fathom analyze` and `fathom why`: an episode id first, because it is
     // unambiguous, then a rev.
     let mut delta = match store.episode(target) {
-        Ok(Some(_)) => insight::for_episode(&store, target).map_err(|err| {
+        Ok(Some(_)) => match &repository {
+            Some(repository) => insight::for_episode_with_repo(&store, target, repository),
+            None => insight::for_episode(&store, target),
+        }
+        .map_err(|err| {
             Pending::new(
                 ExitCode::StoreCorrupt,
                 format!("reading the delta for {target}: {err}"),
@@ -112,7 +121,11 @@ fn one(
         Ok(None) | Err(_) => None,
     };
     if delta.is_none() {
-        let repository = Repository::discover(root_path).map_err(failed)?;
+        let opened = match repository {
+            Some(repository) => repository,
+            None => Repository::discover(root_path).map_err(failed)?,
+        };
+        let repository = &opened;
         let oid = repository.resolve(target).map_err(|err| {
             Pending::new(
                 ExitCode::Error,
@@ -124,7 +137,7 @@ fn one(
                 ),
             )
         })?;
-        delta = insight::for_commit(&store, &oid.hex()).map_err(|err| {
+        delta = insight::for_commit_with_repo(&store, &oid.hex(), repository).map_err(|err| {
             Pending::new(
                 ExitCode::IndexDegraded,
                 format!("reading the delta for {}: {err}", oid.hex()),

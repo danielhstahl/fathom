@@ -80,7 +80,12 @@ pub(crate) fn run(args: &ExportArgs) -> eyre::Result<ExitCode> {
     let mut episodes = Vec::with_capacity(scope.episodes.len());
     let mut extra_gaps: Vec<fathom_analyze::insight::Gap> = Vec::new();
     for (index, id) in scope.episodes.iter().enumerate() {
-        let Some(delta) = fathom_analyze::insight::for_episode(&store, id).map_err(failed)? else {
+        // The clone is in hand here anyway, so every episode's document carries `e2.6`'s dependency answer
+        // and the artefact cannot print "you cannot tell what this now depends on" beside a Dependency delta
+        // section of its own (ADR-001 §7.10).
+        let Some(delta) =
+            fathom_analyze::insight::for_episode_with_repo(&store, id, &repo).map_err(failed)?
+        else {
             return Err(crate::verbs::Pending::new(
                 ExitCode::IndexDegraded,
                 format!("the index no longer holds episode {id}"),
@@ -881,6 +886,19 @@ fn longest(scope: &Scope, end: bool) -> Option<String> {
     }
     if let Some((from, to)) = asked.split_once("..") {
         return Some(if end { to } else { from }.to_owned());
+    }
+    // Not a range, so the handle is either a rev the caller typed or an episode id the *store* resolved —
+    // and no revspec grammar reads an episode id. The resolved endpoints are the ones that always read;
+    // asking for the range's own end when the scope is one episode is how an artefact came to say "the
+    // dependency delta was not computed" about an episode it had just measured.
+    if scope.resolved
+        && let Some(token) = if end {
+            scope.to.as_deref()
+        } else {
+            scope.from.as_deref()
+        }
+    {
+        return Some(token.to_owned());
     }
     Some(asked.to_owned())
 }

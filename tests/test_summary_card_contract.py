@@ -605,6 +605,10 @@ BLAST_BLOCK = "\n".join([
 ])
 
 CARD_DIGESTS = {
+    # A digest is of the rendered card, so a policy default that reaches a card moves one. `risk_supplied`
+    # was re-blessed when `reco-6co` retuned `risk.tau` from 70 to 40: the threshold is printed twice on that
+    # card, in the flag line and in the note, and nothing else in any of the sixteen fixtures moved. The
+    # other fifteen are the originals.
     "code_and_tests": "28fbb4612862b849",
     "bare_index_record": "c7c9ff824b3bd7eb",
     "no_inventory": "99c7a029b90ee866",
@@ -618,7 +622,7 @@ CARD_DIGESTS = {
     "reformat_only": "60c07ee28b0716b4",
     "empty_episode": "89b4c3ca89339c7d",
     "noise_and_code": "ba80cf0df06dacc7",
-    "risk_supplied": "6c8415581e0ac262",
+    "risk_supplied": "b50d6154002c5617",
     "attention_floor": "4878901e2593448e",
     "wide_heuristic": "e14bd6f029aa9c1f",
 }

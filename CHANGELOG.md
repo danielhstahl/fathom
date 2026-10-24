@@ -17,6 +17,55 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Epic 2 closes: the episode says what it now depends on, and the fold is on the record (`reco-tx0`)
+
+Epic 2's exit criterion is one sentence — *every episode answers where the change landed and what it now
+depends on, with every number traceable to its evidence, and noise is suppressed by default and never
+silently hidden* — and two of its clauses were still untrue of the product when this started. The twelfth
+child, `reco-tt4`, had built the document that would carry the answer and left the dependency arm of its own
+`Supplied` enum unwired, on the grounds that the shape must not change when the analysis arrives. It arrived.
+
+- **`fathom analyze`, `fathom narrative`, `fathom export` and the MCP's episode-delta tool open the
+  repository and read it.** `Supplied::for_episode_with_repo` takes the store, the policy and the open
+  repository, resolves the episode's first member's parent and its last member — a multi-commit episode
+  compares the tree from before the episode, not its first commit — and hands that pair to
+  `deps::dependency_episode_repository`, which has done this correctly since `reco-kvs`. Four surfaces, one
+  call, so the dependency answer cannot be a different number in the card than in the artefact. A read with
+  no object database open still says `unavailable`, and the `why` names the command that fixes it.
+- **An empty answer is a measurement, not a gap.** An episode that touched no manifest gets a `measured`
+  section whose graph figure says *the graph was not read — no manifest or lockfile changed*, because
+  printing `0 → 0 packages` would be a number about a thing that was never looked at. The distinction is the
+  one ADR-001 §7.7 is made of: *nothing changed* and *nothing to change* are both answers; *not looked* is a
+  third, and the object database being shut is a fourth.
+- **A dependency figure's evidence is a command, and the command is real.** Every number in the section —
+  direct movement, graph size, sources, pattern — carries
+  `fathom check --only dependencies --base A --head B`, at the same pair the episode was measured across.
+  That holds in a build compiled without `deps-all` too, where the figures are absent rather than zero and
+  the section reverts to its `Unavailable` with the same command in the remedy.
+- **The noise fold is now on the record, not only on the pane.** The `what changed` section carries a
+  **noise folded** figure: files and churn excluded, broken out by class (`lockfile 1f · 0 lines`,
+  `generated 1f · 0 lines`). Before this, a reviewer reading "2 files, 44 lines" in a repository where a
+  generated client had been rewritten had the discounted number and nothing else — the discount was true,
+  and it was not visible, which is the "silently hidden" half of the criterion. A discount of zero is
+  reported too: *nothing was discounted* is the answer to a question the reviewer is entitled to ask.
+- **`fathom export` could not resolve its own scope, so the artefact contradicted itself.** An
+  `--episodes ep-…` artefact's range-level *Dependency delta* section said *not computed for this range*
+  two lines after the per-episode section had measured it: the range resolver re-parsed the raw handle as a
+  revspec, and no revspec grammar reads an episode id. It reads the scope the store already resolved.
+- **One blessed digest was stale, and said so.** `risk_supplied`'s card digest in
+  `tests/test_summary_card_contract.py` was still the one from before `reco-6co` retuned `risk.tau` from 70
+  to 40; the threshold is printed twice on that card, nothing else in any of the sixteen fixtures moved, and
+  the re-bless carries the reason in the file so the next reader does not have to rediscover it.
+- **What is still not wired, and where that is tracked.** `fathom episodes`' roll-up refuses the dependency
+  question on purpose — it would re-open one object pair per row to print one line each, against ADR-004
+  §11's budget for a path that lists hundreds of episodes — and `fathom compare` stays structural because its
+  two sides are refs with no episode to attribute a package to. `blast` remains the epic's one honest `?`,
+  owned by `e3.2`. Evidence: `crates/fathom-cli/tests/analyze_deps.rs` (a manifest-moving episode measures,
+  a source-only episode says the graph was not read, *every figure of every section of a real document
+  carries evidence and the document verifies itself*, and the named command runs), `delta_schema.rs` (a
+  measured block's evidence is what the payload carries) and the re-blessed narrative golden, which now
+  cites the fold.
+
 ### `reconcile` — spike `s4`: when is a pairing a fact, and what does a wrong one cost? (`reco-gj6`, folded by `reco-tx0.1`)
 
 `s4` measured rename and copy detection across **16 authored git repositories** — 29 review windows, 60

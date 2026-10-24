@@ -96,10 +96,21 @@ pub fn analyze(
         }
         let store = Store::open(&store_path).map_err(failed)?;
 
+        // The clone, when this root has one. `e2.6`'s dependency delta is read from the two trees of the
+        // episode — no row of the index carries a lockfile's contents — and this verb is the surface that
+        // owes the reviewer the answer, so it asks for the clone and lends the result to the model. A root
+        // whose clone has gone missing still gets a document; the dependency section says which of the two
+        // it got rather than printing an empty answer that reads as "nothing moved".
+        let repository = Repository::discover(root_path).ok();
+
         // An episode id first, because it is the cheaper question and it cannot be ambiguous with a rev:
         // episode ids carry a prefix no revspec grammar produces.
         let delta = match store.episode(target) {
-            Ok(Some(_)) => insight::for_episode(&store, target).map_err(|err| {
+            Ok(Some(_)) => match &repository {
+                Some(repository) => insight::for_episode_with_repo(&store, target, repository),
+                None => insight::for_episode(&store, target),
+            }
+            .map_err(|err| {
                 Pending::new(
                     ExitCode::StoreCorrupt,
                     format!("reading the delta for {target}: {err}"),
@@ -112,7 +123,11 @@ pub fn analyze(
         let delta = match delta {
             Some(found) => Some(found),
             None => {
-                let repository = Repository::discover(root_path).map_err(failed)?;
+                let opened = match repository {
+                    Some(repository) => repository,
+                    None => Repository::discover(root_path).map_err(failed)?,
+                };
+                let repository = &opened;
                 let oid = repository.resolve(target).map_err(|err| {
                     Pending::new(
                         ExitCode::Error,
@@ -132,7 +147,7 @@ pub fn analyze(
                 // index that could not read a commit and an index that has not seen it yet are different
                 // failures and want different remedies.
                 blocked = store.unreadable_commit(&hex).ok().flatten();
-                insight::for_commit(&store, &hex).map_err(|err| {
+                insight::for_commit_with_repo(&store, &hex, repository).map_err(|err| {
                     Pending::new(
                         ExitCode::IndexDegraded,
                         format!("reading the delta for {}: {err}", short(&hex)),

@@ -2,7 +2,9 @@
 
 - **Status**: Accepted, and implemented. `reco-tt4` (`e2.11`) landed the model and the version policy;
   the analyses that fill its emptiest sections (`e2.6`, `e2.8`, `e2.9`, `e2.3`, `e3.2`, `e4.3`) arrive
-  through the seam described in §4 and change no shape described here.
+  through the seam described in §4 and change no shape described here. Epic 2 closed with
+  `e2.6` arriving that way: an episode's dependency answer is measured, on every surface, from the episode's
+  own two trees.
 - **Ticket / plan key**: `e2.11` (`reco-tt4`). It is the structure ADR-001 §7.10 ("one reality") names,
   the payload [the summary card](summary-card.md) (`e2.10`) renders, the thing
   [the timeline](timeline.md) (`e1.6`) rows carry, and the document an `e6.4` MCP tool result returns.
@@ -87,6 +89,21 @@ as `SuppliedBlock`s — headline, basis, figures, confidence, owner — and the 
 sections, the schema or the card changes when that happens, which is the whole design goal: **the
 analyses arrive through a hand-over, not through a version bump.** `e4.3`'s findings arrive exactly this
 way, and what they are is specified in [pathology detectors](pathology-detectors.md).
+
+What arrives today, on a read that has an object database open: `what`, `where` and `tests` from the index;
+`surface` from `e2.8`'s classifier at path granularity, as a `partial`; `dependencies` from `e2.6`,
+`measured`, through `Supplied::for_episode_with_repo` — the form `fathom analyze`, `fathom narrative`,
+`fathom export` and the MCP's episode-delta tool all use, so there is one dependency answer and four
+readers of it; `attention` from `e4.4`'s admission; and `blast`, still `unavailable`, because `e3.2`'s call
+graph is what would fill it. A read with no repository open — a restored index, a database copied without
+its repository — gets `e2.6`'s `Unavailable` naming the command that fills it, which is a different fact
+from the empty answer an episode with no manifest change measures, and the two say so differently.
+
+The same rule applies to a figure *inside* a section that is measured. `what` reports a **noise folded**
+figure — files and lines discounted, by class — because the honest reading of "2 files, 44 lines" in a
+repository where a generated client was rewritten is not the number on its own: the discount is the figure
+that makes the number true, and it sits on the document rather than only in the policy file. See
+[noise suppression](noise-suppression.md).
 
 ## 5. Why the TUI is not allowed to compute
 

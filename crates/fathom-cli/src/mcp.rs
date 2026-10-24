@@ -470,14 +470,23 @@ impl Source for Review {
             .str("episode_id")
             .ok_or_else(|| Failure::BadArgs("episode_id is required".to_owned()))?;
         let store = self.store()?;
-        let found = insight::for_episode(&store, asked)
-            .map_err(|err| Failure::Internal(err.to_string()))?
-            .or_else(|| {
-                let repository = self.repository().ok()?;
-                let oid = fathom_ingest::revspec::resolve(&repository, asked).ok()?;
-                insight::for_commit(&store, &oid.hex()).ok().flatten()
-            })
-            .ok_or_else(|| {
+        // The clone is what lets the dependency section answer at all, and an agent calling this tool is
+        // asking the same question a reviewer asks: what did this change touch, and what does it now
+        // depend on (`e2.6`, through `e2.11`'s hand-over).
+        let repository = self.repository();
+        let found = match &repository {
+            Ok(repository) => insight::for_episode_with_repo(&store, asked, repository),
+            Err(_) => insight::for_episode(&store, asked),
+        }
+        .map_err(|err| Failure::Internal(err.to_string()))?
+        .or_else(|| {
+            let repository = repository.ok()?;
+            let oid = fathom_ingest::revspec::resolve(&repository, asked).ok()?;
+            insight::for_commit_with_repo(&store, &oid.hex(), &repository)
+                .ok()
+                .flatten()
+        })
+        .ok_or_else(|| {
                 Failure::NotReviewable(format!(
                     "`{asked}` names no episode in this index; `fathom episodes --json` lists what it \
                      holds, and `fathom analyze {asked} --json` answers the same question from the shell"

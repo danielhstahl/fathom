@@ -106,6 +106,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             ]),
             confidence: Some(0.9),
             owner: "e2.6".to_owned(),
+            run: None,
         }),
         tests: Some(SuppliedBlock {
             headline: "1 case deleted, none added".to_owned(),
@@ -113,6 +114,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             figures: BTreeMap::from([("deleted".to_owned(), "1 case".to_owned())]),
             confidence: None,
             owner: "e2.9".to_owned(),
+            run: None,
         }),
         blast: Some(SuppliedBlock {
             headline: "4 modules reach a changed symbol".to_owned(),
@@ -120,6 +122,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             figures: BTreeMap::from([("dependents".to_owned(), "4 modules".to_owned())]),
             confidence: Some(0.75),
             owner: "e3.2".to_owned(),
+            run: None,
         }),
         surface: None,
         structure: Some(SuppliedBlock {
@@ -128,6 +131,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             figures: BTreeMap::new(),
             confidence: None,
             owner: "e2.3".to_owned(),
+            run: None,
         }),
         findings: vec![
             insight::Finding {

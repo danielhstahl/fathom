@@ -153,6 +153,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             ]),
             confidence: Some(0.9),
             owner: "e2.6".to_owned(),
+            run: None,
         }),
         tests: Some(SuppliedBlock {
             headline: "1 case deleted, none added".to_owned(),
@@ -160,6 +161,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             figures: BTreeMap::from([("deleted".to_owned(), "1".to_owned())]),
             confidence: None,
             owner: "e2.9".to_owned(),
+            run: None,
         }),
         blast: None,
         surface: None,
@@ -184,6 +186,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         figures: BTreeMap::from([("reachable".to_owned(), "14".to_owned())]),
         confidence: Some(0.7),
         owner: "e3.2".to_owned(),
+        run: None,
     });
     full.supplied.surface = Some(SuppliedBlock {
         headline: "docs touched, no api change".to_owned(),
@@ -191,6 +194,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         figures: BTreeMap::new(),
         confidence: None,
         owner: "e2.8".to_owned(),
+        run: None,
     });
     full.supplied.structure = Some(SuppliedBlock {
         headline: "one module split, churn band low".to_owned(),
@@ -198,6 +202,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         figures: BTreeMap::from([("bands".to_owned(), "low".to_owned())]),
         confidence: None,
         owner: "e2.3".to_owned(),
+        run: None,
     });
     corpus.push(("fully-lent", insight::compose(&full)));
 

@@ -259,6 +259,7 @@ saying `[press b]` after a rebind would be a lie.
 | `fathom noise languages` | the token model: languages, tokeniser, formatter, what each normalises |
 | `fathom noise score` / `bench` | the accuracy/precision/recall table and the cost budget |
 | `⊘` lines in the diff pane (`e1.7`) | the fold itself, with `b` to expand — the same `Suppression.render()` string, not a re-translation |
+| the `noise folded` figure on an episode's delta document (`e2.11`) | how much of the episode the totals exclude, per class — the same fold the `⊘` lines show, on the document every surface reads |
 
 ---
 

@@ -114,6 +114,34 @@ drill-down
 Every printed row has a hunk or says why it has none. The excerpt is cut round the line that proves the
 row, not the top of the hunk: in a mass refresh the two are usually a hundred lines apart.
 
+## Where it reaches the product
+
+Three reads, one measurement each, and each one says which of them it is:
+
+| read | entry point | what the pair of trees is |
+|---|---|---|
+| a cold scan of a revision | `State::of` on a `Surface` | one revision, no delta |
+| an episode, from the index | `Supplied::for_episode_with_repo` (`e2.11`'s seam) | the episode's first member's parent and its last member |
+| a range someone typed | `fathom check --only dependencies --base A --head B` | the two refs, as written |
+
+The episode read is the one that closed Epic 2's exit criterion — *every episode answers what it now depends
+on, with every number traceable* — and it carries three rules that the CLI cannot invent for itself:
+
+- **An empty answer is a measurement.** An episode that touched no manifest produces a measured section
+  whose graph was not read, not a `0 → 0` line implying a graph was compared. The section says the file pair
+  held nothing dependency-shaped, which is a fact about the episode; `Unavailable` stays reserved for a read
+  with no object database, which is a fact about the reader.
+- **Every figure carries the command that reproduces it.** The direct count, the graph size, the sources and
+  the pattern all point at `fathom check --only dependencies --base <from> --head <to>`, which is the same
+  analysis on the same two commits. A reviewer who does not believe a number runs the number.
+- **The dependency answer is not added to an episode's churn.** The delta document reports dependency
+  movement as its own section; the churn in `what changed` counts it as ordinary file churn with the
+  ecosystem named, because a lockfile's lines are churn and pretending otherwise moves a number the reviewer
+  is holding.
+
+The roll-up on `fathom episodes` deliberately does *not* carry this answer: it would open one object pair per
+row to print one line each, on a hot path with a stated budget (ADR-004 §11).
+
 ## Limits
 
 - The graph is only as good as the parser that read it. Lockfiles that record no edges cannot support

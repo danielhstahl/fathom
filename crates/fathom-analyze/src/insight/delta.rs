@@ -899,6 +899,253 @@ pub struct SuppliedBlock {
     pub confidence: Option<f64>,
     /// The owning ticket, for the pointer.
     pub owner: String,
+    /// A command the reviewer can run and get the same answer from, when one exists.
+    ///
+    /// A hand-over is the one case where a figure's evidence is not inside this document, so this is the
+    /// difference between "the card trusts another analysis" and "the card trusts another analysis and
+    /// says where to check it" (ADR-001 §7.9). A block without it is still a measured section; it just
+    /// points at its owner and nowhere further.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run: Option<String>,
+}
+
+impl Supplied {
+    /// The hand-over with `e2.6`'s dependency delta lent to it.
+    ///
+    /// The one construction of a [`SuppliedBlock`] this crate offers, because the alternative is every
+    /// surface inventing its own sentence for the same delta — which is what `e2.11` exists to stop.
+    #[must_use]
+    pub fn with_dependencies(mut self, block: SuppliedBlock) -> Self {
+        self.dependencies = Some(block);
+        self
+    }
+}
+
+/// Move `e2.6`'s dependency delta for one episode into this model's hand-over shape (`e2.11` §4).
+///
+/// Nothing is recomputed. The sentence is `e2.6`'s, the counts are `e2.6`'s, and so is the refusal to call
+/// a file it could not read a file that changed — which is the whole point: the card's dependency figure and
+/// `fathom check --only dependencies` then report one measurement instead of two opinions of it. What this
+/// adds is the *basis* — which two revisions were compared, which files were read, and what could not be
+/// read — because a figure whose evidence is another analysis has to name what it is talking about or
+/// nobody can go and check it (ADR-001 §7.9).
+///
+/// `from` and `to` are how the caller spells the two revisions, so the printed basis matches the handles the
+/// reviewer typed; the run command is built from the same pair, so clicking the number re-runs the thing
+/// that made it.
+#[must_use]
+pub fn dependency_block(
+    episode: &crate::deps::DependencyEpisode,
+    from: &str,
+    to: &str,
+) -> SuppliedBlock {
+    let model = &episode.model;
+    let counts = &model.counts;
+    let spell = |list: &mut Vec<String>, count: usize, word: &str| {
+        if count > 0 {
+            list.push(format!("{count} {word}"));
+        }
+    };
+    let mut figures: BTreeMap<String, String> = BTreeMap::new();
+    // The command that reproduces this answer, from the same two handles the basis prints: a figure whose
+    // evidence is another analysis has to leave the reviewer somewhere to check it (ADR-001 §7.9).
+    let run = format!("fathom check --only dependencies --base {from} --head {to}");
+    if episode.paths.totals.files == 0 {
+        // Nothing dependency-shaped changed, and the warm path reads the changed paths only — so the two
+        // states it compares are empty because they were never populated, not because the repository
+        // depends on nothing. Printing "0 → 0 packages" here would be a number whose evidence is an empty
+        // read, which is the one way this section can lie (ADR-001 §7.7).
+        figures.insert(
+            "dependency files".to_owned(),
+            "none — no manifest or lockfile moved".to_owned(),
+        );
+        figures.insert(
+            "graph".to_owned(),
+            "not read: nothing dependency-shaped changed in this episode".to_owned(),
+        );
+        return SuppliedBlock {
+            headline: model.headline.clone(),
+            basis: format!(
+                "read between {from} and {to}; no manifest or lockfile was touched, so the graph \
+                 was not opened"
+            ),
+            figures,
+            confidence: None,
+            owner: SectionId::Dependencies.owner().to_owned(),
+            run: Some(run),
+        };
+    }
+
+    // Direct first: the question a reviewer asks is "what did this commit *declare*", and the transitive
+    // movement that follows from it is a separate answer (`e2.6`'s own ordering, kept here).
+    let mut direct: Vec<String> = Vec::new();
+    spell(&mut direct, counts.direct_added, "added");
+    spell(&mut direct, counts.direct_removed, "removed");
+    spell(&mut direct, counts.direct_upgraded, "upgraded");
+    spell(&mut direct, counts.direct_downgraded, "downgraded");
+    spell(
+        &mut direct,
+        counts.direct_unordered + counts.direct_requalified,
+        "moved",
+    );
+    spell(&mut direct, counts.unattributed, "not attributable");
+    figures.insert(
+        "direct".to_owned(),
+        if direct.is_empty() {
+            "nothing declared moved".to_owned()
+        } else {
+            direct.join(" · ")
+        },
+    );
+
+    let mut transitive: Vec<String> = Vec::new();
+    spell(&mut transitive, counts.transitive_added, "added");
+    spell(&mut transitive, counts.transitive_removed, "removed");
+    spell(&mut transitive, counts.transitive_upgraded, "upgraded");
+    spell(&mut transitive, counts.transitive_downgraded, "downgraded");
+    spell(&mut transitive, counts.transitive_unordered, "moved");
+    if !transitive.is_empty() && counts.unexplained_transitive > 0 {
+        transitive.push(format!(
+            "{} with no changed direct dependency behind them",
+            counts.unexplained_transitive
+        ));
+    }
+    figures.insert(
+        "transitive".to_owned(),
+        if transitive.is_empty() {
+            "the resolved graph did not move".to_owned()
+        } else {
+            transitive.join(" · ")
+        },
+    );
+
+    let size = &model.graph.total;
+    let mut graph = format!(
+        "{} → {} resolved package(s), net {:+}",
+        grouped(i64::try_from(size.before).unwrap_or(i64::MAX)),
+        grouped(i64::try_from(size.after).unwrap_or(i64::MAX)),
+        size.net
+    );
+    if model.graph.per_ecosystem.len() > 1 {
+        let ecologies: Vec<String> = model
+            .graph
+            .per_ecosystem
+            .iter()
+            .take(ROLLUP_CAP)
+            .map(|(ecosystem, one)| format!("{ecosystem} {}→{}", one.before, one.after))
+            .collect();
+        graph.push_str(&format!(" ({})", ecologies.join(", ")));
+    }
+    figures.insert("graph".to_owned(), graph);
+
+    if !model.sources.is_empty() || !model.sources_gone.is_empty() {
+        let named: Vec<String> = model
+            .sources
+            .iter()
+            .take(ROLLUP_CAP)
+            .map(|source| match &source.via {
+                Some(package) => format!("{} ({package})", source.identity),
+                None => source.identity.clone(),
+            })
+            .collect();
+        let mut sources = format!(
+            "{} new source(s){}",
+            model.sources.len(),
+            if named.is_empty() {
+                String::new()
+            } else {
+                format!(": {}", named.join(", "))
+            }
+        );
+        if !model.sources_gone.is_empty() {
+            sources.push_str(&format!(", {} gone", model.sources_gone.len()));
+        }
+        figures.insert("sources".to_owned(), sources);
+    }
+    if counts.license_changes > 0
+        || !model.licenses.added.is_empty()
+        || !model.licenses.removed.is_empty()
+    {
+        let mut licence = Vec::new();
+        if counts.license_changes > 0 {
+            licence.push(format!(
+                "{} changed on an unchanged version",
+                counts.license_changes
+            ));
+        }
+        if !model.licenses.added.is_empty() {
+            licence.push(format!("{} new to the graph", model.licenses.added.len()));
+        }
+        if !model.licenses.removed.is_empty() {
+            licence.push(format!("{} gone", model.licenses.removed.len()));
+        }
+        figures.insert("licence".to_owned(), licence.join(" · "));
+    }
+
+    // Never silently hidden: a lockfile this build could not parse is a hole in the answer above, and the
+    // hole is printed with the parser's own advice rather than folded into a tidy count.
+    if let Some(unread) = episode.paths.unparsed.first() {
+        let advice = match &unread.body {
+            crate::deps::Body::Unparsed(unparsed) => unparsed.advice().to_owned(),
+            _ => "it parsed, and the delta still did not cover it".to_owned(),
+        };
+        figures.insert(
+            "not read".to_owned(),
+            format!(
+                "{} file(s) could not be parsed — {} ({}: {})",
+                episode.paths.unparsed.len(),
+                advice,
+                unread.path,
+                unread.ecosystem.as_str()
+            ),
+        );
+    } else if !model.complete || !episode.paths.complete {
+        figures.insert(
+            "not read".to_owned(),
+            "one side of the comparison was read only partially".to_owned(),
+        );
+    }
+
+    let files: Vec<String> = episode
+        .paths
+        .paths
+        .iter()
+        .take(ROLLUP_CAP)
+        .map(|row| format!("{} ({})", row.path, row.ecosystem.as_str()))
+        .collect();
+    let remainder = episode.paths.paths.len().saturating_sub(files.len());
+    let mut basis = format!(
+        "{} dependency file(s) read between {from} and {to}{}",
+        episode.paths.totals.files,
+        if files.is_empty() {
+            " — no manifest or lockfile changed".to_owned()
+        } else {
+            format!(
+                ": {}{}",
+                files.join(", "),
+                if remainder > 0 {
+                    format!(" +{remainder} more")
+                } else {
+                    String::new()
+                }
+            )
+        }
+    );
+    if !model.complete {
+        basis.push_str("; one side was read only partially");
+    }
+    if let Some(note) = model.notes.first() {
+        basis.push_str(&format!("; {note}"));
+    }
+
+    SuppliedBlock {
+        headline: model.headline.clone(),
+        basis,
+        figures,
+        confidence: None,
+        owner: SectionId::Dependencies.owner().to_owned(),
+        run: Some(run),
+    }
 }
 
 /// One finding, in the shape every surface prints it: kind, subject, message, severity, evidence.
@@ -1142,7 +1389,7 @@ pub fn compose(input: &Input) -> EpisodeDelta {
     let sections = vec![
         what_section(files, &totals, full),
         where_section(files, &totals, full, &input.supplied),
-        dependencies_section(&input.supplied),
+        dependencies_section(&input.supplied, &input.provenance.files_detail),
         surface_section(files, &input.supplied),
         tests_section(files, &input.supplied),
         blast_section(&input.supplied),
@@ -1283,6 +1530,46 @@ fn what_section(files: &[FileDelta], totals: &Totals, full: bool) -> Section {
             figures.push(Figure::new("change kinds", value, inside("/files")));
         }
     }
+    // Noise is a view, so the view says which files it folded and which rule folded them. A reader who is
+    // shown `5 of 9` and not the folded paths cannot tell a lockfile from a formatter pass, and
+    // "suppressed by default" is only honest while it is also "named by default" (ADR-001 §7.2).
+    let folded: Vec<&FileDelta> = files.iter().filter(|file| is_noisy(file)).collect();
+    if !folded.is_empty() {
+        // Named by the noise class when the index recorded one, and by the surface when it did not: the
+        // taxonomy columns are `unknown` in a build whose policy engine has not answered, and an
+        // unclassified folded file is still a folded file whose discount has to be printable.
+        let mut by_class: BTreeMap<String, (i64, i64)> = BTreeMap::new();
+        for file in &folded {
+            let class = match file.noise_class.as_str() {
+                "" | "unknown" => surface_of(file).as_str().to_owned(),
+                other => other.to_owned(),
+            };
+            let entry = by_class.entry(class).or_default();
+            entry.0 += 1;
+            entry.1 = entry.1.saturating_add(file.churn());
+        }
+        let listed: Vec<String> = by_class
+            .iter()
+            .take(ROLLUP_CAP)
+            .map(|(class, (count, churn))| format!("{class} {count}f · {churn} lines"))
+            .collect();
+        figures.push(
+            Figure::new(
+                "noise folded",
+                format!(
+                    "{} of {} file(s) discounted ({})",
+                    grouped(i64::try_from(folded.len()).unwrap_or(i64::MAX)),
+                    grouped(totals.files_read),
+                    listed.join(" · ")
+                ),
+                inside("/totals/discounted_churn"),
+            )
+            .with_raw(&[
+                ("files", i64::try_from(folded.len()).unwrap_or(i64::MAX)),
+                ("discounted", totals.discounted_churn),
+            ]),
+        );
+    }
     let (state, gap) = if files.is_empty() {
         (
             STATE_PARTIAL,
@@ -1422,31 +1709,31 @@ fn where_section(files: &[FileDelta], totals: &Totals, full: bool, supplied: &Su
 }
 
 /// The `dependencies` section, or the stated refusal.
-fn dependencies_section(supplied: &Supplied) -> Section {
+///
+/// The refusal is worded by the read that failed to answer, because the two reasons are different facts: a
+/// rail page reads one summed row per path and has no blobs to parse, while a per-episode read over an
+/// unopenable clone has the paths and not the trees. Each names the verb that does answer.
+fn dependencies_section(supplied: &Supplied, detail: &str) -> Section {
     let id = SectionId::Dependencies;
     match &supplied.dependencies {
         Some(block) => {
+            // The hand-over's evidence is the owning analysis plus the command that re-runs it: the
+            // figures themselves live in another module, and a pointer into this document would point at
+            // a copy. A reviewer with the command has the hunk-level proof (ADR-001 §7.9).
+            let evidence = || Evidence {
+                pointer: None,
+                run: block.run.clone(),
+                owner: Some(block.owner.clone()),
+            };
             let mut figures = vec![
-                Figure::new(
-                    "headline",
-                    block.headline.clone(),
-                    Evidence::owner(&block.owner),
-                )
-                .with_confidence_or_none(block.confidence),
+                Figure::new("headline", block.headline.clone(), evidence())
+                    .with_confidence_or_none(block.confidence),
             ];
             if !block.basis.is_empty() {
-                figures.push(Figure::new(
-                    "basis",
-                    block.basis.clone(),
-                    Evidence::owner(&block.owner),
-                ));
+                figures.push(Figure::new("basis", block.basis.clone(), evidence()));
             }
             for (label, value) in &block.figures {
-                figures.push(Figure::new(
-                    label.clone(),
-                    value.clone(),
-                    Evidence::owner(&block.owner),
-                ));
+                figures.push(Figure::new(label.clone(), value.clone(), evidence()));
             }
             Section::build(id, STATE_MEASURED, figures, None)
         }
@@ -1455,17 +1742,29 @@ fn dependencies_section(supplied: &Supplied) -> Section {
             STATE_UNAVAILABLE,
             vec![Figure::unknown(
                 "dependencies",
-                "the dependency delta is computed from lockfile and manifest *contents*, and this read \
-                 was given rows, not blobs",
+                if detail == Provenance::DETAIL_ROLLUP {
+                    "the rail reads one summed row per path; the dependency delta is computed from \
+                     manifest and lockfile contents, which a rollup read does not carry"
+                } else {
+                    "the dependency delta is computed from lockfile and manifest *contents*, and this \
+                     read was given rows, not blobs"
+                },
                 Evidence::owner(id.owner()),
             )],
             Some(gap_for(
                 id,
                 "no dependency delta here",
-                "`fathom_analyze::deps` computes this from the two trees; it is not wired into the \
-                 spine read this delta was built from, and inventing a count from path names is the \
-                 lie this section exists to prevent",
-                None,
+                if detail == Provenance::DETAIL_ROLLUP {
+                    "`e2.6`'s delta needs both trees' dependency files; the rail's per-path rollup has \
+                     neither, and inventing a count from path names is the lie this section exists to \
+                     prevent"
+                } else {
+                    "`fathom_analyze::deps` computes this from the two trees of the episode; this read \
+                     had no clone to read them from — run the verb inside the repository, and inventing \
+                     a count from path names is the lie this section exists to prevent"
+                },
+                (detail == Provenance::DETAIL_ROLLUP)
+                    .then(|| "fathom analyze <episode> --json".to_owned()),
             )),
         ),
     }
@@ -2392,7 +2691,8 @@ mod store_bridge {
 
     use super::{
         AttributionEvidence, AttributionRef, EpisodeDelta, EpisodeRef, FileDelta, Input,
-        MEMBER_CAP, Provenance, RiskView, Totals, compose,
+        MEMBER_CAP, Provenance, RiskView, Supplied, SuppliedBlock, Totals, compose,
+        dependency_block, short_id,
     };
     use crate::error::Error;
     use crate::risk::{self, FileChange};
@@ -2408,7 +2708,7 @@ mod store_bridge {
         let Some(row) = store.episode(id)? else {
             return Ok(None);
         };
-        Ok(Some(build_one(store, &row)?))
+        Ok(Some(build_one(store, &row, None)?))
     }
 
     /// Build the model for the episode a commit belongs to.
@@ -2420,11 +2720,132 @@ mod store_bridge {
         let Some(row) = store.episode_for_commit(oid)? else {
             return Ok(None);
         };
-        Ok(Some(build_one(store, &row)?))
+        Ok(Some(build_one(store, &row, None)?))
     }
 
-    /// One episode, fully read.
-    /// The store row's attribution columns → the delta's attribution block (`e4.1`).
+    /// [`for_episode`], with the analyses the store cannot reach read out of an open clone.
+    ///
+    /// This is the seam `e2.11` §4 describes, with a caller on the other side of it: the dependency delta
+    /// (`e2.6`) is computed from the *contents* of manifests and lockfiles, which no row of the spine
+    /// carries, so the façade asks `e2.6` itself and lends the answer to the composition. A caller with no
+    /// clone keeps today's document — the section is `unavailable` and names the reason — which is why the
+    /// clone is an argument and not an assumption.
+    ///
+    /// # Errors
+    ///
+    /// As [`for_episode`]. A clone that will not serve the two trees is not an error: the section states
+    /// the gap, because "the objects are not in this clone" is a fact about the repository and not a
+    /// failure of the read.
+    pub fn for_episode_with_repo(
+        store: &Store,
+        id: &str,
+        repo: &fathom_ingest::repo::Repository,
+    ) -> Result<Option<EpisodeDelta>, Error> {
+        let Some(row) = store.episode(id)? else {
+            return Ok(None);
+        };
+        Ok(Some(build_one(store, &row, Some(repo))?))
+    }
+
+    /// [`for_commit`], with the analyses the store cannot reach read out of an open clone.
+    ///
+    /// # Errors
+    ///
+    /// As [`for_episode`].
+    pub fn for_commit_with_repo(
+        store: &Store,
+        oid: &str,
+        repo: &fathom_ingest::repo::Repository,
+    ) -> Result<Option<EpisodeDelta>, Error> {
+        let Some(row) = store.episode_for_commit(oid)? else {
+            return Ok(None);
+        };
+        Ok(Some(build_one(store, &row, Some(repo))?))
+    }
+
+    /// One episode, fully read, plus whatever an open clone could lend.
+    fn build_one(
+        store: &Store,
+        row: &EpisodeRow,
+        repo: Option<&fathom_ingest::repo::Repository>,
+    ) -> Result<EpisodeDelta, Error> {
+        let members = store.episode_members(&row.id)?;
+        let mut files: BTreeMap<String, Aggregated> = BTreeMap::new();
+        for oid in &members {
+            for file in store.read_files(oid)? {
+                files.entry(file.new_path.clone()).or_default().absorb(
+                    &file.new_path,
+                    &file.old_path,
+                    &file.change_kind,
+                    &file,
+                );
+            }
+        }
+        let review = store.review_of(&row.id)?;
+        let supplied = repo.map_or_else(Supplied::default, |repo| lend(repo, row));
+        let read = Read {
+            row,
+            review: review.as_str(),
+            files: files
+                .into_values()
+                .map(|aggregated| aggregated.into_file())
+                .collect(),
+            detail: Provenance::DETAIL_FULL,
+            truncated: false,
+            supplied,
+        };
+        Ok(compose(&read.input()))
+    }
+
+    /// The analyses a store read cannot answer, read from the clone that owns them.
+    ///
+    /// One function, so that `fathom analyze`, `fathom narrative`, `fathom export` and the MCP tool cannot
+    /// drift into four different answers to "what does this now depend on" (ADR-001 §7.10).
+    fn lend(repo: &fathom_ingest::repo::Repository, row: &EpisodeRow) -> Supplied {
+        let Some(block) = dependency_handover(repo, row) else {
+            return Supplied::default();
+        };
+        Supplied::default().with_dependencies(block)
+    }
+
+    /// The `e2.6` answer for one episode, as a hand-over.
+    ///
+    /// The pair of trees is the episode's own: the first member's first parent against the last member's
+    /// tree, which is the same pair `fathom export` and `fathom check` diff, so the three surfaces cannot
+    /// disagree about what the episode made the tree depend on. `None` when the clone cannot serve those
+    /// commits — and the section then says so, rather than printing an empty answer that looks like "no
+    /// dependency changed".
+    fn dependency_handover(
+        repo: &fathom_ingest::repo::Repository,
+        row: &EpisodeRow,
+    ) -> Option<SuppliedBlock> {
+        use fathom_ingest::oid::Oid;
+
+        let (first, last) = (row.members.first()?, row.members.last()?);
+        let head = repo.commit(last.parse::<Oid>().ok()?).ok().flatten()?;
+        let (base, base_label) = match repo
+            .commit(first.parse::<Oid>().ok()?)
+            .ok()
+            .flatten()
+            .and_then(|base| base.parents.first().copied())
+        {
+            Some(parent) => (
+                Some(repo.commit(parent).ok().flatten().map(|base| base.tree)?),
+                short_id(&parent.hex()),
+            ),
+            // The episode opens on a root commit: the tree before it is the empty one, and the honest
+            // label for that is "nothing", not a zero-length oid.
+            None => (None, "(empty tree)".to_owned()),
+        };
+        let episode = crate::deps::dependency_episode_repository(
+            repo,
+            base,
+            Some(head.tree),
+            &crate::deps::DependencyOptions::default(),
+        )
+        .ok()?;
+        Some(dependency_block(&episode, &base_label, &short_id(last)))
+    }
     ///
     /// An empty `attribution_source` **and** an empty evidence list mean the row was written before
     /// migration 4, or by a build that stored the label without the case for it. The label is still true
@@ -2485,33 +2906,6 @@ mod store_bridge {
         }
     }
 
-    fn build_one(store: &Store, row: &EpisodeRow) -> Result<EpisodeDelta, Error> {
-        let members = store.episode_members(&row.id)?;
-        let mut files: BTreeMap<String, Aggregated> = BTreeMap::new();
-        for oid in &members {
-            for file in store.read_files(oid)? {
-                files.entry(file.new_path.clone()).or_default().absorb(
-                    &file.new_path,
-                    &file.old_path,
-                    &file.change_kind,
-                    &file,
-                );
-            }
-        }
-        let review = store.review_of(&row.id)?;
-        let read = Read {
-            row,
-            review: review.as_str(),
-            files: files
-                .into_values()
-                .map(|aggregated| aggregated.into_file())
-                .collect(),
-            detail: Provenance::DETAIL_FULL,
-            truncated: false,
-        };
-        Ok(compose(&read.input()))
-    }
-
     /// Build the model for an episode from rows the caller already read — the rail's path, which reads the
     /// summed per-path rollup for a whole page in one statement and so cannot afford the per-commit read.
     ///
@@ -2546,6 +2940,7 @@ mod store_bridge {
                 .collect(),
             detail: Provenance::DETAIL_ROLLUP,
             truncated,
+            supplied: Supplied::default(),
         };
         compose(&read.input())
     }
@@ -2557,6 +2952,7 @@ mod store_bridge {
         files: Vec<FileDelta>,
         detail: &'static str,
         truncated: bool,
+        supplied: Supplied,
     }
 
     impl Read<'_> {
@@ -2637,14 +3033,33 @@ mod store_bridge {
                     asked: None,
                     produced_by: Provenance::produced_by(),
                     files_detail: self.detail.to_owned(),
-                    models: Provenance::models(),
+                    models: models(&self.supplied),
                 },
-                supplied: super::Supplied::default(),
+                supplied: self.supplied.clone(),
             }
         }
     }
 
+    /// Which analysis produced which number in this document.
+    ///
+    /// [`Provenance::models`] is the static answer; a lent section adds its own, because "the card says 12
+    /// transitive packages" has to be traceable to the module that measured it (ADR-004 §5.1).
+    fn models(supplied: &Supplied) -> BTreeMap<String, String> {
+        let mut models = Provenance::models();
+        if supplied.dependencies.is_some() {
+            models.insert(
+                "dependencies".to_owned(),
+                "deps::episode_repository (e2.6)".to_owned(),
+            );
+        }
+        models
+    }
+
     /// One path across several member commits, folded.
+    ///
+    /// The two taxonomy fields start empty rather than `unknown` so [`Aggregated::absorb`] can tell "no row
+    /// yet" from "a row that said `unknown`"; every path the fold sees has at least one row by the time a
+    /// `FileDelta` is built out of it.
     #[derive(Default)]
     struct Aggregated {
         path: String,
@@ -2673,14 +3088,18 @@ mod store_bridge {
             self.kinds.push(kind.to_owned());
             self.add = self.add.saturating_add(file.n_add);
             self.del = self.del.saturating_add(file.n_del);
-            self.commits += 1;
-            self.binary |= file.is_binary;
-            if self.path_class == "unknown" && file.path_class != "unknown" {
+            // The taxonomy travels with the row, and a fold may not drop it: ADR-004 §6.6 R3 forbids
+            // re-deriving a stored class downstream, which only means something if the stored class
+            // survives the per-commit rows into the per-path one the sections read. Empty is a fresh fold,
+            // and the *first* commit's answer wins; a later commit that classified the path keeps it.
+            if self.commits == 0 || self.path_class == "unknown" {
                 self.path_class = file.path_class.clone();
             }
-            if self.noise_class == "unknown" && file.noise_class != "unknown" {
+            if self.commits == 0 || self.noise_class == "unknown" {
                 self.noise_class = file.noise_class.clone();
             }
+            self.commits += 1;
+            self.binary |= file.is_binary;
         }
 
         fn into_file(self) -> FileDelta {
@@ -2712,7 +3131,9 @@ mod store_bridge {
 }
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
-pub use store_bridge::{for_commit, for_episode, for_rows};
+pub use store_bridge::{
+    for_commit, for_commit_with_repo, for_episode, for_episode_with_repo, for_rows,
+};
 
 /// The smallest identity a caller can name.
 ///

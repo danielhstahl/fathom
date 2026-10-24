@@ -32,7 +32,7 @@ pub use delta::{
     FileDelta, Finding, Gap, INTENT_DIGEST_ONLY, INTENT_NONE, INTENT_RECORDED, Input, Integrity,
     Provenance, RiskComponent, RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL,
     STATE_UNAVAILABLE, Section, SectionId, Supplied, SuppliedBlock, Totals, brief, compose,
-    glyph_of, intent_block, render, short_id,
+    dependency_block, glyph_of, intent_block, render, short_id,
 };
 pub use schema::{
     SCHEMA_FILE, describe as schema_describe, document as schema_document, limits as schema_limits,
@@ -40,7 +40,7 @@ pub use schema::{
 };
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
-pub use delta::{for_commit, for_episode, for_rows};
+pub use delta::{for_commit, for_commit_with_repo, for_episode, for_episode_with_repo, for_rows};
 
 /// The version of the shapes this façade publishes.
 ///
