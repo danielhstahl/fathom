@@ -235,6 +235,42 @@ it.
   `test_workspace_contract.py::test_lint_subcommand_is_clean_on_the_repo_root`. None touch what this commit
   changes; all of them are the suite telling somebody something, which is the intake the beta loop exists to
   keep. They are listed here rather than silently passed over.
+- **That list went stale, and it is re-recorded here (`reco-2vq`, 2026-10-24), because a known-red list that
+  is not kept is worse than no list.** All six above are green (that re-run is intake **W43-23**). What the
+  re-run found was the red had *moved*: three other tests in
+  `test_risk_ranking_contract.py` were red, and nothing on the page named them — the next reader would check
+  the six, watch them pass, and call the suite clean. Whole suite, binary built from this tree,
+  `python3 -m pytest -q`: **2,141 tests, one red.**
+
+  * The three queue-screen tests (`::test_the_queue_is_a_ranked_worklist`,
+    `::test_the_three_riskiest_are_operator_action_work`,
+    `::test_the_two_changes_that_must_not_be_missed_are_on_the_first_screen`) were red, and the queue was not
+    the problem: on the 500-commit fixture it draws **27 ranked rows** on the first screen — rank column
+    1…20 counted, scores descending, `order: queue-1` named in the strip, both planted must-not-miss
+    changes inside the first pane. What was broken is the harness. `tui_session.drain` returns on the second
+    quiet tick, and a cold TUI is *quiet* for the fraction of a second it spends opening the store with the
+    terminal still untouched, so the harness typed `q` into a terminal the TUI had not taken yet and read back
+    an empty screen — which parses exactly like "the queue drew 0 ranked rows". The file now waits for a
+    frame before it types anything and, if none ever arrives, says *that* instead, so the two hypotheses the
+    ticket named cannot be confused again; the wait for a keystroke's frame is the same idea (a keystroke
+    that legitimately redraws the same pane is a no-change, not a dropped key). Time to first paint is a
+    budgeted quantity — `cold.queue_visible.ms`, 3,000 ms at `small`, blessed at 26.6 ms on a release build,
+    which is why the contracts job never saw this red and a local debug run could not miss it: 26 ms falls
+    inside the quiet window, the ~0.6 s this box measured for a debug build's first byte does not, and nothing
+    in the contract ever said which one it assumed.
+    This suite reads whatever binary exists (`FATHOM_BIN`, release, else debug), and latency is the perf
+    gate's contract; this file's is what the pane says once it has been drawn.
+  * The one red left is
+    `test_beta_loop_contract.py::test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from`,
+    and it is `e7.7`'s own machinery: the changelog quotes `tools/gen_changelog.py audit`'s rung distribution
+    line, and that line counts commits, so it moves on every commit that lands — the quote can only be true
+    for the commit that wrote it. Filed as **`reco-0ip`** with the three ways out. Nothing in `reco-2vq`
+    touches it.
+
+  The quiet-before-the-first-frame pattern — an initial drain that returns on the first quiet tick, then keys
+  — is also in `test_diff_open_contract.py`, `test_frame_report_contract.py`, `test_review_state_contract.py`
+  and `test_search_prompt_contract.py`. None of them is red today, and only this file was changed, because
+  this is the file that was.
 
 ---
 

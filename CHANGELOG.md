@@ -17,6 +17,66 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The queue's contract went red because the harness read the screen before there was a screen on it (`e1.12`, `reco-2vq`)
+
+Three tests in `tests/test_risk_ranking_contract.py` were red on a clean tree, all three saying the same
+impossible thing — *`the queue drew 0 ranked rows: q`* — on the 500-commit agent fixture this file has
+always used, the one whose queue answers README's question: which three episodes are the riskiest, and
+why that one. The queue was not empty. Driven by hand against the same binary and the same store, it draws
+**27 ranked rows** on the first screen: rank column counting 1…20, scores descending, `order: queue-1`
+named in the strip, the destructive migration and the live-key workflow both inside the first pane with a
+reason that cites the file. What was empty was the *screen the harness looked at*, and the cost of that is
+the ticket: a suite that reports "nothing ranked" when it means "nothing drawn yet" is a suite that will
+be believed, and the two are a product defect and a test defect apart.
+
+A pty is quiet before it is settled. `tools/tui_session.py`'s `drain` reads until the terminal goes quiet
+for two ticks — the right rule for a warm TUI, whose frames are budgeted in single-digit milliseconds
+(`query.queue.ms`, `query.card.ms`) — and a *cold* one spends its first fraction of a second opening the
+store and computing a first frame with the terminal still untouched. Types struck in that window are not
+eaten by raw mode, they are echoed by the line discipline, which is why the failure carried a lone `q` on
+an otherwise blank screen. Three of the file's five tests sampled that; the two that pressed a second key
+saw the frame arrive and went green — which is how the known-red list at the beta gate ended up naming two
+tests in this file that had nothing wrong with them while three others were red.
+
+* **The harness waits for a frame, and for *the* frame.** Before any keystroke, `_run` waits for a screen
+    at all — for *a* frame, not for the answer the test wants — and a binary that never hands over the
+    terminal is now reported as *`drew nothing at all in 20s`*, which is a different claim from an empty
+    queue and gets a different sentence. After each keystroke it waits for the grid to **change**, or for
+    the window to run out, so a keystroke that legitimately redraws the same pane (`q` on a queue that is
+    already the home view) is a settled no-change rather than a dropped key. `drain`'s own report is what
+    makes this cheap: it already returns when the screen changed, and the old code threw that number away.
+* **What this file does *not* claim is a latency budget.** Time to first paint is a measured, budgeted
+    quantity — `cold.queue_visible.ms`, 3,000 ms at `small`, and the blessed baseline is 26.6 ms, which is
+    also why this never failed in CI: the contracts job builds release, and 26 ms lands inside the quiet
+    window by luck rather than by design. This suite reads whatever binary is on disk (`FATHOM_BIN`, else
+    release, else debug), where a debug build on a loaded machine is the slowest thing in the house — and a
+    contract that only holds on the faster of two supported builds is a contract with a coin flip in it.
+    Making the test depend on how fast the binary starts would have traded a red that was easy to read for
+    one that is impossible to reproduce.
+* **A child that will not exit is stopped, not waited for.** The cleanup gave the TUI a beat after `<C-c>`
+    and then killed and reaped it, which is what lets the test below finish in seconds instead of hanging on
+    a wedged binary — and a TUI left running between tests is a TUI still holding the fixture's store.
+* **The distinction is asserted, not promised.** `test_a_TUI_that_never_hands_over_the_terminal_is_reported_as_no_frame`
+    runs the file's own harness against a stand-in that takes the screen and never draws in it, and requires
+    the *no frame* message rather than a row count of zero. Red against the harness before this change;
+    it is the test that keeps this ticket's confusion from coming back.
+* **And the gate's known-red list is re-recorded**, because the ticket's real finding was the list and not
+    the three tests: `.plan/beta-gate-reco-69u.md` §2 now says which of the six it recorded are green, what
+    was red when the whole suite was re-run (`python3 -m pytest -q`: 2,141 tests, one red), and names the
+    red that is left — `test_beta_loop_contract.py::test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from`,
+    the changelog quoting a rung distribution that counts commits and so can only be true for the commit
+    that wrote it, filed as **`reco-0ip`**. A stale known-red list is worse than none: the next reader
+    checks the named ones, watches them pass, and calls the suite clean.
+* **The register moved with it.** W43-26 gets W43-29 as `triage:fixed` and the surviving red gets W43-30 as
+    `triage:ticketed`, because a changed disposition is a new row and never an edit
+    ([`.plan/intake/README.md`](.plan/intake/README.md)).
+
+*Asserted by*: `tests/test_risk_ranking_contract.py`, the whole file — the three queue-screen tests above,
+which are the contract (a ranked worklist, its top three operator-action work, the two planted risks on the
+first screen), and the new no-frame test. All six are green against a binary built from this tree; the
+three queue tests were red before it, and they are red again if `_run` is changed back to reading the
+terminal once it goes quiet.
+
 ### A test function is not a public API removal (`e3.12`, `reco-u1i`)
 
 Pointing the shipped gate at this repository's own history — `fathom check --only api --base c025320^

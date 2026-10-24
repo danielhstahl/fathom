@@ -27,6 +27,7 @@ import json
 import os
 import pty
 import re
+import signal
 import struct
 import subprocess
 import sys
@@ -63,6 +64,22 @@ ROW = re.compile(
     r"(?:\s+(?P<badge>[\w+]+))?"
 )
 
+# Two different waits, because there are two different things to wait for.
+#
+# `FIRST_FRAME_S` bounds the wait for the *first* frame. Time to first paint is a budgeted quantity —
+# `cold.queue_visible.ms.small` pays 3,000 ms for spawn-to-first-frame at this size class — and this
+# file drives whatever binary exists, where a debug build on a loaded machine is the slowest thing in
+# the house. Latency is `tools/perf_gate.py`'s contract; this file's is what the pane says once it has
+# been drawn, so the bound here is generous (20 s) and its only job is to turn "never drew" into a
+# message instead of an empty screen.
+#
+# `SETTLE_S` bounds the wait for the frame that answers a keystroke. The store budgets say a frame is
+# single-digit milliseconds, so a *change* returns early; the window is there for the keystroke that
+# legitimately draws nothing (a `q` on a queue that is already the home view), which has to be
+# distinguished from a key that was swallowed.
+FIRST_FRAME_S = 20.0
+SETTLE_S = 2.0
+
 # The queue's strip line, as `fathom_analyze::queue::order::QueueOrdering::strip` writes it: the
 # ordering named by the model that produced it, how many rows it covers, and — only when there are
 # any — how many of the open rows it could not score. Grouped so a test can check the arithmetic
@@ -92,8 +109,13 @@ def _fixture(tmp_path: Path) -> tuple[Path, dict]:
     return out, json.loads(manifest.read_text())
 
 
-def _run(binary: Path, repo: Path, keys_each: list[str]) -> list[str]:
-    """Spawn `fathom tui` on a pty, send each keystroke group, and return the screen after each."""
+def _run(binary: Path, repo: Path, keys_each: list[str],
+         first_frame: float = FIRST_FRAME_S) -> list[str]:
+    """Spawn `fathom tui` on a pty, send each keystroke group, and return the screen after each.
+
+    Every returned screen is a frame the TUI drew, not a sample of a terminal that had not been handed
+    the screen yet — `settle` is what makes that true, and `reco-2vq` is why it has to be.
+    """
     screen = T.Screen(SCREEN_COLS, SCREEN_ROWS)
     recorder = T.Recorder()
     pid, master = pty.fork()
@@ -110,23 +132,77 @@ def _run(binary: Path, repo: Path, keys_each: list[str]) -> list[str]:
 
     fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, 0, 0))
     screens: list[str] = []
+    reaped = False
+
+    def alive() -> bool:
+        """Is the TUI still there? `drain` comes back at once on an end-of-file, so a wait loop that
+        cannot see that its child has quit spins itself to the deadline for no reason."""
+        nonlocal reaped
+        if reaped:
+            return False
+        try:
+            return os.waitpid(pid, os.WNOHANG) == (0, 0)
+        except ChildProcessError:
+            reaped = True
+            return False
+
+    def settle(seconds: float) -> bool:
+        """Drain until the *screen* changes, or the window runs out; say whether it changed.
+
+        `drain` returns on the second quiet tick, and a cold pty is quiet for a long time before it
+        has drawn anything — the TUI opens the store and computes the first frame with the terminal
+        still untouched, and types struck in that window are echoed by the line discipline instead of
+        eaten by raw mode. Reading "quiet" as "settled" therefore samples an empty screen, and an empty
+        screen is indistinguishable downstream from a queue with no rows in it. That is the whole of
+        `reco-2vq`: these three tests were red on a frame that had not arrived, on a fixture whose
+        queue holds two hundred ranked rows.
+        """
+        deadline = time.monotonic() + seconds
+        while True:
+            _first, _last, changed, _found = T.drain(master, deadline, recorder, None, screen)
+            if changed is not None or time.monotonic() >= deadline or not alive():
+                return changed is not None
+
     try:
-        T.drain(master, time.monotonic() + 2.0, recorder, None, screen)
+        # Wait for a frame before typing anything — for *a* frame, not for the answer this file wants.
+        # That is what lets the failure name which of the two defects it has: "the harness got no
+        # screen" and "the queue drew no rows" are different costs and must not read the same.
+        painted = time.monotonic() + first_frame
+        while not screen.text().strip() and time.monotonic() < painted:
+            settle(0.5)
+        if not screen.text().strip():
+            raise AssertionError(
+                f"{binary} drew nothing at all in {first_frame}s on {repo}: the pty harness never got "
+                "a frame, which is a different claim from an empty queue and must not be mistaken for "
+                "one"
+            )
         for keys in keys_each:
             for char in T.encode(keys):
                 os.write(master, bytes([char]))
                 time.sleep(0.09)
-            T.drain(master, time.monotonic() + 1.2, recorder, None, screen)
+            settle(SETTLE_S)
             screens.append(screen.text())
     finally:
-        for closer in (os.close,):
-            try:
-                closer(master)
-            except OSError:
-                pass
         try:
-            os.waitpid(pid, 0)
-        except ChildProcessError:
+            os.close(master)
+        except OSError:
+            pass
+        # `<C-c>` normally ends the child, and then it is reaped and nothing below runs again. Anything
+        # else — a binary that is wedged, or the no-frame path raising — gets a beat to leave and then is
+        # stopped: a TUI left running between tests is a TUI still holding the fixture's store, and a
+        # `waitpid` that blocks forever is a suite that hangs instead of failing.
+        try:
+            for _ in range(100):
+                if not alive():
+                    break
+                time.sleep(0.02)
+            if not reaped:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.waitpid(pid, 0)
+        except (ChildProcessError, ProcessLookupError):
             pass
     return screens
 
@@ -259,3 +335,21 @@ def test_an_unranked_episode_is_answered_rather_than_fobbed_off(indexed):
     assert scores, f"no ranked row on the last screen:\n{screen}"
     assert scores == sorted(scores, reverse=True), \
         f"the bottom of the queue is not the bottom of the ranking: {scores}"
+
+
+def test_a_TUI_that_never_hands_over_the_terminal_is_reported_as_no_frame(tmp_path):
+    """The distinction this ticket exists for is asserted, not promised.
+
+    "The queue drew no rows" and "the harness never got a screen" are different defects with different
+    costs, and on a bare screen they read identically — which is exactly how `reco-2vq` spent its time.
+    So the file is made to tell them apart, against a stand-in that takes the terminal and never draws
+    in it: that is reported as no frame, promptly, rather than waited out and then mislabelled. It needs
+    no build and no fixture, because the claim is about the harness.
+    """
+    silent = tmp_path / "fathom-that-took-the-screen-and-said-nothing"
+    silent.write_text("#!/bin/sh\nexec sleep 30\n")
+    silent.chmod(0o755)
+    began = time.monotonic()
+    with pytest.raises(AssertionError, match="drew nothing at all"):
+        _run(silent, tmp_path, ["q", "<C-c>"], first_frame=1.0)
+    assert time.monotonic() - began < 10, "the silent binary was waited out instead of seen through"
