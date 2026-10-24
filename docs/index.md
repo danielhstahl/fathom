@@ -31,6 +31,7 @@ first; each links down to the deeper reference page that owns the detail.
 | [**Risk score**](concepts/risk-score.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it | [risk scoring](concepts/risk-scoring.md), [ranking](concepts/risk-ranking.md) |
 | [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
 | [**Ratchet**](concepts/ratchet.md) | the committed baseline of what the codebase already owed, so only *new* violations alarm — and it only tightens | [config](concepts/config.md), [perf budgets](../benchmarks/BUDGETS.md) |
+| [**CI gate**](concepts/ci-gate.md) | `fathom check`: six checks over a range, one threshold that exits 7, and the one sentence that says why the run is red | [the recipe](recipes/gate-a-pipeline.md), [ratchet](concepts/ratchet.md), [config](concepts/config.md) |
 | [**Ambient mode**](concepts/ambient-mode.md) | the second-terminal display: same model, no chrome, fits 80×12, goes quiet when you are caught up | [ADR-006 §5.7](adr/0006-tui.md), [the recipe](recipes/run-beside-the-agent.md) |
 
 ## Reference
@@ -120,10 +121,11 @@ to prove it can fail.
 ## Status, honestly
 
 **Alpha.** The git spine — index, episodes, timeline, diff, queue, session — is usable for daily review; the
-`0.1.0-alpha.1` artefact has not been published, so the install URL is not yet live; `fathom check` and the MCP
-server refuse with the plan items that own them; four detectors ship switched off because their false-positive
-rate has not been measured on real repositories; and the architecture graph (`e3.x`) is not built, which is why
-`blast` leaves the risk denominator rather than guessing. [Release status](concepts/release.md) is the detail.
+`0.1.0-alpha.1` artefact has not been published, so the install URL is not yet live; four detectors ship
+switched off because their false-positive rate has not been measured on real repositories; the architecture
+graph (`e3.x`) is built as an engine but its snapshots are not written by `fathom index` yet, which is why
+`blast` leaves the risk denominator rather than guessing and why the gate's two graph checks report
+themselves *blocked* on an unpopulated index ([the CI gate](concepts/ci-gate.md)). [Release status](concepts/release.md) is the detail.
 
 ---
 

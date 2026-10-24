@@ -262,6 +262,13 @@ SECTIONS: dict[str, dict] = {
                    "is noise - the ignore and private sets are how the owner says which ones count. "
                    "Reading the source is `[extract]`'s business; this table is the claim about the "
                    "repository."},
+    "check": {"title": "CI gate policy", "owner": "e6.6 (`reco-ngk`)",
+              "doc": "What `fathom check` enforces in this repository, and where the run turns red. One "
+                     "table holds the layout version, the gate's volume, the threshold that exits 7, each "
+                     "check's severity and each family's own numbers. It is per-repository and it is "
+                     "read strictly: a value that will not parse, a key this build does not know, or a "
+                     "layout version it cannot read is a refusal (exit 5), never a defaulted pass — a "
+                     "gate that half-reads a policy is a gate that passes what it never looked at."},
     "hotspots": {"title": "Hotspots and dead-code candidates", "owner": "e3.8 (`reco-wky`)",
                  "doc": "What the hotspot score is made of: the six metric weights, the knee each "
                         "saturating curve bends at, the churn window, and how long a new symbol may "
@@ -1208,6 +1215,129 @@ KEY_LIST: list[Key] = [
            "turns a feature off. `e3.7`.",
        ticket="e3.7"),
     # --- scorecard (the five-dimension architecture score, `e3.9`) -----------
+    # --- check (the CI gate's policy, `e6.6`) --------------------------------
+    _k(path="check.version", kind="integer", default=1, minimum=1, units="layout version",
+       doc="Which `[check]` layout the file is written in. A declaration above what this build reads is "
+           "**refused**, not partly understood: a policy enforced halfway is a gate that passes things it "
+           "never looked at. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.mode", kind="string", default="warn", enum=("off", "warn", "deny"),
+       doc="The volume of the whole gate. `off` reports and decides nothing - and says so in every output, "
+           "so a switched-off gate never reads as a clean one; `warn` reports findings and exits 0; `deny` "
+           "lets a finding at or above `check.fail_on` exit 7. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.fail_on", kind="string", default="warning",
+       enum=("note", "warning", "error", "never"),
+       doc="The severity at or above which the run fails with exit 7 (`CHECK_VIOLATIONS`). `never` makes "
+           "the gate a reporter: everything is listed, nothing is decided. This is the only threshold "
+           "that decides an exit code, which is why the scorecard and the risk score refuse to own one. "
+           "`e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.base", kind="string", default="",
+       doc="Default far end of the range when `--base` is not given - usually `origin/main`. Empty means "
+           "the built-in default `HEAD~1`, which the run names out loud rather than pretending it was "
+           "chosen. A base the clone does not have is a stated `blocked` check, not a pass. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.head", kind="string", default="HEAD",
+       doc="Default near end of the range. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.require", kind="string_list", merge="replace", default=[],
+       doc="Checks that must actually run. A required check that cannot run - no index, no module graph, "
+           "a base missing from a shallow clone, a binary built without the feature - fails the gate "
+           "instead of noting itself skipped. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.ignore", kind="string_list", merge="extend", default=[],
+       doc="Silenced findings, as `<check>` or `<check>:<rule>`. Silencing is not deleting: every "
+           "format counts silenced findings and prints an example, so a green run can be asked what it "
+           "did not show. A pattern naming no check is refused at load. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.max_findings", kind="integer", default=40, minimum=1, units="findings per check",
+       doc="How many findings one check lists before the rest are folded into a count. The counts stay "
+           "whole and the report says `n of m listed`, so the bound changes the list and never the "
+           "verdict. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.api_files", kind="integer", default=6000, minimum=1, units="files per side",
+       doc="How many blobs the api check may read per revision. Hitting the cap **blocks** the check "
+           "rather than shortening the answer, because a clean surface over a corpus this run did not "
+           "read is the silent pass this ticket exists to refuse. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.risk_episodes", kind="integer", default=40, minimum=1, units="episodes",
+       doc="How many episodes of the range the risk scorer may read, newest first - `fathom why`'s cost "
+           "times a range is a budget, and a bounded read says it was bounded. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.max_episodes", kind="integer", default=200, minimum=1, units="episodes",
+       doc="How many episodes the episode-shaped checks read from a range at all. Past it the run says so "
+           "instead of quietly sampling half a release. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.layering", kind="string", default="error",
+       enum=("off", "note", "warning", "error"),
+       doc="How loudly a new violation of `[layering]` speaks in the gate. `off` is a stated choice and "
+           "is printed as one. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.cycles", kind="string", default="error",
+       enum=("off", "note", "warning", "error"),
+       doc="How loudly a cycle this range introduced speaks. Baselined cycles are debt and are never "
+           "news here, whatever this says. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.api", kind="string", default="error",
+       enum=("off", "note", "warning", "error"),
+       doc="How loudly a breaking change to a tracked public surface speaks. Indeterminate changes - the "
+           "ones a scope that cannot be enumeration forces - are reported at `note` whatever this is, "
+           "because they are a statement about the reader's knowledge and not about the change. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.dependencies", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="The default volume for the dependency families, each of which `[check.dependencies]` may set "
+           "on its own. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.tests", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="How loudly new logic without tests beside it speaks. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.severity.sign-off", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="How loudly a high-risk episode with no human sign-off speaks. The pair matters: the gate "
+           "objects to the missing review, never to the size of the change. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.tests.min_new_lines", kind="integer", default=200, minimum=0, units="added lines",
+       doc="Added logic lines below which the untested-logic check does not fire. Below this, missing "
+           "tests are a review comment; above it they are a gate. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.tests.min_tested_ratio", kind="number", default=0.5, minimum=0.0, maximum=1.0,
+       units="share of new logic",
+       doc="Test lines added as a share of logic lines added, under which the check fires. Counted from "
+           "the same index rows `fathom why` prints, so the arithmetic is checkable against a verb that "
+           "already existed. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.dependencies.new_direct", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="A dependency that is direct now and was not before. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.dependencies.major_change", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="A direct dependency whose leading version component moved. Crude on purpose - the gate reads "
+           "what the lockfile wrote and never resolves a version - and stated as crude. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.dependencies.new_source", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="A new registry, git URL, vendored or path source appearing in the range: the shape a "
+           "supply-chain change takes. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.dependencies.downgrade", kind="string", default="warning",
+       enum=("off", "note", "warning", "error"),
+       doc="A direct dependency that moved backwards - which is usually a revert nobody labelled as one. "
+           "`e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.dependencies.forbid", kind="string_list", merge="extend", default=[],
+       doc="Package names that may not arrive at all, exact or glob, each refusal an `error`. The one "
+           "dependency knob that is a decision rather than a question. `e6.6`.",
+       ticket="e6.6"),
+    _k(path="check.risk.threshold", kind="integer", default=70, minimum=0, maximum=100, units="score",
+       doc="The `e4.4` score at or over which an episode counts as high-risk for the sign-off check. Not "
+           "`risk.tau`: `tau` routes a queue, and the pipeline recipe is explicit that a routing knob "
+           "must not become a merge threshold. This one is paired with *and nobody signed it off*, which "
+           "makes it a claim about the review. `e6.6`.",
+       ticket="e6.6"),
     _k(path="scorecard.weight.boundaries", kind="number", default=0.30, minimum=0.0, maximum=1.0,
        units="weight",
        doc="How much of the score is owed to respecting the layering rules this repository wrote down. "

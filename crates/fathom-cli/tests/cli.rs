@@ -64,24 +64,28 @@ fn a_rejected_command_line_exits_two() {
 }
 
 #[test]
-fn an_unimplemented_verb_refuses_and_names_its_ticket() {
-    let out = fathom(&["check"]);
-    assert_eq!(
-        code(&out),
-        1,
-        "a typed failure is ERROR, not a panic: {}",
+fn check_is_implemented_and_answers_with_an_exit_code() {
+    // This test asserted the opposite until `e6.6` (`reco-ngk`) implemented the verb: `fathom check` used to
+    // refuse with a ticket number. Keeping it as a refusal test would have been a lie with a green tick, so it
+    // now asserts what the shipped verb promises instead — that it *answers*, with a contract exit code, in a
+    // repository that has no policy and no index (the worst day a CI runner can hand it).
+    let out = fathom(&["check", "--base", "HEAD~1", "--head", "HEAD"]);
+    let code = code(&out);
+    assert!(
+        matches!(code, 0 | 2 | 3 | 5 | 7 | 12),
+        "the gate exits inside its own contract, got {code}: {}",
         stderr(&out)
     );
-    let text = stderr(&out);
-    assert!(
-        text.contains("e6.6"),
-        "the refusal points at the owner: {text}"
+    assert_ne!(
+        code,
+        1,
+        "a gate that crashed is a 1, and a crash is a bug: {}",
+        stderr(&out)
     );
     assert!(
-        text.contains("CHECK_VIOLATIONS") || text.contains("ERROR"),
-        "{text}"
+        stdout(&out).contains("fathom check") || stderr(&out).contains("fathom check"),
+        "the gate says what it ran"
     );
-    assert!(!stdout(&out).contains("error"), "diagnosis goes to stderr");
 }
 
 #[test]

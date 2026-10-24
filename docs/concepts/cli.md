@@ -89,7 +89,7 @@ this — the table is normative, and the codes below are *its* numbers:
 | Class | Code | Name | When a verb leaves with it |
 |---|---|---|---|
 | ok | 0 | `OK` | the verb answered and the index describes HEAD |
-| user error | 1 | `ERROR` | a rev that names nothing, an unimplemented verb (`fathom check`), a rejected argument *value*, an artefact whose own self-check failed |
+| user error | 1 | `ERROR` | a rev that names nothing, an artefact that could not be written, a rejected argument *value*, an artefact whose own self-check failed |
 | user error | 2 | `USAGE` | clap rejected the command line: unknown flag, unknown verb, missing argument |
 | environment | 3 | `NOT_A_REPOSITORY` | `--root` is not a git repository, or `.git` is unreadable |
 | environment | 5 | `CONFIG_INVALID` | `fathom.toml` failed the schema |

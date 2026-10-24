@@ -2,17 +2,19 @@
 
 - **You get**: a CI job that fails for a reason a human can read, on the facts Fathom actually holds.
 - **Time**: fifteen minutes.
-- **Needs**: a `fathom` binary in the job (the `minimal` build is the one for this — no terminal, no store
-  beyond what it needs), and `fathom index` running first.
-- **Plan keys**: `e6.6` owns `fathom check`, the single gate verb. It is **not in this build** — it answers
-  with a refusal naming its plan item — so this recipe composes the gates that work today, and they are
-  genuinely enough.
+- **Needs**: a `fathom` binary in the job, and `fathom index` running first. For the headless job, build
+  `cargo build --no-default-features --features sqlite-bundled,langs-all,deps-all -p fathom-cli` — no
+  terminal, every check. The `minimal` feature set links no store, so four of the six checks report
+  themselves *blocked* there and say which feature to add.
+- **Plan keys**: `e6.6` (`reco-ngk`) owns `fathom check`, the single gate verb, and it is in this build —
+  one call, six checks, one threshold, five formats. The verbs below still earn their place: they check
+  things the gate deliberately does not.
 
 Every gate below is an **exit code**, and the codes are a published contract rather than an accident of
 implementation ([ADR-002 §7.3](../adr/0002-workspace.md), [CLI reference](../reference/cli.md#exit-codes)).
-The one that matters is `7` (`CHECK_VIOLATIONS`), which four shipped verbs already agree on rather than each
-inventing its own — that agreement is a decision, and it is what lets a pipeline say "Fathom objected" instead
-of "something exited oddly".
+The one that matters is `7` (`CHECK_VIOLATIONS`), which the gate and four other shipped verbs agree on
+rather than each inventing its own — that agreement is a decision, and it is what lets a pipeline say
+"Fathom objected" instead of "something exited oddly".
 
 | Gate | Verb | Exit `7` means |
 |---|---|---|
@@ -52,18 +54,58 @@ broken* — and `12` (`INDEX_DEGRADED`) is the one to look for first when a gate
 collapses "objection" and "crash" into "failure" gets disabled within a week, which is the outcome ADR-002 §7.3
 is written to prevent.
 
-## What `fathom check` will replace
+## The one call: `fathom check`
 
-`e6.6`'s verb collapses this into one call with a threshold per finding class — *"findings above the
-configured threshold exit 7"*. Until it exists:
+```yaml
+check-gate:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0            # the base has to be in the clone for two of the six checks
+    - name: index
+      run: fathom index --no-progress --json
+    - name: the gate
+      run: fathom check --base "$GITHUB_BASE_REF" --head HEAD --fail-on warning
+    - name: the same answers, for the diff and for code scanning
+      if: always()
+      run: |
+        fathom check --base "$GITHUB_BASE_REF" --format sarif --out fathom.sarif
+        fathom check --base "$GITHUB_BASE_REF" --format markdown --summary "$GITHUB_STEP_SUMMARY"
+    - uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with: { sarif_file: fathom.sarif }
+```
 
-* **compose the verbs above**. They are stable contracts with schemas, not internals;
+What it decides is in [the gate page](../concepts/ci-gate.md): six checks (layering, new cycles, breaking
+API changes, dependency policy, new logic without tests, high-risk episodes nobody signed off), the
+`[check]` table in the repository's own `fathom.toml` as the policy, the ratchet ledger as the reason
+existing debt does not block, and a final sentence that names the worst finding and where it lives.
+
+**Run it twice when you want the artefacts.** The failing run's exit code is the gate; the `--format sarif`
+and `--format markdown` runs are the same computation printed differently, so they cannot disagree. A job
+that both blocks and reports is one that a reviewer can act on without opening a log.
+
+## The gates `fathom check` does not replace
+
+These four check facts the gate deliberately leaves alone, and they are stable contracts with schemas:
+
+* **`fathom review status`** — the ledger as a whole: stale, orphaned and tampered sign-offs across the
+  repository, not just this range's. The gate's `sign-off` check asks a narrower question about the episodes
+  in the range.
+* **`fathom export --strict`** — an open operator-action item (a migration, an env var, a flag) is a fact
+  about the diff that no architecture engine can see.
+* **`fathom drift --fail-on-findings`** — the session contradicting its own plan.
+* **`fathom hooks --check --strict`** — the harness stream itself.
+
+And two rules that outlive any gate:
+
 * **do not** parse `--plain` prose in a script. Use `--json`, or the exit code. Both are
   [checked in](../../schemas); prose is not;
 * **do not** gate on the raw risk score. `risk.tau` is a routing knob and a repository-wide threshold on it
-  will fail on a large honest change and pass a small dishonest one. Gate on `review status` (a human said so)
-  and on the operator checklist (a fact about the diff), and let the score order the queue where a human is
-  looking at it ([risk score](../concepts/risk-score.md)).
+  will fail on a large honest change and pass a small dishonest one. The gate's own `sign-off` check pairs
+  the score with *and nobody signed it off* for exactly that reason
+  ([risk score](../concepts/risk-score.md)).
 
 ## The gates that are already in this repository's own CI
 

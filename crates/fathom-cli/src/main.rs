@@ -20,6 +20,10 @@
 // that *reports* the world needs the instant the report describes, not just the verbs that stamp rows,
 // so the module is unconditional and `rg SystemTime` still lands here and nowhere else.
 mod analyze;
+// The CI gate (`e6.6`, `reco-ngk`): the six checks, their policy, their one sentence and their five
+// formats. Unconditional, because the headless build is the one CI runs, and the composition it does —
+// store, object database, clock — is exactly what no downhill crate may hold (ADR-002 §4.3).
+mod check;
 // The glance pane for the second terminal (`reco-8bx`). It is gated with the shell because it draws the
 // shell's own view, and its `<Enter>` hands the terminal to the shell; a `minimal` binary names the feature
 // it is missing instead (ADR-002 §6.1).

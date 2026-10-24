@@ -137,9 +137,15 @@ impl Scan {
         }
         Scan {
             raw: text.to_string(),
-            // Masking can cut a multi-byte character in half under a hostile input, so the mask is
-            // rebuilt lossily rather than assumed valid.
-            mask: String::from_utf8_lossy(&mask).to_string(),
+            // Masking can cut a multi-byte character in half, and the mask must stay **byte-for-byte
+            // aligned with `raw`**: `depth`, `outside` and `angles` are indexed by mask offsets, and
+            // `line_start`/`line_end`/`text` slice `raw` with them. `String::from_utf8_lossy` looks like the
+            // obvious repair and is not one: it replaces one invalid byte with U+FFFD, which is three bytes,
+            // so every offset after the cut shifts by two — which is how a repo containing `→` inside a
+            // blanked comment made `raw[..at]` panic on a non-char boundary in shipped code. So the broken
+            // bytes are replaced one-for-one with a space (what `blank_range` already uses), which keeps
+            // `mask.len() == raw.len()` as an invariant rather than a hope.
+            mask: aligned_mask(mask, text),
             depth,
             outside,
             angles,
@@ -266,8 +272,14 @@ impl Scan {
     }
 
     /// The end of the line containing `at`, exclusive.
+    ///
+    /// `at` is snapped forward to a character boundary: the arithmetic that produces it is byte arithmetic
+    /// over the mask, and a caller that hands back an offset landed mid-glyph should get the rest of its
+    /// line, not a panic. With `aligned_mask` this cannot happen; it stays because the alternative is a
+    /// crash in a library a hostile file is pointed at.
     #[must_use]
     pub fn line_end(&self, at: usize) -> usize {
+        let at = self.ceil_char(at);
         self.raw[at..]
             .find('\n')
             .map(|offset| at + offset)
@@ -277,6 +289,7 @@ impl Scan {
     /// The start of the line containing `at`.
     #[must_use]
     pub fn line_start(&self, at: usize) -> usize {
+        let at = self.floor_char(at);
         self.raw[..at].rfind('\n').map_or(0, |offset| offset + 1)
     }
 
@@ -311,6 +324,39 @@ impl Scan {
         }
         value
     }
+}
+
+/// Re-encode a masked byte buffer as valid UTF-8 **without changing its length**.
+///
+/// Masking operates on bytes, so blanking a range can cut a multi-byte character in half. The naive repair
+/// (`String::from_utf8_lossy`) re-encodes each broken byte as U+FFFD — three bytes for one — and every
+/// offset after the cut silently moves two bytes right, which misaligns the mask against `raw`, against the
+/// `depth`/`outside`/`angles` columns, and against every slice of `raw` a caller takes with a mask-derived
+/// index. That is not a theoretical hazard: a repository with `→` inside a blanked comment made
+/// `raw[..at]` panic on a non-char boundary.
+///
+/// The walk is over the *source* string's characters: a character the masker left alone is copied whole, and
+/// one it broke has exactly its own bytes replaced with spaces — what `blank_range` already blanks with, so
+/// the mask's vocabulary is unchanged and `mask.len() == raw.len()` holds by construction.
+fn aligned_mask(mask: Vec<u8>, text: &str) -> String {
+    debug_assert_eq!(
+        mask.len(),
+        text.len(),
+        "the mask is built one byte per input byte"
+    );
+    let mut bytes = mask;
+    let mut offset = 0;
+    for ch in text.chars() {
+        let width = ch.len_utf8();
+        let span = &mut bytes[offset..offset + width];
+        if std::str::from_utf8(span).is_err() {
+            span.fill(b' ');
+        }
+        offset += width;
+    }
+    // Unreachable by construction, and still not a `unwrap`: a library this far from the input does not get
+    // to panic because a helper got it wrong.
+    String::from_utf8(bytes).unwrap_or_else(|_| text.to_owned())
 }
 
 /// Clamp a running depth into a `u8` column; a header with 255 open brackets is not a header.
@@ -381,6 +427,60 @@ fn is_arrow(index: usize, bytes: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The mask must stay byte-for-byte aligned with `raw`, or every mask-derived offset used to slice `raw`
+    /// lands mid-character. This is a regression test for a real panic in shipped code: a source file with a
+    /// multi-byte character inside a comment was masked byte-wise, then "repaired" with
+    /// `String::from_utf8_lossy`, which re-encodes one broken byte as three — so `line_start` sliced `raw`
+    /// at a non-boundary and crashed. It is asserted as an invariant (`mask.len() == raw.len()` at every
+    /// offset) rather than as one input, because any multi-byte character under any blanked range reaches it.
+    #[test]
+    fn a_blank_that_cuts_a_multibyte_character_keeps_the_mask_aligned() {
+        // Direct on the helper, because reaching it end-to-end needs a masker that stops mid-glyph and the
+        // blanking rules do not always do that; the invariant is what matters and it is cheaper to state.
+        let source = "let a = \"x → y\";\n";
+        let mut broken = source.as_bytes().to_vec();
+        let cut = source.find('→').expect("fixture has the arrow") + 1;
+        // Cut the arrow in half, which is what a byte-wise blank does when its range ends inside a character.
+        broken[cut] = b' ';
+        let mask = aligned_mask(broken, source);
+        assert_eq!(
+            mask.len(),
+            source.len(),
+            "the mask is one byte per input byte, whatever it blanked"
+        );
+        assert!(
+            mask.is_char_boundary(cut),
+            "the mask is valid UTF-8 at the offset the blank cut: {mask:?}"
+        );
+
+        // And the two operations that crashed: called *at* an offset inside a multi-byte character, which is
+        // what a byte-arithmetic caller can hand back. Snapping to a boundary is the contract, so this is the
+        // assertion that would have failed before the fix — not a length check on the mask.
+        let scan = Scan::new("// a → b\nfn f(a: u32) -> u32 { a }\n", Language::Rust);
+        let middle = scan.raw.find('→').expect("fixture has the arrow") + 1;
+        assert!(
+            !scan.raw.is_char_boundary(middle),
+            "the fixture must actually straddle the character"
+        );
+        assert_eq!(
+            scan.line_start(middle),
+            0,
+            "a straddling offset still resolves to the line's start"
+        );
+        assert_eq!(
+            scan.line_end(middle),
+            scan.raw.find('\n').expect("fixture has a newline"),
+            "a straddling offset still resolves to the line's end"
+        );
+        for at in 0..=scan.raw.len() {
+            let start = scan.line_start(at);
+            let end = scan.line_end(at);
+            assert!(start <= end, "a line's bounds disagree at {at}");
+            // Slicing is the whole point: if any of these went past a boundary the process would abort.
+            let _ = scan.text(start..end);
+        }
+    }
 
     /// `depth` and `outside` answer different questions, and using the wrong one silently loses a
     /// signature: a caller that looks for a method's parameter list at depth zero finds none, and a

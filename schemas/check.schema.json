@@ -1,0 +1,652 @@
+{
+  "$id": "https://fathom.dev/schemas/check.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fathom check",
+  "description": "The CI gate's answer to one run: the policy in force, the range that was compared, one row per check saying whether it ran and what it examined, the findings at each severity, what `check.ignore` silenced, and the one sentence that says why the run is red. `e6.6` (`reco-ngk`). Every output format \u2014 the log, SARIF, the step annotations and the markdown summary \u2014 is a projection of this document, so the exit code and the sentence cannot disagree with the findings they summarise.",
+  "x-fathom-contract": "fathom-check/1",
+  "x-fathom-exit-codes": [
+    {
+      "code": 0,
+      "name": "OK",
+      "when": "Nothing at or above `check.fail_on`, every required check ran, and at least one check examined something."
+    },
+    {
+      "code": 2,
+      "name": "USAGE",
+      "when": "A flag or its value is wrong: `--format sideways`, `--fail-on maybe`, `--severity tests=offby`, a `--range` with no `..`."
+    },
+    {
+      "code": 3,
+      "name": "NOT_A_REPOSITORY",
+      "when": "`--root` is not a git repository, so there is no range to resolve."
+    },
+    {
+      "code": 5,
+      "name": "CONFIG_INVALID",
+      "when": "`[check]` is present and cannot be understood \u2014 an unknown key, a bad severity, a policy version this build does not read. The gate refuses rather than defaulting."
+    },
+    {
+      "code": 7,
+      "name": "CHECK_VIOLATIONS",
+      "when": "A finding sits at or above `check.fail_on`, or a check named in `check.require` could not run, or nothing at all was examined while something was blocked."
+    },
+    {
+      "code": 12,
+      "name": "INDEX_DEGRADED",
+      "when": "The store exists and would not open. A *missing* index is not this code: the checks that need it report themselves `blocked` so the others still answer."
+    }
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "producer",
+    "outcome",
+    "exit",
+    "exit_name",
+    "why",
+    "range",
+    "policy",
+    "summary",
+    "checks",
+    "silenced",
+    "notices"
+  ],
+  "properties": {
+    "contract": {
+      "const": "fathom-check/1"
+    },
+    "producer": {
+      "type": "string",
+      "description": "`fathom <version>` \u2014 which build answered."
+    },
+    "outcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "off"
+      ],
+      "description": "`off` is `check.mode = off`: reported, not decided."
+    },
+    "exit": {
+      "type": "integer",
+      "description": "The code the process exits with (ADR-002 \u00a77.3)."
+    },
+    "exit_name": {
+      "type": "string"
+    },
+    "why": {
+      "type": "string",
+      "description": "The one sentence: counts, threshold, range, worst finding and its location."
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "head",
+        "base_from",
+        "head_from",
+        "text",
+        "episodes",
+        "episodes_partial"
+      ],
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "base_from": {
+          "type": "string",
+          "description": "Where the base came from: a flag, `fathom.toml`, or the built-in default."
+        },
+        "head_from": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "episodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "episodes_partial": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "mode",
+        "fail_on",
+        "base",
+        "head",
+        "require",
+        "ignore",
+        "severity",
+        "max_findings",
+        "api_file_cap",
+        "risk_episode_cap",
+        "episode_cap",
+        "tests",
+        "dependencies",
+        "risk",
+        "notices"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "enum": [
+            "off",
+            "warn",
+            "deny"
+          ]
+        },
+        "fail_on": {
+          "oneOf": [
+            {
+              "enum": [
+                "note",
+                "warning",
+                "error"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` is `never`: report everything, decide nothing."
+        },
+        "base": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "head": {
+          "type": "string"
+        },
+        "require": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "layering",
+              "cycles",
+              "api",
+              "dependencies",
+              "tests",
+              "sign-off"
+            ]
+          }
+        },
+        "ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "severity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layering",
+            "cycles",
+            "api",
+            "dependencies",
+            "tests",
+            "sign-off"
+          ],
+          "properties": {
+            "layering": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "cycles": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "api": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "dependencies": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "tests": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "sign-off": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            }
+          },
+          "description": "Each check's volume, or `off`."
+        },
+        "max_findings": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "api_file_cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "risk_episode_cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "episode_cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min_new_lines",
+            "min_tested_ratio"
+          ],
+          "properties": {
+            "min_new_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "min_tested_ratio": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "new_direct",
+            "major_change",
+            "new_source",
+            "downgrade",
+            "forbid"
+          ],
+          "properties": {
+            "new_direct": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "major_change": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "new_source": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "downgrade": {
+              "enum": [
+                "note",
+                "warning",
+                "error",
+                "null"
+              ]
+            },
+            "forbid": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "risk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold"
+          ],
+          "properties": {
+            "threshold": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "listed",
+        "failing",
+        "silenced",
+        "blocked",
+        "by_severity",
+        "blocked_required"
+      ],
+      "properties": {
+        "found": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Before the per-check list bound."
+        },
+        "listed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failing": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "At or above `fail_on` \u2014 the ones that make the run red."
+        },
+        "silenced": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Checks that could not judge the range. The number to read on a run that passed: a gate with three blocked rows and three clean ones passed on a narrower basis than its exit code alone conveys. Required blocked checks fail the run; this counts all of them, required or not."
+        },
+        "by_severity": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "severity",
+              "count"
+            ],
+            "properties": {
+              "severity": {
+                "enum": [
+                  "note",
+                  "warning",
+                  "error"
+                ]
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "blocked_required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check",
+          "title",
+          "volume",
+          "status",
+          "examined",
+          "reason",
+          "remedy",
+          "notes",
+          "findings_total",
+          "truncated",
+          "findings"
+        ],
+        "properties": {
+          "check": {
+            "enum": [
+              "layering",
+              "cycles",
+              "api",
+              "dependencies",
+              "tests",
+              "sign-off"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "volume": {
+            "oneOf": [
+              {
+                "enum": [
+                  "note",
+                  "warning",
+                  "error"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`null` when the policy switched the check off."
+          },
+          "status": {
+            "enum": [
+              "ran",
+              "off",
+              "blocked"
+            ],
+            "description": "`blocked` is a stated inability to judge, never a pass."
+          },
+          "examined": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "What the check looked at, in its own unit; only on `ran`."
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remedy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "findings_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "check",
+                "rule",
+                "severity",
+                "message",
+                "detail",
+                "evidence",
+                "count",
+                "also"
+              ],
+              "properties": {
+                "check": {
+                  "enum": [
+                    "layering",
+                    "cycles",
+                    "api",
+                    "dependencies",
+                    "tests",
+                    "sign-off"
+                  ]
+                },
+                "rule": {
+                  "type": "string",
+                  "description": "Stable rule id inside the family; `check/rule` is what `check.ignore` matches."
+                },
+                "severity": {
+                  "enum": [
+                    "note",
+                    "warning",
+                    "error"
+                  ]
+                },
+                "message": {
+                  "type": "string",
+                  "description": "One sentence, with the names in it. Every format prints this one."
+                },
+                "detail": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "source"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "description": "Repo-relative file the finding points at, when there is one."
+                      },
+                      "line": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 1,
+                        "description": "The 1-based line, when one is known."
+                      },
+                      "source": {
+                        "type": "string",
+                        "description": "How the claim was established: `graph:layering`, `hunk:Cargo.lock`, `index:episode \u2026`."
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Identical findings this row collapses."
+                },
+                "also": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "silenced": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "pattern",
+          "count",
+          "example"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "example": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

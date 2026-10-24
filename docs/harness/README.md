@@ -107,7 +107,7 @@ fathom index ROOT && fathom show HEAD --json ROOT   # did a turn reach an episod
 
 `--check` is the one to run in a panic: it reads nothing and cannot starve the stream it is watching.
 Both `fathom hooks --check` and `--replay` exit non-zero (`7`) under `--strict` on any rejection,
-which is the CI gate `e6.6` (`reco-ngk`) will hang a check off.
+which is the shape the CI gate ([`e6.6`](../concepts/ci-gate.md), `reco-ngk`) hangs its own checks off.
 
 ## 5. The three pages
 

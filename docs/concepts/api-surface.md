@@ -1,9 +1,11 @@
 # Public API surface: what changed, which change drove it, and what a parser cannot know
 
-- **Status**: **shipped as an engine.** There is no `fathom api` verb and no `fathom check` gate yet:
-  **reco-ngk** (`fathom check`) and the architecture scorecard (**reco-al1**) are the consumers this
-  module is shaped for. Nothing here writes `.fathom/ratchet.toml`, and nothing here decides an exit
-  code — `[api] mode = "deny"` is recorded and honoured by the report, and the wiring of it is `e6.6`.
+- **Status**: **shipped as an engine, and now enforced.** `fathom check` (**reco-ngk**, `e6.6`) is here: its
+  `api` check diffs the surface across the range, reports every breaking change (and the *indeterminate*
+  class at `note`), and takes its volume from `[check.severity] api`. There is still no `fathom api` verb —
+  the surface is read by the gate and by the artefact rather than printed on its own. Nothing here writes
+  `.fathom/ratchet.toml`; `[api] mode = "deny"` is recorded and honoured by the report, and the exit code is
+  the gate's.
 - **Decided by**: [structure extraction](structure-extraction.md) (this module reads the same
   tree-sitter source of truth and inherits its honest holes: a `macro_rules!` expansion is invisible
   to both), [change classification](change-classification.md) (file-level classes, which are a
@@ -221,7 +223,7 @@ at the neighbour.
 
 ```toml
 [api]
-mode = "warn"                        # off | warn | deny (deny is the future `fathom check` exit)
+mode = "warn"                        # off | warn | deny (`deny` is what `fathom check` reads)
 ignore = ["**/tests/**", "crates/fathom-cli/**"]
 package = ["crates/fathom-core = fathom-core", "sdk/ts = @acme/sdk"]
 private = ["fathom-fixtures"]
@@ -238,7 +240,7 @@ apart.
 
 ## 9. What is not here
 
-No CLI verb, no `fathom check` exit, no ratchet baseline of API debt, and no cross-revision cache: the
+No `fathom api` verb of its own, no ratchet baseline of API debt, and no cross-revision cache: the
 surface is rebuilt per comparison and the digests are the cache key when one is built. No body
 analysis (a body change is not an API change, and no rule here pretends to know when one is). No
 `Patch` bump: nothing in a source-level reader can distinguish "documentation only" from "nothing",

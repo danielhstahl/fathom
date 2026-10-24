@@ -1,9 +1,10 @@
 # Layering: what the declared architecture refuses, and what this turn added
 
-- **Status**: **shipped as an engine, a baseline and a per-episode delta.** The CLI verb that prints it is
-  not built: `fathom check` (**reco-ngk**) and the architecture scorecard (**reco-al1**) are the consumers
-  this module is shaped for, and neither exists yet. Nothing here writes `.fathom/ratchet.toml`; adding a
-  row is a human edit, same rule as [the ratchet](ratchet.md) follows.
+- **Status**: **shipped as an engine, a baseline and a per-episode delta.** The consumer that decides
+  anything is `fathom check` (**reco-ngk**, `e6.6`), which is here: it reads this module's per-episode delta,
+  applies `[check.severity] layering`, and exits 7 on what this range introduced. The scorecard
+  (**reco-al1**) trends the same violations. Nothing here writes `.fathom/ratchet.toml`; adding a
+  row is `fathom ratchet --update-baseline --reason "…"`, same rule as [the ratchet](ratchet.md) follows.
 - **Decided by**: [the architecture graph](architecture-graph.md) (the rows this judges and the lane they
   ride), [cycles](cycle-detection.md) (the cycle engine this declares against — this module does not
   detect cycles, it declares them refused), [the ratchet](ratchet.md) (`kind = "layer"` rows),

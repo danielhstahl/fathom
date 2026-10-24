@@ -363,6 +363,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `layers` | ADR-004 §5.1 / e3.1 | The declared intended architecture: named layers, each a list of path prefixes. An open map, keyed by layer name. |
 | `layering` | ADR-004 §5.1 / e3.6 (`reco-cfp`) | What the declared layers are allowed to depend on: refusals, their exceptions, boundary rules and the cycle rules. `[layers]` says where things live; this says which edges between them are violations. A rule that cannot match anything is refused when the file is read, with the reason, rather than becoming a silent no-op. |
 | `api` | e3.7 (`reco-p5u`) | Which paths' exports the rest of the world compiles against, and how loudly a change to them speaks. A workspace of nine crates usually has two whose `pub` items are somebody else's contract, and a breaking change reported in the third is noise - the ignore and private sets are how the owner says which ones count. Reading the source is `[extract]`'s business; this table is the claim about the repository. |
+| `check` | e6.6 (`reco-ngk`) | What `fathom check` enforces in this repository, and where the run turns red. One table holds the layout version, the gate's volume, the threshold that exits 7, each check's severity and each family's own numbers. It is per-repository and it is read strictly: a value that will not parse, a key this build does not know, or a layout version it cannot read is a refusal (exit 5), never a defaulted pass — a gate that half-reads a policy is a gate that passes what it never looked at. |
 | `hotspots` | e3.8 (`reco-wky`) | What the hotspot score is made of: the six metric weights, the knee each saturating curve bends at, the churn window, and how long a new symbol may go unreferenced before it is a candidate. A hotspot is "expensive to change and widely felt", not "bad", and every knob here moves an explainable number rather than switching a report on or off. |
 | `scorecard` | e3.9 (`reco-al1`) | What the architecture score is made of: the five weights, the window a per-window score covers, how much movement still counts as flat, how many revisions a printed trend keeps, and the four published constants the curves divide by. The curve *shapes* are not knobs — they are the model — so every number a reviewer can recompute by hand stays recomputable after a tune. `fathom architecture --explain` prints what is in force. `e3.9`. |
 | `deps` | e2.5 (`reco-j83`) / e2.7 (`reco-yxi`) | Which ecosystems' manifests and lockfiles are parsed, and what the dependency-risk answer does with them: the advisory cache and its freshness bars, the licence matrix, and how hard provenance looks for the episode that asked for a package. Consent to reach the network is not here - it is `privacy.advisories`, because a cloned repository must not be able to grant it. |
@@ -540,6 +541,31 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `api.package` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.private` | `string_list` | `—` | `extend` | `any` | — | — | `e3.7` |
 | `api.max_items_per_package` | `integer` | `20000` | `replace` | `any` | items | — | `e3.7` |
+| `check.version` | `integer` | `1` | `replace` | `any` | layout version | — | `e6.6` |
+| `check.mode` | `string` | `warn` | `replace` | `any` | — | — | `e6.6` |
+| `check.fail_on` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.base` | `string` | `` | `replace` | `any` | — | — | `e6.6` |
+| `check.head` | `string` | `HEAD` | `replace` | `any` | — | — | `e6.6` |
+| `check.require` | `string_list` | `—` | `replace` | `any` | — | — | `e6.6` |
+| `check.ignore` | `string_list` | `—` | `extend` | `any` | — | — | `e6.6` |
+| `check.max_findings` | `integer` | `40` | `replace` | `any` | findings per check | — | `e6.6` |
+| `check.api_files` | `integer` | `6000` | `replace` | `any` | files per side | — | `e6.6` |
+| `check.risk_episodes` | `integer` | `40` | `replace` | `any` | episodes | — | `e6.6` |
+| `check.max_episodes` | `integer` | `200` | `replace` | `any` | episodes | — | `e6.6` |
+| `check.severity.layering` | `string` | `error` | `replace` | `any` | — | — | `e6.6` |
+| `check.severity.cycles` | `string` | `error` | `replace` | `any` | — | — | `e6.6` |
+| `check.severity.api` | `string` | `error` | `replace` | `any` | — | — | `e6.6` |
+| `check.severity.dependencies` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.severity.tests` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.severity.sign-off` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.tests.min_new_lines` | `integer` | `200` | `replace` | `any` | added lines | — | `e6.6` |
+| `check.tests.min_tested_ratio` | `number` | `0.5` | `replace` | `any` | share of new logic | — | `e6.6` |
+| `check.dependencies.new_direct` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.dependencies.major_change` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.dependencies.new_source` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.dependencies.downgrade` | `string` | `warning` | `replace` | `any` | — | — | `e6.6` |
+| `check.dependencies.forbid` | `string_list` | `—` | `extend` | `any` | — | — | `e6.6` |
+| `check.risk.threshold` | `integer` | `70` | `replace` | `any` | score | — | `e6.6` |
 | `scorecard.weight.boundaries` | `number` | `0.3` | `replace` | `any` | weight | — | `e3.9` |
 | `scorecard.weight.coupling` | `number` | `0.15` | `replace` | `any` | weight | — | `e3.9` |
 | `scorecard.weight.acyclicity` | `number` | `0.25` | `replace` | `any` | weight | — | `e3.9` |

@@ -43,7 +43,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`drift`](#fathom-drift)** | What the plan said against what the session did — the contradictions, both sides linked (e4.8) | shipped | [*plan-drift*](../concepts/plan-drift.md) · [*session-state*](../concepts/session-state.md) |
 | **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk-score*](../concepts/risk-score.md) · [*risk-scoring*](../concepts/risk-scoring.md) |
 | **[`stats`](#fathom-stats)** | Report repo scale, index state and cache hit rate | shipped | [*cli*](../concepts/cli.md) · [*0004-storage*](../adr/0004-storage.md) |
-| **[`check`](#fathom-check)** | Run the checks CI cares about; findings above the threshold exit 7 | *refuses: names its plan item* | [*gate-a-pipeline*](../recipes/gate-a-pipeline.md) · [*cli*](cli.md) |
+| **[`check`](#fathom-check)** | Run the checks CI cares about; findings above the threshold exit 7 | shipped | [*ci-gate*](../concepts/ci-gate.md) · [*gate-a-pipeline*](../recipes/gate-a-pipeline.md) |
 | **[`doctor`](#fathom-doctor)** | Describe this build, its environment and its index, with a remedy per finding | shipped | [*troubleshooting*](../troubleshooting.md) · [*cli*](../concepts/cli.md) |
 | **[`export`](#fathom-export)** | Write a review artefact for a pull request or an audit | shipped | [*export-artefact*](../concepts/export-artefact.md) · [*export-for-a-pr*](../recipes/export-for-a-pr.md) |
 | **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | shipped | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
@@ -760,9 +760,10 @@ Options:
 
 ## `fathom check`
 
-The CI gate verb. **Not in this build**: it answers with a refusal naming `e6.6`, and
-[the pipeline recipe](../recipes/gate-a-pipeline.md) is the set of gates that work today
-(`fathom review status`, `fathom export --strict`, `fathom drift --fail-on-findings`).
+The CI gate: six checks over a `base..head` range, one exit code, five formats. Findings at or above
+`[check] fail_on` exit `7`; the policy is `[check]` in `fathom.toml`, and `--explain` prints what is in
+force. [The CI gate page](../concepts/ci-gate.md) is the design, and
+[the pipeline recipe](../recipes/gate-a-pipeline.md) is the fifteen-minute YAML.
 
 <!-- BEGIN GENERATED: help.check -->
 ```text
@@ -771,17 +772,35 @@ Run the checks CI cares about; findings above the threshold exit 7
 Usage: fathom check [OPTIONS]
 
 Options:
-      --plain              Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
-      --no-alt-screen      Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
-      --fresh              Ignore the session this repository has stored, and start from defaults (`e1.11`)
-      --mouse              Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
-      --lines              With `--plain`: print the frame in reading order, one block per pane, instead of side by side
-      --theme <NAME|PATH>  Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
-      --progress           print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
-      --no-progress        never print the index's progress row, even on a terminal
-      --no-watch           Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+      --plain                   Draw as text, with no terminal taken: for pipes, CI logs and screen readers (ADR-006 §6.7)
+      --root <ROOT>             The repository to check [default: .]
+      --base <REV>              The far end of the range: what the change is compared against
+      --no-alt-screen           Draw in place instead of taking the alternate screen, which keeps the shell's scrollback
+      --fresh                   Ignore the session this repository has stored, and start from defaults (`e1.11`)
+      --head <REV>              The near end of the range. Defaults to `[check] head`, then to `HEAD`
+      --mouse                   Take the mouse: click selects, double-click drills, the wheel scrolls (`e5.5`, ADR-006 §10.1)
+      --range <BASE..HEAD>      The range as one argument, `base..head` — what a reviewer pastes into a message
+      --format <FMT>            The output format: `human`, `json`, `sarif`, `github` (step annotations) or `markdown` (job summary) [default: human]
+      --lines                   With `--plain`: print the frame in reading order, one block per pane, instead of side by side
+      --json                    Print the JSON document — the same thing as `--format json`
+      --theme <NAME|PATH>       Paint the frame with this theme: a built-in name, a theme file, or a path to one (`e5.6`)
+      --out <PATH>              Write the artefact to this file instead of to stdout
+      --progress                print the index's progress row even when stderr is not a terminal (`index` and `--demo`)
+      --summary <PATH>          Where to append the markdown job summary. Defaults to `$GITHUB_STEP_SUMMARY` when the runner set one
+      --no-progress             never print the index's progress row, even on a terminal
+      --no-summary              Do not write a job summary at all, even with `$GITHUB_STEP_SUMMARY` set
+      --no-annotations          Do not print GitHub step annotations beside the report
+      --no-watch                Do not watch the repository from an open frame: show what the index holds, and say so (`reco-bpc`)
+      --fail-on <LEVEL>         The severity at or above which the run exits 7: `note`, `warning`, `error` or `never`
+      --severity <CHECK=LEVEL>  Set one check's volume for this run, e.g. `--severity tests=off`. Repeatable
+      --only <CHECK>            Run only these checks. Repeatable; the others are reported as off, not omitted
+      --skip <CHECK>            Do not run these checks. Repeatable
+      --require <CHECK>         Checks that must *run*: one that cannot is a failure rather than a notice. Repeatable
+      --ignore <CHECK[:RULE]>   Silence one finding or family for this run: `tests`, or `layering:no_upward`. Repeatable
+      --max <N>                 Cap the findings listed per check (the counts stay whole). Overrides `[check] max_findings`
+      --explain                 Print the policy in force — every check's volume, every threshold — and exit 0 without checking
+  -h, --help                    Print help (see more with '--help')
+  -V, --version                 Print version
 ```
 <!-- END GENERATED: help.check -->
 

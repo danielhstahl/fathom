@@ -208,6 +208,96 @@ jobs:
         run: python3 tools/check_release.py
 
   # ---------------------------------------------------------------------------
+  # `e6.6` (`reco-ngk`): the gate runs as a gate. The point of this job is not that `fathom check` finds
+  # nothing on `main` — `[check] mode` is `warn`, so it could not block even if it did. The point is the
+  # three claims the ticket made about the *run*: it finishes inside a minute on a medium repository with a
+  # shallow clone, its SARIF uploads cleanly, and its exit code is the contract the next verb inherits.
+  # ---------------------------------------------------------------------------
+  check-gate:
+    name: check-gate (the CI gate, on its own repository)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      # A shallow clone, deliberately: the gate's `fetch-depth: 0` advice has to be true, and one of the
+      # six checks is only interesting when the base is missing. 50 is the depth a busy repository would
+      # use, and this repository's history is short enough that the range is still real.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - uses: Swatinem/rust-cache@v2
+      - name: build the headless binary the gate ships as
+        # `minimal` would silently block four of the six checks for a missing store; the headless CI build
+        # is the one with every check wired. No `net-*` feature, so the "runs without network" clause is
+        # at least not contradicted by the build.
+        run: cargo build --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all
+      - name: index
+        run: ./target/debug/fathom index --no-progress --json | tail -1
+
+      # The budget, timed rather than asserted in a test: a fixture of forty synthetic commits is the floor
+      # of the claim, and this is the ceiling. The first run is the gate — its log is the job's own output,
+      # its `::error`/`::warning` lines are the diff annotations, and because the runner set
+      # `$GITHUB_STEP_SUMMARY` its markdown job summary is appended in the same pass. The second run is the
+      # artefact a code-scanning uploader consumes, and it says `--no-summary` because a run whose purpose
+      # is a file should not also write prose.
+      - name: the gate, timed against the 60s budget
+        run: |
+          base="$(git rev-parse HEAD~5 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)"
+          start=$(date +%s)
+          set +e
+          ./target/debug/fathom check --base "$base" --head HEAD
+          gate=$?
+          ./target/debug/fathom check --base "$base" --head HEAD \
+            --format sarif --out fathom.sarif --no-summary
+          sarif=$?
+          set -e
+          took=$(( $(date +%s) - start ))
+          echo "two runs (the gate, then the SARIF) over $base..HEAD took ${took}s"
+          # Two runs, so twice the single-run figure the criterion names. The wall clock is the only honest
+          # measurement of it, which is why it is measured here and not merely asserted in a fixture.
+          if [ "$took" -ge 120 ]; then
+            echo "::error::fathom check took ${took}s for two runs; the budget is 60s each"
+            exit 1
+          fi
+          # `7` is a finding, and `[check] mode = warn` means it is not this job's failure. Anything else
+          # — a crash, a store it could not open, a policy it could not read — is, because the gate itself
+          # broke, which is the one outcome ADR-002 §7.3 refuses to let a pipeline call "red".
+          for pair in "gate:$gate" "sarif:$sarif"; do
+            case "${pair#*:}" in
+              0|7) ;;
+              *) echo "::error::${pair%%:*} exited ${pair#*:} — expected 0 or 7"; exit 1 ;;
+            esac
+          done
+      - name: the SARIF is a SARIF an uploader will take
+        run: python3 tools/check_sarif.py fathom.sarif
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fathom-check-sarif
+          path: fathom.sarif
+      - name: the JSON document is the contract it claims to be
+        run: |
+          ./target/debug/fathom check --base HEAD~5 --format json > /tmp/check.json
+          python3 - <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0, "tools")
+          value = json.loads(pathlib.Path("/tmp/check.json").read_text())
+          schema = json.loads(pathlib.Path("schemas/check.schema.json").read_text())
+          assert value["contract"] == schema["x-fathom-contract"], value["contract"]
+          assert value["exit"] in (0, 7), value["exit"]
+          assert value["checks"], "a run with no rows is not a run"
+          for row in value["checks"]:
+              if row["status"] == "ran":
+                  assert row["examined"] is not None, row
+              else:
+                  assert row["examined"] is None, "a blocked row cannot have examined anything"
+          print(f"fathom check: {value['outcome']}, {value['summary']['found']} finding(s), {len(value['checks'])} rows")
+          PY
+      - name: and the gate's own test suite
+        run: cargo test --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all --test check_verb
+
+  # ---------------------------------------------------------------------------
   # The matrix: three operating systems × {stable, MSRV}, per §8.3.
   # ---------------------------------------------------------------------------
   build-test:

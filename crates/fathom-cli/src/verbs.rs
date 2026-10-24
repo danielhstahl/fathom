@@ -166,7 +166,7 @@ pub enum Verb {
     /// Report repo scale, index state and cache hit rate
     Stats(StatsArgs),
     /// Run the checks CI cares about; findings above the threshold exit 7
-    Check,
+    Check(CheckArgs),
     /// Describe this build, its environment and its index, with a remedy per finding
     Doctor(DoctorArgs),
     /// Write a review artefact for a pull request or an audit
@@ -893,6 +893,78 @@ pub struct StatsArgs {
     pub json: bool,
 }
 
+/// `fathom check` — the CI gate (`e6.6`, `reco-ngk`).
+///
+/// Six checks over one range, one exit code, five formats. The policy lives in `[check]` in the
+/// repository's own `fathom.toml`; every flag here is a statement about *this run* and overrides it, so a
+/// pipeline can say "this job fails on warnings" without rewriting the file the whole team reads.
+#[derive(Args, Debug)]
+pub struct CheckArgs {
+    /// The repository to check.
+    #[arg(long, default_value = ".")]
+    pub root: String,
+    /// The far end of the range: what the change is compared against.
+    ///
+    /// Defaults to `[check] base` in `fathom.toml`, and to `HEAD~1` when the file says nothing. A shallow
+    /// clone that does not have it is not an error: the two checks that need both trees report themselves
+    /// blocked, with the fetch command that fixes them.
+    #[arg(long, value_name = "REV")]
+    pub base: Option<String>,
+    /// The near end of the range. Defaults to `[check] head`, then to `HEAD`.
+    #[arg(long, value_name = "REV")]
+    pub head: Option<String>,
+    /// The range as one argument, `base..head` — what a reviewer pastes into a message.
+    #[arg(long, value_name = "BASE..HEAD")]
+    pub range: Option<String>,
+    /// The output format: `human`, `json`, `sarif`, `github` (step annotations) or `markdown` (job summary).
+    #[arg(long, value_name = "FMT", default_value = "human")]
+    pub format: String,
+    /// Print the JSON document — the same thing as `--format json`.
+    #[arg(long)]
+    pub json: bool,
+    /// Write the artefact to this file instead of to stdout.
+    #[arg(long, value_name = "PATH")]
+    pub out: Option<String>,
+    /// Where to append the markdown job summary. Defaults to `$GITHUB_STEP_SUMMARY` when the runner set one.
+    #[arg(long, value_name = "PATH")]
+    pub summary: Option<String>,
+    /// Do not write a job summary at all, even with `$GITHUB_STEP_SUMMARY` set.
+    #[arg(long = "no-summary")]
+    pub no_summary: bool,
+    /// Do not print GitHub step annotations beside the report.
+    #[arg(long = "no-annotations")]
+    pub no_annotations: bool,
+    /// The severity at or above which the run exits 7: `note`, `warning`, `error` or `never`.
+    ///
+    /// Overrides `[check] fail_on`. `never` makes the gate a reporter: findings are listed, nothing fails.
+    #[arg(long, value_name = "LEVEL")]
+    pub fail_on: Option<String>,
+    /// Set one check's volume for this run, e.g. `--severity tests=off`. Repeatable.
+    #[arg(long, value_name = "CHECK=LEVEL")]
+    pub severity: Vec<String>,
+    /// Run only these checks. Repeatable; the others are reported as off, not omitted.
+    #[arg(long, value_name = "CHECK")]
+    pub only: Vec<String>,
+    /// Do not run these checks. Repeatable.
+    #[arg(long, value_name = "CHECK")]
+    pub skip: Vec<String>,
+    /// Checks that must *run*: one that cannot is a failure rather than a notice. Repeatable.
+    #[arg(long, value_name = "CHECK")]
+    pub require: Vec<String>,
+    /// Silence one finding or family for this run: `tests`, or `layering:no_upward`. Repeatable.
+    ///
+    /// The command-line twin of `[check] ignore`, and it obeys the same rule — the family half must name a
+    /// check, because a pattern that silences nothing is discovered at review time otherwise.
+    #[arg(long, value_name = "CHECK[:RULE]")]
+    pub ignore: Vec<String>,
+    /// Cap the findings listed per check (the counts stay whole). Overrides `[check] max_findings`.
+    #[arg(long, value_name = "N")]
+    pub max: Option<usize>,
+    /// Print the policy in force — every check's volume, every threshold — and exit 0 without checking.
+    #[arg(long)]
+    pub explain: bool,
+}
+
 /// `fathom doctor`
 #[derive(Args, Debug)]
 pub struct DoctorArgs {
@@ -1471,7 +1543,7 @@ pub fn dispatch(verb: Option<&Verb>, globals: &Globals) -> eyre::Result<ExitCode
             )
         }
         Some(Verb::Stats(args)) => query::stats(&args.root, args.json),
-        Some(Verb::Check) => Err(not_implemented("fathom check", "e6.6")),
+        Some(Verb::Check(args)) => crate::check::run(args),
         Some(Verb::Doctor(args)) => {
             diagnose::doctor(&args.root, args.privacy, args.json, args.deep, args.strict)
         }
@@ -2484,17 +2556,6 @@ pub(crate) fn pending(
     hint: Option<String>,
 ) -> eyre::Report {
     Pending::new(code, message, hint).into()
-}
-
-fn not_implemented(verb: &str, ticket: &str) -> eyre::Report {
-    Pending::new(
-        ExitCode::Error,
-        format!("`{verb}` is not implemented yet"),
-        Some(format!(
-            "owned by {ticket}; the ticket map is docs/adr/0002-workspace.md §11"
-        )),
-    )
-    .into()
 }
 
 pub(crate) fn feature_absent(verb: &str, feature: &str) -> eyre::Report {

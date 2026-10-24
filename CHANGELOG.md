@@ -17,6 +17,54 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The CI gate: one command that answers "may this merge?" (`reco-ngk`)
+
+ADR-002 §7.3 asked for a gate that fails only on new violations, never on a clean checkout where an analysis
+failed to run, and explains itself in one sentence. **`fathom check`** is that command: a `base..head` range
+across six checks — `layering`, `cycles`, `api`, `dependencies`, `tests`, `sign-off` — at severities the
+repository sets, ratcheted so existing debt is not news, and printed four ways. The gate has no opinion of its
+own about what is debt: five of its six checks ask an engine that already has one, which is what keeps the
+answer consistent with what `fathom impact`, `fathom cycles` and `fathom explain` say about the same change
+(ADR-002 §5.3). See [the CI gate](docs/concepts/ci-gate.md).
+
+* **The decision is a pure function of a value**, so it is testable without a repository. `Gate::build(policy,
+  range, runs)` in `fathom_analyze::check` computes the verdict, the exit code, the one sentence and the whole
+  JSON document from what the checks gathered; the verb gathers, the decision layer decides. `--explain` prints
+  the same policy from the same code, so the explanation cannot drift from the enforcement — the failure this
+  split exists to prevent.
+* **Nothing that examined nothing passes.** A check that cannot judge is `blocked` with a reason and a remedy,
+  never `ran` with an empty list; a blocked *required* check fails; a run where no check examined anything fails
+  however the findings fell. Three separate refusals, each tested, because "no findings" and "I could not look"
+  are otherwise one exit code apart and indistinguishable in a log full of green.
+* **`check.mode` defaults to `warn`, and `--fail-on` escalates without rewriting the policy.** A gate that blocks
+  a repository the day it is installed is a gate that gets deleted the day it blocks a release. `mode = "off"`
+  is not overridden by any flag: a switch that silently re-enables a deliberate kill switch is how the kill
+  switch stops being one.
+* **An unknown policy key is fatal.** `[check] fail_onn = "error"` exits 5 and names the key and the legal ones,
+  rather than falling back to a default nobody chose. Same for a `check.version` newer than the binary, a
+  malformed `--range`, and an `ignore` family that names no check.
+* **Sign-off reads the ledger, not the store's mirror.** The cached review state can lag a ledger edited
+  anywhere, so a fresh accepted entry on disk counts and a *stale* sign-off — one whose file has since moved —
+  does not, which is the whole reason the ledger records line anchors.
+* **SARIF that uploads.** Every `ruleId` is declared, `ruleIndex` resolves to it, rule IDs name the *rule* and
+  not the violation instance, fingerprints come from the evidence key rather than the line number, and a
+  location whose file is gone at the scanned revision is dropped rather than uploaded broken.
+  `tools/check_sarif.py` re-checks all of it and carries a `--self-test` that proves it fails.
+* **The gate is now in its own CI** (`check-gate`): a shallow clone, timed against the 60 s budget, its SARIF
+  uploaded, its job summary written, and its exit code asserted to be 0 or 7 — because a gate whose own runs
+  go unwatched rots into a warning nobody reads.
+
+One bug fell out of running the gate over this repository: `api::textscan` masked bytes and "repaired" the
+result with `String::from_utf8_lossy`, which re-encodes one broken byte as three and silently shifts every
+offset after it. `line_start` then sliced `raw` at a non-char boundary and panicked on a file containing `→`
+inside a comment. The mask is now realigned one byte per input byte, `line_start`/`line_end` snap to a boundary
+regardless, and the regression test reproduces the exact panic when the fix is reverted.
+
+Two limits stated rather than hidden: `fathom index` writes no architecture graph snapshots yet, so `layering`
+and `cycles` report `blocked` on an index-only repository — the remedy now says so instead of sending the
+reader to a command that cannot fix it — and `tests` judges file names, not behaviour, which is why its volume
+is `warning`.
+
 ### The ratchet: the committed allowance ledger, and the debt whose grace is running out (`reco-5ht`)
 
 `e3.5` and `e3.6` could already tell a baselined violation from a new one, but nothing could *write* the

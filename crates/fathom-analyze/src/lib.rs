@@ -22,6 +22,11 @@
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod build;
 pub mod cancel;
+/// The CI gate's policy, findings and output formats (`e6.6`, `reco-ngk`): what `[check]` says is
+/// enforced, the one finding shape every format projects, the gate's verdict and its one sentence, and
+/// the SARIF log a code-scanning upload accepts. Judgment stays with the engines this module reads
+/// ([`layering`], [`cycles`], [`api`], [`deps`], [`risk`]); this owns policy, severity and rendering.
+pub mod check;
 /// The comparison of any two endpoints (`e5.3`, `reco-ifo`): the spec, the labelled endpoints, and the
 /// composition of the per-episode delta documents between them. No second delta engine — see the module.
 pub mod compare;
