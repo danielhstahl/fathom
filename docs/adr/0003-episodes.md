@@ -575,6 +575,18 @@ to relink from.
 | **RL6** | The carried row keeps the original `state`, `actor` and `note`, and takes the **new** episode's fingerprint. An actor and a note are claims about a human act; a fingerprint is a claim about content, and the content changed. |
 | **RL7** | A relink never invents a decision. `unread` is copied like any other state and stays `unread`: what travels is the *fact that a human was assigned or looked*, not a verdict nobody gave. |
 
+**Measured by `s6` (§19), against 1562 annotated rewrite events.** Three things this table does not say,
+and the measurement says: tier 3 is inert (it buys **1** carry across the whole corpus over the two-digest
+ladder — its precondition is a surviving commit, and a rewrite that spares a commit and its paths is already
+caught by tier 1 or 2); tier 2 is the leaky rung, not the safe one (8.4 % false relinks of its rows against
+tier 1's 2.0 %, in the families where one author's different acts touch the same file set); and the false
+rate is a property of the review queue as much as of the ladder — **the same pass writes 5.2 % false rows
+when every episode has been dispositioned and 41 % when a third of them have not**, because RL0 forbids
+landing where somebody is already looking, which means a false relink necessarily lands on an unread
+episode. And the fourth tier §13.1 deferred has been priced on this corpus as well: **declined**, in both
+the threshold form and the uniqueness-disciplined one (§19.2 **D1**), which leaves §6.4's unwritten
+`method='manual'` row as the only answer to the case below.
+
 ### 6.3 The case nothing catches, and the rule that governs it
 
 Reword **and** move files **and** rewrite the oids (a rebase that edits the message and the file list at
@@ -589,6 +601,15 @@ once): all three digests move, no member survives, and no tier fires. The honest
 That asymmetry is the whole of the tie-break: this product's currency is trust, and the only way to spend
 it is to assert something that is not true. §13.1 declines fuzzy matching for the same reason, and names
 what would have to be true to revisit it.
+
+`s6` (§19) counted the size of this hole: **393 of 1232 annotated carries across the corpus — 32 % — are
+unreachable by any tier**, and the case named here is not the only one. `reset-author` is the same shape of
+loss and this section does not name it: `author` is an input to all three digests, so an
+identity-preserving rewrite that changes the author is invisible to the whole ladder (196 of those 393).
+And every one of them was annotatable in a line, because a reviewer looking at a reword-and-moved commit
+knows which episode it used to be — which is the argument for §6.4's unwritten `method='manual'` row, and
+against a threshold. The fuzzy escape hatch has now been measured and declined; what §6.3 fails visible
+about, `manual` would make repairable.
 
 ### 6.4 Which writers exist today (no more than that)
 
@@ -780,7 +801,7 @@ owner for each term.
 
 | # | Deferred | Why, and what would end the deferral |
 |---|---|---|
-| **13.1** | **Fuzzy / similarity-based re-linking** (the ticket's "fuzzy content fingerprint") | Every relink attaches a *human sign-off*, and a similarity threshold tuned without data is a guess that says "you already reviewed this". The four mechanisms in §2/§6 are exact and each is falsifiable; §6.3 is the named loss. Revisit when `s2` can report the false-relink rate and the missed-relink rate against annotated ground truth, and when `e4.6`'s signature makes a wrong link auditable. A `manual` relink (`method='manual'`, already in the vocabulary) is the interim escape hatch. **Update from §18**: `s2` reported *boundary* accuracy, not relink rates — it measured where turns start, which is a different quantity, so this deferral stands exactly where it was. **Update from `e0.12`**: the measurement this row is waiting on is now a ticket — spike `s6` (`reco-f5a`) — because a deferral that names a quantity but no owner is a deferral nobody can close. |
+| **13.1** | **Fuzzy / similarity-based re-linking** (the ticket's "fuzzy content fingerprint") | Every relink attaches a *human sign-off*, and a similarity threshold tuned without data is a guess that says "you already reviewed this". The four mechanisms in §2/§6 are exact and each is falsifiable; §6.3 is the named loss. Revisit when `s2` can report the false-relink rate and the missed-relink rate against annotated ground truth, and when `e4.6`'s signature makes a wrong link auditable. A `manual` relink (`method='manual'`, already in the vocabulary) is the interim escape hatch. **Update from §18**: `s2` reported *boundary* accuracy, not relink rates — it measured where turns start, which is a different quantity, so this deferral stands exactly where it was. **Update from `e0.12`**: the measurement this row is waiting on is now a ticket — spike `s6` (`reco-f5a`) — because a deferral that names a quantity but no owner is a deferral nobody can close. **Closed by `s6` (§19): NO-GO, so this stays declined and now has numbers.** A subject-similarity rung buys back 200 of §6.3's 393 floor carries for 4 false relinks on a queue where every episode has been dispositioned (50:1), and 57 carries for 70 false relinks on a queue where a third of them have not (0.8:1, against §6.6's price of better than 3:1); the only discipline that stops a similarity rung spraying one verdict across every similar unread episode also cuts its delivery to 53 carries, because a reword-and-moved episode is never locally unambiguous. `manual` stops being the interim escape hatch and becomes the answer (§19.2 **D1**). |
 | **13.2** | Per-ref / first-parent lineage | One lineage is a known distortion of "the next N episodes" (L4). Needs the ref graph kept through the walk and the metrics re-specified per lineage; `s2` measures whether the distortion moves G2 at all. **Update from §18**: it did not — the corpus has 8 branch names across 264 commits, which cannot test a per-ref question. This stays open, unnamed-no-longer. |
 | **13.3** | Merge-train coalescing | Ratified as N episodes (§5.8). Coalescing a bot's train hides which merge admitted the pathology; revisit with a repo where the rail is unusable because of it. |
 | **13.4** | Twin-suffix stability across runs | A twin's `-2` is allocated per run (TB10). If one twin disappears the survivor can renumber, and the store resolves it through tier 3 (the shared member) rather than by remembering the suffix. A permanent disambiguator would have to be content-stable *and* unique, which the digest already is or is not. |
@@ -860,6 +881,8 @@ PYTHONPATH=src python3 -m pytest -q               # the whole contract suite
 cargo test -p fathom-ingest segment::tests        # the digests, the cascade, the corpus scorer
 cargo test -p fathom-store  --test episodes       # relink tiers, live/dead/prune, reachability, ordering
 cargo test -p fathom-analyze --test episodes      # real git: amend, reword, squash, disappearance, ≥90 % corpus
+cargo run -q -p fathom-analyze --features sqlite-bundled --example s6_spike -- --check   # §19's report and gates
+python3 tools/gen_relink_tables.py check         # §19's tables are the report's, not a copy of them
 ```
 
 ### 17.1 Acceptance criteria → evidence
@@ -1021,11 +1044,119 @@ became the shipped cascade. A landed recommendation turns its own comparison gat
 
 | Not measured | Consequence |
 |---|---|
-| False-relink and missed-relink rates (§13.1's stated condition) | Boundaries and relinks are different quantities; §13.1's deferral of fuzzy re-linking stands unchanged, unmeasured |
+| False-relink and missed-relink rates (§13.1's stated condition) | Boundaries and relinks are different quantities; §13.1's deferral of fuzzy re-linking stood unchanged after `s2` — it is measured and closed by §19 |
 | Per-ref / first-parent lineage (§13.2, L4) | The corpus has 8 branch names across 264 commits; it cannot test a per-ref question. Still open |
 | Provisional-episode thresholds (§7 P6) | Provisional episodes do not exist yet; nothing to measure |
 | Anything about a *working* harness | The corpus records the world before `e6.1` (`reco-afh`): the `hook` rule's evidence is modelled as a counterfactual (`B-hook-harness`), clearly labelled, and every real-stratum number is trailer-less |
 | Multi-repo, monorepo, subtree lineage | Out of the corpus, out of the ADR |
+
+---
+
+## 19. What spike `s6` measured, and what it decided
+
+**Closed by `reco-f5a`** (spike `s6`). Corpus: `crates/fathom-fixtures/corpus/relinks/` — **21 rewrite
+families, 1562 rewrite events**, each one a declared operation laid on one of `s2`'s 22 annotated turn
+histories, with hand-written truth in the form this question needs: not a partition but a set of **carried
+pairs** (*this dead episode's decision belonged on that live one*), the tier the author believes can reach
+each, and the episodes that must come back unread. Harness:
+`crates/fathom-analyze/examples/s6_spike.rs`; report
+`benchmarks/reports/s6-relink-accuracy.json`; gates
+`crates/fathom-analyze/spike/s6/thresholds.json`; prose
+[docs/concepts/episode-relink.md](../concepts/episode-relink.md). The spike's copy of §6.2's pass is
+checked, link for link, against `fathom_store::episode`'s real one on every event, because a relink
+measurement made with a pass that is not the shipped pass is a rumour.
+
+The question §13.1 set was two rates against annotated ground truth. Both are reported, on **two boards**:
+`signed-off`, where every episode carries a verdict, and `sparse`, where every third one does. That is not
+decoration. A relink can only spoil a verdict that exists and can only be *seen* to spoil one where a
+landing is permitted, and RL0 forbids landing on an episode that already has a row — so a single-number
+false-relink rate is unreadable without saying how full the queue was. The gap between the two boards is
+itself a finding (§19.1 **F1**).
+
+### 19.1 The measurements
+
+Headline rows, both boards, and the two rungs §13.1 deferred:
+
+<!-- BEGIN GENERATED: s6_boards -->
+| Ladder | Board | Carries owed | …with a verdict behind them | Caught | Missed | Missed rate | …no tier could | …twin churn | …tier had it | Written | False relinks | False rate of written |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `shipped` | `signed-off` | 1232 | 1232 | 787 | 445 | 0.361 | 393 | 33 | 19 | 830 | 43 | 0.052 |
+| `shipped` | `sparse` | 1232 | 372 | 242 | 130 | 0.349 | 110 | 16 | 4 | 410 | 168 | 0.410 |
+| `fz-subject@0.45` | `signed-off` | 1232 | 1232 | 987 | 245 | 0.199 | 197 | 29 | 19 | 1034 | 47 | 0.045 |
+| `fz-subject@0.45` | `sparse` | 1232 | 372 | 299 | 73 | 0.196 | 55 | 14 | 4 | 537 | 238 | 0.443 |
+| `recency-any` | `signed-off` | 1232 | 1232 | 1187 | 45 | 0.037 | 1 | 25 | 19 | 1242 | 55 | 0.044 |
+| `recency-any` | `sparse` | 1232 | 372 | 356 | 16 | 0.043 | 0 | 12 | 4 | 2377 | 2021 | 0.850 |
+<!-- END GENERATED: s6_boards -->
+
+| # | Finding | Measured |
+|---|---|---|
+| **F1** | **RL0 is a deferral, not a guard.** The shipped ladder's false relinks are 5.2 % of its rows on a fully dispositioned queue and **41 %** on a queue a third unread. RL0 prevents a verdict being *spoiled* where somebody is already looking; a false relink therefore necessarily lands on an episode nobody has read yet, and arrives there as already-decided. §6.2's safety is a function of how far the review queue has gotten | `shipped` · `false_rate` · both boards |
+| **F2** | **RL4 is a multiplier.** 123 of those 168 sparse-board false relinks are one dead episode's verdict landing on more than one live episode. RL4 is correct about splits and twins and silent about guesses: a per-target candidate search offers the same donor to every eligible target that matches it | `shipped` · `spray` · `sparse` |
+| **F3** | **Tier 3 is inert.** `shipped` minus the ladder with tier 3 removed is **1 carry** over 1562 events. The member-set rung's precondition is a commit that survives the rewrite, and a rewrite that spares a commit and its paths is already caught by tier 1 or 2 | delta `caught` · `signed-off` |
+| **F4/F5** | **The fuzzy rung's carries are bought on the board where it has nothing to prove.** Subject Jaccard ≥ 0.45, run last: **+200 carries for +4 false relinks** on `signed-off`; **+57 for +70** on `sparse` — the price is 50:1 in one world and 0.8:1 in the other, against §6.6's better-than-3:1 | deltas `caught`, `false` · both boards |
+| **F6** | **The discipline that stops the spray fixes the price and breaks the coverage.** Requiring the guess to be unambiguous in both directions holds the sparse-board price to **+53 carries for +8 false relinks (6.6:1, clearing the bar)**, and delivers 53 of §6.3's 393 floor carries — 13 %. A reword-and-moved episode is never locally unambiguous, because there is always another unread episode it could equally have been. This is why the decision cannot rest on price alone: the disciplined rung has to be compared with what else buys the floor | delta `caught`, `false` · `sparse` |
+| **F7** | **The author is the field that matters, and the one a fuzzy tier must drop to win.** The only rungs that reach `reset-author`'s 196 unreachable carries are the ones that ignore the author — and author is §6.1's identity input | delta `caught`, `fz-subject-anon@0.45` − `fz-subject@0.45` |
+| **F8** | **§6.3's floor is 32 % of everything owed, and bigger than §6.3 says.** 393 of 1232 annotated carries are unreachable by any tier: 196 reword-and-move (the named case), 196 reset-author (not named — author is in all three digests), the rest squash-and-split variants. Every one of them was annotatable in a line | `shipped` · `floor` · `signed-off` |
+| **F9** | **TB10 has a price.** 54 events where a twin renumbered while its digest survived, costing **33** annotated carries — a §6.1 identity cost scored apart from §6.2's ladder so nobody debugs the ladder for it | `shipped` · `twin_missed` |
+| **F10** | **The implementation is nearly clean; the digests are the limit.** Only **19** missed carries in the whole corpus are ones a shipped tier had the evidence for and missed. Tier 1 alone false-relinks at 2.0 % of its rows, tier 2 alone at 8.4 % — tier 2 is the fallback in name and the riskiest rung in practice | `shipped.defect`, `t1-only`/`t2-only` · `false_rate` |
+| **F11** | **§5.10's split prediction is wrong in the harmless direction.** A commit split into two new oids shares no member with the original, so tier 3 never fires as this ADR predicts — the surviving half is carried by **tier 1**, which keeps the subject, and the second half collects the first half's verdict by `shape`. One event, one false relink, and the only §5.10 claim the corpus contradicts | `split-commit` · 1 · `false` |
+
+### 19.2 The decisions
+
+| # | Decision | Why |
+|---|---|---|
+| **D1** | **A fuzzy fourth relink tier is declined, in both forms** — §13.1 closed as NO-GO. The threshold form fails the price on a real queue (0.8 carries per false relink against a bar of better than 3). The uniqueness-disciplined form clears the price and is declined on **dominance**: 53 of the floor's 393 carries, where `method='manual'` — `e1.10`'s `fathom episode link` verb, plus §6.4's fail-visible dead-review row — covers 393 of 393 and writes no false relinks at all | F4–F8. The mechanism's whole prize is §6.3's floor; a human names the target in one keystroke and never mis-names it, so a guess needs to be near-complete to be worth its tuning, its documentation and its line in the ledger `e4.6` signs |
+| **D2** | **RL4 is to be tightened**, and the tightening is a measurement task, not an edit: one dead episode's verdict lands at most once unless a stronger tier justifies a second. The number to beat is the sparse board's 41 % false-of-written | F2. RL4 as written is a fan-out allowance, and the corpus shows where it is paid |
+| **D3** | **Tier 3 stops being counted as a defence.** Either it gets a predicate with reach or it is deleted; until then §6.2 is a two-tier ladder with an extra row in its table, and the ADR says so | F3 |
+| **D4** | **Tier 2 takes the tracker-token requirement**, where a subject carries one: the fix for its 8.4 % is exact, not fuzzy, and the corpus already has the trap that measures it (`reword-to-shared-subject`) | F10 |
+| **D5** | **Relink rates are published on two boards from now on**, in this ADR and in anything that measures relink afterwards | F1 |
+
+### 19.3 The gates
+
+25 gates, each naming its ladder, its board and its cell; 8 are declared failing, and a gate that starts
+passing has to be re-read as loudly as one that fails. `--check` re-measures them.
+
+<!-- BEGIN GENERATED: s6_gates -->
+| Gate | Claim | Cell | Measured | Expected | As expected |
+|---|---|---|---|---|---|
+| `shipped-missed-rate-band` | the shipped §6.2 ladder loses between a quarter and 40 % of the annotated carries on the optimistic board: the hole is large and it is not made of defects | `shipped` · `signed-off` · `pooled` · `missed_rate` | 0.361 | `pass` | yes |
+| `misses-are-the-unreachable-kind` | at least 350 of the carries the shipped ladder misses are ones where the annotation itself says no shipped tier had the evidence (§6.3's floor) — the misses are a limit of the digests, not a bug in the ladder | `shipped` · `signed-off` · `pooled` · `floor` | 393 | `pass` | yes |
+| `shipped-ladder-has-few-defects` | at most 30 annotated carries in the whole corpus are ones a shipped tier had the evidence for and missed anyway, which is the number §6.2's *implementation* owns, as distinct from the digests' limits | `shipped` · `signed-off` · `pooled` · `defect` | 19 | `pass` | yes |
+| `tier1-is-the-cheapest-rung` | tier 1 alone (author + normalised subject) writes false relinks at a rate of at most 3 % of its rows, which is why §6.2 is right to put the exact digests first and why the digests are worth the bytes they cost | `t1-only` · `signed-off` · `pooled` · `false_rate` | 0.02 | `pass` | yes |
+| `tier2-is-the-leaky-rung` | tier 2 alone (author + path set) false-relinks at 5 % or worse, four times tier 1's rate, and does it in the families where two different acts by one author touch the same set of files — a reworded `reword-batch`, a `reword-to-shared-subject`. §6.2 calls tier 2 a fallback; on this corpus it is the riskiest thing it ships | `t2-only` · `signed-off` · `pooled` · `false_rate` | 0.084 | `pass` | yes |
+| `shipped-false-rate-on-a-full-queue` | when every episode is dispositioned the shipped ladder's false relinks are at most 8 % of the rows it writes, most of them the digest-collision controls the corpus plants on purpose | `shipped` · `signed-off` · `pooled` · `false_rate` | 0.052 | `pass` | yes |
+| `reword-and-move-is-outside-the-digests` | the §6.3 family `reword-and-move` (message rewritten and files moved in one commit) leaves at least 150 annotated carries unreachable by any shipped tier: both digests move together, which is the case §6.3 says it cannot catch, counted | `shipped` · `signed-off` · `pooled · reword-and-move` · `floor` | 196 | `pass` | yes |
+| `reset-author-is-outside-the-digests` | `reset-author` leaves at least 150 annotated carries unreachable: author is in every digest §6.2 computes, so an identity-preserving rewrite that changes the author is invisible to all three tiers | `shipped` · `signed-off` · `pooled · reset-author` · `floor` | 196 | `pass` | yes |
+| `twin-id-churn-costs-carries` | at least 25 annotated carries are lost to TB10 rather than to any tier: the digest survived on a twin, so the id moved and there was no dead row to relink from. This is the cost of §6.1's identity rule, not of §6.2's ladder, and it is reported separately for that reason | `shipped` · `signed-off` · `pooled` · `twin_missed` | 33 | `pass` | yes |
+| `a-dropped-verdict-stays-dropped-on-a-full-queue` | in the `dropped-turn` family, where the annotation says the verdict must go nowhere, the shipped ladder writes nothing at all on the optimistic board: silence is achievable and the ladder achieves it when there is nowhere to put the verdict wrong | `shipped` · `signed-off` · `pooled · dropped-turn` · `written` | 0 | `pass` | yes |
+| `fuzzy-buys-carries-on-a-full-queue` | a subject-similarity rung at 0.45, run last (RL1), buys back at least 150 of §6.3's floor carries on the optimistic board — the reason §13.1's idea is not crazy and the reason it had to be measured rather than dismissed | `fz-subject@0.45` · `signed-off` · `pooled` · `caught` | 200 | `pass` | yes |
+| `fuzzy-price-on-a-full-queue` | …and it buys those at least 150 carries for at most 50 false relinks, which is better than the 3:1 §6.6's ordering of harms requires. On a fully dispositioned queue the fuzzy tier's arithmetic works, and this gate is the whole case in its favour | `fz-subject@0.45` · `signed-off` · `pooled` · `false` | 4 | `pass` | yes |
+| `reset-author-needs-the-author-dropped` | buying back `reset-author`'s carries requires a rung that ignores the author (the delta between the author-agnostic and author-required rungs is at least 150 carries), i.e. the fuzzy tier's only extra prize comes from discarding the one field §6.1 says identifies the act | `fz-subject-anon@0.45` · `signed-off` · `pooled` · `caught` | 200 | `pass` | yes |
+| `recency-is-the-cheapest-apparent-win` | a pure closest-in-time rung with no window buys back at least 300 carries for at most 50 false relinks on the optimistic board — better than any similarity rung, and the most instructive number in the report: 'closest in time' is nearly free precisely because a fully dispositioned queue gives it nowhere to land wrongly | `recency-any` · `signed-off` · `pooled` · `caught` | 400 | `pass` | yes |
+| `recency-price-on-a-full-queue` | …and at most 50 false relinks while doing it, on the same board | `recency-any` · `signed-off` · `pooled` · `false` | 12 | `pass` | yes |
+| `uniqueness-discipline-holds-the-price` | requiring the guess to be unambiguous in both directions — one dead candidate for this live episode, and one live destination for that dead episode — holds the sparse board's price to at most 50 extra false relinks. The discipline works; that is not the problem | `fz-subject-unique@0.45` · `sparse` · `pooled` · `false` | 8 | `pass` | yes |
+| `finding-shipped-false-rate-on-a-real-queue` | the shipped ladder's false relinks are at most 10 % of its rows on a queue where a third of the episodes are still unread. Measured 41 %. RL0 does not prevent a verdict being mis-stamped, it prevents it being spoiled where somebody is already looking, so every false relink lands on an episode nobody has read yet and the safety of §6.2 is a function of how far the review queue has gotten | `shipped` · `sparse` · `pooled` · `false_rate` | 0.41 | `fail` | yes |
+| `finding-one-donor-lands-many-places` | at most 40 of the sparse board's false relinks come from one dead episode's verdict being written to more than one live episode. Measured 123 of 168: RL4 ('a dead donor may be considered by more than one live landing') plus a per-target candidate search is a multiplier, and it is invisible on a full queue only because RL0 blocks the landings | `shipped` · `sparse` · `pooled` · `spray` | 123 | `fail` | yes |
+| `finding-dropped-verdicts-move-on-a-partial-queue` | in `dropped-turn`, a verdict whose content was abandoned is written nowhere at all. Measured 19 false relinks on the sparse board: the digest collides with a stranger in the same history, the stranger has no review row yet, and RL0 is not a rule about this case. The annotation forbids the landing; the ladder's own rules do not | `shipped` · `sparse` · `pooled · dropped-turn` · `false` | 19 | `fail` | yes |
+| `finding-member-set-tier-is-inert` | tier 3 (a member commit in common) buys at least 20 more carries across the corpus than the two-digest ladder alone. Measured 1. The member-set rung is decorative as written: its precondition is a commit that survives the rewrite, and a rewrite that preserves a commit is already caught by the digests. Retire this gate by giving tier 3 a predicate with reach, or by deleting the tier | `shipped` · `signed-off` · `pooled` · `caught` | 1 | `fail` | yes |
+| `finding-fuzzy-price-on-a-real-queue` | the same subject rung costs at most 19 false relinks for its ≥ 150 carries on the sparse board, i.e. it still clears 3:1 where the queue looks like a queue. Measured +70 false for +57 caught: worse than one-for-one. This gate is the go/no-go §13.1 asked for, and it is the number that answers it | `fz-subject@0.45` · `sparse` · `pooled` · `false` | 70 | `fail` | yes |
+| `finding-fuzzy-carries-shrink-on-a-real-queue` | …and the same rung still buys at least 150 carries on a queue that looks like a queue. Measured 57: the carries it exists to buy are bought on a fully dispositioned queue and mostly vanish on a real one, because the episodes it would have to guess about are the ones with no verdict behind them. §19.2 **D1** is the decision this gate is the evidence for | `fz-subject@0.45` · `sparse` · `pooled` · `caught` | 57 | `fail` | yes |
+| `finding-uniqueness-discipline-shrinks-the-prize` | the uniqueness-disciplined rung still recovers at least 150 of §6.3's 393 floor carries on the sparse board. Measured 53 — 13 % of the floor. Its *price* is fine (see `uniqueness-discipline-holds-the-price`, 6.6 carries per false relink): what is not fine is coverage, and a hand assertion through §6.4's `method='manual'` row covers all 393 at no false cost, which is the comparison §19.2 **D1** turns on | `fz-subject-unique@0.45` · `sparse` · `pooled` · `caught` | 53 | `fail` | yes |
+| `finding-recency-is-catastrophic-on-a-real-queue` | the pure recency rung's false relinks stay under 10 % of its rows on the sparse board. Measured 85 %, with 2015 of 2021 false relinks coming from a single donor landing repeatedly — the RL4 multiplier of F2 with nothing under it at all. This is what a tier with no evidence costs, and it is the counterfactual that makes the similarity rung look reasonable; it retires the day somebody proposes recency as a tie-breaker with a window | `recency-any` · `sparse` · `pooled` · `false_rate` | 0.85 | `fail` | yes |
+| `store-pin-agrees` | the spike's copy of §6.2's ladder writes, link for link, what `fathom_store`'s own relink pass writes for the same episodes and the same review rows, on every event of the corpus | `shipped` · `signed-off` · `pooled` · `pin_mismatches` | 0 | `pass` | yes |
+
+25 gates, 8 of them declared failing and therefore findings: `finding-shipped-false-rate-on-a-real-queue`, `finding-one-donor-lands-many-places`, `finding-dropped-verdicts-move-on-a-partial-queue`, `finding-member-set-tier-is-inert`, `finding-fuzzy-price-on-a-real-queue`, `finding-fuzzy-carries-shrink-on-a-real-queue`, `finding-uniqueness-discipline-shrinks-the-prize`, `finding-recency-is-catastrophic-on-a-real-queue`.
+<!-- END GENERATED: s6_gates -->
+
+### 19.4 What this spike did not measure
+
+| Not measured | Consequence |
+|---|---|
+| The curve between the two boards | Both are snapshots; F1 says the false rate tracks how much of the queue is dispositioned, and only its two ends are measured |
+| Rewrites recovered from a real reflog | Every event's before/after image is declared in the corpus. The next instrument is reflog-driven, and it tests the assumption this corpus makes — that a rewrite's before-image is what the index saw last run |
+| The human cost of a false relink | The 3:1 price is §6.6's ordering, imported. At 10:1 the NO-GO hardens and D1 gets more urgent; at 1:1 it is unchanged, because the sparse-board rung fails at 0.8:1 |
+| `method='exact'` and hand-pinned relinks | Nothing writes them (`e1.10`), so D1's remedy is a design claim with a measured denominator, not a measurement |
+| Whether a fuzzy tier is safe *after* D2 | Tightening RL4 removes the fan-out that made it fail; 53-for-8 might become a different trade. That is a follow-up spike, and it should not be run by somebody who has not read why this one answered no |
 
 ---
 

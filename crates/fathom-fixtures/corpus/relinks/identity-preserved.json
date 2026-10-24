@@ -1,0 +1,40 @@
+{
+ "schema": "fathom.relink-ground-truth/1",
+ "file": "identity-preserved",
+ "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R1)",
+ "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+ "claim": "The two rewrites ADR-003 §5.1 and §5.4 build the identity digest to survive never reach the relink pass at all. The digest did not move, so the review row never detached, so there is nothing to carry and nothing to get wrong. This file is the null hypothesis of the whole corpus: any relink written here is a false relink, and the count of relink *opportunities* these families offer is itself the finding.",
+ "events": [
+  {
+   "id": "amend-no-edit/every-turn",
+   "family": "amend-no-edit",
+   "relation": "amend",
+   "history": "*",
+   "expand": "each-turn",
+   "op": { "kind": "rewrite" },
+   "decisions": "all",
+   "expect": [],
+   "note": "`git commit --amend --no-edit` with new content: new oid, new tree, new date, and none of the three facts identity reads moved (§2.1). The episode id is the same row, so the sign-off was never detached. Annotated once per history, at family level: no turn in the corpus is special here, and the corpus is not allowed to pick a turn where it flatters the design."
+  },
+  {
+   "id": "rebase-picks/whole-branch",
+   "family": "rebase-picks",
+   "relation": "rebase",
+   "history": "*",
+   "op": { "kind": "rewrite", "targets": "all" },
+   "decisions": "all",
+   "expect": [],
+   "note": "ADR-003 §5.4: every commit gets a new oid, a new date and a new parent and nothing else changes, so I1 says no episode id moves and the whole branch keeps its review state by doing nothing. This is the acceptance criterion the identity design was built for, priced here in relink rows: the expected number is zero, and it stays zero however the tiers are arranged, because a pass that only matches dead episodes to live ones has no dead episodes to work on."
+  },
+  {
+   "id": "rebase-picks-and-reorder/whole-branch",
+   "family": "rebase-picks",
+   "relation": "rebase",
+   "history": "*",
+   "op": { "kind": "rewrite", "targets": "all", "reorder": "swap-adjacent" },
+   "decisions": "all",
+   "expect": [],
+   "note": "The same rebase, but the rebase also reorders: each adjacent pair of turns is picked in the other order, which is what `rebase -i` with dragged picks does and what §4.1's walk order is obligated to absorb. Facts unchanged, so ids unchanged; the only thing that moves is `ordinal` and the walk order that allocates twin suffixes (TB10)."
+  }
+ ]
+}

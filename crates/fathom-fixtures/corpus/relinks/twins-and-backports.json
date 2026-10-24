@@ -1,0 +1,78 @@
+{
+ "schema": "fathom.relink-ground-truth/1",
+ "file": "twins-and-backports",
+ "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R6, R7)",
+ "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+ "claim": "§5.9 C4 is the case the fuzzy tier was declined for: a backport whose subject is deliberately different is a different review, and a guessed link would say \"you already reviewed this\". Here is that case as data — same author, same files, different subject, different branch — and it is the one place in the corpus where a *shipped* tier, not a speculative one, is offered a perfect-looking match it must refuse.",
+ "events": [
+  {
+   "id": "cherry-twin/fathom-self-source-kept",
+   "family": "cherry-twin",
+   "relation": "cherry",
+   "history": "fathom-self",
+   "op": { "kind": "twin", "targets": ["t08"] },
+   "decisions": "all",
+   "expect": [],
+   "note": "The cherry-pick of t08 onto a release branch, with the original still reachable. Same author, same subject, same paths, so the same digest: TB10 gives the twin `…-2` and C1 gives it its own review state. Nothing died, so nothing is owed; a relink row anywhere in this event would be a fabricated rewrite in `e4.6`'s ledger."
+  },
+  {
+   "id": "cherry-twin/authored-two-agents-and-a-bot-source-gone",
+   "family": "cherry-twin",
+   "relation": "cherry",
+   "history": "authored-two-agents-and-a-bot",
+   "op": { "kind": "twin", "targets": ["t06"], "drop": ["t02"] },
+   "decisions": "all",
+   "expect": [
+    { "from": "t02", "to": null, "catch": "none", "note": "t02 (`reco-b32: add the worker pool`, codex-agent, src/pool.rs) is gone from the lineage. Its twin t06~twin is the same bytes elsewhere and C1 says it is a separate review, so t02's sign-off must stay on its dead row and be shown as gone, not moved." }
+   ],
+   "note": "A twin arriving while an unrelated turn is dropped in the same force-push: the only relink the ladder could write here is a wrong one, and the dead episode's own digest is not present in the after image, so a tier that fires has matched on something weaker than identity."
+  },
+  {
+   "id": "backport-renamed/fathom-self",
+   "family": "backport-renamed",
+   "relation": "cherry",
+   "history": "fathom-self",
+   "op": { "kind": "backport", "targets": ["t08"], "prefix": "[6.2] " },
+   "decisions": "all",
+   "expect": [],
+   "arrive_unread": ["t08~backport"],
+   "note": "The ordinary case first: the original is still on `main`, so nothing is dead, and the backport arrives unread — which is right, because nobody has reviewed the backport. The prefix moves the subject and therefore the strong and fallback digests; the shape digest does not move at all."
+  },
+  {
+   "id": "backport-source-gone/fathom-self",
+   "family": "backport-renamed",
+   "relation": "cherry",
+   "history": "fathom-self",
+   "op": { "kind": "backport", "targets": ["t08"], "prefix": "[6.2] ", "drop": ["t08"] },
+   "decisions": "all",
+   "expect": [
+    { "from": "t08", "to": null, "catch": "none", "note": "C4, with teeth: the branch that carried t08 is gone and the backport is live, undecided, and has *exactly* t08's author identity and *exactly* its path set. Tier 2's `shape_fingerprint` matches to the byte. The annotation says no landing: the backport is a different claim about the code and the reviewer is being asked a different question about it." }
+   ],
+   "note": "This is the single event in the corpus that tests whether §6.2 has a false-positive problem independent of the deferred fuzzy tier: tier 1 cannot fire (the subject moved) and tier 2 fires with what it considers good evidence. If the shipped ladder links here, the ADR's §5.9 C4 row and its §6.2 tiers disagree with each other and one of them has to change."
+  },
+  {
+   "id": "backport-source-gone/authored-two-agents-and-a-bot",
+   "family": "backport-renamed",
+   "relation": "cherry",
+   "history": "authored-two-agents-and-a-bot",
+   "op": { "kind": "backport", "targets": ["t08"], "prefix": "[6.2] ", "drop": ["t08"] },
+   "decisions": "all",
+   "expect": [
+    { "from": "t08", "to": null, "catch": "none", "note": "`reco-b36: drop the legacy queue` backported under a release subject, the original branch deleted: the deletion of a queue on `main` and the deletion of a queue on a release branch are two reviews, and the second one is the one nobody has done." }
+   ],
+   "note": "The same shape on the authored stratum, where the after-image is a *riskier* landing: dropping a legacy queue is the kind of change a wrong sign-off on would be felt as."
+  },
+  {
+   "id": "backport-source-gone/fixture-rebase_rewrite",
+   "family": "backport-renamed",
+   "relation": "cherry",
+   "history": "fixture-rebase_rewrite",
+   "op": { "kind": "backport", "targets": ["ep-arch"], "prefix": "[6.2] ", "drop": ["ep-arch"] },
+   "decisions": "all",
+   "expect": [
+    { "from": "ep-arch", "to": null, "catch": "none", "note": "`Add an architecture note` backported under a release prefix with its branch gone: same human, same single file, different claim. Note what is *not* annotated here — this fixture already contains `ep-orig-budget` and `ep-rewrite-budget`, a pair that is genuinely the same work on two branches, and this event must not touch them, because a tier that links them is right and a tier that links `ep-arch` to its backport is wrong, and mixing the two in one event would let either verdict hide inside the other." }
+   ],
+   "note": "The rebase fixture's human-authored architecture note, re-pointed as a backport, chosen so the history keeps its two same-shape duplicates untouched beside the event as a standing reminder of what a shape collision means."
+  }
+ ]
+}

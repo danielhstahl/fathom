@@ -147,6 +147,14 @@ required-features = ["langs-all"]
 name = "structure_harness"
 required-features = ["langs-all"]
 
+# The relink spike (`s6`, `reco-f5a`) pins its own copy of §6.2's relink pass against `fathom-store`'s
+# real one, on every event of the rewrite corpus, so it names a SQLite backend the same way `episodes`
+# and `ledger` do. Without this line a `--no-default-features` build must still compile every *other*
+# target, and this one must not silently measure a world without the store it is checking itself against.
+[[example]]
+name = "s6_spike"
+required-features = ["sqlite-bundled"]
+
 # The Guardrail 3 calibration harness (`e4.3a`) indexes each pinned repository into a store of its own,
 # so it needs a SQLite backend to exist at all — the same spelling as the `episodes` and `ledger` test
 # targets above, and for the same reason: `cargo build -p fathom-analyze --all-targets` has to work at

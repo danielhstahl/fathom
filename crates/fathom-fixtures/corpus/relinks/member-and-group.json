@@ -1,0 +1,55 @@
+{
+ "schema": "fathom.relink-ground-truth/1",
+ "file": "member-and-group",
+ "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R2, R3)",
+ "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+ "claim": "Tier 3's evidence is a member commit in common, and the only rewrites that *keep* member commits are the ones that change the grouping and not the history: a `force_merge`, a segmentation rule change that merges two episodes, a rule change that cuts one in two. This file is tier 3's whole working life, and with it the question of whether RL0's 'no decision of its own' is a help or a wall.",
+ "events": [
+  {
+   "id": "force-merge-regroup/fixture-churn_loop-undecided-target",
+   "family": "force-merge-regroup",
+   "relation": "merge",
+   "history": "fixture-churn_loop",
+   "op": { "kind": "regroup", "targets": ["ep-churn", "ep-settle"] },
+   "decisions": { "only": ["ep-settle"], "state": "dismissed" },
+   "expect": [
+    { "from": "ep-settle", "to": "ep-churn+ep-settle", "catch": "tier-3", "note": "the merged episode's first member is ep-churn's, so its id is ep-churn's and nobody has decided about it; ep-settle's members are now members of it, which is the only evidence tier 3 has and the human agrees is enough: one act, one dismissed verdict, still one act after the merge." }
+   ],
+   "note": "`episode.force_merge` over the churn loop: two episodes, the same two files, one reviewable unit afterwards. ep-churn had no decision, so RL0 does not block and tier 3 is the only tier that can reach across — the member-set carry the ADR documents, in the one situation where a member commit actually survives."
+  },
+  {
+   "id": "force-merge-regroup/fixture-churn_loop-decided-target",
+   "family": "force-merge-regroup",
+   "relation": "merge",
+   "history": "fixture-churn_loop",
+   "op": { "kind": "regroup", "targets": ["ep-churn", "ep-settle"] },
+   "decisions": { "only": ["ep-churn", "ep-settle"], "state": "accepted" },
+   "expect": [
+    { "from": "ep-settle", "to": null, "catch": "none", "note": "the surviving id is ep-churn's and it already carries ep-churn's sign-off, so RL0 refuses the merge and ep-settle's decision is stranded — the same verdict-reviewers-care-about as the squash strand, arrived at from the other direction. The episode id did not move, so no tier may propose one, and the store is right to be silent." }
+   ],
+   "note": "The identical regroup with both episodes dispositioned: this event exists to price RL0, which is a rule that *prevents* relinks and therefore cannot be scored by a spike that only counts successes."
+  },
+  {
+   "id": "force-merge-regroup/authored-human-interleave-undecided-target",
+   "family": "force-merge-regroup",
+   "relation": "merge",
+   "history": "authored-human-interleave",
+   "op": { "kind": "regroup", "targets": ["t04", "t10"] },
+   "decisions": { "only": ["t10"], "state": "dismissed" },
+   "expect": [
+    { "from": "t10", "to": "t04+t10", "catch": "tier-3", "note": "t04 (agent, `reco-c42: the dismiss key`, src/keys.rs) and t10 (human, `fix: the snooze label was wrong`, src/keys.rs) are the two episodes §8's H3 says a repo that habitually hand-edits merges with `force_merge`. Different authors, same file, one unit afterwards." }
+   ],
+   "note": "A human's fix folded into the agent's turn it fixes. The author differs, which no digest in §6.2 forgives — so this is a carry that only the member-set tier can make, and a check that tier 3 does not sneak an author-blind match in."
+  },
+  {
+   "id": "split-regroup/fixture-churn_loop",
+   "family": "split-regroup",
+   "relation": "split",
+   "history": "fixture-churn_loop",
+   "op": { "kind": "split", "targets": ["ep-churn"], "at": 3 },
+   "decisions": "all",
+   "expect": [],
+   "note": "A segmentation rule change cuts the six-commit churn episode in two over unchanged commits. The first half keeps the id and the sign-off with it (R1: nothing died), the second half is a new id that nobody ever reviewed and must arrive unread. Zero relink opportunities is the correct answer here too, and the row is kept in the report precisely because a ladder that *found* work to do on this event would be inventing it."
+  }
+ ]
+}

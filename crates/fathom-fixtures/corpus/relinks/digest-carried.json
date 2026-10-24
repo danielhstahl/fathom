@@ -1,0 +1,251 @@
+{
+ "schema": "fathom.relink-ground-truth/1",
+ "file": "digest-carried",
+ "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R2, R3, R5)",
+ "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+ "claim": "Where exactly one of the three facts identity reads survives a rewrite, the human's act is still one act and the decision is owed a landing: author+subject surviving is tier 1's job, author+paths surviving is tier 2's. This file says which rewrites those are, for every turn in the corpus rather than for a friendly handful, and then adds the two cases where the digest survives for *two* dead episodes at once — where a carry can be handed to the wrong one.",
+ "events": [
+  {
+   "id": "amend-adds-file/every-turn",
+   "family": "amend-adds-file",
+   "relation": "amend",
+   "history": "*",
+   "expand": "each-turn",
+   "op": {
+    "kind": "amend-add-path",
+    "path": "docs/review-notes-<turn>.md"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "<target>",
+     "to": "<target>",
+     "catch": "tier-1"
+    }
+   ],
+   "note": "§5.2 verbatim, once per annotated turn: the path set grows, the strong digest moves with it, and the subject did not, so `fallback_fingerprint` is the only key left and tier 1 is the tier that has to catch it. The added path is unique per turn on purpose — a shared one would quietly add a shape collision to a family that is supposed to measure tier 1 alone."
+  },
+  {
+   "id": "amend-moves-files/every-turn",
+   "family": "amend-moves-files",
+   "relation": "amend",
+   "history": "*",
+   "expand": "each-turn",
+   "op": {
+    "kind": "amend-move-paths",
+    "path": "src/moved-<turn>.rs"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "<target>",
+     "to": "<target>",
+     "catch": "tier-1"
+    }
+   ],
+   "note": "The amend that moved or renamed what it touches: the shape digest moves, the subject holds. Tier 1 again, and the mirror image of `reword` — between the two files every one of the corpus's 204 turns is exercised under both surviving-fact shapes."
+  },
+  {
+   "id": "reword/every-turn",
+   "family": "reword",
+   "relation": "rebase",
+   "history": "*",
+   "expand": "each-turn",
+   "op": {
+    "kind": "reword",
+    "suffix": " (reworded while rebasing)"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "<target>",
+     "to": "<target>",
+     "catch": "tier-2"
+    }
+   ],
+   "note": "§5.5: a `rebase -i` that stops on one commit to fix its message. Both the strong digest and the fallback are gone — the fallback *is* the subject — and the path set did not move, so `shape_fingerprint` is the whole of the evidence and tier 2 either fires or the sign-off is lost."
+  },
+  {
+   "id": "reword-batch/three-turns-per-history",
+   "family": "reword-batch",
+   "relation": "rebase",
+   "history": "*",
+   "op": {
+    "kind": "reword",
+    "targets_nth": [
+     1,
+     3,
+     6
+    ],
+    "suffix": " (reworded while rebasing)"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "nth:1",
+     "to": "nth:1",
+     "catch": "tier-2"
+    },
+    {
+     "from": "nth:3",
+     "to": "nth:3",
+     "catch": "tier-2"
+    },
+    {
+     "from": "nth:6",
+     "to": "nth:6",
+     "catch": "tier-2"
+    }
+   ],
+   "note": "One rebase, three reworded messages, so three episodes die and three landings exist at the same moment: this is the first event in the corpus where a tier has a *choice* to make, and RL3's `last_utc DESC` tie-break stops being invisible. The three ordinals are fixed here rather than chosen per history, so the selection cannot chase a favourable outcome; an ordinal past the end of a short history contributes nothing."
+  },
+  {
+   "id": "reword-to-shared-subject/authored-rework-and-revert-traps",
+   "family": "reword-to-shared-subject",
+   "relation": "rebase",
+   "history": "authored-rework-and-revert-traps",
+   "op": {
+    "kind": "reword",
+    "targets": [
+     "t06",
+     "t07"
+    ],
+    "subject": "reco-h84: the same change, filed twice"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "t06",
+     "to": "t06",
+     "catch": "tier-2",
+     "note": "t06 is the turn whose commit is first in walk order; its sign-off belongs to the first of the two rewritten commits."
+    },
+    {
+     "from": "t07",
+     "to": "t07",
+     "catch": "tier-2",
+     "note": "and t07's to the second. The corpus authored t06 and t07 with the *same subject and the same path* (`docs` of e0.10's duplicate_change trap), so after this reword all three digests of the pair are equal to each other in both the before and the after image: every tier that fires has two candidates for each landing, and only the human knows which is which."
+    }
+   ],
+   "note": "R5 as a measurement. Two dead episodes, two live ones, and a digest tie across all four: whatever the shipped ladder does here it does by RL3's `last_utc DESC` ordering, and a cross-wired pair is not one error but two false relinks — each turn's sign-off ends up on the other turn's change."
+  },
+  {
+   "id": "reword-to-shared-subject/authored-review-cycle-resume",
+   "family": "reword-to-shared-subject",
+   "relation": "rebase",
+   "history": "authored-review-cycle-resume",
+   "op": {
+    "kind": "reword",
+    "targets": [
+     "t01",
+     "t05"
+    ],
+    "subject": "address review on the parser"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "t01",
+     "to": "t01",
+     "catch": "tier-1",
+     "note": "t01 and t05 touch different files (src/flags.rs and src/lints/no_std.rs), so only the *subject* collides after the reword: tier 1 sees two dead donors for each landing and tier 2 sees none."
+    },
+    {
+     "from": "t05",
+     "to": "t05",
+     "catch": "tier-1"
+    }
+   ],
+   "note": "The same tie as above with the shape half removed, so the file can say which digest the confusion rode on. Two agents writing the same conventional subject to two different files is the most ordinary thing a loop does; `address review on the flag parser` is t03's real subject in this history and a reword to it is not a contrivance."
+  },
+  {
+   "id": "squash-kept-subject/fixture-churn_loop",
+   "family": "squash-kept-subject",
+   "relation": "squash",
+   "history": "fixture-churn_loop",
+   "op": {
+    "kind": "squash",
+    "targets": [
+     "ep-add",
+     "ep-churn"
+    ],
+    "subject": "keep-first"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "ep-add",
+     "to": null,
+     "catch": "none",
+     "note": "the survivor's own episode id is still there, holding its own sign-off: nothing detached, nothing to carry."
+    },
+    {
+     "from": "ep-churn",
+     "to": null,
+     "catch": "none",
+     "note": "the absorbed turn dies, and its landing already has a verdict (RL0), so the absorbed verdict is stranded — and the annotation says stranded is correct: the surviving episode's accept was given for `ep-add`, not for six rounds of churn."
+    }
+   ],
+   "note": "The churn fixture's squash, and the finding hiding inside it: `ep-add` and `ep-churn` both touch exactly `{src/queue.rs, src/scheduler.rs}`, so squashing them under the first one's subject produces a commit whose author, normalised subject **and path set** are the survivor's — the digest did not move, the id did not move, and no relink is due. ADR-003 §5.6 files this case under tier 1; the corpus says tier 1 is not even consulted, which is a better outcome and a worse document."
+  },
+  {
+   "id": "squash-kept-subject/fixture-churn_loop-absorbed-only",
+   "family": "squash-kept-subject",
+   "relation": "squash",
+   "history": "fixture-churn_loop",
+   "op": {
+    "kind": "squash",
+    "targets": [
+     "ep-add",
+     "ep-churn"
+    ],
+    "subject": "keep-first"
+   },
+   "decisions": {
+    "only": [
+     "ep-churn"
+    ],
+    "state": "dismissed"
+   },
+   "expect": [
+    {
+     "from": "ep-churn",
+     "to": "ep-add+ep-churn",
+     "catch": "tier-2",
+     "note": "with nobody dispositioned on the surviving id, RL0 is out of the way and the shape digest — author plus `{src/queue.rs, src/scheduler.rs}`, unchanged by the squash — is honest evidence: the dismissed verdict belongs to the squashed commit as much as it did to the churn."
+    }
+   ],
+   "note": "The same squash with only the absorbed turn dispositioned. One corpus event flips from \"nothing is owed\" to \"a carry is owed\" by moving who has been dispositioned, which is the RL0 point made visible: the relink pass's obligations are a function of the reviewer's acts, not of the rewrite alone."
+  },
+  {
+   "id": "squash-kept-subject/authored-review-cycle-resume",
+   "family": "squash-kept-subject",
+   "relation": "squash",
+   "history": "authored-review-cycle-resume",
+   "op": {
+    "kind": "squash",
+    "targets": [
+     "t05",
+     "t06"
+    ],
+    "subject": "keep-first"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "t05",
+     "to": "t05+t06",
+     "catch": "tier-1",
+     "note": "`add a lint rule for the new module` (src/lints/no_std.rs) squashed with `feat: the flag file loader` (src/flags.rs, src/toml.rs): the merged commit touches three files where the survivor touched one, so the strong digest moves, the subject holds, and this is ADR-003 §5.2/§5.6's tier-1 case with the file growth the annotation actually requires."
+    },
+    {
+     "from": "t06",
+     "to": null,
+     "catch": "none",
+     "note": "the absorbed turn's verdict has one landing and it is taken (RL2). Its cost is stated rather than hidden: the loader's own review disappeared into a commit reviewed under the lint rule's name."
+    }
+   ],
+   "note": "A squash where the path set really grows — the case tier 1 exists for, as opposed to the two above where it never had to fire."
+  }
+ ]
+}

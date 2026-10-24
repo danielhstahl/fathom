@@ -344,6 +344,14 @@ jobs:
         if: matrix.channel == 'stable'
         run: cargo run -q -p fathom-analyze --example s2_spike -- --check
 
+      # Spike `s6` (`reco-f5a`) is the same claim about rewrites instead of boundaries: the committed report
+      # in `benchmarks/reports/s6-relink-accuracy.json` must be what the relink corpus and the shipped
+      # relink pass produce, and its gates must come out as declared. It needs the bundled SQLite because
+      # the harness pins its own copy of §6.2's ladder against `fathom_store`'s on every event.
+      - name: "spike s6: the committed relink report reproduces"
+        if: matrix.channel == 'stable'
+        run: cargo run -q -p fathom-analyze --features sqlite-bundled --example s6_spike -- --check
+
       # The headless CI-gate binary `e6.6` puts inside pipelines (§6.1), built on both channels: a
       # TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal.
       - name: build the headless `minimal` binary

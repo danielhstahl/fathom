@@ -1,0 +1,139 @@
+{
+ "schema": "fathom.relink-ground-truth/1",
+ "file": "nothing-catches",
+ "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R4)",
+ "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+ "claim": "ADR-003 §6.3 names the case no shipped tier catches and rules that the change comes back unread. This file is that case, priced: the human still calls the after-image the same work, so the missed relink is real, and `catch: none` says the annotation can point at no mechanism in §6.2 that could have caught it. Every rate in the spike's `missed` column that is not a bug is one of these.",
+ "events": [
+  {
+   "id": "reword-and-move/every-turn",
+   "family": "reword-and-move",
+   "relation": "rebase",
+   "history": "*",
+   "expand": "each-turn",
+   "op": {
+    "kind": "reword-and-move",
+    "suffix": " (reworded)",
+    "path": "src/moved-<turn>.rs"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "<target>",
+     "to": "<target>",
+     "catch": "none",
+     "note": "§6.3 exactly: a rebase that edits the message *and* the file list. Strong, fallback and shape digests all move, no member commit survives, so nothing in §6.2 has a key to match on and the honest answer the ADR gives is `unread`."
+    }
+   ],
+   "note": "One instance per annotated turn, because §6.3 is a clause about a shape and not about a favourite example. This family is the floor under the missed-relink column and the entire demand side of the case for a fuzzy tier."
+  },
+  {
+   "id": "reset-author/every-turn",
+   "family": "reset-author",
+   "relation": "amend",
+   "history": "*",
+   "expand": "each-turn",
+   "op": {
+    "kind": "reset-author",
+    "name": "Dana Onpersonal",
+    "email": "dana@onpersonal.example"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "<target>",
+     "to": "<target>",
+     "catch": "none",
+     "note": "§5.3 and §2.6: authorship is one of the three facts, so all three digests move and the review state is lost by design. Scored as a miss because the work is the same work; the ADR accepts the price and `e4.1`'s aliasing is the remedy, so the spike's job is to say how large it is and not to relitigate §2.6."
+    }
+   ],
+   "note": "A human amending an agent's commit and resetting the author in the same breath — `git commit --amend` after a cherry-pick onto a personal branch, which is what people actually do. The replacement identity is one nobody in the corpus already uses, so the rewrite really does move all three digests: an alias that already existed would be a different family (`e4.1`'s, and §2.6's namespace bump). Every turn in the corpus, because §2.6 makes it a rule and not a coincidence."
+  },
+  {
+   "id": "squash-new-subject/fixture-churn_loop",
+   "family": "squash-new-subject",
+   "relation": "squash",
+   "history": "fixture-churn_loop",
+   "op": {
+    "kind": "squash",
+    "targets": [
+     "ep-add",
+     "ep-churn"
+    ],
+    "subject": "Settle the queue drain"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "ep-add",
+     "to": "ep-add+ep-churn",
+     "catch": "none",
+     "note": "ADR-003 §5.7 says a squash-merge whose subject was retyped rides on tier 3, a shared member commit. The annotation says: a squash mints one new commit and the two originals are not members of the surviving episode, so there is no shared member and tier 3 has no key either. Recorded as a carry owed and `catch: none`, which is the ADR's claim put to the test rather than repeated."
+    },
+    {
+     "from": "ep-churn",
+     "to": null,
+     "catch": "none",
+     "note": "and even if a tier fired, RL0 and RL2 give the one landing to the first claimant; this verdict is stranded either way."
+    }
+   ],
+   "note": "§5.7's PR squash-merge with a human-retyped title — the host pre-fills the title from the PR and the PR title is not either commit's subject, which is the case §5.7 nominates for tier 3."
+  },
+  {
+   "id": "squash-new-subject/authored-review-cycle-resume",
+   "family": "squash-new-subject",
+   "relation": "squash",
+   "history": "authored-review-cycle-resume",
+   "op": {
+    "kind": "squash",
+    "targets": [
+     "t06",
+     "t08"
+    ],
+    "subject": "reco-d51: flag parser, with review"
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "t06",
+     "to": "t06+t08",
+     "catch": "none",
+     "note": "ADR-003 §5.6 files a squash under a brand-new subject with tier 3, \"a shared member commit\". A squash mints one new commit and neither original oid survives into it, so tier 3 has no key: the carry the ADR promises is not available, and the annotation says so rather than agreeing."
+    },
+    {
+     "from": "t08",
+     "to": null,
+     "catch": "none",
+     "note": "`address review: second round` is the verdict a reviewer would most expect to survive the squash — it is the sign-off that says the review round happened. It has one landing, no tier reaches it, and RL2 would have given that landing to t06 anyway."
+    }
+   ],
+   "note": "A squashed PR merge on the authored stratum: t01 opened the parser, t03 addressed review on it, both over `src/flags.rs`, and the merge title is a third string again. Tier 2 cannot fire either: the merged episode's first member is a new commit whose path set is the union of both turns'."
+  },
+  {
+   "id": "split-commit/authored-loop-wip-commits",
+   "family": "split-commit",
+   "relation": "split",
+   "history": "authored-loop-wip-commits",
+   "op": {
+    "kind": "split-commit",
+    "targets": [
+     "t02"
+    ],
+    "at": 1
+   },
+   "decisions": "all",
+   "expect": [
+    {
+     "from": "t02",
+     "to": "t02#1",
+     "catch": "tier-1",
+     "note": "§5.10 predicts the member-set tier carries a split's surviving half because it shares a member with the original. The split mints two new oids, so nothing is shared — but the first half keeps the original's subject and author, so tier 1 gets there first and the carry is reachable after all. The annotation was wrong in the safe direction and says so now; what is actually lost here is the second half, below."
+    }
+   ],
+   "arrive_unread": [
+    "t02#2"
+   ],
+   "note": "`git reset HEAD~1` and re-commit the change as two commits: one act, two new oids, and the original gone. `arrive_unread` is the corpus's only statement about a *live* episode: nobody ever reviewed `t02#2`, so a relink landing there is a false relink and its staying unread is the fail-visible answer §6.3 promises. Measured, the shipped pass does land on it — by `shape`, one event, one false relink, and the only §5.10 prediction this corpus contradicts."
+  }
+ ]
+}
