@@ -40,6 +40,7 @@ pub const EXPORT_CONTRACT: &str = "fathom.cli.export/1";
 ///
 /// Not a verb payload — no schema file pins it, because it is the shell's own measurement rather than a
 /// query answer — but the same discipline applies: a consumer switches on the shape it got.
+#[cfg(feature = "tui")]
 pub const FRAME_CONTRACT: &str = "fathom.cli.frame/1";
 
 /// `fathom show <episode|rev>`: one episode, in full, from the index.
@@ -378,6 +379,7 @@ fn show_text(
 /// deliberately *not* the same JSON as an episode whose intent was looked for and not found, which carries
 /// `{"state": "none", …}`: a consumer must be able to tell "Fathom never asked" from "nothing answered",
 /// because only the second one is a fact about the work.
+#[cfg(feature = "sqlite-bundled")]
 fn intent_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_json::Value {
     let Some(row) = episode.as_ref() else {
         return serde_json::Value::Null;

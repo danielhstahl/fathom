@@ -1,0 +1,45 @@
+# Fathom's own first five minutes, as a CI job (`m2`, **reco-by2**).
+#
+# The repository you are looking at is a fixture: 21 commits built by `tools/gen_demo_repo.py` in the
+# Fathom repository, published so the tour can run against a clone. The gate that runs on it is the
+# reusable workflow Fathom publishes, called in the five lines any repository can copy — which is the
+# point of this file existing at all. It is the second external pipeline the 1.0 gate counts: the first
+# is Fathom's own dogfood job over third-party repositories, and this one is the same verb over a
+# repository Fathom does not own, run by someone who cloned it rather than by the project.
+#
+# `mode: warn`, deliberately. The miniature contains four new direct dependencies on purpose, so an
+# `enforce` gate here would be red forever and a red-by-design gate is one a reader learns to ignore. The
+# README shows the enforce run and its exit 7 as the exhibit; the job here keeps the clone honest — the
+# index still builds, the checks still run, nothing new arrives.
+
+name: fathom
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, so a Fathom release that breaks this tour is found on a Monday rather than by a stranger.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    with:
+      # Reporting, not blocking: the exhibit is the finding, not a red tick. And `fail-on` has to stay
+      # empty for that sentence to be true — the CLI treats a named threshold as meaning it, and promotes a
+      # `mode = "warn"` policy to enforce for the run (`fathom check --help`, ADR-002 §7.3). Naming
+      # Naming a threshold here would have made this job red over the miniature's four new dependencies
+      # and quietly contradicted the comment above it, which is the sort of thing a reader never finds out
+      # until they delete the job.
+      mode: warn
+      fail-on: ""
+      # The whole miniature in one range, because the miniature is one review, not a sequence of them.
+      base: ""
+      head: HEAD
+      # A blocked check here would mean the demo repository lost its policy, not that the code is wrong.
+      require: dependencies,tests,sign-off
+      artifacts: true

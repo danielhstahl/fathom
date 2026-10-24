@@ -27,6 +27,7 @@ use std::io::IsTerminal as _;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "sqlite-bundled")]
 use fathom_analyze::index::{Phase, ProgressSink, Tick};
 use fathom_core::progress::Estimate;
 
@@ -83,10 +84,12 @@ impl Request {
 /// Cloned into the closure the driver calls, so the whole state is behind one mutex; uncontended,
 /// because the driver is single-threaded and the printer is the only other thing that touches it.
 #[derive(Clone)]
+#[cfg(feature = "sqlite-bundled")]
 pub struct Guide {
     state: Arc<Mutex<Printer>>,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Guide {
     /// A guide for `request`, on the stream this process actually has.
     #[must_use]
@@ -131,6 +134,7 @@ impl Guide {
 }
 
 /// The printer's state: what it is estimating, when it last printed, and whether a row is standing.
+#[cfg(feature = "sqlite-bundled")]
 struct Printer {
     printing: bool,
     /// Overwrite in place (`\r`) rather than append. True for a terminal; a pipe gets one line each.
@@ -142,6 +146,7 @@ struct Printer {
     drawn: bool,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Printer {
     fn tick(&mut self, tick: &Tick) {
         if !self.printing {

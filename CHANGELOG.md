@@ -17,6 +17,70 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The CI gate as something outsiders install: one installer, one reusable workflow, a scripted five-minute demo (`reco-by2`, `m2`)
+
+The 1.0 criterion is not "we can run `fathom check` on our own history" — `ci.yml` has proved that every push
+since `e6.6` (`reco-ngk`) — it is that a repository which is not ours can put the gate in front of a merge and
+get an answer a reviewer can act on. That turned out to be mostly a *packaging* problem wearing a CI hat, and
+the first bug was in a document: `docs/recipes/gate-a-pipeline.md` has told readers since `e6.6` to run
+`./ci/install-fathom.sh`, and no such file had ever existed. It exists now, and so does the gate that keeps
+documents from pointing at programs again.
+
+- **`ci/install-fathom.sh` — the one installer, and it refuses to install a liar.** POSIX `sh`, no
+  dependencies, three paths in order: a binary already on `PATH`, the release installer at the version you
+  name, then a source build of the headless CI feature set (`sqlite-bundled,langs-all,deps-all`). Then it
+  **refuses** whatever it got if that binary cannot open a store — because a store-less build installs
+  happily, prints a version, and reports four of the six checks as `blocked`, which is a green job that looked
+  at nothing. `--check PATH` answers that question about any binary without installing it; `--mode`, `--src`,
+  `--prefix`, `--offline` and `--allow-degraded` are the knobs, all in `--help`.
+- **`.github/workflows/fathom-check.yml` — the gate as a reusable workflow.** `workflow_call`, so the
+  adoption is five lines: deep clone (four of the six checks compare two trees, and a clone without the base
+  makes them report `blocked`), install through the installer above, `fathom index`, `fathom check`, then
+  SARIF and a job summary under `if: always()` because the red run is the one someone needs to read. Its
+  verdict step keeps the three exit codes apart — `0` clean, `7` a human has work, anything else is the gate
+  breaking — and its inputs are the knobs, each declared, `fail-on` defaulting to empty so the repository's
+  own `[check]` policy decides.
+- **The headless build compiles again, which is what makes the installer's source fallback true.**
+  `cargo build -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all` and
+  `--features minimal` both built a binary for the first time in some while: the TUI, the MCP server and the
+  store-backed verbs are now gated on the features that provide them instead of failing to link without them.
+  A CI feature set that does not compile is a promise the installer cannot keep.
+- **`.github/workflows/dogfood.yml` — the gate over repositories this project does not own.** The three
+  Guardrail 3 clones at their pins, unshallowed first (a pinned `window` is a calibration slice, not the state
+  of a reviewer's clone), each with `--require dependencies --require tests --require sign-off`, a per-repository
+  time ceiling, and the reports uploaded. The local run of those steps is in
+  `.plan/evidence/reco-by2/dogfood.md`: 12 367-commit `cli`, 5 562-commit `flask`, 17 683-commit `ruff`, all
+  three answering with findings a reviewer could act on, and with the checks that legitimately had nothing to
+  judge reporting `blocked` and saying why.
+- **`tools/check_ci_gate.py` — the CI story checked as one object.** It runs the installer against a
+  fabricated store-less binary and fails if the installer *accepts* it; it requires that the reusable workflow
+  declares every input it reads and invokes only verbs and flags the built binary has (`fathom check --full` is
+  plausible, unread, and a job that dies three minutes into a stranger's pipeline); it requires the dogfood and
+  demo jobs to reference files that exist; and it requires that every `ci/…sh` and `tools/…py` a documentation
+  page tells the reader to run is a file — 201 references, which is the rule that would have caught the recipe.
+  `self-test` proves it can fail, and one of its fixtures is a job whose `mode: warn` and `fail-on: warning`
+  contradict each other.
+- **`tools/five_minute_demo.py` — the five-minute criterion as a run, not an adjective.** Eight steps over
+  the miniature that ships inside the binary, each asserting its own exit code and its own output — two of them
+  `7`, on purpose, because a demo whose gate never turns red demonstrates a dashboard — inside a budget of
+  `BUDGET_S = 300` measured from an empty temp directory. `doc` writes the measured table into
+  `docs/demo/five-minute.md`; `check` re-runs it and fails if the page drifted (timings with slack, claims byte
+  for byte); `self-test` proves the checker can fail.
+- **`publish/demo-repo/` plus `tools/publish_demo_repo.py` — the demo repository, assembled rather than
+  stored.** The miniature's 21 commits, then the tour (`DEMO.md`), the gate's policy (`fathom.toml`,
+  `mode = "warn"`), and a CI job that calls the reusable workflow exactly as a third party's would — 22 commits,
+  identical history to the pack the binary unpacks because it is generated from it. Two fixes worth naming:
+  `.gitignore` is rewritten to keep `.fathom/reviews/` committable (ADR-004 §12: the store is disposable, the
+  ledger is not), and the index is rebuilt from `HEAD`, because a clone with no index reports every tracked
+  file as a staged deletion and that is not a first impression.
+- **One documentation trap closed, and the checker that finds that class.** `--fail-on` *promotes*
+  `mode = "warn"` to enforce for the run — naming a threshold is treated as meaning it — and the CLI has been
+  saying so in its notices while the documentation said the opposite (`docs/concepts/ci-gate.md`, Policy).
+  The recipe no longer suggests `--features minimal`, which has no store. And `tools/check_docs.py` now resolves
+  link **definitions** as well as inline links, which is how it found that `docs/concepts/ci-gate.md`'s
+  `[ADR-002]` had pointed at `adr/0002-rust-analyzer.md` — a file that has never existed in this repository —
+  since the page was written.
+
 ### Cross-platform packaging: an artefact set a stranger can install, and the secrets that are not wired (`reco-3q4`)
 
 `e0.7` built the release pipeline and `m0` cut the alpha out of it; both left the word *packaging* to this

@@ -317,6 +317,7 @@ struct Scope {
     commit_oids: Vec<String>,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Scope {
     fn resolve(
         store: &fathom_store::spine::Store,
@@ -525,6 +526,7 @@ fn commit_url_base(repo: &fathom_ingest::repo::Repository) -> Option<String> {
 /// Subjects come from the index rather than the object database: the store is the copy fathom has already
 /// read, it is the one that survives a shallow clone the same way the episodes do, and an artefact that
 /// failed on an unreadable object would be an artefact that cannot be written at all.
+#[cfg(feature = "sqlite-bundled")]
 fn commit_rows(
     store: &fathom_store::spine::Store,
     oids: &[String],
@@ -552,6 +554,7 @@ fn commit_rows(
 ///
 /// The findings are `e4.3`'s, verbatim: the same call `fathom why` makes, so the score and the artefact
 /// cannot disagree about what was found.
+#[cfg(feature = "sqlite-bundled")]
 fn finding_rows(
     store: &fathom_store::spine::Store,
     repo: &fathom_ingest::repo::Repository,
@@ -599,6 +602,7 @@ fn finding_rows(
 /// An orphaned note stays in the artefact on purpose. "The change this was written about was rewritten
 /// away" is a fact a reviewer needs, and a note that silently vanished from the export would read as a
 /// note that was deleted.
+#[cfg(feature = "sqlite-bundled")]
 fn memory_rows(
     notes: &[fathom_analyze::notes::Note],
     statuses: &[fathom_analyze::notes::Status],
@@ -997,6 +1001,7 @@ fn report(
 }
 
 /// The `--json` payload: one line, the only thing on stdout, and the same facts the human report prints.
+#[cfg(feature = "sqlite-bundled")]
 fn payload(
     args: &ExportArgs,
     format: fathom_analyze::export::Format,

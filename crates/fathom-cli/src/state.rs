@@ -460,6 +460,7 @@ fn notice_note(notice: &HealthNotice) -> Option<String> {
 /// `fathom stats` print the same facts as findings (with their remedies) and as notes, from the same
 /// [`HealthNotice`] values, so the three renderings cannot drift.
 #[must_use]
+#[cfg(feature = "tui")]
 pub fn repository_notices(root: &Path) -> Vec<String> {
     let Ok(repository) = Repository::discover(root) else {
         return Vec::new();
@@ -487,6 +488,7 @@ pub fn repository_notices(root: &Path) -> Vec<String> {
 /// Same words, same remedy as the `object_unreadable` finding, because a reviewer who meets the sentence in
 /// the frame and again in `fathom doctor` must not have to work out whether they are the same problem.
 #[must_use]
+#[cfg(feature = "tui")]
 pub fn unreadable_notices(root: &Path) -> Vec<String> {
     use fathom_store::spine::Store;
 
@@ -541,6 +543,7 @@ pub fn object_unreadable_finding(holes: &[(String, String, i64)], redactor: &Red
 /// answer is wrong. What is wrong is that the store is counted as holding a repository that no longer
 /// exists, which is what `fathom stats`' `scale` line said and what nothing used to say. The named oids are
 /// the newest few: the commits a reviewer is likeliest to remember typing.
+#[cfg(feature = "sqlite-bundled")]
 pub fn dead_rows_finding(dead: &fathom_store::inventory::DeadRows) -> Finding {
     let named = dead
         .sample

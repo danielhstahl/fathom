@@ -30,6 +30,7 @@
 //! disagree, because one [`Index`], one query grammar and one [`Corpus`] builder sit between them.
 
 use std::path::Path;
+#[cfg(feature = "tui")]
 use std::sync::Arc;
 
 // The corpus, the index and the store reads behind them exist only where there is a store: a `minimal`
@@ -82,7 +83,7 @@ const MANIFEST_MAX: usize = 24;
 
 /// The index the search box will score against, or `None` with the reason the shell should print.
 #[must_use]
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "sqlite-bundled", feature = "tui"))]
 pub fn index(root: &Path) -> Option<Arc<Index>> {
     let corpus = corpus_for(root)?;
     Some(Arc::new(Index::build(&corpus)))
@@ -91,7 +92,7 @@ pub fn index(root: &Path) -> Option<Arc<Index>> {
 /// The corpus itself, which the headless `fathom search` needs for its `--explain` half and the shell needs
 /// for the index, so the read is written once.
 #[must_use]
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "sqlite-bundled", any(feature = "tui", feature = "mcp")))]
 pub fn corpus_for(root: &Path) -> Option<Corpus> {
     read(root)
 }

@@ -1,0 +1,22 @@
+# The gate's policy for the miniature (`fathom check` reads this table; nothing else here does).
+#
+# `warn` and not `enforce`, on purpose: the miniature introduces four new direct dependencies between its
+# first commit and its tip, and that is the exhibit rather than a defect. A gate that is red by design is
+# a gate a reader stops opening, so the committed policy reports and does not block, and the README shows
+# the `enforce` run with its exit 7 as the thing to look at.
+#
+# Every key here is the same key your own repository would carry; `fathom config explain check.mode`
+# prints which layer won any of them.
+[check]
+mode = "warn"
+fail_on = "warning"
+
+# The intended shape of the miniature, so the `layering` check has something to enforce instead of
+# reporting itself blocked. Two layers and one rule: the dashboard is a consumer of the core, never the
+# other way round. `fathom check --explain` prints the rule as read.
+[layers]
+core = ["src/"]
+dashboard = ["dashboard/"]
+
+[layering]
+forbid = ["no-dashboard-uptake: core -> dashboard"]

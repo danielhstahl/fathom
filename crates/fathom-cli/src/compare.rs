@@ -199,7 +199,9 @@ fn run_spec(root: &Path, asked: &str, args: &CmpArgs) -> eyre::Result<ExitCode> 
 /// # Errors
 ///
 /// One sentence per failure: what did not resolve, and the verb that would fix it.
-#[cfg(feature = "sqlite-bundled")]
+// `sqlite-bundled` because it reads the index, `mcp` because the MCP door is its only caller: a headless
+// build without the protocol crate has nothing to call it, and says so by not containing it.
+#[cfg(all(feature = "sqlite-bundled", feature = "mcp"))]
 pub(crate) fn mcp_compare(
     root: &Path,
     from: &str,

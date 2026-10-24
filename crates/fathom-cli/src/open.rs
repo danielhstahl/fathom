@@ -95,6 +95,7 @@ struct Episode {
     missing: Vec<String>,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Episode {
     /// The handle in the words an error message uses: `episode 4f2b9c1`, `commit b999c15`.
     fn name(&self) -> String {

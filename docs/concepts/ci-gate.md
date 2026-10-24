@@ -5,7 +5,7 @@
 > sentence with the evidence underneath. The six checks it runs are built; the engines behind five of the six
 > were built earlier and are consumed here rather than reimplemented.
 >
-> [ADR-002]: ../adr/0002-rust-analyzer.md
+> [ADR-002]: ../adr/0002-workspace.md
 
 A CI gate is a strange artefact. Everything else in `fathom` is allowed to be uncertain, slow and verbose,
 because a human is reading it. A gate is allowed none of that: it has to be fast enough not to be worked
@@ -132,9 +132,17 @@ For one run, without touching the file, `--fail-on` escalates:
 $ fathom check --base origin/main --fail-on error
 ```
 
-`--fail-on` is escalation, not a mode override: it raises what this run blocks and says so in the output, and
-it cannot resurrect a gate that policy switched off — `mode = "off"` stays off even under `--fail-on`,
-because a flag that silently re-enables a deliberate kill switch is how the kill switch stops being one.
+`--fail-on` is escalation, and escalation has a consequence: **naming a threshold is treated as meaning
+it**. A repository whose file says `mode = "warn"` and whose CI passes `--fail-on warning` is *enforced* for
+that run, and the run says so in its own notices — `mode = "deny"` in `fathom.toml` is the durable way to
+say the same thing. This surprises exactly one kind of adopter, the one who set `warn` intending the gate to
+be advisory forever and then wires it into a pull-request job with a threshold; the notice exists so it is
+surprising once, in a log, rather than forever in a habit of ignoring red. Leaving `--fail-on` out runs
+precisely what the file declares.
+
+What escalation cannot do is resurrect a gate that policy switched off: `mode = "off"` stays off even under
+`--fail-on`, because a flag that silently re-enables a deliberate kill switch is how the kill switch stops
+being one.
 
 Two rules about parsing, both learned from CI being the worst place to discover a typo:
 
@@ -236,6 +244,49 @@ no-op.
   with:
     sarif_file: fathom.sarif
 ```
+
+`cargo install` is the simplest line to write and the easiest to get subtly wrong: a build without a store
+backend prints a version, runs, and reports four of the six checks as `blocked`. The shipped
+[`ci/install-fathom.sh`](../../ci/install-fathom.sh) exists to make that state unreachable — it falls back
+through a binary on `PATH`, the release installer, and a source build of the headless CI feature set, then
+**refuses** anything it got that cannot open a store. `--check PATH` asks the question about a binary
+without installing it.
+
+For GitHub Actions there is a shorter adoption path than the six lines above: a reusable workflow that is
+these steps with the arguments named.
+
+```yaml
+# .github/workflows/fathom.yml, in your repository
+name: fathom
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gate:
+    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    with:
+      fathom-version: 1.0.0
+      fail-on: warning
+```
+
+It deep-clones, installs through that installer, indexes, runs the gate, publishes SARIF and a job summary
+under `if: always()`, and distinguishes the three exit codes in its verdict step. `fail-on` defaults to
+empty, because naming a threshold promotes a repository's own `mode = "warn"` to enforce for the run;
+[Policy](#policy) has that rule.
+
+Two pipelines in this repository call the same installer and the same verb, and they are the ones worth
+copying because neither is a mirror of the code under test: `.github/workflows/dogfood.yml` runs the gate
+over the pinned Guardrail 3 corpus, and
+[the demo repository's job](../../publish/demo-repo/.github/workflows/fathom.yml) consumes the reusable
+workflow the way any outsider's would.
+
+What the corpus job costs, measured rather than hoped (a 200-commit range against a store that already holds
+the whole clone, arm64 container): `flask` — 5 562 commits indexed in 18 s, gate **≈ 1.4 s**, 121 findings;
+`cli` — 12 367 indexed in 168 s, gate **≈ 11 s**, 37 findings; `ruff` — 17 683, gate **≈ 26 s**, 31 findings
+with `api` `blocked` at its 6 000-files-per-side ceiling. The job's ceilings are **per pin** — 180 s, 600 s
+and 1 800 s, index plus gate, each about three times what that pair measured — because one ceiling for three
+histories of 5k to 18k commits is a number chosen for the smallest and a weekly red for the largest.
 
 One index, two runs of the gate — once for the verdict, once for the artefact. `fathom check` does not index:
 it reads the store the `index` step built, and says `blocked` with "run `fathom index`" when the store is

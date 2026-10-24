@@ -53,6 +53,13 @@ jobs:
         # generator is deterministic (pinned dates, pinned identities), so a diff here is a real change to
         # the miniature and not noise from a different machine.
         run: python3 tools/gen_demo_repo.py check
+      - name: "m2 CI gate: the installer, the workflows and the documented paths are one story"
+        # The same step `ci.yml` runs, run here too on purpose: the half of it that reads documents needs
+        # no binary, and a documentation change that deletes a script it names should be caught by the
+        # job that is already running on documentation alone.
+        run: |
+          python3 tools/check_ci_gate.py
+          python3 tools/publish_demo_repo.py check
       - name: ADR-002 model, generated tables, ticket->crate map, this file's wiring
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)

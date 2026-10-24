@@ -34,6 +34,10 @@ use std::path::Path;
 use fathom_core::handoff::{Command, Env, Lookup};
 
 /// The calling process's environment, as a handoff plan wants it.
+///
+/// `tui`-gated: the shell is what hands a file off to an editor. `fathom open` builds its own environment
+/// from the resolved settings, and a headless build does not need this one.
+#[cfg(feature = "tui")]
 #[must_use]
 pub fn environment() -> Env<'static> {
     environment_with(&Settings::default())

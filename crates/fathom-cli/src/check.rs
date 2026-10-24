@@ -1132,6 +1132,7 @@ fn gather_episodes(
 /// Freshness is the ledger linker's own verdict: a sign-off whose content moved since it was written is
 /// `Stale`, and a stale sign-off signed a *different* change, so it does not count here. The whole ledger is
 /// read once per run and cached, because the first high-risk episode pays for the pass and the ninth is free.
+#[cfg(feature = "sqlite-bundled")]
 fn signed_off(
     root: &Path,
     store: &fathom_store::spine::Store,

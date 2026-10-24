@@ -24,11 +24,14 @@
 //! to is not a note** — the memory's whole value is that a name and a date travel with the claim — so the
 //! verb refuses with the four knobs that would fix it rather than storing an anonymous comment.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+#[cfg(feature = "sqlite-bundled")]
 use fathom_analyze::notes::collect;
+#[cfg(feature = "sqlite-bundled")]
 use fathom_analyze::notes::{Attachment, Context, Draft, Kind, NoteTarget, Recorded, Status};
 use fathom_core::exit::ExitCode;
+#[cfg(feature = "sqlite-bundled")]
 use fathom_store::spine::Store;
 use serde_json::json;
 
@@ -110,6 +113,7 @@ pub(crate) fn note(args: &NoteArgs) -> eyre::Result<ExitCode> {
 // ---------------------------------------------------------------------------
 
 /// The printed answer. Every line is one claim with its author, its date and where to check it.
+#[cfg(feature = "sqlite-bundled")]
 fn print_context(answer: &Context, all: bool) {
     let heading = match answer.asked_as.as_str() {
         "episode" => format!(
@@ -173,6 +177,7 @@ fn print_context(answer: &Context, all: bool) {
 }
 
 /// One section: the heading, then one line per record.
+#[cfg(feature = "sqlite-bundled")]
 fn print_records(label: &str, records: &[Recorded], all: bool) {
     let shown: Vec<&Recorded> = records
         .iter()
@@ -200,6 +205,7 @@ fn print_records(label: &str, records: &[Recorded], all: bool) {
 /// The parenthetical a stale, orphaned, answered or withdrawn record carries. A recorded decision that no
 /// longer points at the code it described has to say so on the same line as the decision, or the surface is
 /// quoting a decision that has been overtaken and calling it current.
+#[cfg(feature = "sqlite-bundled")]
 fn status_suffix(record: &Recorded) -> String {
     let mut parts: Vec<String> = Vec::new();
     match record.status.as_str() {
@@ -223,6 +229,7 @@ fn status_suffix(record: &Recorded) -> String {
 }
 
 /// The `--json` payload: the same answer, with the counts spelled out beside the lists.
+#[cfg(feature = "sqlite-bundled")]
 fn context_json(answer: &Context, all: bool) -> impl std::fmt::Display {
     let section = |records: &[Recorded]| -> Vec<serde_json::Value> {
         records
@@ -256,6 +263,7 @@ fn context_json(answer: &Context, all: bool) -> impl std::fmt::Display {
 
 /// One record as JSON. Kept a function rather than inline so the CLI, the export and the MCP tool serialise a
 /// `Recorded` exactly the same way.
+#[cfg(feature = "sqlite-bundled")]
 pub fn json_of(record: &Recorded) -> serde_json::Value {
     json!({
         "id": record.id,
@@ -646,6 +654,7 @@ fn withdraw(root: &Path, args: &NoteWithdrawArgs, as_json: bool) -> eyre::Result
 /// `fathom note verify`: tampering and nothing else, which is why it needs no index and no store — the same
 /// property `fathom review verify` has, and for the same reason: a clone that has never been indexed still
 /// has to be able to say whether its recorded decisions were edited after they were written.
+#[cfg(feature = "sqlite-bundled")]
 fn verify(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
     let (count, complaints) = collect::verify(root);
     if as_json {
@@ -743,6 +752,7 @@ fn split_path_line(spec: &str) -> (String, Option<u32>) {
 }
 
 /// The parenthetical an attachment earns.
+#[cfg(feature = "sqlite-bundled")]
 fn verdict_suffix(attachment: &Attachment) -> String {
     match attachment.state.as_str() {
         "fresh" | "anchored" => String::new(),
@@ -752,13 +762,14 @@ fn verdict_suffix(attachment: &Attachment) -> String {
 }
 
 /// Turn a refusal into an error the printer shows with its remedy already in the sentence.
+#[cfg(feature = "sqlite-bundled")]
 fn refused(err: fathom_analyze::notes::AppendError) -> eyre::Report {
     eyre::eyre!("{err}")
 }
 
 #[cfg(feature = "sqlite-bundled")]
 fn open_store(root: &Path) -> Result<Store, Pending> {
-    let path = crate::session::store_path(root);
+    let path = store_path(root);
     if !path.exists() {
         return Err(Pending::new(
             ExitCode::IndexDegraded,
@@ -776,6 +787,15 @@ fn open_store(root: &Path) -> Result<Store, Pending> {
             Some("fathom doctor".to_owned()),
         )
     })
+}
+
+/// Where the index lives, the same path every verb reads (`fathom_analyze::index::default_store_path`,
+/// which is what `session::store_path` delegates to). Named here rather than borrowed from `session`, because
+/// `session` is the shell's module and `fathom note` is a headless verb: a `--no-default-features` build has
+/// no shell to borrow from (`compare.rs` makes the same choice for the same reason).
+#[cfg(feature = "sqlite-bundled")]
+fn store_path(root: &Path) -> PathBuf {
+    fathom_analyze::index::default_store_path(root)
 }
 
 fn display(path: &Path, root: &Path) -> String {

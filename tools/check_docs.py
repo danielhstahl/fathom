@@ -7,6 +7,9 @@ Guards the acceptance criteria of ADR-001 (docs/concepts/thesis.md):
   * every plan reference in the docs (`e1.3`, `s2`, `m0`, `reco-982`) names something that exists in
     .plan/keymap.json, so the documents cannot cite tickets the plan no longer has;
   * every relative link in README.md and docs/** resolves to a file in the repo;
+  * every link *definition* (`[label]: path`) resolves too, which is the half that bit: a reference-style
+    link's target lives in a definition line no inline-link regex ever looks at, and a page whose
+    `[ADR-002][]` points at a file that never existed rendered as a dead link forever;
   * the README links the thesis document.
 
 Run:  python3 tools/check_docs.py
@@ -28,6 +31,8 @@ PLAN_KEY = re.compile(r"(?<![\w.-])([esdm]\d+(?:\.\d+)?)(?![\w-])")
 BEAD_ID = re.compile(r"(?<![\w-])(reco-[a-z0-9]{3})(?![\w-])")
 ADR_REF = re.compile(r"ADR-(\d{3})")
 LINK = re.compile(r"\]\(([^)\s]+)\)")
+#: A link reference definition: `[label]: target`, optionally indented, target possibly in `<>`.
+LINK_DEFINITION = re.compile(r"^ {0,3}(?:> ?)*\[([^\]^]+)\]:\s*<?([^>\s]+)>?", re.M)
 
 
 def doc_files():
@@ -79,6 +84,29 @@ def check_links(path, text, problems):
             problems.append("%s: broken link %r" % (path.relative_to(ROOT), target))
 
 
+def check_link_definitions(path, text, problems):
+    """Resolve every `[label]: target` definition the way inline links are resolved.
+
+    The 1.0 gate found the hole by accident: `docs/concepts/ci-gate.md` defined `[ADR-002]` as
+    `../adr/0002-rust-analyzer.md`, a file that has never existed in this repository, and every
+    `[ADR-002][]` on the page has been a dead link ever since. `check_docs.py` said "docs OK" the whole
+    time, because its link rule looks at `](target)` and a definition is not that. A reader who follows a
+    dead link concludes the documentation is sloppy; a reader who does not is worse off.
+    """
+    for label, target in LINK_DEFINITION.findall(text):
+        if target.startswith(("http://", "https://", "mailto:")):
+            continue
+        file_part = target.split("#", 1)[0]
+        if not file_part:
+            continue
+        resolved = (path.parent / file_part).resolve()
+        if not resolved.exists():
+            problems.append(
+                "%s: link definition [%s] points at %r, which does not exist"
+                % (path.relative_to(ROOT), label, target)
+            )
+
+
 def main():
     problems = []
     if not KEYMAP.exists():
@@ -100,6 +128,7 @@ def main():
         text = path.read_text(encoding="utf-8")
         check_plan_refs(path.relative_to(ROOT), text, keymap, problems)
         check_links(path, text, problems)
+        check_link_definitions(path, text, problems)
 
     for problem in problems:
         print(problem)

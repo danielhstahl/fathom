@@ -1,0 +1,234 @@
+# The gate, run over repositories Fathom does not own (`m2`, **reco-by2**).
+#
+# This is the first of the two external pipelines the 1.0 gate counts, and it is the harder of the two
+# claims to make honestly. `.github/workflows/ci.yml` has run `fathom check` on *this* repository since
+# `e6.6` — self-knowledge, valuable, and still a repository whose layering rules, ledger and review
+# culture we control. The claim the milestone asks for is that the gate holds up on somebody else's
+# history: a merge-heavy Python repository, a Rust linter with a generated-file problem of its own, and a
+# Go CLI whose commits are mostly dependency bumps. Those three are the Guardrail 3 corpus, and
+# `tools/fetch_g3_corpus.py` already owns the pins, so this file adds no new fixture — it runs the gate on
+# the one this project already measures itself against.
+#
+# # What it asserts, and what it deliberately does not
+#
+# * **Exit `0` or `7`, and nothing else.** A finding on a repository we do not maintain is not a broken
+#   build; it is information, and the job records it. Anything else — `5` (bad config), `9` (a feature
+#   missing from the binary), `12` (`INDEX_DEGRADED`), a crash — *is* a broken build, because the gate
+#   itself failed to answer (ADR-002 §7.3). That distinction is the whole job.
+# * **A wall-clock ceiling per repository.** `e6.6`'s criterion is a gate that runs in under a minute on a
+#   medium repository; this job has the largest repository in the corpus in it, so the ceiling here is the
+#   gate's own minute times the corpus's size — and it is measured, not assumed, because "we did not
+#   finish" is exactly what a perf regression looks like from the outside.
+# * **That every check actually ran.** `--require` names the checks whose `blocked` answer would make the
+#   run vacuous: an index-less binary, a range with no base, a store without the graph pass. A green run
+#   that examined nothing is the failure mode this file exists to catch.
+# * **Not:** that those repositories are good or bad. `mode: warn`, so a finding is printed and the verdict
+#   is the corpus's own — `fathom check` is reporting into a ledger nobody on those projects reads.
+#
+# The second external pipeline is the demo repository's own job (`publish/demo-repo/.github/workflows/
+# fathom.yml`), which consumes `.github/workflows/fathom-check.yml` the way any third-party repository
+# would: from outside, through the published installer, with no access to this workspace.
+
+name: dogfood (the gate over the pinned corpus)
+
+on:
+  schedule:
+    # Tuesday morning, after the Monday release window and before anyone's own Monday mess.
+    - cron: "23 7 * * 2"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "One corpus pin to run (flask, ruff, cli). Empty runs all three."
+        required: false
+        type: string
+        default: ""
+      budget-seconds:
+        description: "Ceiling on index plus gate, per repository. Empty uses the measured per-pin numbers, which differ because the histories differ."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: fathom check over the corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # The corpus is a measurement input, not a product input: nothing here is compiled into the binary.
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: the pins this job will gate
+        id: pins
+        run: |
+          set -eu
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, pathlib
+          corpus = pathlib.Path("crates/fathom-analyze/calibration/g3/corpus")
+          pins = []
+          for directory in sorted(p for p in corpus.iterdir() if p.is_dir()):
+              pin = json.loads((directory / "pin.json").read_text())
+              pins.append({
+                  "name": directory.name,
+                  "repository": pin["repository"],
+                  "head": pin["head"],
+                  "window": pin["window"],
+              })
+          print("count=%d" % len(pins))
+          print("names=%s" % ",".join(p["name"] for p in pins))
+          print("table<<EOF")
+          print("| pin | repository | at | window |")
+          print("| --- | --- | --- | --- |")
+          for p in pins:
+              print("| %s | %s | %s | %s |" % (p["name"], p["repository"], p["head"][:12], p["window"]))
+          print("EOF")
+          PY
+
+      - name: install the gate with the installer outsiders get
+        # `--src` points the installer at this checkout, so what runs here is built the same way an
+        # outsider's `--mode source` builds it. A hand-written `cargo build` in this file would be a
+        # second definition of "the CI binary", and the second definition always drifts.
+        run: |
+          set -eu
+          sh ci/install-fathom.sh --mode source --src "$GITHUB_WORKSPACE" --prefix "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          fathom --version
+
+      - name: fetch the corpus at its pins
+        run: python3 tools/fetch_g3_corpus.py --dest "$GITHUB_WORKSPACE/target/g3-corpus"
+
+      - name: the gate over every pin
+        run: |
+          set -eu
+          budget="${{ github.event.inputs.budget-seconds }}"
+          only="${{ github.event.inputs.only }}"
+          : >> "$GITHUB_STEP_SUMMARY"
+          echo "| repository | range | gate exit | findings | worst finding | checks | blocked | index+gate |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- | --- | --- | --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          rc_collect=0
+          for clone in "$GITHUB_WORKSPACE"/target/g3-corpus/*/; do
+            name=$(basename "$clone")
+            if [ -n "$only" ] && [ "$name" != "$only" ]; then continue; fi
+            echo "::group::$name"
+            start=$(date +%s)
+            set +e
+            # The pins carry a `window` because the *calibration* corpus is a bounded slice; a user's
+            # clone is not. Unshallowing is what makes this job a gate over a repository rather than over
+            # a graft: the indexer is entitled to the tree of the commit it starts at, and a shallow tip
+            # is a state no reviewer's clone is ever in. Best-effort, because a fetch that cannot happen
+            # must not turn into a job that reports nothing at all.
+            ( cd "$clone" && git fetch --quiet --unshallow 2>/dev/null ) || true
+            ( cd "$clone" && fathom index --no-progress --json > /tmp/$name.index.json )
+            index_rc=$?
+            # The range: 200 commits back from the pin, which is the reviewable size a pull request is
+            # actually the size of, and the same window shape the calibration corpus uses. Note the shape
+            # of the first command — `--skip=200 -n 1 HEAD`. An earlier revision of this file wrote
+            # `--skip=200 --max-parents=0 HEAD`, and `--max-parents=0` restricts the walk to *root*
+            # commits: on a single-root repository that expression is empty, the fallback then handed
+            # back the root commit, and "a 200-commit window" silently became "the entire history of
+            # flask", which is how a 5 562-commit gate showed up in a summary that said 200.
+            base=$( cd "$clone" && git rev-list --skip=200 -n 1 HEAD 2>/dev/null )
+            base=${base:-$( cd "$clone" && git rev-list --max-parents=0 HEAD | tail -1 )}
+            echo "$base" > "/tmp/$name.base"
+            # `--require` is a repeatable flag, not a list: one name per flag, or the CLI refuses the
+            # whole run rather than guessing what a comma meant.
+            ( cd "$clone" && fathom check --base "$base" --head HEAD --fail-on warning \
+                --require dependencies --require tests --require sign-off \
+                --format json --out "/tmp/$name.check.json" --no-summary )
+            gate=$?
+            set -e
+            took=$(( $(date +%s) - start ))
+            # `0` and `7` are answers. Everything else is the gate failing to answer, which is the only
+            # thing in this job that makes it red.
+            case "$gate" in
+              0|7) ;;
+              *) echo "::error::$name: fathom check exited $gate — the gate broke, it did not object"; rc_collect=1 ;;
+            esac
+            if [ "$index_rc" -ne 0 ]; then
+              # 12 is INDEX_DEGRADED: the index completed and named the commits it could not read. That is
+              # the one exit code here that is information rather than a broken tool, so the log has to
+              # carry the reason rather than the number alone. Pulled out of the report with `cut`
+              # because a `python3 -c` block this deep inside a YAML scalar is a quoting hazard nobody
+              # should maintain.
+              reason=$(grep -o '"reason":"[^"]*' "/tmp/$name.index.json" 2>/dev/null | head -1 | cut -d'"' -f4)
+              if [ -z "$reason" ]; then
+                reason=$(grep -o '"failures":\["[^"]*' "/tmp/$name.index.json" 2>/dev/null | head -1 | cut -d'"' -f3)
+              fi
+              echo "::error::$name: fathom index exited $index_rc — ${reason:-no reason printed}"
+              rc_collect=1
+            fi
+            # The ceiling is per pin, because the work is per history. One number for all three is a
+            # number chosen for the smallest repository and a weekly red on the largest: measured locally
+            # (`aarch64`, cold store, whole clone indexed) the pairs came out flask 19 s, cli 179 s, ruff
+            # 344 s warm and nearer ten minutes cold. Each ceiling below is roughly three times the
+            # measured pair, which is room for a loaded runner and not enough room to drift for a quarter
+            # before anyone notices. An explicit `budget-seconds` overrides all three.
+            case "$name" in
+              flask) ceiling=${budget:-180} ;;
+              cli) ceiling=${budget:-600} ;;
+              ruff) ceiling=${budget:-1800} ;;
+              *) ceiling=${budget:-600} ;;
+            esac
+            if [ "$took" -gt "$ceiling" ]; then
+              echo "::error::$name: index plus gate took ${took}s, over the ${ceiling}s ceiling"
+              rc_collect=1
+            fi
+            python3 - "$name" "$gate" "$took" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, pathlib, sys
+          name, gate, took = sys.argv[1:4]
+          path = pathlib.Path("/tmp/%s.check.json" % name)
+          report = json.loads(path.read_text()) if path.is_file() else {}
+          summary, checks = report.get("summary", {}), report.get("checks", [])
+          rng = report.get("range", {})
+          # Findings live inside each check, not beside it: a reader that looks for a top-level `findings`
+          # key prints an empty table over a report holding four hundred findings.
+          worst = "—"
+          for check in checks:
+              for finding in check.get("findings", []):
+                  if finding.get("severity") in ("error", "warning"):
+                      worst = "%s %s" % (finding.get("severity"), finding.get("rule", check["check"]))
+                      break
+              if worst != "—":
+                  break
+          ran = sum(1 for c in checks if c.get("status") == "ran")
+          blocked = [c["check"] for c in checks if c.get("status") == "blocked"]
+          print("| %s | `%s..%s` | %s | %s | %s | %s | %s | %s s |" % (
+              name, str(rng.get("base", "?"))[:10], str(rng.get("head", "?"))[:10], gate,
+              summary.get("found", "?"), worst, "%d ran" % ran,
+              ", ".join("`%s`" % b for b in blocked) or "—", took))
+          PY
+            cp "/tmp/$name.check.json" "fathom-$name.check.json" 2>/dev/null || true
+            # The same range as the gate above, read back from the file it was derived into — not
+            # recomputed, which is how a summary ends up describing a run that never happened.
+            ( cd "$clone" && fathom check --base "$(cat /tmp/$name.base)" \
+                --head HEAD --format sarif --out "$GITHUB_WORKSPACE/fathom-$name.sarif" --no-summary \
+                --fail-on never ) || true
+            echo "::endgroup::"
+          done
+          exit $rc_collect
+
+      - name: the artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fathom-dogfood-corpus
+          path: |
+            fathom-*.check.json
+            fathom-*.sarif
+          if-no-files-found: warn
+
+      - name: the corpus, as a sentence
+        if: always()
+        run: |
+          {
+            echo "## Dogfood: \`fathom check\` over $(echo '${{ steps.pins.outputs.names }}' | tr ',' ', ')"
+            echo
+            echo "Pins: ${{ steps.pins.outputs.count }}. Exits of 0 or 7 are answers; anything else is the"
+            echo "gate failing to answer, and is the only verdict here that turns this job red."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -21,16 +21,41 @@
 //! is a guess is worse than one that admits it does not know — the retrospective's whole point is that a
 //! pattern can be *someone's* pattern.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "tui")]
+use std::path::PathBuf;
+#[cfg(feature = "tui")]
 use std::sync::Arc;
 
-use fathom_analyze::insight::{Disposition, ReasonVocabulary, TriageRecord};
+#[cfg(feature = "tui")]
+use fathom_analyze::insight::ReasonVocabulary;
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
+use fathom_analyze::insight::{Disposition, TriageRecord};
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 use fathom_core::time::Timestamp;
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 use fathom_store::episode::{ReviewState, TriageEvent};
+#[cfg(feature = "tui")]
 use fathom_tui::queue::{Ledger, LedgerHandle, Setup};
 
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 use fathom_store::spine::Store;
+
+/// Where the index lives — the same path every verb reads. Named here rather than borrowed from
+/// `crate::session`, because `session` is the shell's module and this module's [`actor`] is used by headless
+/// verbs too; a `--no-default-features` build has no shell to borrow from (`compare.rs`, same choice).
+#[cfg(feature = "tui")]
+#[must_use]
+fn store_path(root: &Path) -> PathBuf {
+    #[cfg(feature = "sqlite-bundled")]
+    {
+        fathom_analyze::index::default_store_path(root)
+    }
+    #[cfg(not(feature = "sqlite-bundled"))]
+    {
+        root.join(".fathom").join("index.sqlite3")
+    }
+}
 
 /// How many past acts the frame reads at load.
 ///
@@ -38,19 +63,20 @@ use fathom_store::spine::Store;
 /// reviewer dismisses dozens a year, not millions — and small enough that the read is not a job. The
 /// retrospective's own window is "everything the ledger holds", so this is also the honest limit of what
 /// `r` can say, and it says the number it counted rather than implying it read the world.
+#[cfg(feature = "tui")]
 const HISTORY_LIMIT: i64 = 500;
 
 /// The store-backed ledger.
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 pub struct StoreLedger {
     /// The repository under review — the same root the shell was opened in.
     root: PathBuf,
 }
 
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 impl Ledger for StoreLedger {
     fn record(&self, record: &TriageRecord) -> Result<(), String> {
-        let mut store = Store::open(&crate::session::store_path(&self.root))
+        let mut store = Store::open(&store_path(&self.root))
             .map_err(|err| format!("the index would not open: {err}"))?;
         store
             .record_triage(&TriageEvent {
@@ -70,7 +96,7 @@ impl Ledger for StoreLedger {
     }
 
     fn history(&self, limit: i64) -> Result<Vec<TriageRecord>, String> {
-        let store = Store::open(&crate::session::store_path(&self.root))
+        let store = Store::open(&store_path(&self.root))
             .map_err(|err| format!("the index would not open: {err}"))?;
         store
             .triage_events(limit)
@@ -81,10 +107,10 @@ impl Ledger for StoreLedger {
 
 /// A ledger for a build with no SQLite backend: nothing to write to, and a reason that names the build
 /// rather than blaming the repository.
-#[cfg(not(feature = "sqlite-bundled"))]
+#[cfg(all(feature = "tui", not(feature = "sqlite-bundled")))]
 pub struct StoreLedger;
 
-#[cfg(not(feature = "sqlite-bundled"))]
+#[cfg(all(feature = "tui", not(feature = "sqlite-bundled")))]
 impl Ledger for StoreLedger {
     fn record(&self, _record: &TriageRecord) -> Result<(), String> {
         Err(
@@ -100,14 +126,31 @@ impl Ledger for StoreLedger {
 
 /// The ledger the shell gets: the store when there is a store to speak of, `None` when the repository has
 /// never been indexed (and the strip says which of the two the reviewer is looking at).
+///
+/// `tui`-gated because `LedgerHandle` is the shell's trait object: outside a build with a shell there is no
+/// frame to hand it to, and the headless CI build does not link `fathom-tui` at all.
+#[cfg(feature = "tui")]
 #[must_use]
 pub fn ledger(root: &Path) -> Option<LedgerHandle> {
-    if !crate::session::store_path(root).exists() {
+    if !store_path(root).exists() {
         return None;
     }
-    Some(LedgerHandle(Arc::new(StoreLedger {
+    Some(LedgerHandle(Arc::new(new_store_ledger(root))))
+}
+
+/// The ledger in whichever shape this build has: the store's, or the refusal that says why there is none.
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
+#[must_use]
+fn new_store_ledger(root: &Path) -> StoreLedger {
+    StoreLedger {
         root: root.to_path_buf(),
-    })))
+    }
+}
+
+#[cfg(all(feature = "tui", not(feature = "sqlite-bundled")))]
+#[must_use]
+fn new_store_ledger(_root: &Path) -> StoreLedger {
+    StoreLedger
 }
 
 /// Everything the queue needs in order to triage, read from the repository at the edge.
@@ -115,6 +158,7 @@ pub fn ledger(root: &Path) -> Option<LedgerHandle> {
 /// `total` is the index's own episode count, because the retrospective's coverage line is a share of the
 /// index and not of the ledger; `index` is what the shell was already handed, so this does not open a
 /// second store to find a number the frame already carries.
+#[cfg(feature = "tui")]
 #[must_use]
 pub fn setup(root: &Path, actor: &str, extra_reasons: &[String], total: usize) -> Setup {
     let mut notices = Vec::new();
@@ -178,7 +222,7 @@ fn git_config(root: &Path, key: &str) -> Option<String> {
 
 /// The queue's disposition in the store's spelling — one table, because `review_state` and the queue's
 /// dispositions are the same fact seen from two sides (ADR-004 §5).
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 fn review_state(disposition: Disposition) -> ReviewState {
     match disposition {
         Disposition::Unread => ReviewState::Unread,
@@ -191,7 +235,7 @@ fn review_state(disposition: Disposition) -> ReviewState {
 }
 
 /// A stored act back into the shape the analysis reasons over.
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 fn to_record(row: TriageEvent) -> TriageRecord {
     TriageRecord {
         episode: row.episode,
@@ -218,6 +262,9 @@ fn to_record(row: TriageEvent) -> TriageRecord {
 mod tests {
     use super::*;
 
+    // `tui`-gated with the two functions it exercises: `ledger` and `setup` are the shell's trait objects,
+    // and the headless build that has no `fathom-tui` has nothing for this test to call.
+    #[cfg(feature = "tui")]
     #[test]
     fn an_unindexed_directory_gets_no_ledger_and_says_why() {
         let dir = std::env::temp_dir().join(format!("fathom-queue-none-{}", std::process::id()));

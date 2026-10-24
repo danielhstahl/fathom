@@ -458,6 +458,29 @@ jobs:
           python3 tools/gen_docs.py check --page cli
           python3 tools/check_docs_site.py
 
+      # `m2` (`reco-by2`): the gate as a thing outsiders install, as one object with one set of promises.
+      # `docs/recipes/gate-a-pipeline.md` told readers to run `./ci/install-fathom.sh` for two milestones
+      # before the file existed, which is the exact failure this step is: a promise in a document and no
+      # program behind it. It checks the installer (including that the installer *refuses* a store-less
+      # binary, verified against a fabricated one), that the reusable workflow's inputs and verbs all
+      # exist, that the dogfood job runs the gate over the corpus, and that every `ci/…sh` a page names is
+      # a file.
+      - name: "m2 CI gate: the installer, the reusable workflow and the documented paths are one story"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: python3 tools/check_ci_gate.py
+
+      # The five-minute criterion, as a run rather than as an adjective: eight steps over the miniature,
+      # each asserting its own exit code (two of them 7, on purpose), the whole thing inside 300 s, and
+      # the docs page carrying the numbers this run measured.
+      - name: "m2 the five-minute demo runs, is inside its budget, and the page says so"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: |
+          python3 tools/five_minute_demo.py self-test
+          python3 tools/five_minute_demo.py check
+      - name: "m2 the demo repository assembles from the pack the binary ships"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: python3 tools/publish_demo_repo.py check
+
       # `e7.4` (reco-3q4): the same argument one directory over. `packaging/completions` and
       # `packaging/man` are committed so `dist` can put them in an archive without running a binary in the
       # release job — which means they can go stale, and a stale completion is a flag that exists in

@@ -10,6 +10,13 @@
 
 #![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
+// A binary built without a store backend (`--no-default-features --features minimal`) refuses every
+// store-backed verb at its entry point (ADR-002 §6.1, exit `9`), which leaves the code behind those stubs
+// compiled and unreachable: imports nobody uses, helpers nobody calls. That is the *shape of the build*, not
+// a mistake in the code, and the build that polices dead code is `cargo clippy --workspace --all-features
+// -- -D warnings`, where every feature is on and nothing is unreachable. So the store-less build says
+// `allow` once, here, rather than in the twenty-three files whose internals it cannot reach.
+#![cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code, unused_imports))]
 // `serde_json::json!` expands a long object one recursive macro frame per key, so the ceiling here is a
 // property of the macro's encoding and not a warning about the code. `state::describe_index`'s snapshot
 // is the object that reaches it: `reco-66q` added one key (`integrity_checks`, which checks ran, so that
@@ -87,6 +94,11 @@ mod memory;
 // The episode narrative (`e4.7`): the store read and the formatting choice for the prose that
 // `fathom_analyze::narrative` composes. It is a separate verb from `analyze` for the same reason `why` is:
 // a document and the thing you read it for are different jobs.
+// Gated on the `mcp` feature because `fathom-mcp` is an optional dependency: the headless CI build
+// (`docs/recipes/gate-a-pipeline.md`, `.github/workflows/ci.yml`'s `check-gate`) compiles without it, and
+// `fathom mcp` in such a binary answers with the exit code that means "rebuild differently", the same way
+// `watch` and `tui` do (ADR-002 §6.1).
+#[cfg(feature = "mcp")]
 mod mcp;
 mod narrative;
 /// The review memory's verbs — `fathom note …` and `fathom context …` (`e6.5`, `reco-552`).

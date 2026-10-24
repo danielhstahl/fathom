@@ -25,6 +25,42 @@ rather than each inventing its own — that agreement is a decision, and it is w
 | the palette still passes its contrast floors | `fathom tui --show-theme --audit` | a theme failed a measured floor |
 | the repository is still inside its perf budgets | `make bench-check` | a measurement moved more than 15 % in **either** direction |
 
+## Adopting it: three lines, or four steps
+
+There is a shipped path now, in two shapes, and both are the same four steps with the same three exit
+codes.
+
+```yaml
+# .github/workflows/fathom.yml, in your repository
+name: fathom
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gate:
+    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    with:
+      fathom-version: 1.0.0
+      fail-on: warning        # delete this line to run exactly what your own fathom.toml declares
+```
+
+That reusable workflow (`.github/workflows/fathom-check.yml` in this repository) clones the whole history,
+installs the binary with [`ci/install-fathom.sh`](../../ci/install-fathom.sh), runs `fathom index`, runs
+the gate, and publishes the SARIF and the job summary even when it fails. Its inputs are the knobs; its
+header says what it promises and what it refuses to promise.
+
+The installer is the part worth ten words. It tries, in order: a binary already on `PATH`, the release
+installer for the version you named, and a source build of the headless CI feature set
+(`sqlite-bundled,langs-all,deps-all`). Then it **refuses** whatever it got if that binary has no store
+backend — because a store-less build installs happily, prints a version, and reports four of the six checks
+as `blocked`, which is a green job that looked at nothing. `--check PATH` answers that question about any
+binary without installing anything, and `tools/check_ci_gate.py` feeds it a fabricated store-less binary in
+CI, so the refusal is watched failing rather than assumed working.
+
+If you would rather own the steps, the four below are the whole thing, and they are what the workflow above
+is made of:
+
 ## A job that works today
 
 ```yaml
@@ -35,7 +71,16 @@ review-gate:
       with:
         fetch-depth: 0            # the store wants history, not a depth-1 clone
     - name: install fathom
-      run: ./ci/install-fathom.sh          # or: cargo build -p fathom-cli --no-default-features --features minimal
+      # One installer, the same one the reusable workflow above uses. In your repository you fetch it;
+      # in this one the line is simply `sh ./ci/install-fathom.sh`.
+      run: |
+        curl --proto '=https' --tlsv1.2 -fsSL \
+          https://raw.githubusercontent.com/danielstahl/fathom/v1.0.0/ci/install-fathom.sh \
+          -o install-fathom.sh
+        sh install-fathom.sh --version 1.0.0
+      # Not `cargo build --no-default-features --features minimal`, whatever a past revision of this page
+      # suggested: that build has no store backend, so four of the six checks answer `blocked` and the job
+      # goes green having looked at nothing. `install-fathom.sh` refuses such a binary on purpose.
     - name: index
       run: fathom index --no-progress --json
     - name: every episode is signed off by a human
@@ -118,9 +163,18 @@ Worth stealing, because each one is a claim that a document and the program cann
 | a breaking delta change bumped its version | `python3 tools/check_delta_compat.py check` (plus its `self-test`, which proves the gate is awake) |
 | measured reports still reproduce | `cargo run -p fathom-analyze --example g3_calibration -- --root . --check` and friends |
 | perf budgets, both directions | `make bench-check` |
+| the CI story is one object, not a folklore ritual | `python3 tools/check_ci_gate.py` |
+| the five-minute tour still runs, inside five minutes | `python3 tools/five_minute_demo.py check` |
 
 The pattern is the one this whole project runs on: **a gate nobody has watched fail is decoration**, so every
 gate above has a `self-test` or an `--inject` path that proves it can go red.
+
+Two of those gates now run over repositories this project does not own, which is the claim the 1.0 gate
+asked for: [`.github/workflows/dogfood.yml`](../../.github/workflows/dogfood.yml) runs `fathom check` over
+the three pinned Guardrail 3 repositories through this same installer, and the
+[demo repository's own job](../../publish/demo-repo/.github/workflows/fathom.yml) consumes the reusable
+workflow exactly as a third party's would. Both are described on
+[the CI gate page](../concepts/ci-gate.md).
 
 **Next**: [export for a PR](export-for-a-pr.md) for what `--strict` is a gate *on* ·
 [the ledger](../concepts/review-ledger.md) for what a sign-off commits you to.

@@ -39,7 +39,9 @@
 use std::path::Path;
 
 use fathom_core::exit::ExitCode;
+#[cfg(feature = "sqlite-bundled")]
 use fathom_store::episode::{EpisodeQuery, ReviewState};
+#[cfg(feature = "sqlite-bundled")]
 use fathom_store::spine::Store;
 
 use crate::verbs::ArchitectureArgs;

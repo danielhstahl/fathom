@@ -28,6 +28,7 @@ Determinism is therefore asserted where it matters and stated where it does not:
     python3 tools/gen_demo_repo.py write    # build and pack over crates/fathom-cli/assets/
     python3 tools/gen_demo_repo.py check    # rebuild, and fail if the manifest moved
     python3 tools/gen_demo_repo.py show     # print the manifest without touching the tree
+    python3 tools/gen_demo_repo.py unpack --out DIR   # write the committed pack out as a real repository
 
 The pack format is `crates/fathom-cli/src/demo.rs`'s to read and this file's to keep in step: a magic
 string, a version byte, a count, then one entry per file (path, exec flag, length, bytes) sorted by path.
@@ -694,10 +695,98 @@ def build_all() -> tuple[bytes, dict]:
         shutil.rmtree(work, ignore_errors=True)
 
 
+def read_pack(packed: bytes) -> list[tuple[str, int, bytes]]:
+    """The inverse of [`pack`]: the entries one pack carries, in the order it stored them.
+
+    No decompression, no git, no network — the same `crates/fathom-cli/src/demo.rs` reader does at run
+    time, in the language the rest of the tooling is written in. The pack is a length-prefixed format on
+    purpose: a version byte and a count, so a reader can refuse what it cannot read instead of
+    half-reading it.
+    """
+    if packed[: len(MAGIC)] != MAGIC:
+        raise ValueError("not a fathom demo pack")
+    version = packed[len(MAGIC)]
+    if version != VERSION:
+        raise ValueError(f"pack version {version}, this reader knows {VERSION}")
+    offset = len(MAGIC) + 1
+    count = int.from_bytes(packed[offset : offset + 4], "little")
+    offset += 4
+    out: list[tuple[str, int, bytes]] = []
+    for index in range(count):
+        name_len = int.from_bytes(packed[offset : offset + 2], "little")
+        offset += 2
+        path = packed[offset : offset + name_len].decode("utf-8")
+        offset += name_len
+        exec_bit = packed[offset]
+        offset += 1
+        length = int.from_bytes(packed[offset : offset + 8], "little")
+        offset += 8
+        payload = packed[offset : offset + length]
+        offset += length
+        out.append((path, 0o755 if exec_bit else 0o644, payload))
+    if offset != len(packed):
+        raise ValueError(f"{len(packed) - offset} trailing bytes after {count} entries")
+    return out
+
+
+def unpack(out: Path, packed: bytes) -> list[tuple[str, int, bytes]]:
+    """Write a pack into `out` as the repository it was built from.
+
+    The directory *is* a git repository when this returns: the pack carries the loose objects, the refs,
+    HEAD and the config the generator wrote (`fathom-fixtures`' byte-exact writer is dev-only per
+    ADR-002 §5.1, so git itself is the only author of this history), which is what makes a published demo
+    repository have the history the binary ships rather than an imitation of it.
+    """
+    entries = read_pack(packed)
+    for path, mode, payload in entries:
+        target = out / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        target.chmod(mode)
+    # The index is deliberately not in the pack — it carries stat data from the machine that built it
+    # (this file's own docstring), and `fathom --demo` indexes with `--committed-only`, so the binary has
+    # never needed it. A *published* repository does: without an index `git status` reports every tracked
+    # file as a staged deletion, which is not the first impression a demo wants. `read-tree` fills the
+    # index from HEAD and touches nothing else.
+    git(out, "read-tree", "HEAD")
+    return entries
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("action", choices=["write", "check", "show"])
+    parser.add_argument("action", choices=["write", "check", "show", "unpack"])
+    parser.add_argument(
+        "--out",
+        type=Path,
+        help="unpack: the directory to write the miniature into (created; it must not already be a repository)",
+    )
     args = parser.parse_args()
+
+    if args.action == "unpack":
+        # Deliberately the *committed* pack, not a fresh build: the thing a demo repository publishes is
+        # the history the binary unpacks on a stranger's machine, and a rebuild would let the two drift
+        # apart in silence. `check` above is what keeps this pack honest.
+        if not PACK.is_file():
+            print("the demo pack is missing; run `gen_demo_repo.py write`", file=sys.stderr)
+            return 1
+        if args.out is None:
+            print("unpack needs --out", file=sys.stderr)
+            return 2
+        if (args.out / ".git").exists():
+            print(f"{args.out} is already a repository; refusing to overwrite it", file=sys.stderr)
+            return 1
+        args.out.mkdir(parents=True, exist_ok=True)
+        try:
+            written = unpack(args.out, PACK.read_bytes())
+        except ValueError as err:
+            print(f"{PACK.name}: {err}", file=sys.stderr)
+            return 1
+        commits = git(args.out, "rev-list", "--count", "HEAD").strip()
+        print(
+            f"unpacked {len(written)} entries into {args.out} — {commits} commits at "
+            f"{git(args.out, 'rev-parse', '--short', 'HEAD').strip()}"
+        )
+        return 0
 
     packed, facts = build_all()
     if args.action == "show":

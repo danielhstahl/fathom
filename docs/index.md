@@ -101,7 +101,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | [docs/adr/](adr/) | six accepted ADRs: [product thesis](adr/0001-product-thesis.md), [workspace](adr/0002-workspace.md), [episodes](adr/0003-episodes.md), [storage](adr/0004-storage.md), [harness contract](adr/0005-harness-contract.md), [TUI, views and keymap](adr/0006-tui.md) |
 | [docs/harness/](harness/) | the adapter contract, and the three shipped adapters: [pi](harness/pi.md), [generic stdin hooks](harness/generic-hooks.md), [the git post-commit fallback](harness/git-hook.md), with [what was actually verified](harness/verification.md) |
 | [docs/security/](security/threat-model.md) | the [threat model](security/threat-model.md): what a clone is allowed to try against this binary, the control that answers each finding, and which ones are accepted with a written rationale |
-| [docs/demo/](demo/) | the miniature repository that ships in the binary: how it is generated, and what it is for |
+| [docs/demo/](demo/) | the miniature repository that ships in the binary: how it is generated, and what it is for; and [the scripted five-minute demo](demo/five-minute.md) — eight moves, measured, with a budget it fails if it misses |
 | [CHANGELOG.md](../CHANGELOG.md) | the release body, ticket by ticket — the record of what changed rather than a summary of it |
 
 ## How this documentation stays true
@@ -112,6 +112,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | `python3 tools/gen_shell_artifacts.py write\|check`, `tools/package_release.py --self-test`, `tools/rehearse_installer.py` | the same argument one directory over, for what a release *ships*: the completion scripts and man pages in `packaging/` are printed by `fathom completions` and re-diffed in CI, the `.deb`/`.rpm` packager asserts nine claims about its own output, and the curl installer is rehearsed against a local mirror with four deliberate corruptions ([release and adoption](concepts/release.md)) |
 | `python3 tools/check_docs.py` | every glossary term resolves once, every plan and beads reference exists in `.plan/keymap.json`, and every relative link resolves to a file |
 | `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav |
+| `python3 tools/five_minute_demo.py check`, `tools/publish_demo_repo.py check` | the five-minute tour is **run**, not described: every step's exit code and output is asserted, the whole tour is inside its 300 s budget, the page carries the numbers this run measured, and the demo repository still assembles from the pack the binary ships ([the scripted demo](demo/five-minute.md)) |
+| `python3 tools/check_ci_gate.py` | the shipped CI story is one coherent object: `ci/install-fathom.sh` refuses a binary that cannot run the six checks, the reusable `fathom-check` workflow and the dogfood workflow name verbs that exist, and the recipe that tells people to run the installer is not lying about a file that is not there ([the gate](concepts/ci-gate.md)) |
 | `python3 tools/check_privacy.py check\|offline` | the privacy posture: the default closure, the consent table, the source scan, this page, and a run of the shipped binary with no network egress available ([privacy](concepts/privacy.md)) |
 | `python3 -m recommender.tui doc --check`, `tools/tui_tables.py check` | ADR-006's tables and the Rust TUI's test tables are the Python keymap's, generated |
 

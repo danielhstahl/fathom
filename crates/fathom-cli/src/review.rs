@@ -35,6 +35,7 @@
 
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "sqlite-bundled")]
 use fathom_analyze::ledger::{
     Actor, ActorKind, Decision, EpisodeFacts, Problem, SignOff, collect, format as ledger_format,
     sign,
@@ -91,6 +92,7 @@ pub(crate) fn run(args: &ReviewArgs) -> eyre::Result<ExitCode> {
 ///
 /// A `Pending` when there is no index to re-link against — the ledger can be *read* without one, but "is
 /// everything reviewed" is a question about the index and the ledger together.
+#[cfg(feature = "sqlite-bundled")]
 fn status(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
     let mut store = open_store(root)?;
     let now = crate::clock::now_millis();
@@ -169,6 +171,7 @@ fn status(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
 /// A `Pending` for no index, an episode nothing names, an identity that cannot be established, or a file that
 /// would not take the write. Nothing is written on any of those paths.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "sqlite-bundled")]
 fn sign_off(
     root: &Path,
     episode: &str,
@@ -263,6 +266,7 @@ fn sign_off(
 /// `e4.5` wrote an act row for every keystroke; the ledger's file is the committable copy of the ones that
 /// *settled* an episode. An entry's id is derived from the act, so running this twice renders nothing the
 /// second time, and running it after a `git clean -fdx` re-renders exactly what was lost.
+#[cfg(feature = "sqlite-bundled")]
 fn sync(root: &Path, dry_run: bool, as_json: bool) -> eyre::Result<ExitCode> {
     let mut store = open_store(root)?;
     let facts = collect::episode_facts(&store).map_err(failed)?;
@@ -329,6 +333,7 @@ fn sync(root: &Path, dry_run: bool, as_json: bool) -> eyre::Result<ExitCode> {
 }
 
 /// `fathom review list`: every entry, oldest first, with its verdict.
+#[cfg(feature = "sqlite-bundled")]
 fn list(root: &Path, state: Option<&str>, as_json: bool) -> eyre::Result<ExitCode> {
     let mut store = open_store(root)?;
     let report =
@@ -379,6 +384,7 @@ fn list(root: &Path, state: Option<&str>, as_json: bool) -> eyre::Result<ExitCod
 }
 
 /// `fathom review verify`: re-hash every entry against its own `digest:` line. Reads no index.
+#[cfg(feature = "sqlite-bundled")]
 fn verify(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
     let (entries, problems) = collect::read(root);
     let mut complaints: Vec<String> = problems.iter().map(Problem::line).collect();
@@ -442,6 +448,7 @@ fn verify(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
 /// is the §12.1 failure this data class exists to prevent), never staged, or committed-but-since-modified.
 /// All three mean "a `git clean -fdx` deletes a review", and all three block: the point of class M is that it
 /// survives, and the store's mirror row is not what makes it survive.
+#[cfg(feature = "sqlite-bundled")]
 pub fn must_survive_blockers(root: &Path) -> Vec<String> {
     let dir = root.join(ledger_format::LEDGER_DIR);
     let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -524,6 +531,7 @@ fn git_ok(root: &Path, args: &[&str]) -> bool {
 /// Who is signing, and how they were found. The second value is the notices that tell the reviewer where
 /// their name came from, because a ledger entry whose identity is a surprise is a bad audit trail.
 #[must_use]
+#[cfg(feature = "sqlite-bundled")]
 pub fn reviewer(root: &Path, explicit: Option<&str>, agent: Option<&str>) -> (Actor, Vec<String>) {
     let mut notices = Vec::new();
     let mut display: Option<String> = None;
@@ -598,7 +606,7 @@ fn config_identity(root: &Path) -> Option<(String, &'static str)> {
 /// for, and that name is recorded as named, with `agent` as the kind so the ledger can never be read as
 /// saying a person typed it. The `unknown` identity the ledger itself refuses is filtered here so the
 /// refusal is the ledger's own, in the ledger's own words, not a paraphrase.
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "sqlite-bundled", feature = "mcp"))]
 pub(crate) fn mcp_actor(named: &str) -> fathom_analyze::ledger::Actor {
     let display = named.trim();
     fathom_analyze::ledger::Actor {
@@ -615,7 +623,7 @@ pub(crate) fn mcp_actor(named: &str) -> fathom_analyze::ledger::Actor {
 ///
 /// The same lookup `fathom review sign` does, with the refusal left to the caller: an MCP tool answers with
 /// a value (ADR-005 §4.1), so it needs `Option` rather than the exit code this verb raises.
-#[cfg(feature = "sqlite-bundled")]
+#[cfg(all(feature = "sqlite-bundled", any(feature = "mcp", feature = "tui")))]
 pub(crate) fn find_episode_for(
     facts: &[fathom_analyze::ledger::EpisodeFacts],
     wanted: &str,
@@ -624,6 +632,7 @@ pub(crate) fn find_episode_for(
 }
 
 /// The episode a caller named, by id or by an unambiguous prefix.
+#[cfg(feature = "sqlite-bundled")]
 fn find_episode(facts: &[EpisodeFacts], wanted: &str) -> Result<EpisodeFacts, Pending> {
     if let Some(found) = facts.iter().find(|episode| episode.id == wanted) {
         return Ok((*found).clone());
@@ -655,6 +664,7 @@ fn find_episode(facts: &[EpisodeFacts], wanted: &str) -> Result<EpisodeFacts, Pe
 }
 
 /// The per-entry payload both `--json` printers share, so the two cannot drift.
+#[cfg(feature = "sqlite-bundled")]
 fn detail(report: &collect::Report) -> Vec<serde_json::Value> {
     report
         .entries
@@ -691,6 +701,7 @@ fn detail(report: &collect::Report) -> Vec<serde_json::Value> {
 
 /// Open the index, or say which remedy applies. Every store-backed subcommand starts here so the three of
 /// them cannot disagree about what "no index" means.
+#[cfg(feature = "sqlite-bundled")]
 fn open_store(root: &Path) -> Result<fathom_store::spine::Store, Pending> {
     let path = store_path(root);
     if !path.exists() {
@@ -723,6 +734,7 @@ const fn verdict_code(clean: bool) -> ExitCode {
 }
 
 /// Where the index lives, the same path every other verb uses (`e1.4`).
+#[cfg(feature = "sqlite-bundled")]
 fn store_path(root: &Path) -> PathBuf {
     fathom_analyze::index::default_store_path(root)
 }

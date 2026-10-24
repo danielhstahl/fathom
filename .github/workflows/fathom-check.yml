@@ -1,0 +1,274 @@
+# `fathom check` as a reusable workflow: the gate, inside someone else's pipeline (`m2`, **reco-by2**).
+#
+# Every other file in this directory enforces *this* repository. This one is the export. The 1.0
+# acceptance criterion is not "we can run `fathom check` on our own history" — that has been true since
+# `e6.6` (`reco-ngk`) and `ci.yml` has been proving it every push since — it is that a repository which
+# is not ours can put the gate in front of a merge in five lines and get an answer a reviewer can act on.
+#
+# Two ways in, in the order people usually want them:
+#
+# ```yaml
+# # .github/workflows/fathom.yml — yours. `on:` whatever you like; a PR run is the usual one.
+# name: fathom
+# on:
+#   pull_request:
+# permissions:
+#   contents: read
+#   security-events: write      # only with upload-sarif: true
+# jobs:
+#   gate:
+#     uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1
+#     with:
+#       fathom-version: 1.0.0
+#       fail-on: warning
+# ```
+#
+# …or copy the four steps into a job of your own and keep it local, which is what
+# `docs/recipes/gate-a-pipeline.md` shows. This file is those four steps with the arguments named, so
+# the knobs are declared in one place instead of remembered in six.
+#
+# # What it promises
+#
+# * **The history it needs.** `fetch-depth: 0`: four of the six checks compare two trees, and a clone
+#   without the base makes them report `blocked`. That answer is honest and it is also useless, so the
+#   clone is deep by default and `require` is there to make a blocked check fail loudly.
+# * **A binary that can actually run the six checks.** Installed by `ci/install-fathom.sh`, fetched from
+#   this repository at `installer-ref` — one installer, one place it can be wrong — at the headless CI
+#   feature set (`sqlite-bundled,langs-all,deps-all`). A store-less binary is refused by that script
+#   rather than reported as a clean run, which is the failure mode this whole file is built around.
+# * **Three exit codes, not two.** `0` clean, `7` a human has work to do, anything else is the gate
+#   itself breaking (ADR-002 §7.3, `docs/reference/cli.md`). The job fails in all three cases, but the
+#   message names which one happened, because "Fathom objected" and "Fathom crashed" are different work.
+# * **Artefacts even when it fails.** SARIF and job summary run under `if: always()`: the run you most
+#   want to read is the red one.
+#
+# # What it does not promise
+#
+# It writes nothing to your repository, and it decides no policy of its own: severities, thresholds and
+# the ratchet baseline stay in your `fathom.toml` and your committed review ledger
+# (`docs/concepts/ratchet.md`). `mode` is the only knob it will override from outside, and only because a
+# scheduled run and a PR run legitimately want different volumes over the same committed policy. One rule
+# of the CLI is worth knowing before you set `fail-on`: **naming a threshold is treated as meaning it**, so
+# a `fail-on` of anything but the empty string runs a repository whose `fathom.toml` says `mode = "warn"`
+# in enforce mode, and the run says so in its own notices. Leave `fail-on` empty to check exactly what the
+# file declares. `mode = "off"` is a kill switch and is never promoted, by this workflow or by the CLI.
+#
+# # Permissions, since this runs in your repository's name
+#
+# `contents: read` is all the gate needs. `security-events: write` only if `upload-sarif` is true, and
+# the `GH_TOKEN` secret is read by that one step and by nothing else.
+
+name: fathom-check (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      fathom-version:
+        description: Release version to install, without the `v` (for example 1.0.0). Empty takes a binary already on PATH, or falls back to the source build.
+        type: string
+        required: false
+        default: ""
+      install-mode:
+        description: auto (release, else source), release (never build), or source (always build).
+        type: string
+        required: false
+        default: auto
+      install-ref:
+        description: With install-mode source, the fathom ref to build. Empty builds the default branch.
+        type: string
+        required: false
+        default: ""
+      installer-ref:
+        description: The fathom ref the install script is fetched from. Pin it to a tag in a repository that cares about reproducibility.
+        type: string
+        required: false
+        default: v1.0.0
+      base:
+        description: Far end of the range. Empty derives it — the PR base, else the default branch, else HEAD~1.
+        type: string
+        required: false
+        default: ""
+      head:
+        description: Near end of the range.
+        type: string
+        required: false
+        default: HEAD
+      fail-on:
+        description: Severity at or above which the run exits 7 — note, warning, error or never. Empty leaves the repository's own [check] fail_on.
+        type: string
+        required: false
+        default: ""
+      mode:
+        description: warn (report only) or enforce (the exit code is the decision). Empty leaves the repository's own [check] mode alone.
+        type: string
+        required: false
+        default: ""
+      only:
+        description: Comma-separated subset of the six checks to run (layering, cycles, api, dependencies, tests, sign-off). The others are reported off, not omitted.
+        type: string
+        required: false
+        default: ""
+      require:
+        description: Comma-separated checks that must RUN. One that reports blocked fails the job instead of noticing nothing.
+        type: string
+        required: false
+        default: ""
+      skip:
+        description: Comma-separated checks to switch off for this run, with the reason printed.
+        type: string
+        required: false
+        default: ""
+      index-args:
+        description: Extra flags for the index step, for example --no-progress.
+        type: string
+        required: false
+        default: ""
+      artifacts:
+        description: Run a second time for the SARIF and the job summary.
+        type: boolean
+        required: false
+        default: true
+      upload-sarif:
+        description: Send the SARIF to code scanning. Needs security-events write on the calling workflow.
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      GH_TOKEN:
+        description: Read by the code-scanning upload step and by nothing else.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: fathom check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Four of the six checks compare two trees, so the base has to be in the clone. A gate that is
+          # always `blocked` is a gate that gets deleted inside a week.
+          fetch-depth: 0
+
+      - name: the range to check
+        id: range
+        env:
+          REQUESTED_BASE: ${{ inputs.base }}
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -eu
+          if [ -n "$REQUESTED_BASE" ]; then base=$REQUESTED_BASE
+          elif [ -n "$BASE_REF" ]; then base=origin/$BASE_REF
+          elif [ -n "$DEFAULT_BRANCH" ]; then base=origin/$DEFAULT_BRANCH
+          else base=HEAD~1
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "range: $base..HEAD" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: install fathom
+        env:
+          INSTALLER_REF: ${{ inputs.installer-ref }}
+          WANT_VERSION: ${{ inputs.fathom-version }}
+          INSTALL_MODE: ${{ inputs.install-mode }}
+          WANT_REF: ${{ inputs.install-ref }}
+        run: |
+          set -eu
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://raw.githubusercontent.com/danielstahl/fathom/$INSTALLER_REF/ci/install-fathom.sh" \
+            -o install-fathom.sh
+          args=(--mode "$INSTALL_MODE" --prefix "$RUNNER_TEMP/fathom-bin")
+          # Passed as flags rather than as the FATHOM_* defaults, so a repository can pin a version in its
+          # `with:` and see it in the step's own command line.
+          if [ -n "$WANT_VERSION" ]; then args+=(--version "$WANT_VERSION"); fi
+          if [ -n "$WANT_REF" ]; then args+=(--ref "$WANT_REF"); fi
+          sh install-fathom.sh "${args[@]}"
+          echo "$RUNNER_TEMP/fathom-bin" >> "$GITHUB_PATH"
+
+      - name: index
+        env:
+          INDEX_ARGS: ${{ inputs.index-args }}
+        # `--no-progress` is the runner's own default (stderr is not a terminal), named anyway because a
+        # step that prints a progress row into a log is a step that breaks the next parser.
+        run: fathom index --no-progress --json $INDEX_ARGS | tail -1
+
+      - name: the gate
+        id: gate
+        continue-on-error: true
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+          HEAD_REF: ${{ inputs.head }}
+          FAIL_ON: ${{ inputs.fail-on }}
+          MODE: ${{ inputs.mode }}
+          ONLY: ${{ inputs.only }}
+          SKIP: ${{ inputs.skip }}
+          REQUIRE: ${{ inputs.require }}
+        run: |
+          set -eu
+          # `mode` is applied here rather than as a step-level environment line because an empty
+          # FATHOM_CHECK__MODE is a value the config layer would have to reject (exit 5): "leave it alone"
+          # has to mean "do not set it", not "set it to nothing".
+          if [ -n "$MODE" ]; then export FATHOM_CHECK__MODE=$MODE; fi
+          args=(--base "$BASE" --head "$HEAD_REF")
+          add() { # add <flag> <comma list>
+            local flag=$1 list=$2 item
+            [ -n "$list" ] || return 0
+            IFS=, read -ra items <<< "$list"
+            for item in "${items[@]}"; do
+              if [ -n "$item" ]; then args+=("$flag" "$item"); fi
+            done
+          }
+          add --only "$ONLY"
+          add --skip "$SKIP"
+          add --require "$REQUIRE"
+          if [ -n "$FAIL_ON" ]; then args+=(--fail-on "$FAIL_ON"); fi
+          set +e
+          fathom check "${args[@]}"
+          code=$?
+          set -e
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -gt 7 ] && [ "$code" -ne 12 ]; then
+            echo "::error::fathom check exited $code, which is the gate breaking rather than a finding; see docs/reference/cli.md"
+          fi
+
+      - name: the same answers, for the diff and for code scanning
+        if: ${{ always() && inputs.artifacts }}
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+          HEAD_REF: ${{ inputs.head }}
+        run: |
+          # The same computation, printed differently, so a report can never disagree with the verdict
+          # above. `--fail-on never` because these two are reporters: the gate's exit code is the one
+          # that already spoke.
+          fathom check --base "$BASE" --head "$HEAD_REF" --format sarif --out fathom.sarif \
+            --no-summary --fail-on never || true
+          fathom check --base "$BASE" --head "$HEAD_REF" --format markdown \
+            --summary "$GITHUB_STEP_SUMMARY" --fail-on never || true
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && inputs.artifacts }}
+        with:
+          name: fathom-check-sarif
+          path: fathom.sarif
+          if-no-files-found: warn
+
+      - name: code scanning
+        if: ${{ always() && inputs.artifacts && inputs.upload-sarif }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: fathom.sarif
+
+      - name: the verdict
+        # Last, so every artefact exists whatever it says. Three answers, three sentences.
+        if: always()
+        env:
+          GATE_EXIT: ${{ steps.gate.outputs.exit }}
+        run: |
+          case "$GATE_EXIT" in
+            0) echo "fathom check: clean"; exit 0 ;;
+            7) echo "::error::fathom check: findings at or above the threshold. A human has work to do; the job summary lists them."; exit 1 ;;
+            "") echo "::error::fathom check did not run"; exit 1 ;;
+            *) echo "::error::fathom check exited $GATE_EXIT without completing"; exit 1 ;;
+          esac

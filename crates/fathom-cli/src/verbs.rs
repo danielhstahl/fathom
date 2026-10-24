@@ -110,6 +110,11 @@ pub struct Cli {
 }
 
 /// The flags that are not a verb: how the process is to meet the terminal (ADR-006 §6.7).
+///
+/// Parsed unconditionally — a flag is a promise about the command line, and a build that has no shell says
+/// so when the flag is used rather than failing to accept it — so in a headless build the fields are read by
+/// nobody, and `dead_code` here is that fact rather than a mistake.
+#[cfg_attr(not(feature = "tui"), allow(dead_code))]
 #[derive(Debug, Clone)]
 pub struct Globals {
     /// Render the frame as text and write nothing else.
@@ -2528,10 +2533,8 @@ fn ambient(args: &AmbientArgs, globals: &Globals) -> eyre::Result<ExitCode> {
     crate::ambient::run(args, globals)
 }
 
+#[cfg(feature = "mcp")]
 fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
-    if !cfg!(feature = "mcp") {
-        return Err(feature_absent("fathom mcp serve", "mcp"));
-    }
     let root = match &args.action {
         McpAction::Serve => std::path::Path::new("."),
         McpAction::Tools { root, .. } | McpAction::ApprovalToken { root, .. } => {
@@ -2539,6 +2542,15 @@ fn mcp(args: &McpArgs) -> eyre::Result<ExitCode> {
         }
     };
     crate::mcp::run(args, root)
+}
+
+/// The same three verbs in a binary that was built without the protocol crate: the composition root has
+/// lives in `crate::mcp` and that module is not compiled here. The answer is the feature name and the exit
+/// code that means
+/// "rebuild differently", not a stack trace (ADR-002 §6.1, §7.3).
+#[cfg(not(feature = "mcp"))]
+fn mcp(_args: &McpArgs) -> eyre::Result<ExitCode> {
+    Err(feature_absent("fathom mcp serve", "mcp"))
 }
 
 /// What this build's SQLite story is, in the one sentence `fathom doctor` prints.
@@ -2694,6 +2706,16 @@ pub(crate) fn pending(
     Pending::new(code, message, hint).into()
 }
 
+/// The report every "this binary was not built with feature X" stub returns (ADR-002 §6.1, exit `9`).
+///
+/// Compiled only when at least one of the four features a stub exists for is actually absent: a build with
+/// all of them has no stub left, and so no caller — which is the same fact the stubs are made of.
+#[cfg(any(
+    not(feature = "sqlite-bundled"),
+    not(feature = "tui"),
+    not(feature = "watch"),
+    not(feature = "mcp")
+))]
 pub(crate) fn feature_absent(verb: &str, feature: &str) -> eyre::Report {
     Pending::new(
         ExitCode::FeatureAbsent,
