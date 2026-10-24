@@ -63,6 +63,13 @@ work, and opens the shell on it. No configuration is read, nothing outside
 `$XDG_CACHE_HOME/fathom` is written, and deleting that directory is the complete undo
 ([docs/concepts/onboarding.md](docs/concepts/onboarding.md)).
 
+The same miniature, plus five commits that seed a pathology each — churn loop, unplanned dependency, new
+cycle, deleted test, reformat-only — is published as an ordinary clone, so the tour can be run against
+something you `git clone`. [The scripted five-minute demo](docs/demo/five-minute.md) is the page: the tour,
+the answer key, the [recorded walkthrough](docs/demo/five-minute.cast) (37 s, no sound needed), and the
+three checkers that keep all of it true — `tools/five_minute_demo.py`, `tools/demo_acceptance.py` and
+`tools/record_demo.py`, all three in CI.
+
 In your own repository: `fathom index`, which now prints one progress row while it works
 (`indexing 62 % · ~14 s left · 4 102 / 6 552 commits`, on a terminal, silent on a pipe), then `fathom`.
 

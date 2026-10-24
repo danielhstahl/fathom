@@ -235,6 +235,21 @@ network; the rest need the remote, which is the thing this repository does not h
    the ledger rather than this paragraph. `python3 tools/rehearse_installer.py` (§4) does the half of
    this that is mechanical — right artefact fetched, checksum matched, version matched — on whatever
    machine runs it, and prints the row in the shape the ledger wants.
+6. **At a *minor* release, move the demo with it.** The demo repository is versioned on the minor line, not
+   the patch line, because a patch that changes nothing the tour shows must not re-record a demo — a
+   timestamp on a recording that did not change is worse than no timestamp:
+
+   ```bash
+   python3 tools/publish_demo_repo.py build --out /tmp/signal   # assembles and tags demo-v<major>.<minor>
+   python3 tools/record_demo.py record                          # re-make the film at the new tag
+   python3 tools/demo_acceptance.py check                       # the clone-plus-one-command half
+   git add docs/demo/five-minute.cast docs/demo/five-minute.cast.json publish/demo-repo/PATHOLOGIES.md
+   ```
+
+   `tools/record_demo.py check` is what makes the step real: the cast's header carries the tag it was
+   recorded at, and once the crate's minor line moves the committed film names the old one, so a release
+   that skipped the re-recording fails CI instead of quietly shipping a stale film. [The demo page](../demo/five-minute.md) is the tour itself; note that `demo-v*` is a tag on the *demo
+   repository*, which is assembled from this one rather than pushed inside it.
 
 ### 3.1 What the pipeline guarantees, and what it does not
 

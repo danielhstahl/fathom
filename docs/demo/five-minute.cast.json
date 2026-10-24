@@ -1,0 +1,27 @@
+{
+  "contract": "fathom.demo-cast/1",
+  "cast": "docs/demo/five-minute.cast",
+  "tag": "demo-v0.1",
+  "seconds": 39.38,
+  "budget_seconds": 300.0,
+  "events": 60,
+  "width": 100,
+  "height": 28,
+  "audio": false,
+  "steps": [
+    "what is in the binary",
+    "index it",
+    "the rail, in a terminal that is not the TUI",
+    "why is this one in front of me",
+    "the gate, blocking",
+    "say a human read it",
+    "is anything unsigned",
+    "hand it to the pull request",
+    "the one command: everything this page documents, in one artefact",
+    "the seeded deleted test \u2014 the rail's `tests` column, then `fathom why` on the episode and the exported record's *Findings with evidence*",
+    "the seeded unplanned dependency \u2014 `fathom check`'s `dependencies` row, then the exported record's *Dependency delta*",
+    "the seeded new cycle \u2014 read the two files (`src/core/mod.rs`, `src/api.rs`) \u2014 and then read the sentence in the exported record that says the ranking cannot see an import cycle",
+    "the seeded churn loop \u2014 `fathom episodes --plain` lists four `retry:` episodes in a row",
+    "the seeded reformat-only commit \u2014 `fathom why` on the commit: the size axis says the churn is reviewable rather than discounted, and the noise axis says it found nothing generated, locked, vendored or binary"
+  ]
+}

@@ -481,6 +481,17 @@ jobs:
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: python3 tools/publish_demo_repo.py check
 
+      # `e7.6` (reco-3qr): the clone half of the five-minute criterion. The tour above runs on the miniature
+      # the binary unpacks; this runs on a `git clone` of the repository that gets published, indexes it,
+      # and holds the output of ONE command against the catalogue the tour and the answer key are generated
+      # from — asserting the seeded findings arrive *and* that the documented gaps are still gaps, so a
+      # page that is stale in either direction fails here rather than in a stranger's first five minutes.
+      - name: "e7.6 the demo clone: one command reproduces every documented finding"
+        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
+        run: |
+          python3 tools/demo_acceptance.py self-test
+          python3 tools/demo_acceptance.py check --json /tmp/fathom-demo-exhibits.json
+
       # `e7.4` (reco-3q4): the same argument one directory over. `packaging/completions` and
       # `packaging/man` are committed so `dist` can put them in an archive without running a binary in the
       # release job — which means they can go stale, and a stale completion is a flag that exists in

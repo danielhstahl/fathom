@@ -11,6 +11,14 @@
 mode = "warn"
 fail_on = "warning"
 
+# The two loop detectors ship switched off: their false-positive rate has not been measured on real
+# repositories yet, and a detector that cries wolf costs the reviewer's attention. This repository turns
+# them on because it contains a churn loop on purpose (`src/retry.rs`, four episodes, one put-back) and
+# the exhibit should be live the day the calibration lands. Today neither fires on it, and
+# `PATHOLOGIES.md` says so instead of pretending otherwise.
+[detectors]
+enabled = ["churn_loop", "rework_loop"]
+
 # The intended shape of the miniature, so the `layering` check has something to enforce instead of
 # reporting itself blocked. Two layers and one rule: the dashboard is a consumer of the core, never the
 # other way round. `fathom check --explain` prints the rule as read.

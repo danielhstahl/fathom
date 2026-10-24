@@ -17,6 +17,39 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The demo repository: five seeded pathologies, a scripted tour, a recorded five minutes (`e7.6`, `reco-3qr`)
+
+A clone plus one command has to reproduce every documented finding, and the only version of that sentence
+that survives contact is one where the document is generated from what the binary says and re-run on every
+commit. The tour already existed as a script (`reco-by2`); this is the demo as a *product surface* — the
+repository, the answer key, the recording, and the version tag that ties them to a release.
+
+- **`publish/demo-repo/` grows exhibits.** The published clone is now 27 commits: the 21 the binary unpacks
+  (unchanged, byte for byte — `publish_demo_repo.py check` counts the commits above the pack's head to
+  prove it), five that seed what the miniature has no room for, and the tour/gate commit. The five are four
+  agent episodes on one function that put back what the second one deleted, and one commit that is
+  whitespace and nothing else — `git diff -w` against its parent prints nothing, which is what the
+  acceptance run checks instead of trusting the word "reformat".
+- **`tools/demo_exhibits.py` is the ticket's sentence as data**: five rows, each with the commits that seed
+  it, the command that shows it, the strings that must (or must not) come back, and — for a gap — the owner
+  and the remedy. It writes `publish/demo-repo/PATHOLOGIES.md` (the answer key, which `DEMO.md`
+  deliberately is not) and the table in `docs/demo/five-minute.md`.
+- **`tools/demo_acceptance.py` is criterion 1 as a program**: it `git clone`s the assembled repository,
+  indexes it, runs the one command the tour hands a newcomer, and fails if a documented finding is missing
+  **or if a documented gap has quietly closed** — three of the five are gaps today (the cycle, the churn
+  loop, the reformat), each named as such with the ticket that would close it, because a demo that printed a
+  cycle finding the product cannot produce would be printing a lie.
+- **`tools/record_demo.py` records the tour** — every step run on a real pty, the terminal's own bytes
+  written as asciicast v2 with the times they took — and `docs/demo/five-minute.cast` is the film: 37 s
+  against the 300 s budget, captions instead of narration because it has to be watchable with the sound
+  off, and `check` refusing a cast that runs long, grows a sound track, predates the demo's current tag, or
+  has lost an exhibit from the frame. `gif` renders through `agg` or `asciinema`+`gifski` when one is
+  installed and prints the command when neither is.
+- **Versioned on the minor line.** The assembly tags the demo `demo-v<major>.<minor>`, derived from
+  `[workspace.package] version`, and the cast's header carries the tag it was recorded at; a minor release
+  that skipped the re-record now fails CI instead of shipping a stale film. The step is in the release
+  runbook (§3, step 6).
+
 ### The CI gate as something outsiders install: one installer, one reusable workflow, a scripted five-minute demo (`reco-by2`, `m2`)
 
 The 1.0 criterion is not "we can run `fathom check` on our own history" — `ci.yml` has proved that every push

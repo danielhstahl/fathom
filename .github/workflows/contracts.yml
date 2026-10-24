@@ -60,6 +60,15 @@ jobs:
         run: |
           python3 tools/check_ci_gate.py
           python3 tools/publish_demo_repo.py check
+      - name: "e7.6 demo: the answer key matches the catalogue, and the film is still honest"
+        # Neither half needs a binary: one regenerates the published answer key from the catalogue and
+        # diffs it, the other re-reads the committed asciicast and refuses it if it runs over five minutes,
+        # carries a sound track, predates the demo's current `demo-v*` tag, or has lost one of the seeded
+        # pathologies from the frame. A documentation change that quietly invalidates the demo is caught on
+        # the job that only reads files.
+        run: |
+          python3 tools/demo_exhibits.py check
+          python3 tools/record_demo.py check
       - name: ADR-002 model, generated tables, ticket->crate map, this file's wiring
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)
