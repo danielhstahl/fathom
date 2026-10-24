@@ -1,6 +1,6 @@
 # Rename and copy detection: when a pairing is a fact, and when it is a guess
 
-`e2.4` (`reco-a0v`) proposes to give the episode pane **rename and copy detection with pairing
+`e2.4` (`reco-a0v`) proposed to give the episode pane **rename and copy detection with pairing
 confidence**: detect renames/copies between an episode's base and head trees, emit
 `delta.structure.rename.detected` with a confidence score, and claim "at least 90% pair precision and
 recall on the rename fixture set". That bar was guessed, and the ticket it blocks — spike `s4`
@@ -8,6 +8,14 @@ recall on the rename fixture set". That bar was guessed, and the ticket it block
 content-similarity matcher and a hybrid on fixtures including rename-with-rewrite, file split and merge,
 renames that cross a merge commit and renames introduced by a rebase, and report **how often a wrong
 pairing would mislead a reviewer, which is more damaging than a missing pairing**.
+
+The guess is gone. `e2.12` (`reco-tx0.1`) rewrote `e2.4`'s description and acceptance criteria from what
+this page measured: precision ≥ 0.95 at a fact bar of 0.75 with **zero** assertions of a pairing the truth
+names as not-a-move, recall reported per representation class instead of pooled, the guess band's trade
+printed rather than tuned away, and the ticket's estimate revisited from 360 to 700 minutes because the
+measurement turned one matcher layer into six mechanisms. What `e2.4` then shipped is
+[the pairing engine's own page](rename-pairing.md); the fold itself is recorded in
+[`.plan/reconciliation-e0.12.md`](../../.plan/reconciliation-e0.12.md) §5.1.
 
 This is that measurement: `src/recommender/rename/`, sixteen authored repositories built by real `git`,
 29 review windows, 60 hand-authored true pairings and 5 named decoys, 23 detector configurations graded
@@ -296,6 +304,8 @@ What that means for `e2.4`, in one line each:
 3. **Report a fact as a pair, and a guess as a guess with its number.** The fact tier is precise enough to be worth acting on; below it, an unlabelled percentage is a claim a reviewer will act on and cannot check.
 4. **Do not try to express a split, a fold or a copy as a rename pair at all.** See the representation table: at the fact bar those classes are found zero times, and no threshold changes that, because the pair shape is the thing that is wrong.
 5. **Replace the guessed 90% precision/recall bar** in `e2.4` (`reco-a0v`) with the measured floor: precision ≥ 0.95 at a fact bar of 0.75 with zero assertions of a known-false pairing, and recall reported per representation class rather than pooled.
+
+> **Disposition (2026-10-24).** All five are settled. `e2.4` shipped 1–4 as gates: the fact bar is 0.75 in `rename.fact_bar` and `P1` fails if it drifts, path similarity is display-only (`P4`), a guess carries a label plus its evidence, and a split, fold or copy is one pairing with a shape (`A2a`–`A2f`) rather than a rename. Item 5 was `e2.12`'s (`reco-tx0.1`) duty and is done: `e2.4`'s acceptance criteria quote these numbers now — precision ≥ 0.95 with zero assertions of a known-false pairing at 0.75, recall per representation class, the guess band's +17-for-+1 trade printed — and its estimate was revisited from 360 to 700 minutes, because six mechanisms arrived where the ticket had described one matcher layer. The record is [.plan/reconciliation-e0.12.md](../../.plan/reconciliation-e0.12.md) §5.1.
 <!-- END GENERATED: rename_spike_recommendation -->
 
 ## What is not measured

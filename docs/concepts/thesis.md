@@ -858,7 +858,14 @@ Amending one requires amending this section.
    an obstacle in front of the agent or a commit.
 7. **Confidence is part of the answer.** `unknown` is a first-class value. A guessed rename, a
    low-confidence attribution or a heuristic boundary is labelled as a guess in the UI, in the JSON and in
-   the export.
+   the export. **Update from `s4` (`reco-gj6`):** the *label* carries this principle and a score cannot.
+   Measured on a corpus built to test exactly this, the false rename scored R064 in git and J≈0.49 in a
+   content matcher while the true moved-and-rewritten file scored R015 and J≈0.06 — git, the matcher and
+   path similarity all ranked the lie first — so any bar low enough to call a rewritten move a fact is high
+   enough to call a scaffold twin one. `e2.4`'s shipped answer is a fact tier drawn where a reviewer can
+   re-check the claim (`git log --follow`) rather than where a score happens to sit, and a labelled guess
+   below it ([rename detection](rename-detection.md), [rename pairing](rename-pairing.md)); a printed
+   number is evidence to weigh, not a probability to trust.
 8. **Stability across rewrites is a feature, not an implementation detail.** If a history rewrite orphans
    review state, that is a defect with a severity, not a limitation to document.
 9. **Explainable before clever.** Transparent, tunable, hand-reproducible scoring and narratives beat a

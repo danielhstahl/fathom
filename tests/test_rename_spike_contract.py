@@ -1,8 +1,9 @@
 """Spike `s4` (`reco-gj6`), as tests: the rename-and-copy findings are measured or they are a rumour.
 
-`e2.4` (`reco-a0v`) is blocked by this spike because it carries a guessed bar — "at least 90 percent pair
-precision and recall" — and `reco-tx0.1` exists to fold this spike's findings into it. This file is the
-executable form of the promise that the fold has something to fold: the committed report
+`e2.4` (`reco-a0v`) was blocked by this spike because it carried a guessed bar — "at least 90 percent pair
+precision and recall" — and `reco-tx0.1` existed to fold this spike's findings into it; that fold has now
+run, and `e2.4`'s criteria quote these numbers instead of the guess. This file is the executable form of the
+promise that the fold had something to fold: the committed report
 (`benchmarks/reports/s4-rename-detection.json`) is re-checked against its own gates, its own selection
 rule is re-run from its own rows, and the concept document that carries the numbers is checked against it.
 None of this re-runs the measurement — that is `recommender.rename.spike`'s job, ~40 s of it, and CI runs

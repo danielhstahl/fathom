@@ -46,7 +46,10 @@ plan gets rewritten against what the spikes actually found.
 **That checkpoint has run.** [reconciliation-e0.12.md](reconciliation-e0.12.md) is its record:
 which spike recommendation became which ticket change, the decisions `e0.12` owned (the trailer
 vocabulary, the Guardrail 3 thresholds three tickets were waiting on), the MVP cut line as
-re-confirmed, and why Epic 3 was *not* re-prioritised.
+re-confirmed, and why Epic 3 was *not* re-prioritised. One obligation outlived the checkpoint itself:
+`e2.12` (`reco-tx0.1`) carried spike `s4`'s findings until they could be folded into `e2.4`'s own ticket
+text, and §5.1 of that record is the fold — the guessed 90 % pair-precision bar replaced by measured bars,
+the estimate revisited, and the two ADR assumptions the measurement invalidated annotated in place.
 
 One thing that file states plainly, because the paragraph above implies a tidiness that no longer exists:
 `gen.py` is the plan **as cut** and beads is the plan **as it is**. Delivery discovered tickets — defects,

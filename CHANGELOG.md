@@ -17,6 +17,51 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `reconcile` — spike `s4`: when is a pairing a fact, and what does a wrong one cost? (`reco-gj6`, folded by `reco-tx0.1`)
+
+`s4` measured rename and copy detection across **16 authored git repositories** — 29 review windows, 60
+hand-authored true pairings (5 past a stated evidence ceiling), 5 named decoys, 23 detector configurations
+graded at every bar from 0.10 to 0.90, 51 gates — and `e2.4` (`reco-a0v`) shipped on those numbers. What this
+entry describes is a change to the **plan's own text**, which was still carrying a pre-measurement guess:
+`e2.4`'s acceptance criteria said "at least 90 percent pair precision and recall", and `e0.12` had left a
+ticket — `e2.12` (`reco-tx0.1`) — to replace that bar with the measurement. That ticket has now run:
+`reco-a0v`'s description and criteria quote the numbers (its original four criteria restated, so the shipped
+gates `A1`–`A4` still map one for one, plus three the measurement forced), its estimate went
+**360 → 700 minutes**, and the record is §5.1 of
+[.plan/reconciliation-e0.12.md](.plan/reconciliation-e0.12.md).
+
+* **The 90 % bar is deleted rather than tuned, because the point it names does not exist.** The corpus's
+  scaffolded false pair scores **R064** in git at its shipped `-M50` and **J≈0.49** in a shingle/minhash
+  matcher, *above* the window's true moved-and-rewritten pair at **R015 / J≈0.06** (G28, G29, G47): git, the
+  matcher and path similarity all rank the lie first, so any bar low enough to catch a real rewrite is high
+  enough to ship the lie.
+* **The fact tier is git's own rewriter at ≥ 0.75** — not git's 50 % — with a precision floor of 0.95 and
+  zero tolerance for asserting a pairing the truth names as not-a-move. Measured: 34 emitted, precision
+  **1.00**, recall **0.618** of 55 claimable, **0.0** wrong pairings per 100 windows reviewed (shipped
+  engine: 40 emitted, 0 untrue, recall 0.6452 of 62 claimable). Refusing the cheaper lie-tolerant point
+  costs **+17 missed pairs** — the same seventeen the guess tier then carries, labelled — and that price is
+  now in the ticket instead of being discovered in a review.
+* **The guess tier is labelled and priced, not thresholded**: the widest band worth showing is **+17 true
+  pairings for +1 named lie** (precision 0.962, recall 0.927), and confidence is a tier label plus the
+  evidence behind it rather than a percentage — the shipped corpus's calibration error is **0.2039 over 61
+  pairs**, which is why a printed number is evidence and not a probability.
+* **Recall is reported per representation class**, because split (9 pairs), fold (3) and copy (2) are found
+  **zero** times at the fact bar by every method that emits pairs: rename 48/48, split 9/9, fold 3/3, copy
+  0/2 window-local, and 0 pairs emitted under the wrong shape anywhere. A copy whose source survives is
+  declared out of scope for a window-local detector — the whole-tree mode that could find it is O(repo) and
+  buys a named decoy with it — and silence stays a designed third outcome: 5 pairs past the ceiling reported
+  as a ceiling, 9 still windows emitting nothing.
+* **Two prohibitions became acceptance criteria**: path similarity is never part of a pairing score (a 0.15
+  name weight takes wrong pairings from 1 to 36 at the same bar), and no content score the engine prints is
+  an approximation — the minhash sketch this ticket originally assumed is a candidate generator and is
+  refused as a decider (p95 error 0.063; 29 of 545 pairs flip across a 0.3 bar; LSH 32×4 loses every split
+  pair).
+* **Two ADR assumptions were retired where they were written.** ADR-001 §7 principle 7 ("confidence is part
+  of the answer") now says the *label* carries that duty and a score cannot, and ADR-006 §5.4's
+  `renames with confidence` row is a tier plus its evidence — the bare `conf 0.92` in that view's mock is
+  the form `e2.4`'s card auditor refuses. `docs/concepts/rename-detection.md` now records its own
+  recommendation list as discharged, in the generator that renders it.
+
 ### `reconcile` — spike `s6`: does a human's decision survive a rewrite, and what would a wrong relink cost? (`reco-f5a`)
 
 ADR-003 §6 ships the relink pass — when a rewrite moves an episode's id, the verdict on the dead id is

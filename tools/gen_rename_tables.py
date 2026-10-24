@@ -291,6 +291,16 @@ def recommendation_block(report: dict) -> str:
         "5. **Replace the guessed 90% precision/recall bar** in `e2.4` (`reco-a0v`) with the measured "
         "floor: precision ≥ 0.95 at a fact bar of 0.75 with zero assertions of a known-false pairing, and "
         "recall reported per representation class rather than pooled.",
+        "",
+        "> **Disposition (2026-10-24).** All five are settled. `e2.4` shipped 1–4 as gates: the fact bar "
+        "is 0.75 in `rename.fact_bar` and `P1` fails if it drifts, path similarity is display-only (`P4`), "
+        "a guess carries a label plus its evidence, and a split, fold or copy is one pairing with a shape "
+        "(`A2a`–`A2f`) rather than a rename. Item 5 was `e2.12`'s (`reco-tx0.1`) duty and is done: "
+        "`e2.4`'s acceptance criteria quote these numbers now — precision ≥ 0.95 with zero assertions of a "
+        "known-false pairing at 0.75, recall per representation class, the guess band's +17-for-+1 trade "
+        "printed — and its estimate was revisited from 360 to 700 minutes, because six mechanisms arrived "
+        "where the ticket had described one matcher layer. The record is "
+        "[.plan/reconciliation-e0.12.md](../../.plan/reconciliation-e0.12.md) §5.1.",
     ])
 
 

@@ -7,6 +7,9 @@
 `docs/concepts/episode-segmentation.md`, `.plan/keymap.json`, and — because "CI is green" is one of the
 exit criteria this checkpoint had to verify — five real red builds listed in §6.
 
+**Addendum (2026-10-24):** §5.1 records the closing of the one hole this checkpoint left open — `s4`'s
+findings folded into `e2.4` by `e2.12` (`reco-tx0.1`).
+
 The ticket's own words were *"re-read the whole graph and edit it: close tickets the spikes invalidated,
 split anything now obviously larger than two days, re-prioritise Epic 3 if graph-per-revision is too
 expensive, and confirm the MVP cut line."* This file is the record of which of those happened and which
@@ -17,7 +20,7 @@ did not happen on purpose.
 ## 1. The four first-wave spikes, and where each recommendation went
 
 Three of the four landed. **`s4` (`reco-gj6`, rename and copy detection across merges) had not run**, and
-that is the one honest hole in this checkpoint — see §5.
+that is the one honest hole in this checkpoint — see §5, and §5.1 for the day it closed.
 
 ### `s1` — tree-sitter extraction accuracy (`reco-alj`)
 
@@ -149,6 +152,65 @@ that bar is the difference between `e2.4` shipping on a guess and shipping on a 
 P1, and the head of it is honest work: `e1.13` and `e1.14` (both from `s2`), `reco-dot`, `e6.1`, `e4.1`,
 `s4`, and the two epic spines.
 
+### 5.1 The hole closed: what `s4` measured, and what `e2.4` says now (2026-10-24, `e2.12` / `reco-tx0.1`)
+
+`s4` ran, `e2.4` shipped against its numbers, and this is the fold `e0.12` scheduled. The duty was to make
+`e2.4`'s **own text** carry the measurement instead of the guess, so the deliverable is the rewritten
+description, acceptance criteria and estimate on `reco-a0v` — no code moved.
+
+**The bar, replaced rather than re-tuned.** "At least 90 percent pair precision and recall on the
+`rename_storm` and rename-with-rewrite fixtures" is gone, because the measurement says the point it names
+does not exist: the corpus's scaffolded false pair scores **R064** in git at `-M50` and **J≈0.49** in a
+shingle/minhash matcher, *above* the true moved-and-rewritten pair at **R015 / J≈0.06** (G28, G29, G47).
+Three independent methods rank the lie first, so any bar low enough to catch a real rewrite is high enough
+to ship it. In its place: the ticket's own **four criteria restated** from the measurement — so the shipped
+gates, labelled `A1`–`A4` as "AC 1"–"AC 4", still map one for one — plus **three criteria the measurement
+forced** and the original ticket never asked about (silence as a designed outcome, the two measured
+prohibitions, and the obligation to name the window a recall number was measured on). Five of them quote a
+measured bar with the shipped engine's own number beside it:
+
+| criterion | the bar `s4` measured | what the shipped engine measures |
+|---|---|---|
+| fact tier | git's own rewriter at ≥ 0.75, precision ≥ 0.95, **zero** assertions of a pairing the truth names as not-a-move | `s4`: 34 emitted, precision 1.00, recall 0.618 of 55 claimable, 0.0 wrong per 100 windows (G44, G49) · shipped: 40 emitted, 0 untrue, precision 1.0000, recall 0.6452 of 62 claimable (F1–F4) |
+| guess tier | labelled and priced, never thresholded | the widest band worth showing is **+17 true pairings for +1 named lie** — precision 0.962, recall 0.927, 3.45 wrong per 100 windows (G43, G50); confidence is a tier plus evidence, never a bare percentage (the shipped corpus's calibration error is 0.2039 over 61 pairs) |
+| representation | recall per class, never pooled; a group is one pairing with a shape and is never a fact | rename 48/48, split 9/9, fold 3/3, copy 0/2 window-local, **0** pairs emitted under the wrong shape (A2a–A2f) · at `s4`'s fact bar every method that emits pairs found split, fold and copy **0** times (G7, G9, G11, G51) |
+| silence | "no evidence" is a third outcome, not a miss | 5 of 60 true pairs sit past a stated ceiling and are reported as a ceiling; the 9 windows on which nothing moved emitted nothing (S1) |
+| cost | O(changed files), measured and not claimed | 2.69× for 20× the repository with the change set fixed, against a 3.0 gate, where the refused whole-tree mode costs 15.56× and reads 4 000 blobs to the shipped engine's 6 (A4a–A4c) |
+
+**What the measurement invalidated in `e2.4`'s approach.** The ticket assumed a content-similarity matcher
+(shingle/minhash) layered on gix rename info, with low-confidence pairs demoted to guesses. `s4` kept the
+layer and destroyed the *ordering*: a similarity score cannot be the fact boundary, so the fact tier is
+git's own assertion at a bar measured to be safe — a claim a reviewer can re-check with `git log --follow` —
+and the matcher is a candidate generator whose sketch is not allowed to decide anything. At k=128 the
+sketch's p95 error against exact Jaccard is 0.063 and 29 of 545 sketch-vs-exact pairs land on opposite
+sides of a 0.3 bar; LSH banding at 32×4 loses every split pair (G38) and posts the best calibration error
+(0.007) because it is blind and not because it is careful. Two prohibitions came out of the same sweep and
+are gates now: never blend path similarity into a score (a 0.15 name weight takes wrong pairings from 1 to
+36 at the same bar, G39), and never widen candidates to the whole tree — the only way to see a copy at all,
+which is why a copy whose source survives is declared **out of scope** for a window-local detector and
+printed as a blindness rather than pretended (G11–G15).
+
+**The estimate, revisited: 360 → 700 minutes.** What arrived was six mechanisms — the two-tier rule and its
+policy keys, the group representation with shapes, the reviewer disposition ledger bound to bytes, the card
+auditor, the window sources plus the cost bench, and the corpus with its CI — where the ticket had described
+one matcher layer. That is two tickets' work inside a 360-minute envelope, and the honest statement is that
+`e2.4` should have been split the way `e3.1` was (§3). It was not, because it shipped before the fold came
+due and a closed ticket can be re-scored but not subdivided; 700 puts it level with the largest estimates on
+this board, which is where the truth was.
+
+**ADR references.** Two assumptions died here, and both are annotated where they were written rather than
+left standing: **ADR-001 §7 principle 7** ("confidence is part of the answer") now says the *label* carries
+that duty and a score cannot, and **ADR-006 §5.4**'s `renames with confidence` row is defined as a tier plus
+the evidence behind it, because the bare `conf 0.92` in that view's mock is the exact form `e2.4`'s card
+auditor refuses. `docs/concepts/rename-detection.md` carries its own recommendation list as discharged, in
+the generator that renders it, so the discharge cannot silently rot.
+
+**Not done, deliberately.** `reco-a0v` was **not** reopened: a ticket that shipped stays shipped, and this
+fold is an edit to its text and estimate, commented on the ticket itself. `gen.py` was **not** touched — per
+§7 the plan-as-cut keeps the original 90 % wording and this section is the registered diff. `s4`'s report was
+**not** re-run or re-blessed; `python3 tools/gen_rename_tables.py check` re-renders the spike document from
+the committed report, which is the same discipline §9 refused to bend.
+
 ## 6. What verifying "CI is green" turned up
 
 The epic's exit criterion is that a clean clone builds and CI is green. Checking that — rather than
@@ -236,4 +298,5 @@ hidden, which is what ADR-001 Amendment 1 promised when it recorded the harness 
 * It did not implement anything the spikes specified. D1's rung is written to the line in `e1.13` and
   still not in `segment.rs`; the guard fix is `reco-dot`'s. A checkpoint that ships the rules it scheduled
   would be scoring its own edits, which is exactly what `s2` refused to do to itself.
-* It did not resolve `s4`. §5 says what replaced that dependency.
+* It did not resolve `s4`. §5 says what replaced that dependency. **Addendum:** §5.1 is the day it did —
+  `e2.12` folded `s4` into `e2.4`'s text on 2026-10-24.
