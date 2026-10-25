@@ -225,7 +225,7 @@ cheapest way to keep them agreeing is to develop on the floor. CI then proves th
 
 > Fixtures are byte-deterministic: a fixed clock, a fixed author, a fixed commit order, `LC_ALL=C` sort order, and no `SystemTime` anywhere, so a golden file diff means a real behaviour change and not a flake.
 
-**`fathom-ingest`** (L2, lib) — Getting facts in from outside: git object access via `gix` (read-only over the local object database), commit normalisation, episode segmentation, the hook-event reader, validator and replay (ADR-005), and watch-mode change detection.
+**`fathom-ingest`** (L2, lib) — Getting facts in from outside: git object access via `gix` (read-only over the local object database), commit normalisation, episode segmentation, the hook-event reader, validator and replay (ADR-005), watch-mode change detection, and the working-tree read (`src/worktree.rs`: a bounded walk of the files as they sit on disk) for the crates above the door that §3 keeps IO-free.
 
 > **`gix` with `default-features = false`.** The dependency is non-optional — the git spine is the product — but the feature list is pinned to a local-only allow-list (`GIX_ALLOWED_FEATURES`). This is what keeps the non-goal "fathom is not a git client" true at the dependency level: no fetch, no push, no remote, and no transport stack that could do it if somebody forgot (§4.2).
 

@@ -17,6 +17,39 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The working-tree walk left the crate that is not allowed to walk it (`reco-p41`)
+
+ADR-002 §3 makes `fathom-analyze` IO-free and names its exemptions exactly — `src/ledger/`, `src/notes/`,
+and the ratchet baseline in `src/cycles/debt.rs` — and `lint W1` is the machine that enforces that line on
+every commit. Since `reco-6sw` the line had been red: `search/symbols.rs` reached for `std::fs::read_dir` and
+`std::fs::read` to fill the search box's symbol section, so `python3 tools/check_workspace.py lint` exited 1
+on a clean checkout of main — a step in `ci.yml` and `contracts.yml`, and
+`tests/test_workspace_contract.py::test_lint_subcommand_is_clean_on_the_repo_root`, which is the suite ADR-002
+names in its own header as the thing that keeps §5's rules honest. That is a §5 R3 break, not a lint bug: the
+exemption list is a named list, and `search/` was never on it.
+
+There were two honest ways to settle it, and the ticket named both — grow §3's exemption list in a commit that
+says why, or move the walk downhill. The second is the one §3 already prescribes ("analysis reads through
+`fathom-ingest` and `fathom-store`", which is exactly how `deps::scan` gets dependency files out of git
+through `fathom_ingest::repo`), so the mechanical half of the walk is now `fathom_ingest::worktree`: a
+depth-bounded, symlink-refusing, path-sorted [`find`](crates/fathom-ingest/src/worktree.rs) that takes a
+`wants` predicate and hands back paths, sizes and last touches, and one `read` that returns an `io::Result`
+rather than an empty `Vec` — because "nothing here" and "could not look" are different answers (ADR-001 §7.2).
+Nothing about the analysis's decisions moved: `search::symbols` still owns which files are worth opening
+(`Policy::wants`, which is `Language::detect` plus the ignore list), which order the caps spend themselves in,
+how many bytes and files they bound, and every note the scan prints about what it passed over. The door
+keeps one list it is the right owner of — `DEFAULT_SKIPPED_DIRS`, the build and vendor names — and
+`Policy::ignores` consults it, so there is still one ignore list and not two.
+
+Nothing a user can compare changed. The stamp is the same fold over the same `(path, size, mtime)` triples, so
+a corpus built before this commit is not stale after it; the caps, the gap sentences and the ranking are
+untouched, and `crates/fathom-analyze/tests/search_corpus.rs` passes unchanged, including the test whose whole
+subject is that `stamp` and `walk` describe one tree. What is new is `crates/fathom-ingest/tests/worktree.rs`
+— seven tests for the promises the analysis now depends on: one order, one depth rule, a skip list that is
+added to rather than replaced, a symlink that is neither a file nor a directory, and a read that says which
+kind of failure it had. The boundary lint is green, which is the point of the ticket: a gate that is red for
+one rule teaches nobody to trust it for the other eleven.
+
 ### The prose pages joined the rule that refuses a stale ticket claim, one sentence at a time (`reco-cud`)
 
 `reco-j1o` fixed the sentences the binary prints and left the ones the documents print, because a concepts

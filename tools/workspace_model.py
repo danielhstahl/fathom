@@ -165,7 +165,9 @@ CRATES: tuple[Crate, ...] = (
         owner="ingest-git",
         purpose="Getting facts in from outside: git object access via `gix` (read-only over the local "
                 "object database), commit normalisation, episode segmentation, the hook-event reader, "
-                "validator and replay (ADR-005), and watch-mode change detection.",
+                "validator and replay (ADR-005), watch-mode change detection, and the working-tree read "
+                "(`src/worktree.rs`: a bounded walk of the files as they sit on disk) for the crates "
+                "above the door that §3 keeps IO-free.",
         allows=("fathom-core", "fathom-store"),
         default_deps=("gix", "filetime", "serde", "serde_json", "sha2", "thiserror", "rayon"),
         features=(
@@ -570,6 +572,13 @@ SOURCE_RULES: tuple[SourceRule, ...] = (
     # job. Everything else in the crate is still a pure function of (input, config), which is
     # what the rule is for: a *fact* arriving by `std::fs` in an analysis module is the accident the
     # rule catches, and a golden file's reader is not.
+    #
+    # A fourth site was here until `reco-p41`: `src/search/symbols.rs` walked the working tree itself to
+    # fill the search corpus's symbol section. That was not a fourth exemption waiting to be granted — §3
+    # says analysis reads *through* `fathom-ingest`, which is how `src/deps/scan.rs` already gets its
+    # dependency files out of git — so the walk moved to `fathom-ingest/src/worktree.rs` and the rule went
+    # green without the exemption list growing. The rule's text is unchanged, which is the point: the list
+    # of exemptions is exactly §3's three, and a reader can still count them on one line.
     SourceRule("W1", ("fathom-core", "fathom-analyze", "fathom-tui", "fathom-mcp"),
                r"\bstd::(fs|net|env|process)\b",
                "this crate is IO-free by ADR-002 §3; facts arrive as arguments",

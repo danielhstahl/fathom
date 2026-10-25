@@ -1,10 +1,24 @@
-//! `search::symbols` — the working-tree walk that fills the corpus's symbol section (`reco-6sw`).
+//! `search::symbols` — which files the corpus's symbol section comes from, and what they declare
+//! (`reco-6sw`).
 //!
 //! [`crate::structure`] is deliberately a pure function of file text: *"no filesystem, no clock, no
 //! environment"* is what makes it usable in a cache key and in a property test. That leaves a producer to
-//! decide **which files to read**, and this module is that producer for the one search box: it walks a
-//! working tree, reads the files in a language one of the grammars speaks, hands them to
-//! [`crate::structure::extract`], and returns [`Symbol`] rows the corpus can rank beside its episodes.
+//! decide **which files to read**, and this module is that producer for the one search box: it asks the
+//! door for the working tree, hands what comes back to [`crate::structure::extract`], and returns [`Symbol`]
+//! rows the corpus can rank beside its episodes.
+//!
+//! # The walk is `fathom-ingest`'s; the decisions are here
+//!
+//! ADR-002 §3 makes this crate IO-free — an analysis that reaches for `std::fs` has a golden test that
+//! depends on the machine and a cache key that is a checksum of somebody's filesystem, and `lint W1`
+//! refuses it on every commit. The read did not disappear, it moved downhill to
+//! [`fathom_ingest::worktree`], the same way [`crate::deps::scan`] reads dependency files through
+//! [`fathom_ingest::repo`] instead of opening them (§3: *"analysis reads through `fathom-ingest` and
+//! `fathom-store`"*). So the door owns the mechanical half — depth, skipped directories, `stat`, bytes —
+//! and this module keeps every decision: [`Policy::wants`] says which files are worth opening, [`Policy`]'s
+//! caps say what the read may cost and in what order it is spent, and [`Scan`]'s notes say
+//! what the caps passed over. `reco-p41` is the ticket that moved it, after `reco-6sw` had landed the walk
+//! here and left §5's R3 red on main.
 //!
 //! # Why a worktree walk and not the store
 //!
@@ -32,9 +46,9 @@
 //! [`super::Index::is_current`] gets to be asked against.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::path::Path;
 
+use fathom_ingest::worktree::{self, Entry, WalkPolicy};
 use sha2::{Digest as _, Sha256};
 
 use super::corpus::{Source, Symbol};
@@ -82,36 +96,16 @@ pub const MAX_BYTES: usize = 6 * 1024 * 1024;
 
 /// How deep the walk goes.
 ///
-/// Six is deep enough for a monorepo's `packages/x/src/lib/y.rs` and shallow enough that a tree cannot turn
-/// the walk into a crawl. Deeper repositories lose names and say so in the scan's notes.
-pub const MAX_DEPTH: usize = 6;
-
-/// The directories no repository intends to search, whatever `graph.ignored_dirs` says.
-///
-/// The names are the ones a build leaves behind — vendored dependencies, compiled output, an unpacked
-/// lockfile — where a declaration is somebody else's, and searching them answers "where is `parse`" with a
-/// name in a third-party tree. Hidden directories are skipped for the same reason: `.git` has no source in
-/// it and `.venv` has nothing the reviewer wrote.
-const SKIPPED_DIRS: &[&str] = &[
-    "node_modules",
-    "target",
-    "dist",
-    "build",
-    "out",
-    "vendor",
-    "third_party",
-    "bower_components",
-    "__pycache__",
-    "venv",
-    "htmlcov",
-    "coverage",
-    "Pods",
-];
+/// The door's own default, named here because the scan's gap note quotes it — see
+/// [`worktree::DEFAULT_MAX_DEPTH`]. Six is deep enough for a monorepo's `packages/x/src/lib/y.rs` and
+/// shallow enough that a tree cannot turn the walk into a crawl. Deeper repositories lose names and say so
+/// in the scan's notes.
+pub const MAX_DEPTH: usize = worktree::DEFAULT_MAX_DEPTH;
 
 /// What a scan is allowed to cost.
 #[derive(Debug, Clone)]
 pub struct Policy {
-    /// Extra directory names to skip, in addition to [`SKIPPED_DIRS`].
+    /// Extra directory names to skip, in addition to [`worktree::DEFAULT_SKIPPED_DIRS`].
     ///
     /// The caller feeds this from `graph.ignored_dirs`, so that the graph's opinion of what is not this
     /// repository is the search box's opinion too — two ignore lists drift, and one is a fact.
@@ -137,30 +131,42 @@ impl Default for Policy {
 
 impl Policy {
     /// Whether a repository-relative path is inside a directory the scan will not enter.
+    ///
+    /// The names are the door's ([`worktree::DEFAULT_SKIPPED_DIRS`]) plus this repository's
+    /// `graph.ignored_dirs`, so the graph's opinion of what is not this repository is the search box's
+    /// opinion too — two ignore lists drift, and one is a fact. [`Self::walk`] hands the same list to the
+    /// walk, which never enters one of those directories; this is the belt on the path that comes back.
     #[must_use]
     pub fn ignores(&self, path: &str) -> bool {
         path.split('/').any(|segment| {
             !segment.is_empty()
                 && (segment.starts_with('.')
-                    || SKIPPED_DIRS.contains(&segment)
+                    || worktree::DEFAULT_SKIPPED_DIRS.contains(&segment)
                     || self
                         .ignored_dirs
                         .iter()
                         .any(|ignored| ignored.eq_ignore_ascii_case(segment)))
         })
     }
-}
 
-/// One file the walk found, as the tree reported it.
-#[derive(Debug, Clone)]
-struct Found {
-    /// Repository-relative, `/`-separated — the spelling every other row in the corpus uses.
-    path: String,
-    /// The absolute path, for the read.
-    absolute: PathBuf,
-    size: u64,
-    /// Whole seconds since the epoch, or `0` when the filesystem would not say.
-    mtime: i64,
+    /// Whether a file the walk is offering is worth opening: a language one of the linked grammars speaks,
+    /// in a directory the scan will enter.
+    ///
+    /// This is the whole of what the door is told about *why* a file matters — it is the predicate
+    /// [`worktree::find`] calls, and it is deliberately the only analysis the walk is given.
+    #[must_use]
+    pub fn wants(&self, path: &str) -> bool {
+        Language::detect(path).is_known() && !self.ignores(path)
+    }
+
+    /// The walk this policy asks the door for: same depth, same ignore list, no opinions of its own.
+    #[must_use]
+    pub fn walk_policy(&self) -> WalkPolicy {
+        WalkPolicy {
+            max_depth: MAX_DEPTH,
+            skip_dirs: self.ignored_dirs.clone(),
+        }
+    }
 }
 
 /// What one scan produced.
@@ -247,12 +253,16 @@ impl Scan {
 
 /// Walk a working tree and read its declarations.
 ///
+/// The walk is [`worktree::find`], asked with [`Policy::walk_policy`] and answered with [`Policy::wants`]; the
+/// reading is [`Entry::read`]; everything after that — the caps, the order they are spent in, what the
+/// extractor made of the bytes and what the scan says about all of it — is this module's.
+///
 /// Never fails: a tree that cannot be walked is a tree with no symbols in it, and the scan's `notes` and the
 /// corpus's gap say which of the failures it was. The one thing a caller must not have to infer is the
 /// difference between "this repository declares nothing" and "I could not look".
 #[must_use]
 pub fn walk(root: &Path, policy: &Policy) -> Scan {
-    let found = find(root, policy);
+    let found = found_files(root, policy);
     let source = stamp_of(root, &found);
     let mut languages: Vec<String> = found
         .iter()
@@ -279,7 +289,7 @@ pub fn walk(root: &Path, policy: &Policy) -> Scan {
     // the date a symbol row carries is the file's, never an episode's).
     let mut touched: BTreeMap<String, i64> = BTreeMap::new();
     for file in &found {
-        let _ = touched.insert(file.path.clone(), file.mtime);
+        let _ = touched.insert(file.path.clone(), file.modified);
     }
 
     let mut bodies: Vec<(String, Vec<u8>)> = Vec::new();
@@ -296,7 +306,7 @@ pub fn walk(root: &Path, policy: &Policy) -> Scan {
         } else if scan.bytes + usize::try_from(file.size).unwrap_or(usize::MAX) > policy.max_bytes {
             left_out += 1;
         } else {
-            match std::fs::read(&file.absolute) {
+            match file.read() {
                 Ok(text) => {
                     scan.bytes += text.len();
                     bodies.push((file.path.clone(), text));
@@ -388,76 +398,17 @@ pub fn walk(root: &Path, policy: &Policy) -> Scan {
 /// [`walk`] returns for an unmoved tree, because both are [`stamp_of`] over the same walk.
 #[must_use]
 pub fn stamp(root: &Path, policy: &Policy) -> Source {
-    stamp_of(root, &find(root, policy))
+    stamp_of(root, &found_files(root, policy))
 }
 
-/// The files worth opening, sorted by repository-relative path, each with what its `stat` said.
-fn find(root: &Path, policy: &Policy) -> Vec<Found> {
-    let mut out: Vec<Found> = Vec::new();
-    let mut frontier: Vec<PathBuf> = vec![root.to_path_buf()];
-    for depth in 0..=MAX_DEPTH {
-        let mut next: Vec<PathBuf> = Vec::new();
-        for dir in &frontier {
-            let Ok(entries) = std::fs::read_dir(dir) else {
-                continue;
-            };
-            let mut children: Vec<PathBuf> = entries.flatten().map(|entry| entry.path()).collect();
-            // Sorted, so that two walks of one tree hand the extractor one order. The extractor sorts its
-            // own output by path; this is about the *caps* — which files get read when there are too many
-            // has to be the same answer twice.
-            children.sort();
-            for path in children {
-                let Ok(meta) = path.symlink_metadata() else {
-                    continue;
-                };
-                if meta.is_dir() {
-                    if depth >= MAX_DEPTH {
-                        continue;
-                    }
-                    let name = path
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned();
-                    if name.starts_with('.')
-                        || SKIPPED_DIRS.contains(&name.as_str())
-                        || policy
-                            .ignored_dirs
-                            .iter()
-                            .any(|ignored| ignored.eq_ignore_ascii_case(&name))
-                    {
-                        continue;
-                    }
-                    next.push(path);
-                    continue;
-                }
-                if !meta.is_file() {
-                    continue;
-                }
-                let relative = path
-                    .strip_prefix(root)
-                    .unwrap_or(path.as_path())
-                    .to_string_lossy()
-                    .replace('\\', "/");
-                if !Language::detect(&relative).is_known() || policy.ignores(&relative) {
-                    continue;
-                }
-                out.push(Found {
-                    path: relative,
-                    absolute: path,
-                    size: meta.len(),
-                    mtime: meta
-                        .modified()
-                        .ok()
-                        .and_then(|when| when.duration_since(SystemTime::UNIX_EPOCH).ok())
-                        .map_or(0, |since| i64::try_from(since.as_secs()).unwrap_or(0)),
-                });
-            }
-        }
-        frontier = next;
-    }
-    out.sort_by(|left, right| left.path.cmp(&right.path));
-    out
+/// Which files a walk of `root` would read, as the door reported them: repository-relative path, size and
+/// last touch, no body read.
+///
+/// One expression behind two callers — [`walk`] reads these, [`stamp`] folds them — which is the whole reason
+/// the cheap question "has the tree moved?" is answerable: it is the same fold over the same list the
+/// symbols came from, with the reads taken out.
+fn found_files(root: &Path, policy: &Policy) -> Vec<Entry> {
+    worktree::find(root, &policy.walk_policy(), &|path| policy.wants(path))
 }
 
 /// The files to read, in the order the caps should spend themselves.
@@ -468,8 +419,8 @@ fn find(root: &Path, policy: &Policy) -> Vec<Found> {
 /// standing in. So the budget is shared instead: files are grouped by the directory at the top of their
 /// path and taken one from each group in turn, so every part of the tree is represented before any part
 /// takes a second share.
-fn fair_order(found: &[Found]) -> Vec<&Found> {
-    let mut groups: BTreeMap<String, std::collections::VecDeque<&Found>> = BTreeMap::new();
+fn fair_order(found: &[Entry]) -> Vec<&Entry> {
+    let mut groups: BTreeMap<String, std::collections::VecDeque<&Entry>> = BTreeMap::new();
     for file in found {
         groups
             .entry(top_level(&file.path))
@@ -509,7 +460,7 @@ fn top_level(path: &str) -> String {
 }
 
 /// How many groups there are to share — the number in the scan's note about what it passed over.
-fn top_levels(found: &[Found]) -> std::collections::BTreeSet<String> {
+fn top_levels(found: &[Entry]) -> std::collections::BTreeSet<String> {
     found.iter().map(|file| top_level(&file.path)).collect()
 }
 
@@ -518,14 +469,14 @@ fn top_levels(found: &[Found]) -> std::collections::BTreeSet<String> {
 /// Paths and sizes alone miss a file edited to the same length; mtimes alone miss a checkout that preserved
 /// them. Together they are the cheap answer to "is this the same tree", and they cost the `stat` the walk
 /// already did.
-fn stamp_of(root: &Path, found: &[Found]) -> Source {
+fn stamp_of(root: &Path, found: &[Entry]) -> Source {
     let mut hasher = Sha256::new();
     let mut bytes: u64 = 0;
     for file in found {
         hasher.update(file.path.as_bytes());
         hasher.update([0u8]);
         hasher.update(file.size.to_le_bytes());
-        hasher.update(file.mtime.to_le_bytes());
+        hasher.update(file.modified.to_le_bytes());
         bytes += file.size;
     }
     let digest: String = hasher

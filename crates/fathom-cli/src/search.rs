@@ -14,8 +14,10 @@
 //!   the shell is open is a repository the next `/` sees after a restart — stated in the corpus's own gaps
 //!   rather than quietly fresher than it looks.
 //! * **A kind the caller did not read is a gap, not an empty result.** The dependency names come from the
-//!   manifests this module can see; the symbol names come from the working tree, walked with
-//!   [`fathom_analyze::search::symbols`] and read by `e3.1`'s extractor (`reco-6sw`); the findings would come
+//!   manifests this module can see; the symbol names come from the working tree, walked on this module's
+//!   behalf by [`fathom_analyze::search::symbols`] — which asks `fathom_ingest::worktree` for the tree and
+//!   hands it to `e3.1`'s extractor (`reco-6sw`, and `reco-p41` for who is allowed to open the directory);
+//!   the findings would come
 //!   from detectors that need the delta model, which this build does not run at startup. Each of those is a
 //!   sentence in [`Lend`]'s notes and a line in the report's gaps, because "no findings match your search" and
 //!   "nothing raised findings in this session" are different answers and only one of them is about the
@@ -284,7 +286,9 @@ fn read(root: &Path) -> Option<Corpus> {
     // The symbol section, read from the working tree (`reco-6sw`). The extractor is a pure function of file
     // text, so this is the half that decides which files to read — and it is read *now*, from the tree the
     // reviewer is looking at, rather than from the store's last epoch, because a declaration belongs to a
-    // file. The stamp it carries is what lets a corpus built from an older tree say so later.
+    // file. The reading itself is the door's (`fathom_ingest::worktree`, `reco-p41`): this crate may open the
+    // tree, `fathom-analyze` may not. The stamp it carries is what lets a corpus built from an older tree
+    // say so later.
     let scan = symbols::walk(root, &symbol_policy(root));
     let lend = corpus::Lend {
         dependencies,

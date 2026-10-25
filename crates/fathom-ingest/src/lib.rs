@@ -18,7 +18,8 @@
 //! | [`hooks`] | hooks v1: reading the harness event stream — offsets, torn lines, quarantine, replay, and the turn ids segmentation consumes (`e6.1`) |
 //! | [`record`], [`normalize`] | a commit as a stable normalized record: identity, people, message, trailers and per-file change records under size caps (`e1.2`) |
 //! | [`diff`] | the changed-path set between two trees, `blob_of(path, tree)`, and one file pair's measurement — the O(changed) read the warm path runs on (`e1.4`) |
-//! | [`state`] | the working tree: staged, unstaged, conflicted |
+//! | [`state`] | the working tree as git sees it: staged, unstaged, conflicted |
+//! | [`worktree`] | the working tree as the filesystem reports it: a bounded walk, one file's `stat`, one file's bytes (`reco-p41`) |
 //! | [`backend`] | the read interface, so a `git`-binary fallback can be added without touching call sites |
 //! | [`watch`] | watching a repository change: the cheap filesystem pass, the ref diff, the guards, and the state machine `fathom watch` runs (`e1.9`) |
 //! | [`error`] | the failure vocabulary, each variant with a remedy a human can act on |
@@ -69,6 +70,11 @@ pub mod repo;
 pub mod revspec;
 pub mod segment;
 pub mod state;
+/// The working tree as the filesystem reports it: a bounded walk, what one file's `stat` said, and one
+/// file's bytes. This is the read that the crates above the door are not allowed to do for themselves —
+/// ADR-002 §3 makes `fathom-analyze` IO-free and `lint W1` enforces it — and unlike [`state`] it never
+/// asks git anything (`reco-p41`).
+pub mod worktree;
 
 // The watcher needs *a* source of change signals, and either feature promises one: `watch` brings the OS
 // notifications plus the debounced poll, and `watch-poll` is the build that promises polling on a
