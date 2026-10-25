@@ -17,6 +17,50 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Ten findings about files whose whole job is printing (`reco-pfb`)
+
+`fathom export --episodes defc5f6~5..defc5f6` — the five commits that closed epic 6 — carried ten
+`debug_leftover` findings, and nine of them were this repository's own `tools/*.py`:
+
+```text
+open [finding] debug_leftover on `tools/demo_exhibits.py`: tools/demo_exhibits.py added 7 debug output
+line(s) that read as left behind: print(f"{path} is missing; the prose around this block is written, the
+block is generated"), …
+```
+
+Those prints are the product of those files. `tools/**` is a directory of CLI programs — `check_*.py`,
+`gen_*.py`, `*_acceptance.py` — and what they put on stdout is the thing they are for. The same sentence is
+true of ruff's `python/py-fuzzer/fuzz.py`, which the published G3 corpus hand-dismisses twice, and of every
+`gen_*.py` in every repository this detector will ever read. Tier B had been charging any print in any file,
+which is a detector firing on the house's own style, and output that gets skimmed and then ignored costs the
+true findings more than silence would have.
+
+* **A tier-B print now needs a shape, not only a marker.** `print(` is not evidence; `print(` plus a shape
+    is. The line either prints a value and says nothing about it (`print(row)`, `console.log(user)`,
+    `println!("{}", n)`), or it says what it is (`dbg`, `debug`, `trace`, `dump`, `TODO`, `FIXME`, a `>>>`
+    gutter, or a value in its debug form — `{x:?}`, `{x!r}`, `repr(`, `.inspect`, `JSON.stringify(`), or it
+    goes past the program's output (`eprintln!`, `print(…, file=sys.stderr)`, `System.err.print`). A report
+    line is made of words; a leftover usually is not.
+* **A file that carries its own entry point is a program.** An `if __name__ == "__main__"` dispatch, an
+    `argparse` or a `fn main(` among the added lines silences tier B for that file wherever it lives, which
+    is what catches the scripts in a directory no path table has a name for. `tools/**` and `examples/**`
+    joined the path table beside `cmd/**` and `bin/**`, and the Ruby marker `p ` now has to start its
+    statement — it had been matching every `map {` in the corpus.
+* **What was refused.** Scoping the detector to `crates/`: this repository's library happens to live there
+    and most repositories' do not, so that is tuning the tool to one tree. And a new ignore list: a bare
+    `detectors.suppress` entry already is one, in the same glob language as every other scope
+    (`debug_leftover:src/log/**`), and a second mechanism for the same answer is a second answer.
+* **What it costs.** `println!("cache hit: {}", n)` in a library is a real leftover and is now silent,
+    because at line level a labelled print is indistinguishable from a logger call in a house whose logging
+    idiom this file does not know. That is the right way round: one missed `low` note is cheaper than a
+    reviewer who has stopped reading the tier.
+* **The numbers, on this repository** ([`debug_leftover.rs`](crates/fathom-analyze/src/detectors/debug_leftover.rs),
+    [`docs/detectors/index.md`](docs/detectors/index.md)). Over its own 131-episode history,
+    `debug_leftover` went **38 findings → 4** and nothing new fired; in the epic-6 window above,
+    **10 → 1** and **38 open actions → 31**. What survives is arguable on the line it quotes: the detector's
+    own marker list, two deliberately pathological files in the spike corpus, and one fixture-writing line
+    whose string literally says `debug leftover`.
+
 ### A Python function whose signature had not changed was reported as a signature removal (`reco-9k3`)
 
 `fathom check --only api --base 40a1e3f --head HEAD` over this repository's own history reported seven

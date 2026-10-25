@@ -291,19 +291,46 @@ M tests/api.rs  +1 −12
 
 ## `debug_leftover` — debug output committed
 
-**What it looks at.** Lines written to look at the program that survived into the commit: `dbg!`,
-`console.log`, `print(`, `fmt.Println` of a variable, and the rest of the marker list in
-[`debug_leftover.rs`](../../crates/fathom-analyze/src/detectors/debug_leftover.rs). The literal it saw is
-printed in the finding, which is what makes a false positive arguable rather than mysterious.
+**What it looks at.** Lines written to look at the program that survived into the commit, in two tiers that
+a reviewer dismisses differently:
+
+* **tier A** is a marker that is never production code — `dbg!`, `debugger`, `pdb.set_trace()`,
+  `breakpoint()`, `binding.pry`, `console.debug(`, `var_dump(`. `medium` at `0.8`, in any file, including a
+  CLI's.
+* **tier B** is a print that could be either — `println!`, `print(`, `console.log`, `fmt.Println`,
+  `System.out.print`, `puts`. `low` at `0.45`, and it needs the line to *look like a look at the program*,
+  not merely to be a print: it prints a bare value (`print(row)`, `console.log(user)`, `println!("{}", n)`),
+  or it says what it is (`dbg`, `debug`, `trace`, `dump`, `TODO`, `FIXME`, a `>>>` gutter, or a value in its
+  debug form: `{x:?}`, `{x!r}`, `repr(`, `.inspect`, `JSON.stringify(`), or it goes past the program's
+  output (`eprintln!`, `print(…, file=sys.stderr)`, `System.err.print`). It is silent where printing is the
+  job — an entrypoint, `src/bin/**`, `cmd/**`, `bin/**`, `tools/**`, `examples/**`, `scripts/**`,
+  `main.py`, `cli.py`, **or any file that carries its own entry point** (`if __name__ == "__main__"`,
+  `argparse`, `fn main(`: the file says out loud that it is a program, which beats guessing from its
+  address) — and in the test surface, in prose, and in generated or vendored churn.
+
+The literal it saw is printed in the finding, which is what makes a false positive arguable rather than
+mysterious. The full rule, and what each part costs, is in
+[`debug_leftover.rs`](../../crates/fathom-analyze/src/detectors/debug_leftover.rs).
 
 **Why it earns its place.** It is the signature of a loop: the agent printed a value to find out what was
 happening, the run went the way it wanted, and the print stayed. Individually harmless, collectively it is
 how a codebase ends up with forty `println!`s in the hot path and no author to ask. It is also the cheapest
 possible reminder that the diff was written by something that was not going to come back and clean up.
 
+**Why tier B needs a shape (`reco-pfb`).** A report generator is a file whose entire product is the text it
+prints, and there is one in every repository: this project's own `tools/*.py`, ruff's
+`python/py-fuzzer/fuzz.py` — which the published G3 corpus hand-dismisses twice — and every `gen_*.py` and
+`check_*.py` you have ever written. Firing on those is firing on the house's own style, and output that gets
+skimmed and then ignored costs the true findings more than silence would. So a print must now look like a
+leftover rather than merely be a print. What that refuses to do is worth saying out loud: the detector is not
+scoped to a directory list of one repository's choosing, and it did not grow an ignore list of its own,
+because `detectors.suppress` is already the ignore list and speaks the same globs.
+
 **Tune or silence.** The suppression key is the file. A logger call in a logging module reads as a leftover;
-suppress that file rather than the detector, and if the pattern is language-specific enough to keep biting,
-that is a bug report about the marker list, not a threshold to tune.
+suppress that file rather than the detector — `suppress = ["debug_leftover:src/log/**"]` covers a whole
+print-only subtree when you genuinely mean it. If the pattern is language-specific enough to keep biting,
+that is a bug report about the marker list or the shape rule, not a threshold to tune: there is no threshold
+here to tune.
 
 <!-- BEGIN GENERATED: example.debug_leftover -->
 *The input* (`fixtures/debug_leftover.json`):
