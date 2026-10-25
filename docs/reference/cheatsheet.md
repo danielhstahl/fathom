@@ -594,6 +594,11 @@ A toast — the line an act prints, `reviewed · signed off · ep-3fa` — borro
 and then gives it back, so the row you are reading here is what is on screen again without a keystroke
 ([ADR-006 §7.5](../adr/0006-tui.md)).
 
+A key that cannot apply uses the same row instead of saying nothing: *nothing is selected, so there is
+no path to copy — `j`/`k` choose an episode first*. The absence, then the key that ends it, and only
+`app.quit` and `<C-l>` are exempt, because both act on the shell rather than on the frame
+([ADR-006 §10.3](../adr/0006-tui.md), asserted in `crates/fathom-tui/tests/action_speaks.rs`).
+
 ---
 
 **Next**: [the CLI reference](cli.md) for the headless half of the same facts ·

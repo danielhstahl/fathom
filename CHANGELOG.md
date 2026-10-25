@@ -17,6 +17,73 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A key that cannot apply says why (`reco-xf8`)
+
+The MVP walkthrough did not read the keymap. It pressed a key, redrew the frame, and asked whether
+anything was different — which is the only measurement a reviewer can make, and it found eleven of
+its forty-one keystrokes that changed nothing at all: `y` and `Y` with no path and no hunk, `<Enter>`
+with nothing under the cursor, `x` and `i` with no episode in scope, all of them over an empty rail.
+`m` and `w`, a few rows up the same table, answered in a sentence — `owned by e4.4` is an answer,
+and so is `marked e8f1a2 — `c` compares against it` — so the shell did have a rule about speaking.
+It had simply been applied to some keys and not others, and the uneven half is the half that reads as
+a broken key.
+
+ADR-006 §10.3 says *a stated absence, never a blank*, and it says it about panes. The keymap was not
+covered, so §10.3 now covers it: **every bound action either changes the frame or prints the reason
+it could not**, and the reason is the absence followed by the way out, in that order — the shape the
+empty-state copy already uses, because the second half is the half a reviewer can act on. The honest
+count, before and after: the shipped registry is 99 actions, the shell ships nine views, and against
+an empty model **208 of those 891 (view, action) pairs left the frame untouched and the hint row
+silent**. Eighteen do now, and they are the two exempt ids in nine views.
+
+* **The motion family — `j`, `k`, `gg`, `G`, `H`/`M`/`L`, `<C-d>`, `<C-u>`, `<C-f>`, `<PageUp>`,
+    the two scroll keys, thirteen ids in fourteen `match` arms — went through one arm.** Not for
+    tidiness: a refusal has to know whether the cursor moved, which fourteen arms each had to
+    answer for themselves and none did. The arm snapshots `(cursor, window top)`, runs the
+    arithmetic — unchanged, now in `App::run_motion` — and if both came out where they were it says
+    which of the three it is: *the rail pane has no rows to move over*, with the pane's own remedy
+    beside it, or *the cursor is already on the last row of the worklist pane · 12 row(s) · `gg` and
+    `G` jump to the ends*, or *the tree pane's 3 row(s) fit the frame — there is nothing to scroll*.
+    A document pane (the card) says something different again: it has no cursor for these keys, so
+    the sentence names the pane that does.
+* **A refusal about an empty pane reuses the pane's copy rather than inventing one.**
+    `fathom_tui::empty::refusal` is the line `empty::words` ends on, one row instead of three, so
+    the toast and the pane above it cannot drift into contradicting each other about why the rail is
+    empty — the mistake `reco-1nu` was filed against, one surface further up.
+* **`t` on the view that is already live, `<C-w>1` on the tab that already is, `<Tab>` in a one-pane
+    view and `<Tab>` over a zoomed pane** all said nothing, because the frame cannot show any of
+    them. They say *Timeline is already the live view*, *tab 1 is already live*, *Ambient has one
+    pane, and it is already focused*, *the rail pane fills the frame — `<C-w>o` puts the others
+    back*. `set_view` is measured, not assumed: [`App::view_state`] is the six things it can move,
+    and a switch that moves none of them is the switch that owes a sentence.
+* **The field keys refuse when there is no field.** No chord reaches them there — `prompt`'s keys are
+    bound only in `prompt` mode — but the palette dispatches by action id and so does every embedder,
+    and `<C-u>` used to silently `prompt.clear()` a box that was not on screen. Now: *no field is
+    open — `/` searches, `,` is the palette*, and a chooser is told apart from a field, because
+    popping a character off a prompt while the reviewer thinks they are moving a picker is worse
+    than the nothing it replaces.
+* **The diff's three ways out end in a motion.** `y` used to answer *nothing selectable is under the
+    cursor to copy a path from* and stop; it now adds *`j`/`k` walk the tree, `d` opens an episode's
+    patch*. Same for `Y` and `E`, which said *no file is selected* — a true sentence with nothing in
+    it you can do.
+* **`d` again on a patch that is already open says so.** It deliberately does not re-read the store or
+    reset the tree's cursor, which is right, and a deliberate no-op is indistinguishable from a lost
+    keystroke unless it is announced: *e8f1a2's patch is already open — `j` walks the tree, `[`/`]`
+    jump between hunks*. The guard is the same `view_state` check, so `d` from the rail — where the
+    view switch is itself the change, and the pane is already printing its emptiness — stays quiet.
+* **The rule is a table, in `crates/fathom-tui/tests/action_speaks.rs`.** It walks the registry in
+    all nine views against an empty model, and fails on any action that neither moved the frame
+    proper — the last row is excluded, because a toast is not allowed to be its own evidence — nor
+    left a sentence there. The exemption list is a table with a reason per row and it is re-measured
+    every run: `app.quit` and `screen.redraw` pass today *because* they still change nothing, and an
+    exempt id that learns to speak fails until its row is deleted. Taking the motion refusal out
+    again turns four of the sixteen tests red, so the gate has been seen to bite.
+
+**One golden moved.** `FATHOM_GOLDEN=write` re-baked the five `diff_*` layout screenshots, whose
+last row is a toast and always was (*10 episodes from fixture index*): it now carries the refusal
+that frame has no patch source, which is the sentence that state deserves. Nothing else in the matrix
+moved.
+
 ### The toast took the hint row and never gave it back (`reco-2ll`)
 
 The last line of the frame is the hint row: `q Queue · t Timeline · d Diff · / Search · , Command

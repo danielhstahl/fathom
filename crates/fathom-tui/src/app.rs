@@ -1648,13 +1648,38 @@ impl App {
             _ => self.timeline.selected().map(|ep| ep.id.clone()),
         });
         let (Some(provider), Some(id)) = (self.patches.clone(), episode.as_deref()) else {
+            // The pane has a stated empty state and the view opens on it. The keystroke only owes its
+            // own sentence when the view was already the diff — otherwise the switch is the change, and
+            // the pane is already saying why it is empty (`reco-xf8`).
+            let before = self.view_state();
             self.set_view(ViewId::Diff);
+            if self.view_state() == before {
+                if self.patches.is_none() {
+                    self.toast(
+                        "nothing hands this frame patch bytes — `fathom doctor` says whether the \
+                         index can be read",
+                    );
+                } else {
+                    self.toast(
+                        "no episode is in scope — `j`/`k` choose one, then `d` opens its patch",
+                    );
+                }
+            }
             return;
         };
         if self.diff.is_loaded() && self.diff_episode.as_deref() == Some(id) {
             // Same episode, same bytes: the pane already answers this question; do not disturb where
-            // the reviewer was reading it.
+            // the reviewer was reading it — but say that when nothing else on the screen moves,
+            // because a keystroke that changes nothing on purpose is indistinguishable from one
+            // nobody handled (`reco-xf8`).
+            let before = self.view_state();
             self.set_view(ViewId::Diff);
+            if self.view_state() == before {
+                self.toast(format!(
+                    "{}'s patch is already open — `j` walks the tree, `[`/`]` jump between hunks",
+                    crate::search::short_id(id)
+                ));
+            }
             return;
         }
         match provider.0.patch_for(id) {
@@ -2002,15 +2027,18 @@ impl App {
                             Err(why) => format!("{why} — the path was `{path}`"),
                         });
                     }
-                    None => {
-                        self.toast("nothing selectable is under the cursor to copy a path from")
-                    }
+                    None => self.toast(
+                        "nothing selectable is under the cursor to copy a path from — `j`/`k` walk \
+                             the tree, `d` opens an episode's patch",
+                    ),
                 }
                 true
             }
             "diff.copy_hunk" => {
                 let Some(file) = self.diff.file else {
-                    self.toast("no file is selected");
+                    self.toast(
+                        "no file is selected — `j` walks the tree, `d` opens an episode's patch",
+                    );
                     return true;
                 };
                 let hunk = self.diff.hunk_at(file, self.scroll_of());
@@ -2028,7 +2056,9 @@ impl App {
             }
             "diff.open_editor" => {
                 let Some(entry) = self.diff.file.and_then(|file| self.diff.file_at(file)) else {
-                    self.toast("no file is selected");
+                    self.toast(
+                        "no file is selected — `j` walks the tree, `d` opens an episode's patch",
+                    );
                     return true;
                 };
                 let path = entry.path.clone();
@@ -2114,20 +2144,34 @@ impl App {
 
     /// Move focus along the ring (`<Tab>`, `<C-w>l`), wrapping.
     pub fn focus_next(&mut self) {
-        if self.zoomed {
-            return;
-        }
-        let len = self.ring().len().max(1);
-        self.pane = (self.pane + 1) % len;
+        self.focus_step(1);
     }
 
     /// Move focus back along the ring (`<S-Tab>`, `<C-w>h`), wrapping.
     pub fn focus_prev(&mut self) {
+        self.focus_step(-1);
+    }
+
+    /// The two directions of `<Tab>` as one arithmetic, so neither can be the one that forgot to say
+    /// why it did nothing (`reco-xf8`, ADR-006 §10.3).
+    fn focus_step(&mut self, step: i32) {
         if self.zoomed {
+            self.toast(format!(
+                "the {} pane fills the frame — `<C-w>o` puts the others back, then `<Tab>` walks them",
+                self.focused_pane().map_or("focused", |pane| pane.name)
+            ));
             return;
         }
-        let len = self.ring().len().max(1);
-        self.pane = (self.pane + len - 1) % len;
+        let len = self.ring().len();
+        if len < 2 {
+            self.toast(format!(
+                "{} has one pane, and it is already focused — `?` lists this view's keys",
+                self.current().title
+            ));
+            return;
+        }
+        let next = (self.pane as i64 + i64::from(step)).rem_euclid(i64::try_from(len).unwrap_or(1));
+        self.pane = usize::try_from(next).unwrap_or(0);
     }
 
     /// `<C-w>o`: the focused pane takes the frame; the others are one keystroke away.
@@ -2142,6 +2186,23 @@ impl App {
                 "pane".to_owned()
             }
         ));
+    }
+
+    /// Everything [`App::set_view`] can move, as one value.
+    ///
+    /// A view switch that leaves all six where they were is a keystroke the frame cannot show — the
+    /// reviewer is already standing in the view they asked for — and a keystroke the frame cannot show
+    /// has to buy its own sentence (`reco-xf8`, ADR-006 §10.3).
+    #[must_use]
+    fn view_state(&self) -> (ViewId, usize, bool, Option<Overlay>, usize, usize) {
+        (
+            self.view,
+            self.pane,
+            self.zoomed,
+            self.overlay,
+            self.tabs.len(),
+            self.active_tab,
+        )
     }
 
     /// Switch views, keeping the scope (ADR-006 §5.1: "same scope, different question").
@@ -2181,6 +2242,10 @@ impl App {
     pub fn drill_in(&mut self) {
         let ring_len = self.ring().len();
         if ring_len == 0 {
+            self.toast(format!(
+                "{} draws one surface with no pane to drill into — `?` lists what its keys do",
+                self.current().title
+            ));
             return;
         }
         if self.rail_focus() {
@@ -2311,6 +2376,16 @@ impl App {
                 "no tab {} — there are {}",
                 index + 1,
                 self.tabs.len()
+            ));
+            return;
+        }
+        if index == self.active_tab {
+            // The tab is already live, which is a fact the frame cannot show any differently. Say it,
+            // because the alternative — the reviewer pressing the chord again — is the nothing they
+            // just pressed (`reco-xf8`).
+            self.toast(format!(
+                "tab {} is already live — `J`/`K` cycle the tabs, `T` pins this one as another",
+                index + 1
             ));
             return;
         }
@@ -2937,6 +3012,23 @@ impl App {
             "tab.prev" => self.cycle_tab(-1),
             "tab.pin" => self.pin_tab(),
             "tab.close" => self.close_tab(),
+            // A field key with no field to type into. The prompt's keys are bound only in `prompt`
+            // mode, so no keystroke reaches this arm — but the palette dispatches by action id, and a
+            // palette row that edits a box that is not there is the silent nothing this rule is about
+            // (`reco-xf8`). A chooser is not a field either: `<BS>` would pop a character off a prompt
+            // no one is typing into while the reviewer thinks they are moving the picker.
+            _action @ ("prompt.backspace" | "prompt.clear_line" | "prompt.kill_line"
+            | "prompt.delete_word" | "prompt.result_down" | "prompt.result_up")
+                if !self.prompt_open() =>
+            {
+                self.toast(match self.overlay {
+                    Some(overlay) => format!(
+                        "{} is a chooser, not a field — `j`/`k` move it, `<Enter>` takes it",
+                        overlay.name()
+                    ),
+                    None => Self::NO_FIELD.to_owned(),
+                });
+            }
             "prompt.backspace" => {
                 self.prompt.pop();
             }
@@ -3032,25 +3124,20 @@ impl App {
             "list.up" if matches!(self.overlay, Some(Overlay::Reason) | Some(Overlay::Snooze)) => {
                 self.move_pick(-1);
             }
-            "list.down" => self.set_selection(self.selected_row() + 1),
-            "list.up" => self.set_selection(self.selected_row().saturating_sub(1)),
-            "list.first" => self.set_selection(0),
-            "list.last" => self.set_selection(usize::MAX),
-            "list.top_visible" => self.set_selection(self.scroll_of()),
-            "list.mid_visible" => {
-                let half = usize::from(self.size.1) / 2;
-                self.set_selection(self.scroll_of() + half);
+            // The pane's own motion, in one arm: a cursor that cannot move says why it cannot
+            // (`reco-xf8`), and that needs to know whether it moved, which needs the arithmetic in one
+            // place rather than in fourteen arms that each end in a silent no-op.
+            action @ ("list.down" | "list.up" | "list.first" | "list.last" | "list.top_visible"
+            | "list.mid_visible" | "list.bot_visible" | "list.page_down"
+            | "list.page_up" | "list.half_down" | "list.half_up" | "list.scroll_down"
+            | "list.scroll_up") => {
+                let before = self.motion_state();
+                self.run_motion(action);
+                if self.motion_state() == before {
+                    let said = self.motion_refusal(action);
+                    self.toast(said);
+                }
             }
-            "list.bot_visible" => {
-                let page = usize::from(self.size.1).saturating_sub(1);
-                self.set_selection(self.scroll_of() + page);
-            }
-            "list.page_down" => self.page_by(i32::from(self.size.1.saturating_sub(1))),
-            "list.page_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1))),
-            "list.half_down" => self.page_by(i32::from(self.size.1.saturating_sub(1) / 2)),
-            "list.half_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1) / 2)),
-            "list.scroll_down" => self.scroll_by(1),
-            "list.scroll_up" => self.scroll_by(-1),
             other => self.dispatch_other(other),
         }
     }
@@ -3059,7 +3146,17 @@ impl App {
     /// for everything whose ticket has not landed.
     fn dispatch_other(&mut self, action: &str) {
         if let Some(view_id) = view_for_action(action) {
+            // A view switch is a change unless the reviewer is already standing in that view, in which
+            // case the frame cannot show the keystroke at all and the keystroke has to say so
+            // (`reco-xf8`).
+            let before = self.view_state();
             self.set_view(view_id);
+            if self.view_state() == before {
+                self.toast(format!(
+                    "{} is already the live view — `<C-o>` walks back, `?` lists what its keys do",
+                    view(view_id).title
+                ));
+            }
             return;
         }
         let label = crate::keymap::action(action).map_or(action, |a| a.label);
@@ -3911,5 +4008,137 @@ impl App {
             return;
         }
         self.scroll_by(delta);
+    }
+
+    // --- a key that cannot apply says why (`reco-xf8`) -------------------------------------------
+
+    /// The refusal a prompt key gets when no prompt is open: the three doors that would open one.
+    const NO_FIELD: &'static str =
+        "no field is open — `/` searches, `,` is the palette, `F` edits the rail's filters";
+
+    /// The two things a motion action can move: the cursor, and the top of the window it sits in.
+    ///
+    /// Two snapshots that come out equal are the ticket's own measurement — *the screen did not change
+    /// after this keystroke* — taken without drawing a frame to find out.
+    #[must_use]
+    fn motion_state(&self) -> (usize, usize) {
+        (self.selected_row(), self.scroll_of())
+    }
+
+    /// Is a field open to type into? `Mode::Prompt` owns the keyboard outright when one is
+    /// (ADR-006 §7.1), and a chooser is not a field.
+    #[must_use]
+    pub fn prompt_open(&self) -> bool {
+        self.overlay
+            .is_some_and(|overlay| overlay.mode() == crate::keymap::Mode::Prompt)
+    }
+
+    /// The pane motion's arithmetic, in one place: the eleven list ids and the two scroll ids, spelled
+    /// exactly as `dispatch` used to spell each of its fourteen arms. Factored out so the shell can ask
+    /// whether the keystroke moved anything before deciding it has something to say (`reco-xf8`).
+    fn run_motion(&mut self, action: &str) {
+        match action {
+            "list.down" => self.set_selection(self.selected_row() + 1),
+            "list.up" => self.set_selection(self.selected_row().saturating_sub(1)),
+            "list.first" => self.set_selection(0),
+            "list.last" => self.set_selection(usize::MAX),
+            "list.top_visible" => self.set_selection(self.scroll_of()),
+            "list.mid_visible" => {
+                let half = usize::from(self.size.1) / 2;
+                self.set_selection(self.scroll_of() + half);
+            }
+            "list.bot_visible" => {
+                let page = usize::from(self.size.1).saturating_sub(1);
+                self.set_selection(self.scroll_of() + page);
+            }
+            "list.page_down" => self.page_by(i32::from(self.size.1.saturating_sub(1))),
+            "list.page_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1))),
+            "list.half_down" => self.page_by(i32::from(self.size.1.saturating_sub(1) / 2)),
+            "list.half_up" => self.page_by(-i32::from(self.size.1.saturating_sub(1) / 2)),
+            "list.scroll_down" => self.scroll_by(1),
+            "list.scroll_up" => self.scroll_by(-1),
+            _ => {}
+        }
+    }
+
+    /// Does this motion move the *window* rather than the cursor inside it? The mirror of
+    /// [`App::page_by`]'s own branch, so the sentence cannot disagree with the arithmetic.
+    #[must_use]
+    fn moves_window(action: &str, rail: bool) -> bool {
+        matches!(action, "list.scroll_down" | "list.scroll_up")
+            || (!rail
+                && matches!(
+                    action,
+                    "list.page_down" | "list.page_up" | "list.half_down" | "list.half_up"
+                ))
+    }
+
+    /// Why a motion key moved nothing: the absence, then the keystroke that ends it — the shape every
+    /// refusal in this shell takes, because ADR-006 §10.3 asks for a stated absence and never a blank.
+    #[must_use]
+    fn motion_refusal(&self, action: &str) -> String {
+        let Some(pane) = self.focused_pane() else {
+            return "nothing is focused — `<Tab>` walks the panes".to_owned();
+        };
+        let rows = self.row_count(pane);
+        if rows == 0 {
+            // A list pane that is empty says *why* it is empty, in the same line the pane above the
+            // hint row is already printing — the toast and the pane may not contradict each other.
+            if pane.role == crate::views::Role::Primary {
+                return format!(
+                    "the {} pane has no rows to move over — {}",
+                    pane.name,
+                    crate::empty::refusal(
+                        self.view,
+                        pane,
+                        &self.model.index_facts,
+                        &self.empty_reason()
+                    )
+                );
+            }
+            // A document pane (the card, the hunks before a file is picked) has no cursor for these
+            // keys at all, and the honest answer names the pane that does.
+            let list = self
+                .current()
+                .panes
+                .iter()
+                .find(|other| other.role == crate::views::Role::Primary)
+                .map_or("list", |other| other.name);
+            return format!(
+                "the {} pane has nothing to move over — `<Tab>` puts the cursor on the {}, where `j`/`k` walk it",
+                pane.name, list
+            );
+        }
+        let downward = matches!(
+            action,
+            "list.down"
+                | "list.page_down"
+                | "list.half_down"
+                | "list.scroll_down"
+                | "list.last"
+                | "list.bot_visible"
+                | "list.mid_visible"
+        );
+        if Self::moves_window(action, self.rail_focus()) {
+            return if rows <= self.pane_body_rows() {
+                format!(
+                    "the {} pane's {} row(s) fit the frame — there is nothing to scroll",
+                    pane.name, rows
+                )
+            } else {
+                format!(
+                    "the window is already at the {} of the {} pane · {} row(s) · `gg` and `G` jump to the ends",
+                    if downward { "bottom" } else { "top" },
+                    pane.name,
+                    rows
+                )
+            };
+        }
+        format!(
+            "the cursor is already on the {} row of the {} pane · {} row(s) · `gg` and `G` jump to the ends",
+            if downward { "last" } else { "first" },
+            pane.name,
+            rows
+        )
     }
 }

@@ -105,6 +105,24 @@ pub fn words(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> Vec<S
     }
 }
 
+/// The one line a keystroke gets when the pane it was pressed over has nothing in it (`reco-xf8`).
+///
+/// A pane body has three lines and can afford to state the index axis, the pane's purpose and the
+/// remedy in that order; a hint row has one, and a keystroke that cannot apply has to end in the
+/// same remedy or it is a blank with a sound (`ADR-006 §10.3`, "a stated absence, never a blank").
+/// So this is the branch [`words`] takes and the line it ends on, reused rather than rewritten: the
+/// toast and the pane under it cannot drift, because they are the same copy.
+#[must_use]
+pub fn refusal(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
+    if !facts.is_present()
+        || facts.episodes.is_some_and(|episodes| episodes == 0)
+        || facts.is_building()
+    {
+        return facts.remedy();
+    }
+    action(view, pane, facts, reason)
+}
+
 /// What this pane shows when it has rows. `None` for the panes whose emptiness needs no preamble.
 #[must_use]
 fn purpose(view: ViewId, pane: &Pane) -> Option<&'static str> {
