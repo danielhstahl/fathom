@@ -162,6 +162,29 @@ Two rules about parsing, both learned from CI being the worst place to discover 
   fails too, because a gate that examined nothing and passed is the failure mode ADR-002 §7.3 calls out by
   name.
 
+### What this repository runs it in
+
+This repository's own gate runs in `warn`, and `fathom.toml` says so as a declared key instead of leaving it
+to the default. Those are the same number and not the same kind of thing: an absent `[check]` block has never
+been argued with, and this one has (**reco-azy**), with the measurement that decided it in the comment above
+the line. The answer is the one this page argues for — a gate that blocks a repository over findings the tool
+got wrong is a gate that gets `--ignore`d the week it blocks a release — and the file names the two things
+that have to be true before it reads `mode = "deny"`. The first is **reco-9k3**: five of the eight findings on
+that run report a parameter and a return type removed from a Python function whose signature the diff does not
+touch, which is a defect in the check and not a debt in the code.
+
+One asymmetry that only shows up when you live with the choice, and that a page about the gate should own:
+under `warn`, *nothing* decides an exit code. The two invariants above still call such a run `fail` — in the
+verdict, in the sentence, and in `--format json` — and the process still exits 0, because declining to enforce
+is the whole meaning of the mode. So this repository does not leave "did the gate look at all?" to whoever reads
+the log: the `check-gate` job in `.github/workflows/ci.yml` reads the run's `--format json` and fails the build
+when any row is `blocked` or when no row `ran`. The volume is advisory here; the honesty is not.
+
+The same job is the second half of the decision, and this page used to leave it out. `check-gate` accepts exit
+`7` as a result whatever the file says, so `mode` alone has never been what kept this repository's gate
+advisory — flipping that one line to `deny` would have changed the log and not the build. A mode change and
+that tolerance are one edit, and `fathom.toml` says so where the mode is written.
+
 ## No silent passes
 
 Four invariants, each one tested, because "it did not fail" and "it did not look" look identical from the

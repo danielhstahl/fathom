@@ -17,6 +17,34 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The `[check] mode` decision this repository had never made (`reco-azy`)
+
+`fathom.toml` declared no `[check]` block, so the gate that runs over this repository ran on its defaults —
+`mode = warn`, fail at warning — which are the values this project would probably have chosen and are not the
+same kind of thing as choosing them. The gate reported 16 findings on its own HEAD and exited 0, and nobody
+had decided whether that was the plan. It is, and it is now in the file: `[check] mode = "warn"`, with the
+measurement that decided it and the order of conditions that turn it to `deny`.
+
+* **Why not `deny`, measured at `17770d5`.** The run over the five commits before it reports 8 findings and
+    exits 0. Five of them report a parameter and a return type removed from a Python function whose signature
+    the diff does not touch, one reports a module constant in `tools/` that really did drop an annotation, one
+    is a signature change in the Python reference implementation nobody installs, and one is `tests` pricing a
+    change that arrived with its tests under a floor it calls a prompt rather than a proof. `deny` would have
+    blocked on all eight, and the only way to make a wrong finding green is `check.ignore` — which is how a
+    project ends up with a clean bill of health for a surface its gate never judged. The five are filed as
+    `reco-9k3`; the api check's scoping question (is `tools/**` anybody's import surface?) is the second half.
+* **What `warn` cannot do, so CI does it.** In `warn` nothing decides an exit code: a run in which every check
+    was `blocked`, or which examined nothing, prints `fathom check failed` and exits 0 like a clean one. The
+    `check-gate` job now reads the run's `--format json` and fails on a `blocked` row or a run with no `ran`
+    row. Findings are that job's results; a gate that did not look is its failure.
+* **The half that was invisible from the config alone.** `check-gate` accepts exit `7` whatever the file says,
+    so flipping one line to `deny` would have changed the log and not the build. The mode and that tolerance
+    are one edit, and `docs/concepts/ci-gate.md` now says so next to the argument for the mode.
+
+No product behaviour changed. `fathom.toml`, `docs/concepts/ci-gate.md`, two workflow files and three tests in
+`tests/test_ci_gate_contract.py` — which pin the file, the page and the job to each other so a flip has to be
+deliberate in all three.
+
 ### Every migration threw the whole derived cache away (`reco-3sa`)
 
 `fathom stats` on this repository's own index said `diff.per_file 3339 lookups, 5 hits, 3316 cold, 3334 puts

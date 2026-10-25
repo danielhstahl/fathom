@@ -17,11 +17,15 @@
 #   machine-readable environment, and one small `self-review.json` of the numbers a stranger would otherwise
 #   re-derive: episodes indexed, findings per check and severity, the architecture score, ledger coverage,
 #   and every non-zero exit with the name it is supposed to have.
-# * **A finding is not a failure.** `[check] mode` in this repository is `warn` — deliberately, until the two
-#   error findings on its own HEAD are dispositioned (`.plan/intake/2026-W43.md` W43-02 and W43-06 name them)
-#   — so `fathom check` returning `7`, and `fathom review status` returning `7` because episodes are unsigned,
-#   are *results*, recorded in the summary. Anything else — `4` (a store that will not open), `5` (a bad
-#   config), `9` (a feature missing from the build), `12` (`INDEX_DEGRADED`), or a crash — is a failure,
+# * **A finding is not a failure.** `[check] mode` in this repository is `warn`, and **reco-azy** is the ticket
+#   that decided so and wrote the reason into `fathom.toml`'s `[check]` block. The condition this line used to
+#   name — the two error findings W43-02 and W43-06 — has since been dispositioned, and the run now reports a
+#   different set in their place: `api` errors on Python trees this project does not publish, six of them
+#   describing functions the diff never touched. So the reason is still "the gate is wrong about its own
+#   repository", with a different sentence under it, and the exit condition is in the file rather than here.
+#   It follows that `fathom check` returning `7`, and `fathom review status` returning `7` because episodes are
+#   unsigned, are *results*, recorded in the summary. Anything else — `4` (a store that will not open), `5` (a
+#   bad config), `9` (a feature missing from the build), `12` (`INDEX_DEGRADED`), or a crash — is a failure,
 #   because the review did not happen. That is the same distinction `dogfood.yml` makes for the corpus, and
 #   ADR-002 §7.3's rule for the whole gate.
 # * **It says when the loop is not actually being run.** `fathom review status` on this repository printed

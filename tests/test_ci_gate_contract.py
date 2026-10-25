@@ -276,3 +276,69 @@ def test_an_invented_flag_in_a_shipped_workflow_is_caught():
     assert "suchness" in check_ci_gate.flags_in(probe)
     assert "suchness" not in check_ci_gate.binary_flags(BINARY, {"check"})
     shutil.rmtree(probe, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# this repository's own gate policy (`reco-azy`)
+# ---------------------------------------------------------------------------
+REPO_CONFIG = ROOT / "fathom.toml"
+GATE_PAGE = ROOT / "docs" / "concepts" / "ci-gate.md"
+GATE_JOB = ROOT / ".github" / "workflows" / "ci.yml"
+
+
+def _declared_mode() -> str | None:
+    """The `[check] mode` this repository declares, or `None` when the file leaves it to the default."""
+    import tomllib
+
+    return tomllib.loads(REPO_CONFIG.read_text(encoding="utf-8")).get("check", {}).get("mode")
+
+
+def test_the_repository_declares_which_mode_its_own_gate_runs_in():
+    """Rule or opinion is a decision, and **reco-azy** asked for it in the file rather than in a log.
+
+    With no `[check]` block the gate runs on the built-in defaults, which are the same numbers this
+    repository wants — and that is the trap. Inherited, `warn` is a default nobody chose and nobody can
+    argue with; written down, it is a decision with a measurement over it, and `deny` becomes a deliberate
+    edit instead of a surprise. The value is the ticket's answer; the reason is the comment above it.
+    """
+    declared = _declared_mode()
+    assert declared in ("off", "warn", "deny"), (
+        f"`fathom.toml` declares {declared!r} for `[check] mode`, so the question reco-azy was filed to ask "
+        "— is this repository's own gate a rule or an opinion? — has no answer in the file, only a default"
+    )
+
+
+def test_the_concepts_page_names_the_mode_the_file_declares():
+    """The page carries the argument and the file carries the value; they are not allowed to drift.
+
+    The mode is deliberately one edit in two places: a flip to `deny` that changes `fathom.toml` and leaves
+    the page arguing `warn` is the honest state is the drift this repository keeps triaging over and calling
+    documentation rot.
+    """
+    declared = _declared_mode()
+    page = GATE_PAGE.read_text(encoding="utf-8")
+    stated = re.search(r"own gate runs in `(\w+)`", page)
+    assert stated, (
+        "`docs/concepts/ci-gate.md` no longer names the mode this repository runs its own gate in, so there "
+        "is nothing to read the file against"
+    )
+    assert stated.group(1) == declared, (
+        f"the page says `{stated.group(1)}` and `fathom.toml` says `{declared}` — decide it once, in both"
+    )
+    assert 'mode = "deny"' in page, "the page has to say what would flip it, not only what it is not"
+
+
+def test_the_gate_job_enforces_the_half_warn_cannot():
+    """In `warn` nothing decides an exit code, so the job that runs the gate has to decide the honest part.
+
+    A run in which every check was blocked, or which examined nothing, prints `fathom check failed` and exits
+    0 here — `outcome` says fail, the exit code says nothing. `check-gate` therefore reads the run's JSON and
+    fails on a `blocked` row and on a run with no `ran` row, which is what makes `warn` a reported volume
+    rather than a mute button (ADR-002 §7.3, **reco-azy**).
+    """
+    workflow = GATE_JOB.read_text(encoding="utf-8")
+    assert 'assert not blocked' in workflow, (
+        "`check-gate` no longer fails on a blocked check row, which leaves `mode = \"warn\"` unable to "
+        "distinguish a clean run from one that could not look"
+    )
+    assert "no check ran at all" in workflow, "nor on a run that examined nothing at all"

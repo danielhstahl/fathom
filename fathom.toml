@@ -198,6 +198,54 @@ contracts = ["src/recommender", "tools"]
 #   forbid = ["one-reality: l4_surfaces -> l1_durable_state",
 #             "one-door:    l4_surfaces -> l2_outside_door"]
 # and the tests named above are what keep the layer names honest until then.
+[check]
+# The mode this repository runs its own gate in, declared rather than inherited — **reco-azy** is the ticket
+# that asked which of the two this was, and the answer is `warn`: an opinion, written down, about a gate that
+# is still being calibrated against the repository that wrote it. Like `[episode] boundaries` below, this line
+# restates a built-in value on purpose. What it buys is not a different number, it is a file that has chosen
+# one, so that `deny` stays a deliberate edit rather than a discovery.
+#
+# Measured at 17770d5, the commit this decision was written against:
+# `fathom check --base HEAD~5 --head HEAD` reports `fail` — 8 findings, 7 `error` and 1 `warning` — and exits
+# 0. Under `deny` all eight would block the build, and reading them says why that is not the rule yet:
+#
+#   * five of the seven `api/breaking` errors report a parameter and a return type removed from a function in
+#     `tools/check_ticket_claims.py` whose signature is identical in both revisions — `rust_units` and
+#     `key_pattern` are untouched anywhere in `git diff 40a1e3f..17770d5`, and `prose_units`, `claims` and
+#     `main` changed only in their bodies. The sixth is a module constant of that same script, which really
+#     did drop its `: list[str]` annotation. Filed as **reco-9k3**;
+#   * the seventh is `src/recommender/store/cache.py`'s `resolve()`: a real signature change in a tree
+#     nobody outside this repository installs — Fathom ships Rust crates — which is `e3.12`'s mistake about a
+#     test file (**reco-u1i**) one directory over;
+#   * the `warning` is `tests/untested-logic`: 51 test lines counted against 337 of new logic, under a floor
+#     of 50 %, on an episode that arrived with Rust tests and a Python contract test — which is the check
+#     `docs/concepts/ci-gate.md` itself calls a prompt rather than a proof.
+#
+# Why not silence those and flip the mode. `[check] ignore` would make a `deny` gate green in one line, and it
+# would be exactly the state the gate exists to refuse: a clean bill of health for a surface it never judged.
+# `docs/concepts/layering.md` §2 refuses that in somebody else's config, and this file already honoured it by
+# switching `[check.severity] layering` **off** rather than pretend (**reco-dg7**). The other failure mode is
+# the one `docs/concepts/ci-gate.md` names: a gate that blocks a repository the day it is installed is a gate
+# that gets deleted the day it blocks a release.
+#
+# What `warn` is *not*, and the half that is enforced anyway. In `warn` nothing decides an exit code, so the
+# two invariants ADR-002 §7.3 cares most about — a required check that could not run, and a run that examined
+# nothing — leave this build green: over a repository with no `[layering]` rules, `fathom check --only
+# layering` prints `fathom check failed: nothing was examined` and exits 0. That is asserted, not hoped for:
+# the `check-gate` job in `.github/workflows/ci.yml` reads the run's `--format json` and fails when a check
+# row is `blocked` or when no row `ran`. The volume here is advisory; the "did it look at all" rule is not.
+#
+# What turns this to `deny`, in order:
+#   1. **reco-9k3** — the `api` check says something *true* about this repository's Python, and says which of
+#      `tools/**` and `src/recommender/**` is a published surface at all; `[api] ignore` and `[api] private`
+#      are the honest spellings of that answer once it is a finding about the code rather than a way to get
+#      to green;
+#   2. `check-gate` in `.github/workflows/ci.yml` stops accepting exit `7` as a result. Until that step
+#     changes, the job tolerates a finding whatever this file claims, which is why the mode line was never
+#     the whole decision and does not pretend to be one now;
+#   3. then, and only then, `mode = "deny"` — at the merge where 1 and 2 have both landed.
+mode = "warn"
+
 [check.severity]
 layering = "off"
 

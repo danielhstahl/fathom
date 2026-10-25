@@ -288,9 +288,13 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # `e6.6` (`reco-ngk`): the gate runs as a gate. The point of this job is not that `fathom check` finds
-  # nothing on `main` — `[check] mode` is `warn`, so it could not block even if it did. The point is the
+  # nothing on `main` — `fathom.toml` declares `[check] mode = "warn"`, so it could not block even if it did,
+  # and **reco-azy** is the ticket that decided it stays that way for now (its `[check]` block carries the
+  # measurement, the reason and the order of conditions that turn it to `deny`). The point is the
   # three claims the ticket made about the *run*: it finishes inside a minute on a medium repository with a
   # shallow clone, its SARIF uploads cleanly, and its exit code is the contract the next verb inherits.
+  #
+  # What `warn` cannot decide is decided here instead, in the JSON step below: a gate that never looked.
   # ---------------------------------------------------------------------------
   check-gate:
     name: check-gate (the CI gate, on its own repository)
@@ -339,9 +343,12 @@ jobs:
             echo "::error::fathom check took ${took}s for two runs; the budget is 60s each"
             exit 1
           fi
-          # `7` is a finding, and `[check] mode = warn` means it is not this job's failure. Anything else
-          # — a crash, a store it could not open, a policy it could not read — is, because the gate itself
-          # broke, which is the one outcome ADR-002 §7.3 refuses to let a pipeline call "red".
+          # `7` is a finding, and `[check] mode = warn` — declared in `fathom.toml`, argued in **reco-azy** —
+          # means it is not this job's failure. Anything else — a crash, a store it could not open, a policy
+          # it could not read — is, because the gate itself broke, which is the one outcome ADR-002 §7.3
+          # refuses to let a pipeline call "red". When this repository's mode becomes `deny`, the `0|7` below
+          # is the line that has to change with it: until then this tolerance, not the mode, is what keeps the
+          # gate advisory here.
           for pair in "gate:$gate" "sarif:$sarif"; do
             case "${pair#*:}" in
               0|7) ;;
@@ -372,6 +379,20 @@ jobs:
               else:
                   assert row["examined"] is None, "a blocked row cannot have examined anything"
           print(f"fathom check: {value['outcome']}, {value['summary']['found']} finding(s), {len(value['checks'])} rows")
+
+          # The half this repository's `mode = "warn"` cannot carry, asserted here because nothing else can.
+          # In `warn` nothing at all decides an exit code — a run in which every check was blocked, or which
+          # examined nothing, prints `fathom check failed` and exits 0 exactly like a clean one. So the
+          # no-silent-passes half of ADR-002 §7.3 is a rule even while the volume is an opinion (`fathom.toml`
+          # `[check] mode`, **reco-azy**): findings are this job's results, a gate that did not look is its
+          # failure, and neither of them is decided by whoever reads the log that day.
+          rows = {r["check"]: r["status"] for r in value["checks"]}
+          blocked = sorted(k for k, s in rows.items() if s == "blocked")
+          ran = sorted(k for k, s in rows.items() if s == "ran")
+          assert not blocked, f"blocked check row(s) {blocked} — a check that could not judge is not a pass"
+          assert not value["summary"]["blocked_required"], value["summary"]["blocked_required"]
+          assert ran, f"no check ran at all: {rows}"
+          print(f"and every row judged the range: {', '.join(ran)}")
           PY
       - name: and the gate's own test suite
         run: cargo test --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all --test check_verb
