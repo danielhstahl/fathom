@@ -76,19 +76,28 @@ impl Scan {
                     }
                     if bytes[index] == terminator {
                         if triple {
-                            if bytes[index..].len() >= 3 && bytes[index] == bytes[index + 2] {
+                            // A triple-quoted literal closes on its own delimiter and nothing else: a
+                            // lone quote inside it is content (`"""He said "hi"."""` is one string), and
+                            // calling it the close would read the rest of the docstring as code.
+                            if bytes[index..].len() >= 3
+                                && bytes[index + 1] == terminator
+                                && bytes[index + 2] == terminator
+                            {
                                 index += 3;
                             } else {
                                 index += 1;
+                                continue;
                             }
                         } else {
                             index += 1;
                         }
                         break;
                     }
-                    if bytes[index] == b'\n' {
+                    if !triple && bytes[index] == b'\n' {
                         // An unterminated single-line literal: give up at the newline rather than
-                        // blanking the rest of the file.
+                        // blanking the rest of the file. A triple-quoted literal runs across newlines —
+                        // that is what it is for — so stopping it here would hand the rest of a
+                        // Python docstring back to the scanner as source.
                         break;
                     }
                     index += 1;
@@ -585,5 +594,82 @@ mod tests {
                 assert!(scan.blanked(at + 1), "{what} has its contents masked");
             }
         }
+    }
+
+    /// A triple-quoted literal is *multi-line*: ending a literal at its newline is right for `"a"`,
+    /// which cannot cross one, and wrong for `"""a` — which is what a Python docstring is. Stopping it
+    /// at the newline handed the rest of the docstring back to the scanner as source, and the quotes
+    /// in the prose then opened literals that blanked the real declarations below (`reco-9k3`).
+    #[test]
+    fn a_triple_quoted_literal_runs_to_its_own_delimiter_not_to_a_newline() {
+        let text = "\"\"\"Prose.\n\nA \"quoted\" phrase, and an apostrophe's.\n\"\"\"\n\
+                    def claims(unit: str, keys: dict[str, str]) -> list[str]:\n    return []\n";
+        let scan = Scan::new(text, Language::Python);
+        let prose = text.find("quoted").expect("the fixture quotes");
+        assert!(scan.blanked(prose), "a quote inside the prose is content");
+        let declaration = text
+            .find("def claims")
+            .expect("the fixture declares a function");
+        assert!(
+            !scan.blanked(declaration),
+            "the declaration after the docstring is source, not masked prose"
+        );
+        let open = scan
+            .find(declaration..text.len(), "(")
+            .expect("the parameter list is a real paren");
+        assert_eq!(scan.outside(open.0), 0, "at the declaration's own level");
+        let close = scan.close(open.0).expect("the parameter list is closed");
+        assert_eq!(
+            &scan.raw[open.0..close],
+            "(unit: str, keys: dict[str, str])",
+            "the parameters survived the docstring"
+        );
+        // And the header ends at the colon that closes it, not at one of the annotations inside it.
+        let colon = scan
+            .find(close..text.len(), ":")
+            .expect("the header is closed by a colon");
+        assert_eq!(
+            &text[colon.0..text.len() - 1],
+            ":\n    return []",
+            "the return arrow's type is not where the header ends"
+        );
+    }
+
+    /// The other half: a lone quote inside a triple-quoted literal does not close it. `"""He said
+    /// "hi"."""` is one string, and closing it at the inner quote would put every line after that
+    /// quote back into the "code" the scanner is reading.
+    #[test]
+    fn a_lone_quote_inside_a_triple_quoted_literal_is_content() {
+        let text = "x = \"\"\"He said \"hi\".\"\"\"\ny = [1, 2]  # done\n";
+        let scan = Scan::new(text, Language::Python);
+        let hi = text.find("hi").expect("the fixture quotes");
+        assert!(scan.blanked(hi), "the inner quote is inside the literal");
+        let bracket = text.find('[').expect("the fixture has a list");
+        assert!(
+            !scan.blanked(bracket),
+            "the line after the literal is code again, not the tail of a string"
+        );
+        assert_eq!(
+            scan.depth(bracket),
+            1,
+            "and its bracket is counted, which is what makes the header rules work"
+        );
+        assert!(
+            scan.blanked(text.find("done").expect("in the comment")),
+            "and the comment on that line is masked like any other"
+        );
+    }
+
+    /// A single-quoted literal still dies at its newline: an unterminated `'` must not blank the rest
+    /// of the file, which is the reason the newline rule exists at all.
+    #[test]
+    fn an_unterminated_single_line_literal_still_stops_at_its_newline() {
+        let text = "a = 'unterminated\nb = 2\n";
+        let scan = Scan::new(text, Language::Python);
+        assert!(scan.blanked(text.find("unterminated").expect("in the literal")));
+        assert!(
+            !scan.blanked(text.find("b = 2").expect("the next line")),
+            "the next line is still source"
+        );
     }
 }

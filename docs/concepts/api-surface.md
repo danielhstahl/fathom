@@ -252,6 +252,17 @@ Three holes are structural, not bugs, and each has a place in the output rather 
   truncated rather than growing without limit; a file that could not be read is a `gap` and forces
   `Answered::Incomplete`. There is a hard rule here: **no fast path may fire over a gap** — an
   incomplete read never produces "no public API change".
+* **A header the scanner could not close.** Every signature is read from the declaration's own source by a
+  byte scanner ([`api/textscan.rs`](../../crates/fathom-analyze/src/api/textscan.rs)) that masks the contents of
+  literals and comments first, because the colon of a parameter annotation and the colon that closes a
+  Python header are the same character and only the mask knows which is which. A literal is masked to its
+  own delimiter: a triple-quoted Python literal runs across newlines and a lone quote inside it is content,
+  because ending it at the newline would put a docstring's prose back into the source and let a bracket in
+  the prose move the bracket depth of every declaration below it (`reco-9k3`). When the scanner still cannot
+  close a header it says so — the item is `unparsed`, a change to it is
+  [`signature_unparsed`](change-classification.md), which is indeterminate and never a removal. What is not
+  allowed is the alternative: an empty signature read off a file that parsed, which is a wrong answer in the
+  shape of a right one.
 
 *Caveats* and *gaps* are different lists on purpose. A caveat is a limit on the claim ("this package
 forwards names with `export *`, so the list is a lower bound"); a gap is a hole that made the answer

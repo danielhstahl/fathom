@@ -1533,3 +1533,168 @@ fn a_declined_test_file_still_counts_as_its_language_being_present() {
         surface.languages
     );
 }
+
+// ==============================================================================================
+// 7. a docstring is prose, and prose is not a signature (`reco-9k3`)
+// ==============================================================================================
+//
+// The ticket: `fathom check --only api` over this repository's own history reported five breaking
+// signature removals in a Python file whose signatures had not been touched —
+//
+// ```text
+// breaking prose_units tools/check_ticket_claims.py:226 — parameter removed — position 1
+//   (`text: str`) is gone; return type changed — was `list[tuple[int, str]]`, now `(none)`
+// ```
+//
+// The shape of the wrongness said where it came from: the head side carried the item's name and its
+// line — both true, both read from the real file — and no parameters and no return type. A header
+// parsed to a bare name, paired against a base side parsed in full, is exactly "every parameter
+// removed", and it is what the byte scanner produced whenever a Python docstring crossed a newline
+// while carrying a quote in its prose: a literal was being ended at its newline, which is right for
+// `"short"` and wrong for `"""a docstring"""`, so the rest of the prose went back through the scanner
+// as source and the quotes in it blanked the declarations underneath. The scanner is supposed to say
+// *unparsed* when it cannot read a header (`Reason::SignatureUnparsed`); here it had read something,
+// and that something was empty.
+//
+// The pair below is the real one, small: the only thing that changes is prose — a paragraph in the
+// module docstring, a quoted phrase in the function's own, and a line of the body.
+
+/// Before: a module whose docstring already carries a quote.
+const PROSE_BEFORE: &str = "\
+\"\"\"What counts as a claim of unbuilt work.
+
+A line that names a plan key **and** says the thing is missing: \"is not built\", \"will fill\".
+\"\"\"
+from __future__ import annotations
+
+
+def claims(unit: str, keys: dict[str, str]) -> list[str]:
+    \"\"\"Which keys a unit claims.\"\"\"
+    return [key for key in keys if key in unit]
+
+
+def spotlight(unit: str, key: str, width: int = 150) -> str:
+    \"\"\"The line around the claim, for the report.\"\"\"
+    return unit[:width]
+";
+
+/// After: the same two signatures, the same parameters and return types, and three times as much
+/// prose — which is the whole edit the ticket's diff contained. The quoted list is load-bearing: a
+/// docstring whose prose carries an odd number of quotes across a wrapped line, and a bracket pair
+/// split across that wrap, is exactly what the scanner used to misread.
+const PROSE_AFTER: &str = "\
+\"\"\"What counts as a claim of unbuilt work.
+
+A line that names a plan key **and** says the thing is missing: \"is not built\", \"will fill\".
+
+Widened to the prose pages, which is the review of every hit they carried: \"is not built\", \"not
+wired\", \"will
+land\" — anywhere on the line (or
+paragraph, in prose);
+\"\"\"
+from __future__ import annotations
+
+
+def claims(unit: str, keys: dict[str, str]) -> list[str]:
+    \"\"\"Which keys a unit claims.\"\"\"
+    return [key for key in keys if key in unit and negated(unit)]
+
+
+def spotlight(unit: str, key: str, width: int = 150) -> str:
+    \"\"\"The line around the claim, for the report.\"\"\"
+    return unit[:width]
+";
+
+/// The acceptance criterion: a function whose signature did not change is not reported as a breaking
+/// removal, and the head-side signature still says what the source says.
+#[test]
+fn a_wider_docstring_is_not_a_signature_removal() {
+    let policy = ApiPolicy::default_policy();
+    let before = extract_surface(&inputs_of(
+        &inline(&[("prose/__init__.py", PROSE_BEFORE)]),
+        &policy,
+    ));
+    let after = extract_surface(&inputs_of(
+        &inline(&[("prose/__init__.py", PROSE_AFTER)]),
+        &policy,
+    ));
+
+    // The head side read the header it was given: two parameters and a return type, not a bare name.
+    for (which, surface) in [("before", &before), ("after", &after)] {
+        let item = surface
+            .package("prose")
+            .expect("the package is the module")
+            .items
+            .iter()
+            .find(|item| item.id.name == "claims")
+            .unwrap_or_else(|| panic!("{which} declares `claims`"));
+        assert!(
+            !item.signature.unparsed,
+            "{which}: the header decomposed, or it should have said so"
+        );
+        let params: Vec<&str> = item
+            .signature
+            .params
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        assert_eq!(
+            params,
+            vec!["unit", "keys"],
+            "{which}: the parameters are the ones the source declares"
+        );
+        assert_eq!(
+            item.signature.returns.as_deref(),
+            Some("list[str]"),
+            "{which}: the return type survived the docstring"
+        );
+    }
+
+    // And the pair produces no breaking change at all: only prose moved.
+    let diff = diff("python", &before, &after);
+    let breaking: Vec<String> = diff
+        .packages
+        .iter()
+        .flat_map(|package| &package.changes)
+        .filter(|change| change.class == Class::Breaking)
+        .map(|change| format!("{} {}", change.class.as_str(), change.item.name))
+        .collect();
+    assert!(
+        breaking.is_empty(),
+        "prose is not a signature: {breaking:?}"
+    );
+}
+
+/// The same file read alone, with the quote that started the ticket sitting in the *function's* docstring
+/// rather than the module's: every declaration below a quoted line of prose is still a declaration.
+#[test]
+fn every_declaration_under_quoted_prose_survives() {
+    let surface = extract_surface(&inputs_of(
+        &inline(&[("prose/__init__.py", PROSE_AFTER)]),
+        &ApiPolicy::default_policy(),
+    ));
+    let package = surface.package("prose").expect("the module is the package");
+    let named: Vec<&str> = package
+        .items
+        .iter()
+        .filter(|item| item.on_surface)
+        .map(|item| item.id.name.as_str())
+        .collect();
+    assert!(
+        named.contains(&"claims") && named.contains(&"spotlight"),
+        "both declarations are on the surface: {named:?}"
+    );
+    for item in &package.items {
+        assert!(
+            !item.signature.unparsed,
+            "{}'s header was read, not given up on",
+            item.id.name
+        );
+        assert!(
+            !item.signature.params.is_empty(),
+            "{} lost its parameters, which is the failure this test exists for: {}",
+            item.id.name,
+            item.signature.head
+        );
+    }
+}

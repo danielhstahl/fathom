@@ -17,6 +17,51 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A Python function whose signature had not changed was reported as a signature removal (`reco-9k3`)
+
+`fathom check --only api --base 40a1e3f --head HEAD` over this repository's own history reported seven
+error findings, and five of them were the same sentence said about five different functions:
+
+```text
+breaking prose_units tools/check_ticket_claims.py:226 — parameter removed — position 1 (`text: str`) is
+gone; return type changed — was `list[tuple[int, str]]`, now `(none)`
+```
+
+None of those five signatures changed in the range: `rust_units` and `key_pattern` are untouched anywhere,
+and `prose_units`, `claims` and `main` changed in their prose and their bodies and kept every parameter and
+their return type. The shape of the wrongness named the culprit: the head side carried the item's name and
+its true line number and no signature at all, which is what a header read as `def prose_units(text` pairs
+against — the parameter's own annotation colon taken for the colon that closes the header, and every
+parameter after it falling outside the header.
+
+* **A triple-quoted literal is one literal, not eight.** The byte scanner that reads a declaration's header
+    ([`api/textscan.rs`](crates/fathom-analyze/src/api/textscan.rs)) masks the contents of every literal and
+    comment so their brackets and colons go inert, and it ended a literal at its newline — right for
+    `"short"`, which cannot cross one, wrong for `"""…"""`, which exists in order to. Every docstring line
+    after the first went back through the scanner as source, so a quoted phrase in prose opened a literal
+    that swallowed the rest of its line, and a bracket pair wrapped across two prose lines was counted on
+    one side only. In `check_ticket_claims.py` that left the running bracket depth at −1 for the rest of the
+    file, which is how an annotation colon started reading as top level. A literal now ends at its own
+    delimiter: a lone quote inside a triple-quoted literal is content, and a newline inside one is content
+    too. The same edit fixed the closing test, which accepted any quote followed by a quote two bytes on and
+    treated it as three.
+* **A bracket depth that has gone negative is a lie with a number on it.** The mask clamps depth into a `u8`,
+    so −1 reads as 0 and a scanner reading 0 has no way to know it was told a fib. The fix is upstream of
+    that, but it is why the regression tests here assert the *signature*, not the finding: the failure this
+    ticket is about produced no error, no gap and no `signature_unparsed` — it produced an empty answer.
+* **What is still reported, and rightly.** Two of the seven stand: `DOC_GLOBS` in `tools/` really did drop
+    its `: list[str]` annotation, and `resolve` in `src/recommender/store/cache.py` really did lose
+    `store_schema` while gaining an optional `row_schema`. The whole gate over the five commits before
+    `feb16d8` now reports two findings — that `resolve` change and the untested-logic warning the range
+    already carried — where `reco-azy`, one commit back, recorded eight.
+
+`tests/api_surface.rs` carries the pair — a module docstring widened with a quoted list and a bracket pair
+split across the wrap, and two functions whose signatures do not move — and asserts the head side still names
+both parameters and the return type, and that the diff calls nothing breaking. The scanner's own three tests
+are in `api/textscan.rs`: a triple-quoted literal runs to its delimiter, a lone quote inside it is content,
+and an unterminated `'` still stops at its newline because that is the rule the newline branch was written
+for.
+
 ### The `[check] mode` decision this repository had never made (`reco-azy`)
 
 `fathom.toml` declared no `[check]` block, so the gate that runs over this repository ran on its defaults —
