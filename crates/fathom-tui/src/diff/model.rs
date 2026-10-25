@@ -207,7 +207,8 @@ impl Hunk {
 
 /// What Fathom's own tables already know about one path.
 ///
-/// This is the seam `e2.11`'s delta model will fill: the fields are the ones the tree pane is
+/// The delta model (`e2.11`) carries the same facts for the same reason: the fields below are the ones
+/// the tree pane is
 /// allowed to print (its `reads` list), and every one of them is `Option` because a patch file on
 /// its own knows none of them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

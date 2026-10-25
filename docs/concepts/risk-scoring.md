@@ -52,7 +52,7 @@ relative weight matters** — doubling everything changes nothing, which is what
 | `findings` | 0.16 | what did the detectors find, and how bad was each one | severity-points; 8 fills it (high 3, medium 2, low 1) | `e4.3` detectors (`e4.3`) |
 | `surface` | 0.13 | what kind of file did this touch | the top surface weight; a migration (50) fills it, source is 10, prose 3 | `git_commit_file.path` via `risk::classify` (`e4.4`) |
 | `migration` | 0.09 | does this change schema history, and does it say something irreversible | exposure 0–1: a migration file 0.55, a `DROP`/`DELETE`/`TRUNCATE` in the added lines 1.0 | path class + added lines of `*.sql` (`e4.4`) |
-| `blast` | 0.09 | what depends on the code this touched | dependent paths; 40 fills it | the module-graph delta, **when a caller supplies it** (`e3.1`) |
+| `blast` | 0.09 | what depends on the code this touched | dependent paths; 40 fills it | a dependent count from the module graph, **when a caller hands it over** (the caller) |
 | `test_ratio` | 0.08 | how much new logic arrived without a test beside it | inverted coverage share; 0 tests beside new logic fills it, a shrunken test surface floors it at 0.75 | per-path `add`/`del` by surface (`e4.4`) |
 | `size` | 0.07 | how much does a reviewer have to read | reviewable lines, log scale; 20 000 fills it | `episode.n_add`, `n_del`, noise classes (`e4.4`) |
 | `dependency` | 0.07 | what changed about what the build depends on | exposure 0–1: lockfile 0.55, manifest 0.35, a supplied direct add 0.8, a major move 1.0 | path class, `e2.6`'s delta when supplied (`e2.6`) |
@@ -68,9 +68,14 @@ thing named, because "untested" and "uncertain who wrote it" are the states a re
 
 Two axes are usually **absent** in this build, and say so rather than guessing:
 
-* `blast` — nothing in the index knows what depends on the touched code until `e3.1`'s module graph
-  lands. [`collect::Supply`] takes the number, and the day `e3.1` ships, a caller passes it and the axis
-  enters the arithmetic without a single change to `score`.
+* `blast` — the count of what depends on the touched code is a walk of the module graph, and no shipped
+  verb pays for a walk per episode. The index can answer it — `fathom index` writes the graph lane, and
+  `fathom architecture` ranks modules by their fan-in on it — so the axis is absent because of what this
+  build does not ask, not because of a graph that does not exist. `fathom why` says *which* of the three
+  answers applies to the index in front of it (`risk::blast::Availability`): no graph lane, a lane with no
+  module for any of these paths, or a lane that could answer and was not asked.
+  [`collect::Supply`] takes the number, and the day a caller passes it the axis enters the arithmetic
+  without a single change to `score`.
 * `dependency`'s richer half — the path classes are measurable now, `e2.6`'s real delta is a supply.
 * `test_ratio` is absent when neither logic nor tests arrived, because coverage is then not a question
   the episode asks.
@@ -220,21 +225,33 @@ else's reviewer.
 
 ## 7. What this score cannot see
 
-Printed under every score, and not a bug list — a scope statement:
+Printed under every score, and not a bug list — a scope statement. It is **built from the score it is
+printed under**, not recited: the first lines are the axes this episode's read could not measure, each in
+the words that read produced (so an axis that *was* measured is never listed as invisible), and the rest
+are limits of the model itself:
 
-* what depends on the touched code: the module graph is `e3.1`'s and the graph delta is `e3.2`'s, so
-  `blast` is absent from the arithmetic until they land;
-* whether a finding is already known and accepted: dismissals are `e4.6`'s, so every visible finding
-  counts;
+* the `blast` axis — whichever answer `risk::blast::Availability` got back from this index, e.g. "this
+  index can say what depends on 3 of the 7 path(s) this episode touched (25 graph revisions) — and this
+  read did not ask";
+* whether a finding is already known and accepted: the vector reads the catalogue and nothing else, so a
+  dismissal recorded in the review ledger is not an input to it and every visible finding counts;
 * whether the tests that arrived *assert* anything: coverage shape is measurable, coverage quality is not;
-* whether a dependency is stale or vulnerable: advisory age is `e2.7`'s, behind `net-advisories` and a
-  consent flag — and a score that moved with the network would not be reproducible;
-* whether the human reading this has already read it: review state belongs to the queue (`e4.5`).
+* whether a dependency is stale or vulnerable: advisory age is behind `net-advisories`, an opt-in feature
+  this binary was not built with — and the vector refuses the axis either way, because a score that moved
+  with the network would not be reproducible (ADR-001 §8.2);
+* whether the human reading this has already read it: review state is the queue's ordering input, not a
+  feature of this vector.
 
-Compare with `spine-1`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6): the lists overlap
-because the same five tickets own both. What changed is that two of the axes — dependency exposure and
-migration exposure — are now measured rather than assumed, and the ones still missing are missing by
-name, with a weight and an owner.
+Nothing in that list names a ticket, and that is the rule. The version of this list that shipped with
+`features-1` named five plan keys as the work each blind spot was waiting on, and every one of them had
+landed by the time a reviewer read the sentence — `e3.1`/`e3.2`'s graph included, in the repository whose
+`fathom why` was printing that the graph was unbuilt. A scope statement is a claim about the build in
+front of the reader; `tools/check_ticket_claims.py` refuses the remembered kind, and
+`risk_score.rs` refuses a composed one.
+
+Compare with `spine-1`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
+two of the axes — dependency exposure and migration exposure — are now measured rather than assumed, and
+the ones still missing are missing by name, with a weight and a door.
 
 ## 8. Retuning, and what to check afterwards
 
@@ -281,8 +298,9 @@ only when the rollup is applied.
 
 Not done, on purpose:
 
-* `blast` and `e2.6`'s dependency delta arrive as *inputs*, from `Supply`, the moment `e3.1`/`e2.6`
-  hand them over; until then the axes are absent and the denominator says so.
+* `blast` and `e2.6`'s dependency delta arrive as *inputs*, from `Supply`, the moment a caller hands them
+  over — the graph exists to be walked; what is missing is a caller that pays for the walk per episode.
+  Until then the axes are absent and the denominator says so, with the index's own answer as the reason.
 * The TUI's `w` still prints `spine-1`'s vector. Wiring `features-1` into the queue pane, `e4.5`'s
   ordering function and the `fathom export` artefact is that ticket's work; `risk::score::render` is the
   one renderer they are all meant to call.

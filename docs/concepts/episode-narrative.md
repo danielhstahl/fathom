@@ -134,7 +134,8 @@ and the corresponding rows of the evidence table:
 ```
 - `[c1]` `attention` figure `risk` — #/risk — risk: spine-1 76 = surfaces 50 + size 10 + author 8 + breadth 6 + deletions 2 · rank 2 of 9
 - `[c2]` the recorded intent — #/episode/intent — intent, in the asker's words: split the worker pool … — recorded by `hook-prompt` at 0.95, state recorded
-- `[c31]` the `blast` gap — #/gaps/5 — no module graph in this build — blast radius needs `e3.2`'s module graph … (owner e3.2; remedy none in this build)
+- `[c31]` the `blast` gap — #/gaps/5 — no supplied reach — how far a change reaches is a question for the
+  module graph, and this document carries no supplied block for it … (owner e3.2; remedy none in this build)
 ```
 
 Every figure in those three sentences is a copy, every pointer resolves in the document

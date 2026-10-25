@@ -32,8 +32,9 @@ what a machine reads.
 
 `fathom show` takes a revision or an object id — anything
 [`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves: `HEAD`, `HEAD~3`, `HEAD^2`,
-`main`, `v1.2^{}`, a full oid, or a hex prefix. Episode identity of its own arrives with `e1.6`; until then
-one commit is one episode, and the verb says so rather than inventing a grouping.
+`main`, `v1.2^{}`, a full oid, or a hex prefix. Episode identity of its own landed with `e1.6`, so an
+episode is the grouping the index recorded — one turn, which may hold several commits — and the verb prints
+that grouping rather than inventing one.
 
 `fathom episodes` is the rail with no screen (`reco-11b`), and it exists because a fact that only a terminal
 can show is a fact CI cannot check: the acceptance run could say "the rail shows 213 episodes" only by

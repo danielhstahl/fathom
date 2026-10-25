@@ -334,10 +334,13 @@ impl Model {
             let _ = status.contract;
         } else {
             // The path a `minimal` build with no delta model would take, kept honest: it says what is
-            // missing and who owns it, which is the refusal ADR-001 §7.2 requires of an unbuilt contract.
+            // missing and what would put it there, which is the refusal ADR-001 §7.2 requires of an
+            // unbuilt contract. `e2.11` shipped the model, so this branch is a build configuration and not
+            // a promise about a plan — naming a closed ticket here would send a reader to the plan for
+            // work that is already in the tree.
             model.unavailable = Some(format!(
-                "the delta model is not in this build (schema v{}, owned by e2.11) — every pane \
-                 prints `unknown` until it is",
+                "the delta model is not compiled into this build (schema v{}) — every pane prints \
+                 `unknown` until it is",
                 status.schema_version
             ));
         }

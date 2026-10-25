@@ -2,22 +2,24 @@
 //!
 //! Epic 1's exit criterion asks a reviewer to "find and read the three riskiest episodes" inside the
 //! TUI, and the shipped build could not answer it: the rail's risk column printed `?`, the queue had
-//! no rows, and `w` said *owned by e4.4*. Every input that would fill those panes belongs to epic 2 or
-//! epic 4 — findings, blast radius, dependency deltas, the delta model itself. But a *defensible*
-//! ordering needs none of them. Change size, which surfaces a turn touched, whether a migration, a CI
-//! file or a lockfile is in it, and how much of the churn is deletion rather than addition are all
-//! rows the spine already writes, and an ordering built only from those is one a reviewer can audit
-//! from the frame — which is the property ADR-001 §7.9 asks for ("if we cannot say why it is at 82, it
-//! should not be at 82").
+//! no rows, and `w` printed a plan key where it should have printed its arithmetic. Every input that
+//! would fill those panes lived in epics 2 and 4 — findings, blast radius, dependency deltas, the delta
+//! model itself — and most of them have landed since, which is why the ceiling lines below ask the
+//! store instead of reciting that list. But a *defensible* ordering needed none of them. Change size,
+//! which surfaces a turn touched, whether a migration, a CI file or a lockfile is in it, and how much of
+//! the churn is deletion rather than addition are all rows the spine already writes, and an ordering
+//! built only from those is one a reviewer can audit from the frame — which is the property
+//! ADR-001 §7.9 asks for ("if we cannot say why it is at 82, it should not be at 82").
 //!
 //! # What this is, and what it is not
 //!
 //! This is a **ranking**, not a score with a claim on the future. `e4.4` owns the explainable risk
-//! score, whose feature vector includes findings and blast radius; when it lands it replaces these
-//! numbers in the same columns, and `e4.5` owns what the queue weights the ordering against
-//! (staleness, blast radius). What is deliberately kept in the shape `e4.4` needs, so that replacement
-//! is a swap rather than a rewrite: a value in 0..=100, a component list that adds up to it, one
-//! printed reason per component, and a stated list of what the inputs cannot see.
+//! score, whose feature vector includes findings and blast radius; it landed, and it prints in the same
+//! columns beside these numbers (`fathom why` scores `features-1`), while `e4.5` owns what the queue
+//! weights its ordering against (staleness, blast radius). What was deliberately kept in the shape
+//! `e4.4` needed, and is what made the swap a swap rather than a rewrite: a value in 0..=100, a component
+//! list that adds up to it, one printed reason per component, and a stated list of what the inputs
+//! cannot see.
 //!
 //! Every input is derived, and every input is one the reader can check against the diff:
 //!
@@ -75,6 +77,7 @@
 
 #![deny(missing_docs)]
 
+pub mod blast;
 pub mod calibrate;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod collect;
@@ -1041,22 +1044,50 @@ pub fn components() -> Vec<(String, u64, String)> {
 ///
 /// The spine's [`BLIND_SPOTS`] list is what a spine-only ordering admits; this one is shorter, because
 /// `e4.3`'s findings close four of those holes (a destructive migration, a committed secret-shaped
-/// string, a test surface weakened, an untested new public surface) and one — the module graph — is
-/// deliberately left open with its ticket named rather than papered over with a proxy. What remains is
-/// the set of things a *reviewer* still has to bring to a score: judgement, and the two kinds of fact
-/// this build cannot read.
+/// string, a test surface weakened, an untested new public surface). What remains is the set of things a
+/// *reviewer* still has to bring to a score: judgement, and the kinds of fact this build cannot read.
+///
+/// # It is built from the score, not recited
+///
+/// Every line here is either an axis this score did not measure — in which case it is the reason the read
+/// itself produced, so an axis that *was* measured is never listed as invisible — or a limit that follows
+/// from how the model is built. Nothing in it is a remembered promise about a ticket. The list this
+/// function replaced named five plan keys as the things that would fill the gaps, and four of the five
+/// had shipped by the time anyone read the sentence: a reviewer was told daily that a blind spot was
+/// waiting on work that was already in the binary. A scope statement is a claim about *this build*, and
+/// `tools/check_ticket_claims.py` is what keeps it one.
 #[must_use]
-pub fn ceiling() -> Vec<&'static str> {
-    vec![
-        "what depends on the touched code — the module graph is `e3.1`'s and the graph delta is `e3.2`'s, \
-         so `blast` is absent from the arithmetic until they land",
-        "whether a finding a detector raised is already known and accepted: dismissals are `e4.6`'s, so a \
-         score counts every finding it can see",
-        "whether the tests that arrived assert anything: coverage shape is measurable, coverage quality is \
-         not, and this model does not pretend otherwise",
-        "whether a dependency is stale or vulnerable: advisory age is `e2.7`'s, behind `net-advisories` \
-         and a consent flag, and a score that moved with the network would not be reproducible",
-        "whether the human reviewing this has already read it: review state is a queue's business \
-         (`e4.5`), not a feature's",
-    ]
+pub fn ceiling(score: &score::Score) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    // The axes with no measurement, each in the words its own read wrote. `collect` derives these from the
+    // index (`blast`) or from the shape of the episode (`test_ratio`), which is the only way a sentence
+    // about a hole stays true when the hole moves.
+    for absent in &score.absent {
+        out.push(format!("the `{}` axis — {}", absent.name, absent.why));
+    }
+    out.push(
+        "whether a finding a detector raised is already known and accepted: this vector reads the \
+         catalogue and nothing else, so a dismissal a reviewer already recorded in the ledger is not an \
+         input to it and every finding the catalogue raises counts".to_owned(),
+    );
+    out.push(
+        "whether the tests that arrived assert anything: coverage shape is measurable, coverage quality \
+         is not, and this model does not pretend otherwise".to_owned(),
+    );
+    out.push(if cfg!(feature = "net-advisories") {
+        "whether a dependency is stale or vulnerable: this binary was built with `net-advisories`, but \
+         the vector still has no advisory axis, because a score that moved with whatever a request \
+         returned would not be reproducible (ADR-001 §8.2)"
+            .to_owned()
+    } else {
+        "whether a dependency is stale or vulnerable: advisory age is behind `net-advisories`, an \
+         opt-in feature this binary was not built with, and the vector refuses the axis for the same \
+         reason ADR-001 §8.2 gives — a score that moved with the network would not be reproducible"
+            .to_owned()
+    });
+    out.push(
+        "whether the human reviewing this has already read it: review state is the queue's ordering \
+         input, not a feature of this vector".to_owned(),
+    );
+    out
 }

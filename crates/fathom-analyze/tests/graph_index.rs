@@ -441,3 +441,70 @@ fn the_layer_tags_come_from_the_config_text_the_pass_was_handed() {
         "{tagged:?}"
     );
 }
+
+/// The `blast` axis asks the index in front of it whether it can answer, instead of reciting a plan
+/// (`reco-j1o`). Every `fathom why` run used to print that the module graph was unbuilt — a sentence that
+/// was true when it was written and false in every repository whose `fathom index` had run since epic 3
+/// closed. These are the three answers the sentence is built from now.
+#[test]
+fn the_blast_axis_probes_the_index_it_is_printed_under() {
+    use fathom_analyze::risk::blast::Availability;
+
+    // (1) An index with no graph lane at all: the remedy is the verb that writes one.
+    let bare = Fixture::new("blast-bare");
+    let bare_store = Store::open(&store_path(&bare)).expect("an empty store opens");
+    let nothing = Availability::probe(&bare_store, ["pkg/api.py"]).expect("the probe reads");
+    assert_eq!(nothing, Availability::NoGraph);
+    assert!(
+        nothing.sentence().contains("fathom index"),
+        "an index with no lane names the verb that fills it: {}",
+        nothing.sentence()
+    );
+    assert!(!nothing.can_answer());
+    drop(bare_store);
+
+    let fixture = Fixture::new("blast-graph");
+    fixture.commit(
+        1,
+        "a module and its only caller",
+        &[
+            ("pkg/util.py", "VALUE = 1\n"),
+            ("pkg/api.py", "from pkg.util import VALUE\n\nAPI = VALUE\n"),
+        ],
+    );
+    let store = store_path(&fixture);
+    let report = index(&store, fixture.path(), GraphPass::on(""));
+    assert_eq!(report.graph.revisions, 1, "the lane is written: {report:?}");
+    let store = Store::open(&store).expect("reopen");
+
+    // (2) A lane that can answer, and a path it has no vertex for, counted separately: `1 of the 2`,
+    // because "the graph does not know this file" is not the same claim as "nothing depends on it".
+    let asked =
+        Availability::probe(&store, ["pkg/api.py", "docs/notes.md"]).expect("the probe reads");
+    assert!(asked.can_answer(), "{asked:?}");
+    assert_eq!(
+        asked,
+        Availability::Graph {
+            revisions: 1,
+            touched: 2,
+            named: 1,
+        }
+    );
+    let sentence = asked.sentence();
+    assert!(sentence.contains("1 of the 2 path(s)"), "{sentence}");
+    for stale in ["e3.1", "e3.2", "not built", "until they land"] {
+        assert!(
+            !sentence.contains(stale),
+            "the reason recites a plan: {sentence}"
+        );
+    }
+
+    // (3) A lane with no vertex for any touched path: unknown, and said as unknown rather than as zero.
+    let unseen = Availability::probe(&store, ["docs/notes.md", "README.md"]).expect("reads");
+    assert!(!unseen.can_answer(), "{unseen:?}");
+    assert!(
+        unseen.sentence().contains("unknown here and not zero"),
+        "{}",
+        unseen.sentence()
+    );
+}

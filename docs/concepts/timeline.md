@@ -237,12 +237,12 @@ The card cites the delta fields the registry names (`delta.structure.*`, `delta.
 cannot fill:
 
 ```
-delta    shape/deps/tests/findings: not in this build (e2.11's model, e4.3's detectors) — `fathom analyze <episode>`
+delta    no document was handed to this card — `fathom analyze <episode>` is the one source
 risk     spine-1 82 = surfaces 50 + author 8 + size 24 · rank 1 of 21
 ```
 
-That is the whole design constraint in two lines: a pane whose data does not exist yet says whose it is
-and which command will print it, rather than rendering a confident `0` or an empty box. The `risk` row
+That is the whole design constraint in two lines: a pane whose data has not been handed to it says which
+verb produces it, rather than rendering a confident `0` or an empty box. The `risk` row
 is the one that changed: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
 name, its vector and its own ceiling, and `w` opens all of it
 ([risk-ranking.md](risk-ranking.md)). What it *can*

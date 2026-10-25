@@ -151,7 +151,9 @@ pull request.
 The ticket pairs the memory with the ratchet: granting an allowance should write *both* the `[[allowance]]`
 in `.fathom/ratchet.toml` and a `decision` note saying why, because "we deliberately allow this cycle because
 the port is the boundary" is the sentence a TOML row cannot hold and a later reader cannot recompute. The
-ratchet (`e3.10`, **reco-5ht**) is not built yet, so that write does not exist yet either; when it is, it
+ratchet (`e3.10`, **reco-5ht**) is built — `fathom ratchet` reads the file, the allowances and the digest —
+but nothing writes a `[[allowance]]` from a granted cycle yet, so that paired write does not exist either;
+when it is wired, it
 belongs to its verb — which owns the owner, the expiry and the digest of the loosening — and it appends
 through the same door `fathom note add` uses. The memory will not become the ratchet file in the meantime: an
 allowance is a dated permission with a matcher, a note is a dated claim with an author.

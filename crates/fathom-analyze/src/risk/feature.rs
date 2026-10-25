@@ -23,11 +23,12 @@
 //!
 //! # What is deliberately not a feature
 //!
-//! Nothing that needs a model, a network or the module graph. `blast` exists in the vector because the
-//! ticket names it and because `e3.1`/`e3.2` will fill it, and until then it is `Missing` with those
-//! plan keys on it — a slot with a name, not a guess. Advisory age (`e2.7`, `net-advisories`) is
-//! deliberately absent: a feature whose value depends on whether a request succeeded is a feature whose
-//! score is a function of the network, and ADR-001 §8.2 will not have it.
+//! Nothing that needs a model or the network. `blast` exists in the vector because the ticket names it,
+//! and the count itself arrives through [`super::collect::Supply`] from a caller that has walked the graph;
+//! until a caller pays for that walk the axis is `Missing` with the *index's own answer* as its reason
+//! ([`super::blast`]), which is a fact about this store and not a promise about a plan. Advisory age
+//! (`net-advisories`) is deliberately absent: a feature whose value depends on whether a request succeeded
+//! is a feature whose score is a function of the network, and ADR-001 §8.2 will not have it.
 
 use serde::{Deserialize, Serialize};
 
@@ -97,7 +98,8 @@ pub struct Spec {
     pub default: f64,
     /// The row or analysis the measurement comes from.
     pub source: &'static str,
-    /// The ticket that owns the input, printed when the input is missing.
+    /// The ticket that owns the input, printed when the input is missing — or, when the input already
+    /// exists in this build and only a caller is missing, the thing that is missing, in words.
     pub owner: &'static str,
 }
 
@@ -141,8 +143,8 @@ pub const SPECS: [Spec; 12] = [
         unit: "dependents",
         ruler: "40 dependent paths fill the axis",
         default: 0.09,
-        source: "the module graph delta, when a caller supplies it",
-        owner: "e3.1",
+        source: "a dependent count handed over by the caller",
+        owner: "the caller",
     },
     Spec {
         id: "test_ratio",
@@ -470,9 +472,9 @@ impl Vector {
                 None => filled.push(Measurement::missing(
                     feature,
                     format!(
-                        "nothing supplied a {} measurement, and {} owns the input that would",
-                        feature.id(),
-                        feature.spec().owner
+                        "nothing supplied a {} measurement, and this read had no other way to take \
+                         one, so the axis leaves the arithmetic with its weight still printed",
+                        feature.id()
                     ),
                     feature.spec().owner,
                 )),

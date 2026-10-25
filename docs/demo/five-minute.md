@@ -132,7 +132,7 @@ second command because it is a different question: *may this merge*, not *what h
 
 ## The recording
 
-[`five-minute.cast`](five-minute.cast) is the tour, recorded: asciicast v2, 100×28, **37 s against a
+[`five-minute.cast`](five-minute.cast) is the tour, recorded: asciicast v2, 100×28, **38 s against a
 300 s budget**, and with no audio track to miss — every step prints its own caption line, so it reads with
 the sound off or with the terminal muted on a plane.
 

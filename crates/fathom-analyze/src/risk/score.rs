@@ -416,8 +416,12 @@ pub fn render(score: &Score) -> Vec<String> {
     out.push(format!(
         "what {} cannot see ({} things):",
         score.model,
-        super::ceiling().len()
+        super::ceiling(score).len()
     ));
-    out.extend(super::ceiling().iter().map(|line| format!("  · {line}")));
+    out.extend(
+        super::ceiling(score)
+            .iter()
+            .map(|line| format!("  · {line}")),
+    );
     out
 }

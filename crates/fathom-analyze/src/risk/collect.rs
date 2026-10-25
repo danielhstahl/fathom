@@ -16,17 +16,24 @@
 //! | `test_ratio`, `deletions` | those paths, split by surface |
 //! | `dependency` | those paths, split into lockfiles and manifests, plus anything a caller supplies |
 //! | `attribution`, `authorship` | the `episode` row's attribution columns (`e4.1`) |
-//! | `blast` | nothing yet — see below |
+//! | `blast` | whatever a caller hands over, and otherwise a *question asked of the index* — see below |
 //!
-//! # The one hole, stated
+//! # The one hole, asked rather than recited
 //!
-//! `blast` is [`Measurement::missing`] here and will stay so until the module graph exists: `e3.1`
-//! (`reco-8s4`) builds the graph and `e3.2` (`reco-8wg`) diffs it, and until those land no honest number
-//! for "what depends on this" is computable from the spine. A co-change proxy — "how much recent work
-//! happened in the same directories" — was the alternative considered and refused: it correlates with
-//! nothing a reviewer would call blast radius, and a proxy that flatters itself is worse than a hole with
-//! a name. [`Supply`] is the door a caller walks a real number through the day the graph lands, and the
-//! calibration set scores with it, so nothing downstream has to change when it arrives.
+//! `blast` is [`Measurement::missing`] unless a caller fills [`Supply::blast_dependents`], and the reason
+//! printed beside that `—` used to be a sentence about a plan: "the module graph is `e3.1`'s and the graph
+//! delta is `e3.2`'s, and neither is built". Epic 3 closed that work and `e3.11` wired the graph lane into
+//! `fathom index`, so the sentence became a lie that every `fathom why` run told — a reviewer was informed
+//! that an axis was waiting on a graph their own index already holds.
+//!
+//! It is a question now. [`super::blast::Availability::probe`] asks this store whether it has a graph lane
+//! and whether this episode's paths are modules in it, and the printed reason is whichever answer came
+//! back: no lane, a lane that has no vertex for any of these paths, or a lane that *could* answer and was
+//! not asked (the count is a chain walk, and this verb does not spend that budget). A co-change proxy —
+//! "how much recent work happened in the same directories" — remains refused for the reason it was refused
+//! before: it correlates with nothing a reviewer would call blast radius, and a proxy that flatters itself
+//! is worse than a hole with a name. [`Supply`] is still the door a real number walks through, and the
+//! calibration set scores with it, so nothing downstream changes when somebody pays for the walk.
 //!
 //! # Caps, and what they cost
 //!
@@ -43,6 +50,7 @@ use fathom_store::episode::{EpisodeQuery, EpisodeRow};
 use fathom_store::spine::Store;
 
 use crate::detectors::{self, DetectorEpisode, DetectorPolicy, Finding, Report};
+use crate::risk::blast::Availability;
 use crate::risk::feature::{Feature, Measurement, Vector};
 use crate::risk::{Surface, classify};
 
@@ -55,10 +63,11 @@ pub const CORPUS_LIMIT: i64 = 60;
 
 /// What a caller can hand over that this build cannot measure itself.
 ///
-/// Every field is a door a finished ticket will walk through: `blast` is `e3.1`/`e3.2`, the dependency
-/// counts are `e2.6`'s delta when a caller has run it, and `migration_reversible` is `e2.8`'s non-code
-/// rule. Nothing here is guessed at in this crate's absence; [`Supply::nothing`] is the honest default and
-/// the one the shipped verb uses.
+/// Every field is a door a finished ticket will walk through: `blast` is a dependent count from the graph
+/// lane (`fathom index` writes it; nothing walks it for a score yet), the dependency counts are `e2.6`'s
+/// delta when a caller has run it, and `migration_reversible` is `e2.8`'s non-code rule. Nothing here is
+/// guessed at in this crate's absence; [`Supply::nothing`] is the honest default and the one the shipped
+/// verb uses.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Supply {
     /// How many paths depend on what this episode touched.
@@ -125,7 +134,10 @@ pub fn read(
     let corpus_episodes = corpus(store)?;
     let corpus = detectors::model::Corpus::of(&corpus_episodes);
     let report = detectors::scan(&episode, &corpus, policy);
-    let vector = vector(&row, &episode, &report, supply);
+    // Asked of the index, on the paths of the episode being scored, so that the reason printed beside a
+    // missing `blast` is an answer about this store rather than a sentence about a plan (`reco-j1o`).
+    let blast = Availability::probe(store, episode.files.iter().map(|file| file.path.as_str()))?;
+    let vector = vector(&row, &episode, &report, supply, &blast);
     Ok(Some(Read { vector, report }))
 }
 
@@ -174,12 +186,17 @@ fn corpus(store: &Store) -> Result<Vec<DetectorEpisode>, fathom_store::error::Er
 }
 
 /// Build the vector from the rows, the content read and the scan.
+///
+/// `blast` is what the index answered when the read asked it whether the module graph could say who
+/// depends on this episode's paths ([`Availability::probe`]); a caller that has no store to ask passes
+/// [`Availability::NotProbed`] and gets a reason that says exactly that.
 #[must_use]
 pub fn vector(
     row: &EpisodeRow,
     episode: &DetectorEpisode,
     report: &Report,
     supply: &Supply,
+    blast: &Availability,
 ) -> Vector {
     let mut measurements = Vec::with_capacity(Feature::ALL.len());
     let mut caveats: Vec<String> = Vec::new();
@@ -224,7 +241,7 @@ pub fn vector(
         by_surface.get(&Surface::Migration).copied(),
         supply,
     ));
-    measurements.push(blast(supply));
+    measurements.push(blast_measurement(supply, blast));
     measurements.push(test_ratio(&sum, churn));
     measurements.push(size(row, &sum, churn));
     measurements.push(dependency(episode, &sum, supply));
@@ -445,7 +462,7 @@ fn migration(
     Measurement::measured(Feature::Migration, raw, basis, detail)
 }
 
-fn blast(supply: &Supply) -> Measurement {
+fn blast_measurement(supply: &Supply, index: &Availability) -> Measurement {
     match supply.blast_dependents {
         Some(dependents) => {
             let confidence = supply.blast_confidence.unwrap_or(1.0);
@@ -463,13 +480,7 @@ fn blast(supply: &Supply) -> Measurement {
                 ),
             )
         }
-        None => Measurement::missing(
-            Feature::Blast,
-            "nothing in this index says what depends on the touched code: the module graph is \
-             `e3.1`'s and the graph delta is `e3.2`'s, and neither is built, so the axis is absent \
-             from the arithmetic rather than guessed at",
-            "e3.1",
-        ),
+        None => Measurement::missing(Feature::Blast, index.sentence(), index.owner()),
     }
 }
 

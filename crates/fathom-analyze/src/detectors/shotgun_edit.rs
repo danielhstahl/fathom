@@ -94,8 +94,8 @@ pub fn detect(episode: &Episode, _corpus: &Corpus<'_>, policy: &Policy) -> Vec<F
         .evidence(Evidence::absent(
             EvidenceKind::Path,
             "e3.1",
-            "no module graph in this build, so 'unrelated' is a directory heuristic and not a measured \
-             absence of coupling",
+            "this detector reads paths, not the module graph, so 'unrelated' is a directory heuristic \
+             and not a measured absence of coupling",
         ))
         .jump(crate::detectors::finding::view::STRUCTURE, episode.id.clone())
         .finish(),

@@ -2031,9 +2031,11 @@ fn blast_section(supplied: &Supplied) -> Section {
             )],
             Some(gap_for(
                 id,
-                "no module graph in this build",
-                "blast radius needs `e3.2`'s module graph; `e2.10` prints a path-heuristic reach in \
-                 the Python card, and this build refuses to print one it cannot name a rule for",
+                "no supplied reach",
+                "how far a change reaches is a question for the module graph, and this document carries \
+                 no supplied block for it: the count costs a chain walk this pass did not take, and a \
+                 reach estimate built from path prefixes would be a guess wearing a number — `fathom \
+                 architecture` ranks modules by their fan-in on that graph today",
                 None,
             )),
         ),

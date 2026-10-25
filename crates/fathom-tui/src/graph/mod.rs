@@ -715,7 +715,8 @@ impl Graph {
     #[must_use]
     pub fn canvas_strip(&self, cols: usize) -> String {
         let Some(hand) = self.hand.as_ref() else {
-            return "no graph handed · owned by e3.4".to_owned();
+            return "no graph handed to this pane · `fathom index` writes the lane it draws from"
+                .to_owned();
         };
         let (cols_seen, rows_seen) = self.last_size();
         let (scene, drawing) = self

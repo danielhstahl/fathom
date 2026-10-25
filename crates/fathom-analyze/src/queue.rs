@@ -30,10 +30,10 @@
 //! four-query frame budget — and why the queue prints the score's model name on every row instead of
 //! implying that the queue scored it.
 //!
-//! **No blast radius of its own.** [`BlastInput::Unmeasured`] is the shipped state until `e3.1`/`e3.2`
-//! build the module graph; the factor is a door with a name on it, exactly as
-//! [`crate::risk::collect::Supply`] is, and the strip says the factor is sitting at `1.00` rather than
-//! letting a missing input look like an absent risk.
+//! **No blast radius of its own.** The module graph is built and indexed, but no caller hands the queue a
+//! dependent count, so [`BlastInput::Unmeasured`] is the shipped state; the factor is a door with a name
+//! on it, exactly as [`crate::risk::collect::Supply`] is, and the strip says the factor is sitting at
+//! `1.00` rather than letting a missing input look like an absent risk.
 //!
 //! # Where it runs
 //!

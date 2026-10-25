@@ -264,14 +264,15 @@ Three things about it are the contract, not the arithmetic:
 
 * **The printed number is rounded; the order is not.** Ordering uses the exact product, so a row cannot
   appear below one it supposedly outranks because both rounded to 47.
-* **A factor with no measurement is `1.00` and says so.** Blast radius needs the module graph (`e3.2`),
-  which does not exist; the queue holds the factor at `1.00`, prints `blast unmeasured (e3.2)` above the
-  rows, and names the owning ticket in every explain sentence. Guessing it from path prefixes would put a
-  number in the review queue that no one measured.
+* **A factor with no measurement is `1.00` and says so.** Blast radius is a walk of the module graph, and
+  no caller hands the queue a dependent count per row; the queue holds the factor at `1.00`, prints
+  `blast unmeasured` above the rows, and names what was missing in every explain sentence. Guessing it from
+  path prefixes would put a number in the review queue that no one measured.
 * **An unranked row is `?`, listed after every scored one.** `QueueCounts.unranked` counts them and the
   strip says `N unranked`, because a queue of `?`s is not a caught-up queue.
 
 `w` prints the ordering in full, in `fathom why`'s shape: `queue-1 90 = risk 60 (spine-1) × staleness
-1.50 (10d unread) × blast 1.00 (not measured · e3.2 owns it · displayed by fathom-tui)`. The strip keeps
+1.50 (10d unread) × blast 1.00 (not measured · no caller handed over a dependent count · displayed by
+fathom-tui)`. The strip keeps
 only the name and the open count, because a strip is forty columns wide and the name is the part that may
 not be truncated away.

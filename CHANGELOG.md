@@ -17,6 +17,52 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `fathom why` stopped telling you the module graph was unbuilt, because it is built (`reco-j1o`)
+
+The blast axis printed, under *what this score cannot see*:
+
+```
+what depends on the touched code — the module graph is `e3.1`'s and the graph delta is `e3.2`'s, so `blast`
+is absent from the arithmetic until they land · owned by e3.1
+```
+
+Both tickets are closed. `fathom index` writes the module graph, `fathom architecture` measures coupling,
+cycles and hotspots on it, and `fathom check` runs two graph checks over it — so in every repository that
+had been indexed, the product was explaining a missing number by pointing at work that was already merged,
+in the index standing in front of the reader. Four of the five ceiling lines were stale the same way, and
+the queue's `blast unmeasured (e3.2)` and the delta's `no module graph in this build (e3.2)` had rotted
+the same way. The axes themselves were honest — absent, weighted out of the denominator, never guessed —
+and it was the *reason* that was remembered rather than looked up.
+
+* **The blast reason is now a probe of the store it is printed under.** `risk::blast::Availability` asks
+    the index how many revisions it has and which of this episode's paths are modules in it, and says
+    which answer came back: *no graph lane* (`fathom index` writes one), *a lane with no module for these
+    paths* (naming what it did find), or *a lane that could answer and was not asked* — the true one, since
+    a per-episode reach figure costs a chain walk no shipped verb pays for. `fathom why`, `fathom episodes
+    --explain` and the TUI's `w` all print it, because all three resolve it in front of a store.
+* **The ceiling list is composed from the score, not recited.** `risk::ceiling(score)` prints the axes
+    *this* read left out, in the words that read produced, then the three limits of the model itself. An
+    axis that was measured can no longer be listed as invisible: hand `Supply.blast_radius` a number and
+    the line disappears from `fathom why`, its `--json`, `fathom episodes --explain` and `w` in one change.
+* **The owner of an absent axis is now whoever can act on it.** The blast axis is `the caller`'s, because
+    no ticket is missing; `risk::<feature>::owner()` returns `the caller` / `the graph lane` instead of a
+    plan key. Provenance is untouched where it is true — a measured axis still names the analysis that
+    measured it, which is what makes the number auditable.
+* **A checker refuses the stale kind.** `python3 tools/check_ticket_claims.py` resolves every plan key in
+    a shipped sentence through `.plan/keymap.json`, asks `bd` for its status, and fails when a closed bead
+    is claimed unbuilt — `tools/check_docs_commands.py`'s rule for a documented command, applied to a
+    documented cause. Prose pages carry the same claims and get a human review (**reco-cud**), not a bulk
+    reword.
+
+Limits, honestly: the axes are still absent from the arithmetic, because no caller walks the graph per
+episode yet — this ticket fixed the *explanation*, not the missing number, and the reason it prints now is
+the truth instead of the plan. The probe is per-`fathom why` run and costs a `MAX(revision.id)` plus one
+`node_key` lookup per touched path; a repository with ten thousand paths in one episode does not exist
+today, and if it does the probe is the cheap half of the walk it is standing in for. Prose pages are not
+checked (**reco-cud**), and `tests/test_ticket_claims_contract.py` needs `bd` on PATH to check the board —
+without it the check says so rather than passing silently.
+
+
 ### A `fathom.toml` weight key that configured nothing is refused now (`reco-gna`)
 
 Every `fathom why` run in this repository ended with `config: risk.weights.new_dependency: new_dependency is

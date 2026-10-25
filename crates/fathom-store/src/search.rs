@@ -5,15 +5,16 @@
 //! and — the half that is easy to skip and impossible to undo later — **both are class R**: rebuildable from
 //! the episodes, never authoritative, safe to delete.
 //!
-//! # Why this exists one ticket before the search box does
+//! # Why this exists one ticket before the search box did
 //!
-//! `e4.2`'s fourth acceptance criterion is that intent text is searchable via `e5.2`'s global search. `e5.2`
-//! (`reco-mkc`) is not built and is not this ticket's to build. What *is* this ticket's is the part `e5.2`
-//! would otherwise have to retrofit: the text has to be *in the index*, which is a write-path decision made
-//! where the intent is captured. A capture ticket that stored intent in a column only its own card reads
-//! would leave `e5.2` choosing between searching a document it never wrote and a second capture pass over
-//! the events file. So the write path fills the document here, this module provides the query primitive, and
-//! the scorer, the ranking and the overlay stay `e5.2`'s.
+//! `e4.2`'s fourth acceptance criterion was that intent text is searchable via `e5.2`'s global search.
+//! `e5.2` (**reco-mkc**) has landed since — `fathom search` reads this table — but the ordering was the
+//! point and it still decides who owns what: this ticket's half was the part a later search box could not
+//! retrofit, which is that the text has to be *in the index*, a write-path decision made where the intent
+//! is captured. A capture ticket that stored intent in a column only its own card reads would have left
+//! `e5.2` choosing between searching a document it never wrote and a second capture pass over the events
+//! file. So the write path fills the document here, this module provides the query primitive, and the
+//! scorer, the ranking and the overlay are the search's.
 //!
 //! The one honesty rule: **results are pointers, never content** beyond a bounded snippet. That is
 //! ADR-005 §4.1's rule for `search_history` ("pointer-shaped … **Never content**") applied to the local

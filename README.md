@@ -71,7 +71,7 @@ work, and opens the shell on it. No configuration is read, nothing outside
 The same miniature, plus five commits that seed a pathology each — churn loop, unplanned dependency, new
 cycle, deleted test, reformat-only — is published as an ordinary clone, so the tour can be run against
 something you `git clone`. [The scripted five-minute demo](docs/demo/five-minute.md) is the page: the tour,
-the answer key, the [recorded walkthrough](docs/demo/five-minute.cast) (37 s, no sound needed), and the
+the answer key, the [recorded walkthrough](docs/demo/five-minute.cast) (38 s, no sound needed), and the
 three checkers that keep all of it true — `tools/five_minute_demo.py`, `tools/demo_acceptance.py` and
 `tools/record_demo.py`, all three in CI.
 

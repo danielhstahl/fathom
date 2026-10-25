@@ -1,9 +1,12 @@
 # Cycles: what a loop costs, and what a loop is owed
 
 - **Status**: **shipped for the module and symbol views, the delta, the debt ledger and the metric.** The
-  writer that would add a line to `.fathom/ratchet.toml` is `e3.10` (**reco-5ht**) and is not built; the
-  trend line that consumes the exported metric — `fathom architecture --json`, with acyclicity as one of its
-  five dimensions — is **reco-al1** and is not built.
+  writer that would add a line to `.fathom/ratchet.toml` from a cycle finding is not wired: `e3.10`
+  (**reco-5ht**) built the ratchet file, its allowances and `fathom ratchet`, and no code path writes a
+  `[[allowance]]` when a cycle is allowed — that write belongs to the verb that owns the allowance, and
+  [review-memory.md](review-memory.md) §5 says why it will not be the note store instead. The trend line
+  that consumes the exported metric — `fathom architecture --json`, with acyclicity as one of its
+  five dimensions — is **reco-al1** and it is built: `fathom architecture` prints that dimension.
 - **Decided by**: [the architecture graph](architecture-graph.md) (the rows this reads and the lane it
   rides), [the ratchet](ratchet.md) (*cycle debt*: baselined cycles with owner and expiry),
   [structure extraction](structure-extraction.md) finding 4 (Go dependency facts are package-to-package),

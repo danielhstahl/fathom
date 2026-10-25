@@ -49,7 +49,7 @@ Two properties make this safe to hand to something that will act on it:
   prints the verdict, so a payload that disagrees with its own evidence says so in the payload;
 * **its gaps name their owner.** A section that could not be measured is `unavailable` with a `short` form and
   the plan key that owns the answer. An agent reading `0` will build on the zero; an agent reading
-  `no module graph in this build (e3.2)` will ask, or will say it does not know.
+  `no supplied reach (e3.2)` will ask, or will say it does not know.
 
 Tell the agent the second property explicitly. "A section may be `unavailable`; if it is, say so and do not
 infer the value" is one sentence and it removes the most likely way this goes wrong.

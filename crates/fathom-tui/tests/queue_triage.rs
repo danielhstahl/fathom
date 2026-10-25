@@ -274,8 +274,8 @@ fn the_queue_leads_with_the_stale_medium_and_names_the_factor_that_moved() {
         "staleness has to overtake a bigger number on the screen, not just in the comparator"
     );
     assert!(
-        text.contains("blast unmeasured") && text.contains("e3.2"),
-        "an absent factor is named, with the ticket that would fill it:\n{text}"
+        text.contains("blast unmeasured"),
+        "an absent factor is named on the strip, and `w` prints what was missing from it:\n{text}"
     );
     assert_eq!(open_count(&text), 4);
 }
@@ -301,8 +301,8 @@ fn w_prints_the_ranking_the_way_fathom_why_prints_a_ranking() {
         "the factor and what it was measured from: `{said}`"
     );
     assert!(
-        said.contains("e3.2"),
-        "and the owner of the factor that had no number: `{said}`"
+        said.contains("no caller handed over a dependent count"),
+        "and what was missing from the factor that had no number: `{said}`"
     );
 }
 

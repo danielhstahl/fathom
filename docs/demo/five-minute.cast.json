@@ -2,7 +2,7 @@
   "contract": "fathom.demo-cast/1",
   "cast": "docs/demo/five-minute.cast",
   "tag": "demo-v0.1",
-  "seconds": 39.38,
+  "seconds": 40.16,
   "budget_seconds": 300.0,
   "events": 60,
   "width": 100,

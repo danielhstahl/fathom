@@ -25,6 +25,30 @@ use fathom_analyze::risk::feature::{Feature, MODEL, MODEL_VERSION, Measurement, 
 use fathom_analyze::risk::score::{self, Points, Score};
 use fathom_analyze::risk::weights::{self, DEFAULT_TAU, Origin, Weights};
 
+/// The plan keys this plan actually has (`.plan/keymap.json`), as a set.
+fn plan_keys() -> std::collections::HashSet<String> {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../.plan/keymap.json");
+    let text = std::fs::read_to_string(path).expect("the plan's keymap is part of the tree");
+    let map: BTreeMap<String, String> =
+        serde_json::from_str(&text).expect(".plan/keymap.json is a JSON object");
+    map.into_keys().collect()
+}
+
+/// Whether a printed line names a plan key (`e3.2`, `s1`).
+///
+/// A scope statement may name a file, a table, a knob or a caller. What it may not do is name a ticket as
+/// the reason something is missing: a ticket is a claim about a plan, and it goes stale the day the plan
+/// moves — which is exactly how `fathom why` came to be printing that the module graph was unbuilt
+/// (`reco-j1o`). `tools/check_ticket_claims.py` applies the same rule to the strings written in the tree;
+/// this applies it to the sentences the tree composes.
+fn names_a_plan_key(line: &str) -> bool {
+    static KEYS: std::sync::OnceLock<std::collections::HashSet<String>> =
+        std::sync::OnceLock::new();
+    let keys = KEYS.get_or_init(plan_keys);
+    line.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '-'))
+        .any(|token| keys.contains(token))
+}
+
 /// A case the way the collector would hand it over: a destructive migration with a high-severity
 /// finding, an agent author, no tests, and no graph to say what depends on it.
 fn destructive_migration() -> Vector {
@@ -355,7 +379,11 @@ fn a_feature_with_no_collector_is_absent_rather_than_zero() {
         .iter()
         .find(|absent| absent.name == "blast")
         .expect("blast is not measurable in this build and must say so, not score 0");
-    assert!(blast.why.contains("e3.1"), "{blast:?}");
+    // The reason is a fact about the read, not a promise about a plan. This vector was built with no store
+    // to ask, so the honest sentence is "nothing was asked"; it used to name the tickets that would fill
+    // the axis, and every one of them had shipped (`reco-j1o`).
+    assert!(blast.why.contains("nothing supplied"), "{blast:?}");
+    assert!(!names_a_plan_key(&blast.why), "{blast:?}");
     assert_eq!(blast.weight, Feature::Blast.default_weight());
     assert_eq!(
         scored.measured + scored.absent.len(),
@@ -986,10 +1014,25 @@ fn every_feature_is_documented_and_weighted_once() {
         assert!(!spec.owner.is_empty(), "{} has no owner", spec.id);
         assert!(spec.default > 0.0, "{} is switched off by default", spec.id);
     }
-    // The printed ceiling is not empty and names the graph hole, which is the one thing a reviewer most
-    // needs told.
-    assert!(!fathom_analyze::risk::ceiling().is_empty());
-    assert!(fathom_analyze::risk::ceiling()[0].contains("module graph"));
+    // The printed ceiling is not empty, and it is *built from the score it is printed under*: an axis with
+    // no measurement is listed with the reason its own read produced, and no line of it is a remembered
+    // promise about a ticket (`reco-j1o` — the list this replaced named five plan keys, four of which had
+    // already shipped, so every score told a reviewer a lie about their own index).
+    let ceiling =
+        fathom_analyze::risk::ceiling(&score::score(&destructive_migration(), &Weights::default()));
+    assert!(!ceiling.is_empty());
+    assert!(
+        ceiling
+            .iter()
+            .any(|line| line.starts_with("the `blast` axis")),
+        "the unmeasured axis is not in the ceiling: {ceiling:?}"
+    );
+    for line in &ceiling {
+        assert!(
+            !names_a_plan_key(line),
+            "a scope statement names a ticket instead of a fact: {line}"
+        );
+    }
 }
 
 #[test]

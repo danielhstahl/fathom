@@ -46,6 +46,15 @@ jobs:
         run: |
           python3 tools/gen_docs.py check --page cheatsheet --page detectors --page features
           python3 tools/check_docs_site.py
+      - name: "reco-j1o no shipped sentence claims a closed ticket is unbuilt"
+        # `fathom why` used to print, as its own scope statement, that the module graph was `e3.1`'s and
+        # the graph delta was `e3.2`'s — both beads closed, both features in the index the reader was
+        # standing in. A command a document tells you to type is checked against clap by
+        # `tools/check_docs_commands.py`; this is the same argument applied to a documented *cause*: a
+        # sentence that promises a ticket is resolved through `.plan/keymap.json`, looked up on the board
+        # with `bd list --all --json`, and failed when the bead is closed. Without `bd` on the runner the
+        # check prints that it cannot see the board instead of passing silently.
+        run: python3 tools/check_ticket_claims.py
       - name: "e5.9 demo miniature: the shipped pack is the one the generator writes"
         # `fathom --demo` is the first thing a stranger runs, and its repository is a checked-in asset —
         # which means it can drift from the thing that generated it, from its own manifest, or from the

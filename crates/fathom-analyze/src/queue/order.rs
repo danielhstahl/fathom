@@ -36,12 +36,13 @@
 //!
 //! # What a factor cannot see
 //!
-//! Blast radius needs the module graph (`e3.1`/`e3.2`), and this build has none. [`BlastInput::Unmeasured`]
-//! is therefore the shipped state: `B` is `1.00`, the row prints `blast 1.00 (not measured · e3.2)`,
-//! and the strip says the ordering is missing a factor. That is the same rule
-//! [`crate::risk::score`] uses for a feature with no input — an unknown leaves the arithmetic and says
+//! Blast radius is answered by the module graph, and no caller hands a dependent count to the queue: a
+//! count is a chain walk (`graph.materialise_revision.ms`), and the page builder does not spend it per row.
+//! [`BlastInput::Unmeasured`] is therefore the shipped state: `B` is `1.00`, the row prints
+//! `blast 1.00 (not measured · …)`, and the strip says the ordering is missing a factor. That is the same
+//! rule [`crate::risk::score`] uses for a feature with no input — an unknown leaves the arithmetic and says
 //! it has left, and never poses as a zero — and it is why the factor is a door rather than a guess: the
-//! day `e3.2` hands over a count, [`QueueRow::blast`] carries it and no row's *shape* changes.
+//! day a caller hands over a count, [`QueueRow::blast`] carries it and no row's *shape* changes.
 //!
 //! A path-prefix heuristic was the alternative and is refused for the reason `insight`'s blast section
 //! already gives: a reach estimate built from path prefixes is a guess wearing a number.
@@ -82,10 +83,11 @@ pub const BLAST_STEP_H: i64 = 3;
 /// The ceiling on the blast factor, in hundredths above one: ten direct dependents.
 pub const BLAST_CAP_H: i64 = 30;
 
-/// The words for a blast factor with no measurement behind it: the value, who would have measured it,
+/// The words for a blast factor with no measurement behind it: the value, what would have measured it,
 /// and who would have shown it. All three, because "unmeasured" on its own leaves the reviewer to guess
 /// whether the factor is missing or the factor is one — and a `1.00` on a review queue reads as "safe".
-pub const BLAST_UNMEASURED: &str = "not measured · e3.2 owns it · displayed by fathom-tui";
+pub const BLAST_UNMEASURED: &str =
+    "not measured · no caller handed over a dependent count · displayed by fathom-tui";
 
 /// A score at or above this is `high`.
 ///
@@ -181,7 +183,7 @@ pub enum BlastInput {
     Direct {
         /// The count.
         count: u64,
-        /// Whose number it is, printed beside it: `e3.2 module graph`.
+        /// Whose number it is, printed beside it: `the module graph`, `a co-change prior`.
         basis: String,
     },
     /// Nothing. The honest default in this build, and printed as such rather than as `1.00`.
@@ -598,7 +600,7 @@ impl QueueRanking {
         if !self.blast_measured {
             // Ahead of the tally on purpose: "the third factor was asleep" is the sentence that changes
             // what a reviewer concludes about the order, and the tally is bookkeeping.
-            out.push_str(" · blast unmeasured (e3.2) · holding this list at 1.00");
+            out.push_str(" · blast unmeasured · holding this list at 1.00");
         }
         let tally = self.counts.tally();
         if !tally.is_empty() {
@@ -801,7 +803,7 @@ mod tests {
             "the factor is a prior with a ceiling, not an arms race"
         );
         assert!(
-            BlastInput::Unmeasured.factor().basis.contains("e3.2"),
+            BlastInput::Unmeasured.factor().basis.contains("no caller"),
             "an idle factor says who owns it: {}",
             BlastInput::Unmeasured.factor().basis
         );
@@ -1009,7 +1011,7 @@ mod tests {
             "and the absence is a fact of the ranking"
         );
         assert!(
-            ranking.count_line().contains("blast unmeasured (e3.2)"),
+            ranking.count_line().contains("blast unmeasured"),
             "the line above the rows says what the strip had no room for: {}",
             ranking.count_line()
         );
@@ -1034,7 +1036,7 @@ mod tests {
         let explain = ranking.order[0].explain();
         assert!(explain.contains("blast 1.00"), "{explain}");
         assert!(
-            explain.contains("e3.2") && explain.contains("fathom-tui"),
+            explain.contains("no caller") && explain.contains("fathom-tui"),
             "who owns the number, and who would have shown it: {explain}"
         );
         assert!(

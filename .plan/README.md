@@ -70,6 +70,15 @@ reconciliation document; it is not accidental and it is not growing silently.
   `milestone` and one `epicN` label per epic.
 - **Estimates** are minutes and are calibrated so nothing exceeds two days; a
   ticket above that is a sign it should be split.
+- **A sentence that says a ticket is unbuilt is checked against the board**, not
+  remembered from this file. `tools/check_ticket_claims.py` resolves every plan
+  key in a shipped sentence (a printed string, a Rust doc comment) through
+  `keymap.json`, asks `bd` for its status and fails when a closed bead is
+  claimed unbuilt. Plan text moves; the ceiling lines a reviewer reads do not
+  move with it, and a stale "`e3.1` will build it" printed over an index that
+  already has the module graph sends a reviewer hunting for merged work. The fix is
+  to say what is *actually* missing now — or to ask the store, which is what
+  `risk::blast::Availability` does. Prose pages are the human review **reco-cud**.
 
 ## All tickets
 

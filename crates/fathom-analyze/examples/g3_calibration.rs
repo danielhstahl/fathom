@@ -591,7 +591,10 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
             "the row read and the content read disagree about which episode is which"
         );
         let scan = detectors::scan(episode, &corpus, policy);
-        let vector = risk_collect::vector(row, episode, &scan, &Supply::nothing());
+        // No store is open here: this harness scores a corpus it has already read, so the honest blast
+        // reason is "nothing asked" rather than an answer attributed to some index.
+        let blast = fathom_analyze::risk::blast::Availability::NotProbed;
+        let vector = risk_collect::vector(row, episode, &scan, &Supply::nothing(), &blast);
         let scored = score::score(&vector, &weights);
         episodes.push(Measured {
             id: row.id.clone(),

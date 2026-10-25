@@ -2,7 +2,7 @@
 
 1 ▣ Queue · (T pins this view)                                                                                                              fathom/pilot · main
 ┌▸ worklist · e4.5                                                                            ┬· card · e2.10                                                  ┐
-│6 of 10 open · 6 unranked · blast unmeasured (e3.2) · holding this list at 1.00 · 1 dismisse…│a77bb0 — flagged: the migration                                 │
+│6 of 10 open · 6 unranked · blast unmeasured · holding this list at 1.00 · 1 dismissed 1 sno…│a77bb0 — flagged: the migration                                 │
 │▸  · a77bb0 human +140 −12 queue ? risk ? ⚐                                                  │2 commits · human 0.94 · 1mo ago                                │
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │⚐ flagged · UTC · fixture index                                 │
 │   · 40c9b3 agent +96 −0 queue ? risk ?                                                      │                                                                │

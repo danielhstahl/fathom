@@ -55,8 +55,9 @@ attribution     0.50 confidence    0.50    0.05  3.01/6.02  credited to human by
                                                        0.50 · the doubt is what this axis measures
 …
 —                             —       —       —        — not measured, and not counted
-blast                         —       —    0.09        — nothing in this index says what depends on the
-                                                       touched code … owned by e3.1
+blast                         —       —    0.09        — this index can say what depends on 3 of the 7
+                                                       path(s) this episode touched (25 graph revisions) —
+                                                       and this read did not ask … owned by the caller
 test_ratio                    —       —    0.08        — neither logic nor tests arrived, so coverage is
                                                        not a question this episode asks · owned by e4.4
 ```

@@ -57,7 +57,7 @@ Two decisions are load-bearing and were argued in the code rather than in a meet
 
 * **The sections are a constant, not a consequence.** A card whose sections depend on what happened to be
   measured cannot distinguish "not measured" from "not asked".
-* **A gap is a fact, not an apology.** `no module graph in this build (e3.2)` is a sentence a reviewer
+* **A gap is a fact, not an apology.** `no supplied reach (e3.2)` is a sentence a reviewer
   acts on. `unknown` is not, and neither is `0`.
 
 ## 3. The version policy, and what fails CI
@@ -94,8 +94,9 @@ What arrives today, on a read that has an object database open: `what`, `where` 
 `surface` from `e2.8`'s classifier at path granularity, as a `partial`; `dependencies` from `e2.6`,
 `measured`, through `Supplied::for_episode_with_repo` — the form `fathom analyze`, `fathom narrative`,
 `fathom export` and the MCP's episode-delta tool all use, so there is one dependency answer and four
-readers of it; `attention` from `e4.4`'s admission; and `blast`, still `unavailable`, because `e3.2`'s call
-graph is what would fill it. A read with no repository open — a restored index, a database copied without
+readers of it; `attention` from `e4.4`'s admission; and `blast`, still `unavailable`, because nothing hands
+over a reach figure: the module graph `fathom index` writes is what would answer it, and the count costs a
+chain walk this composition does not take per episode. A read with no repository open — a restored index, a database copied without
 its repository — gets `e2.6`'s `Unavailable` naming the command that fills it, which is a different fact
 from the empty answer an episode with no manifest change measures, and the two say so differently.
 
