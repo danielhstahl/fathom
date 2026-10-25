@@ -210,6 +210,11 @@ COVERAGE: dict[str, tuple[str, str]] = {
     "cache.bytes_per_cached_row": ("tools/perf_realrepo.py",
                                    "the store's own `cache` accounting: result bytes per row, largest "
                                    "analyzer payload first"),
+    "cache.rows_orphaned_pct": ("tools/perf_realrepo.py",
+                                "rows beyond one per `(analyzer, scope kind, input digest)` in the "
+                                "store's own `cache` table — a key that moved between two runs of one "
+                                "build. Beside it, unbudgeted, `cache.rows_read_pct`: the share of "
+                                "stored rows an answer was ever read out of (`reco-3sa`)"),
     "store.bytes_per_file_row_spine": ("tools/perf_realrepo.py",
                                        "`dbstat` pages of the spine tables over the file rows they hold")
 }

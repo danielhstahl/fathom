@@ -23,6 +23,15 @@ from dataclasses import dataclass, field
 
 KEY_SCHEMA = "ck1"
 
+#: The schema version of a *derived row*: the `cache` row, the `blob`/`blob_ref` rows that carry its
+#: payload, and how they read back. Key field 9 (§5.2), and deliberately **not** the store's own
+#: migration version: a migration of a table no analyzer reads used to make every stored analysis
+#: unreachable, which is a whole re-analysis paid for an unrelated table (`reco-3sa`; the Rust store
+#: measures 2 686 such recomputations and 2 686 dead duplicate rows in its own repository's store).
+#: Bump it in the same commit as a migration that creates or alters `cache`, `blob` or `blob_ref`, or
+#: that changes how a stored payload is decoded. Indexing those tables does not count.
+ROW_SCHEMA = 2
+
 #: The scope kinds a cache input may be addressed by (§5.3). The kind decides *how* the
 #: input digest is computed; the digest itself is what goes into the key.
 SCOPE_KINDS = (
@@ -292,7 +301,7 @@ def effective_version(analyzer_id: str, versions: dict, analyzers=ANALYZERS) -> 
     stored row unreachable and a feature flag is not a framing change.
 
     `versions` may carry a string under `__feature_tag__` (the same slot convention as the
-    integer `__store_schema__` override); an analyzer absent from the manifest takes version 0.
+    integer `__row_schema__` override); an analyzer absent from the manifest takes version 0.
     """
     index = {a.id: a for a in analyzers}
     version = versions.get(analyzer_id, getattr(index.get(analyzer_id), "version", 0))
@@ -337,8 +346,9 @@ def derive_key(*, analyzer_id: str, input_hash: str, input_kind: str | None = No
     6. ``schema_version``   the shape of the stored result (e2.11);
     7. ``input_kind``       so a `path` digest can never be mistaken for a `tree` digest;
     8. ``input_hash``       the scope digest itself (§5.3);
-    9. ``code_version``     the *store* schema version: a schema change re-frames keys
-                            so a v1 row can never answer a v2 query.
+    9. ``row_schema_version`` the schema of the derived row and of the tables that hold it: a
+                            change re-frames keys so a v1 row can never answer a v2 query. Not the
+                            store's own migration version (`reco-3sa`).
     """
     versions = versions or {}
     analyzers = analyzers
@@ -354,7 +364,7 @@ def derive_key(*, analyzer_id: str, input_hash: str, input_kind: str | None = No
         str(a.schema_version),
         kind,
         input_hash,
-        str(versions.get("__store_schema__", 1)),
+        str(versions.get("__row_schema__", ROW_SCHEMA)),
     ]
     return CacheKey(raw=KEY_SCHEMA + ":" + _sha(parts), analyzer_id=analyzer_id,
                     input_kind=kind, input_hash=input_hash,
@@ -383,7 +393,7 @@ class ResolveResult:
 def resolve(conn, *, analyzer_id: str, input_hash: str, epoch: int,
             input_kind: str | None = None, versions: dict[str, int] | None = None,
             config: dict | None = None, now_ms: int | None = None,
-            store_schema: int = 1) -> ResolveResult:
+            row_schema: int = ROW_SCHEMA) -> ResolveResult:
     """Look a cached result up, and account for the lookup (§5.6).
 
     Miss reasons are returned, not logged-and-forgotten: `fathom index --stats` prints
@@ -392,7 +402,7 @@ def resolve(conn, *, analyzer_id: str, input_hash: str, epoch: int,
     """
     now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
     key = derive_key(analyzer_id=analyzer_id, input_hash=input_hash, input_kind=input_kind,
-                     versions={**(versions or {}), "__store_schema__": store_schema},
+                     versions={**(versions or {}), "__row_schema__": row_schema},
                      config=config)
     row = conn.execute("SELECT result_sha, error, epoch FROM cache WHERE cache_key=?",
                        (key.raw,)).fetchone()
@@ -480,9 +490,11 @@ INVALIDATION_MATRIX: tuple[tuple[str, str, str, str, str], ...] = (
     ("delta schema (EpisodeDelta) bump", "schema_version of delta.compose",
      "schema_version", "stored deltas and anything embedding them; findings re-derived",
      "the ledger: a schema bump never invalidates a human act"),
-    ("SQL schema migration", "store schema version",
-     "code_version", "every cache row becomes unreachable and is pruned; nothing is migrated (§9.1)",
-     "class M mirrors: re-mirrored from the committed files, not migrated"),
+    ("SQL schema migration of a derived-row table", "derived-row schema version",
+     "row_schema_version",
+     "every cache row becomes unreachable and is pruned; nothing is migrated (§9.1)",
+     "class M mirrors: re-mirrored from the committed files, not migrated; every other migration of "
+     "the schema, which touches no table an analyzer reads and so invalidates nothing (§5.2)"),
     ("history rewrite (amend/rebase/squash)", "commit oids, episode identities",
      "n/a (identity relink)", "episode identities and episode-scoped results for the rewritten set",
      "ledger entries: they re-link by fingerprint (e4.6); the store is not the thing that breaks"),

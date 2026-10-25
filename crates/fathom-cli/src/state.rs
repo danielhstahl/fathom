@@ -1220,6 +1220,18 @@ pub fn cache_json(
     } else {
         None
     };
+    // Same rule as the hit rate: `None` when there is nothing to divide, not `0%`. A store with no rows
+    // has not failed to be read; it has not been written yet. The denominator is the table's own row count
+    // (`cache_footprint`, published below as `cache_rows`) and not `inventory.rows`, which is the lifetime
+    // put count and is larger than the table wherever a row has ever been re-put.
+    let stored_rows = footprint.map_or(0, |(rows, _)| rows);
+    let rows_read_pct = match inventory {
+        Some(inventory) if stored_rows > 0 => Some(
+            f64::from(u32::try_from(inventory.rows_read_back).unwrap_or(u32::MAX)) * 100.0
+                / f64::from(u32::try_from(stored_rows).unwrap_or(u32::MAX)),
+        ),
+        _ => None,
+    };
 
     json!({
         "hit_rate": hit_rate,
@@ -1231,6 +1243,11 @@ pub fn cache_json(
         "computed": lookups - hits,
         "analyzers": rows,
         "rows": inventory.map_or(0, |inventory| inventory.rows),
+        // The reuse number (`reco-3sa`): of the rows the table is holding (`cache_rows` below), how many
+        // an answer was ever read out of. A store whose rows sit unread is either a scope that is asked
+        // each question once or a key that keeps moving, and this is the half of that no other field shows.
+        "rows_read_back": inventory.map_or(0, |inventory| inventory.rows_read_back),
+        "rows_read_pct": rows_read_pct,
         "stale_rows": inventory.map_or(0, |inventory| inventory.stale_epoch_rows),
         "stored_failures": inventory.map_or(0, |inventory| inventory.stored_failures),
         "registered_analyzers": inventory.map_or(0, |inventory| inventory.analyzers),

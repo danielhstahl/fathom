@@ -262,3 +262,24 @@ hit rate instead of three approximations (ADR-004 §11). Two of the fields are e
 - `computes` counts **misses** (`lookups − hits − negative_hits`): the work the repository actually made
   the analyzers do. A warm cache with a low `hit_rate` and `bumped > 0` did not break — something's version
   or config moved (§5.6).
+
+The line that answers the question those two usually raise is the new one (`reco-3sa`, where a person filed a
+bug about exactly this). `fathom stats` prints `read back N of M row(s) in the table were asked for again`,
+which is the difference between a cache that is *unused* and a cache that is *useless*:
+
+- A **cold** miss means "this input has never been asked about". For the `path_pair` scope that is normal and
+  is the design, not a defect: an incremental index looks at new commits only (§6.1 R1), and a repository's
+  `(path, old blob, new blob)` transitions almost never repeat — this repository's store holds 3 659 per-file
+  rows over 3 638 distinct transitions, so a per-file row is asked about once and then sits there until a
+  `--refresh` (which is the pass that reads the cache back in order to *measure* §6's matrix) or a dirty-file
+  hand-off (§6.4) asks again. A low hit rate on a store whose misses are all `cold` is that, and nothing else.
+- A **`asked again under a moved key`** count means "the answer was in the cache and the key did not find
+  it". That one *is* a defect: it is a recomputation plus a dead row, and it is why field 9 of the key is now
+  the version of the derived row rather than the version of the store (ADR-004 §5.2). Counted on this
+  repository's own store, 2 686 of its 7 424 `diff.per_file` lookups — 36 % — were that one.
+
+The same numbers are in `fathom stats --json` as `rows_read_back` and `rows_read_pct`, measured against
+`cache_rows` — the rows the table is holding — and *not* against `rows`, which is the lifetime put count and
+is bigger than the table in every store that has ever re-put a row. They are in the real-repository budget
+report too: `cache.rows_read_pct` as a trend, and
+`cache.rows_orphaned_pct` as a ceiling of zero, because one build must never write a second key for one input.

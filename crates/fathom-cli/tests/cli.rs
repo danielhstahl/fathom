@@ -1042,9 +1042,22 @@ fn stats_says_the_scale_the_state_and_the_hit_rate() {
         "the misses are stated too: {}",
         report["cache"]
     );
+    // The reuse pair (`reco-3sa`): the rows the table is holding, and how many of them an answer was
+    // ever read out of. Without these two a `path_pair` cache that is cold by construction is
+    // indistinguishable from a cache whose key keeps moving, which is how that defect got filed.
+    assert!(
+        report["cache"]["cache_rows"].as_u64().unwrap_or(0) > 0,
+        "the run wrote rows, so the denominator exists: {}",
+        report["cache"]
+    );
+    assert!(
+        report["cache"]["rows_read_pct"].as_f64().is_some(),
+        "and the share of them that got read back is a number, not an absence: {}",
+        report["cache"]
+    );
     // Text and JSON are two renderings of one read, so the text has to carry the same three figures.
     let text = stdout(&fathom(&["stats", here]));
-    for needle in ["scale", "state", "hit rate"] {
+    for needle in ["scale", "state", "hit rate", "read back"] {
         assert!(
             text.contains(needle),
             "{needle} missing from `fathom stats`:\n{text}"

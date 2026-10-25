@@ -287,6 +287,23 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "classification columns; 3 KiB is ~1.3x of that. The per-commit spine budget stays at 4 KiB and "
      "measures 27 264 B/commit on aws, which is not a regression and not a paradox: it is this row "
      "count times this row size, and §11.6 has to be read with this row in it from now on."),
+    ("cache.rows_orphaned_pct", {"small": 0, "medium": 0, "large": 0, "xlarge": 0},
+     "%", "p50 of stored rows",
+     "Derived rows that are a *second* copy of an input the table already holds — the same "
+     "(`analyzer`, scope kind, input digest) under two keys. One binary running over one repository "
+     "must never produce one: it would mean a key that is not a function of its inputs, which is the "
+     "disease ADR-004 §5 exists to prevent, and it is expensive twice over — the recomputation and the "
+     "dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the "
+     "store's own migration counter, so every SQL migration orphaned every derived row, and this "
+     "repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) "
+     "and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as "
+     "`count(*) - count(distinct analyzer_id || input_kind || input_hash)` over `cache`, after a harness "
+     "that ran one binary and changed no version, no config and no schema: the same repository this "
+     "budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with "
+     "every one of its 3 727 rows read back. A deliberate analyzer or "
+     "config bump still leaves old rows on purpose (§6.2 marks dead, does not delete) — which is why "
+     "this is measured on the harness's own cold-then-warm sequence rather than on a store a person has "
+     "upgraded through four releases."),
 ]
 
 # Machine-readable CI gate rules from §11.8, so `e0.11` reads them instead of encoding them.

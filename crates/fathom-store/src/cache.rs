@@ -42,11 +42,51 @@ use serde_json::Value;
 use sha2::Digest as _;
 
 use crate::error::Error;
-use crate::spine::SCHEMA_VERSION;
 
 /// The key-framing version (§5.2, field 1). A framing change makes every stored row unreachable instead
 /// of misread, which is the only safe meaning of "version".
 pub const KEY_SCHEMA: &str = "ck1";
+
+/// The schema version of a *derived row* — the `cache` row, the `blob`/`blob_ref` rows that carry its
+/// payload, and the code that reads them back. This is key field 9 (§5.2).
+///
+/// Field 9 exists to make §9.5's "a migration invalidates, it does not migrate" true by construction: a
+/// row written under a shape this build can no longer read must be unreachable rather than misread. What
+/// it must not do is invalidate rows this build reads perfectly well, which is what feeding it
+/// [`crate::spine::SCHEMA_VERSION`] did. The store's migration counter moves for every table in the
+/// schema — the ledger, the notes, an episode column — and every one of those moves threw away every
+/// derived row in the store and paid to re-derive it.
+///
+/// Measured on this repository's own store, which has lived through four migrations and has never once
+/// evicted a row for budget: 2 686 of 7 424 `diff.per_file` lookups (36 %) missed as `key_changed` rather
+/// than `cold`, and 2 686 of its 6 298 per-file rows (43 %) were the dead copies those moves left
+/// behind. Every person who upgraded past a migration paid a full re-analysis of every file of every
+/// commit for a change to a table the analyzer never reads.
+///
+/// So field 9 is the version of the derived-row tables, and the rule for bumping it is mechanical: it is
+/// the highest migration number whose SQL *creates or alters* one of [`ROW_SCHEMA_TABLES`] — today
+/// migration 2, which created all three. `spine`'s tests assert that statement against the migration list,
+/// so a migration that reshapes a derived row and forgets the bump fails the build instead of quietly
+/// serving a row this build can no longer describe.
+///
+/// Two things that name these tables deliberately do **not** count, and both happened after migration 2:
+/// migration 9 indexed `cache(result_sha)` and `blob_ref(blob_sha)`, and migration 10 gave `decision_note`
+/// a `blob_sha` foreign key into `blob`. Neither changes a byte of what is stored or how it reads back, so
+/// neither may invalidate a row — which is precisely the mistake this constant exists to stop.
+///
+/// What also bumps it, because it changes how a payload is read back rather than how it is declared: a
+/// change to [`INLINE_BLOB_BYTES`] or to [`BlobStorage`]'s meaning. That is not mechanically checkable,
+/// which is why it is written down here as well as in the store's docs.
+///
+/// Adopting this constant costs every existing store one full re-derivation of its analysis cache, because
+/// every row in it was keyed with the store's schema version in field 9. That is §9.5's rule doing what it
+/// says (a derived row is re-derived, never migrated), it is paid once, and it buys the end of paying it on
+/// every unrelated migration — which is what the number in the paragraph above was.
+pub const ROW_SCHEMA_VERSION: i64 = 2;
+
+/// The tables whose *shape* field 9 versions: a derived row's own table and the two that carry its payload
+/// (ADR-004 §4.4, §4.5). [`crate::spine`] pins this list against the migration history.
+pub const ROW_SCHEMA_TABLES: [&str; 3] = ["cache", "blob", "blob_ref"];
 
 /// Payloads up to this many bytes live in the `blob` row itself; larger ones go to `objects/` beside the
 /// store (ADR-004 §3, §4.5). The number is `store.inline_blob_bytes` and it is a *storage* decision, so
@@ -336,8 +376,8 @@ pub fn analyzer(id: &str) -> Option<&'static Analyzer> {
 pub struct Versions {
     /// Per-analyzer overrides, keyed by analyzer id.
     pub analyzer: BTreeMap<String, u32>,
-    /// The store schema version (key field 9). Defaults to [`crate::spine::SCHEMA_VERSION`].
-    pub store_schema: Option<i64>,
+    /// The derived-row schema version (key field 9). Defaults to [`ROW_SCHEMA_VERSION`].
+    pub row_schema: Option<i64>,
     /// The compiled-in feature set this build was made with, as a short digest (ADR-002 §10.2, ADR-004 §5.1).
     ///
     /// `None` means the caller never said, and the graph/structure analyzers then stamp their version with
@@ -379,10 +419,13 @@ impl Versions {
         self
     }
 
-    /// Override the store schema version, as if a migration had run.
+    /// Override the derived-row schema version, as if a migration had changed the shape of a cache row.
+    ///
+    /// Deliberately *not* named for the store's own schema: a migration that adds a table no analyzer
+    /// reads moves nothing here, and that is the whole point of [`ROW_SCHEMA_VERSION`].
     #[must_use]
-    pub fn with_store_schema(mut self, schema: i64) -> Self {
-        self.store_schema = Some(schema);
+    pub fn with_row_schema(mut self, schema: i64) -> Self {
+        self.row_schema = Some(schema);
         self
     }
 
@@ -429,10 +472,10 @@ impl Versions {
             .unwrap_or(0)
     }
 
-    /// The store schema version in force.
+    /// The derived-row schema version in force (§5.2 field 9).
     #[must_use]
-    pub fn store_schema(&self) -> i64 {
-        self.store_schema.unwrap_or(SCHEMA_VERSION)
+    pub fn row_schema(&self) -> i64 {
+        self.row_schema.unwrap_or(ROW_SCHEMA_VERSION)
     }
 }
 
@@ -585,8 +628,10 @@ impl std::fmt::Display for CacheKey {
 /// 6. `result_schema` — the shape of the stored result (e2.11's version).
 /// 7. `input_kind` — so a `path` digest can never answer a `tree` lookup.
 /// 8. `input_hash` — the scope digest (§5.3).
-/// 9. `store_schema` — a v1 row cannot answer a v2 query, which is what makes §9.5's
-///    "migrations never migrate derived data" true by construction.
+/// 9. `row_schema` — the shape of the derived row and of the tables that hold it: a v1 row cannot
+///    answer a v2 query, which is what makes §9.5's "migrations never migrate derived data" true by
+///    construction. Not the store's own migration counter, which moves for tables this row does not
+///    live in ([`ROW_SCHEMA_VERSION`]).
 ///
 /// # Errors
 ///
@@ -617,7 +662,7 @@ pub fn derive_key(
         entry.schema_version.to_string(),
         kind.to_owned(),
         input_hash.to_owned(),
-        versions.store_schema().to_string(),
+        versions.row_schema().to_string(),
     ];
     let hashed: Vec<&[u8]> = fields.iter().map(String::as_bytes).collect();
     Ok(CacheKey {
@@ -1015,7 +1060,7 @@ mod tests {
     }
 
     #[test]
-    fn a_store_schema_bump_makes_every_row_unreachable() {
+    fn a_derived_row_schema_bump_makes_every_row_unreachable() {
         let now = derive_key(
             "structure.delta",
             "t",
@@ -1028,13 +1073,41 @@ mod tests {
             "structure.delta",
             "t",
             None,
-            &Versions::current().with_store_schema(SCHEMA_VERSION + 1),
+            &Versions::current().with_row_schema(ROW_SCHEMA_VERSION + 1),
             &Config::empty(),
         )
         .unwrap();
         assert_ne!(
             now.raw, after.raw,
             "§9.5: a migration invalidates, it does not migrate"
+        );
+    }
+
+    /// The pinned key for `the_pinned_key_names_all_nine_fields_so_a_change_is_a_decision`'s input:
+    /// `diff.per_file`, input `input-hash-under-test`, no scope-kind override, the manifest's versions
+    /// and an empty config.
+    const PINNED_DIFF_PER_FILE_KEY: &str =
+        "ck1:0444873b3eb839093e3b99f64fa35f96347c07f813ce9cf02a447ca9898d1268";
+
+    #[test]
+    fn the_pinned_key_names_all_nine_fields_so_a_change_is_a_decision() {
+        // One pinned key, for one fixed input, so that a change to *which* fields are in the digest — or
+        // to what any of them is fed — shows up as a red test naming this line rather than as a store that
+        // quietly re-derives everything. `reco-3sa` is the reason the pin is here: field 9 was the store's
+        // migration counter, which is a field that moves by itself.
+        let key = derive_key(
+            "diff.per_file",
+            "input-hash-under-test",
+            None,
+            &Versions::current(),
+            &Config::empty(),
+        )
+        .unwrap();
+        assert_eq!(
+            key.raw, PINNED_DIFF_PER_FILE_KEY,
+            "the derived row's key moved. If the change is to a field a stored row depends on, say so \
+             in the commit message and re-pin this; if it is a migration of a table no analyzer reads, \
+             it should not have moved at all (reco-3sa)."
         );
     }
 

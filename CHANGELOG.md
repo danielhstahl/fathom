@@ -17,6 +17,42 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Every migration threw the whole derived cache away (`reco-3sa`)
+
+`fathom stats` on this repository's own index said `diff.per_file 3339 lookups, 5 hits, 3316 cold, 3334 puts
+— hit rate 0.1%`, with no row ever evicted for budget, and the report that came in read it the way those numbers
+invite: a cache that is written and never read. Half of that was wrong, and the store could not say so, because
+it printed one rate where it needed two. The answers *were* in the table. Counted properly on the store that
+filed the report, 2 686 `diff.per_file` lookups had missed on `key_changed` rather than `cold` — 36 % of every
+per-file lookup that store ever made — and 2 686 per-file rows (43 %) were second copies of an input the store
+already held. Something was moving the key between runs, and field 9 was the thing: it carried
+`meta.schema_version`, the store's own migration counter, so a migration that added a table for the ledger, or
+a column for a review note, or an index nobody reads, moved every derived key in the store and paid to derive
+the answer again next to the unreachable one. The store's migration counter and the shape of a derived row are
+two different facts, and the key had been reading the wrong one.
+
+* **Field 9 is the schema of the derived row**, `cache::ROW_SCHEMA_VERSION` — the highest migration that creates
+    or alters `cache`, `blob` or `blob_ref` — and not of the store. A test reads the migration list and fails if
+    a migration reshapes those tables without bumping it, so the bump is not a habit someone has to remember.
+    Migration 9 indexes `cache` and `blob`; migration 10 gives `episode_delta` a foreign key onto `blob`. Two
+    releases' worth of migrations of a table three analyzers read, and neither changes one byte of what is
+    stored or how it reads back, so neither invalidates anything (ADR-004 §5.2, §5.6, §9.1; D12 untouched).
+* **`fathom stats` now says which kind of miss a miss was.** The per-analyzer line appends *N asked again under
+    a moved key* when the count is non-zero, and a line above it prints the read-back share — *read back 1 094
+    of 6 556 stored row(s) were asked for again (16.7 %)* — which is the difference between a cache that is
+    unused and a cache that is useless. A `path_pair` scope is *asked each question about once* by an
+    incremental index, so a low rate with every miss `cold` is the design; the same rate with a moved-key count
+    is this defect. `--json` carries `rows_read_back` and `rows_read_pct` against `cache_rows`, the rows the
+    table is holding, and not against `rows`, which is the lifetime put count.
+* **A budget on the disease, not the symptom.** `cache.rows_orphaned_pct` — stored rows beyond one per
+    `(analyzer, scope kind, input digest)` — is a ceiling of zero in the real-repository report, because one
+    build running over one repository must never write a second key for one input. The repository that measured
+    42.6 % orphaned before this change measures 0.0 % after it, with all 3 727 of its rows read back.
+* **The one-time cost, stated.** The first index after this change re-derives every derived row once, because
+    every key in an old store moves out from under itself — the same price every past migration was charging on
+    every run, paid once now instead. A store that has been through four migrations and never evicted a row is
+    exactly the store this was quietly happening in.
+
 ### A module and its own directory were counted as a cycle (`reco-wk4`)
 
 `fathom ratchet` on this repository's own source tree reported 13 uncovered cycle violations with an empty

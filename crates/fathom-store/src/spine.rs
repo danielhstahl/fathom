@@ -39,10 +39,15 @@ use sha2::Digest as _;
 /// The schema version this build writes, recorded in `meta.schema_version` and `PRAGMA user_version`,
 /// which ADR-004 §9.1 requires to agree.
 ///
-/// It is also field 9 of every cache key ([`crate::cache::derive_key`]), which is what makes "a migration
-/// never migrates derived data" (§9.5) a mechanism instead of an intention: bump this number and every
-/// stored analysis becomes unreachable, so the rebuild path is the same code path a fresh clone takes —
-/// the *tested* one.
+/// It used to also be field 9 of every cache key ([`crate::cache::derive_key`]), and that is a defect
+/// `reco-3sa` measured rather than noticed: bumping this number for a migration of *any* table made every
+/// stored analysis unreachable, so adding a note table cost a full re-diff of every file of every commit.
+/// This repository's own store, which has lived through four migrations and never once evicted a row for
+/// budget, carried 2 686 `diff.per_file` lookups that had missed as `key_changed` rather than `cold` (36 %
+/// of them) and 2 686 dead duplicate rows — 43 % of its per-file rows — for exactly that reason. Field 9
+/// is now [`crate::cache::ROW_SCHEMA_VERSION`], the version of the derived-row tables. §9.5's rule — a
+/// migration invalidates derived data, it never migrates it — is untouched; what changed is which
+/// migrations invalidate anything.
 ///
 /// Version 7 is `e4.6`'s `ledger_entry` ([`crate::ledger`]). The table is class M *mirror*, so
 /// the bump costs nothing that D12 (ADR-004 §9.5) does not already license: nothing is migrated, every
@@ -63,6 +68,11 @@ use sha2::Digest as _;
 /// the columns a re-link verdict has to report. The same argument as version 9's applies — the table is a
 /// mirror, class M by its content and class R by its copy — so the bump migrates nothing, every derived row
 /// goes unreachable, and the notes come back from the committed markdown on the next `fathom note list`.
+///
+/// Version 11 is `e3.9`'s scorecard ([`crate::scorecard`]), and the note this list was missing is the same
+/// sentence as version 10's: a derived table, re-derived, nothing migrated. It is also the migration that
+/// made the field-9 change above worth paying for — a scorecard table landing cost every reader of this
+/// store a whole re-analysis.
 pub const SCHEMA_VERSION: i64 = 11;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
@@ -1885,6 +1895,91 @@ mod tests {
                 .map(|(target, _)| *target)
                 .unwrap_or_default(),
             SCHEMA_VERSION
+        );
+    }
+
+    #[test]
+    fn the_row_schema_version_names_the_last_migration_that_reshaped_a_derived_row() {
+        // Key field 9 (§5.2) claims to be the version of the derived row, not of the store. That claim is
+        // checkable against the migration list, and this is the check: `cache::ROW_SCHEMA_VERSION` must be
+        // the highest migration that *creates or alters* `cache`, `blob` or `blob_ref`. Get it wrong in the
+        // permissive direction and a reshaped row is read as if it were the old one; get it wrong in the
+        // strict direction and field 9 is back to being the store's migration counter, which is the defect
+        // `reco-3sa` measured at 2 686 recomputed per-file rows in this repository's own store.
+        fn tokens(sql: &str) -> Vec<String> {
+            sql.lines()
+                // DDL comments are prose about other tables ("-> blob.sha256 if a payload was kept"), and
+                // the whole point of the rule is that prose does not invalidate anything.
+                .flat_map(|line| {
+                    let code = line.split("--").next().unwrap_or_default();
+                    code.split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                        .filter(|token| !token.is_empty())
+                        .map(str::to_ascii_lowercase)
+                        .collect::<Vec<_>>()
+                })
+                .collect()
+        }
+
+        let names = |sql: &str, table: &str| {
+            let named = |tokens: &[String], from: usize| {
+                tokens[from + 1..]
+                    .iter()
+                    .take(4)
+                    .any(|token| token == table)
+            };
+            let tokens = tokens(sql);
+            tokens
+                .iter()
+                .enumerate()
+                // `CREATE TABLE [IF NOT EXISTS] cache`, `ALTER TABLE cache`; *not* `CREATE INDEX … ON
+                // cache(...)` and *not* another table's `REFERENCES blob(sha256)` — migration 9 indexes the
+                // cache tables and migration 10 points at `blob`, and neither changes a stored byte.
+                .any(|(index, token)| token == "table" && named(&tokens, index))
+        };
+
+        let reshaped: Vec<i64> = MIGRATIONS
+            .iter()
+            .filter(|(_, sql)| {
+                crate::cache::ROW_SCHEMA_TABLES
+                    .iter()
+                    .any(|table| names(sql, table))
+            })
+            .map(|(version, _)| *version)
+            .collect();
+        assert_eq!(
+            reshaped.last().copied(),
+            Some(crate::cache::ROW_SCHEMA_VERSION),
+            "field 9 is {}, but the migrations that reshape {}, {} or {} end at {reshaped:?}; bump \
+             `cache::ROW_SCHEMA_VERSION` in the same commit as the migration, or the store will read a row \
+             it cannot describe",
+            crate::cache::ROW_SCHEMA_VERSION,
+            crate::cache::ROW_SCHEMA_TABLES[0],
+            crate::cache::ROW_SCHEMA_TABLES[1],
+            crate::cache::ROW_SCHEMA_TABLES[2],
+        );
+
+        // And the rule is not vacuous: later migrations do *name* these tables — 9 indexes `cache(result_sha)`
+        // for the budget's LRU, 10 gives `decision_note` a foreign key into `blob`. Naming is not reshaping,
+        // which is exactly the line `reco-3sa` had to draw.
+        let mentioned = |version: usize, table: &str| {
+            tokens(MIGRATIONS[version - 1].1).iter().any(|t| t == table)
+        };
+        assert!(
+            mentioned(9, "cache") && mentioned(9, "blob_ref"),
+            "migration 9 is the index that motivated the rule; if it has moved, so has this test's argument"
+        );
+        assert!(
+            mentioned(10, "blob"),
+            "migration 10's foreign key into `blob` is the other case the rule must not catch"
+        );
+        assert!(
+            !MIGRATIONS
+                .iter()
+                .filter(|(version, _)| *version > crate::cache::ROW_SCHEMA_VERSION)
+                .any(|(_, sql)| crate::cache::ROW_SCHEMA_TABLES
+                    .iter()
+                    .any(|table| names(sql, table))),
+            "no migration after the derived-row schema may reshape those tables without the bump"
         );
     }
 

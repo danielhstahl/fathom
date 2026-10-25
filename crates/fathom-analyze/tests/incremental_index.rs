@@ -618,9 +618,11 @@ fn a_config_change_moves_only_the_analyzer_that_declared_the_key() {
 }
 
 #[test]
-fn a_store_schema_bump_makes_every_row_unreachable_without_migrating_any_of_them() {
-    // §6's row eleven and §9.5: a schema migration is not a data migration. Field 9 of the key is the
-    // store's own version, so a bump is the whole invalidation.
+fn a_derived_row_schema_bump_makes_every_row_unreachable_without_migrating_any_of_them() {
+    // §6's "SQL schema migration" row and §9.5: a schema migration is not a data migration. Field 9 of the
+    // key is the version of the *derived row's* tables, so bumping it is the whole invalidation — and,
+    // after `reco-3sa`, bumping the store's own migration counter is not: a migration of a table no
+    // analyzer reads leaves every stored answer exactly where it was.
     let fixture = repository("schema", 4);
     let store = store_path(&fixture);
     index(&store, fixture.path(), &options());
@@ -630,7 +632,7 @@ fn a_store_schema_bump_makes_every_row_unreachable_without_migrating_any_of_them
         fixture.path(),
         &index::Options {
             scope: Scope::Everything,
-            versions: Versions::current().with_store_schema(99),
+            versions: options().versions.with_row_schema(99),
             ..options()
         },
     );
@@ -638,6 +640,23 @@ fn a_store_schema_bump_makes_every_row_unreachable_without_migrating_any_of_them
         let stats = &refresh.analyzers[id];
         assert!(stats.bumped > 0, "{id} should be unreachable: {stats:?}");
         assert_eq!(stats.hits, 0, "{id} should not have found anything");
+    }
+
+    // And naming the current value explicitly is not a bump: the field is a constant, not a clock.
+    let same = index(
+        &store,
+        fixture.path(),
+        &index::Options {
+            scope: Scope::Everything,
+            versions: options()
+                .versions
+                .with_row_schema(fathom_store::cache::ROW_SCHEMA_VERSION),
+            ..options()
+        },
+    );
+    for id in ["diff.per_file", "structure.delta"] {
+        let stats = &same.analyzers[id];
+        assert_eq!(stats.bumped, 0, "{id} moved for no reason: {stats:?}");
     }
 }
 

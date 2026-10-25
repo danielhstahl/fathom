@@ -8,7 +8,7 @@ that exists in two places is a budget that drifts, and a drifted budget is a bud
 on (ADR-004 D14).
 
 Every number below is a budget id: `<family>.<size_class>` — so `cold.index.ms.small` is the
-`cold.index.ms` family at the `small` size class. **192 numbers, 48 families, 4 size classes.**
+`cold.index.ms` family at the `small` size class. **196 numbers, 49 families, 4 size classes.**
 
 ## What runs, and where the numbers come from
 
@@ -57,6 +57,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 |---|---|---|---|---|---|---|---|---|
 | `cache.budget.mib` | MiB | ceiling | 256.0 | 512.0 | 2,048.0 | 4,096.0 | not measured yet | needs cache rows in the store; `e1.4` writes them |
 | `cache.bytes_per_cached_row` | bytes | p95 per cached row | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | tools/perf_realrepo.py | the store's own `cache` accounting: result bytes per row, largest analyzer payload first |
+| `cache.rows_orphaned_pct` | % | p50 of stored rows | 0.0 | 0.0 | 0.0 | 0.0 | tools/perf_realrepo.py | rows beyond one per `(analyzer, scope kind, input digest)` in the store's own `cache` table — a key that moved between two runs of one build. Beside it, unbudgeted, `cache.rows_read_pct`: the share of stored rows an answer was ever read out of (`reco-3sa`) |
 | `cold.graph.ms` | ms | p95 | 60,000.0 | 480,000.0 | 1,800,000.0 | 6,000,000.0 | not measured yet | the graph lane is `e3.2`'s and is not built; `s3` measured its write half |
 | `cold.index.ms` | ms | p95 | 1,500.0 | 20,000.0 | 75,000.0 | 240,000.0 | this harness | `fathom index` into a deleted store, 3 samples, p95 |
 | `cold.index.ms_per_commit` | ms | p95 per commit | 10.0 | 10.0 | 10.0 | 10.0 | tools/perf_realrepo.py | cold index into a deleted store, wall time over the commits walked |

@@ -111,7 +111,7 @@ anchors rather than inventing new ones, and the test suite fails if the restatem
 | D3 | **`STRICT` tables everywhere** | A typeless store turns corruption into nonsense instead of an error, and corruption is a case this ADR handles in §9 | §4.0 |
 | D4 | **`mmap_size = 0`** by default; mmap is a probe-gated optimisation | ADR-005 §10 exists precisely because an mmap claim on a host that cannot honour it reports success | §13.1 |
 | D5 | **Content-addressed `blob` table + `objects/`** for payloads > 4 KiB | Two episodes with byte-identical deltas store one payload; dedupe is free when the address *is* the hash | §4.5 |
-| D6 | **Cache key = frame(`ck1`, analyzer id + version, dep digest, config digest, result schema, scope kind, scope hash, store schema)** | The brief said *tree hash + analyzer version*. That is not enough: config changes and dependency-version changes invalidate the same rows, and if the key cannot see a dependency, nothing can | §5.2 |
+| D6 | **Cache key = frame(`ck1`, analyzer id + version, dep digest, config digest, result schema, scope kind, scope hash, derived-row schema)** | The brief said *tree hash + analyzer version*. That is not enough: config changes and dependency-version changes invalidate the same rows, and if the key cannot see a dependency, nothing can | §5.2 |
 | D7 | **Invalidation is a key mismatch, never a `DELETE`** on the event path | A delete-based invalidation is a scan you must remember; a mismatch is a lookup miss you cannot forget. Dead rows are reaped by the pruner | §6.1, §6.3 |
 | D8 | **`analyzer` is a manifest table**: scope, declared config keys, dependency DAG, owning source globs | The manifest *is* the invalidation matrix, and the CI rule "you touched an analyzer's source without bumping its version" is what makes "exactly the right rows" enforceable rather than aspirational | §5.1, §5.7 |
 | D9 | **One writer, decided by a lease**; the daemon holds it and a CLI takes it only when nobody else has it | Two writers is a corruption story waiting for a slow disk. "Who writes" must be a fact about a lock, not a convention about which binary you ran | §7.1 |
@@ -396,13 +396,26 @@ cache_key = "ck1:" || sha256( frame(
     result_schema_version, # e2.11's EpisodeDelta version
     scope_kind,            # a `path` digest can never answer a `tree` lookup
     scope_hash,            # the input digest itself (§5.3)
-    store_schema_version   # a v1 row cannot answer a v2 query
+    row_schema_version   # the schema of the derived row itself: a v1 row cannot answer a v2 query
 ))
 ```
 
 `frame()` is **length-prefixed framing**, not `:`-joined: a separator scheme collides the first
 time a field may itself contain the separator (`noise:*` + `:` + `v2` versus `noise` + `:` +
 `*:v2`). Length prefixes make that structurally impossible for four bytes.
+
+**Field 9 is the schema of the derived row, not of the store** (`reco-3sa`). It used to be
+`meta.schema_version`, which every migration bumps — for the ledger, for a note table, for one
+episode column — and every one of those moves threw away every derived row in the store and paid to
+re-derive it. This repository's own store, which has lived through four migrations and has never
+once evicted a row for budget, carried 2 686 `diff.per_file` lookups that had missed as
+`key_changed` rather than `cold` (36 % of them) and 2 686 dead duplicate per-file rows — 43 % of
+them — for that reason alone. So field 9 is `cache::ROW_SCHEMA_VERSION`: the highest migration that
+*creates or alters* `cache`, `blob` or `blob_ref`, which `fathom-store`'s tests assert against the
+migration list so the bump cannot be forgotten. Indexing those tables (migration 9) or pointing
+another table's foreign key at them (migration 10) does not count, because neither changes a byte of
+what is stored or how it reads back. D12 is untouched: a migration still never migrates derived
+data; it just no longer invalidates data it could not have confused.
 
 ### 5.3 Scope kinds and their digests
 
@@ -474,7 +487,7 @@ are **measured row counts**, not expectations.
 | path taxonomy table change (e0.9) | taxonomy.path version | `dep_digest` | everything downstream of taxonomy.path | ingest.normalize, episode.segment (attribution does not read taxonomy) |
 | episode segmentation rule change | episode.segment version | `analyzer_version` | episode identities, then every episode-scoped analyzer | commit and commit_file rows: the git spine is segmentation-independent |
 | delta schema (EpisodeDelta) bump | schema_version of delta.compose | `schema_version` | stored deltas and anything embedding them; findings re-derived | the ledger: a schema bump never invalidates a human act |
-| SQL schema migration | store schema version | `code_version` | every cache row becomes unreachable and is pruned; nothing is migrated (§9.1) | class M mirrors: re-mirrored from the committed files, not migrated |
+| SQL schema migration of a derived-row table | derived-row schema version | `row_schema_version` | every cache row becomes unreachable and is pruned; nothing is migrated (§9.1) | class M mirrors: re-mirrored from the committed files, not migrated; every other migration of the schema, which touches no table an analyzer reads and so invalidates nothing (§5.2) |
 | history rewrite (amend/rebase/squash) | commit oids, episode identities | `n/a (identity relink)` | episode identities and episode-scoped results for the rewritten set | ledger entries: they re-link by fingerprint (e4.6); the store is not the thing that breaks |
 | branch deleted / ref moved away | reachable tree set | `n/a (reachability)` | nothing immediately; unreferenced rows age out under §8.2 | anything an unreviewed episode or a ledger entry still references |
 | hook event appended | event seq range | `n/a (append-only)` | episode boundary for that turn, then episode-scoped analyzers | commit-scoped analyses: an event cannot change what a commit contains |
@@ -787,9 +800,13 @@ no gap. Policy:
 
 * forward-only; a released migration is never edited, only added to;
 * **a migration may change schema and class-M mirrors only. It may not transform class-R data**
-  (D12). It bumps `meta.schema_version`, which changes every cache key (§5.2, field 9), which makes
-  every derived row unreachable, which the pruner reaps. The rebuild is the same code path as a
-  fresh clone, which means it is the *tested* path — that identity is the entire point;
+  (D12). Nothing is rewritten. A migration that reshapes the derived row makes it unreachable
+  instead — key field 9 is the schema of the derived row itself (§5.2), and bumping it in the same
+  commit as the migration is what makes every stale row unreachable and lets the pruner reap it.
+  The rebuild is the same code path as a fresh clone, which means it is the *tested* path — that
+  identity is the entire point. A migration of a table no derived row lives in reaches no key at
+  all, and that is not D12 loosening: nothing was migrated either way, and the rows that stay
+  reachable were never the ones the migration could confuse (`reco-3sa`);
 * a migration that genuinely must preserve derived data is an amendment to this ADR, not a Tuesday.
 
 ### 9.6 `doctor`'s storage obligations
@@ -951,6 +968,10 @@ is a budget row lookup, never an `if` in product code.
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
 | `cache.bytes_per_cached_row` | bytes | p95 per cached row | 32,768 | 32,768 | 32,768 | 32,768 | The per-row half of `cache.budget.mib`, which is what actually decides whether the class-R cache fits: a cap of 512 MiB is a policy, and a policy is only implementable if a derived row's payload has a ceiling. Measured on the largest payload the store writes, `structure.delta`: 171 791 B/row when it stored a tree's whole inventory and 23 063 B/row now that it stores a chain of deltas (aws, 4 756 tree rows), so this is ~1.4x of measured — and the reason it is that close is that the anchor cadence (one full enumeration per 32 commits, §13.7's) is what sets it: double the cadence and the payload halves, halve it and it doubles, and §6.1 R2 is the reason the cadence exists at all. |
+
+| Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
+|---|---|---|---|---|---|---|---|
+| `cache.rows_orphaned_pct` | % | p50 of stored rows | 0 | 0 | 0 | 0 | Derived rows that are a *second* copy of an input the table already holds — the same (`analyzer`, scope kind, input digest) under two keys. One binary running over one repository must never produce one: it would mean a key that is not a function of its inputs, which is the disease ADR-004 §5 exists to prevent, and it is expensive twice over — the recomputation and the dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the store's own migration counter, so every SQL migration orphaned every derived row, and this repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as `count(*) - count(distinct analyzer_id \|\| input_kind \|\| input_hash)` over `cache`, after a harness that ran one binary and changed no version, no config and no schema: the same repository this budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with every one of its 3 727 rows read back. A deliberate analyzer or config bump still leaves old rows on purpose (§6.2 marks dead, does not delete) — which is why this is measured on the harness's own cold-then-warm sequence rather than on a store a person has upgraded through four releases. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1562,7 +1583,8 @@ which is what §6.1's "a mismatch, not a delete" means in numbers.
 | bump `deps.resolve` | 2 048 | itself + `findings.detect` + `risk.score` + `delta.compose` |
 | bump `graph.build` | 1 536 | itself + `risk.score` + `delta.compose` — **not** `findings.detect`, which does not depend on the graph |
 | bump `taxonomy.path` | 10 583 | everything downstream: the honest price of a taxonomy change, and why `e0.9`'s versioning matters |
-| store schema bump | 10 583 | everything, by construction (§9.5, D12) |
+| bump the derived-row schema (`__row_schema__`) | 10 583 | everything, by construction (§9.5, D12) |
+| the store's own migration counter moving | **0** | nothing — field 9 stopped being the store's version in `reco-3sa`: paying 10 583 recomputations for a table no analyzer reads is not invalidation, it is waste |
 | `noise.globs` changed | 7 511 | `taxonomy.path`, `deps.resolve`, `structure.delta` |
 | `risk.weights` changed | 1 024 | `findings.detect`, `risk.score` — the *ranking* changed, not the facts |
 | `layers.` changed | 1 024 | `structure.delta`, `graph.build` (0 before the prefix-key fix, §5.5) |
@@ -1823,7 +1845,7 @@ python3 tools/gen_graph_tables.py check   # §13.7 and graph-storage.md match th
 |---|---|
 | §4 schema draft exists, and is the schema the code runs | `test_adr_schema_block_matches_module`, `test_generated_blocks_are_in_sync`, `test_schema_uses_strict_and_comma_separated_table_options`, `test_migrations_cover_the_schema_version_contiguously`, `test_pragma_contract_as_documented`, `test_integrity_of_a_fresh_store`, `test_every_table_has_a_durability_class` |
 | Cache keys as `(tree hash + analyzer version)` — and why that is the short version of §5.2 | `test_cache_key_framing_is_unambiguous`, `test_manifest_is_a_dag_and_declares_only_known_analyzers`, `test_cache_hit_and_miss_counters`, `test_negative_cache_entry_is_a_hit_with_an_error` |
-| Invalidation matrix: exactly the right rows, and nothing else | `test_no_change_invalidates_nothing`, `test_analyzer_bump_invalidates_only_its_closure`, `test_bump_analyzer_version_changes_only_that_analyzer`, `test_config_change_hits_only_its_consumers`, `test_config_reordering_is_not_an_invalidation`, `test_store_schema_bump_invalidates_everything`, `test_epoch_bump_makes_rows_unreachable`, `test_warm_reindex_invalidates_only_the_changed_file` |
+| Invalidation matrix: exactly the right rows, and nothing else | `test_no_change_invalidates_nothing`, `test_analyzer_bump_invalidates_only_its_closure`, `test_bump_analyzer_version_changes_only_that_analyzer`, `test_config_change_hits_only_its_consumers`, `test_config_reordering_is_not_an_invalidation`, `test_derived_row_schema_bump_invalidates_everything`, `test_a_migration_of_a_table_no_analyzer_reads_invalidates_nothing`, `test_epoch_bump_makes_rows_unreachable`, `test_warm_reindex_invalidates_only_the_changed_file` |
 | Concurrency model: single writer, many readers, nobody blocks | `test_second_writer_cannot_open_write_txn`, `test_reader_unblocked_during_writer_transaction`, `test_read_only_connection_refuses_writes`, `test_batched_writes_are_the_documented_order_of_magnitude_faster`, `test_progress_budget_interrupts_a_long_query`, `test_readers_see_a_consistent_epoch_during_a_rebuild` |
 | Recovery: `kill -9` mid-index, corrupt FTS, quarantine, doctor | `test_kill9_mid_index_recovers_and_completes`, `test_fts_damage_is_class_e_not_a_rebuild`, `test_quarantine_moves_everything_and_says_why`, `test_doctor_reports_the_things_that_would_otherwise_be_lost`, `test_doctor_is_clean_on_a_healthy_store` |
 | Retention and pruning (§8.7): a prune may never lose a review | `test_prune_keeps_class_m_and_drops_stale_epochs`, `test_prune_refuses_to_delete_a_class_m_blob`, `test_size_cap_produces_an_explicit_omission_not_silence`, `test_durability_classes_survive_a_prune_shape` |

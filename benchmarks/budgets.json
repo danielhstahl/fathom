@@ -1727,6 +1727,42 @@
    "size_class": "xlarge",
    "statistic": "p50 per file row",
    "unit": "bytes"
+  },
+  {
+   "budget": 0,
+   "family": "cache.rows_orphaned_pct",
+   "id": "cache.rows_orphaned_pct.small",
+   "rationale": "Derived rows that are a *second* copy of an input the table already holds \u2014 the same (`analyzer`, scope kind, input digest) under two keys. One binary running over one repository must never produce one: it would mean a key that is not a function of its inputs, which is the disease ADR-004 \u00a75 exists to prevent, and it is expensive twice over \u2014 the recomputation and the dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the store's own migration counter, so every SQL migration orphaned every derived row, and this repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as `count(*) - count(distinct analyzer_id || input_kind || input_hash)` over `cache`, after a harness that ran one binary and changed no version, no config and no schema: the same repository this budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with every one of its 3 727 rows read back. A deliberate analyzer or config bump still leaves old rows on purpose (\u00a76.2 marks dead, does not delete) \u2014 which is why this is measured on the harness's own cold-then-warm sequence rather than on a store a person has upgraded through four releases.",
+   "size_class": "small",
+   "statistic": "p50 of stored rows",
+   "unit": "%"
+  },
+  {
+   "budget": 0,
+   "family": "cache.rows_orphaned_pct",
+   "id": "cache.rows_orphaned_pct.medium",
+   "rationale": "Derived rows that are a *second* copy of an input the table already holds \u2014 the same (`analyzer`, scope kind, input digest) under two keys. One binary running over one repository must never produce one: it would mean a key that is not a function of its inputs, which is the disease ADR-004 \u00a75 exists to prevent, and it is expensive twice over \u2014 the recomputation and the dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the store's own migration counter, so every SQL migration orphaned every derived row, and this repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as `count(*) - count(distinct analyzer_id || input_kind || input_hash)` over `cache`, after a harness that ran one binary and changed no version, no config and no schema: the same repository this budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with every one of its 3 727 rows read back. A deliberate analyzer or config bump still leaves old rows on purpose (\u00a76.2 marks dead, does not delete) \u2014 which is why this is measured on the harness's own cold-then-warm sequence rather than on a store a person has upgraded through four releases.",
+   "size_class": "medium",
+   "statistic": "p50 of stored rows",
+   "unit": "%"
+  },
+  {
+   "budget": 0,
+   "family": "cache.rows_orphaned_pct",
+   "id": "cache.rows_orphaned_pct.large",
+   "rationale": "Derived rows that are a *second* copy of an input the table already holds \u2014 the same (`analyzer`, scope kind, input digest) under two keys. One binary running over one repository must never produce one: it would mean a key that is not a function of its inputs, which is the disease ADR-004 \u00a75 exists to prevent, and it is expensive twice over \u2014 the recomputation and the dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the store's own migration counter, so every SQL migration orphaned every derived row, and this repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as `count(*) - count(distinct analyzer_id || input_kind || input_hash)` over `cache`, after a harness that ran one binary and changed no version, no config and no schema: the same repository this budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with every one of its 3 727 rows read back. A deliberate analyzer or config bump still leaves old rows on purpose (\u00a76.2 marks dead, does not delete) \u2014 which is why this is measured on the harness's own cold-then-warm sequence rather than on a store a person has upgraded through four releases.",
+   "size_class": "large",
+   "statistic": "p50 of stored rows",
+   "unit": "%"
+  },
+  {
+   "budget": 0,
+   "family": "cache.rows_orphaned_pct",
+   "id": "cache.rows_orphaned_pct.xlarge",
+   "rationale": "Derived rows that are a *second* copy of an input the table already holds \u2014 the same (`analyzer`, scope kind, input digest) under two keys. One binary running over one repository must never produce one: it would mean a key that is not a function of its inputs, which is the disease ADR-004 \u00a75 exists to prevent, and it is expensive twice over \u2014 the recomputation and the dead row left behind. `reco-3sa` is why this is a budget and not an anecdote: field 9 carried the store's own migration counter, so every SQL migration orphaned every derived row, and this repository's own store measured 2 686 orphaned `diff.per_file` rows (43 % of its per-file rows) and 36 % of all its lookups landing on `key_changed` instead of `cold`. Measured as `count(*) - count(distinct analyzer_id || input_kind || input_hash)` over `cache`, after a harness that ran one binary and changed no version, no config and no schema: the same repository this budget's numbers came from measured 42.6 % orphaned before the change and 0.0 % after it, with every one of its 3 727 rows read back. A deliberate analyzer or config bump still leaves old rows on purpose (\u00a76.2 marks dead, does not delete) \u2014 which is why this is measured on the harness's own cold-then-warm sequence rather than on a store a person has upgraded through four releases.",
+   "size_class": "xlarge",
+   "statistic": "p50 of stored rows",
+   "unit": "%"
   }
  ],
  "gates": {

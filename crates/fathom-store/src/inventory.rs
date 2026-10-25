@@ -396,8 +396,21 @@ pub struct RunSummary {
 /// How much derived data the cache holds.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CacheInventory {
-    /// Rows in `cache`.
+    /// The rows the cache owes: the lifetime `cache.put.*` counters, which count every write including a
+    /// `--refresh` re-putting a row it already had. Not `count(*) FROM cache` — that is
+    /// [`Store::cache_footprint`], which is what `fathom stats` prints beside this as `cache_rows`.
     pub rows: i64,
+    /// Rows whose `hits` column is above zero: an answer a *later* lookup asked for.
+    ///
+    /// This is the reuse number, and it is the one that distinguishes the two ways a cache can look cold.
+    /// A `path_pair`-scoped analyzer under the default new-commits scope is asked a question per
+    /// `(path, old blob, new blob)` transition and almost never asks the same one twice, so its rows sit
+    /// unread and that is the design; a key that moved between two runs (a version bump, a schema bump,
+    /// a field that should never have been in the key) leaves the same unread rows and it is a defect.
+    /// `cache.bump.*` separates them, and `hits > 0` is the same fact from the row's side (`reco-3sa`).
+    /// Read it against [`Store::cache_footprint`]'s row count, never against [`CacheInventory::rows`],
+    /// which counts writes and so can be larger than the table.
+    pub rows_read_back: i64,
     /// Rows in `cache` unreachable in the reader's epoch (§6.3) — old epochs are dead weight until prune.
     pub stale_epoch_rows: i64,
     /// Rows whose `error` column is set: stored failures, which are answers (§5.6), not defects.
@@ -825,16 +838,18 @@ impl crate::spine::Store {
         let mut inventory = CacheInventory::default();
         (
             inventory.rows,
+            inventory.rows_read_back,
             inventory.stale_epoch_rows,
             inventory.stored_failures,
         ) = conn
             .query_row(
                 "SELECT count(*),
+                    coalesce(sum(hits > 0), 0),
                     coalesce(sum(epoch <> ?1), 0),
                     coalesce(sum(error IS NOT NULL), 0)
              FROM cache",
                 params![epoch],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
             )
             .map_err(|err| corrupt("counting cache rows", &err))?;
         inventory.analyzers = conn

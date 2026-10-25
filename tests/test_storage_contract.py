@@ -249,10 +249,21 @@ def test_config_reordering_is_not_an_invalidation(store):
     assert _invalidated(store, config=a) == _invalidated(store, config=b) == {}
 
 
-def test_store_schema_bump_invalidates_everything(store):
-    """§9.5: a schema bump makes every derived row unreachable (D12)."""
-    per = _invalidated(store, versions={"__store_schema__": SCHEMA_VERSION + 1})
+def test_derived_row_schema_bump_invalidates_everything(store):
+    """§9.5: a bump of the *derived row's* schema makes every derived row unreachable (D12)."""
+    per = _invalidated(store, versions={"__row_schema__": C.ROW_SCHEMA + 1})
     assert sum(per.values()) == store.conn.execute("SELECT count(*) FROM cache").fetchone()[0]
+
+
+def test_a_migration_of_a_table_no_analyzer_reads_invalidates_nothing(store):
+    """§5.2 field 9, the other half (`reco-3sa`).
+
+    Field 9 used to be the store's own migration version, so every migration of anything — a note table,
+    an episode column — made every stored analysis unreachable and got it re-derived. Only a migration
+    of the derived row's own tables may do that now, so the store's schema version must not be an input
+    to a key at all.
+    """
+    assert _invalidated(store, versions={"__store_schema__": SCHEMA_VERSION + 7}) == {}
 
 
 def test_cache_hit_and_miss_counters(store):

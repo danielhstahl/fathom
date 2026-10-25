@@ -158,6 +158,18 @@
         "rows": {
           "type": "integer"
         },
+        "rows_read_back": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rows_read_pct": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "served_bytes": {
           "type": "integer"
         },

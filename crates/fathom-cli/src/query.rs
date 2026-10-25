@@ -763,6 +763,21 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
                 ""
             }
         ));
+        // The reuse line (`reco-3sa`). A hit rate says how many questions were answered; this says
+        // whether the answers were ever asked for again, which is the question a person reading a
+        // 0 %-warm analyzer is really asking. A `path_pair`-scoped analyzer is asked one question per
+        // `(path, old blob, new blob)` transition and an incremental run only asks about new commits, so
+        // most of its rows are written and never read — that is the design, and `asked again under a
+        // moved key` on the analyzer lines below is what it looks like when it is not.
+        let stored = cache["cache_rows"].as_u64().unwrap_or(0);
+        if stored > 0 {
+            out.push(format!(
+                "  read back   {} of {} row(s) in the table were asked for again ({:.1}%)",
+                cache["rows_read_back"].as_u64().unwrap_or(0),
+                stored,
+                cache["rows_read_pct"].as_f64().unwrap_or(0.0)
+            ));
+        }
         let payloads = cache["payload_evictions"].as_u64().unwrap_or(0);
         if payloads > 0 || cache["payload_refusals"].as_u64().unwrap_or(0) > 0 {
             out.push(format!(
@@ -788,7 +803,7 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
             .unwrap_or(&[])
         {
             out.push(format!(
-                "  {:<16} {:>7} {:>7} {:>6} {:>7} {}",
+                "  {:<16} {:>7} {:>7} {:>6} {:>7} {}{}",
                 row["id"].as_str().unwrap_or("?"),
                 format!("{} lookups", row["lookups"].as_u64().unwrap_or(0)),
                 format!("{} hits", row["hits"].as_u64().unwrap_or(0)),
@@ -798,6 +813,14 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
                     || "hit rate n/a".to_owned(),
                     |rate| format!("hit rate {rate:.1}%")
                 ),
+                // §5.6's diagnostic, which this report had never printed: `cold` means "a question that
+                // was never asked", and this means "asked again under a key that moved" — the difference
+                // between a cache doing its job and a cache being thrown away. `reco-3sa` found 36 % of
+                // every lookup a store had ever made in the second category.
+                match row["bumped"].as_u64() {
+                    Some(moved) if moved > 0 => format!(", {moved} asked again under a moved key"),
+                    _ => String::new(),
+                },
             ));
         }
     }

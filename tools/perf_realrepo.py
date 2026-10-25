@@ -311,15 +311,57 @@ class Repo:
             return [
                 {"analyzer": row[0], "rows": row[1], "result_bytes": row[2], "cost_ms": row[3],
                  "ms_per_row": round((row[3] or 0) / max(1, row[1]), 3),
-                 "bytes_per_row": int((row[2] or 0) // max(1, row[1]))}
+                 "bytes_per_row": int((row[2] or 0) // max(1, row[1])),
+                 # The reuse half (`reco-3sa`): a row nobody read back is not yet a defect — for a
+                 # `path_pair` scope it is the design, because an incremental run asks about new
+                 # commits only — but it is the number that has to be on the table before anyone can
+                 # say which of the two it is looking at.
+                 "rows_read_back": row[4],
+                 "read_back_pct": round(100.0 * (row[4] or 0) / max(1, row[1]), 1)}
                 for row in connection.execute(
-                    "select analyzer_id, count(*), sum(result_bytes), sum(cost_ms) "
-                    "from cache group by 1 order by coalesce(sum(cost_ms), 0) desc")
+                    "select analyzer_id, count(*), sum(result_bytes), sum(cost_ms), "
+                    "sum(hits > 0) from cache group by 1 order by coalesce(sum(cost_ms), 0) desc")
             ]
         except sqlite3.Error:
             return []
         finally:
             connection.close()
+
+    def cache_reuse(self) -> dict:
+        """What the durable cache holds, and how much of it anybody asked for.
+
+        Two numbers, both read off rows the store already keeps, so neither costs a run:
+
+        * **read back** — the share of stored rows whose `hits` is above zero. Reported, never
+          budgeted: a cold-dominated store legitimately reads almost none of it back, and pretending
+          otherwise would gate on the run pattern rather than on the cache.
+        * **orphaned** — rows beyond one per `(analyzer, scope kind, input digest)`. That is a key that
+          moved between two runs of the same build, and one build must never do that: it is the
+          recomputation *and* the dead row. Budgeted at zero (`cache.rows_orphaned_pct`).
+        """
+        import sqlite3
+
+        if not self.store.exists():
+            return {}
+        connection = sqlite3.connect(f"file:{self.store}?mode=ro", uri=True)
+        try:
+            stored, read_back, distinct = connection.execute(
+                "select count(*), coalesce(sum(hits > 0), 0), "
+                "count(distinct analyzer_id || '/' || input_kind || '/' || input_hash) from cache"
+            ).fetchone()
+        except sqlite3.Error:
+            return {}
+        finally:
+            connection.close()
+        orphaned = max(0, (stored or 0) - (distinct or 0))
+        return {
+            "stored_rows": stored or 0,
+            "rows_read_back": read_back or 0,
+            "read_back_pct": round(100.0 * (read_back or 0) / max(1, stored or 1), 1),
+            "distinct_inputs": distinct or 0,
+            "orphaned_rows": orphaned,
+            "orphaned_pct": round(100.0 * orphaned / max(1, stored or 1), 2),
+        }
 
     def tui_probe(self) -> dict:
         """The same pty script `make bench` runs, against this repository's store."""
@@ -439,6 +481,27 @@ class Repo:
                         how=f"the widest per-row payload the store holds "
                             f"(`{widest['analyzer']}`) — this is what `cache.budget.mib` is made of",
                         detail=widest))
+        # The reuse pair (`reco-3sa`). One is a budget and one is not, and the difference is the whole
+        # point: how much of a cache gets read back depends on the questions this harness happened to
+        # ask, so that one is reported; how many rows a *second key for the same input* produced depends
+        # on nothing but the key, so that one is a ceiling of zero.
+        reuse = self.cache_reuse()
+        self.record(Row(f"cache.rows_orphaned_pct.{self.label}", "%",
+                        reuse.get("orphaned_pct"),
+                        f"cache.rows_orphaned_pct.{cls}",
+                        budget_value(f"cache.rows_orphaned_pct.{cls}"),
+                        how="rows beyond one per `(analyzer, scope kind, input digest)`: a key that "
+                            "moved between two runs of one build, which costs the recomputation and "
+                            "leaves the dead row behind (§5.2, §6.2)",
+                        detail=reuse))
+        self.record(Row(f"cache.rows_read_pct.{self.label}", "%",
+                        reuse.get("read_back_pct"), None, None,
+                        how="share of stored `cache` rows an answer was ever read out of, as this "
+                            "harness leaves the store (cold index, one warm commit). Deliberately "
+                            "unbudgeted: it moves with the run pattern, not with the cache's health — "
+                            "a `path_pair` scope is asked each question about once — and the number "
+                            "that separates a cold cache from a thrown-away one is the row above",
+                        detail={"by_analyzer": analyzers}))
         self.record(Row(f"store.bytes_per_file_row_spine.{self.label}", "bytes",
                         int((sizes["spine_bytes"] or 0) // max(1, file_rows)),
                         f"store.bytes_per_file_row_spine.{cls}",

@@ -205,7 +205,7 @@ def measure_store(m: Measure, tmp: Path, commits: int) -> dict:
             ("bump_analyzer_taxonomy_path", {"taxonomy.path": 99}, None),
             ("bump_analyzer_graph_build", {"graph.build": 99}, None),
             ("bump_analyzer_deps_resolve", {"deps.resolve": 99}, None),
-            ("bump_store_schema", {"__store_schema__": 2}, None),
+            ("bump_row_schema", {"__row_schema__": C.ROW_SCHEMA + 1}, None),
             ("config_noise_globs", None, {**G.DEFAULT_CONFIG, "noise": {
                 **G.DEFAULT_CONFIG["noise"], "globs": ["**/build/**"]}}),
             ("config_risk_weights", None, {**G.DEFAULT_CONFIG, "risk": {
