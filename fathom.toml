@@ -142,7 +142,10 @@ snapshot_cache_mib = 32
 [layers]
 # The intended architecture, exactly as ADR-002 §3 declares it: every arrow points downhill.
 # The crate names are the ones `tools/workspace_model.py` owns, so `e0.7`'s scaffold cannot
-# drift from this file without one of the two failing a check.
+# drift from this file without one of the two failing a check — that check is
+# `tests/test_workspace_contract.py`, which reads the model and this table as one list.
+# `fathom-fixtures` is absent on purpose: ADR-002 §4.4 keeps it out of every shipped build (R7), and
+# a crate nobody links does not belong among the library layers `deps.license.library_layers` names.
 l5_composition = ["crates/fathom-cli"]
 l4_surfaces = ["crates/fathom-tui", "crates/fathom-mcp"]
 l3_analysis = ["crates/fathom-analyze"]
@@ -150,6 +153,43 @@ l2_outside_door = ["crates/fathom-ingest"]
 l1_durable_state = ["crates/fathom-store"]
 l0_vocabulary = ["crates/fathom-core"]
 contracts = ["src/recommender", "tools"]
+
+# ADR-002's boundary rules are enforced, and they are not restated here as a `[layering]` table —
+# and the gate is told so, rather than leaving a stranger to diagnose why its layering row is blocked
+# (**reco-dg7**).
+#
+# The policy is real and it does fail a build: R1 (no uphill edge), §5.2's downhill-but-forbidden
+# edges and §5.3's façade are lint `E01`–`E05`, `M02` and `M03`, run by
+# `python3 tools/check_workspace.py lint` on every commit. They are crate-level because they are
+# claims about the `[dependencies]` of eight Cargo manifests, which is the granularity that can
+# actually answer them.
+#
+# `[layering]` judges a different object: the module graph, whose corpus is `e3.1`'s extractor's, and a
+# Rust dependency that leaves a crate is a dependency that leaves the corpus — the fourth "thing that may
+# be wrong" in `docs/concepts/architecture-graph.md` stores it as nothing.
+# Measured, not argued: seed an uphill `use fathom_analyze::…` into `crates/fathom-core` on a scratch
+# branch and `fathom index` it, and the revision gains one graph node and no dependency row; and across
+# this index's graph deltas not one of the ~2 200 dependency rows carries two different layer tags. So a `[layering]` block naming these layers would judge nothing, `fathom check`
+# would print "2 400-odd dependency edges judged, 0 findings", and this repository would have written
+# itself a clean bill of health for an architecture the gate never looked at. `docs/concepts/layering.md`
+# §2 refuses exactly that state in somebody else's config; this file will not buy it in its own.
+# The gap itself is reco-842: a workspace member is a corpus boundary the extractor does not model yet.
+#
+# So the volume is off, in the words the gate's own remedy line asks for, and `[layers]` stays because
+# it answers the questions that are genuinely asked at its granularity: the layer tags ride on every
+# graph row, and `deps.license.library_layers` reads them. Everything else the gate reads is left at
+# its built-in default, for the reason every other block in this file gives: the built-ins are what
+# `tests/test_ci_gate_contract.py` scores.
+#
+# What would make a `[layering]` block worth writing is an extractor for which a sibling workspace
+# member is not a third-party base. The day a crate edge is a graph row, the rules to write are
+# `no_upward = true` (§5.1's R1, and it refuses every uphill edge at once) plus one refusal per the
+# downhill edges §5.2 forbids:
+#   forbid = ["one-reality: l4_surfaces -> l1_durable_state",
+#             "one-door:    l4_surfaces -> l2_outside_door"]
+# and the tests named above are what keep the layer names honest until then.
+[check.severity]
+layering = "off"
 
 [risk]
 # An unreviewed episode is only worth an interruption if the interruption teaches something;

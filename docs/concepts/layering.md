@@ -93,6 +93,19 @@ Three states are printed and never confused: **no `[layering]` table** (nothing 
 says so rather than printing a clean bill), **`mode = "off"`** (nothing was examined, deliberately), and
 **rules in force that found nothing** (which is the answer, and the only one of the three that is).
 
+A rule can also be in force over an edge kind that does not exist, which is none of the three and worse than
+the first: the numbers look like the third one. A `[layers]` table whose entries are crate directories, with
+rules written between them, asks the module graph about *crate* edges, and in a Cargo workspace the
+extractor writes none — every `use fathom_store::…` leaves the corpus and is stored as nothing (item 4 of
+[the graph page](architecture-graph.md)). The assessment then reports every row as judged and clear,
+which is true of the rows and says nothing about the edges the rules were written for. So a rule list has to
+be checked against what the corpus can show it, and where it cannot, the honest line is `[check.severity]
+layering = "off"` in the repository's own `fathom.toml` beside a sentence about where the rule really lives.
+This repository does exactly that: its crate boundaries are ADR-002 §5, enforced by
+`python3 tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) against the Cargo manifests, and
+`tests/test_workspace_contract.py` fails if the `[layers]` table and the ADR's crate list drift or if the
+gate stops saying out loud that the layering check is off here.
+
 A layer declared but left out of `order` is a caveat, not a refusal: its edges are counted `unranked` and
 not judged for upwardness, because guessing a rank from the order the table was written in would be
 inventing an architecture.

@@ -57,7 +57,9 @@ These are not caveats appended to a report; each one changes the shape of an ans
    caller list built from them says *names a package rather than a file* rather than pretending to
    file-level precision it does not have.
 4. **A dependency that leaves the corpus is stored as nothing** — a third-party base, a standard-library
-   import — and counted. It is not an edge to an invented node.
+   import, and, in a Cargo workspace, a sibling crate: `use fathom_store::…` written in `fathom-analyze`
+   names no path in this corpus. No row is written, the omission is counted, and a `[layering]` rule
+   over crate-shaped `[layers]` entries has nothing to fire on.
 
 ## Where it lives, and what it costs
 

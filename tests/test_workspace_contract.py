@@ -674,6 +674,87 @@ def test_the_lockfile_names_every_crate_and_none_of_the_banned_crates():
         assert f'name = "{crate}"' not in lock, f"{crate} is in the lockfile and banned by §8.4"
 
 
+# ---------------------------------------------------------------------------
+# 7. what Fathom's own `fathom.toml` says about this workspace
+# ---------------------------------------------------------------------------
+#
+# `fathom check` reads `fathom.toml`, so this file is where ADR-002 meets the gate that is supposed to
+# answer the layering question about the repository it ships in. Two things have to stay true, and
+# **reco-dg7** is the ticket that wrote them down: the `[layers]` table is §3's crate list, and the
+# boundary rules are *not* restated as a `[layering]` block, because a rule the module graph cannot
+# fire is a rule the reader believes. `tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) is
+# what enforces §5, at crate granularity — the granularity §5 is written at.
+
+FATHOM_TOML = ROOT / "fathom.toml"
+
+
+def test_fathoms_own_layers_table_is_the_models_crate_list():
+    """§3: `fathom.toml`'s `[layers]` and the model's crate list are one list, in both directions.
+
+    Every crate that ships is named, every named `crates/` path is a crate the model declares, and the
+    fixture crate is absent because §4.4 keeps it out of every shipped build — a crate nobody links is
+    not library code, and `deps.license.library_layers` counts `l0_vocabulary` through `l3_analysis` as
+    exactly that.
+    """
+    config = CW.read_toml(FATHOM_TOML)
+    layers = config["layers"]
+    named = {
+        path.rsplit("/", 1)[-1]
+        for paths in layers.values()
+        for path in paths
+        if path.startswith("crates/")
+    }
+    shipped = {c.name for c in M.CRATES if c.kind != "dev"}
+    assert shipped <= named, f"[layers] lost {sorted(shipped - named)}; §3's list is the layer list"
+    assert named <= {c.name for c in M.CRATES}, f"[layers] names a crate the model does not declare"
+    assert M.FIXTURES_CRATE not in named, "§4.4: the fixture crate is dev-only and must not be a layer"
+    for path in {p for paths in layers.values() for p in paths}:
+        assert (ROOT / path).is_dir(), f"[layers] names {path}, which is not a directory"
+
+
+def test_the_gate_is_told_where_this_repositorys_boundaries_are_enforced():
+    """**reco-dg7**: the layering row says `off`, in this file, rather than reporting a blockage.
+
+    `fathom check` on this repository used to answer the layering question with `blocked`: nothing was
+    declared, so "respected" had no definition. The remedy it prints is either a `[layering]` table or
+    the volume below, and the volume is the honest one here — see the comment above `[check.severity]`
+    for the measurement. This test is the pin: if the config drifts back to silence, or drifts forward
+    into rules that cannot fire, it fails here rather than in a stranger's CI log.
+    """
+    config = CW.read_toml(FATHOM_TOML)
+    text = FATHOM_TOML.read_text()
+    layers = config["layers"]
+    assert "layering" not in config, (
+        "a `[layering]` block here would judge nothing: the module graph stores no crate edge for Rust, "
+        "so it would print a clean bill of health for an architecture the gate never looked at"
+    )
+    assert config["check"]["severity"]["layering"] == "off", "the gate's layering volume is not declared"
+    # The reason travels with the key, or it is a key nobody will defend in six months.
+    assert "check_workspace" in text and "E01" in text, "the comment must name what enforces §5 instead"
+    assert "leaves the corpus" in text, "the comment must name why a crate edge is not a graph row"
+    # And the two rules worth writing when that changes are written, so the day is a copy-paste.
+    # Only the *downhill* forbidden pairs: `no_upward = true` is what refuses an uphill edge, so §5.2's
+    # downhill-but-forbidden ones are the pairs that need a rule of their own — which is the sentence
+    # this file keeps pointing at.
+    layer_of = {
+        path.rsplit("/", 1)[-1]: name
+        for name, paths in layers.items()
+        for path in paths
+        if path.startswith("crates/")
+    }
+    forbidden = {
+        (layer_of[src], layer_of[dst])
+        for src, dst, _why in M.FORBIDDEN_EDGES
+        if M.layer_of(dst) < M.layer_of(src)
+    }
+    assert {("l4_surfaces", "l1_durable_state"), ("l4_surfaces", "l2_outside_door")} <= forbidden
+    for src_layer, dst_layer in sorted(forbidden):
+        pair = f"{src_layer} -> {dst_layer}"
+        assert pair in text, (
+            f"§5.2 forbids a downhill edge; the comment must name the rule ({pair}) to write later"
+        )
+
+
 def test_ci_builds_on_all_three_operating_systems_and_both_channels():
     """§8.3's matrix, as a matrix — `C01` proves the steps exist, this proves they run in triplicate."""
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
