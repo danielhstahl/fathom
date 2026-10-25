@@ -381,12 +381,15 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
                    check=True, stdout=subprocess.DEVNULL)
     tui = json.loads(steps_file.read_text())
     steps_file.unlink(missing_ok=True)
-    record("TUI: keystroke to a changed screen (p95, excluding the `g` chord)",
+    record("TUI: keystroke to a changed screen (p95, every key in the probe)",
            "query.frame_store_budget.ms.small", tui.get("visible_p95_ms"), unit="ms",
-           note="measured through the pty: keystroke written, screen grid changed. The worst value "
-                f"is {tui.get('visible_worst_ms')} ms, and it is `g`, whose answer is the 250 ms "
-                "chord timeout for `gg`, not the store. Not the shell's own draw time: that is in "
-                "`shell_frame_report`, which is what ADR-002 §6 budgets")
+           note="measured through the pty: keystroke written, screen grid changed, every key in "
+                "the probe counted — nothing excluded. The worst value is "
+                f"{tui.get('visible_worst_ms')} ms. `g` used to be that value at 250 ms, because it "
+                "waits for the second keystroke of `gg`; the frame marks that wait now, so the "
+                "keystroke answers in a frame and the view arrives when the wait ends (`reco-wlt`). "
+                "Not the shell's own draw time: that is in `shell_frame_report`, which is what "
+                "ADR-002 §6 budgets")
     record("TUI: peak RSS", "rss.tui.mib.small",
            round((tui.get("rss_peak_kib") or 0) / 1024.0, 2), unit="MiB",
            note="VmHWM of the TUI child, sampled after every keystroke")

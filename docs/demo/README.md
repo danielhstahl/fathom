@@ -289,10 +289,13 @@ open TUI notices a commit made next door (`reco-bpc`), `<C-r>` re-indexes throug
 instead of narrating that it cannot (`reco-j7t` — it now shows the run's own counters on the status line
 while it goes), the space bar reaches a prompt (`reco-q45`), and a warm re-index with nothing new no longer
 walks the history to find out (`reco-7tc` — the row above is 2 ms of run time where it measured 49, and
-the walk, the analyses and the episode rebuild are now skipped when no ref moved). The P3s are
-honest little cruelties: toasts that evict the hint line forever, keys that are silent when they
-should say why they cannot apply, and a `g` that answers 250 ms late with nothing to say it is
-waiting.
+the walk, the analyses and the episode rebuild are now skipped when no ref moved). The P3s were
+honest little cruelties, and all three of them have since closed: toasts that evicted the hint line
+forever (`reco-2ll` — six seconds, then the row comes back by itself), keys that were silent when
+they should say why they cannot apply (`reco-xf8` — 891 view/key pairs had to prove they now
+speak), and a `g` that answered 250 ms late with nothing to say it was waiting (`reco-wlt` — the
+frame the keystroke lands on marks the wait, and every view key measures inside one frame budget
+through the pty).
 
 ## What this run is not
 

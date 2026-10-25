@@ -516,6 +516,11 @@ on both, so no configuration can fix a chord on that list. The second list is a 
 are Fathom's reserved-but-unused set, yours for the taking, and the conflict checker refuses a
 *default* binding that collides with one.
 
+A two-keystroke chord costs a wait only when its first keystroke is a binding of its own, and the
+table ships exactly one such pair: `g` (the graph view) and `gg` (first row). That wait is 250 ms,
+and the frame prints it while it lasts — see [§9](#9-what-the-status-line-is-allowed-to-advertise)
+and [ADR-006 §7.2](../adr/0006-tui.md).
+
 <!-- BEGIN GENERATED: reserved -->
 | Class | Chord | What the terminal delivers | Free in | Why |
 |---|---|---|---|---|
@@ -593,6 +598,16 @@ key the build does not bind ([ADR-006 §5](../adr/0006-tui.md), `keymap.HINT_ACT
 A toast — the line an act prints, `reviewed · signed off · ep-3fa` — borrows that row for six seconds
 and then gives it back, so the row you are reading here is what is on screen again without a keystroke
 ([ADR-006 §7.5](../adr/0006-tui.md)).
+
+A key held mid-chord borrows it for 250 ms, and outranks a toast while it lasts. `g` is the graph view
+*and* the first half of `gg`, so a lone `g` cannot be answered until the wait for the second key
+expires, and the row spends that wait saying
+`` `g` … waiting · `g` alone = Graph in 250 ms · `gg` = First row ``:
+the key in the air, what it becomes if nothing else arrives, and what the second key would still turn
+it into. Press the second key and the wait is skipped; press nothing and the graph view opens when the
+wait ends. Where there is no hint row to say it on — ambient has none, and neither has
+`ui.hints = false` — the status row says it instead
+([ADR-006 §7.2](../adr/0006-tui.md), asserted in `crates/fathom-tui/tests/pending_chord.rs`).
 
 A key that cannot apply uses the same row instead of saying nothing: *nothing is selected, so there is
 no path to copy — `j`/`k` choose an episode first*. The absence, then the key that ends it, and only

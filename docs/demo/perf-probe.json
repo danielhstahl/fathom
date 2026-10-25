@@ -3,14 +3,14 @@
   "comment": [
     "A tiny scripted session whose only job is to be measured: open, move, quit. The numbers come",
     "out of `tools/mvp_acceptance.py`, which reads the timings `tools/tui_session.py` writes.",
-    "`g` is in here because it is the one key whose answer is the 250 ms chord timeout rather than a frame."
+    "`g` is in here because it is the one key that has to wait — 250 ms for the second keystroke of `gg` — and the frame marks the wait while it does (`reco-wlt`)."
   ],
   "steps": [
     { "keys": "", "note": "open the TUI: time to the first frame", "hold": 0.8 },
     { "keys": "t", "note": "timeline", "settle": 0.5 },
     { "keys": "jjjjjjjj", "note": "eight rows of rail motion", "settle": 0.5 },
     { "keys": "q", "note": "queue", "settle": 0.5 },
-    { "keys": "g", "note": "the graph key: the chord timeout is the answer", "hold": 0.8 },
+    { "keys": "g", "note": "the graph key: it waits 250 ms for `gg`, and the frame says so while it waits", "hold": 0.8 },
     { "keys": ",", "note": "the palette", "settle": 0.5 },
     { "keys": "<Esc>", "note": "close it", "settle": 0.5 },
     { "keys": "<C-c>", "note": "quit", "settle": 0.4 }

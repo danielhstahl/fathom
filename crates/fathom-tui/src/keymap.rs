@@ -1817,15 +1817,26 @@ impl Keymap {
 
     /// Does some mode in `chain` bind a chord that strictly extends `prefix`? That is the whole
     /// test for whether a partial chord may be held.
+    ///
+    /// Extended by *keystrokes*, not by characters. The table spells a keystroke `<C-d>`, and nobody
+    /// can type "`<`, then `C-d`" — one key event arrives — so a character test would
+    /// make every named chord look as if it started with `<`, and the structure view's `<` would
+    /// hold for 250 ms waiting on a second key no reviewer can send. Whole keystrokes is what the
+    /// chord machine actually feeds, and it leaves ADR-006 §7.2's claim true: `g`/`gg` is the one
+    /// ambiguous pair the published table ships (`reco-wlt`).
     #[must_use]
     pub fn has_extension(&self, chain: &[Mode], prefix: &str) -> bool {
+        let held = chord_atoms(prefix);
         chain
             .iter()
             .filter_map(|mode| self.table.get(mode))
             .any(|binds| {
-                binds
-                    .keys()
-                    .any(|chord| chord.starts_with(prefix) && chord != prefix)
+                binds.keys().any(|chord| {
+                    chord.as_str() != prefix && {
+                        let units = chord_atoms(chord);
+                        units.len() > held.len() && units.starts_with(&held)
+                    }
+                })
             })
     }
 
@@ -1915,6 +1926,124 @@ impl Keymap {
         bits.join(" · ")
     }
 
+    /// The line a half-typed chord prints while it waits (`reco-wlt`, ADR-006 §7.2).
+    ///
+    /// `g` is `view.graph` *and* the first half of `gg`, so a lone `g` cannot be answered until
+    /// [`CHORD_TIMEOUT`] expires; §7.2 pays that cost knowingly. What it does not pay for is the
+    /// silence: a keystroke that leaves the frame unchanged is a keystroke a reviewer presses
+    /// again, and the second press is a different action in a different mode. So the wait is
+    /// marked, in one line, with the three things the reviewer is holding: the key in the air,
+    /// what it becomes if nothing else arrives, and what a second key could still turn it into.
+    ///
+    /// Everything on the line is read from the merged table, so an override that rebinds `g`, or
+    /// unbinds `gg` and ends the ambiguity, rewrites this line with it. The empty string means
+    /// nothing is held — which is how the caller knows to leave the key hints alone.
+    #[must_use]
+    pub fn pending_hint(&self, chain: &[Mode], pending: &str) -> String {
+        if pending.is_empty() {
+            return String::new();
+        }
+        // How many of a prefix's possible endings fit on one row before the line is the thing that
+        // needs explaining. `<C-w>` owns more than this; the rest are one `?` away, same as
+        // everything else in the frame.
+        const MOST: usize = 4;
+        let extends = self.extensions(chain, pending);
+        let mut out = format!("`{pending}` … waiting");
+        out.push_str(&match self.resolve(chain, pending) {
+            Some(id) => format!(
+                " · `{pending}` alone = {} in {} ms",
+                short_label(action(id).map_or(id, |a| a.label)),
+                CHORD_TIMEOUT.as_millis()
+            ),
+            // A bare prefix that binds nothing of its own: the wait is only a wait, and saying
+            // so is the difference between a chord and a dead key.
+            None => format!(
+                " · `{pending}` alone is unbound — the wait ends in {} ms",
+                CHORD_TIMEOUT.as_millis()
+            ),
+        });
+        for (chord, label) in extends.iter().take(MOST) {
+            out.push_str(&format!(" · `{chord}` = {label}"));
+        }
+        if extends.len() > MOST {
+            out.push_str(&format!(" · +{} more — `?`", extends.len() - MOST));
+        }
+        out
+    }
+
+    /// The chords that could go two ways: a binding that is also the first half of a longer one.
+    ///
+    /// `g` (the graph view) and `gg` (first row) are the only pair the shipped table ships, and
+    /// they are the whole reason a chord timeout exists. The help overlay prints one line per pair
+    /// (`reco-wlt`): a reviewer who reads `g = Graph` in the table and then watches it take a
+    /// quarter of a second was owed the second half of that sentence by the table itself.
+    ///
+    /// Read over the modes that share the keyboard: `prompt` and `pick` own theirs outright, and
+    /// a chord bound only there is not ambiguous anywhere it could be held.
+    #[must_use]
+    pub fn ambiguous_chords(&self) -> Vec<(String, String)> {
+        let mut out: Vec<(String, String)> = Vec::new();
+        for view in Mode::PRECEDENCE {
+            if view.is_exclusive() {
+                continue;
+            }
+            // A reviewer in this view, with a list under the cursor: the widest chain the view
+            // can actually be in, which is the only place a chord can be ambiguous.
+            let chain = mode_chain(view, Mode::List);
+            for mode in &chain {
+                let Some(binds) = self.table.get(mode) else {
+                    continue;
+                };
+                for chord in binds.keys() {
+                    // Both halves, or it is not ambiguous: the prefix answers a key of its
+                    // own *and* something longer can still start here.
+                    let two_ways =
+                        self.resolve(&chain, chord).is_some() && self.has_extension(&chain, chord);
+                    if !two_ways {
+                        continue;
+                    }
+                    if out.iter().any(|(seen, _)| seen == chord) {
+                        continue;
+                    }
+                    out.push((chord.clone(), self.pending_hint(&chain, chord)));
+                }
+            }
+        }
+        out
+    }
+
+    /// The chords a held prefix could still become, as `(chord, short label)`, in chain order.
+    ///
+    /// This is the walk `pending_hint` prints and the same question [`Keymap::has_extension`]
+    /// answers, so the frame cannot contradict the table it is read from.
+    #[must_use]
+    pub fn extensions(&self, chain: &[Mode], prefix: &str) -> Vec<(String, String)> {
+        let held = chord_atoms(prefix);
+        let mut out: Vec<(String, String)> = Vec::new();
+        for mode in chain {
+            let Some(binds) = self.table.get(mode) else {
+                continue;
+            };
+            for (chord, id) in binds {
+                let units = chord_atoms(chord);
+                if chord.as_str() == prefix
+                    || units.len() <= held.len()
+                    || !units.starts_with(&held)
+                {
+                    continue;
+                }
+                if out.iter().any(|(seen, _)| seen == chord) {
+                    continue;
+                }
+                out.push((
+                    chord.clone(),
+                    short_label(action(id).map_or(id.as_str(), |a| a.label)).to_owned(),
+                ));
+            }
+        }
+        out
+    }
+
     /// The help overlay: the merged table, generated (ADR-006 §7.3), plus the reserved set and
     /// the canonical tasks. Everything the overlay says about a key is what the resolver will
     /// do with that key, because there is exactly one table underneath it.
@@ -1955,6 +2084,17 @@ impl Keymap {
             out.push(format!("    {}", keys.join(" ")));
         }
         out.push(String::new());
+        // The one part of the table a reader cannot read off the table: a key that is also the
+        // first half of another key costs a wait, and the wait is printed while it lasts.
+        let ambiguous = self.ambiguous_chords();
+        if !ambiguous.is_empty() {
+            out.push("held keys — these wait, and the frame says so while they do".to_owned());
+            for (_, line) in &ambiguous {
+                out.push(format!("  {line}"));
+            }
+            out.push("  press the second key to skip the wait, or wait and it runs".to_owned());
+            out.push(String::new());
+        }
         out.push("actions, with the key each one has right now".to_owned());
         for (id, label, keys) in self.palette_entries() {
             let key = if keys.is_empty() {
@@ -2091,6 +2231,30 @@ fn override_problem(ov: &Override) -> Option<Refusal> {
     None
 }
 
+/// The keystrokes one binding is spelled from: every `<name>` is one, every bare character is one.
+///
+/// Not [`split_chords`], which parses a *sequence* from the docs and deliberately folds a doubled
+/// key into a single chord (`gg` is one documented keystroke there). Here the doubling is the point:
+/// `gg` is two keystrokes with the first held, and `<C-w>l` is two as well, while `<` is the first
+/// character of `<C-d>` and not the first keystroke of it.
+fn chord_atoms(chord: &str) -> Vec<String> {
+    let chars: Vec<char> = chord.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '<'
+            && let Some(end) = chars[i..].iter().position(|c| *c == '>')
+        {
+            out.push(chars[i..=i + end].iter().collect());
+            i += end + 1;
+            continue;
+        }
+        out.push(chars[i].to_string());
+        i += 1;
+    }
+    out
+}
+
 /// A palette label shortened for the hint line.
 ///
 /// The registry spells view actions as `Go to: Queue` and view-local actions as
@@ -2132,10 +2296,11 @@ fn clip(text: &str, width: usize) -> String {
 // ---------------------------------------------------------------------------
 /// The default wait for the second key of an ambiguous chord (`g` before `gg`).
 ///
-/// Only the ambiguous case pays: `<C-w>` alone is unbound, so it waits as long as it likes, and
-/// `g` alone is *bound*, so it gets this timeout before the graph view opens. 250 ms is under
-/// the interval a deliberate `gg` is typed at and under the threshold ADR-006 §7.2 worries
-/// about for `g`.
+/// Only the ambiguous case pays: `g` alone is *bound*, so it gets this timeout before the graph
+/// view opens, and a prefix that binds nothing of its own (`<C-w>`) gets the same wait before the
+/// frame says it is unbound. Either way the wait is printed while it lasts (`reco-wlt`). The 250 ms
+/// is under the interval a deliberate `gg` is typed at, and under the threshold ADR-006 §7.2
+/// worries about for `g`.
 pub const CHORD_TIMEOUT: Duration = Duration::from_millis(250);
 
 /// What a keypress produced.

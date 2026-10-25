@@ -2139,6 +2139,16 @@ impl App {
         if self.mouse {
             bits.push("mouse on · click selects, wheel scrolls".to_owned());
         }
+        // A chord in the air is printed on the hint row — except on the frames that have no hint
+        // row to print it on: glance, `ui.hints = false`, or a size the ladder had to sell it at.
+        // Those still owe the reviewer the same answer, and this row is on every view the shell
+        // ships (`reco-wlt`). Where the hint row is standing, it says it and this stays quiet.
+        if !self.hint_row() {
+            let held = self.pending_hint();
+            if !held.is_empty() {
+                bits.push(held);
+            }
+        }
         bits
     }
 
@@ -2850,13 +2860,50 @@ impl App {
         self.toast_until = None;
     }
 
-    /// The hint row: the toast while it lasts, then the keymap's own hint line (ADR-006 §7.5).
+    /// The hint row: a held chord while it waits, then the toast while that lasts, then the
+    /// keymap's own hint line (ADR-006 §7.5, §7.2).
+    ///
+    /// A held chord outranks a toast on purpose. A toast reports an act that is already over; a
+    /// chord in the air is the question being asked now, and ADR-006 §7.2 makes the answer cheap
+    /// rather than silent (`reco-wlt`).
     #[must_use]
     pub fn hint_line(&self) -> String {
+        let held = self.pending_hint();
+        if !held.is_empty() {
+            return held;
+        }
         if let Some(toast) = &self.toast {
             return toast.clone();
         }
         self.keymap.hint_line()
+    }
+
+    /// The line that says a keystroke is half-typed, or the empty string when nothing is held.
+    ///
+    /// Spelled from the merged table by [`Keymap::pending_hint`], so it is the table's own words,
+    /// not a copy of them. `reco-wlt`: the wait a chord costs is accepted; the wait nobody says
+    /// anything about is not.
+    #[must_use]
+    pub fn pending_hint(&self) -> String {
+        if !self.chords.is_pending() {
+            return String::new();
+        }
+        self.keymap
+            .pending_hint(&self.chain(), self.chords.pending())
+    }
+
+    /// Does this frame have a hint row? (`reco-wlt`)
+    ///
+    /// Three things can take it away: `ui.hints` off (`set_hints`), a view that never had one —
+    /// glance is `CH_STATUS` alone — and the degradation ladder selling it at a small size. The
+    /// renderer computes the same answer for the same three reasons (`crate::render`), and this is
+    /// the app's side of it: where a message has to go when the row it wants is not on the frame.
+    #[must_use]
+    pub fn hint_row(&self) -> bool {
+        let gone = |id: &str| self.fit.applied.iter().any(|a| a == id);
+        self.hints
+            && self.current().has_chrome(crate::views::CH_HINT)
+            && !gone(crate::layout::Step::Hint.id())
     }
 
     /// Feed one keystroke, spelled as a chord, and run everything it produced.

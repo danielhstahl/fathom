@@ -156,7 +156,7 @@
     },
     {
       "keys": "g",
-      "note": "graph view \u2014 measured: nothing paints for 251 ms, because `g` is also the prefix of `gg`, and the wait is unmarked",
+      "note": "graph view \u2014 `g` is also the first key of `gg`, so the frame marks the 250 ms wait before it opens (`reco-wlt`)",
       "hold": 1.0
     },
     {

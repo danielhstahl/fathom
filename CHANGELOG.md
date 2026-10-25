@@ -17,6 +17,62 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A `g` that waits says so (`reco-wlt`)
+
+The walkthrough measured every view key's frame arriving 0.5–2 ms after the keystroke, and `g`
+arriving 250.5 ms late, because `g` is `view.graph` *and* the first half of `gg` — so the shell has
+to wait for a second key before it can answer at all. ADR-006 §7.2 accepts that cost, and the cost
+is fine: 250 ms is under the interval a deliberate `gg` is typed at. What was not fine is that the
+wait was unmarked. A reviewer pressed `g`, got back the same screen, pressed `g` again — which is
+now `gg`, a different action in a different mode, in a view nobody asked for — and concluded the
+graph view was broken. The help overlay listed `g` as "Go to: Graph" and said nothing about the
+timeout; the hint row was two rows up, printing `q Queue · t Timeline · d Diff` at a question that
+was being asked right then.
+
+Nothing was missing a frame. The loop already drew one for the keystroke — it was the same frame, and
+the pty's `visible_ms` correctly called that "nothing changed for 250 ms". So the fix is not a faster
+key; the wait still costs what it cost. It is that the frame the keystroke lands on now says what is
+happening. Following the same path turned up a second one: the prefix test was done by *character*,
+and the table spells its named keys `<…>`, so `<` — which is `structure.sort_cycle` and
+`graph.hop_less` — was held for the full 250 ms waiting on a second keystroke nobody can type. The
+ADR's claim that `g`/`gg` is the one ambiguous pair the table ships was true in intent and false in
+the code; now it is measured.
+
+* **The hint row carries the mark while the wait lasts**: `` `g` … waiting · `g` alone = Graph in 250
+    ms · `gg` = First row `` — the key in the air, what it becomes if nothing else arrives and how
+    long that takes, and what the second key would still turn it into. Spelled by
+    [`Keymap::pending_hint`] out of the *merged* table, so an override that gives `g` a third ending
+    prints it and an override that unbinds `gg` takes the wait away entirely — no mark, no 250 ms,
+    `g` opens the graph on the keystroke.
+* **A held chord outranks a toast, and only for the length of the wait.** A toast reports an act that
+    is over; a chord in the air is the question being asked now. When the chord resolves to something
+    that prints nothing, the toast that was there before is back on its own clock (`reco-2ll`), not
+    cancelled by an interrupted keystroke.
+* **Where there is no hint row, the status row says it.** Glance is `CH_STATUS` alone, `ui.hints =
+    false` sells the row for the list, and the ladder sells `D1.hint` at a small size — three ways to
+    lose the row the message wants, none of them a licence to go quiet. [`App::hint_row`] is the
+    answer, and all nine views are asserted at 120×40 and at 80×24.
+* **`?` says it too**, in a generated "held keys" section that prints one line per ambiguous pair,
+    in the same words the frame uses ([`Keymap::ambiguous_chords`]). The table no longer promises an
+    answer the shell will not give for a quarter of a second.
+* **Ambiguity is measured in keystrokes, not characters.** `chord_atoms` splits a binding the way the
+    chord machine receives it — each `<name>` is one keystroke, each bare character is one — so `g`
+    extends `g`, `<C-w>l` extends `<C-w>`, and `<` extends nothing. That is the difference between
+    the ADR's sentence and the code's: `gg` is two keystrokes with the first held, `<C-d>` is one.
+* **Measured, with the pty driver, on the shipped binary** (`tests/test_pending_chord_contract.py`).
+    Pressing `g` changed the screen **2.6 ms** later, worst of three samples, where the recorded
+    walkthrough measured 250.5 ms; every view key — `a d g o p q s t` — came in inside one 16 ms
+    frame budget, worst in the run 4.1 ms (`d`). The frame that carries the mark is asserted to be
+    the frame the keystroke *produced*, and the graph view is asserted to still arrive when the wait
+    ends, with the mark gone with it. The loop-level claim, with the clock inside the process rather
+    than outside it, is in `crates/fathom-tui/tests/pending_chord.rs`.
+* **Five files had the old silence in their prose.** The walkthrough script's `g` step, the perf
+    probe's reason for including `g` at all, the acceptance report's label — which read "p95,
+    excluding the `g` chord" and never excluded anything, and now says so plainly — the P3 list in
+    `docs/demo/README.md`, and ADR-006 §7.2/§7.5 plus cheatsheet §7 and §9. The recorded run
+    (`.steps.json`, the cast, the rendered step table) is left alone: it is a record of the binary
+    that ran, and the next recording will read differently.
+
 ### A key that cannot apply says why (`reco-xf8`)
 
 The MVP walkthrough did not read the keymap. It pressed a key, redrew the frame, and asked whether
