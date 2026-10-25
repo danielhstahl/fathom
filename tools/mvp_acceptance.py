@@ -42,6 +42,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -95,22 +96,93 @@ def vmhwm_kib(pid: int) -> int:
     return 0
 
 
+#: The peak-RSS sample interval, in seconds. `run_measured` takes its samples in a thread, so this
+#: interval is not part of any measurement and can be as tight as the platform allows: 0.5 ms is
+#: where the fixture's short verbs stop moving (`fathom stats --json` reads a 13.4 MiB peak through
+#: a 0.5 ms sampler and a 12.5 MiB one through a 2 ms sampler, because a verb's memory peak lands
+#: in the last milliseconds of its life, exactly where a 2 ms loop has stopped looking).
+RSS_SAMPLE_INTERVAL_S = 0.0005
+
+
+class _PeakSampler(threading.Thread):
+    """Reads one child's `VmHWM` until told to stop; the highest read wins.
+
+    The thread exists so that sampling does not cost the clock anything. Before `reco-dkr` this code
+    was a `poll(); sleep(2 ms)` loop *inside* the timed region, which put the sleep into every
+    measurement in whole 2 ms steps and made a 13 ms verb measure 14.9 ms at p50 with a 32 ms tail —
+    the bimodality that `query.metrics.ms.small` was flapping on, and the reason the ticket exists.
+
+    `VmHWM` has to be read while the child lives: the address space goes with the process, and a
+    zombie reports ~200 KiB. `getrusage`'s `ru_maxrss` looks like the free answer and is not one:
+    Linux does not reset a thread group's max-RSS across `execve`, so a waited-for child reports
+    `max(parent at fork, its own peak)` and `/bin/true` reports this interpreter's own 10 MiB. So
+    the sample is taken from beside the child, and the residual miss is one sample interval, which
+    is what the resident-set budgets' own blessed noise floor is for.
+    """
+
+    def __init__(self, pid: int, interval_s: float = RSS_SAMPLE_INTERVAL_S) -> None:
+        super().__init__(daemon=True, name=f"fathom-peak-rss-{pid}")
+        self.pid = pid
+        self.interval_s = interval_s
+        self.peak_kib = 0
+        self._stop = threading.Event()
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            sample = vmhwm_kib(self.pid)
+            if sample > self.peak_kib:
+                self.peak_kib = sample
+            time.sleep(self.interval_s)
+
+    def peak(self) -> int:
+        """Stop the sampler and hand back the highest sample it saw."""
+        self._stop.set()
+        self.join(timeout=2.0)
+        return self.peak_kib
+
+
+def run_measured(argv: list[str], cwd: Path, *, stdout=None,
+                 stderr=None) -> tuple[float, int, int]:
+    """Run one child to its exit: (wall ms, peak RSS KiB, exit code).
+
+    Two clocks are involved and only one of them is the product's. The wall clock starts before the
+    fork — so it includes the process toll a verb pays, which is what the budgets are written in —
+    and stops when `wait4` returns, which is the instant the child left. Nothing sleeps in between:
+    an interval in the timed path is an interval added to the measurement.
+
+    `stdout`/`stderr` default to `/dev/null`; a caller that wants the child's output passes a file
+    handle it owns, which is how `tools/perf_realrepo.py` reads a verb's JSON back.
+    """
+    with open(os.devnull, "wb") as sink:
+        started = time.monotonic()
+        proc = subprocess.Popen(argv, cwd=cwd, stdout=sink if stdout is None else stdout,
+                                stderr=sink if stderr is None else stderr)
+        sampler = _PeakSampler(proc.pid)
+        sampler.start()
+        try:
+            _pid, status, _rusage = os.wait4(proc.pid, 0)
+        except ChildProcessError:
+            # Somebody else reaped it (only ever a bug in a caller); fall back to Popen's own wait.
+            proc.wait()
+            status = (proc.returncode or 0) << 8
+        wall_ms = (time.monotonic() - started) * 1000.0
+        peak_kib = sampler.peak()
+    # `wait4` already reaped the child, so Popen must not try to: the exit code is recorded by hand.
+    proc.returncode = os.waitstatus_to_exitcode(status)
+    return wall_ms, peak_kib, proc.returncode
+
+
 def run_timed(argv: list[str], cwd: Path, *, fresh: Path | None = None) -> tuple[float, int]:
     """Run a verb, returning (wall ms, peak RSS KiB). `fresh` is removed first: a cold run.
 
-    The peak is sampled *while the child runs*: `VmHWM` is gone from `/proc` the moment it exits,
-    and a peak measured from a corpse is zero, which is a number that lies.
+    The peak is sampled *while the child runs* — `VmHWM` is gone from `/proc` the moment it exits,
+    and a peak measured from a corpse is zero, which is a number that lies — and the sample loop
+    lives in its own thread for the reason in `_PeakSampler`.
     """
     if fresh is not None and fresh.exists():
         shutil.rmtree(fresh)
-    started = time.monotonic()
-    proc = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    peak = 0
-    while proc.poll() is None:
-        peak = max(peak, vmhwm_kib(proc.pid))
-        time.sleep(0.002)
-    peak = max(peak, vmhwm_kib(proc.pid))
-    return (time.monotonic() - started) * 1000.0, peak
+    wall_ms, peak_kib, _code = run_measured(argv, cwd)
+    return wall_ms, peak_kib
 
 
 def run_timed_json(argv: list[str], cwd: Path) -> tuple[float, float | None]:

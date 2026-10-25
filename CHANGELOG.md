@@ -17,6 +17,61 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The perf gate was timing its own polling loop (`reco-dkr`)
+
+`query.metrics.ms.small` — `fathom stats --json`, 250 ms of budget on a 13 ms verb — measured 14.8, 14.9
+and 21.6 ms in three identical runs of one tree, and `query.card.ms.cli.small` swung the same way. A ±15 %
+ratchet with a 5 ms floor was being asked to resolve 1.5 ms on a number whose own spread was 6.8 ms, so the
+same tree was red or green depending on the hour, and ADR-004 §11.10 had just written that down as an
+accepted cost with a re-run-once workaround in the epic harness. It was not the store being bimodal. Every
+wall clock the harness took was `t0 = monotonic()`, `Popen`, then a loop of `poll(); sample VmHWM;
+sleep(2 ms)` — so the number returned was the wall clock *around the polling loop*, including the interval
+itself, the `/proc` read inside it and wherever the scheduler woke the poller. That is 1.7 ms of a 13 ms
+verb at p50 and 8 ms of it in the tail: the gate had been measuring its own harness for three epics, and
+`tools/perf_realrepo.py` had the same defect with a 5 ms interval.
+
+- **The clock is the child's exit now.** `run_measured` starts the clock before the fork — the process toll
+  is part of what the budgets price — and stops it when `os.wait4` returns, which is the instant the child
+  left; nothing sleeps in between. Peak RSS moved to a sampler thread at a 0.5 ms interval, which is where
+  the fixture's short verbs stop moving: `fathom stats --json` reads 13.4 MiB through a 0.5 ms sampler and
+  12.5 MiB through a 2 ms one, because a verb's memory peak lands in the last milliseconds of its life,
+  exactly where a 2 ms loop has stopped looking. (`ru_maxrss` is not the free answer it looks like: Linux
+  does not reset a thread group's max RSS across `execve`, so a waited-for child reports
+  `max(parent at fork, its own peak)` and `/bin/true` reports the interpreter's own 10 MiB.)
+- **The read verbs take five samples, and a blessed value now carries the noise it was blessed with.**
+  `center`, `scale`, `spread` and `noise` sit beside `value` in `benchmarks/baselines/perf-gate.json`, and a
+  change has to clear the ±15 % *and* that floor — this run's own scatter times two, the blessed floor if it
+  is wider, the probe's stated resolution if that is widest. The scatter is a median absolute deviation, not
+  the range: a range is a maximum, one slow sample in five trebles it, and a floor built on a maximum is
+  widest exactly on the runs that should be distrusted and tightest on the ones that can be judged. The ±15 %
+  itself did not move and `NOISE_FLOOR` was not raised: what moved is that the per-unit constant is now the
+  fallback for a value blessed before floors existed, where before it was the only floor there was. The
+  ratchet compares the middle of the samples against the middle the baseline was blessed with, while the
+  budget keeps being checked against the p95 — a budget is a promise about a bad run and a ratchet is a
+  statement about a changed one.
+- **A gate that cannot resolve a metric now names it.** Where a change is past the ±15 % and inside the
+  measurement's own noise, the verdict is `ok — cannot classify`, said in the table, in the report under
+  `resolution.changes_this_run_could_not_classify`, and as a GitHub warning — not a silent pass, and not a
+  red that flips on the next run. And because a blind spot is a fact about the gate rather than about the
+  run, the gate prints the standing list too: **IDS THE ±15 % RATCHET CANNOT RESOLVE**
+  (`resolution.ids_the_ratchet_cannot_resolve`), which is now seven ids — the five pty probes (a 10 ms
+  instrument on a 1–5 ms number), `warm.reindex.noop.ms.small` (the store prints `elapsed_ms` as whole
+  milliseconds, so a 4 ms no-op moves in 25 % steps and three ticks of that clock are its floor), and
+  `store.size.mib.small` (a 1 MiB floor on a 3.4 MiB store). What guards those ids is their budgets, and
+  the ratchet says so instead of guessing.
+- **What it bought**: six consecutive gate runs put `query.metrics.ms.small` within ±4 % of its blessed
+  value where three samples used to choose between two modes, and five samples of one tree now scatter with a
+  robust standard deviation of 0.12–0.22 ms. Three of the ticket's three candidate remedies went in together,
+  because fixing the clock does not make a three-sample p95 into a statistic. Three blessed rows moved — the
+  two read verbs (15.1 → 13.4 ms, 15.3 → 14.8 ms) and the store-side no-op, whose basis changed — blessed
+  from the quietest of three runs and divided by that run's calibration factor as §11.8 requires; the other
+  twenty are untouched.
+
+*Asserted by*: `tests/test_perf_budget_contract.py` (the clock does not carry the harness's own sleep,
+the RSS sampler catches a peak reached on the way out, the floor is measured per measurement, a 16 %
+slowdown on a 15 ms verb is red, the ticket's own 14.8/14.9/21.6 run is not, and an unclassifiable change
+says so), and `tools/perf_gate.py --self-test`, which now also proves a one-tick store-clock change stays
+green and a change inside a run's own spread is reported rather than decided.
 ### The no-op re-index was spending a second on history it had been told not to want (`e7.10`, `reco-r3x`)
 
 `fathom index` on a repository that has not changed is the cheapest thing the binary does — ADR-004 §6.6 R1

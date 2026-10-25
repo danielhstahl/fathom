@@ -28,6 +28,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -344,6 +345,182 @@ def test_a_measurement_needs_both_a_percentage_and_an_absolute_change_to_count()
     real = G.Measurement("query.card.ms.small", "ms", 40.0, "query.card.ms.small")
     verdicts = G.evaluate([real], {"measurements": blessed}, budgets, gates, 1.0, strict=True)
     assert any(verdict.status == "regression" for verdict in verdicts)
+
+
+# ---------------------------------------------------------------------------------------------
+# The ratchet's resolution, measured per measurement (`reco-dkr`)
+# ---------------------------------------------------------------------------------------------
+def test_the_noise_floor_is_measured_per_measurement_not_a_constant_per_unit():
+    """A 5 ms floor on a 15 ms measurement is a 33 % gate, which is a ratchet that cannot read.
+
+    The floor a value is judged by is now blessed beside it, so a verb that scatters by 0.3 ms is not
+    gated by the constant chosen for the noisiest probe in the suite — and a value blessed *before*
+    floors existed keeps that constant, because the way to earn a tighter floor is to measure one.
+    """
+    budgets, _gates = _budgets()
+    blessed = {"query.metrics.ms.small": {"value": 15.0, "center": 14.8, "noise": 0.6, "scale": 0.3,
+                                          "unit": "ms", "budget": "query.metrics.ms.small",
+                                          "scaled": True}}
+    floor, basis = G.noise_floor(
+        G.Measurement("query.metrics.ms.small", "ms", 15.0, "query.metrics.ms.small",
+                      samples=[14.4, 14.9, 15.0, 14.7, 14.6]),
+        14.8, blessed["query.metrics.ms.small"])
+    assert floor < G.NOISE_FLOOR["ms"], (
+        f"a verb probe whose own samples scatter by 0.3 ms is still gated by the 5 ms per-unit "
+        f"constant ({floor}) even though its blessed floor says 0.6")
+    assert "scale" in basis or "blessed" in basis, f"the floor should say where it came from: {basis}"
+
+    deaf = G.Measurement("query.metrics.ms.small", "ms", 15.0, "query.metrics.ms.small",
+                         samples=[14.9, 15.0, 15.1])
+    assert abs(G.noise_floor(deaf, 15.0, {"value": 15.0})[0] - 5.0) < 1e-9, (
+        "a measurement blessed without a floor lost the constant it is supposed to keep: everything "
+        "blessed before floors existed must be gated exactly as it was before")
+
+    quiet_run = G.noise_floor(G.Measurement("query.metrics.ms.small", "ms", 15.0,
+                                            "query.metrics.ms.small", samples=[15.0, 15.0, 15.0]),
+                              15.0, {"noise": 2.5})
+    assert abs(quiet_run[0] - 2.5) < 1e-9, (
+        "a run that sampled luckily may not resolve better than the floor blessed with the value")
+    assert "blessed" in quiet_run[1]
+
+    pty = G.Measurement("query.timeline.ms.small", "ms", 1.8, "query.timeline.ms.small",
+                        samples=[1.6, 1.9, 1.7], noise=G.PTY_NOISE_MS)
+    assert G.noise_floor(pty, 1.8)[0] == G.PTY_NOISE_MS, (
+        "the pty's own resolution is the floor that stands: it is the instrument, not the samples")
+
+
+def test_the_ratchet_can_see_a_real_fifteen_percent_regression_on_a_verb():
+    """The whole point of the ratchet, on the id the ticket named: ±15 % of ~15 ms must be visible."""
+    budgets, gates = _budgets()
+    blessed = {"query.metrics.ms.small": {"value": 15.0, "center": 14.8, "noise": 0.9, "spread": 0.6,
+                                          "unit": "ms", "budget": "query.metrics.ms.small",
+                                          "scaled": True}}
+    regression = G.Measurement("query.metrics.ms.small", "ms", 17.6, "query.metrics.ms.small",
+                               samples=[17.1, 17.3, 17.4, 17.2, 17.6])
+    verdicts = G.evaluate([regression], {"measurements": blessed}, budgets, gates, 1.0, strict=True)
+    assert any(verdict.status == "regression" for verdict in verdicts), (
+        "a 17 % slowdown on a verb the users wait on did not fail the build: the floor is still "
+        "wider than the ratchet")
+
+
+def test_a_change_inside_the_measurement_s_own_noise_is_said_not_decided():
+    """Red on one run and green on the next is not a gate. It is a coin toss, and it must be named."""
+    budgets, gates = _budgets()
+    blessed = {"query.metrics.ms.small": {"value": 15.0, "center": 15.0, "noise": 0.9, "unit": "ms",
+                                          "budget": "query.metrics.ms.small", "scaled": True}}
+    bimodal = G.Measurement("query.metrics.ms.small", "ms", 21.0, "query.metrics.ms.small",
+                            samples=[13.0, 15.0, 21.0, 19.0, 18.5])
+
+    verdicts = G.evaluate([bimodal], {"measurements": blessed}, budgets, gates, 1.0, strict=True)
+    assert not any(verdict.failed for verdict in verdicts), (
+        "a change smaller than the spread inside the same run went red: that is the coin toss "
+        "reco-dkr was filed about")
+    assert any(not verdict.resolves for verdict in verdicts), (
+        "the gate passed a change it could not classify without saying it could not classify it")
+    assert any("cannot classify" in verdict.detail for verdict in verdicts)
+
+
+def test_a_verb_that_flaps_between_two_modes_is_not_a_regression_on_its_centre():
+    """The ticket's own numbers: 14.8, 14.9 and 21.6 ms minutes apart on one tree.
+
+    The median of that run is the blessed centre. The p95 of three samples is a coin toss between the
+    two modes, and the ratchet no longer reads it — which is what makes the same tree either red or
+    green depending on the hour, and is the flapping the ticket asked to be fixed rather than tolerated.
+    """
+    budgets, gates = _budgets()
+    blessed = {"query.metrics.ms.small": {"value": 15.1, "center": 14.9, "noise": 0.9, "unit": "ms",
+                                          "budget": "query.metrics.ms.small", "scaled": True}}
+    flapped = G.Measurement("query.metrics.ms.small", "ms", 21.6, "query.metrics.ms.small",
+                            samples=[14.8, 14.9, 21.6])
+    verdicts = G.evaluate([flapped], {"measurements": blessed}, budgets, gates, 1.0, strict=True)
+    assert not any(verdict.failed for verdict in verdicts), (
+        "the same tree was judged on which mode its three samples landed in: "
+        + "; ".join(v.detail for v in verdicts if v.failed))
+    assert verdicts[0].resolves, "a run whose centre did not move is a clean read, not a shrug"
+
+
+def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
+    """A blessed number and its noise are one measurement; half of it is a guess about the other half."""
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    fail_pct = _budgets()[1]["regression_fail_pct"]
+    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small"):
+        row = blessed[ident]
+        assert row.get("center") is not None, f"{ident}: blessed without the statistic the ratchet uses"
+        assert row.get("noise") is not None, f"{ident}: blessed without the floor it was judged by"
+        limit = float(row["center"]) * fail_pct / 100.0
+        assert float(row["noise"]) < limit, (
+            f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
+            f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve it")
+
+
+def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
+    """`make bench-check` must publish what it could not see, not just what it failed on."""
+    report = tmp_path / "trend"
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(_binary()),
+         "--trend-dir", str(report)],
+        cwd=ROOT, capture_output=True, text=True, timeout=600)
+    assert result.returncode == 0, result.stdout + result.stderr
+    written = json.loads((report / "latest.json").read_text())
+    assert "resolution" in written, "the report carries no resolution block"
+    assert written["resolution"]["regression_fail_pct"] == _budgets()[1]["regression_fail_pct"]
+    assert isinstance(written["resolution"]["changes_this_run_could_not_classify"], list)
+    blind = {item["id"]: item for item in written["resolution"]["ids_the_ratchet_cannot_resolve"]}
+    assert blind, "the run found no blind spot at all: the pty probes measure 1-5 ms through a "\
+        "10 ms instrument and that is a blind spot"
+    for ident in ("query.timeline.ms.small", "query.queue.ms.small"):
+        assert ident in blind, f"{ident} is measured through the pty and is not listed as unresolvable"
+        assert blind[ident]["floor_as_pct_of_baseline"] > 100.0
+        assert "resolution" in blind[ident]["noise_basis"].lower()
+    assert "query.metrics.ms.small" not in blind, (
+        "the verb the ticket was filed about is back to being unresolvable: its blessed floor is "
+        "wider than the ±15 % again")
+
+
+def test_measuring_a_child_does_not_add_the_harness_s_own_sleep_to_the_clock():
+    """The bug behind the flapping: a 2 ms poll inside the timed region is 2 ms of the measurement.
+
+    Interleaved against `subprocess.run` on the same child, so a busy runner is a bit slow to both
+    sides of the comparison and only the harness's own overhead separates them.
+    """
+    import statistics
+    import subprocess as sp
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    child = [sys.executable, "-c", "pass"]
+    plain, timed = [], []
+    for _ in range(15):
+        started = time.monotonic()
+        sp.run(child, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        plain.append((time.monotonic() - started) * 1000.0)
+        timed.append(M.run_timed(child, ROOT)[0])
+    gap = statistics.median(timed) - statistics.median(plain)
+    assert gap < 1.0, (
+        f"the harness adds {gap:.2f} ms to every measurement it takes; the old poll loop added "
+        "1.7-2.0 ms and a tail as long as the ratchet")
+
+
+def test_the_rss_peak_is_sampled_while_the_child_holds_memory():
+    """A peak measured from a corpse is zero, and one measured 2 ms late is a tenth short."""
+    import statistics
+    import subprocess as sp
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    child = ("import resource, time\n"
+             "x = bytearray(60_000_000); y = bytes(x)\n"
+             "print(int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss), flush=True)\n"
+             "time.sleep(0.02)\n")
+    truth = int(sp.run([sys.executable, "-c", child], capture_output=True, text=True,
+                       timeout=60).stdout.strip())
+    sampled = statistics.median(M.run_timed([sys.executable, "-c", child], ROOT)[1]
+                                for _ in range(5))
+    assert sampled >= truth * 0.95, (
+        f"the sampler read {sampled:.0f} KiB of a {truth} KiB peak: a peak reached on the way out "
+        "of a verb is the peak the RSS budgets are about")
 
 
 # ---------------------------------------------------------------------------------------------

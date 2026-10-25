@@ -175,27 +175,28 @@ class Repo:
                 "clone": self.clone, "path": self.root.name}
 
     def run(self, args: list[str], *, capture: bool = True) -> tuple[float, int, str]:
-        """Run a verb; return (wall ms, peak RSS KiB, stdout). RSS sampled while it lives."""
+        """Run a verb; return (wall ms, peak RSS KiB, stdout). RSS sampled while it lives.
+
+        The timing comes from `tools/mvp_acceptance.run_measured`, which blocks on the child's exit
+        instead of polling it: a poll interval inside the timed region is an interval added to the
+        measurement, and a 5 ms one also misses the resident-set peak a verb reaches on its way out
+        (`reco-dkr`).
+        """
         argv = [str(self.binary), *args]
         out_file = self.root.parent / f"fathom-out-{os.getpid()}.json"
-        handle = open(out_file, "w", encoding="utf-8") if capture else subprocess.DEVNULL
-        started = time.monotonic()
-        proc = subprocess.Popen(argv, cwd=self.root, stdout=handle,
-                                stderr=subprocess.DEVNULL, text=True)
-        peak = 0
-        while proc.poll() is None:
-            peak = max(peak, M.vmhwm_kib(proc.pid))
-            time.sleep(0.005)
-        peak = max(peak, M.vmhwm_kib(proc.pid))
-        wall = (time.monotonic() - started) * 1000.0
+        handle = open(out_file, "w", encoding="utf-8") if capture else None
+        try:
+            wall, peak, code = M.run_measured(argv, self.root, stdout=handle)
+        finally:
+            if handle is not None:
+                handle.close()
         if capture:
-            handle.close()
             text = out_file.read_text()
             out_file.unlink(missing_ok=True)
         else:
             text = ""
-        if proc.returncode != 0:
-            raise RuntimeError(f"`{' '.join(args)}` exited {proc.returncode}: {text[-400:]}")
+        if code != 0:
+            raise RuntimeError(f"`{' '.join(args)}` exited {code}: {text[-400:]}")
         return wall, peak, text
 
     def record(self, row: Row) -> Row:

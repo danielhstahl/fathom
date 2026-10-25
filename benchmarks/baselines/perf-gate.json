@@ -63,11 +63,15 @@
   },
   "query.card.ms.cli.small": {
    "budget": "query.card.ms.small",
+   "center": 14.4301,
    "higher_is_better": false,
    "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end",
+   "noise": 0.2398,
+   "scale": 0.1199,
    "scaled": true,
+   "spread": 0.4469,
    "unit": "ms",
-   "value": 15.3
+   "value": 14.8
   },
   "query.card.ms/episode_and_files/1000 commits": {
    "budget": "query.card.ms.small",
@@ -111,11 +115,15 @@
   },
   "query.metrics.ms.small": {
    "budget": "query.metrics.ms.small",
+   "center": 12.8312,
    "higher_is_better": false,
    "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names",
+   "noise": 0.2378,
+   "scale": 0.1189,
    "scaled": true,
+   "spread": 0.8748,
    "unit": "ms",
-   "value": 15.1
+   "value": 13.4
   },
   "query.queue.ms.small": {
    "budget": "query.queue.ms.small",
@@ -199,11 +207,15 @@
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",
+   "center": 3.861,
    "higher_is_better": false,
-   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 3 runs timed fork to exit are 1066.3 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
+   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 5 runs timed fork to exit are 15.9 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
+   "noise": 2.8958,
+   "scale": 0.0,
    "scaled": true,
+   "spread": 0.0,
    "unit": "ms",
-   "value": 3.784
+   "value": 3.9
   },
   "write.batch_rows/one_batch_at_the_cap": {
    "budget": null,

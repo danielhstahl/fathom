@@ -571,10 +571,13 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
     if skip_benches:
         args.insert(0, "--skip-benches")
     # A second identical run is allowed to overturn a first one, and that concession is written down
-    # rather than smuggled: two of the read-verb budgets are bimodal on this runner class (measured at
-    # 14.8, 14.9 and 21.6 ms minutes apart on the same tree), so a ±15 % two-sided ratchet with a 5 ms
-    # floor can be red on a number that did not move. Requiring the same verdict twice keeps a real
-    # regression red — it is red on both runs — and stops the epic from being red about noise.
+    # rather than smuggled. `reco-dkr` found why it was ever needed: the gate's own clock carried a 2 ms
+    # poll interval, so a 13 ms verb measured 14.9 ms at p50 with a 32 ms tail and a ±15 % ratchet was
+    # judging its own harness. That is fixed — the clock is the child's exit now, the noise floor is
+    # measured per measurement, and a change the gate cannot resolve is reported as "cannot classify"
+    # instead of decided by coin toss. What this loop now catches is a runner that was busy for one run
+    # and quiet for the next, which is a property of the machine: requiring the verdict twice keeps a
+    # real regression red — it is red on both runs — and stops the epic from being red about a box.
     runs: list[dict] = []
     for _attempt in (1, 2):
         gate = tool("perf_gate.py", *args, timeout=1_800)
@@ -584,6 +587,7 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
             break
     registered = report.get("known_breaches") or []
     failures = report.get("failures") or []
+    unclassified = (report.get("resolution") or {}).get("changes_this_run_could_not_classify") or []
     flapped = sorted({str(row).split(":")[0] for row in (runs[0].get("failures") or [])}) \
         if len(runs) > 1 else []
     c.add("the fixture gate is green (budgets and the ±15 % ratchet together)",
@@ -594,12 +598,16 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
           + (f"{len(failures)} failure(s): {failures[:2]}" if failures else tail(gate)))
     if flapped:
         c.note("the fixture gate had to be run twice: " + ", ".join(flapped)
-               + " read red and then green on the same tree. That is a defect in the gate, not a pass "
-               "for the code — the id's run-to-run spread is wider than the ratchet that gates it "
-               "(±15 % and a 5 ms floor against a 15–22 ms bimodal measurement). `reco-dkr` owns it, and "
-               "ADR-004 §11.10 carries the measurements: sample the read verbs more than three times, or "
-               "record a noise floor per measurement instead of a constant per unit — and do not fix it by "
-               "loosening the ratchet.")
+               + " read red and then green on the same tree. The gate now measures its own noise and "
+               "says which changes it cannot classify (`reco-dkr`), so a flap here means the *runner* "
+               "changed between the two runs, not that the metric is unresolvable. A real regression is "
+               "red twice; this verdict was not.")
+    if unclassified:
+        names = ", ".join(f"{item['id']} ({item['pct']:+.0f} %)" for item in unclassified)
+        c.note(f"the fixture gate reported {len(unclassified)} change(s) it could not classify: {names}. "
+               "Each is past the ±15 % ratchet and inside the noise that measurement was blessed with, "
+               "so green on those ids is the gate declining to guess, not a pass — ADR-004 §11.10 "
+               "carries which ids the ratchet can guard and which only their budgets can.")
     runtime = float(report.get("duration_s", 1e9))
     c.add(f"the gate kept its own {PERF_GATE_PROMISE_S:.0f}s promise", runtime <= PERF_GATE_PROMISE_S,
           f"{runtime:.0f}s, runner factor ×{report.get('calibration', {}).get('factor', '?')}")

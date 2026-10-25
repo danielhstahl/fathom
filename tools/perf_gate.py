@@ -36,6 +36,16 @@ Two independent checks run on every measurement that has a number:
    because `improvement_baseline_commit_required` is true and a baseline nobody re-blesses is a budget
    nobody tightens.
 
+A percentage is only worth what the measurement can resolve, so a change has to clear an absolute floor
+as well, and that floor is **measured per measurement** — the probe's own stated resolution, two robust
+standard deviations of the run's own samples, or the floor blessed beside the value, whichever is
+widest. A constant per unit (`NOISE_FLOOR`) is the fallback for a measurement that says nothing about its
+own noise, and it is far too blunt where it can be avoided: a 5 ms floor on a 15 ms verb is a 33 % gate.
+Where a change is past the percentage and inside the floor the gate does not decide by coin toss; it
+reports the id under "cannot classify", and lists the ids whose floor is wider than the ratchet itself
+under "cannot resolve", because the honest answer to a spread wider than the ratchet is "I cannot tell",
+not "pass" and not "fail" (`reco-dkr`, ADR-004 §11.10).
+
 `--inject-ms N` is the deliberate regression the acceptance criterion asks for: every measured process
 is started behind a `sleep`, which is a real 400 ms slowdown of everything downstream, and the gate
 must go red and name the budgets it blew. `--self-test` proves the same arithmetic red without a
@@ -84,6 +94,18 @@ CI_COMMITS = 500
 
 #: How many times the pty probe runs. Three is the smallest number whose median is a median.
 PTY_RUNS = 3
+#: How many times the read-verb probes (`stats`, `show`) run, whatever `--samples` says. These verbs
+#: cost ~15 ms each, so five samples is ~30 ms of wall clock and not a second, and a three-sample
+#: worst-of is too coarse a statistic to gate at ±15 % (`reco-dkr`, ADR-004 §11.10's third finding).
+READ_VERB_RUNS = 5
+#: The floor of a number the store measures with its own whole-millisecond clock. `fathom index
+#: --json` reports `elapsed_ms` as an integer (`schemas/index.schema.json` says `"type": "integer"`,
+#: and `verbs.rs` prints `report.elapsed.as_millis()`), so one tick is a quarter of the 4 ms no-op
+#: re-index this budget is written for. Three ticks is what the fixture's own spread argues: the same
+#: no-op run measured 4, 5 and 7 ms store-side in identical gate runs of one tree, which is the machine
+#: and the clock, not the code. A real doubling of the no-op still clears it, and the id is reported
+#: under "cannot classify" for the ±15 % ratchet until the store prints what it knows (`reco-dkr`).
+STORE_CLOCK_FLOOR_MS = 3.0
 #: The pty's own resolution, in ms: `visible_ms` is a screen diff seen through a reader's poll loop,
 #: so anything smaller than this is the harness's clock, not the product's. Floor for the gate.
 PTY_NOISE_MS = 10.0
@@ -108,7 +130,7 @@ COVERAGE: dict[str, tuple[str, str]] = {
     "cold.graph.ms": ("not measured yet", "the graph lane is `e3.2`'s and is not built; `s3` measured its write half"),
     # --- warm re-index ----------------------------------------------------------------
     "warm.reindex.ms": ("this harness", "one new commit, then `fathom index`, 3 samples, p95"),
-    "warm.reindex.noop.ms": ("this harness", "`fathom index` twice in a row, 3 samples, p95 of the "
+    "warm.reindex.noop.ms": ("this harness", "`fathom index` twice in a row, 5 samples, p95 of the "
                                             "run's own store-side `elapsed_ms`"),
     "warm.reindex.provisional.ms": ("not measured yet", "needs a dirty-work-tree index path in the binary (`e1.4` R7)"),
     "warm.reindex.git.share_pct": ("not measured yet",
@@ -137,7 +159,8 @@ COVERAGE: dict[str, tuple[str, str]] = {
                                       "`e3.3` owns the architecture delta; the lane is not built"),
     "query.graph_path.ms": ("not measured yet",
                             "`e3.3`'s path query; the lane is not built"),
-    "query.metrics.ms": ("this harness", "`fathom stats --json`, 3 samples, p95 — the verb the budget names"),
+    "query.metrics.ms": ("this harness", "`fathom stats --json`, 5 samples, p95 — the verb the "
+                                            "budget names"),
     "query.frame_store_budget.ms": ("criterion", "`count_episodes` and `episode_paths` over a warm 1 000-commit store"),
     # --- watching ---------------------------------------------------------------------
     "watch.detect.ms": ("`tools/mvp_acceptance.py`", "a commit made elsewhere, timed to the line `fathom watch --json` prints, and to the grid of an open TUI changing by itself (`reco-bpc`)"),
@@ -209,16 +232,16 @@ def measurement_plan() -> list[dict]:
          "how": "`VmHWM` of the warm index child (trend: no budget names the warm path's RSS alone)"},
         {"id": "warm.reindex.noop.ms.small", "budget": "warm.reindex.noop.ms.small",
          "how": "the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 "
-                "of 3 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the "
+                "of 5 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the "
                 "whole-process time is quoted beside it"},
         {"id": "store.bytes_per_commit_spine.small", "budget": "store.bytes_per_commit_spine.small",
          "how": "`dbstat` pages of the spine tables over the commit count; cache rows are not charged"},
         {"id": "store.size.mib.small", "budget": "store.size.mib.small",
          "how": "the whole `.fathom/index.sqlite3`, cache included"},
         {"id": "query.metrics.ms.small", "budget": "query.metrics.ms.small",
-         "how": "`fathom stats --json`, p95 of 3 — the verb the budget names"},
+         "how": "`fathom stats --json`, p95 of 5 — the verb the budget names"},
         {"id": "query.card.ms.cli.small", "budget": "query.card.ms.small",
-         "how": "`fathom show --json HEAD~7`: the card's read end to end"},
+         "how": "`fathom show --json HEAD~7`: the card's read end to end, p95 of 5"},
         {"id": "cold.queue_visible.ms.small", "budget": "cold.queue_visible.ms.small",
          "how": "TUI spawn to first frame through the pty, median of 3 probes"},
         {"id": "query.timeline.ms.small", "budget": "query.timeline.ms.small",
@@ -291,26 +314,155 @@ class Measurement:
     #: "trust the percentage"; a number with a coarse clock needs a floor beside it, or a pty whose
     #: sample interval is a few milliseconds becomes a regression the moment the scheduler is kind.
     noise: float | None = None
+    #: The unit `samples` are quoted in, when it is not the unit of `value`. The criterion write bench
+    #: samples a per-iteration duration and publishes a throughput, so its samples cannot price a
+    #: change measured in rows/s and must not be used to derive a floor for one.
+    sample_unit: str | None = None
+
+    @property
+    def scale(self) -> float | None:
+        """A robust estimate of this run's own noise, in the measurement's unit.
+
+        1.4826 x the median absolute deviation from the sample median: the usual consistent estimator of
+        one standard deviation, and deliberately not the range. A range is a maximum, and a maximum is
+        what the tail decides — one slow sample in five trebles it, and a floor built on that is a floor
+        that evaporates precisely when the run is the kind that should be distrusted, while a quiet run
+        gets a floor no wider than its real noise and can be judged. The median absolute deviation is
+        what the tail cannot touch: a run with one bad sample still knows how well it measured the other
+        four, and a run that is bimodal through and through says so with a wide scale and stops
+        pretending. Both are reported in the baseline; only this one prices anything.
+        """
+        if not self.samples or len(self.samples) < 3:
+            return None
+        if self.sample_unit and self.sample_unit != self.unit:
+            return None
+        middle = statistics.median(self.samples)
+        mad = statistics.median([abs(sample - middle) for sample in self.samples])
+        return round(1.4826 * mad, 4)
+
+    @property
+    def spread(self) -> float | None:
+        """What this run saw of its own noise: the widest gap between two of its samples.
+
+        This is the measurement's evidence about how well *it* can be measured, which is the number
+        the ratchet needs and the constant per unit (`NOISE_FLOOR`) was a stand-in for. It is a
+        within-run quantity, so it is a lower bound on run-to-run noise.
+        """
+        if not self.samples or len(self.samples) < 2:
+            return None
+        if self.sample_unit and self.sample_unit != self.unit:
+            return None
+        return max(self.samples) - min(self.samples)
+
+    @property
+    def center(self) -> float | None:
+        """The middle of this measurement's samples, which is what the ratchet compares.
+
+        `value` is a p95 because that is what the published budgets promise, and with the sample
+        counts a gate can afford a p95 *is* the worst sample (`p95`'s own docstring says so). A worst
+        of five is a poor thing to compare against a blessed worst of five: on the fixture,
+        `fathom stats --json` measured p95s 18.4 % apart across eight identical sessions and medians
+        13.3 % apart, and the ratchet is ±15 % — so the tail statistic cannot resolve the very verb the
+        ticket is about, however honest its clock. The middle can. The budget keeps being judged on
+        `value`, because a tail budget deserves the tail number; the baseline comparison moves to the
+        middle, because a drift detector deserves the stable one (`reco-dkr`).
+        """
+        if not self.samples or len(self.samples) < CENTER_MIN_SAMPLES:
+            return None
+        if self.sample_unit and self.sample_unit != self.unit:
+            return None
+        return statistics.median(self.samples)
 
     def as_row(self) -> dict:
         row = asdict(self)
         if self.samples:
             row["samples"] = [round(sample, 3) for sample in self.samples]
+        spread = self.spread
+        if spread is not None:
+            row["spread"] = round(spread, 4)
+        scale = self.scale
+        if scale is not None:
+            row["scale"] = scale
+        center = self.center
+        if center is not None:
+            row["center"] = round(center, 4)
         return row
 
 
-#: Run-to-run resolution by unit, used when a measurement does not state its own. A change has to
-#: clear both the percentage gate *and* this floor, which is what stops a 1 ms jitter reading as
-#: "+16 %", and what makes the gate's red actually mean something you could point at.
+#: Run-to-run resolution by unit, used only when a measurement says nothing about its own noise: no
+#: samples, and no floor blessed beside the value it is compared to. A change has to clear both the
+#: percentage gate *and* this floor, which is what stops a 1 ms jitter reading as "+16 %", and what
+#: makes the gate's red actually mean something you could point at. `reco-dkr` did not raise these
+#: numbers and they are not the place to look for the fix: a 5 ms floor on a 15 ms measurement is a
+#: 33 % threshold, wider than the ±15 % the ratchet is supposed to be, which is why a *measured*
+#: floor now replaces the constant wherever one can be measured.
 NOISE_FLOOR = {"ms": 5.0, "MiB": 1.0, "bytes": 256.0}
 
+#: How many robust standard deviations of a measurement's own samples a change has to clear before it
+#: can be called a regression. Two, which is the same statement twice over: the change being judged is a
+#: gap between two independent draws (the blessed statistic and today's), so the noise of the difference
+#: is √2 the noise of one, and a run's within-run scale understates its run-to-run scale — five samples
+#: of `fathom stats --json` on one tree gave a 0.3 ms scale while the medians of identical sessions sat
+#: 1.9 ms apart, because a machine has slow hours. It is not a knob for making the gate quiet: where a
+#: measurement's floor ends up wider than the ±15 % the ratchet is supposed to be, the verdict is now
+#: "cannot classify", said out loud, rather than the coin toss `reco-dkr` was filed about.
+FLOOR_IN_SIGMAS = 2.0
+#: The fewest samples a measurement needs before its median is trusted as the ratchet's basis. Three
+#: is the smallest number whose median is a median rather than one of the samples' neighbours.
+CENTER_MIN_SAMPLES = 3
 
-def noise_floor(row: "Measurement", base: float) -> float:
+
+def noise_floor(row: "Measurement", base: float,
+                entry: dict | None = None, *, blessing: bool = False) -> tuple[float, str]:
+    """The smallest change in this measurement's unit that the gate can resolve, and what says so.
+
+    Three sources, and the widest wins, because a floor is a statement about the noisiest thing in
+    the measurement:
+
+    * the probe's own resolution, stated per measurement (`noise`) — the pty sees the screen through
+      a poll loop and says so (`PTY_NOISE_MS`), and a byte-exact measurement says it is exact;
+    * the scale this run measured inside its own samples (`Measurement.scale`), times
+      `FLOOR_IN_SIGMAS`;
+    * the floor blessed beside the value in the baseline, which is what the reference machine saw
+      when the number was blessed and survives a run that happens to sample quietly;
+    * and for a value blessed before floors existed, the per-unit constant, which stays in force
+      until somebody blesses a floor and says what the floor was.
+
+    A floor is a statement about the noisiest thing in the measurement, so the widest of these wins; a
+    constant chosen for the noisiest probe in the suite is a blindfold on the quiet ones, which is why
+    it is the last resort and not the rule. A deterministic reading does not buy its way out of the
+    constant either: what varies on the byte counters is not the reading but the run — how much of the
+    graph lane one gate run happens to write moves `store.bytes_per_commit_spine.small` by more than a
+    fifth, which is `reco-7yq`'s denominator talking.
+    """
+    candidates: list[tuple[float, str]] = []
     if row.noise is not None:
-        return row.noise
-    if row.unit in NOISE_FLOOR:
-        return max(NOISE_FLOOR[row.unit], 0.10 * base)
-    return 0.05 * base
+        candidates.append((float(row.noise), f"the probe's own resolution ({row.noise:g} {row.unit})"))
+    scale = row.scale
+    if scale:
+        # A run that sampled the same value five times has proved nothing about its own noise, so a
+        # zero scale is not evidence and does not become a floor: the floor would be nothing, and every
+        # millisecond of drift would read as a regression.
+        candidates.append((FLOOR_IN_SIGMAS * scale,
+                           f"{FLOOR_IN_SIGMAS:g} x this run's {scale:g} {row.unit} sample scale"
+                           + (f" (range {row.spread:g})" if row.spread else "")))
+    blessed = (entry or {}).get("noise")
+    if blessed is not None:
+        candidates.append((float(blessed), "the floor blessed with the baseline"))
+    elif not blessing:
+        # A value blessed without its noise keeps the old constant, and the reason is not sentiment about
+        # the old: a row blessed before floors existed was blessed before centres too, so it is compared
+        # on its tail statistic (`value`, the p95), and a tail needs a generous floor — the gap between two
+        # independent p95s of one tree is wider than the ratchet, which is most of what `reco-dkr` was.
+        # Bless the row and it gains a centre and a floor and starts resolving ±15 %; leave it and it is
+        # gated exactly as it always was, which is the point. At bless time there is no blessed floor to
+        # fall back to and the run's own scatter is the only evidence there is, so the constant stands
+        # aside — otherwise blessing would record the constant it is trying to replace.
+        candidates.append((max(NOISE_FLOOR.get(row.unit, 0.0), 0.10 * base),
+                           f"the {row.unit} fallback floor (this value was blessed without one)"))
+    if candidates:
+        return max(candidates, key=lambda candidate: candidate[0])
+    return 0.05 * base, "5 % of the blessed value (no floor anywhere to read)"
 
 
 def p95(samples: list[float]) -> float:
@@ -537,6 +689,7 @@ def criterion_measurements(profile_dir: Path = CRITERION_ROOT,
             rows.append(Measurement(id=full_id, unit="rows/s", value=round(value, 1),
                                     budget=None,
                                     samples=[round(sample / 1e6, 4) for sample in per_iter_ns[:5]],
+                                    sample_unit="ms",
                                     how="criterion: one batched transaction at the `write.batch_rows` cap",
                                     scaled=True, higher_is_better=True))
             continue
@@ -615,7 +768,7 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                        scaled=False))
 
     noop, noop_wall = [], []
-    for _ in range(harness.samples):
+    for _ in range(max(READ_VERB_RUNS, harness.samples)):
         wall, elapsed = harness.fathom_store_side("index")
         noop_wall.append(wall)
         if elapsed is not None:
@@ -626,6 +779,10 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
         "warm.reindex.noop.ms.small", noop,
         blocked_by=None if noop else "`fathom index --json` printed no `elapsed_ms`, so the store-side "
                                      "no-op time could not be read",
+        # The floor is the store's clock, not the machine's: `elapsed_ms` arrives as whole
+        # milliseconds, so a 4 ms no-op re-index moves in 25 % steps and a tick or two of it must never
+        # read as a regression. `reco-dkr` says which ids the ratchet can resolve; this one says so here.
+        noise=STORE_CLOCK_FLOOR_MS,
         # The basis, stated because the two clocks in one process answer different questions and the
         # baseline stores exactly one of them. `reco-7tc` skipped the walk, the analyses and the episode
         # rebuild; what is left is the ref comparison, the worktree pass and the tallies, and the process
@@ -654,10 +811,16 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
                        "store.size.mib.small",
                        how="the whole `.fathom/index.sqlite3`", scaled=False))
-
     # --- the query families the shipped verbs can answer -----------------------------------
+    # These two probes are the reason `reco-dkr` exists: at ~15 ms a ±15 % ratchet is ±2 ms, which is
+    # smaller than the noise a three-sample probe can produce, so the same tree went red and green on
+    # alternate runs. Two things fix it here and in `mvp_acceptance.run_measured`: the clock no longer
+    # carries the harness's own sleep, and these probes take `READ_VERB_RUNS` samples instead of
+    # `harness.samples`, which both shaves the statistic's own spread and gives the run enough samples
+    # to *state* its resolution (a floor inferred from two numbers is a guess).
+    reads = max(READ_VERB_RUNS, harness.samples)
     stats = []
-    for _ in range(harness.samples):
+    for _ in range(reads):
         ms, _rss = harness.fathom("stats", "--json")
         stats.append(ms)
     record(Measurement("query.metrics.ms.small", "ms", round(p95(stats), 1), "query.metrics.ms.small",
@@ -666,7 +829,7 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     target = subprocess.run(["git", "rev-parse", "HEAD~7"], cwd=fixture,
                             capture_output=True, text=True).stdout.strip() or "HEAD"
     cards = []
-    for _ in range(harness.samples):
+    for _ in range(reads):
         ms, _rss = harness.fathom("show", "--json", target)
         cards.append(ms)
     record(Measurement("query.card.ms.cli.small", "ms", round(p95(cards), 1), "query.card.ms.small",
@@ -779,6 +942,21 @@ class Verdict:
     measured: float | None = None
     baseline: float | None = None
     pct: float | None = None
+    #: The floor this verdict was judged against, and whether that floor is wider than the regression
+    #: the gate is supposed to see. `resolves: false` is not a pass: it is the gate saying out loud
+    #: that a change of `regression_fail_pct` on this id is inside its own noise (`reco-dkr`).
+    noise: float | None = None
+    #: False when the change this run saw is past the ratchet and inside the floor — the verdict is
+    #: "cannot classify", and a pass nobody can see the edge of is a decoration.
+    resolves: bool = True
+    #: False when this measurement's floor is wider than the `regression_fail_pct` change it is
+    #: supposed to catch, whatever this run happened to measure. That is a standing property of the
+    #: instrument, not of the run: the pty reader resolves 10 ms and the store prints whole
+    #: milliseconds, so no number of samples makes a ±15 % ratchet out of either. Said once per run
+    #: as a list of ids rather than once per change, because a blind spot is a fact about the gate
+    #: (`reco-dkr`).
+    resolvable: bool = True
+    noise_basis: str = ""
 
     @property
     def failed(self) -> bool:
@@ -821,6 +999,10 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
         issues: list[tuple[int, str, str]] = []
         detail: list[str] = []
         limit: float | None = None
+        floor: float | None = None
+        floor_basis = ""
+        resolves = True
+        resolvable = True
         budget_row = budgets.get(row.budget) if row.budget else None
         if budget_row:
             limit = float(budget_row["budget"]) * (factor if row.scaled else 1.0)
@@ -837,6 +1019,16 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                            "no blessed baseline value for this measurement: run `make bench-bless`"))
         else:
             base = float(entry["value"])
+            statistic = row.value
+            basis = "p95 against the blessed value"
+            if row.center is not None and entry.get("center") is not None:
+                # The ratchet compares middles, not tails. `value` is a p95 because that is what the
+                # budgets promise, and with a gate's sample counts a p95 *is* its worst sample; the
+                # distance between two independent worst-of-fives on the fixture is wider than the
+                # ±15 % being enforced (`Measurement.center` says how much wider). The budget above
+                # still saw the p95, because a tail budget deserves the tail number.
+                base, statistic = float(entry["center"]), float(row.center)
+                basis = f"median of {len(row.samples or [])} samples against the blessed median"
             if base > 0:
                 # Bringing a measurement into the reference machine's units depends on whether the
                 # number is a duration or a rate. A runner 1.16× slower takes 1.16× the time — so a
@@ -844,11 +1036,11 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                 # second, so a throughput is multiplied by it. Getting that backwards turns a busy
                 # machine into a throughput regression out of nowhere, which is exactly what it is not.
                 if not row.scaled:
-                    normalised = row.value
+                    normalised = statistic
                 elif row.higher_is_better or entry.get("higher_is_better"):
-                    normalised = row.value * factor
+                    normalised = statistic * factor
                 else:
-                    normalised = row.value / factor
+                    normalised = statistic / factor
                 pct = ((base - normalised) if row.higher_is_better or
                        entry.get("higher_is_better") else (normalised - base)) / base * 100.0
                 # The ratchet is judged on the raw number, not the normalised one, and the reason is a
@@ -856,26 +1048,44 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                 # it) divides every measurement down and reports the whole suite as an improvement, so
                 # the build goes red for the crime of running on a busy machine. A fast machine cannot
                 # fake it in the other direction — the factor is clamped at 1.0 and buys nothing.
-                raw_pct = ((base - row.value) if row.higher_is_better or entry.get("higher_is_better")
-                           else (row.value - base)) / base * 100.0
-                # Two tests, not one: the percentage the ADR fixes, and an absolute floor for the unit.
-                # Without the second, a 2 ms jitter on a 12 ms number is a "regression" and the gate
-                # cries wolf; the wolf is a change you could feel.
-                resolved = abs(normalised - base) >= noise_floor(row, base)
+                raw_pct = ((base - statistic) if row.higher_is_better or entry.get("higher_is_better")
+                           else (statistic - base)) / base * 100.0
+                # Two tests, not one: the percentage the ADR fixes, and an absolute floor for the
+                # change. Without the second, a 2 ms jitter on a 12 ms number is a "regression" and the
+                # gate cries wolf; the wolf is a change you could feel. The floor is measured per
+                # measurement (`noise_floor`), not fixed per unit, because a constant wide enough for
+                # the pty probe blinds the verb probes: a 5 ms floor on a 15 ms number is a 33 % gate,
+                # which is the defect ADR-004 §11.10's third finding recorded and `reco-dkr` owns.
+                floor, floor_basis = noise_floor(row, base, entry)
+                limit_change = base * fail_pct / 100.0
+                resolvable = limit_change > floor
+                resolved = abs(normalised - base) >= floor
                 if pct > fail_pct and resolved:
                     issues.append((3, "regression",
                                    f"{pct:+.1f} % vs the blessed baseline ({base:,.3f} → "
-                                   f"{normalised:,.3f} at ×{factor:.2f}); the gate's limit is "
-                                   f"{fail_pct:g} % and the floor is "
-                                   f"{noise_floor(row, base):,.2f} {row.unit}"))
-                elif raw_pct < -fail_pct and abs(row.value - base) >= noise_floor(row, base) \
+                                   f"{normalised:,.3f} at ×{factor:.2f}, {basis}); the gate's limit "
+                                   f"is {fail_pct:g} % ({limit_change:,.2f} {row.unit}) and the floor is "
+                                   f"{floor:,.2f} {row.unit} ({floor_basis})"))
+                elif raw_pct < -fail_pct and abs(statistic - base) >= floor \
                         and ratchet and strict:
                     issues.append((2, "stale_baseline",
                                    f"{raw_pct:+.1f} % better than the blessed baseline "
-                                   f"({base:,.3f}); budgets ratchet, so re-bless it "
+                                   f"({base:,.3f}, {basis}); budgets ratchet, so re-bless it "
                                    "(`make bench-bless`)"))
                 else:
-                    detail.append(f"{pct:+.1f} % vs baseline {base:,.3f}")
+                    detail.append(f"{pct:+.1f} % vs baseline {base:,.3f} ({basis})")
+                # A change past the ratchet's limit and inside this measurement's own floor is not a
+                # pass: it is a change the gate cannot classify. Before `reco-dkr` that case was
+                # decided by a coin toss — one run green, the next red on the same tree, on a spread
+                # wider than the ±15 % that was supposed to be judging it. Now it is said: the build
+                # does not go red on a coin toss, and the run does not pretend it looked.
+                if abs(pct) > fail_pct and not resolved:
+                    resolves = False
+                    which = "slower" if (pct > 0) ^ bool(row.higher_is_better or
+                                                         entry.get("higher_is_better")) else "faster"
+                    detail.append(f"cannot classify: {pct:+.1f} % is past the {fail_pct:g} % ratchet "
+                                  f"and inside a {floor:,.2f} {row.unit} floor "
+                                  f"({floor_basis}) — {which}, and this run cannot tell")
         issues.sort(key=lambda issue: issue[0], reverse=True)
         # A breach already on the register is reported and bounded rather than re-litigated: the entry
         # carries the defect that owns it and the ceiling it may not grow past, so the known failure
@@ -901,7 +1111,9 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
             detail = [issue[2] for issue in issues] + detail
         verdicts.append(Verdict(row.id, status, "; ".join(detail) or "inside budget and baseline",
                                 row.budget, row.value,
-                                float(entry["value"]) if entry else None, pct))
+                                float(entry["value"]) if entry else None, pct,
+                                noise=floor, resolves=resolves, resolvable=resolvable,
+                                noise_basis=floor_basis))
     return verdicts
 
 
@@ -998,17 +1210,38 @@ def render_table(measurements: list[Measurement], verdicts: list[Verdict], budge
         label = verdict.status if verdict.status != "ok" else "ok"
         if verdict.status in ("blocked", "over_budget", "regression", "stale_baseline", "unbaselined"):
             label = f"{label}: {verdict.detail}"
+        elif verdict.status == "ok" and not verdict.resolves:
+            # Green, and said not to be: the change this run saw is past the ratchet and inside the
+            # measurement's own noise. Printed in the table because a pass nobody can see the edge of
+            # is a decoration.
+            label = (f"ok — cannot classify (past 15 %, inside a {(verdict.noise or 0):,.2f} "
+                     f"{row.unit} floor)")
         lines.append(f"{row.id.ljust(width)} {measured:>12} {budget_text:>10} {versus:>9}  {label}")
     return "\n".join(lines)
 
 
 def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: float,
                    passes: list[float], corpus: dict, env: dict, prior: dict) -> None:
-    blessed = {
-        row.id: {"value": row.value, "unit": row.unit, "budget": row.budget,
+    blessed = {}
+    for row in measurements:
+        if row.value is None:
+            continue
+        entry = {"value": row.value, "unit": row.unit, "budget": row.budget,
                  "scaled": row.scaled, "higher_is_better": row.higher_is_better, "how": row.how}
-        for row in measurements if row.value is not None
-    }
+        # A blessed value is blessed *with* the noise that came with it, and with the statistic the
+        # ratchet will compare it by: `center` is the middle of the bless run's samples (what the ±15 %
+        # is measured against from now on), `scale` what that run said about its own scatter, `spread`
+        # the gap between its widest two samples, and `noise` the floor this run judged itself by. A
+        # later run can then tell "the code got slower" from "the probe cannot see this well", which is
+        # the pair `reco-dkr` had to invent.
+        if row.center is not None:
+            entry["center"] = round(row.center, 4)
+        if row.spread is not None:
+            entry["spread"] = round(row.spread, 4)
+        if row.scale is not None:
+            entry["scale"] = row.scale
+        entry["noise"] = round(noise_floor(row, row.center or row.value, None, blessing=True)[0], 4)
+        blessed[row.id] = entry
     # The register of known breaches is written by a human, with a rationale and the defect that owns
     # it, so blessing must carry it forward rather than launder it away. An entry is removed by hand,
     # when the defect closes.
@@ -1026,7 +1259,12 @@ def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: 
         "measurements": blessed,
         "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-"
                 "machine units (runner factor 1.0); a time budget gets the factor as headroom at "
-                "gate time and an RSS budget never does (ADR-004 §11.8).",
+                "gate time and an RSS budget never does (ADR-004 §11.8). Each value carries the "
+                "noise it was blessed with: `center` is the statistic the ±15 % ratchet compares "
+                "(the middle of the bless run's samples, because a worst-of-five cannot resolve a "
+                "15 % change on a 15 ms verb), `scale` and `spread` what that run said about its own "
+                "scatter and `noise` the floor it was judged against — so a later run can say which "
+                "ids it can resolve and which it cannot (ADR-004 §11.10, `reco-dkr`).",
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=1, sort_keys=True) + "\n", encoding="utf-8")
@@ -1144,13 +1382,73 @@ def self_test() -> int:
     if not any(verdict.status == "regression" for verdict in dropped):
         problems.append("a 50 % drop in a higher-is-better measurement did not read as a regression")
 
+    # The `reco-dkr` cases: the ratchet has to be able to see a 15 % change on a 15 ms verb, which a
+    # constant 5 ms floor per unit cannot do, and it must say so when a measurement is coarser than
+    # the change it is being asked about instead of flipping red and green on the same tree.
+    verb_floor = {"query.metrics.ms.small": {"value": 15.0, "unit": "ms",
+                                             "budget": "query.metrics.ms.small", "scaled": True,
+                                             "noise": 0.6}}
+    quiet = evaluate([Measurement("query.metrics.ms.small", "ms", 17.4, "query.metrics.ms.small",
+                                  samples=[16.9, 17.1, 17.2, 17.0, 17.4])],
+                     {"measurements": verb_floor}, budgets, gates, 1.0, strict=True)
+    if not any(verdict.status == "regression" for verdict in quiet):
+        problems.append("a 16 % change on a verb probe whose own floor is 0.6 ms did not read as a "
+                        "regression: the constant per-unit floor is still in the way")
+    coarse = evaluate([Measurement("query.metrics.ms.small", "ms", 21.0, "query.metrics.ms.small",
+                                   samples=[13.0, 15.0, 21.0, 19.0, 18.5])],
+                      {"measurements": verb_floor}, budgets, gates, 1.0, strict=True)
+    if any(verdict.failed for verdict in coarse):
+        problems.append("a change inside the run's own sample scatter went red: the gate is deciding "
+                        "bimodal noise by coin toss again")
+    if not any(not verdict.resolves for verdict in coarse):
+        problems.append("a change past the ratchet and inside the measurement's own noise was "
+                        "reported as a plain pass: the gate must say which ids it cannot classify")
+
+    # And the standing version of the same confession: an id whose floor is wider than the change the
+    # ratchet looks for is unresolvable whatever this run measured, and must be listed as one.
+    blunt = evaluate([Measurement("query.timeline.ms.small", "ms", 2.6, "query.timeline.ms.small",
+                                  samples=[2.5, 2.6, 2.7], noise=PTY_NOISE_MS)],
+                     {"measurements": {"query.timeline.ms.small": {
+                         "value": 1.8, "unit": "ms", "budget": "query.timeline.ms.small",
+                         "scaled": True}}}, budgets, gates, 1.0, strict=True)
+    if any(verdict.resolvable for verdict in blunt):
+        problems.append("a 10 ms instrument on a 1.8 ms measurement was called resolvable at ±15 %; "
+                        "it is not, and the run must list it as a blind spot rather than pass it quietly")
+
+    # A store-side number that arrives in whole milliseconds cannot resolve a one-tick change, and a
+    # run that samples the same value three times must not turn that tick into a regression.
+    ticked = {"warm.reindex.noop.ms.small": {"value": 3.8, "unit": "ms",
+                                             "budget": "warm.reindex.noop.ms.small", "scaled": True}}
+    one_tick = evaluate([Measurement("warm.reindex.noop.ms.small", "ms", 5.0,
+                                     "warm.reindex.noop.ms.small", samples=[5.0, 5.0, 5.0],
+                                     noise=STORE_CLOCK_FLOOR_MS)],
+                        {"measurements": ticked}, budgets, gates, 1.0, strict=True)
+    if any(verdict.failed for verdict in one_tick):
+        problems.append("a one-tick change on a millisecond-granular store clock was called a "
+                        "regression; that clock cannot resolve one")
+    if not any(not verdict.resolves for verdict in one_tick):
+        problems.append("the millisecond-granular store clock was not reported as unclassifiable")
+
+    # Samples in another unit cannot price a change in this one: the criterion write bench times
+    # iterations and publishes rows/s.
+    rate = {"write.batch_rows": {"value": 200_000.0, "unit": "rows/s", "budget": None,
+                                 "scaled": True, "higher_is_better": True}}
+    rate_run = evaluate([Measurement("write.batch_rows", "rows/s", 160_000.0, None,
+                                     samples=[0.0041, 0.0042, 0.0040], sample_unit="ms",
+                                     scaled=True, higher_is_better=True)],
+                        {"measurements": rate}, budgets, gates, 1.0, strict=True)
+    if not any(verdict.status == "regression" for verdict in rate_run):
+        problems.append("a 20 % drop in the write bench did not read as a regression: its "
+                        "millisecond samples were used to price a rate in rows/s")
+
     for line in problems:
         print(f"self-test FAILED: {line}")
     if problems:
         return EXIT_ERROR
     print("self-test ok: the gate is red on a 400 ms injection, green on none, does not scale RSS, "
-          "does scale wall clocks, demands a re-bless on improvement, and reads a throughput drop "
-          "as a regression")
+          "does scale wall clocks, demands a re-bless on improvement, reads a throughput drop "
+          "as a regression, sees a 15 % change on a 15 ms verb, says which changes it cannot classify "
+          "and which ids it cannot resolve")
     return 0
 
 
@@ -1264,6 +1562,39 @@ def main(argv: list[str]) -> int:
         failures = [verdict for verdict in verdicts if verdict.failed]
         blocked = [verdict for verdict in verdicts if verdict.status == "blocked"]
         registered = [verdict for verdict in verdicts if verdict.registered]
+        # The gate's own resolution, as data: every id whose blessed value sits closer than its own
+        # noise floor to a `regression_fail_pct` change is one this run cannot judge, whatever the
+        # colour it prints. `reco-dkr` is the ticket that made the gate say so instead of flapping.
+        unresolved = [{"id": verdict.id,
+                       "budget": verdict.budget,
+                       "baseline": verdict.baseline,
+                       "measured": verdict.measured,
+                       "pct": round(verdict.pct or 0.0, 2),
+                       "noise_floor": round(verdict.noise or 0.0, 4),
+                       "unit": next((row.unit for row in rows if row.id == verdict.id), ""),
+                       "why": next((part for part in verdict.detail.split("; ")
+                                    if part.startswith("cannot classify")), verdict.detail)}
+                      for verdict in verdicts
+                      if verdict.baseline is not None and not verdict.resolves]
+        # The standing version of the same confession: ids whose floor is wider than the change the
+        # ratchet is supposed to catch, whether or not anything moved this run. A blind spot is a fact
+        # about the gate, so it is said once per run as a list rather than discovered per change.
+        fail_pct = float(gates.get("regression_fail_pct", 15.0))
+        blind = [{"id": verdict.id,
+                  "budget": verdict.budget,
+                  "noise_floor": round(verdict.noise or 0.0, 4),
+                  "noise_basis": verdict.noise_basis,
+                  "unit": next((row.unit for row in rows if row.id == verdict.id), ""),
+                  # The floor expressed as the change it would swallow: a 10 ms floor on a blessed 1.8 ms
+                  # measurement is a 555 % change, which is the whole ratchet and then some.
+                  "floor_as_pct_of_baseline": (round(100.0 * (verdict.noise or 0.0)
+                                                     / float(verdict.baseline), 1)
+                                               if verdict.baseline else None),
+                  # And the same fact the other way round: what the ratchet was asking for.
+                  "limit": (round(float(verdict.baseline) * fail_pct / 100.0, 4)
+                            if verdict.baseline else None)}
+                 for verdict in verdicts
+                 if verdict.baseline is not None and not verdict.resolvable]
         elapsed = time.monotonic() - started
         corpus = {"commits": args.commits, "size_class": CI_CLASS,
                   "shape": "the `e0.10`/`e1.12` deterministic 500-commit agent fixture"}
@@ -1275,7 +1606,7 @@ def main(argv: list[str]) -> int:
             "environment": environment(binary),
             "corpus": corpus,
             "budget_source": str(BUDGETS_PATH.relative_to(ROOT)),
-            "baseline_source": str(baseline_path.relative_to(ROOT)) if baseline else None,
+            "baseline_source": portable(baseline_path) if baseline else None,
             "gates_applied": {
                 "regression_fail_pct": gates.get("regression_fail_pct"),
                 "improvement_baseline_commit_required": gates.get(
@@ -1289,6 +1620,12 @@ def main(argv: list[str]) -> int:
                             "factor": round(factor, 3), "note": factor_note},
             "injection_ms": args.inject_ms,
             "known_breaches": [asdict(verdict) for verdict in registered],
+            "resolution": {
+                "regression_fail_pct": gates.get("regression_fail_pct", 15.0),
+                "floors_are_measured": True,
+                "changes_this_run_could_not_classify": unresolved,
+                "ids_the_ratchet_cannot_resolve": blind,
+            },
             "duration_s": round(elapsed, 1),
             "promised_seconds": PROMISED_SECONDS,
             "criterion": note,
@@ -1312,14 +1649,42 @@ def main(argv: list[str]) -> int:
               + (f" — {', '.join(sorted(verdict.id for verdict in blocked))}" if blocked else ""))
         for verdict in registered:
             print(f"recorded breach: {verdict.detail}")
+        if unresolved:
+            print(f"CANNOT CLASSIFY (change past the {report['resolution']['regression_fail_pct']:g} % "
+                  f"ratchet and inside the measurement's own noise): {len(unresolved)}")
+            for item in unresolved:
+                print(f"  · {item['id']}: {item['pct']:+.1f} % against a floor of "
+                      f"{item['noise_floor']:,.2f} {item['unit']} — {item['why'].split('— ')[-1]}")
         print(f"skipped size classes: "
               f"{', '.join(report['skipped']['size_classes_skipped']) or 'none'}; "
               f"budget ids with no measurement: "
               f"{report['skipped']['budget_ids_skipped']} across "
               f"{len(report['skipped']['families_not_measured'])} families")
+        if blind:
+            # Compact on purpose: this is a standing property of the gate, not news about this run, and
+            # a wall of per-id prose is how a warning gets skimmed. The report carries the detail.
+            print(f"IDS THE ±{report['resolution']['regression_fail_pct']:g} % RATCHET CANNOT RESOLVE "
+                  f"(floor wider than the change it looks for; their budgets guard them): {len(blind)}")
+            cells = [f"{item['id']} (floor {item['noise_floor']:,.4g} {item['unit']}, asking "
+                     f"{item['limit']:,.3g}; {item['noise_basis']})" for item in blind]
+            line = "  · "
+            for cell in cells:
+                if len(line) + len(cell) > 106 and line != "  · ":
+                    print(line.rstrip("; "))
+                    line = "  · "
+                line += cell + "; "
+            if line != "  · ":
+                print(line.rstrip("; "))
         if os.environ.get("GITHUB_ACTIONS") and blocked:
             for verdict in blocked:
                 print(f"::warning title=Perf budget not measured::{verdict.id}: {verdict.detail}")
+        if os.environ.get("GITHUB_ACTIONS"):
+            for item in unresolved:
+                print(f"::warning title=Perf gate cannot classify::{item['id']}: {item['pct']:+.1f} % "
+                      f"vs the blessed baseline is past the "
+                      f"{report['resolution']['regression_fail_pct']} % ratchet and inside a "
+                      f"{item['noise_floor']} {item['unit']} noise floor — the gate cannot tell "
+                      "whether this is a regression")
         if elapsed > PROMISED_SECONDS:
             print(f"OVER THE PROMISED RUNTIME: {elapsed:.0f} s against {PROMISED_SECONDS} s "
                   "(`make bench`'s own budget)", file=sys.stderr)
@@ -1334,7 +1699,7 @@ def main(argv: list[str]) -> int:
                 return EXIT_USAGE
             write_baseline(baseline_path, rows, calibration_ms, passes, corpus,
                            report["environment"], baseline)
-            print(f"blessed {baseline_path.relative_to(ROOT)} from this run "
+            print(f"blessed {portable(baseline_path)} from this run "
                   f"({len(rows)} measurements)")
         if failures:
             return EXIT_BUDGET

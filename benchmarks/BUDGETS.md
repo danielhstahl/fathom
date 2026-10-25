@@ -26,6 +26,7 @@ them, so this table is the rules as they are enforced today:
 | gate rule | value | what it means |
 |---|---|---|
 | `regression_fail_pct` | 15 | a measured number more than this past the blessed baseline is a red build, and so is one better than it: budgets ratchet |
+| noise floor | measured, per measurement | a change has to clear the percentage *and* the measurement's own noise: this run's spread between its samples, the floor the baseline was blessed with, or the probe's stated resolution, whichever is widest. Where that floor is wider than the percentage, the gate says it cannot classify the change instead of guessing (`reco-dkr`) |
 | `improvement_baseline_commit_required` | `True` | an un-blessed improvement is a failure, so a fast commit has to be made fast *on purpose* |
 | `runner_calibration_factor_range` | `1, 4` | the runner factor is clamped into this window; a machine outside it says so instead of handing out a pass |
 | `runner_calibration_bench` | `calibrate: 100k-row batched insert + 10k FTS queries` | the workload the factor is measured on, run at gate time (`tools/perf_gate.py`) |
@@ -72,7 +73,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `query.graph_delta_adjacent.ms` | ms | p95 | 15.0 | 20.0 | 30.0 | 40.0 | not measured yet | `e3.3` owns the architecture delta; the lane is not built |
 | `query.graph_dependents.ms` | ms | p95 | 20.0 | 20.0 | 30.0 | 40.0 | not measured yet | the graph lane is `e3.2`'s and is not built |
 | `query.graph_path.ms` | ms | p95 | 40.0 | 60.0 | 80.0 | 120.0 | not measured yet | `e3.3`'s path query; the lane is not built |
-| `query.metrics.ms` | ms | p95 | 250.0 | 400.0 | 600.0 | 900.0 | this harness | `fathom stats --json`, 3 samples, p95 — the verb the budget names |
+| `query.metrics.ms` | ms | p95 | 250.0 | 400.0 | 600.0 | 900.0 | this harness | `fathom stats --json`, 5 samples, p95 — the verb the budget names |
 | `query.queue.ms` | ms | p95 | 8.0 | 12.0 | 20.0 | 30.0 | this harness | `j` walking the rail: keystroke written to frame drawn |
 | `query.search.ms` | ms | p95 | 30.0 | 50.0 | 80.0 | 120.0 | not measured yet | no scorer ships until `e5.2`; `/` says so out loud |
 | `query.search_degraded.ms` | ms | p95 | 250.0 | 250.0 | 400.0 | 600.0 | not measured yet | the no-FTS5 fallback is `e5.2`'s, with the scorer it degrades from |
@@ -93,7 +94,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `warm.reindex.git.share_pct` | % | p95 | 60.0 | 60.0 | 60.0 | 60.0 | not measured yet | needs the git/store split in `fathom index --stats`, which `e1.10` owns and `e1.4`'s R7 makes meaningful |
 | `warm.reindex.ms` | ms | p95 | 150.0 | 200.0 | 300.0 | 400.0 | this harness | one new commit, then `fathom index`, 3 samples, p95 |
 | `warm.reindex.ms_per_commit_in_store` | ms | p95 per commit already in the store | 1.0 | 1.0 | 1.0 | 1.0 | tools/perf_realrepo.py | warm re-index wall time over the commits already in the store, with the `phases_ms` split naming where it goes |
-| `warm.reindex.noop.ms` | ms | p95 | 10.0 | 10.0 | 15.0 | 15.0 | this harness | `fathom index` twice in a row, 3 samples, p95 of the run's own store-side `elapsed_ms` |
+| `warm.reindex.noop.ms` | ms | p95 | 10.0 | 10.0 | 15.0 | 15.0 | this harness | `fathom index` twice in a row, 5 samples, p95 of the run's own store-side `elapsed_ms` |
 | `warm.reindex.provisional.ms` | ms | p95 | 120.0 | 160.0 | 240.0 | 320.0 | not measured yet | needs a dirty-work-tree index path in the binary (`e1.4` R7) |
 | `warm.reindex.scaling_ratio` | ratio | p50 | 1.25 | 1.25 | 1.25 | 1.25 | not measured yet | `e7.2` (`reco-66q`) runs the 1×/6× pair against real repositories |
 | `watch.budget.cpu_pct` | percent | hard limit | 5.0 | 5.0 | 5.0 | 5.0 | not measured yet | `e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule |
@@ -115,11 +116,11 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 | `rss.cold_index.peak_mib.small` | `rss.cold_index.peak_mib.small` | `VmHWM` of the index child, sampled while it runs — a peak, so the worst sample |
 | `warm.reindex.ms.small` | `warm.reindex.ms.small` | one new commit with unique content, then `fathom index`, p95 of 3 |
 | `rss.warm_reindex.peak_mib.small` | — | `VmHWM` of the warm index child (trend: no budget names the warm path's RSS alone) |
-| `warm.reindex.noop.ms.small` | `warm.reindex.noop.ms.small` | the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 of 3 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the whole-process time is quoted beside it |
+| `warm.reindex.noop.ms.small` | `warm.reindex.noop.ms.small` | the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 of 5 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the whole-process time is quoted beside it |
 | `store.bytes_per_commit_spine.small` | `store.bytes_per_commit_spine.small` | `dbstat` pages of the spine tables over the commit count; cache rows are not charged |
 | `store.size.mib.small` | `store.size.mib.small` | the whole `.fathom/index.sqlite3`, cache included |
-| `query.metrics.ms.small` | `query.metrics.ms.small` | `fathom stats --json`, p95 of 3 — the verb the budget names |
-| `query.card.ms.cli.small` | `query.card.ms.small` | `fathom show --json HEAD~7`: the card's read end to end |
+| `query.metrics.ms.small` | `query.metrics.ms.small` | `fathom stats --json`, p95 of 5 — the verb the budget names |
+| `query.card.ms.cli.small` | `query.card.ms.small` | `fathom show --json HEAD~7`: the card's read end to end, p95 of 5 |
 | `cold.queue_visible.ms.small` | `cold.queue_visible.ms.small` | TUI spawn to first frame through the pty, median of 3 probes |
 | `query.timeline.ms.small` | `query.timeline.ms.small` | `t` written to the grid changed, through the pty |
 | `query.queue.ms.small` | `query.queue.ms.small` | `j` written to the grid changed, through the pty |

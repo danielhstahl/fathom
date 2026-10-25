@@ -384,6 +384,7 @@ def render_markdown() -> str:
         "| gate rule | value | what it means |",
         "|---|---|---|",
         "| `regression_fail_pct` | %g | a measured number more than this past the blessed baseline is a red build, and so is one better than it: budgets ratchet |" % GATE_RULES["regression_fail_pct"],
+        "| noise floor | measured, per measurement | a change has to clear the percentage *and* the measurement's own noise: this run's spread between its samples, the floor the baseline was blessed with, or the probe's stated resolution, whichever is widest. Where that floor is wider than the percentage, the gate says it cannot classify the change instead of guessing (`reco-dkr`) |",
         "| `improvement_baseline_commit_required` | `%s` | an un-blessed improvement is a failure, so a fast commit has to be made fast *on purpose* |" % GATE_RULES["improvement_baseline_commit_required"],
         "| `runner_calibration_factor_range` | `%s` | the runner factor is clamped into this window; a machine outside it says so instead of handing out a pass |" % (", ".join("%g" % f for f in GATE_RULES["runner_calibration_factor_range"])),
         "| `runner_calibration_bench` | `%s` | the workload the factor is measured on, run at gate time (`tools/perf_gate.py`) |" % GATE_RULES["runner_calibration_bench"],

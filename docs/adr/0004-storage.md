@@ -1377,15 +1377,82 @@ depends on how many index runs it made, 8,289 B/commit at three samples and 10,4
 three identical runs of the same tree on this runner — bimodal, and by more than the ratchet can see: a
 ±15 % two-sided limit with a 5 ms floor on a 15 ms number is a threshold inside its own noise. There is no
 middle of the spread to bless — every sample is one mode or the other — so the blessed values sit in the
-fast mode, and a slow-mode run is absorbed by the 5 ms floor up to about 5 ms and goes red beyond it. What
-was done instead of tuning a knob: `tools/epic7_acceptance.py` re-runs the fixture gate once when it comes
-back red and requires the verdict twice, which keeps a real regression red (it is red both times) and stops
-the epic from being red about a jitter. **`reco-dkr`** owns it, with three candidate remedies in order:
+fast mode, and a slow-mode run is absorbed by the 5 ms floor up to about 5 ms and goes red beyond it.
+What was done instead of tuning a knob: `tools/epic7_acceptance.py` re-runs the fixture gate once when it
+comes back red and requires the verdict twice, which keeps a real regression red (it is red both times) and
+stops the epic from being red about a jitter. **`reco-dkr`** owns it, with three candidate remedies in order:
 sample the read verbs more than three times (the probes cost ~20 ms each, so five samples is ~30 ms of
 wall clock, not a second), record a noise floor beside each blessed value instead of a constant per unit,
 or find out *why* `fathom stats --json` is bimodal — which is the only one of the three that is a product
 fix rather than a measurement fix. What must not happen is widening the ±15 % limit or raising
 `NOISE_MS`: the ratchet's whole value is that it can see a real 15 % regression in the verbs users wait on.
+
+**What `reco-dkr` did about it: the bimodality was in the harness.** Of the three remedies the finding
+listed, the root cause was the third one — find out why — and the answer is that the gate was timing its
+own polling loop. `tools/mvp_acceptance.py`'s timed runner was `t0 = monotonic(); Popen(...)` and then
+`while proc.poll() is None: sample VmHWM; sleep 0.002`, and the number it returned was the wall clock
+around all of that: the 2 ms interval, the cost of reading `/proc` inside the loop, and wherever the
+scheduler happened to wake the poller. On a 13 ms verb that is 1.7 ms of the measurement at p50 and 8 ms
+of it in the tail, measured against a ratchet whose whole job is to see 15 % — that is, 1.5 ms — and the
+reason the same tree read 14.8, 14.9 and 21.6 ms minutes apart. The clock is the child's exit now
+(`os.wait4` blocks until it is reaped and hands back its status and its rusage) and the RSS sampler runs
+on its own thread; `tools/perf_realrepo.py`, which had the same defect with a 5 ms interval, measures the
+same way. Five samples of `fathom stats --json` on the same tree now scatter with a robust standard
+deviation of **0.12–0.22 ms**, where three samples used to land a mode apart; six consecutive gate runs put
+`query.metrics.ms.small` within **±4 %** of its blessed value, green six times out of six where the same
+tree used to be a coin toss. The other two remedies went in with it, deliberately, because fixing
+the clock does not make a 3-sample p95 into a statistic: the read-verb probes take **five** samples,
+and a blessed value now carries the noise it was blessed with — `center`, `scale`, `spread` and `noise`
+beside `value` in `benchmarks/baselines/perf-gate.json` — instead of a constant per unit in the script. A
+change has to clear the percentage **and** that floor, and the floor is the widest of: this run's own scatter
+times two, the floor blessed with the value, or the probe's stated resolution. Two, because the change being
+judged is a gap between two independent draws (√2) and a run's within-run scatter understates its
+run-to-run scatter by about as much again. The scatter is a median absolute deviation, not the range: a
+range is a maximum, one slow sample in five trebles it, and a floor built on a maximum is widest exactly on
+the runs that should be distrusted and tightest on the ones that can be judged — which is the opposite of a
+floor. And the ratchet compares the **middle** of the samples, not the worst: a worst-of-five drawn from a
+distribution with a tail cannot resolve a 15 % change on a 15 ms verb at any floor, so the median of the run
+is compared against the median the baseline was blessed with, while the *budget* keeps being checked against
+the p95 — the budget is a promise about a bad run, the ratchet is a statement about a changed one.
+`NOISE_FLOOR` was not raised (5 / 1 / 256, as `reco-pef` blessed it) and `regression_fail_pct` is still 15.0,
+which is what `reco-r3x` asked for: the constant is now the fallback for a value that was blessed before
+floors existed, and it keeps its hold on every one of those until somebody blesses a floor and says what it
+was. What changed instead is what happens when a floor is wider than the percentage: that is no longer a
+silent pass. The run lists those ids under **cannot classify**, in the table, in the report
+(`resolution.changes_this_run_could_not_classify`) and as a GitHub warning, with the floor and its basis in
+the sentence — because a gate that cannot resolve a metric should name the metric, and epic 7's exit clause
+is "met, or consciously relaxed with a written rationale", not "unresolvable, and green". Which ids those
+are is now written down rather than discovered per run: every measurement taken through the pty —
+`cold.queue_visible.ms.small` and the keystroke probes behind `query.timeline.ms`, `query.queue.ms` and
+`query.diff_*` — whose instrument resolves 10 ms (`PTY_NOISE_MS`, the poll granularity of the pty reader,
+not a choice about tolerance) while the numbers it reports are 1–5 ms; and `warm.reindex.noop.ms.small`,
+whose `elapsed_ms` the store prints as whole milliseconds — three ticks of that clock is its floor
+(`STORE_CLOCK_FLOOR_MS`), so it can see a doubling of the no-op and nothing finer. What guards those ids is
+their budgets — 12 ms against a 1.8 ms keystroke, 10 ms against a 4 ms no-op — and the ratchet now says so
+out loud. A deterministic reading does not buy its way out of the constant floor either: what varies on the
+byte counters is not the reading but the run — how much of the graph lane one gate run happens to write moves
+`store.bytes_per_commit_spine.small` by more than a fifth, which is `reco-7yq`'s denominator talking.
+And because a blind spot is a fact about the gate rather than about the run, the gate now prints the standing
+list too — **IDS THE ±15 % RATCHET CANNOT RESOLVE**, in the report under
+`resolution.ids_the_ratchet_cannot_resolve` — which after this ticket is seven on a run without the
+criterion benches: the five pty probes (a 10 ms instrument being asked for 0.27 ms), the store-side no-op,
+and `store.size.mib.small` (a 1 MiB floor on a 3.4 MiB store), each named with its floor, what the floor
+was, and what the ratchet was asking for. On a full run the criterion rows join them, because a
+per-iteration number blessed on a tail statistic and without a floor is gated by the 5 ms constant — a
+sentence about the bless and the constant, not about the bench. Every one of those ids is a row a bless will
+put under the ratchet, because a bless now records a centre and a floor along with the value; until then
+their budgets are what guard them, and the gate says that instead of guessing.
+
+The bless moved three rows, the ones whose measurement this changed — `query.metrics.ms.small` 15.1 →
+**13.4 ms** (centre 12.83, floor 0.24), `query.card.ms.cli.small` 15.3 → **14.8 ms** (centre 14.43, floor
+0.24), and `warm.reindex.noop.ms.small` 3.784 → **3.9 ms** (that row is the *basis* moving, not the code:
+whole-millisecond readings of a no-op that has measured 3.8 ms store-side since `reco-r3x`) — blessed from
+the quietest of three runs, its times divided by that run's calibration factor so they stay in
+reference-machine units, §11.8's convention as `reco-r3x` set it. The other twenty rows are untouched, still
+blessed where they were. The two-run concession in
+`tools/epic7_acceptance.py` stays, and says something different now: it is a backstop for a runner that was
+busy for one run and quiet for the next, which is a property of the machine, and no longer a workaround for a
+metric the gate could not read.
 
 **The register.** Hand-written into `benchmarks/baselines/perf-gate.json`'s `known_breaches`, carried
 forward by `make bench-bless` so a bless cannot launder it, and read by `tools/epic7_acceptance.py`, which
