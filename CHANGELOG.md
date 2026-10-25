@@ -17,6 +17,27 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The gate's sign-off finding named an episode no verb could open (`reco-dvu`)
+
+`fathom check` said `episode ep-5e23bd8e8 scores 72 of 100 …`, and the reviewer who typed that id at
+`fathom why` got `cannot resolve "ep-5e23bd8e8": no branch, tag, remote branch or full ref name matches it`.
+The sentence had been cut to twelve characters and the finding's own `index:episode …` evidence had not:
+an episode id is `ep-` plus twenty hex characters (ADR-003 §5), and the verbs that read one — `why`,
+`analyze`, `narrative`, `export`, `review sign` — read it *whole*, because the only prefix grammar they
+accept is a commit-oid one. Both episode-shaped checks (`sign-off`, `tests`) now print the whole id, in the
+sentence and in the evidence, from one binding per finding, so the half a human copies out of a CI log and
+the half a machine reads out of the same object cannot disagree.
+
+* **The `fix:` line names a verb that reads the id it prints.** The finding said *read the episode in
+    `fathom show`*, and `fathom show` reads a revspec — an episode id has never been in its grammar. It
+    names `fathom analyze <episode>` and `fathom review sign <episode>`, which is the headless reading order
+    `docs/recipes/review-a-session.md` already gives a reviewer who would rather not touch a terminal.
+* **The agreement is a test, not a promise.** `crates/fathom-cli/tests/check_verb.rs` collects every `ep-…`
+    token a `check --format json` run prints — the whole document, not only the two fields this fix touched,
+    because the bug was one field shortening and the other not — resolves each one with `fathom why` and
+    `fathom analyze`, and asserts that a finding's sentence contains the id its own evidence names. A finding
+    that reaches for the abbreviated form now fails a test rather than a reviewer at 1 a.m.
+
 ### The search box has symbols now, and it says which tree they came from (`reco-6sw`)
 
 `/` indexed four of the six kinds it names. The fifth was a gap: `search::corpus` registered `Kind::Symbol`

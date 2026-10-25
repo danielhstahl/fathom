@@ -37,11 +37,11 @@ findings
     fix: call the read API through the store's own façade, or widen the rule with a reason
   warning [dependencies/new-direct] `acme-sdk 1.2.0` is a new direct dependency (cargo: registry → git:…)
     hunk:Cargo.lock:881
-  warning [sign-off/high-risk-unsigned] episode 4f21c9ae0 scores 71 of 100 (at or over the gate's 60) and its
-    review marker is `unread`, not a sign-off
+  warning [sign-off/high-risk-unsigned] episode ep-4f21c9ae0b7d30b81f22 scores 71 of 100 (at or over the
+    gate's 60) and its review marker is `unread`, not a sign-off
     why: a high-risk change that nobody has read is a change nobody has agreed to
-    fix: read the episode in `fathom show` and sign it off with `fathom review sign` — the gate objects to
-    the missing review, not to the size of the change
+    fix: read the episode with `fathom analyze <episode>` and sign it off with
+    `fathom review sign <episode>` — the gate objects to the missing review, not to the size of the change
 
 fathom check failed: 3 finding(s) at or above `warning` — worst is error — `check.mode = warn`, so this is
 reported and not enforced
@@ -52,6 +52,13 @@ reaches up into `crates/fathom-store/src/read.rs` (run `fathom check --format js
 The last two lines are the whole contract: one sentence saying why, then the first finding with its file and
 line. Everything above them is for whoever opens the log; everything the sentence cannot fit is in
 `--format json`.
+
+Every handle inside a finding is printed whole. An episode id is `ep-` plus twenty hex characters, and that
+is the string `fathom analyze <episode>` and `fathom review sign <episode>` take, so the line that objects to
+an episode names one the reader can actually open — a twelve-character abbreviation is not a convenience,
+it is a dead end at the worst moment in the day. The sentence and the finding's own
+`index:episode …` evidence are built from one value, and a test resolves every episode id a `--format json`
+run prints, so the two halves cannot drift apart again.
 
 ## The six checks
 

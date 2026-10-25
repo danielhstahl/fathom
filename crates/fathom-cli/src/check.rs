@@ -467,8 +467,29 @@ fn tree_of(
 }
 
 /// A short oid, or the spec a caller passed when there is no oid to shorten.
+///
+/// **For revisions, not episodes.** Twelve hex characters of a commit are a revspec every verb resolves;
+/// twelve characters of an episode id resolve nowhere ([`episode_ref`], `reco-dvu`).
 fn short(oid: &str) -> String {
     oid.chars().take(12).collect()
+}
+
+/// The handle a finding names an episode with: the id, whole.
+///
+/// An episode id is not a short commit oid. It is `ep-` plus twenty hex characters (ADR-003 §5), and the
+/// verbs that read one — `why`, `analyze`, `narrative`, `export`, `review sign` — read it *whole*; the only
+/// prefix grammar those verbs accept is a commit-oid one. So the truncated form this file used to print was
+/// a sentence pointing at nothing: the gate said `episode ep-5e23bd8e8 scores 72 of 100`, the reader ran
+/// `fathom why ep-5e23bd8e8`, and got `cannot resolve "ep-5e23bd8e8": no branch, tag, remote branch or full
+/// ref name matches it` (`reco-dvu`). A printed id is an instruction, and the verbs it names have to read it.
+///
+/// Each finding binds this once and uses the binding in both its halves — the sentence and the
+/// `index:episode …` evidence — so prose and payload cannot drift. The contract is machine-checked:
+/// `crates/fathom-cli/tests/check_verb.rs` collects every `ep-…` a `check --format json` run prints and
+/// resolves each one, so a future finding that reaches for [`short`] instead fails a test rather than a
+/// reviewer at 1 a.m.
+fn episode_ref(id: &str) -> &str {
+    id
 }
 
 // ---------------------------------------------------------------------------
@@ -944,24 +965,24 @@ fn gather_episodes(
             if ratio >= policy.tests.min_tested_ratio {
                 continue;
             }
+            // One handle, used twice: the sentence and the evidence name the *same* id, and it is the id
+            // every verb resolves ([`episode_ref`], `reco-dvu`).
+            let episode = episode_ref(id);
             let finding = Finding::new(
                 Check::Tests,
                 "untested-logic",
                 volume,
                 format!(
-                    "episode {} adds {logic} lines of new logic with {tests} test lines beside it, under \
-                     the gate's floor of {ratio:.0}% tested",
-                    short(id),
+                    "episode {episode} adds {logic} lines of new logic with {tests} test lines beside it, \
+                     under the gate's floor of {ratio:.0}% tested",
                     ratio = policy.tests.min_tested_ratio * 100.0,
                 ),
             )
             .with_evidence(match largest {
-                Some((_, path)) => Evidence::file(
-                    path,
-                    None,
-                    format!("index:episode {}", short(id)),
-                ),
-                None => Evidence::pointer(format!("index:episode {}", short(id))),
+                Some((_, path)) => {
+                    Evidence::file(path, None, format!("index:episode {episode}"))
+                }
+                None => Evidence::pointer(format!("index:episode {episode}")),
             })
             .with_detail(format!(
                 "policy: [check.tests] min_new_lines = {}, min_tested_ratio = {}",
@@ -1043,21 +1064,23 @@ fn gather_episodes(
             {
                 continue;
             }
+            // The id the reader is told to open, bound once so the sentence and the evidence cannot name
+            // different things (`episode_ref`, `reco-dvu`).
+            let episode = episode_ref(id);
             findings.push(
                 Finding::new(
                     Check::SignOff,
                     "high-risk-unsigned",
                     volume,
                     format!(
-                        "episode {} scores {} of 100 (at or over the gate's {}) and its review marker \
-                         is `{}`, not a sign-off",
-                        short(id),
+                        "episode {episode} scores {} of 100 (at or over the gate's {}) and its review \
+                         marker is `{}`, not a sign-off",
                         score.score,
                         policy.risk.threshold,
                         marker.as_str()
                     ),
                 )
-                .with_evidence(Evidence::pointer(format!("index:episode {}", short(id))))
+                .with_evidence(Evidence::pointer(format!("index:episode {episode}")))
                 .with_detail(format!(
                     "score model {} over {}/{} features; top: {}",
                     score.model,
@@ -1069,7 +1092,12 @@ fn gather_episodes(
                         .map(|term| format!("{} ({} pts)", term.feature.id(), term.points.0))
                         .unwrap_or_else(|| "none".to_owned())
                 ))
-                .with_detail("fix: read the episode in `fathom show` and sign it off with `fathom review sign` — the gate objects to the missing review, not to the size of the change")
+                // The verbs this line names are the ones that read the id this finding prints. `fathom show`
+                // is not one of them — its handle grammar is a revspec's, so it reads a commit and not an
+                // episode id — and a `fix:` that ends in a refusal is the dead end `reco-dvu` is about.
+                // `analyze` and `review sign` both take an episode id, which is also the headless reading
+                // order `docs/recipes/review-a-session.md` gives a reviewer who would not touch a terminal.
+                .with_detail("fix: read the episode with `fathom analyze <episode>` and sign it off with `fathom review sign <episode>` — the gate objects to the missing review, not to the size of the change")
             );
         }
         let mut run = CheckRun::ran(Check::SignOff, Some(volume), scored.len(), findings);

@@ -755,6 +755,121 @@ fn a_high_risk_episode_without_a_sign_off_fires_and_a_signed_one_does_not() {
     );
 }
 
+/// Every `ep-…` id a run printed, wherever in the document it printed it, deduped.
+///
+/// The sweep is over the whole document rather than over the two fields a fix touched, because the defect
+/// (`reco-dvu`) was a *message* that had been shortened while the payload had not: a test that looked only
+/// at `evidence[]` would have watched the one half that was already right and passed.
+fn printed_episode_handles(value: &serde_json::Value) -> Vec<String> {
+    let mut out = Vec::new();
+    collect_episode_handles(value, &mut out);
+    out.sort();
+    out.dedup();
+    out
+}
+
+fn collect_episode_handles(value: &serde_json::Value, out: &mut Vec<String>) {
+    match value {
+        serde_json::Value::String(text) => {
+            for handle in episode_handles_in(text) {
+                if !out.contains(&handle) {
+                    out.push(handle);
+                }
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                collect_episode_handles(item, out);
+            }
+        }
+        serde_json::Value::Object(fields) => {
+            for item in fields.values() {
+                collect_episode_handles(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The `ep-…` shaped tokens in one printed string: maximal runs of id characters, longer than the prefix
+/// alone. A truncated id is still `ep-` shaped, which is the point — the test that follows is what refuses
+/// it, not this scanner.
+fn episode_handles_in(text: &str) -> Vec<String> {
+    text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+        .filter(|token| token.starts_with("ep-") && token.len() > 3)
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn every_episode_id_the_gate_prints_is_one_a_verb_can_open() {
+    // The finding read `episode ep-5e23bd8e8 scores 72 of 100`; the reader ran `fathom why ep-5e23bd8e8`
+    // and got `cannot resolve "ep-5e23bd8e8": no branch, tag, remote branch or full ref name matches it`,
+    // because twelve characters had been printed of a twenty-three-character id and no verb reads an episode
+    // id by prefix. The message was shortening where the payload was not, so the two halves of the same
+    // finding disagreed — which is what this test refuses, mechanically, for every id in the document.
+    let mut repo = Repo::new("handles");
+    std::fs::write(
+        repo.dir.join("fathom.toml"),
+        CONFIG.replace("threshold = 90", "threshold = 0"),
+    )
+    .expect("rewrite the config");
+    let base = repo.head();
+    // Eighteen untested lines over the `min_new_lines = 8` floor, in a repository where every episode is
+    // "high risk", so one commit trips both episode-shaped checks and both sentences are under test.
+    let lines = "pub fn untested() -> u32 {\n    1\n}\n".repeat(6);
+    repo.commit(
+        "logic that arrived untested and unsigned",
+        &[("src/l0/late.rs", &lines)],
+    );
+
+    let value = repo.json(&["--base", &base]);
+    assert!(!Repo::rules(&value, "sign-off").is_empty(), "{value}");
+    assert!(!Repo::rules(&value, "tests").is_empty(), "{value}");
+
+    let handles = printed_episode_handles(&value);
+    assert!(
+        !handles.is_empty(),
+        "the run printed no episode id anywhere, so this test would be vacuous: {value}"
+    );
+    for handle in &handles {
+        // Two verbs, chosen deliberately: `why` is the one the report reached for, and `analyze` is the one
+        // the sign-off finding's own `fix:` line names. Both read an episode id whole, which is the whole
+        // requirement — a finding whose subject cannot be opened by a verb is a dead end at the worst moment.
+        for verb in ["why", "analyze"] {
+            let read = fathom(&repo.dir, &[verb, handle, "--json"]);
+            assert_eq!(
+                code(&read),
+                0,
+                "`fathom {verb} {handle}` could not read an id the gate printed\n{}\n{}",
+                stdout(&read),
+                stderr(&read)
+            );
+        }
+    }
+
+    // And the two halves of one finding name the *same* string: the sentence is what a human copies out of
+    // a CI log, the evidence is what a machine reads out of the same object.
+    for check in ["sign-off", "tests"] {
+        for finding in Repo::row(&value, check)["findings"]
+            .as_array()
+            .expect("a findings list")
+        {
+            let message = finding["message"].as_str().expect("a message");
+            let source = finding["evidence"][0]["source"]
+                .as_str()
+                .expect("evidence that says where the claim came from");
+            let named = source
+                .strip_prefix("index:episode ")
+                .unwrap_or_else(|| panic!("evidence names no episode: {source}"));
+            assert!(
+                message.contains(named),
+                "the sentence and its evidence name different episodes\n  message:  {message}\n  evidence: {source}"
+            );
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // what makes a run red, and what a run that cannot answer says
 // ---------------------------------------------------------------------------
