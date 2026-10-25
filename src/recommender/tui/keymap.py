@@ -604,7 +604,7 @@ TASKS: tuple[Task, ...] = (
                      "Search overlay, cursor already in the query field.", "global"),
             TaskStep("<text>", "(typing)",
                      "Fuzzy over episodes, paths, symbols, dependencies and findings; "
-                     "`author:` `path:` `risk>` `dep:` tokens compose with text.",
+                     "`author:` `since:` `risk>` `kind:` `path:` `dep:` tokens compose with text.",
                      "prompt"),
             TaskStep("<C-n>", "prompt.result_down",
                      "Walk results without leaving the field; `<C-p>` walks back.",

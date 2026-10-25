@@ -1685,10 +1685,14 @@ Options:
 
 The same box `/` is in the shell, in a pipe: one query over episodes, paths, symbols, dependencies and
 findings, ranked by the scorer the shell uses, with the filter grammar (`author:`, `since:`, `risk>`,
-`path:`, `dep:`) and the same list of what it could not read. A kind the build cannot search is named in
-the report rather than left out, because "nothing matched" and "nothing was searched" are different
-sentences ([the rail and the box](../concepts/timeline.md)). `--save NAME` keeps a query for the palette;
-`--list` prints what this repository has.
+`path:`, `dep:`, `kind:`) and the same list of what it could not read. A kind the build cannot search is
+named in the report rather than left out, because "nothing matched" and "nothing was searched" are different
+sentences ([the rail and the box](../concepts/timeline.md)). Symbol names come from the working tree, read
+by the same extractor as the graph ([*structure extraction*](../concepts/structure-extraction.md)), and a
+symbol hit's `--json` carries the file it was read out of and the diff view that can select it. Every report
+prints the stamp it was built from (`corpus … · index epoch …` in text, `identity` and `epoch` in JSON): a
+corpus is read once, so the stamp is how a reader tells a rebuilt box from one answering from an older
+tree. `--save NAME` keeps a query for the palette; `--list` prints what this repository has.
 
 <!-- BEGIN GENERATED: help.search -->
 ```text

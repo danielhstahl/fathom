@@ -102,6 +102,19 @@ fn preview(app: &App) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// The same pane folded into one string. The pane wraps at its own width and bullets its notes, so a claim
+/// about a sentence has to be read the way a reviewer reads it — as a stream of words, not as one line.
+fn prose(app: &App) -> String {
+    preview(app)
+        .iter()
+        .map(|line| line.trim_start_matches('!').trim())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[test]
 fn an_empty_box_answers_with_the_grammar_and_the_last_searches() {
     let mut app = shell((110, 40));
@@ -409,4 +422,148 @@ fn the_help_overlay_lists_the_filters_because_a_box_cannot_teach_its_own_grammar
             "`{token}` ({meaning}) is missing from the help overlay:\n{lines}"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// the symbol section (`reco-6sw`)
+// ---------------------------------------------------------------------------
+
+/// A corpus in the shape `search::corpus` produces now that the extractor of `e3.1` feeds it: a working
+/// tree's declarations beside the episodes, each naming the file it was read out of, and a stamp for the
+/// tree and the store epoch they came from.
+fn symbol_corpus() -> Corpus {
+    let mut corpus = Corpus::new();
+    corpus.documents = 1;
+    corpus.epoch = Some(4);
+    corpus
+        .identity
+        .set(fathom_analyze::search::SOURCE_INDEX, "epoch=4");
+    corpus.identity.set(
+        fathom_analyze::search::SOURCE_SYMBOLS,
+        "aabbccddeeff · the working tree `pilot` · 2 files",
+    );
+    corpus.push(Entry::episode(
+        "e8f1a2c3d4",
+        "epoch-safe store reads",
+        "pin the epoch before the read so the rail cannot see a half-written epoch",
+        Some("Dana Stahl".to_owned()),
+        Some(Timestamp::from_unix_micros(1_760_000_000_000_000)),
+        Some(82),
+    ));
+    let mut symbol = Entry::symbol(
+        "parse_lockfile",
+        "fn",
+        "src/parse.rs",
+        4,
+        Some(Timestamp::from_unix_micros(1_760_000_000_000_000)),
+    );
+    symbol.prior = 0;
+    corpus.push(symbol);
+    corpus
+}
+
+fn symbol_shell() -> App {
+    let mut app = shell((110, 40));
+    app.search = Some(Arc::new(symbol_corpus().index()));
+    app
+}
+
+#[test]
+fn a_symbol_is_listed_as_one_and_names_where_it_lives() {
+    let mut app = symbol_shell();
+    app.dispatch("search.open");
+    for ch in "parse_lockfile".chars() {
+        app.feed_key(&ch.to_string(), std::time::Instant::now());
+    }
+    let joined = results(&app).join("\n");
+    assert!(
+        joined.contains("sy ") && joined.contains("parse_lockfile"),
+        "the row carries the two-character kind and the name: {joined}"
+    );
+    assert!(
+        joined.contains("src/parse.rs"),
+        "and the file it was read out of: {joined}"
+    );
+    assert_eq!(
+        app.search_report
+            .as_ref()
+            .and_then(|report| report.hits.first())
+            .map(|hit| hit.kind),
+        Some(fathom_analyze::search::Kind::Symbol)
+    );
+}
+
+#[test]
+fn enter_on_a_symbol_goes_to_the_file_that_declares_it() {
+    let mut app = symbol_shell();
+    app.dispatch("search.open");
+    for ch in "parse_lockfile".chars() {
+        app.feed_key(&ch.to_string(), std::time::Instant::now());
+    }
+    app.dispatch("prompt.submit");
+    assert_eq!(
+        app.view,
+        ViewId::Diff,
+        "a symbol opens the diff view, which is the pane that can select a file"
+    );
+    let toast = app.toast.unwrap_or_default();
+    assert!(
+        toast.contains("src/parse.rs"),
+        "and the toast names the file, because nothing was selected to prove it: {toast}"
+    );
+    assert!(
+        toast.contains("not in the patch on screen"),
+        "with no patch loaded there is nothing to select in, and the box says that rather than \
+         pretending: {toast}"
+    );
+}
+
+#[test]
+fn a_corpus_older_than_the_index_says_so_in_the_box() {
+    // The corpus is read once, at startup; the watcher keeps the frame's index facts current. When the two
+    // disagree the reviewer is told which epoch `/` is answering from instead of being handed a confident
+    // list of rows a rebuild has already replaced.
+    let mut app = symbol_shell();
+    app.model.index_facts =
+        fathom_tui::index::Facts::present(Some(9), Some("ready".to_owned()), Some(3), Some(3));
+    app.dispatch("search.open");
+    for ch in "parse_lockfile".chars() {
+        app.feed_key(&ch.to_string(), std::time::Instant::now());
+    }
+    let shown = prose(&app);
+    assert!(
+        shown.contains("older than the repository")
+            && shown.contains("the index epoch came from `epoch=4`")
+            && shown.contains("is now `epoch=9`"),
+        "the sentence names the epoch the rows came from and the one they are being compared with: {shown}"
+    );
+
+    // Same epoch, no warning: the check is a comparison, not a mood.
+    let mut current = symbol_shell();
+    current.model.index_facts =
+        fathom_tui::index::Facts::present(Some(4), Some("ready".to_owned()), Some(3), Some(3));
+    current.dispatch("search.open");
+    for ch in "parse_lockfile".chars() {
+        current.feed_key(&ch.to_string(), std::time::Instant::now());
+    }
+    assert!(
+        !preview(&current)
+            .iter()
+            .any(|line| line.contains("older than the repository")),
+        "a corpus that is current is not apologising for it: {:?}",
+        preview(&current)
+    );
+}
+
+#[test]
+fn an_empty_box_names_the_symbol_section() {
+    let mut app = symbol_shell();
+    app.dispatch("search.open");
+    assert!(
+        results(&app)
+            .iter()
+            .any(|line| line.contains("1 symbol names from the working tree")),
+        "the box says which half of its corpus is empty: {:?}",
+        results(&app)
+    );
 }

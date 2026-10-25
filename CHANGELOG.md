@@ -17,6 +17,59 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The search box has symbols now, and it says which tree they came from (`reco-6sw`)
+
+`/` indexed four of the six kinds it names. The fifth was a gap: `search::corpus` registered `Kind::Symbol`
+as `not indexed`, owned by `e3.1`, and the box printed that sentence instead of pretending the repository
+contained no symbol names. That was the honest answer in October; it stopped being the true one the day
+`reco-zoz` shipped the extractor. The extractor is a pure function of file text — no filesystem, no clock —
+which means somebody still has to decide *which files to read*, and that producer is what this ticket is.
+
+* **`search::symbols` is the producer.** It walks a working tree to depth 6, skips the directories a build
+    leaves behind (`node_modules`, `target`, `venv`, every dot-directory, plus whatever `graph.ignored_dirs`
+    names, because two ignore lists drift and one is a fact), reads the files whose language a grammar
+    speaks, and hands them to `structure::extract`. What comes back is one row per declaration with the
+    file, the one-based line, the language and the file's last touch on it — a symbol is a function of a
+    **file**, so the row carries no episode and its date is somebody's Sunday afternoon of editing, not a
+    turn of work.
+* **The deep link became real.** A symbol hit means *go to the file and select it*: `Hit::file` is the file
+    the extractor read the name out of, `Destination::Diff { path, episode: None }` carries it, and the shell
+    selects that file in the diff pane. The two only sometimes overlap — a worktree declaration and one
+    episode's patch are different bodies of work — and where the file is not in the patch on screen the toast
+    says so and names `s` instead of parking the reviewer on a file that merely looks right.
+* **Every corpus now says what it was read from.** `search::Identity` is a part per source: the store's epoch
+    for the episode rows, a digest over `(path, size, mtime)` for the tree the symbols came from. A surface
+    that can only ask about one part asks about one — `Index::is_current` and `Index::staleness` answer about
+    the parts they are given — so an open shell whose index moved while it was open prints which epoch its
+    rows came from rather than answering from them, and the watcher hands `/` a fresh corpus on the same
+    update that refreshes the rail. `fathom search` prints the stamp it built from (`corpus 5758b0010f66 ·
+    index epoch 4`, and `identity`/`epoch` in `--json`) and re-stamps the tree once per query — a `stat` of
+    every file, no parse — so a corpus that is no longer the tree it claims to be says so instead of
+    reporting what it did not find.
+* **The cost was measured before it went in**, because symbol count is one to two orders of magnitude above
+    episode count and `Index::build` is O(corpus) with no streaming. On this repository — 882 first-party
+    source files, 17.5 MiB — the default 6 MiB ceiling reads 333 files in 1.89 s of `--release` wall, yields
+    8 191 declarations, and costs 15 ms to build; an uncapped scan reads all 882 in 5.27 s and yields 21 697
+    declarations, which is past `SYMBOL_MAX` entirely. `Index::build` over 2 000 episodes plus the cap's worth
+    of symbols — 22 868 rows, a debug build — costs 133–162 ms and 3 KiB a row, and the keystroke budget
+    holds: p95 36 ms against ADR-004's 50 ms. The numbers are printed by an ignored test
+    (`measure_the_symbol_scan`) and restated beside the constants they bound.
+* **Every cap is a sentence, never a silence.** A scan that passes files over says how many and why; a corpus
+    that narrows to `SYMBOL_MAX` reports a `partial` gap with the counts and the order it kept (exported
+    names first, because a corpus that must drop 30 000 names needs a rule for which 10 000 they are); and a
+    build with no grammar linked, a tree with no file in a language the extractor speaks, and a scan whose
+    caps were spent before it reached the source are three different remedies in three different sentences.
+    The empty section that used to be a gap is now a section, and the gaps that remain are about the
+    repository, not about this build.
+* **The ordering did not move.** A symbol-only query returns symbols and nothing else (`kind:symbol`, and
+    `sym`), an unfiltered query interleaves by score, and an exact path still beats a fuzzy symbol fragment —
+    asserted at the size the section reaches, where the rows are 100:1 in the declarations' favour and their
+    names are built from the episodes' own vocabulary.
+
+ADR-006 §5.8's mock now prints a symbol row that names a real thing, `docs/reference/cheatsheet.md` and the
+Python keymap follow its `kind:` token list, and `docs/reference/cli.md` says where a symbol hit's file
+comes from.
+
 ### A shallow clone was told to `git fsck` (`reco-b7o`)
 
 `git clone --depth 140 --single-branch https://github.com/pallets/flask`, then `fathom index` in it. Flask at

@@ -14,10 +14,12 @@
 //!   the shell is open is a repository the next `/` sees after a restart — stated in the corpus's own gaps
 //!   rather than quietly fresher than it looks.
 //! * **A kind the caller did not read is a gap, not an empty result.** The dependency names come from the
-//!   manifests this module can see; the findings would come from detectors that need the delta model, which
-//!   this build does not run at startup. Each of those is a sentence in [`Lend`]'s notes and a line in the
-//!   report's gaps, because "no findings match your search" and "nothing raised findings in this session"
-//!   are different answers and only one of them is about the reviewer's query.
+//!   manifests this module can see; the symbol names come from the working tree, walked with
+//!   [`fathom_analyze::search::symbols`] and read by `e3.1`'s extractor (`reco-6sw`); the findings would come
+//!   from detectors that need the delta model, which this build does not run at startup. Each of those is a
+//!   sentence in [`Lend`]'s notes and a line in the report's gaps, because "no findings match your search" and
+//!   "nothing raised findings in this session" are different answers and only one of them is about the
+//!   reviewer's query.
 //! * **`None` is a real answer with a reason.** No store, an unreadable store, a store built without a
 //!   backend: the shell prints which, and `/` says what would make it answer, rather than accepting a query
 //!   into a black hole.
@@ -45,6 +47,8 @@ use fathom_analyze::search::corpus::{self, Dependency};
 use fathom_analyze::search::history;
 #[cfg(feature = "sqlite-bundled")]
 use fathom_analyze::search::query::Query;
+#[cfg(feature = "sqlite-bundled")]
+use fathom_analyze::search::symbols;
 use fathom_core::exit::ExitCode;
 #[cfg(feature = "sqlite-bundled")]
 use fathom_core::time::Clock as _;
@@ -167,6 +171,44 @@ fn manifests(root: &Path) -> (Vec<Dependency>, Vec<String>) {
 /// number is that a `Cargo.lock` is not allowed to become two thirds of a searchable corpus.
 const DEPENDENCY_LIMIT: usize = 1_000;
 
+/// The symbol scan's policy for this repository (`reco-6sw`).
+///
+/// `graph.ignored_dirs` is reused rather than a second list being invented: the graph's opinion of which
+/// directories are not this repository is the only one in `fathom.toml`, and a search box that walks
+/// `vendor/` while the architecture view refuses to has two answers to "where is `parse`".
+#[cfg(feature = "sqlite-bundled")]
+fn symbol_policy(root: &Path) -> symbols::Policy {
+    let text = std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default();
+    let (graph, _notices) = fathom_analyze::graph::GraphPolicy::from_repo_config_text(&text);
+    symbols::Policy {
+        ignored_dirs: graph.ignored_dirs.clone(),
+        ..symbols::Policy::default()
+    }
+}
+
+/// Which tree and which index epoch a search of `root` would be answering for, right now.
+///
+/// The cheap half of a corpus read: a `stat` over the tree and one store meta row, with no parse and no
+/// episode query. A surface that holds an [`Index`](fathom_analyze::search::Index) and wants to know whether
+/// it still describes the repository asks this and compares it with
+/// [`Index::is_current`](fathom_analyze::search::Index::is_current).
+#[must_use]
+#[cfg(feature = "sqlite-bundled")]
+pub fn identity_now(root: &Path) -> fathom_analyze::search::Identity {
+    use fathom_analyze::search::{Identity, SOURCE_INDEX, SOURCE_SYMBOLS};
+    let mut identity = Identity::new();
+    if let Some(epoch) =
+        fathom_store::spine::Store::open(&fathom_analyze::index::default_store_path(root))
+            .ok()
+            .and_then(|store| store.epoch().ok())
+    {
+        identity.set(SOURCE_INDEX, format!("epoch={epoch}"));
+    }
+    let scan = symbols::stamp(root, &symbol_policy(root));
+    identity.set(SOURCE_SYMBOLS, scan.stamp());
+    identity
+}
+
 /// The manifest paths worth opening, shallowest first, so a root `Cargo.lock` wins over a vendored one.
 fn candidates(root: &Path) -> Vec<std::path::PathBuf> {
     let mut out = Vec::new();
@@ -239,8 +281,18 @@ fn read(root: &Path) -> Option<Corpus> {
     };
     let (dependencies, unread) = manifests(root);
     let empty = dependencies.is_empty();
+    // The symbol section, read from the working tree (`reco-6sw`). The extractor is a pure function of file
+    // text, so this is the half that decides which files to read — and it is read *now*, from the tree the
+    // reviewer is looking at, rather than from the store's last epoch, because a declaration belongs to a
+    // file. The stamp it carries is what lets a corpus built from an older tree say so later.
+    let scan = symbols::walk(root, &symbol_policy(root));
     let lend = corpus::Lend {
         dependencies,
+        symbols: scan.symbols.clone(),
+        // The stamp names the tree whether or not the tree declared anything: "no symbols here" and "no
+        // symbols since the tree moved" have to be tellable apart, and an unnamed part cannot be compared.
+        symbols_from: Some(scan.source.clone()),
+        symbol_note: scan.symbols.is_empty().then(|| scan.gap_note()),
         findings: Vec::new(),
         dependency_note: if empty {
             Some(
@@ -275,6 +327,17 @@ fn read(root: &Path) -> Option<Corpus> {
             return None;
         }
     };
+    // What the scan had to say for itself beyond the gap sentence: a cap that bit, a grammar that was not
+    // linked. The corpus has no notes of its own — the report's are composed per query — so the scan's
+    // sentences ride in as gaps, which is the one place the box prints "what this corpus is not".
+    for note in &scan.notes {
+        corpus.gap(
+            fathom_analyze::search::Kind::Symbol,
+            "partial",
+            note.clone(),
+            "e3.1",
+        );
+    }
     // The review memory (`e6.5`). Read from the committed markdown, not the mirror, for the same reason
     // `fathom context` does: a note in the file is a note a reviewer wrote, and a stale index must not be
     // allowed to make one unfindable. Absent files add nothing, which is the common case.
@@ -303,6 +366,9 @@ fn read(root: &Path) -> Option<Corpus> {
             } else {
                 vec![note.path.clone()]
             },
+            // A note is anchored to paths, not filed inside one file: there is no single file `<Enter>`
+            // should select, so the deep link stays the episode's timeline.
+            file: None,
             deps: Vec::new(),
             // A recorded note is exactly what a reviewer is looking for when they ask "why did we do this",
             // but it is not more relevant than the episode itself: no prior, no penalty.
@@ -387,7 +453,14 @@ pub fn run(args: &SearchArgs) -> eyre::Result<ExitCode> {
         let index = Index::build(&corpus);
         let now = crate::clock::SystemClock.now();
         let query = Query::parse(&query_text, now);
-        let report = index.search(&query, args.limit.max(1));
+        let mut report = index.search(&query, args.limit.max(1));
+        // A big repository's symbol scan is seconds of parsing, and a second terminal editing in the
+        // meantime is not hypothetical (`reco-6sw`). Re-stamping the tree is a `stat` walk with no parse, so
+        // the cheap check that the corpus is still the tree it claims to be is worth its price here, and a
+        // corpus that is not says so instead of answering from it.
+        if let Some(why) = index.staleness(&identity_now(root)) {
+            report.notes.push(why);
+        }
         if args.json {
             output::line(format_args!("{}", payload(&report)));
         } else {
@@ -467,6 +540,18 @@ fn render(report: &fathom_analyze::search::Report) -> Vec<String> {
     if !report.filters.is_empty() {
         out.push(format!("filters  {}", report.filters.join(" ")));
     }
+    // Which body of work the answer came from. Printed because two runs of the same query on a moving
+    // repository owe the reader a way to notice they are not the same question (`reco-6sw`).
+    if !report.identity.is_empty() {
+        out.push(format!(
+            "corpus  {}{}",
+            report.identity,
+            report
+                .epoch
+                .map(|epoch| format!(" · index epoch {epoch}"))
+                .unwrap_or_default()
+        ));
+    }
     let mut group: Option<fathom_analyze::search::Kind> = None;
     for hit in &report.hits {
         if group != Some(hit.kind) {
@@ -520,7 +605,12 @@ fn payload(report: &fathom_analyze::search::Report) -> String {
                     serde_json::json!({ "view": "timeline", "episode": episode })
                 }
                 Destination::Diff { episode, path } => {
-                    serde_json::json!({ "view": "diff", "episode": episode, "path": path })
+                    serde_json::json!({
+                        "view": "diff",
+                        "episode": episode,
+                        "path": path,
+                        "select": if path.is_empty() { "none" } else { "file" },
+                    })
                 }
                 Destination::Deps { episode, name } => {
                     serde_json::json!({ "view": "deps", "episode": episode, "name": name })
@@ -535,6 +625,7 @@ fn payload(report: &fathom_analyze::search::Report) -> String {
                 "label": hit.label,
                 "detail": hit.detail,
                 "episode": hit.episode,
+                "file": hit.file,
                 "risk": hit.risk,
                 "score": hit.score,
                 "matched_on": hit.matched_on,
@@ -552,6 +643,8 @@ fn payload(report: &fathom_analyze::search::Report) -> String {
         "unknown_filters": report.unknown,
         "notes": report.notes,
         "documents": report.documents,
+        "identity": report.identity,
+        "epoch": report.epoch,
         "candidates": report.candidates,
         "scored": report.scored,
         "scanned": report.scanned,

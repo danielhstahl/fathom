@@ -740,6 +740,18 @@ pub fn apply_update(app: &mut App, update: crate::watch::Update) {
     } else if let Some(facts) = &update.index {
         said = Some(format!("the index moved · {}", facts.summary()));
     }
+    // The search corpus moves with the index it was read beside (`reco-6sw`): the box reads once at
+    // startup, so this is the seam that keeps `/` answering about the repository rather than about the one
+    // the reviewer cloned. The symbol section is the part that ages fastest — it is the working tree.
+    if let Some(index) = update.search {
+        let symbols = index.count(fathom_analyze::search::Kind::Symbol);
+        app.search = Some(index);
+        app.refresh_search();
+        said = Some(match said {
+            Some(line) => format!("{line} · search corpus re-read ({symbols} symbol names)"),
+            None => format!("search corpus re-read ({symbols} symbol names)"),
+        });
+    }
     if let Some(note) = update.note {
         app.toast(note);
     } else if let Some(line) = said {

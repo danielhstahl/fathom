@@ -87,7 +87,7 @@ a   <Enter>   s   g   <Esc>
 | # | Key | Resolves in mode | Action | What it does |
 |---|---|---|---|---|
 | 1 | `/` | `global` | `search.open` | Search overlay, cursor already in the query field. |
-| 2 | `<text>` | `prompt` | `(typing)` | Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `path:` `risk>` `dep:` tokens compose with text. |
+| 2 | `<text>` | `prompt` | `(typing)` | Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `since:` `risk>` `kind:` `path:` `dep:` tokens compose with text. |
 | 3 | `<C-n>` | `prompt` | `prompt.result_down` | Walk results without leaving the field; `<C-p>` walks back. |
 | 4 | `<Enter>` | `prompt` | `prompt.submit` | Jump into the right view with the right selection: a deep link, not a list of paths. |
 

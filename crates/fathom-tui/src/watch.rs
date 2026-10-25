@@ -44,6 +44,12 @@ pub struct Update {
     pub episodes: Option<Batch>,
     /// What the index holds now, as the composition root read it.
     pub index: Option<Facts>,
+    /// The corpus the `/` box scores against, re-read (`reco-6sw`).
+    ///
+    /// Same rule as [`Update::episodes`]: the producer re-reads what its probe says moved, and a box whose
+    /// episodes moved while its symbol names stayed where they were answers half the question from the past.
+    /// Absent means the probe saw nothing that touches the corpus.
+    pub search: Option<Arc<fathom_analyze::search::Index>>,
     /// How many commits this update brought, when the producer knows. Printed, never guessed: the shell
     /// does not know what the index held before it was asked (`ADR-001 §7.7`).
     pub new_commits: Option<u64>,
@@ -132,6 +138,7 @@ impl Update {
     pub fn is_empty(&self) -> bool {
         self.episodes.is_none()
             && self.index.is_none()
+            && self.search.is_none()
             && self.new_commits.is_none()
             && self.note.is_none()
             && self.work.is_none()

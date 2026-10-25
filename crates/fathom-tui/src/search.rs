@@ -39,6 +39,17 @@ pub enum Link {
         /// The path the hit named.
         path: String,
     },
+    /// The diff view, with the file that declares a symbol selected (`reco-6sw`).
+    ///
+    /// A symbol is a working-tree fact and a patch is an episode's, so the two overlap only sometimes: this
+    /// link is the honest half of "go to the file and select it", and where the file is not in the patch on
+    /// screen the shell says so rather than parking the reviewer on a file that merely looks right.
+    Diff {
+        /// The file to select, repository-relative, as the corpus spelled it.
+        path: String,
+        /// The row's own second line (`fn · src/store.rs:12`), for the toast that names what was jumped to.
+        note: String,
+    },
     /// The dependency view.
     Dependencies {
         /// The package name the hit named.
@@ -56,8 +67,9 @@ impl Link {
     ///
     /// A finding is not a view in this build — findings are drawn *on* the episode that raised them — so a
     /// finding with an episode jumps to that episode and names the finding, and one without an episode
-    /// says so. A symbol is the same story with `e3.1`: the scorer can rank a symbol row the moment a
-    /// corpus contains one, and until the extractor exists the box does not pretend to have one.
+    /// says so. A symbol is the same story with its file: since `reco-6sw` the corpus carries real symbol
+    /// rows, each naming the file the extractor read it out of, and `<Enter>` selects that file in the diff
+    /// view.
     #[must_use]
     pub fn target(hit: &Hit) -> Link {
         match hit.kind {
@@ -90,14 +102,31 @@ impl Link {
                 episode: hit.episode.clone().unwrap_or_else(|| hit.id.clone()),
                 label: format!("{} ({})", hit.label, hit.id),
             },
-            Kind::Symbol => Link::Say {
-                reason: format!(
-                    "`{}` is a symbol, and nothing has indexed symbols since `e3.1` — the corpus the \
-                     box was handed has none",
-                    hit.label
-                ),
+            Kind::Symbol => match Link::file_of(hit) {
+                Some(path) => Link::Diff {
+                    path,
+                    note: if hit.detail.is_empty() {
+                        hit.label.clone()
+                    } else {
+                        hit.detail.clone()
+                    },
+                },
+                // A symbol row with no file on it cannot be selected anywhere, and saying so beats moving
+                // the reviewer to a view that will not show what they asked for.
+                None => Link::Say {
+                    reason: format!(
+                        "`{}` is a symbol whose row carries no file, so there is nothing to select — \
+                         the corpus that produced it did not say where it is declared",
+                        hit.label
+                    ),
+                },
             },
         }
+    }
+
+    /// The file a symbol hit points into, as the corpus spelled it (`Hit::file`, `reco-6sw`).
+    fn file_of(hit: &Hit) -> Option<String> {
+        hit.file.clone().filter(|path| !path.is_empty())
     }
 }
 
@@ -175,6 +204,19 @@ pub fn blank(recent: &[String], index: Option<&Index>) -> (Vec<String>, Vec<Stri
                 index.len(),
                 index.documents()
             ));
+            // The symbol section named separately, because it comes from the working tree rather than from
+            // the index and a reviewer deciding "the box is broken" should be able to see which half is
+            // empty (`reco-6sw`).
+            let symbols = index.count(Kind::Symbol);
+            results.push(format!(
+                "{} symbol names from the working tree{}",
+                symbols,
+                if symbols == 0 {
+                    " — the box's gaps say why"
+                } else {
+                    ""
+                }
+            ));
             if !recent.is_empty() {
                 results.push("last searches".to_owned());
                 for query in recent.iter().take(5) {
@@ -241,6 +283,17 @@ fn why_lines(report: &Report, hit: Option<&Hit>) -> Vec<String> {
         lines.push(String::new());
         lines.extend(wrap(note, 22).take(4).map(|line| format!("! {line}")));
     }
+    // A *partial* source is worth saying even when something matched, because "12 hits out of the first 20 000
+    // symbol names" and "12 hits, and that is everything there is" are different answers (`reco-6sw`). A
+    // `not indexed` gap stays in the no-hits branch, where it is the explanation rather than a caveat.
+    for gap in report.gaps.iter().filter(|gap| gap.state == "partial") {
+        lines.push(String::new());
+        lines.extend(
+            wrap(&format!("{}: {}", gap.kind.as_str(), gap.because), 22)
+                .take(3)
+                .map(|line| format!("! {line}")),
+        );
+    }
     lines
 }
 
@@ -267,6 +320,15 @@ fn empty_results(report: &Report) -> Vec<String> {
     lines
 }
 
+/// One sentence the pane did not generate, wrapped as the preview wraps everything: `!`-marked, 22 columns,
+/// so a warning from the shell reads the same as a note from the report (`reco-6sw`).
+#[must_use]
+pub fn warning(text: &str) -> Vec<String> {
+    let mut lines = vec![String::new()];
+    lines.extend(wrap(text, 22).map(|line| format!("! {line}")));
+    lines
+}
+
 /// The filter grammar, in the words the box prints. ADR-006 §5.8 lists the tokens; this is the same list
 /// where a reviewer will actually read it, which is inside the box with an empty query.
 pub const FILTERS: &[(&str, &str)] = &[
@@ -275,7 +337,10 @@ pub const FILTERS: &[(&str, &str)] = &[
     ("until:", "on or before a day"),
     ("risk>", "at least this risky"),
     ("risk<", "at most this risky"),
-    ("kind:", "episode, path, dependency, finding, note"),
+    (
+        "kind:",
+        "episode, symbol, path, dependency, finding, note (`sym` works)",
+    ),
     ("path:", "touches this path"),
     ("dep:", "depends on this package"),
     ("finding:", "raised this finding kind"),

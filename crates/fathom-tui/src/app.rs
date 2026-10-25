@@ -3725,6 +3725,9 @@ impl App {
                 self.view = ViewId::Structure;
                 self.toast(format!("{path} — the structure view lists what touched it"));
             }
+            Some(crate::search::Link::Diff { path, note }) => {
+                self.open_declaring_file(&path, &note);
+            }
             Some(crate::search::Link::Dependencies { name }) => {
                 self.view = ViewId::Deps;
                 self.toast(format!(
@@ -3740,6 +3743,75 @@ impl App {
                     .to_owned(),
             ),
         }
+    }
+
+    /// `<Enter>` on a symbol hit: the diff view, with the file that declares the symbol selected
+    /// (`reco-6sw`, ADR-006 §5.8's "right view, right selection").
+    ///
+    /// The two only sometimes overlap, and the difference is said out loud. A symbol comes from the working
+    /// tree and the pane shows one episode's patch, so the file may not be in it — which is a fact about the
+    /// patch, not a failure of the jump, and the toast says which the reviewer is looking at instead of
+    /// leaving them on a file that merely looks similar. With no patch loaded at all the view opens on its
+    /// stated empty state, exactly as `d` does.
+    fn open_declaring_file(&mut self, path: &str, note: &str) {
+        if !self.diff.is_loaded() {
+            // `d`'s own path: it names its own failure, and the pane opens on its empty state either way.
+            self.open_diff();
+        }
+        let wanted = path.to_owned();
+        let found = self
+            .diff
+            .index()
+            .and_then(|scan| {
+                scan.files.iter().position(|file| {
+                    file.path == wanted || file.path.ends_with(&format!("/{wanted}"))
+                })
+            })
+            .filter(|index| self.diff.select_file(*index));
+        self.set_view(ViewId::Diff);
+        match found {
+            Some(_) => {
+                if let Some(row) = self.diff.file_row() {
+                    self.set_selection(row);
+                }
+                self.toast(format!(
+                    "{} — the file that declares it, selected",
+                    crate::search::clip(note, 38)
+                ));
+            }
+            None => self.toast(format!(
+                "{} is declared in {}, which is not in the patch on screen — `d` opens an episode's \
+                 diff, `s` lists what touched the file",
+                crate::search::clip(note, 38),
+                path
+            )),
+        }
+    }
+
+    /// Whether the corpus in the box is older than the index the frame is showing, in the sentence the
+    /// preview pane prints (`reco-6sw`).
+    ///
+    /// The box reads its corpus once, at startup — the shell may not open a store per keystroke, and ADR-002
+    /// §5.2 is why — while the watcher keeps the frame's index facts current. When the two disagree, the box
+    /// names the epoch its rows came from instead of answering from them quietly. The comparison is one
+    /// [`fathom_analyze::search::Identity`] part, which is the whole point of the parts being separate: a
+    /// surface that can only ask about one of them asks about one. The tree is the part this surface does not
+    /// ask about on a keystroke — restamping it is a `stat` of every file in the repository, a sixth of a
+    /// second on a tree this size, which is a corpus read's price and not a keystroke's — so a shell notices
+    /// a commit (which moves the epoch, and brings a fresh corpus with it through the watcher) and is quiet
+    /// about an uncommitted edit until something else moves.
+    fn search_staleness(&self) -> Option<String> {
+        let epoch = i64::try_from(self.model.index_facts.epoch?).ok()?;
+        let index = self.search.as_ref()?;
+        // A corpus that never came from a store — every fixture, and a caller that handed the shell rows it
+        // read elsewhere — has no epoch to be stale about, and saying so would be a warning about nothing.
+        index.identity().get(fathom_analyze::search::SOURCE_INDEX)?;
+        let mut now = fathom_analyze::search::Identity::new();
+        now.set(
+            fathom_analyze::search::SOURCE_INDEX,
+            format!("epoch={epoch}"),
+        );
+        index.staleness(&now)
     }
 
     /// Ask the corpus the question in the box and put the answer where the panes read it.
@@ -3772,6 +3844,10 @@ impl App {
             .search_report
             .as_ref()
             .map_or(0, |report| report.hits.len());
+        let mut preview = preview;
+        if let Some(why) = self.search_staleness() {
+            preview.extend(crate::search::warning(&why));
+        }
         self.palette_row = self.palette_row.min(hits);
         // The window follows the cursor after the clamp, so a query that got shorter does not leave the
         // cursor pointing at a row that is no longer drawn.

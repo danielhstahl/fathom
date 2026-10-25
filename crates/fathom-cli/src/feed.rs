@@ -345,6 +345,15 @@ impl Feed {
         let facts = crate::tui::index_facts(&self.root);
         update.episodes = crate::episodes::load(&self.root, &facts);
         update.index = Some(facts);
+        // ...and so is the corpus the `/` box scores against (`reco-6sw`). It is read once at startup and it
+        // holds the working tree's symbol names, which are the fastest-ageing rows in it; re-reading it here
+        // — on the ask that already decided the repository moved, and on `<C-r>` — is what keeps `/` from
+        // answering from a tree the reviewer has since changed. The cost is bounded by the scan's own caps
+        // and is charged to the same moment that just re-read the whole rail page.
+        #[cfg(feature = "tui")]
+        {
+            update.search = crate::search::index(&self.root);
+        }
         update.note = note;
         state.seen = Some(after);
         Some(update)

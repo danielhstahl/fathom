@@ -511,13 +511,17 @@ fn the_report_sums_itself_up_for_the_strip() {
 
 /// Build a corpus of `episodes` episodes plus their paths, dependencies and findings — the shape
 /// `search::corpus` produces from a real index, at the size the ticket's budget names.
+/// The vocabulary the synthetic corpora are built from. Module-level because a query that asks about the
+/// generated episodes has to spell their words the same way the generator does.
+const WORDS: [&str; 12] = [
+    "epoch", "store", "delta", "queue", "graph", "deps", "risk", "test", "lock", "render", "cache",
+    "patch",
+];
+
 fn big_corpus(episodes: usize) -> Corpus {
     let mut corpus = Corpus::new();
     corpus.documents = episodes as i64;
-    let words = [
-        "epoch", "store", "delta", "queue", "graph", "deps", "risk", "test", "lock", "render",
-        "cache", "patch",
-    ];
+    let words = WORDS;
     for index in 0..episodes {
         let word = words[index % words.len()];
         let other = words[(index / 3) % words.len()];
@@ -694,5 +698,214 @@ fn a_numbered_label_sorts_like_a_list_and_not_like_a_dictionary() {
             "shots/capture 100.png"
         ],
         "a numbered label must sort by the number in it"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// the cost of the symbol section: `Index::build` and the resident set (`reco-6sw`)
+// ---------------------------------------------------------------------------
+
+/// A symbol source in the shape [`search::corpus`](fathom_analyze::search::corpus) produces, at the size the
+/// ticket says to expect: one to two orders of magnitude above the episode count.
+///
+/// The names are deliberately mixed — some that collide with the episode vocabulary and some that do not —
+/// because a corpus of 20 000 rows that none of the typed queries can reach would measure nothing about the
+/// scan.
+fn symbol_rows(count: usize) -> Vec<Entry> {
+    let words = WORDS;
+    (0..count)
+        .map(|index| {
+            let word = words[index % words.len()];
+            let other = words[(index / words.len()) % words.len()];
+            Entry::symbol(
+                format!("{word}_{other}{index}"),
+                "fn",
+                format!("crates/fathom-{word}/src/{other}.rs"),
+                index + 1,
+                Some(Timestamp::from_unix_micros(
+                    1_760_000_000_000_000 - (index as i64) * DAY,
+                )),
+            )
+        })
+        .collect()
+}
+
+/// The resident set, in bytes, or `None` where the platform has no `/proc/self/statm`.
+///
+/// Second field of `statm` is resident pages, and 4 KiB is the page size of every runner this budget is
+/// asserted on; the number is a signal about orders of magnitude, and an unreadable one is reported as
+/// unreadable rather than guessed at.
+fn resident_bytes() -> Option<usize> {
+    let statm = std::fs::read_to_string("/proc/self/statm").ok()?;
+    let pages: usize = statm.split_whitespace().nth(1)?.parse().ok()?;
+    pages.checked_mul(4096)
+}
+
+/// The keystrokes a reviewer types once symbols are in the box: identifier fragments, a path fragment, and
+/// the filter that narrows to the section.
+const TYPED_WITH_SYMBOLS: &[&str] = &[
+    "lockfil",
+    "epoch_store20",
+    "parss",
+    "epcho",
+    "src/store",
+    "kind:symbol epoch",
+    "kind:sym epoch",
+    "delta cache patch",
+];
+
+/// The subject of the episode `big_corpus` built at `n`, spelled the way the generator spells it.
+fn episode_subject(n: usize) -> String {
+    format!(
+        "{} {} when the rail reads half a frame",
+        WORDS[n % WORDS.len()],
+        WORDS[(n / 3) % WORDS.len()]
+    )
+}
+
+#[test]
+fn a_two_thousand_episode_corpus_with_its_symbols_builds_inside_the_budget() {
+    const EPISODES: usize = 2_000;
+    // `fathom_analyze::search::SYMBOL_MAX`, spelled as a number here so that the test measures the size the
+    // builder is allowed to reach rather than tracking a constant that could be lowered to make it pass.
+    const SYMBOLS: usize = 20_000;
+    // The corpus is read once per process, so this is a startup budget and not a keystroke one. The number
+    // is the measured debug-profile cost (`tests/search_scoring.rs -- --nocapture`) with room for a loaded
+    // CI runner; the release cost is several times smaller, and the keystroke budget below — the one with a
+    // name attached to it — is asserted unchanged.
+    const BUILD_BUDGET: std::time::Duration = std::time::Duration::from_millis(600);
+
+    // A budget per row rather than a flat megabyte figure, because the profile this runs in changes the
+    // allocator's habits and a flat number would then be measuring the profile and not the code. Measured
+    // here, debug profile, 22 868 rows: the corpus and its index together cost about 3 KiB a row, of which
+    // the index alone is about 1.8 KiB. Eight KiB a row is the tripwire for an order-of-magnitude mistake;
+    // the number that decides whether the box can afford the section is printed for the release run.
+    const ROW_BUDGET: usize = 8 * 1024;
+
+    let before_corpus = resident_bytes();
+    let mut corpus = big_corpus(EPISODES);
+    let entries = corpus.entries.len();
+    corpus.entries.extend(symbol_rows(SYMBOLS));
+    corpus.documents = EPISODES as i64;
+    let after_corpus = resident_bytes();
+
+    let started = Instant::now();
+    let index = corpus.index();
+    let build = started.elapsed();
+    let after_index = resident_bytes();
+
+    let rows = index.len();
+    assert_eq!(rows, entries + SYMBOLS);
+    let grew = match (before_corpus, after_index) {
+        (Some(start), Some(end)) if end > start => Some(end - start),
+        _ => None,
+    };
+    eprintln!(
+        "index::build over {rows} rows ({EPISODES} episodes + {SYMBOLS} symbols): {build:?}; \
+         resident start {} · corpus {} · index {} · growth {}",
+        before_corpus.map_or_else(
+            || "?".to_owned(),
+            |n| format!("{:.1} MiB", n as f64 / 1_048_576.0)
+        ),
+        after_corpus.map_or_else(
+            || "?".to_owned(),
+            |n| format!("{:.1} MiB", n as f64 / 1_048_576.0)
+        ),
+        after_index.map_or_else(
+            || "?".to_owned(),
+            |n| format!("{:.1} MiB", n as f64 / 1_048_576.0)
+        ),
+        grew.map_or_else(
+            || "?".to_owned(),
+            |n| format!("{:.1} MiB", n as f64 / 1_048_576.0)
+        ),
+    );
+    assert!(
+        build < BUILD_BUDGET,
+        "`Index::build` took {build:?} over {rows} rows, over the {BUILD_BUDGET:?} the ticket budgets it \
+         at — the answer is a per-kind cap in the builder and a visible 'narrowing' line, never a silent \
+         truncation"
+    );
+    if let (Some(start), Some(end)) = (before_corpus, after_index) {
+        let rows_for_budget = usize::max(rows, 1);
+        let per_row = end.saturating_sub(start) / rows_for_budget;
+        assert!(
+            per_row < ROW_BUDGET,
+            "the corpus and its index cost {per_row} bytes a row over {rows} rows, over the {ROW_BUDGET} \
+             the ticket's cost question budgets them at; the section's size is bounded by \n \
+             `search::SYMBOL_MAX`, and a bigger number here means the cap, not the test, is what needs to \
+             change",
+        );
+    }
+
+    // The question `reco-6sw` risked — that the second source would dominate the ranking — asked of a corpus
+    // at the size the ticket says to expect. A symbol is one line of one file; an episode is the unit of work
+    // the product is about, and here the rows are 100:1 in the declarations' favour and their names are
+    // deliberately built from the episodes' own vocabulary. If one of these subjects now opens on a
+    // declaration, the fix is a per-kind share in the builder and a stated narrowing, not a quieter test.
+    for n in [1usize, 7, 400, 1_337] {
+        let subject = episode_subject(n);
+        let hits = index.search(&Query::parse(&subject, now()), 5).hits;
+        assert!(
+            hits.iter()
+                .take(3)
+                .any(|hit| { hit.kind == Kind::Episode && hit.label == subject }),
+            "`{subject}` did not open on the episodes that own that subject in a corpus of {EPISODES} \
+             episodes and {SYMBOLS} symbols; the first rows were {:?}",
+            hits.iter()
+                .map(|hit| (hit.kind, hit.label.clone()))
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            hits.iter().take(3).all(|hit| hit.kind == Kind::Episode),
+            "`{subject}` let a declaration into the first rows in a corpus of {SYMBOLS} symbols: {:?}",
+            hits.iter()
+                .map(|hit| (hit.kind, hit.label.clone()))
+                .collect::<Vec<_>>()
+        );
+    }
+    // And the section is reachable on its own terms, which is the other half of "not dominated": a reader who
+    // wants declarations gets declarations, not a list of episodes that happen to share the words.
+    let symbols = index
+        .search(&Query::parse("kind:symbol epoch", now()), 5)
+        .hits;
+    assert_eq!(
+        symbols
+            .iter()
+            .filter(|hit| hit.kind == Kind::Symbol)
+            .count(),
+        5,
+        "`kind:symbol epoch` should be five declarations"
+    );
+
+    // The budget that actually has a number attached to it is the keystroke, and it is unchanged by the
+    // section's size only because the scan is parallel and the letter-set test rejects most rows early.
+    for text in TYPED_WITH_SYMBOLS {
+        let _ = index.search(&Query::parse(text, now()), DEFAULT_LIMIT);
+    }
+    let mut samples: Vec<std::time::Duration> = Vec::new();
+    for round in 0..3 {
+        for text in TYPED_WITH_SYMBOLS {
+            let limit = if round % 2 == 0 { 5 } else { DEFAULT_LIMIT };
+            let started = Instant::now();
+            let report = index.search(&Query::parse(text, now()), limit);
+            let took = started.elapsed();
+            samples.push(took);
+            assert!(
+                report.hits.len() <= limit,
+                "`{text}` returned {} rows for a limit of {limit}",
+                report.hits.len()
+            );
+        }
+    }
+    samples.sort();
+    let p95 = samples[(samples.len() * 95) / 100];
+    eprintln!(
+        "search over {rows} rows: median {:?}, p95 {p95:?}",
+        samples[samples.len() / 2]
+    );
+    assert!(
+        p95 < std::time::Duration::from_millis(50),
+        "with the symbol section in the corpus, p95 {p95:?} is over the 50 ms `query.search.ms` budget"
     );
 }

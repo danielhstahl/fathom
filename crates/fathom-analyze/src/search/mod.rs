@@ -19,13 +19,22 @@
 //!
 //! # Sources, and the honesty of each
 //!
-//! [`Kind`] has five members and this build can fill four of them. **Symbols are not indexed**: they come
-//! from the structural extractor of `e3.1` (`reco-zoz`), which is not built, and the box says so in
-//! [`Report::gaps`] rather than returning an empty section that reads as "no symbol matches". A dependency
-//! section is only as complete as the caller's reach: `fathom search` indexes every dependency named by the
-//! manifests and lockfiles **in the index's latest epoch**, and says how many episodes' dependency deltas it
-//! actually read. A gap that is stated is a limitation; a gap that is silent is a lie, and ADR-001 §7.2 is
-//! the reason this ticket bothers to say.
+//! [`Kind`] has six members and this build can fill every one of them, given a caller that has read them.
+//! **Symbols come from the structural extractor of `e3.1`** (`reco-zoz`) since `reco-6sw`: the caller walks
+//! the working tree, hands the corpus the declarations it extracted ([`corpus::Symbol`]), and the box ranks
+//! them beside the episodes. Where a caller cannot supply a source the box says so in [`Report::gaps`]
+//! rather than returning an empty section that reads as "no symbol matches" — a build with no grammar
+//! linked, a tree with no file in a language the extractor speaks, and a scan that hit
+//! [`SYMBOL_MAX`] are three different sentences and each is stated. A dependency section is only as
+//! complete as the caller's reach: `fathom search` indexes every dependency named by the manifests and
+//! lockfiles **in the index's latest epoch**, and says how many episodes' dependency deltas it actually
+//! read. A gap that is stated is a limitation; a gap that is silent is a lie, and ADR-001 §7.2 is the reason
+//! this ticket bothers to say.
+//!
+//! A symbol is a function of a **file**, not of an episode: the worktree is its source and the file's last
+//! touch is its date. That is what [`Identity`] is for — it records which store epoch and which tree a corpus
+//! was read from, so a corpus whose symbol names came from an older tree than the question being asked can
+//! say so instead of answering from them ([`Index::is_current`], [`Index::staleness`]).
 //!
 //! # The result is a pointer
 //!
@@ -55,10 +64,16 @@ pub mod corpus;
 pub mod history;
 pub mod query;
 pub mod score;
+/// The working-tree walk that fills the corpus's symbol section (`reco-6sw`). Gated with [`corpus`] because
+/// the rows it produces are [`corpus::Symbol`]s, not because it reads a store — it reads files.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod symbols;
 
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use fathom_core::time::Timestamp;
+use sha2::{Digest as _, Sha256};
 
 pub use query::{COMPARISON_FILTERS, FILTER_PREFIXES, Filter, Query};
 pub use score::Field;
@@ -78,6 +93,26 @@ pub const MAX_LIMIT: usize = 500;
 /// box's own line width is a property of the box.
 pub const SNIPPET_CHARS: usize = 160;
 
+/// The most symbol rows one corpus carries.
+///
+/// Symbol count is one to two orders of magnitude above episode count — a 500-episode repository can
+/// declare 40 000 names — and [`Index::build`] is `O(corpus)` with no streaming, so an uncapped symbol
+/// source is the one thing that can turn a 50 ms keystroke budget into a memory problem. The cap is a
+/// *narrowing* and not a truncation: [`corpus::add_symbols`] says which it applied, in what order it kept
+/// rows, and how many it left out, because a silently short symbol list is the failure ADR-006 §5.8 exists
+/// to forbid.
+///
+/// The number is the one `crates/fathom-analyze/tests/search_scoring.rs` measures `Index::build` and the
+/// corpus's own resident set against, and it prints what it saw: over 2 000 episodes plus this cap's worth of
+/// symbols — 22 868 rows — `Index::build` costs 140 ms and the corpus and index together cost about 3 KiB a
+/// row in a debug build, roughly 68 MiB. That is a real slice of the shell's working set, which is the actual
+/// reason the cap is here and not a bigger number.
+///
+/// "Exported first" is not decoration either: on this repository, 4 452 of the 8 191 declarations the scan
+/// reaches under its own byte ceiling are exported by their language's rule, so a corpus that has to narrow
+/// is keeping the names a caller can use from outside the file that declares them.
+pub const SYMBOL_MAX: usize = 20_000;
+
 /// The kind of thing a hit is, and the order the result list groups them in.
 ///
 /// The order is the order ADR-006 §5.8's mock prints — episodes first, paths last — and it is a *display*
@@ -87,7 +122,7 @@ pub const SNIPPET_CHARS: usize = 160;
 pub enum Kind {
     /// An episode: a turn someone can review.
     Episode,
-    /// A symbol name. Not indexed until `e3.1` builds the extractor.
+    /// A symbol name, read out of a file by the structural extractor of `e3.1` (`reco-6sw`).
     Symbol,
     /// A detector finding's kind, e.g. `new-cycle`, `test-deleted-without-coverage`.
     Finding,
@@ -185,6 +220,14 @@ pub struct Entry {
     pub risk: Option<i64>,
     /// The paths attached to the row.
     pub paths: Vec<String>,
+    /// The one file this row *is a pointer into*, when it is a pointer into a file: the file a symbol was
+    /// declared in, in its own spelling.
+    ///
+    /// Separate from [`Entry::paths`] on purpose. `paths` is a searchable bag — an episode's touched files,
+    /// a finding's subject, a dependency's manifest — and a bag has no *first* member worth deep-linking
+    /// into. This field is the file `<Enter>` selects, and only a source that knows which file a row lives
+    /// in sets it.
+    pub file: Option<String>,
     /// The dependency names attached to the row.
     pub deps: Vec<String>,
     /// The caller's prior: recency, importance, whatever the surface knows and the scorer must not guess.
@@ -215,6 +258,7 @@ impl Entry {
             utc,
             risk,
             paths: Vec::new(),
+            file: None,
             deps: Vec::new(),
             prior: 0,
         }
@@ -233,6 +277,7 @@ impl Entry {
         Entry {
             kind: Kind::Path,
             paths: vec![name.clone()],
+            file: Some(name.clone()),
             id: name.clone(),
             name,
             body: String::new(),
@@ -268,7 +313,8 @@ impl Entry {
             name,
             detail,
             episode,
-            paths: manifest.into_iter().collect(),
+            paths: manifest.clone().into_iter().collect(),
+            file: manifest,
             ..Entry::blank(Kind::Dependency)
         }
     }
@@ -300,24 +346,48 @@ impl Entry {
         }
     }
 
-    /// A symbol row. The shape exists so the surface, the deep link and the tests are all written before
-    /// `e3.1` lands; no caller in this build can produce one, and the gap is reported instead.
+    /// A symbol row: one declaration, in the file that declares it, as the structural extractor of `e3.1`
+    /// read it (`reco-6sw`).
+    ///
+    /// `line` is the extractor's own one-based line and it is part of the row's identity because a file may
+    /// declare one name twice — a `#[cfg]` pair, two classes in one Python module, a TypeScript overload —
+    /// and two hits that differ only in *which one* they are are two hits a reviewer cannot tell apart.
+    ///
+    /// `updated` is the **file's** last touch, never an episode's: a symbol is a function of the worktree,
+    /// so a date on this row answers "when did this declaration last move", and a surface that prints it
+    /// says *file* rather than leaving it to be read as a turn of work.
     #[must_use]
     pub fn symbol(
         name: impl Into<String>,
+        kind: impl Into<String>,
         path: impl Into<String>,
-        episode: Option<String>,
+        line: usize,
+        updated: Option<Timestamp>,
     ) -> Entry {
         let name = name.into();
+        let kind = kind.into();
         let path = path.into();
+        let file = path.clone();
         Entry {
             kind: Kind::Symbol,
-            id: name.clone(),
+            id: format!("{path}:{line}:{name}"),
             name,
-            detail: path.clone(),
+            detail: if kind.is_empty() {
+                format!("{path}:{line}")
+            } else {
+                format!("{kind} · {path}:{line}")
+            },
             paths: vec![path],
-            episode,
-            ..Entry::blank(Kind::Symbol)
+            file: Some(file),
+            // No episode: a declaration belongs to a file, and guessing which turn of work wrote it is a
+            // claim the corpus cannot support.
+            episode: None,
+            author: None,
+            utc: updated,
+            risk: None,
+            body: String::new(),
+            deps: Vec::new(),
+            prior: 0,
         }
     }
 
@@ -334,6 +404,7 @@ impl Entry {
             utc: None,
             risk: None,
             paths: Vec::new(),
+            file: None,
             deps: Vec::new(),
             prior: 0,
         }
@@ -347,6 +418,158 @@ impl Entry {
     }
 }
 
+/// Which body of work a corpus was read from, so that a stale one can be named instead of trusted.
+///
+/// A corpus is assembled from more than one place, and the places do not move together: the episode rows come
+/// from one epoch of the store, the symbol rows come from whatever the working tree held while the caller
+/// walked it, and a dependency section comes from the manifests that were readable at that instant. "Is this
+/// corpus still what the reviewer is looking at?" is therefore a question with one answer per source, and
+/// [`Identity`] keeps them apart rather than flattening them into one opaque stamp: each contributor adds one
+/// part ([`Identity::set`]), and a part's digest is whatever the caller can say changes when *that* source
+/// changes — the store's epoch for the spine, a digest of the file paths, sizes and mtimes for a tree walk.
+///
+/// The type is deliberately not a hash of the corpus: a digest that changes tells you something moved and
+/// nothing else, and "the symbol names are from an older tree than the episodes" is a sentence the box owes
+/// its reader (`reco-6sw`, ADR-006 §5.8).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Identity {
+    parts: BTreeMap<String, String>,
+}
+
+/// The part a corpus's episode rows came from: the store, keyed by its index epoch.
+pub const SOURCE_INDEX: &str = "index";
+/// The part a corpus's symbol rows came from: a tree the caller walked.
+pub const SOURCE_SYMBOLS: &str = "symbols";
+
+impl Identity {
+    /// An identity with no parts — a corpus assembled from nothing, which is every fixture corpus.
+    #[must_use]
+    pub fn new() -> Identity {
+        Identity::default()
+    }
+
+    /// Add or replace one part, and report whether the old value differed.
+    ///
+    /// The return value is the cheap answer to "did this source move since the corpus was built", which is
+    /// what decides whether a holder has to re-read anything.
+    pub fn set(&mut self, source: &str, digest: impl Into<String>) -> bool {
+        let digest = digest.into();
+        let moved = self.parts.get(source).is_some_and(|was| *was != digest);
+        self.parts.insert(source.to_owned(), digest);
+        moved
+    }
+
+    /// One part, as the caller spelled it.
+    #[must_use]
+    pub fn get(&self, source: &str) -> Option<&str> {
+        self.parts.get(source).map(String::as_str)
+    }
+
+    /// The parts, in key order.
+    pub fn parts(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.parts.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    }
+
+    /// Whether nothing contributed anything.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.parts.is_empty()
+    }
+
+    /// How many sources contributed.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.parts.len()
+    }
+
+    /// One digest over every part: the stamp to print, to compare with a stored one, or to key a cache with.
+    ///
+    /// Sorted by key and length-prefixed, so two identities whose parts differ can never collide by spelling
+    /// their separators differently.
+    #[must_use]
+    pub fn digest(&self) -> String {
+        let mut hasher = Sha256::new();
+        for (key, value) in &self.parts {
+            hasher.update(key.as_bytes());
+            hasher.update([0u8]);
+            hasher.update(value.as_bytes());
+            hasher.update([0u8]);
+        }
+        let hex = hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        // Twelve hex characters is 48 bits, which is far past what a stamp that a human reads needs, and it
+        // keeps the strip line in the search box on one line (`reco-6sw`).
+        hex.chars().take(12).collect()
+    }
+
+    /// The parts `now` names and disagrees with, as `(source, was, is)`.
+    ///
+    /// `now` is read as an assertion about the world, and it may name fewer sources than `self` does — a
+    /// caller that can only ask about one of them ("the store's epoch is 42 now") asks about one, and the
+    /// parts it does not name are not claimed to have vanished. A part `now` names that `self` never had is a
+    /// movement with an empty `was`: a source that contributes now and did not before.
+    #[must_use]
+    pub fn moved(&self, now: &Identity) -> Vec<(String, String, String)> {
+        now.parts
+            .iter()
+            .filter_map(|(key, current)| match self.parts.get(key) {
+                Some(was) if was == current => None,
+                Some(was) => Some((key.clone(), was.clone(), current.clone())),
+                None => Some((key.clone(), String::new(), current.clone())),
+            })
+            .collect()
+    }
+
+    /// Whether every source `now` names agrees with this identity.
+    ///
+    /// The question [`super::Index::is_current`] answers: not "are these two identities equal" — a caller
+    /// rarely knows every source a corpus was assembled from — but "does what you just told me contradict
+    /// what this corpus was built from".
+    #[must_use]
+    pub fn agrees(&self, now: &Identity) -> bool {
+        self.moved(now).is_empty()
+    }
+
+    /// The sentence this corpus owes its reader when it is not the corpus the question is being asked of.
+    ///
+    /// `self` is what a held index was built from and `now` is what the sources are. `None` means the two
+    /// agree, which is the common case and the one that prints nothing.
+    #[must_use]
+    pub fn staleness(&self, now: &Identity) -> Option<String> {
+        let moved = self.moved(now);
+        if moved.is_empty() {
+            return None;
+        }
+        let parts: Vec<String> = moved
+            .iter()
+            .map(|(source, was, now)| {
+                // The keys are machine names (`index`, `symbols`); the sentence a reviewer reads wants the
+                // thing itself, and saying "index came from" for an epoch is not the thing.
+                let label = match source.as_str() {
+                    SOURCE_INDEX => "the index epoch",
+                    SOURCE_SYMBOLS => "the working tree",
+                    other => other,
+                };
+                if was.is_empty() {
+                    format!("{label} did not contribute to this corpus and now does ({now})")
+                } else if now.is_empty() {
+                    format!("{label} contributed `{was}` and now contributes nothing")
+                } else {
+                    format!("{label} came from `{was}` and is now `{now}`")
+                }
+            })
+            .collect();
+        Some(format!(
+            "this corpus is older than the repository it is answering for — {}; re-read it \
+             (`fathom index`, then restart the shell) before trusting what it did not find",
+            parts.join("; ")
+        ))
+    }
+}
+
 /// The rows a search runs over, plus what the assembler could not fill.
 #[derive(Debug, Clone, Default)]
 pub struct Corpus {
@@ -357,6 +580,14 @@ pub struct Corpus {
     /// How many documents the index holds at all, so "no results" can be told apart from "nothing indexed"
     /// (the same distinction `fathom-store`'s own report keeps).
     pub documents: i64,
+    /// Which store epoch and which tree the rows came from ([`Identity`]).
+    pub identity: Identity,
+    /// The store epoch the episode rows came from, when there was a store to ask.
+    ///
+    /// Kept beside [`Corpus::identity`] rather than only inside it because the surfaces that print staleness
+    /// compare it against the epoch they were handed ([`crate::search::Index::corpus_epoch`]) and should not
+    /// have to parse a digest to do it.
+    pub epoch: Option<i64>,
 }
 
 impl Corpus {
@@ -409,6 +640,8 @@ struct Row {
     detail: String,
     detail_lc: String,
     episode: Option<String>,
+    /// The file a hit deep-links into, in the corpus's own spelling. See [`Entry::file`].
+    file: Option<String>,
     /// Lower-cased: it is matched and filtered, never printed.
     author: Option<String>,
     utc: Option<Timestamp>,
@@ -495,6 +728,10 @@ pub struct Index {
     rows: Vec<Row>,
     gaps: Vec<Gap>,
     documents: i64,
+    /// Which sources this corpus was read from ([`Identity`]), so a holder can ask whether it still is.
+    identity: Identity,
+    /// The store epoch the episode rows came from, when the corpus had a store.
+    epoch: Option<i64>,
     /// Whether any row carries a risk score, which is what makes a `risk>` filter's empty answer
     /// explicable rather than mysterious.
     risk_bearing: bool,
@@ -534,6 +771,7 @@ impl Index {
                 detail: entry.detail.clone(),
                 detail_lc,
                 episode: entry.episode.clone(),
+                file: entry.file.clone(),
                 author: author_lc,
                 utc: entry.utc,
                 risk: entry.risk,
@@ -556,8 +794,44 @@ impl Index {
             dated: rows.iter().any(|row| row.utc.is_some()),
             gaps: corpus.gaps.clone(),
             documents: corpus.documents,
+            identity: corpus.identity.clone(),
+            epoch: corpus.epoch,
             rows,
         }
+    }
+
+    /// Which sources this index was read from.
+    #[must_use]
+    pub fn identity(&self) -> &Identity {
+        &self.identity
+    }
+
+    /// The store epoch the corpus's episode rows came from, when the corpus had a store to ask.
+    ///
+    /// The surfaces that say "the index moved while you were reading this frame" compare this against the
+    /// epoch they were handed, which is why it is a number here and not something to be parsed out of a
+    /// digest.
+    #[must_use]
+    pub fn corpus_epoch(&self) -> Option<i64> {
+        self.epoch
+    }
+
+    /// Whether this index is still the corpus `now` describes.
+    ///
+    /// `now` is an identity built the same way this corpus was — same sources, same per-source digests. A
+    /// caller that can only name one source ("the store's epoch is 41 now", "the tree's stamp is `9f2a…`")
+    /// sets one part and asks about that one: [`Identity::agrees`] answers about the parts `now` names and
+    /// stays silent about the rest.
+    #[must_use]
+    pub fn is_current(&self, now: &Identity) -> bool {
+        self.identity.agrees(now)
+    }
+
+    /// The sentence this index owes the reader when [`Index::is_current`] is false, and `None` when it is
+    /// true — which is the case that prints nothing and costs nothing.
+    #[must_use]
+    pub fn staleness(&self, now: &Identity) -> Option<String> {
+        self.identity.staleness(now)
     }
 
     /// How many documents the corpus was built from — the number `report.documents` prints, and the one
@@ -571,6 +845,15 @@ impl Index {
     #[must_use]
     pub fn len(&self) -> usize {
         self.rows.len()
+    }
+
+    /// How many rows of one kind the index holds.
+    ///
+    /// The box prints a section's size so that an empty section can be told apart from a section that was
+    /// never filled — which is the same distinction [`Gap`] draws, counted rather than narrated (`reco-6sw`).
+    #[must_use]
+    pub fn count(&self, kind: Kind) -> usize {
+        self.rows.iter().filter(|row| row.kind == kind).count()
     }
 
     /// Whether the index is empty — the state a search box announces rather than draws.
@@ -679,6 +962,8 @@ impl Index {
             hits,
             groups,
             documents: self.documents,
+            identity: self.identity.digest(),
+            epoch: self.epoch,
             scanned: self.rows.len(),
             candidates,
             scored,
@@ -857,6 +1142,7 @@ impl Index {
             label: row.label.clone(),
             detail: row.detail.clone(),
             episode: row.episode.clone(),
+            file: row.file.clone(),
             utc: row.utc,
             risk: row.risk,
             score: total,
@@ -902,6 +1188,9 @@ pub struct Hit {
     pub detail: String,
     /// The episode to select when this hit is opened.
     pub episode: Option<String>,
+    /// The file to select when this hit is opened, when it is a pointer into one: the file a symbol was
+    /// declared in, or the file a path row *is* ([`Entry::file`]).
+    pub file: Option<String>,
     /// The date, for the row's own formatting.
     pub utc: Option<Timestamp>,
     /// The risk score, when the corpus carries one.
@@ -921,8 +1210,10 @@ pub struct Hit {
 impl Hit {
     /// Where `<Enter>` goes: the view to open and the selection to make (ADR-006 §5.8's deep link).
     ///
-    /// A symbol hit points at its file rather than at nothing, which is the honest half of a source that is
-    /// not indexed: if a corpus ever carries one, the link already means something.
+    /// A symbol hit goes to the file it was declared in, with that file selected — which is what a symbol *is*
+    /// a pointer into, and the half of the deep link `reco-6sw` made real. A symbol row that came from a
+    /// corpus with no file in it is a row nobody can act on, so it says so rather than landing somewhere
+    /// nearby.
     #[must_use]
     pub fn destination(&self) -> Destination {
         match self.kind {
@@ -940,9 +1231,18 @@ impl Hit {
             Kind::Finding => Destination::Timeline {
                 episode: self.episode.clone().unwrap_or_else(|| self.id.clone()),
             },
-            Kind::Symbol => Destination::Diff {
-                episode: self.episode.clone(),
-                path: self.paths_hint(),
+            Kind::Symbol => match &self.file {
+                Some(path) => Destination::Diff {
+                    episode: self.episode.clone(),
+                    path: path.clone(),
+                },
+                None => Destination::None {
+                    because: format!(
+                        "`{}` is a symbol with no file on its row, so there is nowhere to select it — \
+                         the corpus that produced it did not say where the declaration lives",
+                        self.label
+                    ),
+                },
             },
             // A recorded note opens the episode it is about, because that is where its evidence lives; the
             // note's own id is in the hit, so the shell can quote it (`e6.5`).
@@ -950,11 +1250,6 @@ impl Hit {
                 episode: self.episode.clone().unwrap_or_else(|| self.id.clone()),
             },
         }
-    }
-
-    /// The path a symbol hit came from, if its corpus kept one.
-    fn paths_hint(&self) -> String {
-        self.detail.clone()
     }
 }
 
@@ -1008,6 +1303,11 @@ pub struct Report {
     pub groups: Vec<(Kind, usize)>,
     /// How many documents the corpus holds at all.
     pub documents: i64,
+    /// The digest of the corpus this answer came from ([`Identity::digest`]) — the stamp that tells a reader
+    /// two runs searched the same thing, and that `fathom search` prints.
+    pub identity: String,
+    /// The store epoch the episode rows came from, when the corpus had a store.
+    pub epoch: Option<i64>,
     /// How many rows the filters admitted.
     pub candidates: usize,
     /// How many of those matched every token.

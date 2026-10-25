@@ -115,6 +115,13 @@ required-features = ["sqlite-bundled"]
 # no store and no feature gate — the store-backed half of `e5.2` is covered by `crates/fathom-cli`'s
 # `search_verb.rs`.
 
+# The corpus's symbol section and the identity that says where a corpus came from (`reco-6sw`).
+# `search::corpus` is a store read, so this target names the backend it needs — the same spelling as the
+# four above.
+[[test]]
+name = "search_corpus"
+required-features = ["sqlite-bundled"]
+
 # The `s1` spike harness (`reco-alj`) lives here, not in the library: it is throwaway code that
 # has to compile against the same six grammar crates `e3.1` will ship with, and `required-features`
 # keeps it — and the C build of all six — out of every default `cargo build` and `cargo test`.

@@ -896,6 +896,11 @@ impl Source for Review {
         let items: Vec<Value> = report
             .hits
             .iter()
+            // Symbol rows are in the same corpus and are not history: a declaration is a property of the
+            // working tree, not a turn of work, and `search_history` answers "which turn of work" (ADR-005
+            // §4.1). The caller is told the section exists rather than left to wonder why a name it can see
+            // in `/` is missing here (`reco-6sw`).
+            .filter(|hit| hit.kind != fathom_analyze::search::Kind::Symbol)
             // Pointer-shaped, always: `Hit` carries a snippet and a per-token `why`, and neither leaves
             // here. The answer is "which episode, when, what is it called, how sure are we, what matched"
             // — the rest is what `explain_episode` is for (ADR-005 §4.1).
@@ -939,6 +944,17 @@ impl Source for Review {
             .chain(report.gaps.iter().map(|gap| &gap.because))
         {
             batch = batch.unknown(note.clone());
+        }
+        if report
+            .groups
+            .iter()
+            .any(|(kind, _)| *kind == fathom_analyze::search::Kind::Symbol)
+        {
+            batch = batch.unknown(
+                "symbol names matched and were left out: this tool answers \"which turn of work\", and a \
+                 declaration belongs to a file rather than to an episode (`kind:episode` narrows `/` to \
+                 what is here)",
+            );
         }
         if report.truncated {
             batch = batch.unknown(
