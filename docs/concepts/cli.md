@@ -115,7 +115,7 @@ the promise that a degraded run never loses the review ledger is pinned.
 | `index_run_unclean` | a run is still `running`, or ended `crashed`/`aborted` | 12 | `fathom index` |
 | `index_building` | the epoch is marked `building` — a rebuild was started and not finished | 12 | `fathom index --rebuild` |
 | `index_empty` | the repository has commits and the index has none | 12 | `fathom index` |
-| `object_unreadable` | the object database would not serve these commits (corrupt, pruned, or omitted by a clone filter); each one is named, and the rest of the index is intact | 12 | `git fsck --full`, then `git fetch` or a re-clone, then `fathom index` — fathom never fetches or repairs |
+| `object_unreadable` | the object database would not serve these commits; each one is named with the reason the read gave, and the rest of the index is intact | 12 | **the reason decides** (see below): a deeper fetch for a graft, a relaxed filter for a filtered clone, `git fsck --full` only when nothing explains the object — then `fathom index`, because fathom never fetches or repairs |
 | `history_shallow` | the clone is shallow, so the history stops partway back | 12 | `git fetch --unshallow` (yours to type), then `fathom index` |
 | `partial_clone` | the clone was filtered (`--filter=blob:none` and friends), so some objects were never fetched | 12 | re-clone without the filter, or fetch what is missing, then `fathom index` |
 | `broken_symref` | a symbolic ref points at a ref that does not exist | 3 | `git update-ref -d <ref>`, or point it at a real target |
@@ -126,6 +126,31 @@ the promise that a degraded run never loses the review ledger is pinned.
 | `not_a_repository` | `--root` is not a repository | 3 | point `--root` at one |
 | `repository_unreadable` | it is a repository, but `.git` cannot be read | 3 | check the permissions, or point `--root` at the work tree |
 | `feature_absent` | this binary was built without a SQLite backend | 9 | rebuild with `--features sqlite-bundled` |
+
+### The remedy for a missing object is the reason for it
+
+"Could not read this commit" has three causes and they want three different commands, and printing the wrong
+one costs a reviewer an afternoon. A shallow clone — the normal first clone on CI, and what
+`tools/fetch_g3_corpus.py` makes on purpose — has commits whose objects are on the far side of a graft. That
+is not damage: nothing in the store contradicts anything else, the objects were simply never fetched. Telling
+that reviewer to run `git fsck --full` sends them to a repair tool for a healthy repository; they find
+nothing, and file the index as broken. So the reason the read gave picks the sentence:
+
+| Why the object is missing | Remedy |
+|---|---|
+| behind a shallow graft (`.git/shallow` names the boundary) | `git fetch --deepen <n>`, or `git fetch --unshallow` for the whole history |
+| left out by the clone's `--filter` | `git fetch --refetch` from the promisor remote, or re-clone without the filter |
+| nothing in the repository explains it | `git fsck --full` — the only case where a repair tool is the thing to type |
+
+When one store has both kinds of hole the finding counts them separately and gives both commands. The reason
+travels into the index as text (the store's `commit_unreadable.*` rows) and `fathom_ingest::error::Absence::of` re-reads the case
+off it, which is why the wording of each case in `fathom-ingest` is asserted to carry its marker: a rewording
+that dropped "shallow graft" would quietly turn every CI clone back into a broken repository.
+
+The finding is built once and printed by every surface that reports it — `fathom index`, `fathom stats`,
+`fathom doctor`, `fathom analyze`'s footer and the TUI's notice list — with the same message and the same
+remedy, because three near-identical sentences drift, and one of them will be the wrong one
+(ADR-006 §10.3).
 
 ### The one finding that is untidy rather than degraded
 

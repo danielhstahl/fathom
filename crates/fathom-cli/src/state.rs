@@ -38,6 +38,7 @@
 //! degraded, it is an empty repository, and the copy ADR-006 §10.3 fixes is the one printed.
 
 use fathom_core::exit::ExitCode;
+use fathom_ingest::error::Absence;
 use fathom_ingest::repo::{Head, HealthNotice, ObjectHash, RefFilter, Repository};
 use serde_json::{Value, json};
 use std::path::Path;
@@ -54,16 +55,50 @@ pub const REMEDY_INDEX: &str =
 #[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
 pub const REMEDY_REBUILD: &str = "the store is disposable (ADR-004 §12): `fathom index --rebuild`";
 
-/// The remedy for a repository whose object database would not serve a commit.
+/// The remedy for a repository whose object database would not serve a commit, when **nothing explains
+/// why the object is gone** — the one case where a repair tool is the thing to run.
 ///
 /// It is not `fathom index`, and the difference is the whole finding: re-indexing a repository that is
 /// missing an object produces the same missing object, which is exactly the loop a user of a damaged clone
 /// was previously left in. Fathom reads repositories and never repairs or fetches them (ADR-001 §8.2), so
 /// the thing to type is git's own.
+///
+/// This sentence used to be printed for *every* unreadable commit, including the ones the repository had
+/// already explained — which is `reco-b7o`: a shallow clone was told to `git fsck --full` a store that was
+/// never damaged, by a finding two lines above it that had just named the graft. Use
+/// [`absence_remedy`] to pick between this and the two fetch remedies below.
 #[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
 pub const REMEDY_UNREADABLE: &str = "the object database is missing something fathom needs, and fathom neither fetches nor repairs: \
      `git fsck --full` in the repository (then `git fetch`, or re-clone, if it names a missing object), \
      then `fathom index`";
+
+/// The remedy when the objects are on the far side of a **shallow graft** (`reco-b7o`).
+///
+/// No `git fsck` in it, deliberately. A graft is not damage: `git clone --depth` stopped the fetch at a
+/// line recorded in `.git/shallow`, and every object past it was never in this clone to begin with. A
+/// reviewer who runs fsck on that store finds a healthy repository, concludes the index is broken, and
+/// files the thing that costs one `git fetch --deepen` to fix — and CI, which clones shallow as a matter
+/// of course, files it for every run.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_UNREADABLE_GRAFT: &str = "nothing is damaged: these objects are on the far side of a \
+     shallow graft, so the clone has to reach further back: `git fetch --deepen <n>`, or `git fetch \
+     --unshallow` to take the whole history (fathom never fetches for you), then `fathom index`";
+
+/// The remedy when a **clone filter** is why the objects are missing: the same absence of damage, a
+/// different command, because a filtered clone has a promisor remote that can be asked for what the filter
+/// left out.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_UNREADABLE_FILTER: &str = "nothing is damaged: this clone's filter never fetched these \
+     objects: ask the promisor remote for them with `git fetch --refetch`, or re-clone without `--filter` \
+     (fathom never fetches for you), then `fathom index`";
+
+/// The remedy when the reasons inside one finding do not agree with each other. It says so, and names both
+/// commands, rather than picking one cause and sending the reader down the wrong path with half of the
+/// finding still true.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_UNREADABLE_MIXED: &str = "the reasons differ, so there are two things to type: fetch \
+     deeper (or drop the `--filter`) for the objects this clone never asked for, and `git fsck --full` for \
+     the ones nothing explains — fathom neither fetches nor repairs — then `fathom index`";
 
 /// The remedy for rows the history has left behind.
 ///
@@ -512,28 +547,207 @@ pub fn unreadable_notices(root: &Path) -> Vec<String> {
 
 /// The finding for commits the object database would not serve.
 ///
-/// One builder because the sentence is said in three places — `fathom stats`, `fathom doctor`, and the TUI's
-/// notice list — and a reviewer who meets a shorter version of it in the frame would read the missing part
-/// as "nothing else is wrong". Up to three are named with their reasons, because the reason is usually the
-/// same object and the fourth copy of a path teaches nothing; the count is the whole store's.
+/// One builder because the sentence is said in four places — `fathom index`, `fathom stats`, `fathom
+/// doctor`, and the TUI's notice list — and a reviewer who meets a shorter version of it in the frame would
+/// read the missing part as "nothing else is wrong". Up to three are named with their reasons, because the
+/// reason is usually the same object and the fourth copy of a path teaches nothing; the count is the whole
+/// store's.
+///
+/// The reason decides the remedy (`reco-b7o`). "Could not read this commit" has three causes and they want
+/// three different commands, and the one that used to be printed for all of them — `git fsck --full` — is
+/// the medicine for damage, which is the opposite of what a shallow clone has: a healthy store that stops
+/// at a graft. See [`Absences`].
 pub fn object_unreadable_finding(holes: &[(String, String, i64)], redactor: &Redactor) -> Finding {
-    let named = holes
-        .iter()
-        .take(3)
-        .map(|(commit, reason, _)| format!("{} — {}", short_oid(commit), redactor.text(reason)))
-        .collect::<Vec<_>>()
-        .join(" · ");
+    unreadable_finding(holes, redactor, Name::Examples)
+}
+
+/// Whether the finding lists a few of the commits itself.
+enum Name {
+    /// Name up to three of them. The read verbs print only the finding, so they have to carry the names.
+    Examples,
+    /// Say nothing about which ones: the caller has already named them, line by line.
+    CountOnly,
+}
+
+/// The one builder behind [`object_unreadable_finding`] and [`unreadable_finding_from_run`].
+fn unreadable_finding(holes: &[(String, String, i64)], redactor: &Redactor, name: Name) -> Finding {
+    let absences = Absences::of(holes.iter().map(|(_, reason, _)| reason.as_str()));
+    let mut message = format!(
+        "{} commit(s) could not be read out of the object database and are missing from the index",
+        holes.len()
+    );
+    message.push_str(&absences.clause());
+    if matches!(name, Name::Examples) {
+        let named = holes
+            .iter()
+            .take(3)
+            .map(|(commit, reason, _)| named_hole(commit, reason, redactor))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        message.push_str(": ");
+        message.push_str(&named);
+    }
     Finding::new(
         "object_unreadable",
         "index",
-        format!(
-            "{} commit(s) could not be read out of the object database and are missing from the index: \
-             {named}",
-            holes.len()
-        ),
-        REMEDY_UNREADABLE,
+        message,
+        absences.remedy(),
         ExitCode::IndexDegraded,
     )
+}
+
+/// One commit in the finding's list: its id, then what the read said.
+fn named_hole(commit: &str, reason: &str, redactor: &Redactor) -> String {
+    if commit.is_empty() {
+        return redactor.text(reason);
+    }
+    format!("{} — {}", short_oid(commit), redactor.text(reason))
+}
+
+/// The remedy for a single rendered reason, where there is one commit and so one cause.
+///
+/// `fathom show` and `fathom analyze` hit this path: the store has been asked for one commit and has said
+/// why it could not be served. Those verbs used to print [`REMEDY_UNREADABLE`] whatever the reason said,
+/// which is the same defect as the finding's — a shallow clone told to fsck a store that is fine.
+#[must_use]
+pub fn absence_remedy(reason: &str) -> &'static str {
+    remedy_for(Absence::of(reason))
+}
+
+/// The cause phrased for the middle of a sentence, with its count already implied.
+fn phrasing(cause: Absence) -> &'static str {
+    match cause {
+        Absence::Graft => {
+            "on the far side of a shallow graft, which is a fetch that stopped early and not damage"
+        }
+        Absence::Filter => {
+            "left out by the clone's filter, which is a fetch that never asked for them and not damage"
+        }
+        Absence::Damage => {
+            "gone from the object database with nothing in the repository to explain it"
+        }
+    }
+}
+
+/// The cause, short enough to sit in a tally.
+///
+/// The single-cause sentence gets the long form ([`phrasing`]) because that is where the reader learns why
+/// the command is a fetch and not a repair; a finding with two causes has already spent its breath and needs
+/// the counts, not two lectures.
+fn tally(cause: Absence) -> &'static str {
+    match cause {
+        Absence::Graft => "behind a shallow graft",
+        Absence::Filter => "left out by the clone filter",
+        Absence::Damage => "missing with nothing in the repository to explain them",
+    }
+}
+
+/// The remedy this cause costs: one command per cause, and only the damage case names a repair tool.
+#[must_use]
+pub const fn remedy_for(cause: Absence) -> &'static str {
+    match cause {
+        Absence::Graft => REMEDY_UNREADABLE_GRAFT,
+        Absence::Filter => REMEDY_UNREADABLE_FILTER,
+        Absence::Damage => REMEDY_UNREADABLE,
+    }
+}
+
+/// The causes behind one set of unreadable commits, counted.
+///
+/// Most findings have one cause for every hole — a shallow clone is shallow all the way down — and then the
+/// remedy is one command. Where a store has genuinely been asked two different questions (a graft *and* a
+/// damaged object, which is what a `--depth` clone that was also gc'd looks like) the finding says both
+/// counts and the remedy gives both commands, because guessing which half the reader came for is how they
+/// end up running fsck on a graft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Absences(Vec<(Absence, usize)>);
+
+impl Absences {
+    /// Tally the causes of these reasons, in first-seen order.
+    #[must_use]
+    pub fn of(reasons: impl Iterator<Item = impl AsRef<str>>) -> Self {
+        let mut tallied: Vec<(Absence, usize)> = Vec::new();
+        for reason in reasons {
+            let cause = Absence::of(reason.as_ref());
+            match tallied.iter_mut().find(|(seen, _)| *seen == cause) {
+                Some((_, count)) => *count += 1,
+                None => tallied.push((cause, 1)),
+            }
+        }
+        Absences(tallied)
+    }
+
+    /// Every hole explained by a graft, and nothing else — the `reco-b7o` case, and the assertion the
+    /// tests make by name, so that a rewording cannot quietly fall back to the damage remedy. Test-only in
+    /// this crate: the verbs ask for [`Absences::remedy`], which is this case plus the other two.
+    #[cfg(test)]
+    #[must_use]
+    pub fn is_graft(&self) -> bool {
+        matches!(self.0.as_slice(), [(Absence::Graft, _)])
+    }
+
+    /// The clause that names the cause in the finding's own sentence, so a reader who stops before the
+    /// remedy has still been told whether they have a repair or a fetch in front of them.
+    #[must_use]
+    pub fn clause(&self) -> String {
+        match self.0.as_slice() {
+            [] => String::new(),
+            [(cause, _)] => format!(" — {}", phrasing(*cause)),
+            many => {
+                let parts = many
+                    .iter()
+                    .map(|(cause, count)| format!("{count} {}", tally(*cause)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!(" — the reasons differ: {parts}")
+            }
+        }
+    }
+
+    /// The thing to type.
+    #[must_use]
+    pub fn remedy(&self) -> &'static str {
+        match self.0.as_slice() {
+            [] => REMEDY_UNREADABLE,
+            [(cause, _)] => remedy_for(*cause),
+            _ => REMEDY_UNREADABLE_MIXED,
+        }
+    }
+}
+
+/// The same finding, from a run's own spine failures instead of the store’s rows.
+///
+/// `fathom index` used to turn its failures into its own sentence about `git fsck --full`, which is how one
+/// degraded repository came to tell three different stories about itself — and the index’s version was the
+/// one that sent a shallow-clone’s owner to a repair tool for a graft. This builds the finding the read
+/// verbs build, from the same parts, so the index, `fathom stats`, `fathom doctor` and the TUI print one
+/// sentence and mean one thing.
+///
+/// It is given the spine’s failures and not the run’s whole `failures` list, and that distinction is the
+/// accuracy of the result: the spine’s are the commits the *object database* would not serve — exactly the
+/// rows the store records as unreadable, and therefore exactly the set `fathom stats` will report five
+/// seconds later. The rest of the run’s failures are analyses that failed for their own reasons, which are
+/// printed one per line above this finding and are not the object database’s fault.
+///
+/// The finding comes back without the example commits: `fathom index` prints each failure on its own line
+/// immediately above this one, and a second copy of the same three `— git object …` clauses is noise that
+/// pushes the remedy off the screen.
+///
+/// Returns `None` for a run whose object database served everything, which is the ordinary case and prints
+/// nothing.
+#[must_use]
+pub fn unreadable_finding_from_run(
+    failures: &[fathom_ingest::ingest::CommitFailure],
+    redactor: &Redactor,
+) -> Option<Finding> {
+    if failures.is_empty() {
+        return None;
+    }
+    let holes = failures
+        .iter()
+        .map(|failure| (failure.oid.hex(), failure.reason.clone(), 0_i64))
+        .collect::<Vec<_>>();
+    Some(unreadable_finding(&holes, redactor, Name::CountOnly))
 }
 
 /// The finding for commit rows the history has left behind (`reco-218`).
@@ -803,6 +1017,13 @@ fn describe_index(
         findings.push(dead_rows_finding(dead));
     }
     if !head_indexed {
+        // The same reason, phrased the same way, when HEAD itself is the commit that could not be read:
+        // the remedy for a HEAD behind a graft is a deeper fetch, and `fathom index` — the sentence this
+        // finding used to carry — is the command that just failed.
+        let head_reason = unreadable
+            .iter()
+            .find(|(commit, _, _)| head_oid.is_some_and(|oid| commit == oid))
+            .map(|(_, reason, _)| reason.as_str());
         findings.push(Finding::new(
             "index_stale",
             "index",
@@ -815,11 +1036,7 @@ fn describe_index(
                     ""
                 }
             ),
-            if head_unreadable {
-                REMEDY_UNREADABLE
-            } else {
-                REMEDY_INDEX
-            },
+            head_reason.map_or(REMEDY_INDEX, absence_remedy),
             ExitCode::IndexDegraded,
         ));
     }
@@ -1056,4 +1273,157 @@ pub fn cache_json(
             .unwrap_or(0),
         "payload_refusals": counters.get("cache.payload.refused").copied().unwrap_or(0),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Absence, Absences, REMEDY_UNREADABLE, REMEDY_UNREADABLE_FILTER, REMEDY_UNREADABLE_GRAFT,
+        REMEDY_UNREADABLE_MIXED, absence_remedy, object_unreadable_finding, remedy_for,
+    };
+    use fathom_ingest::error::{Error, Unavailable};
+    use fathom_ingest::oid::Oid;
+    use std::path::Path;
+
+    /// Render a reason the way the store keeps one: the whole error sentence, exactly as `fathom index`
+    /// wrote it into the `commit_unreadable.*` row. The tests are built from the rendered text rather than
+    /// from an [`Unavailable`] because that is all the finding has to work with (`reco-b7o`).
+    fn reason(why: Unavailable) -> String {
+        Error::ObjectUnavailable {
+            oid: Oid::ZERO,
+            why,
+        }
+        .to_string()
+    }
+
+    fn graft() -> String {
+        reason(Unavailable::ShallowBoundary { at: Oid::ZERO })
+    }
+
+    fn filtered() -> String {
+        reason(Unavailable::PartialClone {
+            filter: Some("blob:none".to_owned()),
+            remote: Some("origin".to_owned()),
+        })
+    }
+
+    fn damaged() -> String {
+        reason(Unavailable::Missing)
+    }
+
+    fn row(reason: &str) -> (String, String, i64) {
+        // A different commit per row would be noise here; the finding counts rows and reads reasons.
+        (
+            "f39c71609e9372bec8beb01c5aea3957ec2d1a9b".to_owned(),
+            reason.to_owned(),
+            0,
+        )
+    }
+
+    fn finding(reasons: &[String]) -> super::Finding {
+        let redactor = super::Redactor::for_root(Path::new("."));
+        object_unreadable_finding(
+            &reasons.iter().map(|reason| row(reason)).collect::<Vec<_>>(),
+            &redactor,
+        )
+    }
+
+    /// The ticket, in one assertion: a graft's remedy is a fetch, and the word `fsck` does not appear.
+    #[test]
+    fn a_graft_is_told_to_deepen_the_fetch_and_never_to_repair() {
+        let absences = Absences::of([graft().as_str()].into_iter());
+        assert!(absences.is_graft(), "one graft reason is the graft case");
+        assert_eq!(absences.remedy(), REMEDY_UNREADABLE_GRAFT);
+        assert_eq!(absence_remedy(&graft()), REMEDY_UNREADABLE_GRAFT);
+        assert_eq!(remedy_for(Absence::Graft), REMEDY_UNREADABLE_GRAFT);
+
+        let remedy = REMEDY_UNREADABLE_GRAFT;
+        for command in ["--deepen", "--unshallow", "never fetches"] {
+            assert!(remedy.contains(command), "{command} belongs in {remedy}");
+        }
+        assert!(
+            !remedy.contains("fsck"),
+            "a graft is not damage; the remedy for a clone that stopped fetching must not name a repair \
+             tool: {remedy}"
+        );
+
+        let finding = finding(&[graft()]);
+        assert_eq!(finding.code, "object_unreadable");
+        assert_eq!(finding.remedy, REMEDY_UNREADABLE_GRAFT);
+        assert!(
+            finding.message.contains("shallow graft"),
+            "the finding says the cause in its own sentence, not only in the remedy: {}",
+            finding.message
+        );
+        assert!(!finding.message.contains("fsck"), "{}", finding.message);
+        assert!(
+            finding.message.contains("f39c71609e93"),
+            "the commit is still named: {}",
+            finding.message
+        );
+    }
+
+    /// The other half of the acceptance rule: `git fsck` is printed *only* when the store disagrees with
+    /// something it already holds — an object with nothing in the repository to explain it.
+    #[test]
+    fn only_an_unexplained_object_buys_a_repair() {
+        assert_eq!(absence_remedy(&damaged()), REMEDY_UNREADABLE);
+        let finding = finding(&[damaged()]);
+        assert!(
+            finding.remedy.contains("git fsck --full"),
+            "{}",
+            finding.remedy
+        );
+        assert!(absence_remedy("a probe said something else entirely") == REMEDY_UNREADABLE);
+    }
+
+    /// A filtered clone is the same shape as a graft — never fetched, nothing damaged — with the filter's
+    /// own command, so it must not inherit the repair order either.
+    #[test]
+    fn a_filtered_clone_is_told_to_fetch_what_the_filter_left_out() {
+        assert_eq!(absence_remedy(&filtered()), REMEDY_UNREADABLE_FILTER);
+        let remedy = REMEDY_UNREADABLE_FILTER;
+        assert!(
+            remedy.contains("--filter") && remedy.contains("--refetch"),
+            "{remedy}"
+        );
+        assert!(!remedy.contains("fsck"), "{remedy}");
+    }
+
+    /// Where the reasons disagree, the finding counts them and the remedy gives both commands, so neither
+    /// reader is sent down the other half's path.
+    #[test]
+    fn reasons_that_disagree_are_counted_and_both_commands_are_named() {
+        let absences = Absences::of([graft(), damaged(), damaged()].into_iter());
+        assert!(!absences.is_graft());
+        assert_eq!(absences.remedy(), REMEDY_UNREADABLE_MIXED);
+        let clause = absences.clause();
+        assert!(clause.contains("the reasons differ"), "{clause}");
+        assert!(clause.contains("1 behind a shallow graft"), "{clause}");
+        assert!(clause.contains("2 missing with nothing"), "{clause}");
+
+        let remedy = REMEDY_UNREADABLE_MIXED;
+        assert!(
+            remedy.contains("git fsck --full") && remedy.contains("fetch deeper"),
+            "{remedy}"
+        );
+
+        let finding = finding(&[graft(), filtered()]);
+        assert_eq!(finding.remedy, REMEDY_UNREADABLE_MIXED);
+        assert!(
+            finding.message.contains(
+                "the reasons differ: 1 behind a shallow graft, 1 left out by the clone filter"
+            ),
+            "{}",
+            finding.message
+        );
+    }
+
+    /// A row that carries no cause at all still gets a sentence, not a panic and not an empty remedy.
+    #[test]
+    fn a_set_with_no_rows_still_points_at_the_object_database() {
+        let absences = Absences::of(std::iter::empty::<&str>());
+        assert_eq!(absences.remedy(), REMEDY_UNREADABLE);
+        assert!(absences.clause().is_empty());
+    }
 }

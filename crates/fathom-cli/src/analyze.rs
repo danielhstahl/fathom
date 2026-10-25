@@ -179,7 +179,7 @@ pub fn analyze(
                         short(target),
                         redactor.text(&reason)
                     ),
-                    Some(state::REMEDY_UNREADABLE.to_owned()),
+                    Some(state::absence_remedy(&reason).to_owned()),
                 ),
                 None => Pending::new(
                     ExitCode::IndexDegraded,
@@ -226,7 +226,12 @@ pub fn analyze(
                         format!(" and {more} more")
                     }
                 ));
-                output::line(format_args!("  remedy: {}", state::REMEDY_UNREADABLE));
+                // One remedy per cause, and the causes are read off the rows themselves: telling a shallow
+                // clone to `git fsck --full` is `reco-b7o`, and the footer is where most readers meet it.
+                let remedy =
+                    state::Absences::of(holes.iter().map(|(_, reason, _)| reason.as_str()))
+                        .remedy();
+                output::line(format_args!("  remedy: {remedy}"));
             }
         }
         // The delta's own shape on the bus, then the run's ending (`e6.7`). The counts are the totals the

@@ -2109,12 +2109,18 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                     report.failures.len() - 3
                 ));
             }
-            say(format_args!(
-                "  {} commit(s) are missing from the index: the objects are the problem, not the index — \
-                 `git fsck --full` in the repository (fathom never fetches or repairs), then `fathom index`, \
-                 and `fathom doctor` repeats this until it stops",
-                report.failures.len()
-            ));
+            // The same finding `fathom stats`, `fathom doctor` and the TUI print, from the same builder and
+            // the same set of commits — the ones the object database would not serve — so one degraded
+            // repository cannot tell three different stories about itself. The remedy comes off the reasons
+            // the reads gave, which is the whole point: a shallow clone gets a deeper fetch, and only a store
+            // that contradicts something it already holds gets `git fsck` (`reco-b7o`).
+            if let Some(finding) = crate::state::unreadable_finding_from_run(
+                &report.spine.failures,
+                &crate::sanitize::Redactor::for_root(root),
+            ) {
+                say(format_args!("  {}", finding.message));
+                say(format_args!("    remedy: {}", finding.remedy));
+            }
         }
         say(format_args!(
             "  pass --stats for the per-analyzer cache table, or --json for the same as data"

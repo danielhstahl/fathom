@@ -17,6 +17,60 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A shallow clone was told to `git fsck` (`reco-b7o`)
+
+`git clone --depth 140 --single-branch https://github.com/pallets/flask`, then `fathom index` in it. Flask at
+`d086db85` walks 429 commits and cannot read 9 of them, because the six grafts the fetch left behind name
+parents the clone never received. The first line of the report was honest:
+
+```text
+  could not read f39c71609e93: git object 3c85ec953f15 is not available locally (behind the shallow graft
+  at 0ec7f713d679)
+  9 commit(s) are missing from the index: the objects are the problem, not the index — `git fsck --full` in
+  the repository (fathom never fetches or repairs), then `fathom index`, and `fathom doctor` repeats this
+  until it stops
+```
+
+and then the second line overwrote the cause with a repair order. A graft is not damage: nothing in that
+object store contradicts anything else in it, the objects were simply never fetched. A reviewer who follows
+the instruction runs `git fsck --full` on a healthy repository, finds nothing, and files the index as
+broken — which is `tools/fetch_g3_corpus.py`’s clones and every CI job that clones with `--depth` doing
+exactly that, once per run. The medicine for a graft is a deeper fetch, and saying so is the difference
+between one command and an afternoon.
+
+* **The reason picks the remedy.** Three causes, three commands: behind a shallow graft → `git fetch
+    --deepen <n>` / `git fetch --unshallow`; left out by the clone's `--filter` → `git fetch --refetch` or
+    re-clone without the filter; nothing explains it → `git fsck --full`. Only the third prints a repair
+    tool, which is the acceptance rule: *fsck is printed only when the store disagrees with something it
+    already holds*.
+* **The reason survives the trip into the store.** A reason is kept as text (`meta`'s `commit_unreadable.*`
+    rows), so the read verbs have the sentence and not the enum. `fathom_ingest::error::Absence` is the one
+    place that knows which sentence means which case, `Unavailable::hint()` now delegates to it, and every
+    `Unavailable` variant's wording is asserted to carry its own marker — a rewording that dropped "shallow
+    graft" would otherwise re-classify every CI clone as a damaged repository, quietly.
+* **One finding, four surfaces.** `fathom index` had its own hand-written version of the sentence, which is
+    how one degraded repository told three stories about itself. It now prints what `fathom stats`, `fathom
+    doctor` and the TUI's notice list print, from one builder, minus the example commits it has already
+    named one per line above. `fathom analyze`'s and `fathom show`'s single-commit remedies are read off the
+    same reason, so a shallow HEAD is no longer told to fsck in one verb and deepen in another.
+* **The count is the object database's, not the run's.** The footer was built from every failure the run had,
+    which folds in analyses that failed for a reason of their own — in flask, 4 unreadable commits and 5
+    commits whose analysis wanted one of them. It is built from the spine's failures now, which is exactly
+    the set the store records and the set `fathom stats` reports five seconds later: 4, not 9. Where a store
+    really does have two kinds of hole, the finding counts each and gives both commands.
+* **Docs, in the same words.** `docs/concepts/cli.md` has the table row and a section on why the reason
+    decides the remedy, because the finding is only useful if a reviewer can predict it.
+
+*Asserted by*: `crates/fathom-cli/tests/resilience.rs`
+(`a_graft_cut_by_a_shallow_clone_is_told_to_fetch_deeper_and_never_to_repair`, a fixture cloned with
+`--depth` through a merge, which pins the wording in all three verbs and asserts the word `fsck` appears in
+none of them; the filtered clone's assertions were moved to the filter's own command for the same reason),
+the unit tests in `crates/fathom-cli/src/state.rs` for the graft, filter, damage and mixed tallies, and
+`crates/fathom-ingest/src/error.rs` (`every_missing_object_sentence_carries_its_marker`) for the marker
+contract. The flask reproduction above is the case the fixture stands in for: a local git will not cut a
+shallow window that leaves a parent unnamed, so the fixture is built with a merge and cloned at `--depth 6`,
+which does.
+
 ### A `g` that waits says so (`reco-wlt`)
 
 The walkthrough measured every view key's frame arriving 0.5–2 ms after the keystroke, and `g`

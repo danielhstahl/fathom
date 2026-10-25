@@ -119,7 +119,9 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
                         target,
                         redactor.text(&reason)
                     ),
-                    Some(state::REMEDY_UNREADABLE.to_owned()),
+                    // The reason the store kept decides the command: a HEAD behind a shallow graft is
+                    // deepened, not fsck'd (`reco-b7o`).
+                    Some(state::absence_remedy(&reason).to_owned()),
                 ),
                 None => Pending::new(
                     ExitCode::IndexDegraded,

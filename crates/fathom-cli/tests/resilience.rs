@@ -216,6 +216,22 @@ fn remedy_for(value: &serde_json::Value, wanted: &str) -> String {
         .1
 }
 
+/// The human line of one finding, so a test can pin the *sentence* rather than a keyword in it.
+fn finding_message(value: &serde_json::Value, wanted: &str) -> String {
+    value
+        .get("diagnostics")
+        .or_else(|| value.get("findings"))
+        .and_then(serde_json::Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .find(|row| row["code"].as_str() == Some(wanted))
+                .and_then(|row| row["message"].as_str())
+                .unwrap_or_else(|| panic!("no `{wanted}` finding"))
+                .to_owned()
+        })
+        .unwrap_or_else(|| panic!("`{wanted}` came back with no message"))
+}
+
 fn stats(root: &Path, base: &Path) -> (serde_json::Value, i32) {
     let out = fathom(&["stats", "--json", &root.display().to_string()], base);
     (json_of(&out, "fathom stats"), code(&out))
@@ -243,6 +259,53 @@ fn repository(base: &Path, name: &str, count: usize) -> PathBuf {
             .expect("write a file");
         git(&root, &["add", "-A"], base);
         git(&root, &["commit", "-q", "-m", &format!("commit {n}")], base);
+    }
+    root
+}
+
+/// A repository with one merge in it: six commits on `main`, a `side` branch of two branched off the
+/// third, merged back, then two more on `main`.
+///
+/// The merge is the point. `git clone --depth N` cuts the history at a *set* of grafts — one per branch it
+/// stops on — and every grafted commit still names the parent the clone never received. Indexing that clone
+/// is the `reco-b7o` shape: commits the repository has and cannot read, with the graft named in the reason.
+/// A linear fixture cannot make it, because there the graft commit is simply the root and nothing asks for
+/// an object on the far side.
+fn merged_repository(base: &Path, name: &str) -> PathBuf {
+    let root = base.join("work").join(name);
+    std::fs::create_dir_all(&root).expect("repository directory");
+    git(&root, &["init", "-q"], base);
+    for n in 0..6 {
+        std::fs::write(root.join(format!("f{n}.txt")), format!("line {n}\n"))
+            .expect("write a file");
+        git(&root, &["add", "-A"], base);
+        git(&root, &["commit", "-q", "-m", &format!("commit {n}")], base);
+    }
+    git(&root, &["checkout", "-q", "-b", "side", "HEAD~3"], base);
+    for n in 0..2 {
+        std::fs::write(root.join(format!("side{n}.txt")), format!("side {n}\n"))
+            .expect("write a file");
+        git(&root, &["add", "-A"], base);
+        git(&root, &["commit", "-q", "-m", &format!("side {n}")], base);
+    }
+    git(&root, &["checkout", "-q", "main"], base);
+    git(
+        &root,
+        &[
+            "merge",
+            "-q",
+            "--no-ff",
+            "side",
+            "-m",
+            "merge the side branch",
+        ],
+        base,
+    );
+    for n in 0..2 {
+        std::fs::write(root.join(format!("after{n}.txt")), format!("after {n}\n"))
+            .expect("write a file");
+        git(&root, &["add", "-A"], base);
+        git(&root, &["commit", "-q", "-m", &format!("after {n}")], base);
     }
     root
 }
@@ -333,6 +396,112 @@ fn a_shallow_clone_is_reported_as_a_truncated_history() {
     );
 }
 
+/// The shallow clone cut *through* a merge: commits the clone has and cannot read, because each grafted
+/// commit names a parent the fetch never delivered (`reco-b7o`, reproduced by `git clone --depth 140` of a
+/// real repository and found again by the CI clone `tools/fetch_g3_corpus.py` makes on purpose).
+///
+/// The first line of the report was already honest — it named the graft — and then the remedy overwrote it
+/// with `git fsck --full`, which is what you run on a store that contradicts itself and is nothing at all
+/// for a clone that stopped fetching. A reviewer who follows it runs fsck on a healthy repository, finds
+/// nothing, and files the index as broken; the one command that fixes it is a deeper fetch.
+#[test]
+fn a_graft_cut_by_a_shallow_clone_is_told_to_fetch_deeper_and_never_to_repair() {
+    let base = sandbox("graft");
+    let source = merged_repository(&base, "merged");
+    let clone = base.join("work").join("grafted");
+    git(
+        &base.join("work"),
+        &[
+            "clone",
+            "-q",
+            "--no-checkout",
+            "--depth=6",
+            &format!("file://{}", source.display()),
+            "grafted",
+        ],
+        &base,
+    );
+    // The fixture has to be cut through a merge, or it proves nothing: a linear shallow clone has no
+    // unreadable commit at all, because its graft commit is simply the root of what it has.
+    let grafts = std::fs::read_to_string(clone.join(".git").join("shallow"))
+        .expect("a shallow clone keeps its grafts in .git/shallow");
+    assert!(
+        grafts.lines().count() >= 2,
+        "the clone needed more than one graft to cut the merge out of its history: {grafts}"
+    );
+
+    let run = index(&clone, &base);
+    assert_survives(&run, "fathom index on a shallow clone cut through a merge");
+    assert_eq!(
+        code(&run),
+        12,
+        "commits are missing from the index, so the run is INDEX_DEGRADED:\n{}{}",
+        stdout(&run),
+        stderr(&run)
+    );
+    let text = format!("{}{}", stdout(&run), stderr(&run));
+    assert!(
+        text.contains("could not read"),
+        "the run names the commits it could not read:\n{text}"
+    );
+    assert!(
+        text.contains("shallow graft"),
+        "and names the graft as the cause:\n{text}"
+    );
+    assert!(
+        !text.contains("fsck"),
+        "and prescribes no repair for a clone that is shallow rather than damaged:\n{text}"
+    );
+
+    // One finding, three surfaces. `fathom index`, `fathom stats` and `fathom doctor` build this sentence
+    // from one function (`reco-b7o`), so a test that pinned only one of them would let the other two drift
+    // back into the version that tells a shallow clone to run fsck.
+    let stats = stats(&clone, &base).0;
+    let doctor = doctor(&clone, &base);
+    for codes in [finding_codes(&stats), finding_codes(&doctor)] {
+        assert!(
+            codes.contains(&"object_unreadable".to_owned())
+                && codes.contains(&"history_shallow".to_owned()),
+            "the graft is said as an unreadable-commit finding and as a shallow-history one: {codes:?}"
+        );
+    }
+    let remedy = remedy_for(&stats, "object_unreadable");
+    assert_eq!(
+        remedy,
+        remedy_for(&doctor, "object_unreadable"),
+        "stats and doctor print one remedy, not two that drift"
+    );
+    for command in ["--deepen", "--unshallow", "never fetches"] {
+        assert!(
+            remedy.contains(command),
+            "the remedy is a deeper fetch, named as a command, and says fathom will not type it: {remedy}"
+        );
+    }
+    assert!(!remedy.contains("fsck"), "{remedy}");
+    let message = finding_message(&stats, "object_unreadable");
+    assert_eq!(
+        message,
+        finding_message(&doctor, "object_unreadable"),
+        "and one message"
+    );
+    assert!(
+        message.contains("shallow graft"),
+        "the finding says the cause in its own sentence: {message}"
+    );
+    // The index prints that finding too, minus the example commits — it has already named them, one per
+    // line, immediately above — so the shared half of the sentence is everything up to where the examples
+    // start. The remedy is shared whole.
+    let sentence = message.split(": ").next().unwrap_or(message.as_str());
+    assert!(
+        sentence.contains("shallow graft"),
+        "the shared half still carries the cause: {message}"
+    );
+    assert!(
+        text.contains(sentence) && text.contains(&remedy),
+        "and the line `fathom index` printed is that same sentence, not a fourth version of it:\n{text}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 2 — filter (partial) clone: promisor-missing objects
 // ---------------------------------------------------------------------------
@@ -377,8 +546,13 @@ fn a_filtered_clone_names_every_commit_it_cannot_read() {
         "the index says out loud that commits are missing:\n{text}"
     );
     assert!(
-        text.contains("git fsck"),
-        "and names where the repair lives:\n{text}"
+        text.contains("--filter") && text.contains("never fetches"),
+        "and names the fetch that would have asked for them — not `git fsck`, because a filtered clone is \
+         not a damaged one (`reco-b7o`):\n{text}"
+    );
+    assert!(
+        !text.contains("git fsck"),
+        "the filter is the cause, so the remedy must not name a repair tool:\n{text}"
     );
 
     let stats = stats(&clone, &base).0;
@@ -391,9 +565,14 @@ fn a_filtered_clone_names_every_commit_it_cannot_read() {
         codes.contains(&"object_unreadable".to_owned()),
         "and the commits it excludes are named, not counted quietly: {codes:?}"
     );
+    let filter_remedy = remedy_for(&stats, "object_unreadable");
     assert!(
-        remedy_for(&stats, "object_unreadable").contains("git fsck"),
-        "the remedy is git's, because fathom neither fetches nor repairs"
+        filter_remedy.contains("filter") && filter_remedy.contains("never fetches"),
+        "the remedy is git's, because fathom neither fetches nor repairs: {filter_remedy}"
+    );
+    assert!(
+        !filter_remedy.contains("fsck"),
+        "and it is the filter's command, not a repair order: {filter_remedy}"
     );
 
     // The reader's own entry point says the same thing rather than "run fathom index", which is the advice

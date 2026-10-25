@@ -237,20 +237,18 @@ pub enum Unavailable {
 
 impl Unavailable {
     /// The suggested remedy, which is also what `--json` prints under `hint`.
+    ///
+    /// Delegated to [`Absence`] so that the case decided at the call site and the case read back out of a
+    /// rendered sentence (below) cannot be handed two different commands to type.
     #[must_use]
     pub fn hint(&self) -> &'static str {
-        match self {
-            Unavailable::ShallowBoundary { .. } => {
-                "the clone is shallow; run `git fetch --unshallow` (fathom never fetches for you)"
-            }
-            Unavailable::PartialClone { .. } => {
-                "the clone is filter-cloned; re-clone without `--filter`, or fetch the missing paths \
-                 with git (fathom never fetches for you)"
-            }
-            Unavailable::Missing => {
-                "the object is absent; `git fsck` says whether the repository is damaged"
-            }
-        }
+        Absence::of_unavailable(self).hint()
+    }
+
+    /// Which [`Absence`] this is.
+    #[must_use]
+    pub const fn absence(&self) -> Absence {
+        Absence::of_unavailable(self)
     }
 }
 
@@ -265,10 +263,97 @@ impl fmt::Display for Unavailable {
                     write!(f, "omitted by the clone filter {filter} of remote {remote}")
                 }
                 (Some(filter), None) => write!(f, "omitted by the clone filter {filter}"),
-                (None, Some(remote)) => write!(f, "promised by remote {remote} but not fetched"),
+                // Leads with [`Absence::MARKER_FILTER`] for the same reason every other arm leads with its
+                // marker: a reader holding only this sentence has to be able to tell which case it is.
+                (None, Some(remote)) => write!(
+                    f,
+                    "omitted by the clone filter, promised by remote {remote} but never fetched"
+                ),
                 (None, None) => f.write_str("omitted by a partial-clone filter"),
             },
             Unavailable::Missing => f.write_str("not present in the object database"),
+        }
+    }
+}
+
+/// Which of the three missing-object cases a sentence describes.
+///
+/// [`Unavailable`] is the classification made where the object was looked for; this is the same three
+/// cases seen from the *other* end, where only the rendered sentence has survived the trip. A reason
+/// travels as text — `fathom index` stores it against the commit in the index's `meta` rows, and `fathom
+/// stats`, `doctor`, `show` and `analyze` read it back long after the read that produced it — so a verb
+/// that wants to prescribe the right medicine has the sentence and nothing else.
+///
+/// That distinction is what `reco-b7o` is about: a shallow clone's missing objects were told to run
+/// `git fsck --full`, which is the remedy for damage and no remedy at all for a clone that stopped
+/// fetching at a graft. A graft costs one `git fetch --deepen`; a user who runs fsck on a healthy store
+/// finds nothing, concludes the index is broken, and files the thing they could have fixed in one command.
+///
+/// The markers are part of [`Unavailable`]'s `Display` contract, asserted by
+/// `every_missing_object_sentence_carries_its_marker` in this crate's tests, so a rewording that drops one
+/// fails there rather than silently turning every graft back into "damage".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Absence {
+    /// Behind a shallow graft: the clone was made with `--depth` and nothing past the graft was ever
+    /// fetched. Nothing is damaged.
+    Graft,
+    /// Left out by a clone filter (`--filter=blob:none` and friends): the objects were never fetched, on
+    /// purpose, and a promisor remote could supply them. Nothing is damaged.
+    Filter,
+    /// Nothing explains it: the store does not hold what the objects it does hold point at. This is the
+    /// only case where a repair tool is the thing to run.
+    Damage,
+}
+
+impl Absence {
+    /// What [`Unavailable::ShallowBoundary`] writes into its sentence, and nothing else writes.
+    pub const MARKER_GRAFT: &'static str = "shallow graft";
+    /// What [`Unavailable::PartialClone`] writes into its sentence, and nothing else writes.
+    pub const MARKER_FILTER: &'static str = "clone filter";
+
+    /// The case the [`Unavailable`] says it is.
+    #[must_use]
+    pub const fn of_unavailable(why: &Unavailable) -> Self {
+        match why {
+            Unavailable::ShallowBoundary { .. } => Absence::Graft,
+            Unavailable::PartialClone { .. } => Absence::Filter,
+            Unavailable::Missing => Absence::Damage,
+        }
+    }
+
+    /// The case a rendered reason sentence describes.
+    ///
+    /// Graft is asked first, and that order is [`crate::repo::Repository::why_unavailable`]'s own: a clone
+    /// can be shallow and filtered at once, and the graft is the sharper claim. A sentence with neither
+    /// marker is [`Absence::Damage`] — including a sentence about something that is not a missing object at
+    /// all, which is the safe default precisely because fsck is the only remedy that can help when nothing
+    /// else explains the hole.
+    #[must_use]
+    pub fn of(rendered: &str) -> Self {
+        if rendered.contains(Self::MARKER_GRAFT) {
+            Absence::Graft
+        } else if rendered.contains(Self::MARKER_FILTER) {
+            Absence::Filter
+        } else {
+            Absence::Damage
+        }
+    }
+
+    /// The thing to type, which is also what `--json` prints under `hint`.
+    #[must_use]
+    pub const fn hint(self) -> &'static str {
+        match self {
+            Absence::Graft => {
+                "the clone is shallow; deepen the fetch with `git fetch --deepen <n>` or take the whole \
+                 history with `git fetch --unshallow` (fathom never fetches for you)"
+            }
+            Absence::Filter => {
+                "the clone is filter-cloned; re-clone without `--filter`, or fetch the missing paths \
+                 with git (fathom never fetches for you)"
+            }
+            Absence::Damage => {
+                "the object is absent; `git fsck` says whether the repository is damaged"
+            }
         }
     }
 }
@@ -390,6 +475,90 @@ impl From<fathom_store::error::Error> for Error {
     fn from(value: fathom_store::error::Error) -> Self {
         Error::StoreWrite {
             reason: value.to_string(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Absence, Error, Oid, Unavailable};
+
+    /// Every sentence [`Unavailable`] writes must carry its own marker, and no other case's marker.
+    ///
+    /// The CLI reads a reason back as text (`Absence::of`) because that is all that survives the trip
+    /// through the index's `meta` rows; a rewording that drops a marker would silently reclassify every
+    /// shallow clone as a damaged repository, which is the defect `reco-b7o` is about. This test is the
+    /// contract that stops that happening quietly.
+    #[test]
+    fn every_missing_object_sentence_carries_its_marker() {
+        let graft = Unavailable::ShallowBoundary { at: Oid::ZERO };
+        let filters = [
+            Unavailable::PartialClone {
+                filter: Some("blob:none".to_owned()),
+                remote: Some("origin".to_owned()),
+            },
+            Unavailable::PartialClone {
+                filter: Some("tree:0".to_owned()),
+                remote: None,
+            },
+            Unavailable::PartialClone {
+                filter: None,
+                remote: Some("origin".to_owned()),
+            },
+            Unavailable::PartialClone {
+                filter: None,
+                remote: None,
+            },
+        ];
+        let missing = Unavailable::Missing;
+
+        let rendered = |why: &Unavailable| {
+            Error::ObjectUnavailable {
+                oid: Oid::ZERO,
+                why: why.clone(),
+            }
+            .to_string()
+        };
+
+        let graft_text = rendered(&graft);
+        assert!(
+            Absence::of(&graft_text) == Absence::Graft,
+            "a graft sentence says so: {graft_text}"
+        );
+        for why in &filters {
+            let text = rendered(why);
+            assert_eq!(
+                Absence::of(&text),
+                Absence::Filter,
+                "every spelling of a filtered clone names the filter: {text}"
+            );
+            assert!(
+                !text.contains(Absence::MARKER_GRAFT),
+                "a filter sentence must not read as a graft: {text}"
+            );
+        }
+        let missing_text = rendered(&missing);
+        assert_eq!(
+            Absence::of(&missing_text),
+            Absence::Damage,
+            "an object nothing explains is the only case left standing: {missing_text}"
+        );
+        for why in filters.iter().chain([&graft]) {
+            let text = rendered(why);
+            assert!(
+                !text.contains("not present in the object database"),
+                "an explained absence must not read as damage: {text}"
+            );
+        }
+
+        // The in-code classification and the one read back out of the sentence cannot disagree.
+        for why in filters.iter().chain([&graft]).chain([&missing]) {
+            assert_eq!(
+                Absence::of(&rendered(why)),
+                why.absence(),
+                "the sentence says what the variant says: {why}"
+            );
+            assert_eq!(why.hint(), why.absence().hint());
         }
     }
 }
