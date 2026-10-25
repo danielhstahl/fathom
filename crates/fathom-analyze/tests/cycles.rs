@@ -16,6 +16,7 @@
 
 use std::collections::BTreeMap;
 
+use fathom_analyze::cycles::flow::owning_module;
 use fathom_analyze::cycles::{
     self, Allowance, Change, Cycle, CycleDelta, Mode, Options, Ratchet, Tracker, View,
     normalize_key, parse_date,
@@ -266,6 +267,391 @@ fn a_dependency_on_an_unknown_endpoint_is_counted_not_invented() {
     assert_eq!(health.nodes_in_cycles, 2);
     assert!(!health.complete(), "and the answer says it is not complete");
     assert!(health.sentence().contains("not claimed complete"));
+}
+
+// ---------------------------------------------------------------------------
+// which files are one module (`reco-wk4`)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_module_and_its_own_directory_are_one_module_and_not_a_cycle() {
+    // `drift.rs` declares `mod detect;`, and `detect.rs` reads back up through `super::`. Rust puts a
+    // module's submodules in a directory named after the module, so both files *are* the module
+    // `drift`: what the store records as a dependency of a file on a file inside it is a module
+    // reading itself. Ten of the thirteen cycles `fathom ratchet` reported on Fathom's own source tree
+    // were this shape, and none of them was architecture.
+    let mut model = Model::default();
+    model.module("src/drift.rs", "l3");
+    model.module("src/drift/detect.rs", "l3");
+    model.edge(RowKind::Imports, "src/drift.rs", "src/drift/detect.rs");
+    model.edge(RowKind::Imports, "src/drift/detect.rs", "src/drift.rs");
+
+    let health = cycles::health(&model.graph(), &model.naming(), Options::default());
+    assert!(
+        detect(&model).is_empty(),
+        "a module is not in a cycle with itself"
+    );
+    assert_eq!(health.nodes_in_cycles, 0);
+    assert_eq!(
+        health.nodes, 1,
+        "and the view holds one module, not two files"
+    );
+}
+
+#[test]
+fn a_mod_rs_directory_is_one_module_too() {
+    // `scorecard/mod.rs` *is* the module `scorecard`, so `report.rs`, `dimension.rs` and `policy.rs`
+    // are inside it — which is the half of the fold that a `mod.rs`/`x.rs` pair does not show. Both
+    // loops here are real file-to-file edges; neither is a cycle between modules.
+    let mut model = Model::default();
+    for path in [
+        "src/scorecard/mod.rs",
+        "src/scorecard/report.rs",
+        "src/scorecard/dimension.rs",
+        "src/scorecard/policy.rs",
+    ] {
+        model.module(path, "");
+    }
+    model.edge(
+        RowKind::Imports,
+        "src/scorecard/mod.rs",
+        "src/scorecard/report.rs",
+    );
+    model.edge(
+        RowKind::Imports,
+        "src/scorecard/report.rs",
+        "src/scorecard/mod.rs",
+    );
+    model.edge(
+        RowKind::Imports,
+        "src/scorecard/dimension.rs",
+        "src/scorecard/policy.rs",
+    );
+    model.edge(
+        RowKind::Imports,
+        "src/scorecard/policy.rs",
+        "src/scorecard/dimension.rs",
+    );
+
+    assert!(
+        detect(&model).is_empty(),
+        "four files, one module, no cycle: {:?}",
+        detect(&model)
+    );
+}
+
+#[test]
+fn a_cycle_between_two_module_subtrees_is_named_by_the_modules() {
+    // The loop enters `graph` through `query.rs` and leaves it through `mod.rs`, so at file grain there
+    // is no path back at all and at module grain there is an obvious one: `graph` depends on `sink`
+    // and `sink` depends on `graph`. Both readings are of the same rows; the module one is the claim a
+    // reviewer can act on, and it names two members rather than three files.
+    let mut model = Model::default();
+    for path in ["src/graph/mod.rs", "src/graph/query.rs", "src/sink.rs"] {
+        model.module(path, "");
+    }
+    model.edge(RowKind::Imports, "src/graph/query.rs", "src/sink.rs");
+    model.edge(RowKind::Imports, "src/sink.rs", "src/graph/mod.rs");
+
+    let cycle = one(detect(&model));
+    assert_eq!(cycle.members, vec!["src/graph/mod.rs", "src/sink.rs"]);
+    assert_eq!(cycle.depth(), 2);
+    assert_eq!(cycle.key(), "src/graph/mod.rs|src/sink.rs");
+}
+
+#[test]
+fn a_crate_root_is_not_folded_into_the_directory_it_lives_in() {
+    // `src/lib.rs` is the crate root, not a module named `src`, and `src/` is not a directory named
+    // after it. Folding those would fold a whole crate into one node and end the architecture question
+    // with it, so the fold is keyed to the naming convention and not to "a file beside a directory".
+    let mut model = Model::default();
+    model.module("src/lib.rs", "");
+    model.module("src/widget.rs", "");
+    model.edge(RowKind::Imports, "src/lib.rs", "src/widget.rs");
+    model.edge(RowKind::Imports, "src/widget.rs", "src/lib.rs");
+
+    let cycle = one(detect(&model));
+    assert_eq!(cycle.members, vec!["src/lib.rs", "src/widget.rs"]);
+}
+
+#[test]
+fn the_layout_that_folds_is_only_the_rust_one() {
+    // [`owning_module`] is a claim about one language's file layout, so the languages that do not have
+    // that layout are the test. Every pair here is a real file pair from a fixture corpus under
+    // `spike/s1/corpus`, and every pair is a deliberate cycle there: none of them is a module reading
+    // itself, and none of them may be folded away.
+    fn present(paths: &[&str]) -> Option<String> {
+        owning_module(
+            &paths.iter().map(|path| (*path).to_string()).collect(),
+            paths[1],
+        )
+    }
+
+    // Both spellings of the Rust rule, from either side of it.
+    assert_eq!(
+        present(&["src/drift.rs", "src/drift/detect.rs"]).as_deref(),
+        Some("src/drift.rs"),
+        "`d/x/` is `d/x.rs`'s own directory"
+    );
+    assert_eq!(
+        present(&["src/drift/detect.rs", "src/drift.rs"]).as_deref(),
+        None,
+        "and the parent is inside nothing — it is the module the other one is inside of"
+    );
+    assert_eq!(
+        present(&["src/score/mod.rs", "src/score/report.rs"]).as_deref(),
+        Some("src/score/mod.rs"),
+        "`d/mod.rs` is the module named `d`"
+    );
+    assert_eq!(
+        present(&["src/score/report.rs", "src/score/mod.rs"]).as_deref(),
+        None,
+        "`d/mod.rs` is the module `d`; it is inside nothing"
+    );
+
+    // A module with no directory of its own, and a directory whose module this revision does not have.
+    assert_eq!(
+        present(&["src/one.rs", "src/two.rs"]).as_deref(),
+        None,
+        "siblings are two modules"
+    );
+    assert_eq!(
+        present(&["src/gone/a.rs", "src/gone/deleted.rs"]).as_deref(),
+        None,
+        "a directory whose module file is not in this revision folds into nothing, however the
+         dictionary remembers it"
+    );
+
+    // The corpora. `python/__init__.py` is the closest any of these gets to `mod.rs`, and it is still
+    // not one: a package importing its own module is the circular-import defect, not a layout artefact.
+    for (parent, child) in [
+        ("corpus/python/models.py", "corpus/python/service.py"),
+        ("corpus/python/__init__.py", "corpus/python/service.py"),
+        (
+            "corpus/java/com/acme/app/Shape.java",
+            "corpus/java/com/acme/app/Circle.java",
+        ),
+        ("corpus/typescript/shapes.ts", "corpus/typescript/legacy.ts"),
+        (
+            "corpus/go/pkg/shape/shape.go",
+            "corpus/go/pkg/shape/circle.go",
+        ),
+    ] {
+        assert_eq!(
+            present(&[parent, child]).as_deref(),
+            None,
+            "{parent} and {child} are two modules, not one"
+        );
+    }
+}
+
+#[test]
+fn a_directory_that_names_no_module_folds_into_nothing() {
+    // Python, Java, Go, TypeScript: a directory full of sibling modules is a namespace the language
+    // does not fold, and two siblings that import each other are two importable units closing a loop.
+    // In Python that loop is a runtime defect, not a layout artefact, and the deliberately cyclic
+    // fixture corpora under `spike/` are the case the ratchet is supposed to *keep* seeing.
+    let mut python = Model::default();
+    for path in [
+        "corpus/python/__init__.py",
+        "corpus/python/models.py",
+        "corpus/python/service.py",
+    ] {
+        python.module(path, "");
+    }
+    python.edge(
+        RowKind::Imports,
+        "corpus/python/models.py",
+        "corpus/python/service.py",
+    );
+    python.edge(
+        RowKind::Imports,
+        "corpus/python/service.py",
+        "corpus/python/models.py",
+    );
+    let cycle = one(detect(&python));
+    assert_eq!(
+        cycle.members,
+        vec!["corpus/python/models.py", "corpus/python/service.py"]
+    );
+
+    // A Go package directory does not fold either — and Go says so itself, package-granular.
+    let mut golang = Model::default();
+    golang.module("internal/shape/circle.go", "");
+    golang.module("internal/shape/shape.go", "");
+    golang.edge(
+        RowKind::Imports,
+        "internal/shape/circle.go",
+        "internal/shape/shape.go",
+    );
+    golang.edge(
+        RowKind::Imports,
+        "internal/shape/shape.go",
+        "internal/shape/circle.go",
+    );
+    assert_eq!(
+        detect(&golang).len(),
+        1,
+        "two files in one package, one cycle"
+    );
+
+    // And plain Rust siblings with no `mod.rs` and no namesake directory stay two modules.
+    let mut rust = Model::default();
+    rust.module("src/one.rs", "");
+    rust.module("src/two.rs", "");
+    rust.edge(RowKind::Imports, "src/one.rs", "src/two.rs");
+    rust.edge(RowKind::Imports, "src/two.rs", "src/one.rs");
+    assert_eq!(detect(&rust).len(), 1);
+}
+
+#[test]
+fn the_symbol_view_still_names_the_files_inside_the_fold() {
+    // The fold costs the module view a file's worth of resolution, and the opt-in symbol view is where
+    // that resolution still lives: the same rows, answered at the declaration that closes the loop.
+    let mut model = Model::default();
+    model.module("src/drift.rs", "");
+    model.module("src/drift/detect.rs", "");
+    model.symbol("src/drift.rs", "Drift");
+    model.symbol("src/drift/detect.rs", "Detect");
+    model.edge(
+        RowKind::Uses,
+        "src/drift.rs::Drift",
+        "src/drift/detect.rs::Detect",
+    );
+    model.edge(
+        RowKind::Uses,
+        "src/drift/detect.rs::Detect",
+        "src/drift.rs::Drift",
+    );
+
+    assert!(
+        detect(&model).is_empty(),
+        "at module level this is one module: {:?}",
+        detect(&model)
+    );
+    let view = Tracker::build(
+        &model.graph(),
+        &model.naming(),
+        Options {
+            view: View::Symbol,
+            ..Options::default()
+        },
+    );
+    let cycle = one(view.cycles());
+    assert_eq!(
+        cycle.members,
+        vec!["src/drift.rs::Drift", "src/drift/detect.rs::Detect"]
+    );
+}
+
+// ---------------------------------------------------------------------------
+// the fold across an episode: a module file moving re-derives it
+// ---------------------------------------------------------------------------
+
+#[test]
+fn moving_a_module_from_mod_rs_to_a_file_refolds_the_directory_it_owns() {
+    // `git mv src/graph/mod.rs src/graph.rs` is an ordinary Rust refactor, and it moves the fold for
+    // every other file under `src/graph/`: they were inside `graph` by way of its `mod.rs` and they
+    // are inside it by way of the file now. The folded adjacency has already forgotten which file each
+    // edge came from, so the only honest answer is to re-project the rows — and the check that the
+    // re-projection is the same answer a cold build gives is [`Tracker::verify`].
+    let mut before = Model::default();
+    for path in ["src/graph/mod.rs", "src/graph/query.rs", "src/sink.rs"] {
+        before.module(path, "");
+    }
+    before.edge(RowKind::Imports, "src/graph/query.rs", "src/sink.rs");
+    before.edge(RowKind::Imports, "src/sink.rs", "src/graph/mod.rs");
+
+    let mut after = before.clone_shapes();
+    after.drop_module("src/graph/mod.rs");
+    after.module("src/graph.rs", "");
+    after.edge(RowKind::Imports, "src/sink.rs", "src/graph.rs");
+
+    assert_eq!(
+        one(detect(&before)).members,
+        ["src/graph/mod.rs", "src/sink.rs"]
+    );
+    assert_eq!(one(detect(&after)).members, ["src/graph.rs", "src/sink.rs"]);
+
+    let mut tracker = tracker(&before, Options::default());
+    let ops = after.added_against(&before.graph());
+    let report = tracker.episode(&ops, &after.naming(), &Ratchet::empty(), now());
+    assert!(
+        tracker.verify(&after.graph(), &after.naming()),
+        "the refolded partition is the partition a cold rebuild computes"
+    );
+    let change = report
+        .delta
+        .changed
+        .first()
+        .unwrap_or_else(|| panic!("the cycle moved, it did not end: {:?}", report.delta));
+    assert_eq!(change.was.members, ["src/graph/mod.rs", "src/sink.rs"]);
+    assert_eq!(change.now.members, ["src/graph.rs", "src/sink.rs"]);
+    assert!(
+        report.delta.introduced.is_empty() && report.delta.resolved.is_empty(),
+        "one cycle renamed, not one cycle paid off and another taken out"
+    );
+}
+
+#[test]
+fn a_module_file_removed_from_in_front_of_its_directory_refolds_too() {
+    // The other direction, and the one with no replacement arriving: `drift.rs` goes and
+    // `drift/detect.rs` becomes its own module. A fold that kept routing the survivors through the
+    // deleted file would print a path to something the tree no longer has.
+    let mut before = Model::default();
+    for path in ["src/drift.rs", "src/drift/detect.rs", "src/sink.rs"] {
+        before.module(path, "");
+    }
+    before.edge(RowKind::Imports, "src/drift/detect.rs", "src/sink.rs");
+    before.edge(RowKind::Imports, "src/sink.rs", "src/drift.rs");
+
+    let mut after = before.clone_shapes();
+    after.drop_module("src/drift.rs");
+    after.edge(RowKind::Imports, "src/sink.rs", "src/drift/detect.rs");
+
+    assert_eq!(
+        one(detect(&after)).members,
+        ["src/drift/detect.rs", "src/sink.rs"]
+    );
+
+    let mut tracker = tracker(&before, Options::default());
+    let ops = after.added_against(&before.graph());
+    let report = tracker.episode(&ops, &after.naming(), &Ratchet::empty(), now());
+    assert!(tracker.verify(&after.graph(), &after.naming()));
+    let change = report
+        .delta
+        .changed
+        .first()
+        .unwrap_or_else(|| panic!("the cycle moved down a level: {:?}", report.delta));
+    assert_eq!(change.now.members, ["src/drift/detect.rs", "src/sink.rs"]);
+}
+
+#[test]
+fn a_new_submodule_under_a_module_that_already_exists_is_quiet() {
+    // Growing a module is not growing a cycle: the member set does not move when a file appears inside
+    // a member, which is the whole point of keying a cycle on its modules rather than its files.
+    let mut before = Model::default();
+    for path in ["src/drift.rs", "src/sink.rs"] {
+        before.module(path, "");
+    }
+    before.edge(RowKind::Imports, "src/drift.rs", "src/sink.rs");
+    before.edge(RowKind::Imports, "src/sink.rs", "src/drift.rs");
+
+    let mut after = before.clone_shapes();
+    after.module("src/drift/detect.rs", "");
+    after.drop_edge(RowKind::Imports, "src/drift.rs", "src/sink.rs");
+    after.edge(RowKind::Imports, "src/drift/detect.rs", "src/sink.rs");
+
+    let mut tracker = tracker(&before, Options::default());
+    let ops = after.added_against(&before.graph());
+    let report = tracker.episode(&ops, &after.naming(), &Ratchet::empty(), now());
+    assert!(tracker.verify(&after.graph(), &after.naming()));
+    assert!(
+        report.delta.is_empty(),
+        "the same cycle, one member bigger on the inside: {:?}",
+        report.delta.sentence()
+    );
+    assert_eq!(report.delta.unchanged, 1);
 }
 
 // ---------------------------------------------------------------------------

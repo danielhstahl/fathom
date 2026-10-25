@@ -36,7 +36,8 @@ pub const DEFAULT_MAX_CHAIN_WALK: usize = 32;
 pub const DEFAULT_PATH_MAX_HOPS: usize = 6;
 
 /// Directory names excluded from the graph entirely. `graph.ignored_dirs`, and the same default the
-/// config schema ships.
+/// config schema ships. Matched against the directories a path runs through, not against a file's own
+/// name — see [`GraphPolicy::ignores`].
 pub const DEFAULT_IGNORED_DIRS: [&str; 1] = ["node_modules"];
 
 /// How many materialised revision graphs the lane may hold, in MiB. `graph.snapshot_cache_mib`, and
@@ -276,12 +277,28 @@ impl GraphPolicy {
     /// A name, not a prefix: `node_modules` matches `web/node_modules/x.js` at any depth, which is
     /// what "excluded from the graph entirely" means for a vendored tree.
     #[must_use]
+    /// Whether a path runs through one of the ignored directories.
+    ///
+    /// The names are matched against the *directories* the path runs through, never against the file's
+    /// own name: `node_modules` excludes `node_modules/left-pad/index.js` and does not exclude
+    /// `src/search/corpus.rs` because somebody configured `corpus`. A knob whose documented job is
+    /// "directory names" that also eats a file whose basename happens to start with one is the worst
+    /// kind of config surprise — it loses a real module of real architecture, quietly
+    /// (`reco-wk4`, which scoped this repository's fixture corpora out and had to keep
+    /// `src/search/corpus.rs` in the graph to be honest).
     pub fn ignores(&self, path: &str) -> bool {
-        path.split('/').any(|segment| {
-            self.ignored_dirs
-                .iter()
-                .any(|dir| dir == segment || segment.starts_with(dir.as_str()))
-        })
+        // Everything but the last segment: the last one is the file.
+        let dirs = match path.rfind('/') {
+            Some(at) => &path[..at],
+            None => return false,
+        };
+        dirs.split('/')
+            .filter(|segment| !segment.is_empty())
+            .any(|segment| {
+                self.ignored_dirs
+                    .iter()
+                    .any(|dir| dir == segment || segment.starts_with(dir.as_str()))
+            })
     }
 
     /// What the two chain knobs imply for each other, as notices.

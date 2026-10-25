@@ -9,6 +9,8 @@
 //! to. The allowance every test file in this workspace states for itself.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use std::path::Path;
+
 use fathom_analyze::structure::{
     Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
     Structure, Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, Visibility,
@@ -661,6 +663,10 @@ fn the_policy_reads_its_config_and_notes_what_it_refused() {
         policy.ignores("node_modules/x.js"),
         "and the built-in list is extended, not replaced"
     );
+    assert!(
+        !policy.ignores("src/vendor.rs"),
+        "a directory name is a directory: the file beside it is not in it"
+    );
 }
 
 #[test]
@@ -747,6 +753,80 @@ fn a_policy_whose_walk_cap_exceeds_the_anchor_period_says_so() {
         policy.notices().iter().any(|n| n.contains("a lost anchor")),
         "the tripwire would have been switched off, and that is worth printing"
     );
+}
+
+/// Every file under `dir`, repo-root-relative and slash-separated, the way the graph spells a path.
+fn files_under(root: &Path, dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).expect("a readable directory") {
+            let path = entry.expect("a readable entry").path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if let Ok(relative) = path.strip_prefix(root) {
+                out.push(relative.to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn the_repository_keeps_its_fixture_corpora_out_of_the_graph() {
+    // Every fixture corpus in this repository lives under a directory named `corpus`: `structure/corpus`
+    // and the archived `spike/s1/corpus` are six small trees written to be deliberately full of cycles so
+    // that a cross-language extractor would have something to measure against
+    // (`docs/spikes/s1-cross-language-extraction.md`). They are tracked files in every commit, so an
+    // unscoped graph reads `Circle.java → Shape.java` as a violation of an architecture nobody is trying
+    // to build and the ratchet spends its findings on it — 3 of the 13 that `reco-wk4` was filed about.
+    // The repository says otherwise in its own `fathom.toml`, and this is the sentence that stops rotting:
+    // the config CI validates is read from the file and applied to every path in every corpus.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|crates| crates.parent())
+        .expect("the workspace root is above the crate directory");
+    let text = std::fs::read_to_string(root.join("fathom.toml"))
+        .expect("the repository has a fathom.toml");
+    let (policy, notices) = graph::GraphPolicy::from_repo_config_text(&text);
+    assert!(
+        notices.is_empty(),
+        "the repository's own [graph] table parses: {notices:?}"
+    );
+
+    let mut corpus = Vec::new();
+    for name in [
+        "crates/fathom-analyze/structure/corpus",
+        "crates/fathom-analyze/spike/s1/corpus",
+        "crates/fathom-analyze/api/corpus",
+    ] {
+        corpus.extend(files_under(root, &root.join(name)));
+    }
+    assert!(
+        corpus.len() > 100,
+        "the fixture corpora are still here to scope out: {} files",
+        corpus.len()
+    );
+    for path in &corpus {
+        assert!(
+            policy.ignores(path),
+            "{path} is fixture data and must not reach the graph"
+        );
+    }
+
+    // The control, in two halves. A config that scoped out more than it meant to would pass the loop
+    // above — and the sharpest case is the file called `corpus.rs`, which is a module of real
+    // architecture and must survive a knob whose job is directory names.
+    for path in [
+        "crates/fathom-analyze/src/cycles/flow.rs",
+        "crates/fathom-analyze/src/search/corpus.rs",
+        "crates/fathom-cli/src/main.rs",
+        // …including the harness that *reads* the corpora: it is code, the corpora are data.
+        "crates/fathom-analyze/examples/s1_spike.rs",
+    ] {
+        assert!(!policy.ignores(path), "{path} is architecture");
+    }
 }
 
 /// A naming view over a build's dictionary, as the store would hand it back.

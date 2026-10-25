@@ -17,6 +17,55 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A module and its own directory were counted as a cycle (`reco-wk4`)
+
+`fathom ratchet` on this repository's own source tree reported 13 uncovered cycle violations with an empty
+ledger, and 10 of them were a module reading itself: `events.rs ↔ events/schema.rs`,
+`drift.rs ↔ drift/detect.rs`, `scorecard/mod.rs ↔ scorecard/report.rs`. Rust gives a module two spellings and
+both put its submodules in a directory named after it, so `use super::detect::…` inside `drift.rs` arrives at
+the store as a dependency of a file on a file inside itself. The store keys a row on the file because the file
+is the finest grain the store can hold, not because a file is the unit of architecture — and a cycle between
+`drift.rs` and `drift/detect.rs` is a violation no reviewer can go and fix, in a gate whose whole job is being
+believed. The other 3 were fixture corpora: `Circle.java ↔ Shape.java` and friends under `structure/corpus`,
+deliberately cyclic, tracked in every commit, and nobody's architecture.
+
+* **A module owns the directory named after it.** `owning_module` in
+    [`cycles/flow.rs`](crates/fathom-analyze/src/cycles/flow.rs) folds `d/x/` into `d/x.rs` and `d/` into
+    `d/mod.rs`, so a row from a module into its own
+    subtree is an internal edge — the same fold the symbol view already does, one level up, and the language's
+    rather than an invented one. Three things keep it honest about its reach: it fires only when the module file
+    is a module *of this revision* (the dictionary remembers every file the repository ever had, and a live
+    directory must not fold under a module deleted last month), it never fires for `lib.rs` and `main.rs`
+    because a crate root is not a module named `src`, and it never fires for a Python package, a Java package,
+    a Go package or a TypeScript barrel, where the directory is a namespace the language does not fold and two
+    siblings importing each other really are two importable units closing a loop. Go keeps its own machinery —
+    package-granular claims are still `package_of`'s business.
+* **The fold is re-derived, not frozen.** A maintained flow has already forgotten which file a folded edge came
+    from, so `git mv src/graph/mod.rs src/graph.rs` — an ordinary refactor — cannot be answered by re-keying
+    edges: the flow keeps its dependency rows at graph grain and re-projects them when a module arriving or
+    leaving moves the fold for somebody else, which is one view rebuilt, and only by a revision that moves a
+    module file. Every scripted episode in `tests/cycles.rs` checks the maintained partition against a cold
+    rebuild, and the two refactors that move the fold are scripted there.
+* **The grain the module view gives up is demoted, not lost.** A loop that stays inside one module is not an
+    architecture claim, and the opt-in symbol view still names the declarations that close it — same rows,
+    finer answer, priced as it always was.
+* **This repository's fixture corpora are out of the graph, by name.** `graph.ignored_dirs` is the knob and
+    `fathom.toml` now names `corpus`, which is what every fixture corpus here is called. That needed a fix
+    first: `ignores()` tested *every* path segment, including the file's own name, so `corpus` would have
+    dropped the real module `src/search/corpus.rs` on the way to scoping out a fixture — a directory knob that
+    eats a file is the config surprise this knob should never be able to pull. It matches directories now, and
+    `tests/graph.rs` reads this repository's own `fathom.toml` and asserts both halves: every file of the three
+    corpora is out, and `src/search/corpus.rs`, `examples/s1_spike.rs` and the shipped crates are in.
+* **A clean tree is a clean gate.** `fathom index --refresh && fathom ratchet` reports `0 violation(s) at
+    <oid>: 0 cycle(s), 0 layering` and exits 0; before, it was 13 uncovered with nothing to allow them by.
+    A ledger that names a file a fold has since folded away is a stale allowance and the automatic tightening
+    deletes it, which is the right outcome but a silent one: a repository with a `ratchet.toml` should re-cut it
+    after this. None had one.
+
+[docs/concepts/cycle-detection.md](docs/concepts/cycle-detection.md) has the fold next to the projection it
+belongs to, and [docs/concepts/architecture-graph.md](docs/concepts/architecture-graph.md) says what
+`graph.ignored_dirs` matches.
+
 ### The working-tree walk left the crate that is not allowed to walk it (`reco-p41`)
 
 ADR-002 §3 makes `fathom-analyze` IO-free and names its exemptions exactly — `src/ledger/`, `src/notes/`,

@@ -71,6 +71,22 @@ when asked for, the same tracker maintains both and the episode's report carries
 module answer. It is not free and it is not on by default: it roughly doubles the maintained adjacency to
 answer a question only some surfaces ask.
 
+One fold happens before either view, and it belongs to the language rather than to the tool: **a Rust module
+owns the directory named after it**. `drift.rs` *is* the module `drift`, and so is every file under `drift/`;
+`scorecard/mod.rs` is the other spelling of the same rule. The store keys a row on the file, which is the
+finest grain the store can hold, so `use super::detect::…` inside `drift.rs` arrives as a dependency of
+`drift.rs` on `drift/detect.rs` — one module reading itself, wearing two file names, and drawn as a cycle it
+is an architecture violation the language does not have. On a real Rust tree that is the common case and not
+the curiosity: it was 10 of the 13 cycles this repository's own ratchet reported, and none of the 10 had a
+fix a reviewer could carry out. So the module view folds a module's own directory into the module,
+and three things keep the fold honest about its reach: it fires only when the module file is a module *of this
+revision* (the store's dictionary remembers files the tree no longer has), it never fires for `lib.rs` and
+`main.rs`, because a crate root is not a module named `src`, and it never fires for a Python package, a Java
+package, a Go package or a TypeScript barrel, where the directory is a namespace the language does not fold
+and two siblings importing each other really are two importable units closing a loop. The grain the fold
+gives up is not lost, only demoted: the opt-in symbol view still names the declarations that close a loop
+inside one module.
+
 Two claims are tracked separately from the graph's own edge kinds, because both would otherwise be lies:
 
 - **package granularity.** Go dependency facts are package-to-package (

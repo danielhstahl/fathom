@@ -17,6 +17,18 @@
 //! amounts of work rather than different amounts of code: the same strongly-connected-component
 //! machinery runs over whichever one was asked for ([`View::Symbol`] is the identity projection).
 //!
+//! # A module owns the directory named after it
+//!
+//! One step further than "fold the symbols into their file": in Rust, `drift.rs` *is* the module
+//! `drift`, and so is every file under `drift/`, because the language puts a module's submodules in a
+//! directory named after it (`scorecard/mod.rs` is the other spelling of the same rule). The store
+//! keys a row on the file, so `use super::detect::…` inside `drift.rs` arrives as a dependency of
+//! `drift.rs` on `drift/detect.rs` — one module depending on itself under two names — and a cycle
+//! drawn between the two is an architecture violation the language does not have. [`owning_module`]
+//! folds a module's own directory into the module, which is what makes the fold in [`Flow`] the
+//! language's and not an invented granularity; it is keyed to the Rust layout, and the function's own
+//! doc says which layouts it declines to fold and why.
+//!
 //! # A cycle says how fine its own claim is
 //!
 //! Spike `s1`'s finding 4, in the ticket's own words: *a cycle drawn between Go files is a cycle the
@@ -36,7 +48,7 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
-use crate::graph::model::{Graph, Op, RowKind};
+use crate::graph::model::{Graph, Op, Row, RowKind};
 use crate::graph::query::{Naming, module_of};
 
 /// Which graph a cycle question is asked against.
@@ -129,6 +141,109 @@ pub fn package_of(path: &str) -> &str {
     }
 }
 
+/// The directory basename a module's own directory would have, and its parent.
+///
+/// `src/drift/detect.rs` splits into `("src/drift", "detect")`; a repository-root file splits into
+/// `("", "main")`.
+fn split_path(path: &str) -> (&str, &str) {
+    match path.rfind('/') {
+        Some(at) => (&path[..at], &path[at + 1..]),
+        None => ("", path),
+    }
+}
+
+/// The module a module path is *inside*, in the sense a reader means by "module", or `None` when the
+/// path is its own module.
+///
+/// Rust gives a module two layouts and both of them put the module's submodules in a directory named
+/// after it: `d/x.rs` is module `d::x`, and so is everything under `d/x/`; `d/mod.rs` is module `d`,
+/// and so is everything under `d/`. The extractor keys a row on the file, which is the finest grain
+/// the store can hold, so `use super::detect::…` in `drift.rs` arrives as a dependency of `drift.rs`
+/// on `drift/detect.rs` — a module depending on itself, wearing two file names. Printed as a cycle
+/// it is an architecture violation the language does not have, and on a real repository it is the
+/// common case rather than the curiosity: every one of the ten Rust cycles in the 13 that `fathom
+/// ratchet` reported on Fathom's own source tree was this (`reco-wk4`).
+///
+/// So the module view folds a module's own directory into the module: the answer is drawn between
+/// *modules*, and this is the function that says which files are one module. Three things keep it
+/// honest about its own reach:
+///
+/// * It fires only where the layout asserts the relationship — `d/x/` folds into `d/x.rs` only when
+///   `d/x.rs` is a module of this revision, and `d/` folds into `d/mod.rs` only when it is. `present`
+///   is that revision's module paths, not the store's dictionary, which remembers every file the
+///   repository ever had: folding a live directory under a module that was deleted three months ago
+///   is a wrong answer that prints as a plausible file name.
+/// * It does not fire for `lib.rs` and `main.rs`. Those are crate roots, and `src/` is not a module
+///   named `src` — folding them would fold a whole crate into one node and end the architecture
+///   question with it.
+/// * It does not fire for a Python package's `__init__.py`, a Java package directory, a Go package
+///   directory or a TypeScript barrel. There the directory is a namespace the language does not fold:
+///   two sibling modules that import each other are two importable units closing a loop, and in
+///   Python a circular import is a runtime defect rather than a layout artefact. (Go is the
+///   exception with its own machinery: it records dependency facts package-granular, which is
+///   [`package_of`]'s business.) A repository whose non-Rust cycles are fixtures says so on the
+///   ratchet ledger, which is what a ledger is for.
+///
+/// The fine grain the fold gives up is not lost, only demoted: a loop that stays inside one module is
+/// not an architecture claim, and the opt-in [`View::Symbol`] still names the declarations that close
+/// it.
+#[must_use]
+pub fn owning_module(present: &BTreeSet<String>, path: &str) -> Option<String> {
+    let (dir, base) = split_path(path);
+    // The Rust layout only, and `.rs` is how the corpus spells it.
+    if !base.ends_with(".rs") {
+        return None;
+    }
+    let mut dir = dir;
+    loop {
+        // `d/mod.rs` *is* the module named `d`, so everything under `d/` is inside it.
+        let declared = if dir.is_empty() {
+            "mod.rs".to_string()
+        } else {
+            format!("{dir}/mod.rs")
+        };
+        if declared != path && present.contains(&declared) {
+            return Some(declared);
+        }
+        // …and `d/` is a module's own directory when `d.rs` sits beside it in the parent.
+        let (parent, name) = split_path(dir);
+        if dir.is_empty() || name.is_empty() {
+            return None;
+        }
+        let namesake = if parent.is_empty() {
+            format!("{name}.rs")
+        } else {
+            format!("{parent}/{name}.rs")
+        };
+        if namesake != path && present.contains(&namesake) {
+            return Some(namesake);
+        }
+        dir = parent;
+    }
+}
+
+/// The directory a module of this layout owns: the paths under it are inside the module.
+///
+/// `d/x.rs` owns `d/x/`, and `d/mod.rs` owns `d/`. `None` for a path that owns no directory, which is
+/// what makes [`owning_module`] a lookup rather than a guess.
+#[must_use]
+fn owned_directory(path: &str) -> Option<String> {
+    let (dir, base) = split_path(path);
+    if base == "mod.rs" {
+        return if dir.is_empty() {
+            None
+        } else {
+            Some(format!("{dir}/"))
+        };
+    }
+    let stem = base.strip_suffix(".rs")?;
+    Some(if dir.is_empty() {
+        format!("{stem}/")
+    } else {
+        format!("{dir}/{stem}/")
+    })
+}
+
 /// The dependency adjacency of one revision, in one view, with the bookkeeping an update needs.
 ///
 /// Built once from a materialised graph and then moved forward by row ops, which is what makes "the
@@ -159,9 +274,18 @@ pub struct Flow {
     /// rather than a counter, because a module with forty rows to one unknown endpoint is one unknown
     /// endpoint, not forty, and `unnamed()` is a claim about the graph's vocabulary.
     refused: BTreeSet<i64>,
-    /// Symbol-level edges that collapsed into a module's own self-edge. Not cycles: a module that
-    /// uses its own symbol has not gone round a loop.
+    /// Edges that collapsed into one module's own self-edge: a symbol using its own module, and a
+    /// module file reading a submodule of itself ([`owning_module`]). Not cycles — a module that uses
+    /// itself has not gone round a loop.
     internal: usize,
+    /// The module paths this revision has, which is what decides whether a directory is a module's own
+    /// ([`owning_module`]). The revision's, not the dictionary's: the dictionary keeps every file the
+    /// repository ever had, and a live directory must not fold under a module that was deleted last
+    /// month.
+    module_paths: BTreeSet<String>,
+    /// The dependency rows this adjacency was built from, at graph grain, so the fold can be re-derived
+    /// when the module set moves. Module view only — the symbol view folds nothing, so it pays nothing.
+    source_rows: BTreeSet<Row>,
     /// The projection cache: graph node id → the node this view asks about, or `None` when the
     /// endpoint has no name at all. Negative results are cached too, because a build walks the same
     /// dangling endpoint many times.
@@ -177,8 +301,21 @@ impl Flow {
             ..Default::default()
         };
         // Nodes first, so a module with no edges is still a node it can be asked about: the graph's
-        // own rule is that an unreadable file is a bare node rather than an absence.
-        for id in graph.nodes().keys().copied() {
+        // own rule is that an unreadable file is a bare node rather than an absence. The module paths
+        // go in in their own pass, before any edge or any projection, because the fold is decided from
+        // the layout and the layout is only complete once every node has been noted: interleaving the
+        // two would make a module's owner depend on the order the dictionary happened to mint.
+        if view == View::Module {
+            for (&id, &kind) in graph.nodes() {
+                if kind != RowKind::Module {
+                    continue;
+                }
+                if let Some(key) = naming.name(id) {
+                    flow.module_paths.insert(module_of(key));
+                }
+            }
+        }
+        for &id in graph.nodes().keys() {
             if let Some(node) = flow.project(naming, id) {
                 flow.declared.insert(node);
                 flow.nodes.insert(node);
@@ -461,6 +598,7 @@ impl Flow {
     fn apply_one(&mut self, op: Op, naming: &Naming) {
         let (kind, src, dst) = op.row;
         if kind.is_node() {
+            self.note_module(kind, src, op.add, naming);
             if let Some(node) = self.project(naming, src) {
                 if op.add {
                     self.declared.insert(node);
@@ -475,6 +613,20 @@ impl Flow {
         }
         if !kind.is_dependency() {
             return;
+        }
+        if self.view == View::Module {
+            // Keep the row at graph grain. The fold is a function of the row set and the module set
+            // together, so keeping the rows is what makes [`Flow::reproject`] possible when the module
+            // set moves — and keeping them only in the view that folds is what keeps the symbol view
+            // at the cost it had before.
+            match op.add {
+                true => {
+                    self.source_rows.insert(op.row);
+                }
+                false => {
+                    self.source_rows.remove(&op.row);
+                }
+            }
         }
         if src == dst {
             // A row that points at its own subject. Projected it is still a one-node loop in either
@@ -573,6 +725,80 @@ impl Flow {
         self.apply_one(Op::add((kind, src, dst)), naming);
     }
 
+    /// Note that a module arrived or left, and re-derive the fold if that moves it for anything else.
+    ///
+    /// The only event that can change which module a file is inside is a module file arriving or going
+    /// away, and the only ones that matter are the ones that own a directory somebody else is standing
+    /// in: `d/x.rs` arriving next to `d/x/`, or `d/mod.rs` going out from under `d/`. Everything else
+    /// about the adjacency is untouched, so the rebuild is gated on exactly that question.
+    fn note_module(&mut self, kind: RowKind, id: i64, add: bool, naming: &Naming) {
+        if self.view != View::Module || kind != RowKind::Module {
+            return;
+        }
+        let Some(path) = naming.name(id).map(module_of) else {
+            return;
+        };
+        let moves = self.fold_moves(&path);
+        if add {
+            self.module_paths.insert(path);
+        } else {
+            self.module_paths.remove(&path);
+        }
+        if moves {
+            self.reproject(naming);
+        }
+    }
+
+    /// Whether the directory this module owns holds another present module — in which case arriving or
+    /// departing changes what that one is inside of.
+    #[must_use]
+    fn fold_moves(&self, path: &str) -> bool {
+        let Some(prefix) = owned_directory(path) else {
+            return false;
+        };
+        self.module_paths
+            .range(prefix.clone()..)
+            .take_while(|other| other.starts_with(prefix.as_str()))
+            .any(|other| other != path)
+    }
+
+    /// Re-derive the whole folded adjacency from the rows this flow holds.
+    ///
+    /// The fold is a function of two things — the dependency rows and which module files exist — and
+    /// only the second one ever moves under a maintained flow. When it does, re-projecting the rows is
+    /// the only answer that can be right: the adjacency has already forgotten which file each folded
+    /// edge came from, so there is nothing to re-key with. That is a rebuild of one view, paid only by
+    /// a revision that moves a module in or out of a directory, which is the same trade [`crate::cycles::scc`]
+    /// makes everywhere else — an honest worst case rather than a per-edge tax or a wrong answer.
+    fn reproject(&mut self, naming: &Naming) {
+        let rows = std::mem::take(&mut self.source_rows);
+        let paths: Vec<String> = self.module_paths.iter().cloned().collect();
+        self.succ.clear();
+        self.pred.clear();
+        self.package.clear();
+        self.unknown.clear();
+        self.self_loops.clear();
+        self.nodes.clear();
+        self.declared.clear();
+        self.refused.clear();
+        self.internal = 0;
+        // The cache is a projection of the module set, and the module set just moved. Keeping it is a
+        // fold that froze at build time and then quietly disagreed with a cold rebuild.
+        self.projection.clear();
+        for path in paths {
+            let Some(id) = naming.id(&path) else {
+                continue;
+            };
+            if let Some(node) = self.project(naming, id) {
+                self.declared.insert(node);
+                self.nodes.insert(node);
+            }
+        }
+        for row in rows {
+            self.apply_one(Op::add(row), naming);
+        }
+    }
+
     /// The view's node a graph node stands for, or `None` when it has no name.
     ///
     /// The cache holds the refusals as well as the answers, and the refusal is what makes
@@ -596,7 +822,12 @@ impl Flow {
             View::Module => {
                 let key = naming.name(id)?;
                 let path = module_of(key);
-                Some(naming.id(&path).unwrap_or(id))
+                // One step more than "the module that owns this symbol": a module and the directory
+                // named after it are one node too ([`owning_module`]), which is the difference between
+                // a cycle and a module talking to itself.
+                let owner =
+                    owning_module(&self.module_paths, &path).unwrap_or_else(|| path.to_string());
+                Some(naming.id(&owner).unwrap_or(id))
             }
         }
     }
@@ -620,6 +851,8 @@ impl Default for Flow {
             self_loops: BTreeSet::new(),
             refused: BTreeSet::new(),
             internal: 0,
+            module_paths: BTreeSet::new(),
+            source_rows: BTreeSet::new(),
             projection: BTreeMap::new(),
         }
     }

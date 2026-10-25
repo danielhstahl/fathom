@@ -34,6 +34,13 @@
 //! cycle inside the component as the offender path, with [`cycle::Cycle::exact`] saying whether it is
 //! proven minimal or minimal-through-a-canonical-member.
 //!
+//! A member is a **module**, and in Rust a module owns the directory named after it: `drift.rs` and
+//! everything under `drift/` are one member, and so are `scorecard/mod.rs` and everything under
+//! `scorecard/`. Without that fold a third of a real repository's "cycles" are a parent module reading
+//! its own submodule — `reco-wk4` found 10 of its 13 that way — and the fine grain the fold gives up is
+//! not gone, only moved: the opt-in [`flow::View::Symbol`] still names the declarations that close the
+//! loop, and [`flow::owning_module`] is the function that says which files are one module.
+//!
 //! # The granularity, because `s1` finding 4 is a shape requirement
 //!
 //! The checkpoint on this ticket is unambiguous: Go dependency facts are package-to-package, never

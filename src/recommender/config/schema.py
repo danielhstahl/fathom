@@ -1056,7 +1056,10 @@ KEY_LIST: list[Key] = [
        ticket="e2.3"),
     _k(path="graph.ignored_dirs", kind="string_list", merge="extend",
        default=["node_modules"],
-       doc="Directory names excluded from the structure/dependency graph entirely.",
+       doc="Directory names excluded from the structure/dependency graph entirely. Matched against "
+           "the directories a path runs through, never against the file's own name: `corpus` scopes "
+           "out `structure/corpus/python/models.py` and leaves the module `src/search/corpus.rs` in "
+           "the graph.",
        analyzer="graph.build", ticket="e3.2"),
     _k(path="graph.snapshot_cache_mib", kind="integer", default=32, minimum=1,
        units="MiB",

@@ -37,7 +37,10 @@ layering question is answered from the delta without rebuilding anything.
 
 ### What is left out, on purpose
 
-`node_modules` and friends (`graph.ignored_dirs`) are not in the graph at all. A file whose grammar is
+`node_modules` and friends (`graph.ignored_dirs`) are not in the graph at all — the names are matched
+against the directories a path runs through, never against the file's own name, which is how a
+repository can scope its own fixture corpora out of the architecture view without also losing the module
+called `corpus.rs`. A file whose grammar is
 unavailable is in it as a bare node with no edges — dropping it would make its dependents look like they
 depend on nothing, which is the wrong kind of quiet. Private declarations are not nodes: the graph is
 architecture, not an index of the source.

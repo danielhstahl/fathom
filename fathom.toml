@@ -131,7 +131,17 @@ patterns = [".github/workflows/**", "benchmarks/budgets.json", "schemas/**", ".p
 # `repo fathom.toml` rather than `built-in default`.
 
 [graph]
-ignored_dirs = ["node_modules", "__pycache__"]
+# Directories that are not this repository's architecture. `node_modules` and `__pycache__` are other
+# people's build output. `corpus` is this repository's own: every fixture corpus in the tree is a
+# directory by that name — `structure/corpus` and the archived `spike/s1/corpus` are six small trees
+# written to be deliberately full of cycles so a cross-language extractor would have something to
+# measure against (`docs/spikes/s1-cross-language-extraction.md`), and `api/corpus`, `calibration/g3`
+# and `fuzz/corpus` are fixtures of the same kind. They are tracked files in every commit, so an
+# unscoped graph reads `Circle.java → Shape.java` as a violation of an architecture nobody is trying to
+# build, and the ratchet spends its findings on it — 3 of the 13 that `reco-wk4` was filed about. The
+# name matches directories a path runs through, so the module `src/search/corpus.rs` stays in the graph;
+# `tests/graph.rs` reads this file and checks both halves of that sentence.
+ignored_dirs = ["node_modules", "__pycache__", "corpus"]
 # The ceiling on revision graphs one graph lane keeps materialised (`reco-93w`). Eviction is
 # lossless — a snapshot is a fold of the `graph_delta` rows the store already has — so what this
 # buys is not re-walking the anchor chain: ~0.4 ms for a delta apply against ~205 ms for a

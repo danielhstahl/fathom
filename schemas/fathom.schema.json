@@ -1994,7 +1994,7 @@
           "default": [
             "node_modules"
           ],
-          "description": "Directory names excluded from the structure/dependency graph entirely.",
+          "description": "Directory names excluded from the structure/dependency graph entirely. Matched against the directories a path runs through, never against the file's own name: `corpus` scopes out `structure/corpus/python/models.py` and leaves the module `src/search/corpus.rs` in the graph.",
           "items": {
             "type": "string"
           },
