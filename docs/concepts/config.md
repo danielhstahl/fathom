@@ -178,7 +178,7 @@ warning[unknown_env]: ignoring $FATHOM_RISK__TAUUE: there is no config key 'risk
   suggestion: $FATHOM_RISK__TAU
 ```
 
-Three deliberate choices:
+Four deliberate choices:
 
 * **Unknown is a warning; wrong-typed is fatal.** A key this binary has never heard of may belong to
   a newer version, and refusing to start over it would make an upgrade a hard dependency for no
@@ -191,6 +191,17 @@ Three deliberate choices:
   (`[layrs]`) the candidates are the tables. `difflib` is good enough and is in the standard
   library, and the standard library matters more here than a better edit distance: this code path
   runs on every invocation, in every build, including the ones CI runs with no dependencies.
+* **A member of an open map has no nearest name in the schema, so the reader that knows the members
+  says it instead.** `risk.weights.<weight>` is declared open, which is what lets
+  `[risk.weights] comms = 0.15` resolve happily — and what lets a name the vector does not have
+  (`new_dependency`, where the axis is `dependency`) sit in a `fathom.toml` unnoticed as a decision nothing
+  is obeying. Closing the map is the wrong fix, for the same reason as the bullet above: a
+  key belonging to a newer vector must not break this binary. So the vector refuses it where it is
+  read — `fathom_analyze::risk::weights` names the key, says it is not a feature and prints the
+  twelve — and `fathom doctor` prints that sentence as the finding `config_ignored_key`, untidy, with
+  its remedy, and `--strict` leaves `5` for it (**reco-gna**). That is the verb a person runs to ask
+  "did my edit do anything" without needing a score on the screen; `fathom why` still says the same
+  line beside the score it came from, because a score has to name the weights it did not use.
 
 `fathom config lint --strict` promotes warnings to exit 5 for a project that wants that; `lint`
 without `--strict` reports and returns 0, so a newer file's keys never break an older binary's CI.

@@ -152,15 +152,16 @@ The finding is built once and printed by every surface that reports it — `fath
 remedy, because three near-identical sentences drift, and one of them will be the wrong one
 (ADR-006 §10.3).
 
-### The one finding that is untidy rather than degraded
+### The findings that are untidy rather than degraded
 
-`fathom stats` exits 12 for everything above because in each case an answer is missing or wrong. There is
-one finding that is not like that, and printing it with code 12 anyway would make a healthy repository look
+`fathom stats` exits 12 for everything above because in each case an answer is missing or wrong. There are
+two findings that are not like that, and printing them with code 12 anyway would make a healthy repository look
 broken:
 
 | Finding code | State | `stats` | `doctor` | `doctor --strict` | Remedy printed |
 |---|---|---|---|---|---|
 | `index_dead_rows` | commit rows for commits that no longer exist: a `rebase`, a `commit --amend` or a force-push replaced them, and `git gc --prune=now` has usually deleted the objects | 0 | reported, exit 0 | **12** | `fathom index --prune` |
+| `config_ignored_key` | a key `fathom.toml` sets that this build cannot use: a `[risk.weights]` name that is not one of the twelve, a weight that is not a number, a value that had to be clamped | 0 | reported, exit 0 | **5** | rename the key or delete the line; `fathom why --weights` prints the twelve |
 
 The index is not wrong in this state — HEAD is indexed, the queue is segmented over the history the refs
 still reach, and every episode answer is the answer. What is wrong is that the store *counts* as the
@@ -206,6 +207,18 @@ empty state, printed with its fixed copy: `no index here yet — run \`fathom in
 fathom`. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
 filed): `fathom stats` says the
 index is missing, and the TUI says it too rather than guessing.
+
+The second untidy row is not about the index at all, and it earns the same class for the same reason: nothing
+the binary answers is wrong, and what the finding asks for is a line edited. `[risk.weights]` is an open map
+in the key spec (`risk.weights.<weight>`), so the config layer resolves *any* name under it and only
+`features-1` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
+`fathom.toml` alongside a vector that has never carried that name, configuring nothing while looking like a
+decision, noticed only in the last three lines of a score nobody re-reads (**reco-gna**). `fathom doctor`
+says the sentence on its own now: the key, that it is not a feature, the twelve that are, and the remedy — and
+`--strict` leaves `5` (`CONFIG_INVALID`) for it, because the pre-flight question is "is anything here left to
+fix" and a key waiting to be deleted is. A repository whose config says what it means still leaves 0, and
+`fathom why` keeps printing the same line beside the score it came from, because a score has to name the
+weights it did not use.
 
 **Which verb exits for what.** `fathom stats` and `fathom show` exit with the worst finding they print — a
 script asking "is this repo indexed?" should not have to parse prose. `fathom doctor` exits **0** by

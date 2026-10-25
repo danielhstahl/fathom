@@ -1203,6 +1203,76 @@ fn doctor_reports_findings_with_remedies_and_only_exits_when_asked() {
 
 #[cfg(feature = "sqlite-bundled")]
 #[test]
+fn doctor_names_a_weight_key_that_configures_nothing_and_strict_refuses_it() {
+    // The report this comes from (**reco-gna**): a `[risk.weights]` key whose name left the vector two
+    // releases ago, sitting in a repository's config and configuring nothing, noticed only in the last
+    // three lines of a score nobody re-reads. Doctor is where the question "why did my ranking not move"
+    // gets answered, so this is where the sentence has to live, once, with a remedy, and with a code a CI
+    // pre-flight can refuse on.
+    let base = sandbox("doctor-dead-key");
+    let root = base.join("work").join("acme");
+    let here = root.to_str().expect("utf-8");
+    fathom(&["index", here]);
+    std::fs::write(
+        root.join("fathom.toml"),
+        "[risk]\ntau = 40\n\n[risk.weights]\nsize = 0.3\nnew_dependency = 0.2\n",
+    )
+    .expect("write the repository config");
+
+    // The plain run reports and exits 0: `fathom doctor` is the verb a user runs *because* something is
+    // wrong, and it must not become the thing that is wrong.
+    let out = fathom(&["doctor", "--root", here]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(
+        text.contains(
+            "config: risk.weights.new_dependency: `new_dependency` is not a feature of this vector"
+        ),
+        "the dead key is named, in the vector's own words:\n{text}"
+    );
+    assert!(
+        text.contains("remedy:") && text.contains("fathom why --weights"),
+        "and it says what to type:\n{text}"
+    );
+    assert!(
+        text.contains("exit 5 — not an error unless --strict is passed"),
+        "the code it would leave with is printed either way:\n{text}"
+    );
+
+    // The machine form, with the published code and the class: untidy, because every answer this binary
+    // gives is still the answer and what is wrong is a line that needs deleting.
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout(&fathom(&["doctor", "--root", here, "--json"])))
+            .expect("doctor --json is one JSON object");
+    assert_eq!(json["strict"].as_bool(), Some(false));
+    assert_eq!(json["exit_code"].as_i64(), Some(5), "{json}");
+    assert_eq!(json["exit_name"].as_str(), Some("CONFIG_INVALID"));
+    let findings = json["findings"].as_array().expect("a finding list");
+    let dead = findings
+        .iter()
+        .find(|finding| finding["code"] == "config_ignored_key")
+        .unwrap_or_else(|| panic!("the dead key is a finding: {findings:?}"));
+    assert_eq!(dead["section"].as_str(), Some("config"));
+    assert_eq!(dead["severity"].as_str(), Some("untidy"));
+    assert_eq!(dead["exit_code"].as_i64(), Some(5));
+
+    // `--strict` is the pre-flight posture, and this is its code.
+    let strict = fathom(&["doctor", "--root", here, "--strict"]);
+    assert_eq!(code(&strict), 5, "{}", stderr(&strict));
+
+    // The finding is about the key, not about the repository: one line less and the same run is clean.
+    std::fs::write(
+        root.join("fathom.toml"),
+        "[risk]\ntau = 40\n\n[risk.weights]\nsize = 0.3\n",
+    )
+    .expect("write the repository config");
+    let clean = fathom(&["doctor", "--root", here, "--strict"]);
+    assert_eq!(code(&clean), 0, "{}", stdout(&clean));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[cfg(feature = "sqlite-bundled")]
+#[test]
 fn index_rebuild_moves_the_epoch_and_watch_hands_over_after_indexing() {
     let base = sandbox("rebuild");
     let root = base.join("work").join("acme");

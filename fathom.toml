@@ -161,10 +161,19 @@ contracts = ["src/recommender", "tools"]
 tau = 40
 
 [risk.weights]
+# Three keys, chosen; the other nine features run at `Weights::defaults()`, which is the point of a weight
+# block — a file that restates all twelve is a file whose decisions are invisible.
 size = 0.3
 test_ratio = 0.3
 blast = 0.2
-new_dependency = 0.2
+# `new_dependency` sat here at 0.2 after `features-1` (`e4.4`) shipped the vector, and that vector has never
+# had a feature by that name — `dependency` is the axis it sounds like: a key that configured nothing while
+# looking like a decision, so anyone who later "raised the dependency weight" would have typed into a dead
+# name and changed nothing (W43-05, **reco-gna**). It is deleted rather than rewritten as
+# `dependency = 0.2`, because moving the number to the live name would move this repository's own scores — a
+# fresh decision to make on its own merits, not one smuggled through a key fix.
+# A dead key now costs a run: `fathom doctor` prints it as `config_ignored_key` with its remedy, and
+# `fathom doctor --strict` leaves with 5 for it. `fathom why --weights` prints the twelve, with defaults.
 
 [episode]
 # ADR-003 §4.5: the boundary order is fixed by the ADR and is *not* configurable, because the order is an

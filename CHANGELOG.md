@@ -17,6 +17,37 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A `fathom.toml` weight key that configured nothing is refused now (`reco-gna`)
+
+Every `fathom why` run in this repository ended with `config: risk.weights.new_dependency: new_dependency is
+not a feature of this vector; the twelve are …`. The key sat in this repository's own `fathom.toml` at 0.2,
+the axis it named is called `dependency`, and the line had configured nothing since `features-1` (`e4.4`).
+The notice was honest and still did no good: it arrives at the foot of a score, on the run *after* the one on
+which somebody decided their edit had worked. `[risk.weights]` is an open map in the key spec
+(`risk.weights.<weight>`), so nothing in the config layer can tell a weight from a typo — and `python3 -m
+recommender.config schema --validate fathom.toml`, the check CI runs on this very file, correctly said
+`0 warning(s), 0 fatal`.
+
+* **`fathom doctor` names it, once, with a remedy.** A new untidy finding, `config_ignored_key`, carries the
+    sentence `fathom why` prints — from the same parser, so the two cannot drift — and the thing to type.
+    Untidy, like `index_dead_rows`: every answer the binary gives is still the answer, and what the finding asks
+    for is a line deleted. `fathom doctor` still exits 0; `fathom doctor --strict`, the pre-flight posture, leaves
+    `5` (`CONFIG_INVALID`). [docs/concepts/cli.md](docs/concepts/cli.md) has the table,
+    [docs/concepts/config.md](docs/concepts/config.md) §6 why the schema is not the layer that refuses.
+* **Only refusals go in that list.** `[detectors]` is the other open map, and its reader's notices mix a
+    refused id with narration about a switch that worked ("`detectors.disable` turned `x` off for this
+    repository"). A list this verb turns into a `--strict` failure may hold refusals only, so those notices stay
+    where they are: beside a run that had a catalogue to check them against.
+* **This repository's own file no longer carries a dead key.** `new_dependency` is deleted, not rewritten as
+    `dependency = 0.2` — moving the number to the live name would move this repository's own scores, which is a
+    decision to make on its own merits and not one to smuggle through a key fix. `dependency` runs at its
+    built-in 0.07 until someone decides otherwise, and `fathom.toml` says that where the line used to be.
+* **The next one is caught in CI, not in a score.** `crates/fathom-cli/src/diagnose.rs` runs its reader over
+    this repository's own `fathom.toml` in a test — which failed against the checked-in config until the key was
+    gone — and `crates/fathom-cli/tests/cli.rs` drives the verb on a fixture whose config carries a dead weight:
+    the sentence, the remedy, the `--json` finding with `severity: untidy` and `exit_code: 5`, the `--strict`
+    exit, and the same run leaving 0 once the line is deleted.
+
 ### The gate's sign-off finding named an episode no verb could open (`reco-dvu`)
 
 `fathom check` said `episode ep-5e23bd8e8 scores 72 of 100 …`, and the reviewer who typed that id at

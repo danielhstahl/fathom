@@ -13,6 +13,10 @@
 //!   a user runs when something is wrong, and a diagnostic that exits 7 makes `fathom doctor` itself the
 //!   thing that is wrong in a script. `--strict` turns the findings into the published exit code for CI and
 //!   for a pre-flight check; the code each finding carries is printed either way.
+//! * **A config key that configures nothing is named here** (the `ignored_config_keys` reader,
+//!   `reco-gna`). Every verb that reads a weight says so at the bottom of its own output, which is right for
+//!   a score and useless for "why did my ranking not move" asked on its own; doctor is the one verb whose
+//!   whole job is the configuration, and `--strict` is the form that refuses it in CI.
 //!
 //! The repository, index and cache sections are [`crate::state`]'s, so `fathom doctor` and `fathom stats`
 //! cannot disagree about whether the index is healthy — which is the first question a triager asks when
@@ -40,7 +44,7 @@ pub fn doctor(
     // Doctor is the verb ADR-004 §9.6 gives the whole-database checks to, and it is the only one that asks
     // for them: `fathom doctor` runs `quick_check`, `--deep` adds `integrity_check`, and the read verbs
     // (`stats`, `show`, `analyze`, …) run the checks that do not cost the size of the repository.
-    let snapshot = state::gather_with(
+    let mut snapshot = state::gather_with(
         root_path,
         if deep {
             state::Check::Full
@@ -50,6 +54,23 @@ pub fn doctor(
     );
     let build = build_section();
     let config = config_section(&redactor);
+    // One finding per key the repository's own `fathom.toml` sets and this build cannot use. Untidy rather
+    // than degraded: every answer the binary gives is still the answer, and what the finding asks for is a
+    // line edited — which is exactly the class `--strict` exists to fail on and `fathom stats` has no
+    // business exiting for. Printed once, here, with its remedy: every verb that reads a weight already
+    // says the same sentence beside its own output, and this is the copy for the person who has no score
+    // on the screen and only wants to know why the ranking did not move.
+    let config_text =
+        std::fs::read_to_string(redactor.root.join("fathom.toml")).unwrap_or_default();
+    for notice in ignored_config_keys(&config_text) {
+        snapshot.findings.push(state::Finding::untidy(
+            "config_ignored_key",
+            "config",
+            redactor.text(&notice),
+            REMEDY_IGNORED_CONFIG_KEY,
+            ExitCode::ConfigInvalid,
+        ));
+    }
     let layout = fathom_layout(&redactor);
     let watch = watch_section(root_path);
     let hooks_stream = crate::harness::doctor_json(root_path);
@@ -347,11 +368,21 @@ fn sqlite_lines() -> Vec<String> {
     out
 }
 
+/// The remedy for a key that was read and could not be honoured (`reco-gna`).
+///
+/// It names the verb that prints the vocabulary, because the twelve features are the vector's, not this
+/// file's, and a remedy that pasted them here would be a second copy of a list that already has a home.
+const REMEDY_IGNORED_CONFIG_KEY: &str = "rename the key to one this build reads, or delete the line \
+     (`fathom why --weights` prints every key `[risk.weights]` may name, with its default); the run that \
+     ignored it prints the same sentence beside the score";
+
 /// The config layers `fathom` would read, described but never read.
 ///
 /// The point of printing a *digest-shaped* summary rather than the contents is that `fathom.toml` is where
 /// a user may have put a GitHub token or an LLM key: the report needs to say "the file you think is in
-/// effect is 2 148 bytes and changed at 09:12", and it never needs the bytes.
+/// effect is 2 148 bytes and changed at 09:12", and it never needs the bytes. What the file *means* is a
+/// finding, not a field here — see `ignored_config_keys` — and a finding is a sentence about a key, never
+/// a value.
 fn config_section(redactor: &Redactor) -> Value {
     let layers: Vec<Value> = config_candidates(redactor)
         .into_iter()
@@ -364,6 +395,31 @@ fn config_section(redactor: &Redactor) -> Value {
             .map(|(key, _value)| key.to_string_lossy().into_owned())
             .collect::<Vec<_>>(),
     })
+}
+
+/// Which keys of the repository's `fathom.toml` this build read and could not use (`reco-gna`).
+///
+/// A key that configures nothing is a decision recorded in the wrong drawer. Whoever wrote it believes the
+/// ranking moved; the next person to "raise the dependency weight" types into the dead name and changes
+/// nothing, and nothing in the repository ever says so. `fathom why` has always said it, at the bottom of
+/// every score it printed — which is the right place for a score and no help at all to the reviewer who
+/// asks the question on its own. This is the same sentence, from the same parser, in the verb whose whole
+/// subject is the configuration.
+///
+/// `[risk.weights]` and `risk.tau` are what answers here, because that is the table the config layer
+/// cannot police: the key spec declares it as the open map `risk.weights.<weight>`, so any name under it
+/// resolves happily and only the vector knows what a real one is. The declared keys are policed where they
+/// are declared (`python3 -m recommender.config lint` names the nearest key for a typo) and the budget keys
+/// are already said in this report's `memory` section. `[detectors]` is deliberately *not* collected: its
+/// reader mixes refusals with narration about switches that worked — "`detectors.disable` turned `x` off
+/// for this repository" — and a list this verb turns into a `--strict` failure may only hold refusals.
+/// Separating the two is a change to `e6.7`'s policy reader, not to this file.
+///
+/// Text in, not a path, for the same reason [`fathom_analyze::risk::weights::weights_from_toml`] takes
+/// text: ADR-002 §4.5 gives only this crate the right to open the file, and a reader that takes text can
+/// be asked what a file means without being the repository it describes.
+fn ignored_config_keys(text: &str) -> Vec<String> {
+    fathom_analyze::risk::weights::weights_from_toml(text).notices
 }
 
 /// The layers ADR-002 §5's config order names, in precedence order.
@@ -418,6 +474,10 @@ fn file_fact(layer: &str, path: &Path, redactor: &Redactor) -> Value {
     })
 }
 
+/// The `config` section as lines: one row per layer that exists, one for the `FATHOM_*` variables set.
+///
+/// What the file *means* is not repeated here — an ignored key is a finding, printed with its remedy at the
+/// foot of this report, and a sentence printed twice is a sentence that drifts.
 fn config_lines(config: &Value) -> Vec<String> {
     let mut out = vec!["config".to_owned()];
     for layer in config["layers"]
@@ -556,5 +616,64 @@ fn yes_no(value: Option<bool>) -> &'static str {
         Some(true) => "yes",
         Some(false) => "no",
         None => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::ignored_config_keys;
+
+    #[test]
+    fn a_weight_named_for_a_feature_this_vector_does_not_have_is_refused() {
+        // The report this came from: a key named for a feature this vector never had, still sitting in the
+        // file that "sets" it. The notice has to name the key, say it is not a feature, and print the list
+        // the writer has to choose from, or the sentence cannot be acted on.
+        let notices = ignored_config_keys("[risk.weights]\nnew_dependency = 0.2\n");
+        assert_eq!(notices.len(), 1, "{notices:?}");
+        assert!(
+            notices[0].starts_with("risk.weights.new_dependency"),
+            "{}",
+            notices[0]
+        );
+        assert!(notices[0].contains("not a feature"), "{}", notices[0]);
+        for feature in ["findings", "dependency", "authorship"] {
+            assert!(notices[0].contains(feature), "{}", notices[0]);
+        }
+    }
+
+    #[test]
+    fn a_file_that_configures_only_real_keys_says_nothing() {
+        // The quiet case, and the one that has to stay quiet: a repository that moves three weights and
+        // the threshold is not a defect, and a report that cried at it would be trained away in a week.
+        assert!(
+            ignored_config_keys("[risk]\ntau = 55\n[risk.weights]\nsize = 0.3\ntest_ratio = 0.3\n")
+                .is_empty()
+        );
+        assert!(ignored_config_keys("").is_empty());
+        assert!(ignored_config_keys("[noise]\nglobs = [\"**/dist/**\"]\n").is_empty());
+    }
+
+    #[test]
+    fn a_value_that_is_not_a_number_is_refused_with_its_key() {
+        let notices = ignored_config_keys("[risk.weights]\nsize = \"wide\"\n");
+        assert_eq!(notices.len(), 1, "{notices:?}");
+        assert!(notices[0].contains("risk.weights.size"), "{}", notices[0]);
+        assert!(notices[0].contains("not a number"), "{}", notices[0]);
+    }
+
+    #[test]
+    fn this_repositorys_own_fathom_toml_configures_nothing_that_does_not_exist() {
+        // The checker that did not exist when W43-05 was filed. This file is the product's own config and
+        // the corpus `fathom why` is run over, and it carried a weight key no vector of this tool has ever
+        // had, because the key spec lets any name under `[risk.weights]` through and nothing else ever
+        // looked. The same reader `fathom doctor` runs is what refuses it here, so the day a rename orphans
+        // a key again the red is in `cargo test --workspace`, not in the last three lines of a score.
+        let text =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../fathom.toml"))
+                .expect("this repository's own fathom.toml");
+        let notices = ignored_config_keys(&text);
+        assert!(notices.is_empty(), "{notices:?}");
     }
 }
