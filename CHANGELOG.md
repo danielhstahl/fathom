@@ -17,6 +17,50 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The no-op re-index was spending a second on history it had been told not to want (`e7.10`, `reco-r3x`)
+
+`fathom index` on a repository that has not changed is the cheapest thing the binary does — ADR-004 §6.6 R1
+prices it at about a millisecond store-side, and `reco-7tc` exists to make it that. It was costing **about a
+second**, on every repository longer than 32 commits, and the cost was the module graph. `graph.window = 32`
+was read as "the newest 32 *owed* revisions", which is a batch: a cold index left the rest of the history
+owed, and every later run — including the ones answering `nothing_new: true` — settled one 32-revision slice
+of that debt at ~900 ms a go, ten runs in a row on the 500-commit fixture, until the lane had a row for
+literally every revision the repository ever had. The report even said so and told the reader to raise the
+window, which was an invitation to a lane that the next ten runs were going to fill in by themselves anyway.
+
+- **The window is now a cutoff, which is what the sentence above it always claimed.**
+  `Store::graph_pending_revisions` ranks every revision the refs can reach and takes the cutoff over all of
+  them, so a pass writes the revisions that are *both* owed and inside the window and refuses everything
+  older. The no-op writes nothing and costs **3.8 ms**; a warm re-index with one new commit costs **120 ms**
+  against its 150 ms budget; the perf fixture's two worst numbers — the only two warm ones — came back
+  inside their budgets and their `known_breaches` rows came off `benchmarks/baselines/perf-gate.json` and
+  out of ADR-004 §11.10 with them.
+- **Refused is not forgotten.** `fathom index --json` grew `graph.outside_window`: the revisions behind the
+  window are counted, in data, on the runs that had the window to compare against. What it does *not* do is
+  print a line on every quiet run: 340 revisions older than the window is a fact about a configuration, not
+  a per-run event, and a warning that fires on every no-op is a warning nobody reads. A pass that did write
+  something and left revisions ungraphed still says so in `graph.partial`, and still names the knob that
+  would reach them — and now raising it actually works, which is the difference between a notice and a lie.
+- **The lane stopped being a function of the repository's age.** The fixture store held **467
+  `graph_snapshot` rows for 503 commits**; it now holds **34 for 502**, because a lane that converges on
+  full coverage one window per run is a lane that reaches full coverage. That is a third of the spine
+  (`store.bytes_per_commit_spine.small` 8,273 → 5,545 B/commit) and a quarter of the file (4.715 →
+  3.402 MiB), on a lane whose whole purpose is the newest revisions anyway: the scorecard, the churn window
+  and the hotspot window are all 30 revisions wide, and the default window is one anchor period.
+- **One row per tree, while the work list was open.** `graph_snapshot` is keyed by tree and a history can
+  reach one tree twice, so the list hands each tree over once — by its newest commit — and the owed total
+  counts revisions rather than commit rows. Two commits on a tree were one graph and one debt, not two.
+- **The budget was never the wrong number.** Both warm budgets stay exactly where epic 7 set them and the
+  register is one row shorter: what moved is the run, not the bar. The window default is unchanged at 32 —
+  the same number the three 30-wide read windows need — and a repository that wants the architecture of its
+  whole history raises `graph.window` and pays for it in the one run where it asks.
+
+*Asserted by*: `crates/fathom-store/tests/graph_pending.rs` (the cutoff refuses rather than queues, across
+four consecutive no-op runs, and a raised window reaches what it refused), `crates/fathom-analyze/tests
+/graph_index.rs` and `crates/fathom-cli/tests/index_graph.rs` (the run report, the JSON, and a quiet run
+that stays quiet and silent), and `tools/perf_gate.py`'s `warm.reindex.ms.small` / `warm.reindex.noop.ms.small`
+against budgets that no longer need a waiver.
+
 ### An epic's exit criteria stopped being a close reason and became a command (`e7`, `reco-2ah`)
 
 Epic 7 closes on one sentence with four clauses in it — *published binaries for three OSes, docs a

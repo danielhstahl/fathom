@@ -1074,11 +1074,13 @@ KEY_LIST: list[Key] = [
            "`architecture_delta` and `boundary_scan` read, and none of them can judge anything without it.",
        analyzer="graph.build", ticket="e3.11"),
     _k(path="graph.window", kind="integer", default=32, minimum=1, units="revisions",
-       doc="Revisions the index runs the graph pass for in one go, oldest first (`e3.11`). A cost bound and "
-           "nothing else: two new commits pay for two revisions, and a store that has never had a graph pass "
-           "says so and works off the tail rather than running a walk a foreground index cannot finish. It "
-           "raises its hand in the report when it stops short; `graph.chain_full_every` decides separately "
-           "how often the anchor is repeated.",
+       doc="How many of the newest revisions the graph lane covers (`e3.11`). A pass writes the owed ones "
+           "among the newest `window` and refuses everything older - it is a coverage window, not a queue "
+           "(`reco-r3x`). Read as a batch of the backlog instead, 32 meant '32 more per run': a cold index "
+           "left a window-sized debt, every later run - including the ones that answer nothing_new - settled "
+           "a slice of it for about a second, and the lane grew to hold the whole history anyway. Raise it "
+           "for a longer trend, and pay for it once; `graph.chain_full_every` decides separately how often "
+           "the anchor is repeated.",
        analyzer="graph.build", ticket="e3.11"),
     _k(path="graph.max_corpus_mib", kind="integer", default=64, minimum=1, units="MiB",
        doc="The refusal that stops the graph pass costing more than the index that called it (`e3.11`). One "

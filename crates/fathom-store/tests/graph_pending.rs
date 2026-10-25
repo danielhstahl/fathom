@@ -7,8 +7,12 @@
 //! * **live means reachable from a stored ref**, not "ever written". A rebased branch leaves commit rows
 //!   behind (`reco-6aw`'s prune is the only thing that removes them), and a writer that walked them would
 //!   spend the index's budget drawing graphs of a history nobody has checked out;
-//! * **a cap takes the newest**, because a reviewer's question is always about today — a writer capped at
-//!   the oldest revisions would re-draw the same ancient window in every run and never arrive;
+//! * **the cutoff takes the newest**, because a reviewer's question is always about today — a writer capped
+//!   at the oldest revisions would re-draw the same ancient window in every run and never arrive. It is a
+//!   cutoff and not a batch (`reco-r3x`): what falls outside it is refused rather than queued, so a run
+//!   that owes nothing inside the window writes nothing at all;
+//! * **one row per tree**, because a tree is what a graph row is keyed by and a history can reach one tree
+//!   twice;
 //! * **the order is oldest first**, because a delta needs the base it follows, and a chain written out of
 //!   order is a lane full of anchors pretending to be deltas.
 //!
@@ -298,5 +302,89 @@ fn a_reset_empties_the_lane_and_counts_what_it_took() {
         store.graph_pending_revisions(10).expect("work list").owed,
         2,
         "the lane is empty, so every live revision is owed again"
+    );
+}
+
+/// **The window is a cutoff, not a queue** (`reco-r3x`). Read as "the newest `window` *owed* revisions", it
+/// is a promise that a later run settles the rest — so every quiet `fathom index` pays for history nobody
+/// asked about (the perf fixture paid about a second for ten consecutive no-op runs, inside a verb whose
+/// whole promise is that it is free when nothing changed), and the lane ends up holding a row for every
+/// revision in the repository regardless. So the cutoff is taken over everything the store can reach, and
+/// what falls outside it is refused and *said* to be refused.
+#[test]
+fn a_window_refuses_what_is_older_instead_of_queuing_it() {
+    let mut store = Store::open_in_memory().expect("open store");
+    let trees = chain(&mut store, 5);
+    let first = store.graph_pending_revisions(2).expect("work list");
+    assert_eq!(first.revisions.len(), 2, "the newest two: {first:?}");
+    assert_eq!(
+        first.owed, 5,
+        "and the total the caller states the shortfall against: {first:?}"
+    );
+
+    // The pass writes what it was handed, which is the whole list it was allowed to ask for.
+    for revision in &first.revisions {
+        store
+            .graph_write_snapshot(&SnapshotRow::anchor(&revision.tree_oid))
+            .expect("write a row");
+    }
+
+    // Every run after it is a no-op, forever: the three older revisions are still owed — the lane does not
+    // pretend they are graphed — and no run reaches for them.
+    for run in 1..=4 {
+        let quiet = store.graph_pending_revisions(2).expect("work list");
+        assert!(
+            quiet.revisions.is_empty(),
+            "run {run} found work behind the window: {quiet:?}"
+        );
+        assert_eq!(quiet.owed, 3, "refused, not forgotten: {quiet:?}");
+    }
+
+    // Raising the window is what reaches them, because that is what the capped pass tells the reader to do.
+    let raised = store.graph_pending_revisions(5).expect("work list");
+    assert_eq!(
+        raised
+            .revisions
+            .iter()
+            .map(|rev| rev.tree_oid.clone())
+            .collect::<Vec<_>>(),
+        vec![trees[0].clone(), trees[1].clone(), trees[2].clone()],
+        "the whole history at once, in chain order, because the window asked for it"
+    );
+}
+
+/// A commit that adds nothing has its parent's tree, and `graph_snapshot` is keyed by tree: two rows for one
+/// tree would be the same bytes written twice and counted twice, in the report and in the owed total.
+#[test]
+fn two_commits_on_one_tree_are_one_revision() {
+    let mut store = Store::open_in_memory().expect("open store");
+    let run = store.begin_run("cold", Trigger::Commit, BASE).unwrap();
+    let base = commit(0, &[]);
+    let mut empty = commit(1, &[0]);
+    empty.tree_oid = base.tree_oid.clone();
+    store
+        .write_commits(run, BASE, &[base, empty])
+        .expect("an empty commit is a real thing histories do");
+    store
+        .replace_ref_tips(
+            &[(
+                "refs/heads/main".to_owned(),
+                format!("{:040x}", 2),
+                "branch",
+            )],
+            BASE,
+        )
+        .expect("ref tips");
+
+    let work = store.graph_pending_revisions(10).expect("work list");
+    assert_eq!(work.revisions.len(), 1, "one tree, one revision: {work:?}");
+    assert_eq!(
+        work.owed, 1,
+        "the total counts revisions, not commits, so a capped pass's shortfall is not padded: {work:?}"
+    );
+    assert_eq!(
+        work.revisions[0].when,
+        BASE + 1,
+        "listed by its newest commit, which is the one the writer stamps the row with"
     );
 }

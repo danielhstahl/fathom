@@ -107,8 +107,11 @@ def test_the_four_exit_criteria_hold_end_to_end(tmp_path: pathlib.Path) -> None:
     notes = " ".join(" ".join(c["notes"]) for c in payload["clauses"])
     assert "built and rehearsed" in notes, notes
     assert "three humans on three machines" in notes, notes
-    assert "reco-r3x" in notes and "reco-7yq" in notes, \
+    assert "reco-7yq" in notes, \
         "the consciously-relaxed budgets name their owners in the report, not only in the ADR"
+    assert "reco-r3x" not in notes, \
+        "reco-r3x closed: its two breaches came off the register, and a relaxation left behind after its " \
+        "defect closes is the stale row this same gate fails the build for"
 
 
 def test_the_harness_reports_a_failed_clause_as_a_failure(tmp_path: pathlib.Path) -> None:

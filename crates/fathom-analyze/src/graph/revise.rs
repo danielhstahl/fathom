@@ -25,10 +25,12 @@
 //!   *holding*, so a base may only be claimed when [`Lane::cursor_tree`] agrees. Where it does not — the
 //!   first revision of a pass, a gap in the history, a merge whose first parent is elsewhere — the revision
 //!   is recorded as an anchor and says so, rather than writing a delta that lies about its parent.
-//! * **The cost is bounded and named.** `graph.window` caps how many revisions one pass writes (one anchor
-//!   period by default), and `graph.max_corpus_mib` caps what one revision's structural pass may read. A
-//!   pass that refuses says which knob refused it, because a slow surprise is how the next person turns
-//!   `graph.enabled` off without ever getting an answer.
+//! * **The cost is bounded and named.** `graph.window` is the lane's *coverage* window: one pass writes the
+//!   owed revisions among the newest `window` revisions and refuses everything older, rather than queueing
+//!   it for a later run (`reco-r3x`). `graph.max_corpus_mib` caps what one revision's structural pass may
+//!   read. A pass that refuses says which knob refused it, because a slow surprise is how the next person
+//!   turns `graph.enabled` off without ever getting an answer — and because a quiet run that quietly spent
+//!   a second on history is the same lie told on the cheap path.
 //!
 //! # What one revision costs
 //!
@@ -83,10 +85,16 @@ pub struct Report {
     /// Did this pass run at all? `false` means `graph.enabled`/`--no-graph` turned it off, which is a
     /// different statement from "ran and owed nothing", and the JSON says which (`e3.11`).
     pub ran: bool,
-    /// Why the pass stopped short of the work list, when it did: a cancellation, a budget, a window, or a
-    /// corpus over `graph.max_corpus_mib`. Stated, because a graph that stops halfway must not read as a
-    /// graph that is finished (§7.6).
+    /// Why the pass stopped short of graphing everything, when it did: a cancellation, a corpus over
+    /// `graph.max_corpus_mib`, or revisions older than `graph.window`. Stated, because a graph that stops
+    /// halfway must not read as a graph that is finished (§7.6).
     pub partial: Option<String>,
+    /// How many owed revisions the window refused — what the lane owes that no pass will ever write at this
+    /// configuration (`graph.window`; the store's own number is `PendingWork::owed`).
+    ///
+    /// Separate from [`Report::partial`] because it is not progress paused: it is what the configuration
+    /// chose. A run that wrote nothing *and* refused nothing is the quiet case, and it prints nothing.
+    pub outside_window: usize,
     /// The notices from `[graph]`, `[layers]` and `[extract]`, plus at most a handful of the refusals: a
     /// typo in a config file is a notice and a default, never a lost architecture view.
     pub notices: Vec<String>,
@@ -117,6 +125,7 @@ impl Report {
             "reset_rows": self.reset.iter().map(|(_, rows)| rows).sum::<i64>(),
             "elapsed_ms": self.elapsed.as_millis(),
             "partial": self.partial,
+            "outside_window": self.outside_window,
             "notices": self.notices,
         }))
     }
@@ -200,9 +209,17 @@ impl Corpus {
 /// Write a graph for every revision the store does not have one for, newest `graph.window` of them.
 ///
 /// `options.graph` decides whether this does anything at all; [`crate::index::GraphPass::Off`] is the
-/// cheap, honest no-op and returns a default report. The pass may stop early — at the window, at a
-/// cancellation, at the corpus cap — and every early stop lands in [`Report::partial`], never hidden
-/// (§7.6).
+/// cheap, honest no-op and returns a default report. The pass may stop early — at a cancellation, at the
+/// corpus cap — and every early stop lands in [`Report::partial`], never hidden (§7.6).
+///
+/// The window is a cutoff and not a batch, which is the difference between a quiet run and a cheap one
+/// (`reco-r3x`). Read as a batch size, `graph.window = 32` on a 500-commit history means the runs *after*
+/// the cold one each settle 32 more of the revisions it left behind — ten runs at a second each, including
+/// the ones that answer `nothing_new: true` — and the store ends up holding a graph row for every revision
+/// anyway. Read as a cutoff, the same configuration means "the lane covers the newest 32 revisions": the
+/// no-op writes nothing and costs milliseconds, and a repository that wants the longer trend raises the
+/// knob and says so out loud. `Store::graph_pending_revisions` is where the store says which of the two it
+/// is, and `graph.window = 0` stays "every owed revision, no cutoff".
 ///
 /// # Errors
 ///
@@ -251,21 +268,23 @@ pub fn run(
 
     // The work list comes from the store, not from the run: a repository indexed before the lane had a
     // writer gets backfilled by the next ordinary `fathom index`, and an interrupted pass is finished by
-    // the next one rather than being lost with the run that stopped.
+    // the next one rather than being lost with the run that stopped. What is *older* than the window is
+    // not finished by the next one, and no longer pretends to be.
     let work = store.graph_pending_revisions(if policy.window > 0 {
         policy.window
     } else {
         usize::MAX
     })?;
+    let behind = work.owed.saturating_sub(work.revisions.len());
+    report.outside_window = behind;
     if work.revisions.is_empty() {
         return Ok(report);
     }
-    let behind = work.owed.saturating_sub(work.revisions.len());
     if behind > 0 {
         report.partial = Some(format!(
-            "{behind} owed revision(s) are older than `graph.window = {}`; raise the window to \
-             backfill them",
-            policy.window
+            "{behind} owed revision(s) are older than `graph.window = {window}`, which is a coverage \
+             window and not a queue; raise it, or set it to 0, to backfill them",
+            window = policy.window
         ));
     }
     let work = &work.revisions;

@@ -231,23 +231,29 @@ fn a_repository_that_switched_the_pass_off_writes_no_lane() {
     );
 }
 
-/// `graph.window` is a per-pass cost bound, and the revisions it left behind stay owed.
+/// `graph.window` is a coverage window, not a batch: the revisions older than it are refused, and every
+/// later run agrees (`reco-r3x`). Read as a batch this was `for expected in [1, 1, 0]` — one quiet run per
+/// revision left behind, each one paying for a pass over the whole live corpus.
 #[test]
-fn a_window_caps_one_pass_and_leaves_the_rest_owed() {
+fn a_window_covers_the_newest_and_refuses_the_older() {
     let fixture = fixture("window");
     let store = store_path(&fixture);
     let config = "[graph]\nwindow = 1\n";
     let report = index(&store, fixture.path(), GraphPass::on(config));
     assert_eq!(report.graph.revisions, 1, "{report:?}");
+    assert_eq!(
+        report.graph.outside_window, 2,
+        "two revisions are behind the window"
+    );
     let partial = report
         .graph
         .partial
-        .expect("a capped pass states its partial");
+        .expect("a pass that does not cover the history states it");
     assert!(
         partial.contains("graph.window") && partial.contains("2"),
-        "the sentence names the knob and what is left: {partial}"
+        "the sentence names the knob and what it refused: {partial}"
     );
-    // The cap takes the *newest*: a writer that spent every run on the oldest window would never arrive at
+    // The cutoff takes the *newest*: a writer that spent every run on the oldest window would never arrive at
     // the revision anyone is asking about.
     assert_eq!(
         rows(&store)
@@ -258,10 +264,31 @@ fn a_window_caps_one_pass_and_leaves_the_rest_owed() {
         "one revision, so one anchor"
     );
 
-    for expected in [1, 1, 0] {
+    for run in 1..=3 {
         let next = index(&store, fixture.path(), GraphPass::on(config));
-        assert_eq!(next.graph.revisions, expected, "{next:?}");
+        assert_eq!(
+            next.graph.revisions, 0,
+            "run {run} reached behind the window: {next:?}"
+        );
+        assert_eq!(next.graph.outside_window, 2, "still owed, still refused");
+        assert_eq!(
+            next.graph.partial, None,
+            "a quiet run is not a partial: the window refused nothing it had been asked to do"
+        );
     }
+
+    // And raising the window is the way to ask for the rest — which is what the sentence above tells the
+    // reader to do, so it had better work.
+    let wider = index(
+        &store,
+        fixture.path(),
+        GraphPass::on("[graph]\nwindow = 32\n"),
+    );
+    assert_eq!(
+        wider.graph.revisions, 2,
+        "the two older revisions, once asked for: {wider:?}"
+    );
+    assert_eq!(wider.graph.outside_window, 0);
 }
 
 /// A module over `extract.max_file_bytes` is a hole that is counted and named: the revision is still

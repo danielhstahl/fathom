@@ -57,14 +57,22 @@ pub const DEFAULT_SNAPSHOT_CACHE_MIB: u64 = 32;
 /// `fathom.toml`, instead of getting a silent shrug from every architecture surface.
 pub const DEFAULT_ENABLED: bool = true;
 
-/// How many of the newest revisions one pass will write. `graph.window`, and
-/// [`DEFAULT_CHAIN_FULL_EVERY`] for a reason: the window is then exactly one anchor period, so every
-/// revision in the lane is within one chain walk of an anchor, and the three 30-revision windows this
-/// tool reads (the scorecard's, the churn window, the hotspot window) all fit inside it.
+/// How many of the newest revisions the lane covers: the cutoff one pass writes inside, and refuses
+/// beyond. `graph.window`, and [`DEFAULT_CHAIN_FULL_EVERY`] for a reason: the window is then exactly one
+/// anchor period, so every revision in the lane is within one chain walk of an anchor, and the three
+/// 30-revision windows this tool reads (the scorecard's, the churn window, the hotspot window) all fit
+/// inside it.
 ///
-/// It is a *backfill* window, not a retention one: a warm run adds its own new revisions and leaves the
-/// older ones alone, so the lane grows history as the repository does. What the cap bounds is what one
-/// cold pass costs.
+/// It is a **coverage** window, which is what makes a quiet run quiet (`reco-r3x`): a revision older than
+/// the window is refused rather than queued, so a no-op index writes nothing and a warm one writes its own
+/// new revisions and nothing else. Read as a batch size instead — which is what it was until this ticket —
+/// the same 32 quietly meant "32 more of the backlog per run", and the run that promises nothing cost a
+/// second for ten runs on a 500-commit fixture while the lane grew to hold the whole history anyway.
+///
+/// What it bounds is therefore both what one cold pass costs *and* how many revisions the store holds
+/// graphs for, which is the answer to "why is the graph lane half my index": the lane is a function of the
+/// configuration, not of the repository's age. A repository that wants the whole trend says so by raising
+/// the window, and pays for it once.
 ///
 /// `0` means every owed revision, for a repository that wants the whole trend and can pay for it.
 pub const DEFAULT_WINDOW: usize = DEFAULT_CHAIN_FULL_EVERY;
@@ -92,7 +100,8 @@ pub struct GraphPolicy {
     pub snapshot_cache_bytes: u64,
     /// `graph.enabled` — whether the index writes the module graph at all.
     pub enabled: bool,
-    /// `graph.window` — how many of the newest revisions one pass writes; `0` is all of them.
+    /// `graph.window` — the newest revisions the lane covers; a pass writes the owed ones inside it and
+    /// refuses everything older. `0` is every owed revision.
     pub window: usize,
     /// `graph.max_corpus_mib`, in bytes: what one revision's structural pass may read.
     pub max_corpus_bytes: usize,

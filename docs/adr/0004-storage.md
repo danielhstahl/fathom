@@ -1339,6 +1339,28 @@ rest holds 467 `graph_snapshot` rows for 503 commits. **`reco-r3x`** owns that, 
 keeping is that the budget is right and the run is wrong: this is not a licence to make §6.6 R1 slower,
 and the second it costs is user-visible in `ctrl-r` and in `watch` mode while the debt lasts.
 
+**What `reco-r3x` did about it.** It made the window mean what the report already said: `graph.window` is a
+**coverage window, not a batch size**. `Store::graph_pending_revisions` takes the cutoff over every revision
+the refs can reach rather than over the owed ones, so a pass writes the revisions that are both owed and
+inside the window and refuses everything older; `graph.outside_window` in `fathom index --json` is the count
+of what was refused, and the partial a capped pass prints — "raise the window to backfill them" — is now a
+sentence the reader can act on instead of a promise the next run quietly breaks. Measured on the same
+fixture with the same binary and re-blessed into `benchmarks/baselines/perf-gate.json`:
+`warm.reindex.noop.ms.small` is **3.8 ms** against the 10 ms budget §6.6 R1 wants and `warm.reindex.ms.small`
+**120.1 ms** against 150 ms. Both pass, and their two register rows came off with them. (A word on the bless,
+because a blessed number nobody can trace is folklore: only the four rows this change moves were re-blessed —
+the two warm ones, and the two store-size ones below — with the times divided by this runner's calibration
+factor of ×1.057 so they are in reference-machine units as §11.8 requires. The other eighteen are still
+blessed at `36b011f`; a ticket is not licence to move a number nothing touched.) The lane at rest now holds
+**34 `graph_snapshot` rows for 502 commits** instead of 467 for 503: the graph is a function of the
+configuration rather than of the repository's age, which is what §11.6's `store.bytes_per_commit_graph` was
+always assuming, and the store measurements came down with it — `store.bytes_per_commit_spine.small` 8,273 →
+**5,545 B/commit**, still over its 4,096 B budget and still `reco-7yq`'s, because that row is about a
+denominator and not about this, and `store.size.mib.small` 4.715 → **3.402 MiB**. Nothing here is a licence
+to graph less than the tool reads: the default stays one anchor period (`32`), which is
+what the three 30-revision windows — scorecard, churn, hotspots — need, and a repository that wants the
+architecture of its whole history raises the knob and pays for it once, in the run where it asks.
+
 The third is a denominator, not a cost. `store.bytes_per_commit_spine.small` is `dbstat` pages of "the
 spine tables", and `tools/mvp_acceptance.py` defines *not*-spine as `cache`, `cache_input`,
 `session_state`, `index_run`, `schema_meta` — so the graph lane is billed to a budget whose byte model
@@ -1373,13 +1395,13 @@ worse.
 
 | budget id | measured at the close | budget | ceiling | owner | expires |
 | --- | ---: | ---: | ---: | --- | --- |
-| `warm.reindex.ms.small` | 1,577.6 ms | 153 ms | 1,750 ms | `reco-r3x` | 2026-12-15 |
-| `warm.reindex.noop.ms.small` | 1,049.0 ms | 10 ms | 1,250 ms | `reco-r3x` | 2026-12-15 |
 | `store.bytes_per_commit_spine.small` | 8,273 B | 4,096 B | 10,500 B | `reco-7yq` | 2026-12-15 |
 
-Three rows, two owners, one date. The ticket that closes a defect deletes its row and re-blesses; an
-expired row is a red build, because a grace period nobody extended is not a decision. This is `e6.6`'s
-ratchet ledger applied to budgets: named owner, a bound, a clock, and no quiet way to widen the exception.
+One row, one owner, one date — the register started as three. The ticket that closes a defect deletes its row
+and re-blesses; an expired row is a red build, because a grace period nobody extended is not a decision. Two
+rows have come off this table that way (`reco-r3x`, above), which is the ledger doing its job rather than
+being renegotiated. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a bound, a clock, and
+no quiet way to widen the exception.
 
 **The real repositories.** §11.9's dispositions are unchanged and are now *checked* rather than reread:
 the epic gate parses `benchmarks/reports/e7-2-real-repos.json`'s per-budget verdicts and fails if any

@@ -177,17 +177,24 @@ pub struct PendingRevision {
     pub when: i64,
 }
 
-/// The graph lane's work list: the revisions to write, and how many are waiting behind them.
+/// The graph lane's work list: the revisions this pass may write, and how many the window refuses.
 ///
-/// The count is not decoration. A writer that quietly does the newest 32 of 4 000 owed revisions has
-/// answered the reviewer's question for today and said nothing about being 3 968 revisions behind;
-/// `owed - revisions.len()` is the number the report prints, and it is the store's number rather than an
-/// estimate the writer made on the way past the cap.
+/// The count is not decoration. A lane that graphs the newest 32 revisions of a 4 000-revision history has
+/// answered the reviewer's question about today and left 3 968 revisions with no graph; `owed -
+/// revisions.len()` is that number, and it is the store's rather than an estimate the writer made on the
+/// way past the cutoff.
+///
+/// It is deliberately **not a queue**. Nothing here promises the 3 968 arrive on a later run: `window` is a
+/// cutoff over everything the store can reach, so a revision older than the window is refused, not deferred
+/// ([`Store::graph_pending_revisions`] is where that is said). A writer that treated the difference as work
+/// in progress would spend one quiet index per window-sized slice of history — which is the defect
+/// `reco-r3x` closed.
 #[derive(Debug, Clone, Default)]
 pub struct PendingWork {
-    /// The revisions to write, oldest first.
+    /// The revisions to write, oldest first: owed *and* inside the window.
     pub revisions: Vec<PendingRevision>,
-    /// Every revision the lane owes, capped or not.
+    /// Every revision the lane owes, window or not — so `owed - revisions.len()` is what the window
+    /// refuses. Counted as distinct trees, because a tree is what a graph row is keyed by.
     pub owed: usize,
 }
 
@@ -925,19 +932,31 @@ impl Store {
         Ok(rows)
     }
 
-    /// Every committed revision the graph lane does not have a row for, newest `newest` of them, oldest
-    /// first (`Store::graph_pending_revisions`' caller walks a chain, so it needs the order).
+    /// Every revision the graph lane owes inside `window`, oldest first — which is the order its caller
+    /// needs, because a delta chain cannot be written before its base.
     ///
-    /// This is the writer's work list (`e3.11`, `reco-dlp`). Three things the caller does not have to
-    /// re-check:
+    /// This is the writer's work list (`e3.11`, `reco-dlp`), and `window` is a **cutoff over everything the
+    /// store can reach, not a batch size**: the eligible revisions are the owed ones among the newest
+    /// `window` trees. Five things the caller does not have to re-check:
     ///
     /// * **liveness** — the rows are the commits a stored ref reaches, the same root rule as
     ///   [`crate::inventory`]'s reachability walk, so a rebased-away commit does not get a graph of its
     ///   own. When the store holds no ref tips at all there is nothing to be live relative to, and the
     ///   walk is skipped rather than answering "nothing exists".
-    /// * **which end** — the cap takes the *newest* revisions. A writer capped at the oldest ones would
+    /// * **which end** — the cutoff takes the *newest* revisions. A writer capped at the oldest ones would
     ///   never catch up on a repository that is behind: it would spend every run on the same ancient
     ///   window and the reviewer's question, which is always about today, would never be answerable.
+    /// * **that a cutoff is a cutoff** — everything older than the window is *refused*, not queued, and
+    ///   [`PendingWork::owed`] is measured against everything so the caller can say the difference out loud.
+    ///   This is what keeps a quiet run quiet (`reco-r3x`): capped at the newest *owed* revisions instead, a
+    ///   no-op index would settle one window-sized slice of history every time it ran and pay for it in
+    ///   full — a second per run for ten runs on a 500-commit fixture, inside a verb whose whole promise is
+    ///   that it is free when nothing changed (ADR-004 §6.6 R1). A repository that wants the whole trend
+    ///   says so by raising `graph.window`, or by setting it to `0`, which is every owed revision with no
+    ///   cutoff at all.
+    /// * **one row per tree** — a graph row is keyed by tree, and a history can reach one tree twice (an
+    ///   empty commit, a revert to a known tree), so a duplicated tree is listed once, by its newest
+    ///   commit. Writing it twice would be the same bytes written twice.
     /// * **order** — committer date ascending, then oid, which is first-parent order for the linear
     ///   histories that make up nearly every repository, and a decent approximation everywhere else.
     ///   The writer re-reads a tree when the chain breaks; it is never wrong, only occasionally slower.
@@ -950,7 +969,13 @@ impl Store {
     /// # Errors
     ///
     /// [`Error::StoreCorrupt`] if the read fails.
-    pub fn graph_pending_revisions(&self, newest: usize) -> Result<PendingWork, Error> {
+    ///
+    /// The `window = 0` case is the caller's, not this one's: `0` means "no cutoff", and the way to say
+    /// that here is a limit nothing history reaches.
+    pub fn graph_pending_revisions(&self, window: usize) -> Result<PendingWork, Error> {
+        // One reachability walk, three readings of it: `inside` is the window (ranked over every reachable
+        // tree, owed or not, which is the whole point), `owed` is what the lane has no row for inside it,
+        // and `COUNT` is what it has no row for anywhere.
         const ROWS: &str = " \
             WITH RECURSIVE live(oid) AS ( \
                 SELECT oid FROM ref_tip WHERE kind IN ('head','branch','remote') \
@@ -958,19 +983,28 @@ impl Store {
                 SELECT parent.value FROM live \
                 JOIN git_commit c ON c.oid = live.oid \
                 JOIN json_each(c.parent_oids) AS parent \
-            ), owed AS ( \
+            ), reachable AS ( \
                 SELECT c.oid AS oid, c.tree_oid AS tree_oid, c.committer_utc AS when_ms, \
-                       (SELECT pc.tree_oid FROM json_each(c.parent_oids) AS p \
-                          JOIN git_commit pc ON pc.oid = p.value \
-                         WHERE p.key = 0) AS first_parent_tree \
+                       c.parent_oids AS parents \
                 FROM git_commit c \
                 WHERE (NOT EXISTS (SELECT 1 FROM ref_tip \
                                     WHERE kind IN ('head','branch','remote')) \
                        OR c.oid IN (SELECT oid FROM live)) \
-                  AND NOT EXISTS (SELECT 1 FROM graph_snapshot g WHERE g.tree_oid = c.tree_oid) \
+            ), inside AS ( \
+                SELECT tree_oid FROM reachable \
+                GROUP BY tree_oid \
+                ORDER BY max(when_ms) DESC, tree_oid DESC LIMIT ?1 \
+            ), owed AS ( \
+                SELECT r.oid AS oid, r.tree_oid AS tree_oid, r.when_ms AS when_ms, \
+                       (SELECT pc.tree_oid FROM json_each(r.parents) AS p \
+                          JOIN git_commit pc ON pc.oid = p.value \
+                         WHERE p.key = 0) AS first_parent_tree \
+                FROM reachable r \
+                WHERE r.tree_oid IN (SELECT tree_oid FROM inside) \
+                  AND NOT EXISTS (SELECT 1 FROM graph_snapshot g WHERE g.tree_oid = r.tree_oid) \
             ) \
             SELECT oid, tree_oid, when_ms, first_parent_tree FROM owed \
-            ORDER BY when_ms DESC, oid DESC LIMIT ?1";
+            ORDER BY when_ms DESC, oid DESC";
         const COUNT: &str = " \
             WITH RECURSIVE live(oid) AS ( \
                 SELECT oid FROM ref_tip WHERE kind IN ('head','branch','remote') \
@@ -979,12 +1013,12 @@ impl Store {
                 JOIN git_commit c ON c.oid = live.oid \
                 JOIN json_each(c.parent_oids) AS parent \
             ) \
-            SELECT count(*) FROM git_commit c \
+            SELECT count(DISTINCT c.tree_oid) FROM git_commit c \
             WHERE (NOT EXISTS (SELECT 1 FROM ref_tip \
                                 WHERE kind IN ('head','branch','remote')) \
                    OR c.oid IN (SELECT oid FROM live)) \
               AND NOT EXISTS (SELECT 1 FROM graph_snapshot g WHERE g.tree_oid = c.tree_oid)";
-        let cap = i64::try_from(newest).unwrap_or(i64::MAX);
+        let cap = i64::try_from(window).unwrap_or(i64::MAX);
         let mut stmt = self
             .connection()
             .prepare(ROWS)
@@ -1001,7 +1035,11 @@ impl Store {
             .map_err(|err| corrupt("listing the revisions the graph lane owes", &err))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| corrupt("listing the revisions the graph lane owes", &err))?;
-        // Newest first out of SQLite, because that is how a cap works; the chain order out of here.
+        // Newest first out of SQLite; the chain order out of here. Two commits can reach one tree (an
+        // empty commit, a revert to a tree that already existed) and a tree is one revision, so the first
+        // sighting wins — which, newest-first, is the newest commit to have held it.
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        rows.retain(|row| seen.insert(row.tree_oid.clone()));
         rows.reverse();
         let owed = self
             .connection()

@@ -162,8 +162,9 @@ pub enum GraphPass {
     /// asks for.
     #[default]
     Off,
-    /// Write a graph row for every owed revision, reading `[graph]`, `[layers]` and `[extract]` from the
-    /// repository's own `fathom.toml` text — handed over as a value, because this crate does not open it.
+    /// Write a graph row for every owed revision the window covers, reading `[graph]`, `[layers]` and
+    /// `[extract]` from the repository's own `fathom.toml` text — handed over as a value, because this crate
+    /// does not open it.
     On {
         /// The repository's `fathom.toml`, verbatim. Empty text is a legitimate value — a repository with
         /// no config file — and every knob then takes its built-in default.
@@ -942,7 +943,8 @@ fn quiet_report(
     // perfectly up to date: every ref matches, no commit owes a derivation. If the graph pass ran only on
     // the walking path, `fathom index` would answer "nothing new" forever and the architecture surfaces
     // would stay empty in a repository that had done everything right. The pass reads its work list from
-    // the store, so a quiet run is exactly a backfill run.
+    // the store, so a quiet run is exactly a backfill run — of the window, and of nothing older than it
+    // (`reco-r3x`: read as a slice-of-backlog per run, this is the line that made a no-op cost a second).
     let graph_from = started.elapsed();
     let mut graph = if options.graph.is_on() {
         crate::graph::revise::run(repo, store, options, now)?

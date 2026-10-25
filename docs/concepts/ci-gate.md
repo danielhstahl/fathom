@@ -336,7 +336,8 @@ Three smaller things came out of the same ticket, because a gate that is debugga
 * **the two graph checks need the lane, and the lane has a cost.** `fathom index` writes the module graph
   (`e3.11`), so on a repository that has been indexed `layering` and `cycles` judge rather than reporting
   `blocked`. What can still make them `blocked` is a refusal: `--no-graph`, `graph.enabled = false`, or a pass
-  that stopped at `graph.window` or `graph.max_corpus_mib` and said so in the index report. A store indexed
+  that stopped at `graph.max_corpus_mib`, or one whose `graph.window` does not reach the revision being
+  judged, and said so in the index report. A store indexed
   before the pass existed is backfilled by the next ordinary `fathom index`, quiet run included. The
   remedy those two rows print names the pass and the knobs that bound it, so a reader who is sent to the
   indexer is also told what might make it decline.

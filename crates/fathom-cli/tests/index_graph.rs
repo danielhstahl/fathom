@@ -326,28 +326,38 @@ fn a_repository_can_switch_the_pass_off_and_says_so() {
     assert!(json["graph"].is_null(), "{json}");
 }
 
-/// `graph.window` is a cost bound, and a pass that stopped early has to say how much is left — otherwise a
-/// partial lane reads as a finished one.
+/// `graph.window` is the lane's coverage window, and a pass that does not cover the history says how much it
+/// refused — and, unlike the version of this test `reco-r3x` deleted, says it truthfully: the revisions
+/// behind the window are refused, not queued for the next quiet run to pay for.
 #[test]
-fn a_window_that_stops_short_says_what_is_left() {
+fn a_window_that_stops_short_says_what_it_refused() {
     let mut repo = Repo::new("window");
     repo.set_config("[graph]\nwindow = 1\n");
     let value = repo.index_json(&[]);
     assert_eq!(
         value["graph"]["revisions"].as_u64(),
         Some(1),
-        "one revision per pass, oldest-first, so the tail is what gets written: {}",
+        "one revision, the newest, because that is the window: {}",
         value["graph"]
     );
-    let partial = value["graph"]["partial"]
-        .as_str()
-        .unwrap_or_else(|| panic!("a capped pass reports its partial: {}", value["graph"]));
+    let partial = value["graph"]["partial"].as_str().unwrap_or_else(|| {
+        panic!(
+            "a pass that does not cover the history says so: {}",
+            value["graph"]
+        )
+    });
     assert!(
         partial.contains("graph.window") && partial.contains("older"),
         "the sentence names the knob and says what is behind it: {partial}"
     );
-    // The newest revision is the one a reviewer asks about, so a capped window takes the newest and leaves
-    // the ancients for later runs — never the other way round, which would spend every run on history.
+    assert_eq!(
+        value["graph"]["outside_window"].as_u64(),
+        Some(3),
+        "the count is in the JSON as well as the sentence: {}",
+        value["graph"]
+    );
+    // The newest revision is the one a reviewer asks about, so the cutoff takes the newest and refuses the
+    // ancients — never the other way round, which would spend every run on history.
     assert_eq!(
         value["graph"]["anchors"].as_u64(),
         Some(1),
@@ -355,29 +365,36 @@ fn a_window_that_stops_short_says_what_is_left() {
         value["graph"]
     );
 
-    // And the rest is owed to the next runs: the window is a per-pass cap, not a retention policy.
-    let mut runs = 1;
-    let mut wrote = value["graph"]["revisions"].as_u64().unwrap_or(0);
-    let total = wrote;
-    loop {
+    // And the runs after it are quiet. This is the whole point of the ticket: the two revisions behind the
+    // window are refused, not a debt of two more seconds paid one per run, and a run that writes nothing
+    // prints nothing.
+    for _ in 0..3 {
         let next = repo.index_json(&[]);
-        let more = next["graph"]["revisions"].as_u64().unwrap_or(0);
-        runs += 1;
-        if more == 0 {
-            break;
-        }
-        wrote += more;
         assert_eq!(
-            more, 1,
-            "one revision per run while the window is 1: {}",
+            next["graph"]["revisions"].as_u64(),
+            Some(0),
+            "a quiet run does not reach behind the window: {}",
             next["graph"]
         );
-        assert!(runs < 12, "the window never let the lane catch up");
+        assert_eq!(next["graph"]["partial"], serde_json::Value::Null);
+        assert_eq!(next["graph"]["outside_window"].as_u64(), Some(3));
+        assert!(
+            !stdout(&repo.index(&[])).contains("module graph"),
+            "a quiet run says nothing about the graph it was not asked to draw"
+        );
     }
-    assert!(
-        wrote > total,
-        "the quiet runs finished what the first one capped: {wrote} of {total}"
+
+    // Raising the window is what reaches them, exactly as the sentence promises. The edit that raises it is
+    // itself a commit, so this run writes the three older revisions *and* the one that asked for it.
+    repo.set_config("[graph]\nwindow = 32\n");
+    let wider = repo.index_json(&[]);
+    assert_eq!(
+        wider["graph"]["revisions"].as_u64(),
+        Some(4),
+        "the window was raised, so the three it had refused are written: {}",
+        wider["graph"]
     );
+    assert_eq!(wider["graph"]["outside_window"].as_u64(), Some(0));
 }
 
 /// A corpus over `graph.max_corpus_mib` is a refusal, not a slow surprise: the pass declines before it

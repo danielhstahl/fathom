@@ -2029,7 +2029,7 @@
         },
         "window": {
           "default": 32,
-          "description": "Revisions the index runs the graph pass for in one go, oldest first (`e3.11`). A cost bound and nothing else: two new commits pay for two revisions, and a store that has never had a graph pass says so and works off the tail rather than running a walk a foreground index cannot finish. It raises its hand in the report when it stops short; `graph.chain_full_every` decides separately how often the anchor is repeated.",
+          "description": "How many of the newest revisions the graph lane covers (`e3.11`). A pass writes the owed ones among the newest `window` and refuses everything older - it is a coverage window, not a queue (`reco-r3x`). Read as a batch of the backlog instead, 32 meant '32 more per run': a cold index left a window-sized debt, every later run - including the ones that answer nothing_new - settled a slice of it for about a second, and the lane grew to hold the whole history anyway. Raise it for a longer trend, and pay for it once; `graph.chain_full_every` decides separately how often the anchor is repeated.",
           "minimum": 1,
           "type": "integer",
           "x-fathom-analyzer": "graph.build",

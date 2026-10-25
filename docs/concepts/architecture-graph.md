@@ -103,14 +103,25 @@ per revision. That is the expensive thing the index does, and it is bounded rath
 | Knob | What it refuses |
 |---|---|
 | `graph.enabled` | the whole lane, for a repository that cannot afford it; every surface then says the graph is off rather than reporting an empty one |
-| `graph.window` | how many revisions one pass writes; the rest stay owed and the next run picks them up, newest first |
+| `graph.window` | every revision older than the newest `window`: a pass writes the owed revisions inside the window and refuses the rest, so the lane's depth — and its cost — is the configuration's, not the repository's (`reco-r3x`) |
 | `graph.max_corpus_mib` | a revision whose source corpus is too big to be worth a structural pass, declined before the blobs are read |
 
+The window is a coverage window, not a queue. Read as "the newest `window` *owed* revisions" it was a
+promise that a later run settles the rest, and the run that promises nothing — the `ctrl-r`, the watch tick
+— paid a second per window-sized slice of history for as many runs as the history needed (`warm.reindex
+.noop.ms` was ~1 000 ms where ADR-004 §6.6 R1 wants ~1 ms), and the lane grew to hold a row for every
+revision in the repository anyway. Refusing is what makes the no-op cost what it reports: a run whose window
+is already graphed writes nothing, says nothing, and `fathom index --json` counts the revisions behind the
+window as `graph.outside_window` — data for a reader who wants it, not a line on every run. A repository
+that wants the architecture of its whole history says so by raising `graph.window`; the default of one
+anchor period is what the three 30-revision windows this tool reads (scorecard, churn, hotspots) need, and
+raising it is a cost paid once rather than a second per keystroke.
+
 Every refusal is printed by the run that made it and counted in `fathom index --json`'s `graph` section
-(`revisions`, `modules`, `edges`, `unavailable`, `partial`), because a lane that quietly stopped half
-way through a history is a lane whose trend line is a fiction. `--refresh` deletes the lane and derives
-it again, which is the documented way a `[layers]` edit or an extractor bump reaches stored rows: derived
-data is recomputed, not patched (ADR-004 §9.5).
+(`revisions`, `modules`, `edges`, `unavailable`, `partial`, `outside_window`), because a lane that quietly
+stopped half way through a history is a lane whose trend line is a fiction. `--refresh` deletes the lane and
+derives it again, which is the documented way a `[layers]` edit or an extractor bump reaches stored rows:
+derived data is recomputed, not patched (ADR-004 §9.5).
 
 ## What did this revision do to the architecture
 

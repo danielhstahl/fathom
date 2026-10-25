@@ -34,24 +34,6 @@
    "status": "known breach, bounded, awaiting its fix",
    "tolerance": 1.15,
    "why": "the harness bills every non-cache table to a budget whose byte model is the commit tables: on this corpus at the epic's close `graph_*` is 6,865 B/commit of the ~8,275 measured (49.8 % of the store is the graph lane), while `git_commit` + `git_commit_file` + `ref_tip` are 1,376 B/commit. The number also moves with how much of the lane one gate run happens to write (8,289 at 3 samples, 10,446 at 5), which is the same defect talking. ADR-004 \u00a711.6 gives the lane its own budget (`store.bytes_per_commit_graph`, 32 KiB/revision) and `perf_gate.py` has never measured it. ADR-004 \u00a711.10; delete this row when reco-7yq gives `store_split` the ADR's three denominators."
-  },
-  "warm.reindex.ms.small": {
-   "budget": 150.0,
-   "ceiling": 1750.0,
-   "expires": "2026-12-15",
-   "owner": "reco-r3x",
-   "status": "known breach, bounded, awaiting its fix",
-   "tolerance": 1.25,
-   "why": "the run is not a warm re-index, it is a graph backfill wearing one: a cold index leaves `graph.window`-sized debt (340 owed revisions on this corpus), and the next ten runs each settle 32 of them at ~1 s. At rest the same measurement is ~100 ms (`episodes` 46-54 ms, `graph` ~40 ms) and passes the 150 ms budget. Measured and written up in ADR-004 \u00a711.10; delete this row when reco-r3x closes."
-  },
-  "warm.reindex.noop.ms.small": {
-   "budget": 10.0,
-   "ceiling": 1250.0,
-   "expires": "2026-12-15",
-   "owner": "reco-r3x",
-   "status": "known breach, bounded, awaiting its fix",
-   "tolerance": 1.25,
-   "why": "a run that reports `nothing_new: true` still runs the graph backfill, so \u00a76.6 R1's ~1 ms store-side no-op costs ~1 s until the owed list empties (then it is 2-4 ms). The budget is right and the run is wrong; `reco-7tc`'s no-op is intact once the lane is at rest. ADR-004 \u00a711.10; delete this row when reco-r3x closes."
   }
  },
  "measurements": {
@@ -197,7 +179,7 @@
    "how": "4,161,536 spine bytes over 503 commits, `dbstat` pages; 782,336 more bytes of cache and session rows are not charged here",
    "scaled": false,
    "unit": "bytes",
-   "value": 8273
+   "value": 5545
   },
   "store.size.mib.small": {
    "budget": "store.size.mib.small",
@@ -205,7 +187,7 @@
    "how": "the whole `.fathom/index.sqlite3`",
    "scaled": false,
    "unit": "MiB",
-   "value": 4.715
+   "value": 3.402
   },
   "warm.reindex.ms.small": {
    "budget": "warm.reindex.ms.small",
@@ -213,7 +195,7 @@
    "how": "one new commit with unique content, then `fathom index`",
    "scaled": true,
    "unit": "ms",
-   "value": 1577.6
+   "value": 120.1
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",
@@ -221,7 +203,7 @@
    "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 3 runs timed fork to exit are 1066.3 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
    "scaled": true,
    "unit": "ms",
-   "value": 1049.0
+   "value": 3.784
   },
   "write.batch_rows/one_batch_at_the_cap": {
    "budget": null,

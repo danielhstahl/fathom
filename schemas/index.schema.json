@@ -81,12 +81,16 @@
           },
           "description": "What the pass refused and why: a knob that did not parse, a file over `extract.max_file_bytes`, a blob git would not serve. Capped at six, because the count is `unavailable` and the notices are examples."
         },
+        "outside_window": {
+          "type": "integer",
+          "description": "Owed revisions older than `graph.window`, which the lane therefore holds no graph for (`reco-r3x`). Not a queue: at this configuration no later pass writes them either, and the only way to graph them is to raise the window (or set it to `0`, which is every owed revision). Printed as data rather than on every run because it is what the configuration chose, not work left undone."
+        },
         "partial": {
           "type": [
             "string",
             "null"
           ],
-          "description": "Why the pass stopped short of the work list \u2014 the window, the corpus cap, a cancellation \u2014 or null when it finished what it owed. A graph that stopped halfway must not read as a graph that is finished."
+          "description": "Why the pass stopped short of graphing everything \u2014 revisions older than `graph.window`, the corpus cap, a cancellation \u2014 or null when there was nothing to stop short of. A graph that stopped halfway must not read as a graph that is finished; a run that wrote nothing because the window already covers everything says nothing at all."
         },
         "revisions": {
           "type": "integer",
@@ -116,6 +120,7 @@
         "reset_rows",
         "elapsed_ms",
         "partial",
+        "outside_window",
         "notices"
       ]
     },
