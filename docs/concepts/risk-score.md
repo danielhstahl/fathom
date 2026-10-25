@@ -34,6 +34,8 @@ Three rules hold, and they are the difference between a score people use and a s
 
 The miniature from `fathom --demo`, the episode that added a real crate:
 
+<!-- ticket-claims: transcript · the `fathom why` table as this build prints it (risk::score); an absent axis names the ticket that owns the axis, which is provenance, not a promise -->
+
 ```text
 $ fathom why 4513a988
 ep-4a42de295c13b5229318  "add the crate: one observation and the store"  ·  human 0.5  ·  +62 −0  ·  7 file(s)
@@ -95,9 +97,9 @@ features-1 38 · below τ 70
 
 Each step moved for a reason the printout names. Adding a test moved the number two points and they are
 `breadth` and `size` — one more file, two more lines — because `test_ratio` was still **absent** in every
-one of these runs (`neither logic nor tests arrived, so coverage is not a question this episode asks`, with
-`owned by e4.4` beside it: this read carried no per-file rows, so the axis dropped out of the denominator
-rather than posing as a zero). Adding the migration is what made the number jump: `surface` went to its full
+one of these runs (`neither logic nor tests arrived, so coverage is not a question this episode asks`: this
+read carried no per-file rows, so the axis dropped out of the denominator rather than posing as a zero).
+Adding the migration is what made the number jump: `surface` went to its full
 `15.66/15.66` because a migration outranks source, and `migration` came in at its full `10.84/10.84` because
 a `DROP COLUMN` whose reversal is not in the diff is the most expensive thing a spine-only build can notice.
 The `println!` is the detector talking: `findings 2.41`, small, because one leftover print in one new

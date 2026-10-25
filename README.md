@@ -244,8 +244,8 @@ that is a bug.
 - Config keys are a spec, not a dict: `src/recommender/config/schema.py` declares every key, and
   `python3 -m recommender.config schema --check && python3 -m recommender.config doc --check` fails
   if `schemas/fathom.schema.json` or the key reference in [docs/concepts/config.md](docs/concepts/config.md)
-  has drifted from it. Add a key there, never to the generated files; `--set` a key in a test if you
-  need one that does not exist yet, and `e0.8`'s digest test will tell you if an analyzer declared a
+  has drifted from it. Add a key there, never to the generated files; `--set` a key in a test to try one
+  the schema has not been given, and `e0.8`'s digest test will tell you if an analyzer declared a
   key the schema is missing.
 - Never encode your own glob list. What a path *is* and how noisy it is come from the one table in
   `src/recommender/taxonomy/`; a detector, renderer or store writer with its own `startswith` list

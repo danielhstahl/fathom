@@ -110,8 +110,8 @@ repositories landed in the top decile or carried a high finding; all 64 were lab
 
 23 of the forty-six → forty-three false positives were blamed on the **ranking** rather than on any
 detector (`aggregate.coverage.blamed_on_score`): a routine bump scored into the top decile with nothing
-suspicious about it. That number is the shape of the finding, and it is a routing result owned by `e4.4`'s
-weights and τ, not a defect in the catalogue. §3b is what happened when someone went and changed the
+suspicious about it. That number is the shape of the finding, and it is a routing result — `e4.4`'s weights
+and τ decided it — not a defect in the catalogue. §3b is what happened when someone went and changed the
 routing.
 
 **The miss rate is 0.792 at τ, and 0.750 at the per-repository cut.** 19 of the 24 episodes that were

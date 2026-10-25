@@ -17,6 +17,52 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The prose pages joined the rule that refuses a stale ticket claim, one sentence at a time (`reco-cud`)
+
+`reco-j1o` fixed the sentences the binary prints and left the ones the documents print, because a concepts
+page carries the same claim in three different tenses and only a person can say which half is history.
+Fifteen hits came back from `docs/concepts/`, `docs/recipes/` and `README.md` once the globs were pointed at
+them, and they were read one at a time. Ten were provenance wearing a future-tense verb — "`e0.9` owns it",
+"a routing result owned by `e4.4`'s weights", "`e3.1` will ship different code" — and now say who built the
+thing instead of who is waiting for it. Two were stale in a way that mattered:
+[cycle-detection.md](docs/concepts/cycle-detection.md) said no code path writes a `[[allowance]]` from a
+cycle finding while naming the ticket that built the writer (`fathom ratchet --update-baseline --reason "…"`
+walks the cycle lane through `ratchet::inventory` and writes the row, and it has since `e3.10`), and
+[episode-narrative.md](docs/concepts/episode-narrative.md) was quoting a narrative golden that
+`reco-j1o` had re-baked, so its citation row still carried the sentence the product stopped printing. One
+was true and badly aimed: `fathom config explain` really is not a verb in this build — checked against the
+clap grammar, not remembered — but the work `e0.8` closed shipped as
+`python3 -m recommender.config explain`, which is what [the recipe](docs/recipes/silence-a-finding.md) now
+tells the reader to type instead of a command that does not parse. The recipe names it as `config explain`,
+without the `fathom` in front: `test_recipes_name_only_verbs_this_binary_has` refuses a recipe that names an
+untypeable verb, and the two rules are now on the same sentence, so the page says what the verb answers
+rather than printing a command that fails in the reader's shell.
+
+* **The checker reads prose now.** `docs/concepts/*.md`, `docs/recipes/*.md` and `README.md` joined
+    `crates/*/src/**`, and a Markdown file is cut into units rather than lines: a wrapped paragraph is one
+    unit (a claim spans the wrap), a list item is its own unit (joining a bulleted caveat list put every key
+    in `change-classification.md`'s refusal list in one window with every "not" in it), and a fenced block
+    is one unit and is scanned — a stale copy of a printout is exactly what this rule is for.
+* **A phrase is matched as a word.** `owns it` used to read "an analysis that owns its own confidence"
+    (`summary-card.md`) as a promise; a substring rule turns provenance into a promise, which is the false
+    positive that gets a checker switched off.
+* **A hit prints the clause, not the head of the unit.** Prose units are paragraphs and whole transcripts, so
+    the first 160 columns of a hit were the fence opening. The problem line now quotes the named key with
+    its clause around it, which keeps the review a list rather than a hunt.
+* **A verbatim transcript is signed, not silently exempt.** A page that copies a shipped printout — the
+    `fathom why` ceiling table, a narrative card's citation row — quotes a sentence that is the product's,
+    not the page author's, so it carries `<!-- ticket-claims: transcript · why -->` above the block. The
+    word is the kind of reading done and the rest is the reason, and `--verbose` lists every attested site
+    with it: two exist, both listed, both greppable.
+
+Limits, honestly: the marker is a hole a human signed, and the list is only as good as the reviewer —
+`--verbose` is the only thing between it and a rule that quietly stops applying. Two stale keys live in the
+product rather than in prose and are out of this rule's reach: the delta's `blast` gap still prints
+`owner e3.2`, and `fathom why` still prints `· owned by e4.4` for an axis whose input an episode did not
+carry. Both are true provenance today (`e3.2` wrote the graph lane; `e4.4` owns the axis), both are printed
+through a `{}` placeholder so the checker cannot see a plan key in them, and if either sentence ever starts
+promising work, it will take a Rust change to notice.
+
 ### `fathom why` stopped telling you the module graph was unbuilt, because it is built (`reco-j1o`)
 
 The blast axis printed, under *what this score cannot see*:

@@ -69,8 +69,8 @@ row against a `Timestamp` it was handed, never against `now`, which is what make
 An `Episode` carries exactly the fields the rail can name: identity and digests, members, created/last,
 author kind/name/confidence, summary, paths, file/add/del/binary counts, review state, session and turn,
 boundary rule and confidence, an optional risk, and whether the episode is still live. There is no
-`structure` field, no `findings`, no `risk_score` — the card cites the fields `e2.11` will publish and
-says they are not in this build (§8).
+`structure` field, no `findings`, no `risk_score` — the card cites the delta fields `e2.11` publishes, and
+where the run handed it no document it prints the verb that would fill the row (§8).
 
 ## 2 The row, and the six columns it is made of
 

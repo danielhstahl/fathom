@@ -57,8 +57,9 @@ Two decisions are load-bearing and were argued in the code rather than in a meet
 
 * **The sections are a constant, not a consequence.** A card whose sections depend on what happened to be
   measured cannot distinguish "not measured" from "not asked".
-* **A gap is a fact, not an apology.** `no supplied reach (e3.2)` is a sentence a reviewer
-  acts on. `unknown` is not, and neither is `0`.
+* **A gap is a fact, not an apology.** The `blast` section prints `no supplied reach` and names the key
+  of the answer that would fill it: that is a sentence a reviewer acts on. `unknown` is not, and neither
+  is `0`.
 
 ## 3. The version policy, and what fails CI
 

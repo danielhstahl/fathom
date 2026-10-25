@@ -65,8 +65,9 @@ measures the annotation budget instead.
 Three things these numbers are not, stated before anybody reuses them:
 
 1. **They are an upper bound, not a prediction.** The extractors are throwaway (`crates/fathom-analyze/examples/s1_spike/`),
-   written to interrogate the grammar, and `e3.1` will ship different code. A number that the
-   spike *failed* is a floor on what `e3.1` must handle; a number it passed is only a promise that
+   written to interrogate the grammar, and the code `e3.1` shipped (`crates/fathom-analyze/src/structure/`,
+   six languages and a corpus harness of its own) is not that code. A number that the
+   spike *failed* was a floor on what `e3.1` had to clear; a number it passed was only a promise that
    the grammar can be made to say it.
 2. **Four of the six languages were measured on synthetic code for cost.** Only Rust and Python
    have real files in this repository to parse; Go, TypeScript, Ruby and Java cost numbers come

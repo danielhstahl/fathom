@@ -36,8 +36,9 @@ Not six, not eight, and not "whichever ones had data". A section is one of three
 * **`unavailable`** — which *must* carry a gap, the gap must carry a one-line `short` form (a card is
   thirty-five columns wide), and the gap must name the plan key that owns the answer.
 
-That last rule is the one that makes the document trustworthy: `no supplied reach (e3.2)` is a
-sentence a reviewer can act on. `unknown` is not, and neither is `0`. ADR-001 §7.7's whole argument is that
+That last rule is the one that makes the document trustworthy: the `blast` section's gap prints
+`no supplied reach` and names the key of the answer that would fill it, and that is a sentence a reviewer
+can act on. `unknown` is not, and neither is `0`. ADR-001 §7.7's whole argument is that
 an unknown rendered as a zero is worse than no number, and the delta is where that rule is enforced.
 
 ## Evidence is not a footnote

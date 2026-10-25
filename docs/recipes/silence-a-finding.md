@@ -72,11 +72,21 @@ todo = { min_new = 3 }                   # one TODO in a stub-heavy codebase is 
 max_findings = 8                         # fewer rows per detector per episode, with the remainder counted
 ```
 
-The full key list, with defaults and owners, is generated on [the catalogue page](../detectors/index.md), and
-`fathom config explain` — not in this build; `e0.8`'s owner, [the key spec](../concepts/config.md) is
-generated from it — is what will print which layer won a value. Until then: a suppression in your user
-config and a suppression in the clone are different decisions and should look different in the report,
-so put repository-wide silences in the repository's `fathom.toml`.
+The full key list, with defaults and owners, is generated on [the catalogue page](../detectors/index.md),
+and [the key spec](../concepts/config.md) is generated from the same schema `e0.8` wrote.
+
+The spec documents one more answer — `config explain`, which layer won a value and what it beat — and this
+build has no verb for it. The explainable config shipped beside the tree instead, one of the three
+exceptions the README names on purpose, and that is the command to paste into a bug report:
+
+```bash
+PYTHONPATH=src python3 -m recommender.config explain --path src/foo.rs
+PYTHONPATH=src python3 -m recommender.config explain --key risk.weights.blast --json
+```
+
+Until that verb is wired in: a suppression in your user config and a suppression in the clone are different
+decisions and should look different in the report, so put repository-wide silences in the repository's
+`fathom.toml`.
 
 ## 5 · When the finding is simply wrong
 

@@ -233,7 +233,8 @@ layout mirrors it one-for-one (`markers`, `evidence`, `policy`, `engine`, `episo
   about, and it survives this ticket intact.
 - *Per-file IO inside the engine.* The engine is a function of what it is handed; `cli.py`
   reads blobs, bounded by `MAX_BLOB_BYTES`. That is what makes the cache key honest.
-- *Claiming `reformat`.* It is a property of a diff, not of a file; `e2.2` owns it.
+- *Claiming `reformat`.* It is a property of a diff, not of a file, and the pass that decides a reformat
+  is `e2.2`'s; a second answer from the classifier would be a second opinion, not a fact.
 
 ## 9. The executable half
 
@@ -255,8 +256,9 @@ python3 -m pytest tests/test_change_classifier_contract.py      # the contract, 
 `PathTaxonomy { path_class, noise, taxonomy_version }` — ADR-004 §4.2's three columns — behind a
 `Taxonomy` trait whose default implementation is `Unclassified`: every path `unknown` at version
 `0`, which §4.7's `v_unknowns` makes visible instead of pretending is informative. The trait's own
-doc comment says the policy engine that answers it is not ingest's, that `e0.9` owns it and that
-`e2.1` layers content evidence on top. Three consequences for whoever writes the Rust half:
+doc comment says the engine that answers it is not ingest's — `e0.9`'s policy is the owner, `e2.1`
+layers content evidence on top — and that `Unclassified` stays the default until a Rust engine is
+wired in, which is a seam, not a ticket. Three consequences for whoever writes the Rust half:
 
 * **The mapping is one-for-one and adds no columns.** `Classification.cls` → `path_class`,
   `Classification.noise` → `noise`, `Taxonomy.version` → `taxonomy_version`. The confidence, the

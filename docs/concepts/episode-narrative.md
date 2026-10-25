@@ -126,20 +126,25 @@ From `crates/fathom-analyze/tests/golden/narrative/measured.md` (blessed; re-bak
 **What you cannot tell from this document**
 
 - You cannot tell what depends on the paths this change touched — the document's own words are
-  “no module graph in this build”[c31].
+  “no supplied reach”[c29].
 ```
 
 and the corresponding rows of the evidence table:
 
+<!-- ticket-claims: transcript · copied from crates/fathom-analyze/tests/golden/narrative/measured.md · the plan key in the gap row is the delta's own `owner` field, not this page's promise -->
+
 ```
 - `[c1]` `attention` figure `risk` — #/risk — risk: spine-1 76 = surfaces 50 + size 10 + author 8 + breadth 6 + deletions 2 · rank 2 of 9
 - `[c2]` the recorded intent — #/episode/intent — intent, in the asker's words: split the worker pool … — recorded by `hook-prompt` at 0.95, state recorded
-- `[c31]` the `blast` gap — #/gaps/5 — no supplied reach — how far a change reaches is a question for the
+- `[c29]` the `blast` gap — #/gaps/5 — no supplied reach — how far a change reaches is a question for the
   module graph, and this document carries no supplied block for it … (owner e3.2; remedy none in this build)
 ```
 
 Every figure in those three sentences is a copy, every pointer resolves in the document
-(`fathom analyze <episode> --json`), and the third sentence names the ticket that would close the hole.
+(`fathom analyze <episode> --json`), and the third quotes the delta's own `blast` gap, whose `owner` field
+names the plan key that holds the answer. That citation is a copy of a printout, so the key inside it moves
+when the golden is re-baked and says nothing about whether the board still has the bead open — which is why
+it carries a marker rather than a reword.
 
 The ids are `c1`, `c2`, … and not `e1`, `e2`: this repository's own documents are full of plan keys spelled
 `e4.7`, and a citation grammar that collides with the ticket grammar is a citation grammar that gets

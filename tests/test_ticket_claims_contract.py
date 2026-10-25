@@ -15,18 +15,23 @@ safety property ADR-001 §7.9 is made of, and a product that cannot say who meas
 you cannot audit. It is **do not promise a ticket that is already closed**, and a rule about the board is
 a rule a checker can hold. So:
 
-* `tools/check_ticket_claims.py` resolves every plan key in a shipped sentence (a string literal or a
-  Rust doc comment) to its bead with `.plan/keymap.json`, asks `bd` for the status, and fails when a
-  closed bead is claimed unbuilt — the same shape as `tools/check_docs_commands.py`, which fails a
-  documented command that does not type;
+* `tools/check_ticket_claims.py` resolves every plan key in a shipped sentence (a string literal, a
+  Rust doc comment, or a paragraph of prose) to its bead with `.plan/keymap.json`, asks `bd` for the
+  status, and fails when a closed bead is claimed unbuilt — the same shape as
+  `tools/check_docs_commands.py`, which fails a documented command that does not type;
 * the fix has to be *true now*: the blast axis answers from the store it is printed under
   (`risk::blast::Availability`), and the ceiling lines are composed from the score's own absent axes, so
   an axis that was measured can never be listed as invisible;
-* prose pages carry the same kind of claim and are a human review (**reco-cud**), not a bulk reword, so
-  the checker scans `crates/*/src/**` until that review lands.
+* prose pages carry the same kind of claim, and **reco-cud** is the review that said so page by page:
+  several of those sentences were history wearing a future-tense verb, and several were promises about
+  work that has since landed. They were read, not bulk-reworded. Each page is now scanned, a claim about
+  landed work is reworded to name what is actually missing, and the two pages that quote a shipped
+  printout verbatim say so with a marker the checker lists instead of hiding.
 """
 from __future__ import annotations
 
+import contextlib
+import io
 import pathlib
 import sys
 
@@ -92,6 +97,90 @@ def test_a_key_that_is_not_a_plan_key_is_not_a_key():
     assert not flagged("measured by `e2.11`'s model, on the episode's own two trees")
 
 
+def test_an_ownership_phrase_that_is_provenance_is_not_a_claim():
+    """A whole-word rule, because `owns it` inside "owns its own confidence" is not a promise.
+
+    This is `summary-card.md`'s sentence, the first prose the review read and the reason the rule cannot be
+    a substring search: "an analysis that owns its own confidence" names an owner, it does not await one.
+    """
+    assert not flagged("the axis is an analysis that owns its own confidence (`e4.4`), not a guess")
+
+
+# --- prose: what a unit is -----------------------------------------------------------------------
+
+
+def test_prose_is_read_in_units_a_line_cannot_be():
+    """A wrapped paragraph is one unit; a list item is its own; a fenced block is one, and it is scanned."""
+    page = "\n".join(
+        [
+            "The blast figure is `e3.2` (**reco-8s4**) and is",
+            "not built, which is what the ceiling says.",
+            "",
+            "- the score is `e4.4`'s and is measured today",
+            "- nothing here is not built",
+            "",
+            "```text",
+            "blast  —  not measured · owned by e3.2",
+            "```",
+            "",
+        ]
+    )
+    units = [unit for _number, unit in claims.prose_units(page)]
+    wrapped = [unit for unit in units if "not built" in unit and "e3.2" in unit and unit.startswith("The")]
+    assert wrapped, "the wrapped claim came back as two units: %r" % (units,)
+    assert flagged(wrapped[0])
+    # The two bullets are not one sentence, so the second bullet's "not built" is not about the first's key.
+    assert not any(flagged(unit) for unit in units if unit.startswith("- the score"))
+    # ...and the transcript is scanned rather than waved through.
+    assert any(flagged(unit) for unit in units if unit.startswith("```text"))
+
+
+def test_a_transcript_marker_excuses_the_block_above_which_it_stands(tmp_path, monkeypatch):
+    """The escape hatch is a marker with a reason, honoured across a blank line and a fence opening.
+
+    Written as an end-to-end run over a temporary tree, because the thing under test is where the marker
+    has to sit to work — a unit boundary the author of the page cannot see. The output is captured by
+    redirecting directly rather than through a fixture, so the test reads the same under pytest as alone.
+    """
+    (tmp_path / ".plan").mkdir()
+    (tmp_path / ".plan" / "keymap.json").write_text('{"e3.2": "reco-8s4"}', encoding="utf-8")
+    page = tmp_path / "docs" / "concepts"
+    page.mkdir(parents=True)
+    body = [
+        "the card prints this table verbatim:",
+        "",
+        "<!-- ticket-claims: transcript · copied from `fathom why`, and the key in it is the product's -->",
+        "",
+        "```text",
+        "blast  —  not measured · owned by e3.2",
+        "```",
+        "",
+    ]
+    page.joinpath("with-marker.md").write_text("\n".join(body), encoding="utf-8")
+    page.joinpath("no-marker.md").write_text(
+        "\n".join(line for line in body if not line.startswith("<!--")), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(claims, "ROOT", tmp_path)
+    monkeypatch.setattr(claims, "KEYMAP", tmp_path / ".plan" / "keymap.json")
+    monkeypatch.setattr(claims, "SOURCE_GLOBS", [])
+    monkeypatch.setattr(claims, "DOC_GLOBS", ["docs/concepts/*.md"])
+    monkeypatch.setattr(claims, "plan_keys", lambda: {"e3.2": "reco-8s4"})
+    monkeypatch.setattr(claims, "board", lambda: {"reco-8s4": "closed"})
+
+    first = io.StringIO()
+    with contextlib.redirect_stdout(first):
+        assert claims.main([]) == 1
+    assert "no-marker.md:4" in first.getvalue(), first.getvalue()
+    assert "with-marker.md" not in first.getvalue(), first.getvalue()
+
+    page.joinpath("no-marker.md").unlink()
+    second = io.StringIO()
+    with contextlib.redirect_stdout(second):
+        assert claims.main(["--verbose"]) == 0
+    assert "transcript" in second.getvalue(), second.getvalue()
+
+
 def test_a_phrase_far_from_the_key_is_not_about_the_key():
     """A paragraph that mentions a ticket and, three sentences on, says something is missing."""
     line = (
@@ -115,8 +204,15 @@ def test_every_plan_key_resolves_to_a_bead_the_board_has():
 
 
 def test_the_shipped_source_promises_no_ticket_that_has_landed():
-    """The rule itself, run over `crates/*/src/**`."""
+    """The rule itself, run over `crates/*/src/**` and over the prose pages **reco-cud** reviewed."""
     assert claims.main([]) == 0
+
+
+def test_the_prose_pages_are_scanned():
+    """**reco-cud** is the review that let the prose join the rule; a glob that went missing would undo it."""
+    assert claims.DOC_GLOBS == ["docs/concepts/*.md", "docs/recipes/*.md", "README.md"]
+    for pattern in claims.DOC_GLOBS:
+        assert list(ROOT.glob(pattern)), pattern
 
 
 def test_the_checker_says_so_when_it_cannot_see_the_board():
