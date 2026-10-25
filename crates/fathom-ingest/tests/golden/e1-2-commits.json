@@ -3012,9 +3012,7 @@
         "hash": "44c6397d085c55d2fcd199b22d0faca0343a3c74c073540370458e4e2e97d35e",
         "bytes": 25
       },
-      "trailers": {
-        "side": "cover the exporter"
-      },
+      "trailers": {},
       "files": [
         {
           "change": "add",
@@ -17441,9 +17439,7 @@
         "hash": "f4f00c249cb57e3b00fb49552412f362271336330a6227c91d60502fc9a327ec",
         "bytes": 29
       },
-      "trailers": {
-        "main": "the last straight line"
-      },
+      "trailers": {},
       "files": [
         {
           "change": "add",
@@ -36396,9 +36392,7 @@
         "hash": "eaf52f82ba98813d0d0954589e30b64286c5074c0a97c5ececbfb61d09cdc3f8",
         "bytes": 23
       },
-      "trailers": {
-        "side": "add the exporter"
-      },
+      "trailers": {},
       "files": [
         {
           "change": "add",

@@ -169,11 +169,24 @@ impl MessageFacts {
 ///
 /// git's rules ([`git-interpret-trailers(1)`](https://git-scm.com/docs/git-interpret-trailers)) are the
 /// ones a user has already learned, so they are the ones implemented here: the trailer block is the
-/// *last paragraph*, every line of it must look like `Key: value`, a key is case-insensitive and may
-/// contain hyphens, a line that starts with whitespace continues the previous value, and a repeated key
-/// keeps its last value. `CommitHeader::trailer` in [`crate::graph`] answers one key; this is the whole
-/// map, which is what `e1.3` (boundary rules), `e4.1` (attribution) and the store's `trailers` column
-/// all need, from one parse.
+/// *last paragraph*, it is a block only when a blank line separates it from what comes before, every
+/// line of it must look like `Key: value`, a key is case-insensitive and may contain hyphens, a line
+/// that starts with whitespace continues the previous value, and a repeated key keeps its last value.
+/// `CommitHeader::trailer` in [`crate::graph`] answers one key; this is the whole map, which is what
+/// `e1.3` (boundary rules), `e4.1` (attribution) and the store's `trailers` column all need, from one
+/// parse.
+///
+/// The separating blank line is the rule that keeps a subject out of the map (`reco-2ss`). A message
+/// that is one paragraph has no trailer block at all — it *is* the subject — and a conventional-commit
+/// subject is shaped exactly like a trailer, so reading trailers out of the first paragraph invents one
+/// for every `fix: …`, `chore: …` and `feat: …` commit in the repository. What a reviewer then reads in
+/// the `trailers` column is the subject wearing a trailer's clothes, and `e1.3`'s boundary rules and
+/// `e4.1`'s attribution read it the same way a human does.
+///
+/// Two edges where this is *stricter* than git, written down so "git's rules" above is a claim with its
+/// edges drawn: a paragraph that mixes trailer lines with prose yields no block here, where git prints
+/// the trailer lines it found, and `Key:value` with no space after the colon is not a trailer here.
+/// Neither can invent a trailer, which is the failure mode this parser is judged on.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Trailers(BTreeMap<String, String>);
 
@@ -182,23 +195,24 @@ impl Trailers {
     #[must_use]
     pub fn parse(message: &[u8]) -> Self {
         let text = String::from_utf8_lossy(message);
-        let body = text.trim_end_matches(['\n', '\r']);
-        if body.is_empty() {
-            return Trailers::default();
+        // `lines()` splits on LF and drops the carriage return a CRLF message leaves behind, so the
+        // paragraph scan below does not have to know which line ending the platform wrote.
+        let mut lines: Vec<&str> = text.lines().collect();
+        while matches!(lines.last(), Some(line) if line.trim().is_empty()) {
+            lines.pop();
         }
-        // The last paragraph, however many lines it has, and only if every line is a trailer line.
-        let paragraph = body
-            .rsplit_once("\n\n")
-            .map(|(_, tail)| tail)
-            .unwrap_or(body);
+        // The trailer block is the paragraph after the last blank line — so a message with no blank
+        // line has no trailer block, which is git's rule and the whole of this defect: `git
+        // interpret-trailers --parse` reads nothing out of a bare `chore: gitignore foo`, and neither
+        // does this. A run of spaces counts as a blank line, as it does in git.
+        let Some(index) = lines.iter().rposition(|line| line.trim().is_empty()) else {
+            return Trailers::default();
+        };
         let mut out: BTreeMap<String, String> = BTreeMap::new();
         let mut current: Option<String> = None;
-        for line in paragraph.lines() {
-            if line.is_empty() {
-                // A blank line inside the tail means the tail is not one paragraph; that is only
-                // reachable through `unwrap_or(body)`, and it ends the block.
-                break;
-            }
+        // The range after that blank line holds no blank line itself, which is what "one paragraph"
+        // means here; every line of it has to be a trailer line or a continuation of one.
+        for line in lines[index + 1..].iter().copied() {
             if line.starts_with([' ', '\t']) {
                 // Continuation of the previous trailer's value, git's rule.
                 if let Some(key) = current.as_ref()
@@ -1073,6 +1087,50 @@ mod tests {
             Some("Ada <ada@example.invalid>"),
             "git folds an indented continuation into the value"
         );
+    }
+
+    #[test]
+    fn a_subject_shaped_like_a_trailer_is_not_one() {
+        // The defect this guards (`reco-2ss`): a message with no trailer paragraph yields no trailers.
+        // Every conventional-commit subject is shaped like `Key: value`, so reading the *first*
+        // paragraph as a trailer block invented a trailer for most commits in a real repository — and
+        // `fathom show` printed the subject under `trailers`.
+        let trailers = Trailers::parse(
+            b"chore: gitignore .transcripts/ \xe2\x80\x94 session logs land in the working tree\n",
+        );
+        assert!(
+            trailers.is_empty(),
+            "a one-paragraph message is a subject, not a trailer block: {trailers:?}"
+        );
+        // Not even when the whole (single) paragraph looks like trailers: git's `interpret-trailers`
+        // finds no block until a blank line separates one from what precedes it.
+        assert!(Trailers::parse(b"Co-authored-by: Ada\nSigned-off-by: Ada\n").is_empty());
+        // And not for the two shapes that used to reach the map from a body-less message.
+        assert!(Trailers::parse(b"fix: the parser lied\n").is_empty());
+        assert!(Trailers::parse(b"Reviewed-by: Ada\n").is_empty());
+        assert!(Trailers::parse(b"").is_empty());
+    }
+
+    #[test]
+    fn the_blank_line_is_what_makes_the_block() {
+        // The other half of the pair: the same subject, plus a body and a trailer block. Move the
+        // trailer paragraph down one line — from "no blank line before it" to "a blank line before
+        // it" — and it stops being the subject and starts being a trailer.
+        let subject_only = Trailers::parse(b"agent-session: s-1\n");
+        assert!(subject_only.is_empty(), "{subject_only:?}");
+        let with_a_block = Trailers::parse(b"agent-session: s-1\n\nagent-session: s-2\n");
+        assert_eq!(
+            with_a_block.get("agent-session"),
+            Some("s-2"),
+            "the block is the last paragraph, and only the last paragraph"
+        );
+        // A CRLF message is the same message: `git interpret-trailers` does not care who wrote the
+        // line endings, and neither may this.
+        let crlf = Trailers::parse(b"Subject\r\n\r\nagent-session: s-3\r\n");
+        assert_eq!(crlf.get("agent-session"), Some("s-3"), "{crlf:?}");
+        // A paragraph of nothing but spaces separates blocks, as it does in git.
+        let spaces = Trailers::parse(b"Subject\n\n   \nSigned-off-by: Ada\n");
+        assert_eq!(spaces.get("signed-off-by"), Some("Ada"), "{spaces:?}");
     }
 
     #[test]

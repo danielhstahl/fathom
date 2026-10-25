@@ -118,18 +118,22 @@ impl CommitHeader {
     /// The value of a message trailer; the last occurrence wins, which is git's rule.
     ///
     /// Here rather than in `e1.3` because the trailer grammar is a dozen lines and the segmentation
-    /// rules, a `--trailer` CLI filter and the hook-event writer all need the same reading of it.
+    /// rules, a `--trailer` CLI filter and the hook-event writer all need the same reading of it —
+    /// including the rule that a trailer block is a *paragraph*, separated from what precedes it by a
+    /// blank line. A one-paragraph message is a subject, and a `fix: …` subject is shaped exactly like
+    /// a trailer, so the loose reading invented one for every conventional commit (`reco-2ss`).
     #[must_use]
     pub fn trailer(&self, key: &str) -> Option<String> {
         let message = String::from_utf8_lossy(&self.message);
-        // The trailer block is the last paragraph of "key: value" lines.
-        let body = message.trim_end();
+        let mut lines: Vec<&str> = message.lines().collect();
+        while matches!(lines.last(), Some(line) if line.trim().is_empty()) {
+            lines.pop();
+        }
+        // No blank line, no trailer block: the whole message is the subject.
+        let start = lines.iter().rposition(|line| line.trim().is_empty())?;
         let mut found: Option<String> = None;
-        for line in body.lines().rev() {
+        for line in lines[start + 1..].iter().rev() {
             let line = line.trim();
-            if line.is_empty() {
-                break;
-            }
             let Some((name, value)) = line.split_once(':') else {
                 break;
             };

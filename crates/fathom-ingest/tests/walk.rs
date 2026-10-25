@@ -392,6 +392,40 @@ fn a_header_carries_what_a_timeline_row_needs() {
 }
 
 #[test]
+fn a_subject_that_looks_like_a_trailer_answers_no_trailer() {
+    // The pair to `a_header_carries_what_a_timeline_row_needs` above (`reco-2ss`): a conventional-commit
+    // subject is shaped exactly like `Key: value`, so a lookup that reads the *first* paragraph as a
+    // trailer block answered every key a repository's commit style happens to use.
+    let fixture = Fixture::new("subject-trailer");
+    let root = fixture.init();
+    fixture.commit(&root, "setup", &[("README.md", "before\n")]);
+    fixture.commit(
+        &root,
+        "fix: the parser read the subject as a trailer",
+        &[("one.txt", "one\n")],
+    );
+    let repo = open(&root);
+    let outcome = repo.log(WalkOptions::head()).finish().expect("walk");
+    let header = outcome
+        .entries
+        .first()
+        .expect("one entry")
+        .detail
+        .as_ref()
+        .expect("headers by default");
+    assert_eq!(
+        header.subject,
+        "fix: the parser read the subject as a trailer"
+    );
+    assert_eq!(
+        header.trailer("fix"),
+        None,
+        "a one-paragraph message is a subject, and has no trailer block at all"
+    );
+    assert_eq!(header.trailer("co-authored-by"), None);
+}
+
+#[test]
 fn ids_only_reads_no_headers_and_changes_nothing_else() {
     let fixture = merge_fixture();
     let repo = open(&fixture.root);

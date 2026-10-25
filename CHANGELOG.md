@@ -17,6 +17,66 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A conventional-commit subject was printed as a trailer (`reco-2ss`)
+
+`fathom show HEAD~3`, in this repository, on a commit whose message is one line:
+
+```text
+  message   chore: gitignore .transcripts/ — session logs land in the working tree and are not artefacts
+  trailers  chore: gitignore .transcripts/ — session logs land in the working tree and are not artefacts
+```
+
+The subject, twice: once where it belongs and once under the field a reviewer reads to decide whether the
+agent's self-report is present at all. The parser was not misreading a trailer paragraph — there was no
+paragraph to read. `Trailers::parse` takes the *last* paragraph of a message, and in a message with one
+paragraph the last paragraph is the subject; a conventional-commit subject is shaped exactly like
+`Key: value`, so every `fix:`, `chore:` and `feat:` commit in the repository was handed a trailer it had
+never written. The golden export caught it: three of the 500 fixture commits were filed with
+`{"side": "cover the exporter"}` and `{"main": "the last straight line"}` — merge subjects, wearing
+trailer clothes. It is the same map that `e1.3`'s boundary rules, `e4.1`'s attribution and the intent
+ladder read, so the invention was not only cosmetic: a commit could be split into its own episode because
+"this commit carries a trailer", and the trailer was the word `chore`.
+
+`git interpret-trailers` was checked against each shape, and it is the rule the parser now follows: a
+trailer block is the last paragraph **and** a blank line has to separate it from what precedes it. A bare
+`chore: gitignore foo` prints nothing; so does a one-paragraph `Co-authored-by: X\nSigned-off-by: Y`, even
+though both lines look like trailers — the first paragraph is the subject, always.
+
+* **One rule, in both places that had a grammar for it.** `Trailers::parse` and `CommitHeader::trailer`
+    each looked for a trailer block, each took the trailing paragraph, and each found the subject sitting
+    there. Both now require the separating blank line, and both read a message as *lines*, which fixes a
+    second way the old code invented a trailer: a CRLF message's separator is `\r\n\r\n`, which did not
+    match the `\n\n` the paragraph split looked for, so a Windows-authored commit with a real trailer block
+    reported its subject instead of its trailers.
+* **The pair the ticket asked for, at both surfaces.** `crates/fathom-cli/tests/show_trailers.rs` indexes
+    one repository with two commits — the report's subject-only message verbatim, and one with a prose body
+    plus an `agent-session`/`agent-turn` block — and asserts the text form prints no `trailers` line for
+    the first and exactly `agent-session: pi-036, agent-turn: 1` for the second, with the same claim in
+    `--json`. Either half alone passes the broken parser: "nothing is printed" is what a parser that never
+    finds anything does, and "the block is printed" is what the parser that invented extras also did.
+* **The golden file moved, by exactly three trailers.** `tests/golden/e1-2-commits.json` is regenerated,
+    not hand-edited (`FATHOM_UPDATE_GOLDEN=1`), and the whole diff is those three `{"side": …}` /
+    `{"main": …}` maps becoming `{}` — which is also the check that the fix does not reach anywhere else.
+* **Two divergences from git are now written down instead of implied.** A paragraph that mixes trailer
+    lines with prose yields no block here where git prints the trailer lines it found, and `Key:value`
+    with no space after the colon is not a trailer here. Both are stricter than git and neither can
+    invent a trailer, which is the failure mode this parser is judged on; the doc comment now says so,
+    because "implements git's rules" without its edges is a claim nobody can check.
+* **Existing stores keep the old rows until they are rebuilt.** A warm `fathom index` normalises the
+    commits it has not seen (`ADR-004 §6.1`), so the fix reaches a repository on its next new commit or on
+    `fathom index --rebuild` — the standing remedy for anything the indexer has learned to read
+    differently, and the reason it is a documented command rather than an apology.
+
+*Asserted by*: `crates/fathom-cli/tests/show_trailers.rs`
+(`a_subject_only_message_prints_no_trailers`,
+`a_subject_with_a_trailer_block_prints_the_block_and_only_the_block`), the unit tests in
+`crates/fathom-ingest/src/record.rs` (`a_subject_shaped_like_a_trailer_is_not_one`,
+`the_blank_line_is_what_makes_the_block`) and `crates/fathom-ingest/tests/walk.rs`
+(`a_subject_that_looks_like_a_trailer_answers_no_trailer`) for the second copy of the grammar. The first
+CLI test fails against the code before this change by printing the bug report's line verbatim; the fixture
+commits that carry real trailers (`agent-session: s-124`, `co-authored-by: Ada Lovelace …`) are unchanged
+byte for byte, which is the half that says the parser still finds what exists.
+
 ### The perf gate was timing its own polling loop (`reco-dkr`)
 
 `query.metrics.ms.small` — `fathom stats --json`, 250 ms of budget on a 13 ms verb — measured 14.8, 14.9
