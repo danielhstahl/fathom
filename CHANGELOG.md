@@ -17,6 +17,55 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The toast took the hint row and never gave it back (`reco-2ll`)
+
+The last line of the frame is the hint row: `q Queue · t Timeline · d Diff · / Search · , Command
+palette · x Mark reviewed …`. Press `<Esc>` to close the help overlay and it becomes:
+
+```text
+help closed — the view behind it kept its selection
+```
+
+…and it stayed there. A dozen keystrokes and several seconds later it was still the last line, and a
+second toast — `manifest pane fills the frame` — survived ten keys after that. ADR-006 §7.5 makes that
+row the surface that makes `?` unnecessary for the common case, so a toast that never expires is not a
+message, it is an eviction: a reviewer who dismisses the help once never gets the hints back at all.
+
+There was a lifetime, and it was the wrong unit. `TOAST_FRAMES = 40`, one tick taken off per draw, and
+a draw is not a unit of time. The loop is tickless (ADR-006 §0.1): a frame is drawn when something
+changed and otherwise nothing is drawn, so "forty draws" meant "forty more changes, whenever the
+reviewer deigns to make them" — and on a frame that has gone quiet, which is where a reviewer reads
+what the toast just said, never. To finish it off, `age_toast` ran *after* the draw, so the frame that
+would have given the row back had to be caused by something else.
+
+* **A toast's lifetime is now a clock: `TOAST_LIFETIME`, six seconds of wall clock.** `App::toast`
+    records a deadline (`toast_until`) instead of a countdown nobody can fast-forward, and
+    `App::age_toast(now)` retires it and reports whether the hint row changed — which is the loop's
+    cue, not the shell's. `App::toast_lifetime` is a field so a test can watch a lifetime pass without
+    waiting for one; every real run leaves it at six seconds.
+* **An expiry is a change to the frame, and the loop sleeps for it.** `run_loop` ages the toast *before*
+    it decides whether to draw, marks the frame dirty when the row comes back, and takes the remaining
+    lifetime into the poll timeout beside the ambiguous-chord wait. The reviewer's side of that is the
+    ticket's acceptance criterion: read the toast, then do nothing, and the key hints return by
+    themselves. Nothing has to be pressed, and nothing is pressed to get them.
+* **A resize retires the toast drawn for the size that is gone.** The old behaviour ticked a stale
+    message one frame older; the honest one is to take the row back and let the re-asked ladder say what
+    the new size can hold, which is what `layout degraded: …` is for.
+* **Both halves the ticket asked for are asserted, in `crates/fathom-tui/tests/toast_lifetime.rs`.**
+    An unexpired toast wins the row — in `App::hint_line` and as the last line of the drawn frame — and
+    one a moment short of its deadline is still there; at the deadline it is gone and the row comes back
+    in the keymap's own words, and ageing an already-expired toast is not a change (the loop asks every
+    poll and must not repaint forever over one toast). Then the report reproduced end to end: `?`,
+    `<Esc>`, and silence on the bus, with the loop run exactly as `fathom tui` runs it — the frame that
+    returns the hint row arrives, `report.events` is still three (two keystrokes and the harness's own
+    way out), so the row came back with no press behind it.
+* **Three files had the old unit written into their prose.** ADR-006 §7.5 now says the row is borrowed,
+    for how long, and why a draw is not a unit of time; `docs/reference/cheatsheet.md` §9 says it in one
+    line for whoever looks up the hint table; and `tools/tui_session.py` and
+    `tests/test_review_state_contract.py` had "forty draws" as the stated reason a pty harness must keep
+    the frame that *first* said the toast. The number is seconds now; the capture is still needed, for
+    the same reason.
+
 ### A conventional-commit subject was printed as a trailer (`reco-2ss`)
 
 `fathom show HEAD~3`, in this repository, on a commit whose message is one line:

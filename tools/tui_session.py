@@ -285,11 +285,11 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
     `changed` says the pane moved, `found` says it moved to the thing that was asked about.
 
     Pass a `capture` dict and the frame that *first* said `until` is kept in `capture["screen"]`.
-    A toast is on the hint row for a fixed number of draws, not for the length of a step (`TOAST_FRAMES`
-    in `fathom-tui/src/app.rs`), so a harness that only keeps the settled frame can watch an act happen
-    and still hold a screenshot in which it did not: `tests/test_review_state_contract.py` needs the
-    toast's own words, and this is the one honest way to hand them over — the frame as it was at the
-    moment it said them.
+    A toast holds the hint row for a fixed span of seconds, not for the length of a step
+    (`TOAST_LIFETIME` in `fathom-tui/src/app.rs`), so a harness that only keeps the settled frame can
+    watch an act happen and still hold a screenshot in which it did not:
+    `tests/test_review_state_contract.py` needs the toast's own words, and this is the one honest way
+    to hand them over — the frame as it was at the moment it said them.
     """
     first: float | None = None
     last: float | None = None
@@ -559,7 +559,7 @@ def main() -> int:
                 needle = needle_screens.get(timing["step"])
                 if needle and needle[1] != timing["screen"]:
                     # The frame that first said the step's `until`, kept beside the settled one: a
-                    # toast is on the hint row for forty draws and is gone before the pane settles,
+                    # toast holds the hint row for a few seconds and is gone before the pane settles,
                     # so the settled frame alone would record an act that did not happen.
                     handle.write("\n\n=== step %d (%s) — the frame that first said %s ===\n%s\n"
                                  % (timing["step"], timing["keys"] or "-",

@@ -84,8 +84,8 @@ def _run(binary: Path, repo: Path, keys_each: list[str],
     """Spawn `fathom tui` on a pty, send each keystroke group, and return the screen after each one.
 
     A step may name a `needle`: a string whose *first* appearance is the thing being asserted. The toast
-    an act prints lives forty draws on the hint row (`TOAST_FRAMES` in `fathom-tui/src/app.rs`) and the
-    live pane redraws under it, so the frame that is settled when the terminal goes quiet has already
+    an act prints holds the hint row for a few seconds (`TOAST_LIFETIME` in `fathom-tui/src/app.rs`) and
+    the live pane redraws under it, so the frame that is settled when the terminal goes quiet has already
     forgotten the act — a screenshot of it would show a keystroke that did nothing. For a step with a
     needle, the frame as it was the moment it first said the needle is the one returned
     (`tui_session.drain(capture=…)`), which is the frame the reviewer actually saw.

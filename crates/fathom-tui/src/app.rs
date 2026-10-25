@@ -572,8 +572,13 @@ pub struct App {
     pub chord_since: Option<Instant>,
     /// The transient line on the hint row — a toast expires rather than accumulates.
     pub toast: Option<String>,
-    /// How many draws the current toast has left.
-    pub toast_frames: u32,
+    /// When the toast on the hint row is due to give the row back; `None` when there is no toast.
+    pub toast_until: Option<Instant>,
+    /// How long a toast gets the hint row, counted from the moment it is set.
+    ///
+    /// A field rather than a bare constant so a test can watch a lifetime pass without waiting for
+    /// one; every real run leaves it at [`TOAST_LIFETIME`].
+    pub toast_lifetime: Duration,
     /// One line per startup problem worth keeping (keymap conflicts, signal hooks).
     pub notices: Vec<String>,
     /// The size the layout was last computed for.
@@ -661,8 +666,16 @@ pub struct QueueStamp {
     pub retrospective: bool,
 }
 
-/// A frame's worth of toast lifetime: long enough to read, short enough not to become chrome.
-const TOAST_FRAMES: u32 = 40;
+/// How long a toast keeps the hint row: long enough to read once, short enough that it never
+/// becomes the chrome it is standing in for.
+///
+/// A wall-clock lifetime and not a number of draws, because a draw is not a unit of time. The frame
+/// is tickless — one is drawn when something changed and otherwise nothing is drawn (ADR-006 §0.1)
+/// — so a toast that aged one tick per draw expired only when the reviewer pressed something else,
+/// and a toast on a frame that had gone quiet never expired at all. That evicted the hint line
+/// ADR-006 §7.5 promises to a reviewer who has not learned the keys yet, for as long as they left
+/// the frame alone (`reco-2ll`).
+pub const TOAST_LIFETIME: Duration = Duration::from_secs(6);
 
 /// A terminal cell coordinate (1-based) as an index into the frame (0-based).
 fn cell(value: u16) -> usize {
@@ -733,7 +746,8 @@ impl App {
             chords: ChordState::new(),
             chord_since: None,
             toast: None,
-            toast_frames: 0,
+            toast_until: None,
+            toast_lifetime: TOAST_LIFETIME,
             notices: Vec::new(),
             size,
             fit: fit_chosen(ViewId::Queue, size.0, size.1, &[]),
@@ -2719,22 +2733,46 @@ impl App {
         vec![Chrome::Hint]
     }
 
-    /// A transient line for the hint row.
+    /// A transient line for the hint row, due to give the row back after [`App::toast_lifetime`].
     pub fn toast(&mut self, text: impl Into<String>) {
-        self.toast = Some(text.into());
-        self.toast_frames = TOAST_FRAMES;
+        let now = Instant::now();
+        self.toast_at(text, now);
     }
 
-    /// Age the toast out; called once per draw, not once per event.
-    pub fn age_toast(&mut self) {
-        if self.toast_frames == 0 {
-            self.toast = None;
-            return;
+    /// [`App::toast`] with the clock handed in — the seam that makes a lifetime testable without
+    /// waiting for one, and the reason the deadline is an `Instant` the shell owns rather than a
+    /// countdown nobody can fast-forward.
+    pub fn toast_at(&mut self, text: impl Into<String>, now: Instant) {
+        self.toast = Some(text.into());
+        self.toast_until = Some(now + self.toast_lifetime);
+    }
+
+    /// How long the toast still has, or `None` when the hint row is its own again.
+    ///
+    /// The frame loop asks this to bound its sleep, so the row comes back on time even when nothing
+    /// else on the bus has woken the loop for a while.
+    #[must_use]
+    pub fn toast_left(&self, now: Instant) -> Option<Duration> {
+        Some(self.toast_until?.saturating_duration_since(now))
+    }
+
+    /// Retire a toast whose lifetime is up, and report whether the hint row changed.
+    ///
+    /// Called by the frame loop before it decides whether to draw: a toast giving the row back is a
+    /// change of its own, and it is the only thing that will show the key hints again to a reviewer
+    /// who has stopped typing.
+    pub fn age_toast(&mut self, now: Instant) -> bool {
+        if self.toast_left(now).is_none_or(|left| !left.is_zero()) {
+            return false;
         }
-        self.toast_frames -= 1;
-        if self.toast_frames == 0 {
-            self.toast = None;
-        }
+        self.clear_toast();
+        true
+    }
+
+    /// Take the hint row back now, whatever the toast was saying.
+    pub fn clear_toast(&mut self) {
+        self.toast = None;
+        self.toast_until = None;
     }
 
     /// The hint row: the toast while it lasts, then the keymap's own hint line (ADR-006 §7.5).

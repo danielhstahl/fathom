@@ -496,9 +496,15 @@ pub fn run_loop(
     let mut timed_out;
     let end = 'outer: loop {
         timed_out = false;
+        // The loop sleeps on whichever of its two clocks is sooner: the chord that is still
+        // ambiguous, and the toast that is still borrowing the hint row (`reco-2ll`). Without the
+        // second one a toast would expire on the first keystroke after its deadline rather than at
+        // it, which is the difference between a transient line and a resident one.
+        let now = Instant::now();
         let wait = app
-            .chord_wait(Instant::now())
-            .unwrap_or(crate::terminal::SIGNAL_POLL);
+            .chord_wait(now)
+            .unwrap_or(crate::terminal::SIGNAL_POLL)
+            .min(app.toast_left(now).unwrap_or(Duration::MAX));
         let mut batch = match bus.recv_timeout(wait) {
             Received::Message(message) => vec![message],
             Received::Disconnected => {
@@ -564,6 +570,13 @@ pub fn run_loop(
             app.chord_timeout(Instant::now());
             flushed = true;
         }
+        // A toast is a loan of the hint row, not a takeover (ADR-006 §7.5). It is aged here — before
+        // the draw decision, and whether or not anything arrived — and its expiry is itself a reason
+        // to draw, so a reviewer who reads it and then does nothing at all gets the key hints back
+        // instead of staring at somebody else's last act until the next keystroke (`reco-2ll`).
+        if app.age_toast(Instant::now()) {
+            scheduler.mark_dirty();
+        }
         if arrived || flushed || app.repaint {
             app.repaint = false;
             scheduler.mark_dirty();
@@ -572,7 +585,6 @@ pub fn run_loop(
             let started = Instant::now();
             sink.draw(app)?;
             scheduler.note_draw(started.elapsed());
-            app.age_toast();
             if let Some(limit) = max_frames
                 && scheduler.draws() >= limit
             {
@@ -623,10 +635,11 @@ pub fn apply(app: &mut App, message: Message) {
             app.feed_key_event(key, Instant::now());
         }
         Message::Resize { cols, rows } => {
+            // A toast belongs to the size that produced it, and that size is gone: retire it before
+            // `resize` asks the ladder what the new one can hold, so the news on the hint row is the
+            // frame the reviewer is looking at now and not the one before it.
+            app.clear_toast();
             app.resize(cols, rows);
-            // A new size is a new answer from the ladder, so the toast that says so is worth more
-            // than the one it replaces.
-            app.age_toast();
         }
         Message::Repaint => {}
         Message::Mouse(message) => {

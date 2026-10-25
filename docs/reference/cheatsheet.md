@@ -590,6 +590,10 @@ key the build does not bind ([ADR-006 §5](../adr/0006-tui.md), `keymap.HINT_ACT
 | `help.open` | Help: this keymap as the merged table | `?` |
 <!-- END GENERATED: hint -->
 
+A toast — the line an act prints, `reviewed · signed off · ep-3fa` — borrows that row for six seconds
+and then gives it back, so the row you are reading here is what is on screen again without a keystroke
+([ADR-006 §7.5](../adr/0006-tui.md)).
+
 ---
 
 **Next**: [the CLI reference](cli.md) for the headless half of the same facts ·
