@@ -62,7 +62,7 @@ jobs:
       - name: build the release binary the budgets are charged against
         run: cargo build --release --locked -p fathom-cli
 
-      - name: "the budgets, the baseline, and the trend (local spelling: \`make bench-check\`)"
+      - name: "the budgets, the baseline, and the trend (local spelling: make bench-check)"
         # The gate itself: cold index, warm single-commit re-index, no-op re-index, diff-viewer open
         # time, query p95s, store bytes per commit, peak RSS (VmHWM, sampled from outside the child),
         # the criterion benches, and the runner calibration. Exit 11 (`BUDGET_EXCEEDED`) on a breach or
