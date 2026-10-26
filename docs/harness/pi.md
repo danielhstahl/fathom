@@ -83,6 +83,18 @@ Put this in your `AGENTS.md` (or tell the agent once):
 `fathom hooks --trailer <session>:<turn>` prints exactly those two lines, which is the fallback if
 the file is missing, and `/fathom-trailer` inside pi prints the same pair.
 
+**Nothing stamps this for you, and that is a cost with a price on it.** No shipped adapter edits a commit
+message: pi cannot rewrite one after the fact, and a hook that amended a commit would change its oid and
+go back on every review already keyed to it. So the trailer only appears if the agent puts it there, and a
+repository where nobody put it there says *nothing* about who drove. That is not a cosmetic gap:
+`author_kind` falls through to `human` at `0.50` by `identity` — the git author string, which an agent
+sets like anybody else — and the risk vector's `authorship` axis, which is the axis ADR-001 §7.3 is about,
+then has no measurement to make. It prints as absent, with this recipe as the remedy
+([`fathom why`](../concepts/risk-scoring.md#authorship-and-the-difference-between-a-person-and-nobody)).
+The other three doors are a `Co-authored-by:`/`Generated-with:` naming the agent, `attribution.agents`
+declaring the identity in `fathom.toml`, and `fathom attribution correct <rev> --kind agent`; what none of
+them is is a guess the tool could have made on its own.
+
 Then index and look:
 
 ```bash

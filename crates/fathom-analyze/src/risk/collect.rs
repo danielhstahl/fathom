@@ -18,6 +18,18 @@
 //! | `attribution`, `authorship` | the `episode` row's attribution columns (`e4.1`) |
 //! | `blast` | whatever a caller hands over, and otherwise a *question asked of the index* — see below |
 //!
+//! # The one authorship verdict that is not a measurement
+//!
+//! `authorship` is [`Measurement::missing`] on a `human` episode whose verdict came from the `identity`
+//! rung, and the reason printed beside the `—` says why. ADR-003 §8 **H4** prices that rung at 0.50 on
+//! purpose: it fires when every rung above it looked for an agent and found nothing, so it is a sentence
+//! about the evidence and not about the author. Score it as `0.0` — "a person wrote this" — and every
+//! repository whose harness stamps no turn and no claim trailer gets the *same* number as the one where a
+//! human signed the correction saying so, including the repositories this tool was written for
+//! (`reco-0er`: 102 of 109 episodes in an agent's own repository read `human` at 0.50, so the thesis axis
+//! contributed 0.00 in all of them). Absent is the honest state, and it is a state with a door: turn
+//! evidence, a claim trailer, a registry entry or a stored correction each put a number on the axis.
+//!
 //! # The one hole, asked rather than recited
 //!
 //! `blast` is [`Measurement::missing`] unless a caller fills [`Supply::blast_dependents`], and the reason
@@ -810,8 +822,42 @@ fn attribution(row: &EpisodeRow) -> Measurement {
     )
 }
 
+/// The price ADR-003 §8 **H4** puts on "a real identity with no agent evidence".
+///
+/// Named here rather than typed so the two places that read it — the rung that sets it and the axis that
+/// refuses to score it — cannot drift apart.
+const CONFIDENCE_IDENTITY: f64 = 0.50;
+
+/// Did this row's authorship verdict come from evidence, or from the absence of it?
+///
+/// `identity` is the attribution ladder's fall-through: nothing above it found an agent, so the classifier
+/// said "there is a name here, so probably a person" at 0.50 and marked the guess (`e4.1`). A *stated*
+/// `human` — a stored correction, the one rung that can assert a person — arrives with its own source and
+/// its 1.00, and measures.
+#[must_use]
+pub fn verdict_without_evidence(row: &EpisodeRow) -> bool {
+    if row.author_confidence.clamp(0.0, 1.0) > CONFIDENCE_IDENTITY {
+        return false;
+    }
+    let source = row.attribution_source.trim().to_ascii_lowercase();
+    // An empty source is the same case in older rows: no rung was recorded, and the only rung that can
+    // leave a `human` at 0.50 or below is the one that recorded nothing because it found nothing.
+    source.is_empty() || source == "identity"
+}
+
 fn authorship(row: &EpisodeRow) -> Measurement {
     let kind = row.author_kind.trim().to_ascii_lowercase();
+    if kind == "human" && verdict_without_evidence(row) {
+        return Measurement::missing(
+            Feature::Authorship,
+            "nothing on this episode says who wrote it: `human` is what the ladder falls through to when \
+             no agent evidence exists, at 0.50, and reading that as a person would credit somebody who \
+             was never named. Turn evidence from a harness, a claim trailer naming an agent, \
+             `attribution.agents` naming this identity, or a stored `fathom attribution correct` each \
+             put a measurement on this axis",
+            "the harness",
+        );
+    }
     let (raw, detail) = match kind.as_str() {
         "agent" => {
             let agent = if row.attribution_agent.is_empty() {
@@ -833,4 +879,35 @@ fn authorship(row: &EpisodeRow) -> Measurement {
         ),
     };
     Measurement::measured(Feature::Authorship, raw, "`episode.author_kind`", detail)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::verdict_without_evidence;
+    use fathom_store::episode::EpisodeRow;
+
+    /// A row carrying only what the authorship axis reads.
+    fn row(kind: &str, source: &str, confidence: f64) -> EpisodeRow {
+        EpisodeRow {
+            author_kind: kind.to_owned(),
+            attribution_source: source.to_owned(),
+            author_confidence: confidence,
+            ..EpisodeRow::default()
+        }
+    }
+
+    #[test]
+    fn the_fall_through_is_the_only_human_that_measures_nothing() {
+        // The rung that fires when nothing above it found an agent (`reco-0er`'s 102 of 109).
+        assert!(verdict_without_evidence(&row("human", "identity", 0.50)));
+        // A row written before the rung was recorded is read the same way: nothing was said.
+        assert!(verdict_without_evidence(&row("human", "", 0.50)));
+        // A human a person *said* so — the one rung that can assert a person — is evidence.
+        assert!(!verdict_without_evidence(&row("human", "correction", 1.00)));
+        // An agent verdict came from a rung that found something, whatever its price.
+        assert!(!verdict_without_evidence(&row("agent", "trailer", 0.95)));
+        assert!(!verdict_without_evidence(&row("agent", "author", 0.85)));
+        // `unknown` is its own answer — nobody is credited, which is a fact about the row, not an absence.
+        assert!(!verdict_without_evidence(&row("unknown", "absent", 0.0)));
+    }
 }

@@ -60,13 +60,13 @@ relative weight matters** — doubling everything changes nothing, which is what
 | `noise` | 0.07 | how much of the churn is text a review does not read | the share itself: all-generated churn fills it | `episode.noise_share`, else path class (`e2.2`) |
 | `breadth` | 0.07 | how far did this spread | spread: five surfaces past the first, or thirty files, fills it | `n_files`, distinct surfaces, `n_commits` (`e4.4`) |
 | `attribution` | 0.05 | how sure are we who wrote this | inverted confidence: 1 − confidence, floored at 0.8 when nobody is credited | `episode.author_confidence` (`e4.1`) |
-| `authorship` | 0.05 | is the thing that wrote this a program | agent 0.7, uncredited 1.0, person 0 | `episode.author_kind` (`e4.1`) |
+| `authorship` | 0.05 | is the thing that wrote this a program | agent 0.7, uncredited 1.0, a person *named* by evidence 0; a person inferred from no evidence at all does not measure | `episode.author_kind`, `attribution_source` (`e4.1`) |
 
 `fathom why --weights` prints this table out of the binary, so the table and the build cannot drift
 apart. Two inversions are worth noticing: `test_ratio` and `attribution` *risk on the absence* of the
 thing named, because "untested" and "uncertain who wrote it" are the states a reviewer acts on.
 
-Two axes are usually **absent** in this build, and say so rather than guessing:
+The axes usually **absent** in this build, and what each one says rather than guesses:
 
 * `blast` — the count of what depends on the touched code is a walk of the module graph, and no shipped
   verb pays for a walk per episode. The index can answer it — `fathom index` writes the graph lane, and
@@ -79,6 +79,33 @@ Two axes are usually **absent** in this build, and say so rather than guessing:
 * `dependency`'s richer half — the path classes are measurable now, `e2.6`'s real delta is a supply.
 * `test_ratio` is absent when neither logic nor tests arrived, because coverage is then not a question
   the episode asks.
+* `authorship` in a repository whose harness says nothing about who is driving. Read it with the next
+  paragraph, because it is the axis the thesis cares most about (`ADR-001 §7.3`) and the one a repository
+  is most likely to be silently wrong on.
+
+### `authorship`, and the difference between a person and nobody
+
+`author_kind` has three values and only two of them are evidence. An episode that arrives `agent` arrived
+that way because something *said* so — a turn from a harness, a `Co-authored-by:`/`Generated-with:` naming
+one, a registry entry under `attribution.agents`, a `🤖` in the subject, or a correction somebody stored —
+and that episode pays 0.7 on the axis. An episode that arrives `unknown` says nobody is credited, and pays
+1.0, because an unattributed change is exactly as unreviewable as an unattributed author.
+
+An episode that arrives `human` at **0.50 by `identity`** says neither of those things. That rung is the
+ladder's fall-through: rungs 1–7 looked for an agent and found nothing, so ADR-003 §8 **H4** prints "a real
+identity with no agent evidence", which is an honest way of saying *probably, don't bet on it* — and the
+identity in question is the git author string, which an agent sets like anybody else. Pointed at the
+repository this tool is written in, that rung covered **102 of 109 episodes** ([the beta pass's own
+measurement](../../.plan/evidence/reco-rny/fathom-on-itself.md)). Scoring it 0.00 — "a person wrote this, and is
+named as having done so" — gave the thesis axis its lowest value in precisely the repositories the thesis is
+about, and gave it to them as a measurement.
+
+So the axis is **absent** there: out of the denominator, printed with a `—`, named in §7's list, and with
+the four things that would measure it in the sentence beside it — turn evidence from a harness
+([`docs/harness`](../harness/README.md)), a claim trailer naming an agent, `attribution.agents` declaring
+the identity, or `fathom attribution correct` overruling the guess. A `human` verdict that a *correction*
+asserted is a statement, and still scores 0.0. The axis is not softer now; it is refused where it was
+guessing.
 
 ## 3. The arithmetic
 
@@ -233,6 +260,10 @@ are limits of the model itself:
 * the `blast` axis — whichever answer `risk::blast::Availability` got back from this index, e.g. "this
   index can say what depends on 3 of the 7 path(s) this episode touched (25 graph revisions) — and this
   read did not ask";
+* the `authorship` axis, in a repository whose harness says nothing about who drove: `human` at `0.50` by
+  `identity` is the classifier reporting that it found no agent evidence, not a person it can name, so the
+  axis leaves the denominator instead of printing a confident `0.00` — §2's `authorship` section names the
+  four things that put a number on it;
 * whether a finding is already known and accepted: the vector reads the catalogue and nothing else, so a
   dismissal recorded in the review ledger is not an input to it and every visible finding counts;
 * whether the tests that arrived *assert* anything: coverage shape is measurable, coverage quality is not;
@@ -248,6 +279,10 @@ landed by the time a reviewer read the sentence — `e3.1`/`e3.2`'s graph includ
 `fathom why` was printing that the graph was unbuilt. A scope statement is a claim about the build in
 front of the reader; `tools/check_ticket_claims.py` refuses the remembered kind, and
 `risk_score.rs` refuses a composed one.
+
+One consequence worth saying plainly: in a repository with no harness in it, this list is now **longer**
+than it was, and the score above it is computed over fewer axes. That is the trade the vector makes
+wherever an axis cannot be measured — a hole with a name and a door, not a zero that reads as safe.
 
 Compare with `spine-1`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
 two of the axes — dependency exposure and migration exposure — are now measured rather than assumed, and

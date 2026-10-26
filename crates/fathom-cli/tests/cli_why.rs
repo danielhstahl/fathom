@@ -366,6 +366,74 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
     );
 }
 
+/// A `human` verdict the classifier *fell through to* is not a measurement of authorship (`reco-0er`).
+///
+/// Shape 1 is Ada's docs commit: a person-shaped author string, no harness turn, no claim trailer, no
+/// registry entry — the whole of the evidence is that nothing said an agent. Crediting "a person wrote
+/// this, and is named as having done so" on that is the confident 0.00 this ticket is about, in a
+/// repository an agent wrote end to end. The axis leaves the arithmetic instead, says why, and names what
+/// would fill it; the episode beside it, which *does* carry turn evidence, is still measured.
+#[test]
+fn a_human_the_classifier_guessed_leaves_the_authorship_axis_unmeasured() {
+    let dir = indexed();
+    let out = fathom_in(&dir, &["why", &rev(1)]);
+    assert_eq!(code(&out), Some(0), "{}", stderr(&out));
+    let text = stdout(&out);
+    eprintln!("{text}");
+
+    let rows = table(&text);
+    let authorship = &rows["authorship"];
+    assert!(
+        authorship.starts_with('—'),
+        "a verdict that is only the absence of evidence is not scored: {authorship}"
+    );
+    assert!(
+        authorship.contains("identity"),
+        "the absence names the rung it came from: {authorship}"
+    );
+    assert!(
+        authorship.contains("owned by the harness"),
+        "and says who can put a number on it: {authorship}"
+    );
+    assert!(
+        text.contains("the `authorship` axis"),
+        "so the scope statement under the score carries it too:\n{text}"
+    );
+    // The doubt axis is a different question and keeps its number: `attribution` measures how sure the
+    // credit is, and "not sure" is a real answer, unlike "a person".
+    assert!(
+        rows["attribution"].contains("0.50"),
+        "the confidence is still printed as the doubt it is: {}",
+        rows["attribution"]
+    );
+
+    // …and the axis is not simply switched off: the turn-carrying episode beside it is measured.
+    let agent = stdout(&fathom_in(&dir, &["why", &rev(0)]));
+    let agent_rows = table(&agent);
+    assert!(
+        agent_rows["authorship"].contains('/') && agent_rows["authorship"].contains("0.70"),
+        "an episode the harness spoke for is scored on the axis:\n{agent}"
+    );
+
+    // The machine's form says the same thing, with the owner attached.
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout(&fathom_in(&dir, &["why", &rev(1), "--json"])))
+            .expect("--json is JSON");
+    let absent = json["absent"]
+        .as_array()
+        .expect("an absent list")
+        .iter()
+        .find(|axis| axis["name"] == "authorship")
+        .expect("authorship is absent on this episode");
+    assert_eq!(absent["owner"].as_str(), Some("the harness"));
+    assert!(
+        absent["why"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("attribution.agents")
+    );
+}
+
 /// The same episode, twice, and again: byte-identical, with nothing written to disk in between (criterion
 /// two). The vector carries a path and a time nowhere in its printed form, so a run in a copied directory
 /// agrees with the original.

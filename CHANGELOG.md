@@ -17,6 +17,62 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A `human` nobody credited is no longer scored as a person (`reco-0er`)
+
+The beta pass that pointed Fathom at its own repository wrote this down
+([`.plan/evidence/reco-rny/fathom-on-itself.md`](.plan/evidence/reco-rny/fathom-on-itself.md) §2.6):
+
+> Attribution: 102 of 109 episodes credited to a `human` at confidence 0.50, in a repository where a coding
+> agent wrote them and the trailer vocabulary of ADR-005 is not stamped by anything here. Consequence:
+> `authorship` contributes `0.00` on the risk vector, and will keep doing so in every repository whose harness
+> does not co-operate, while looking like a measured zero.
+
+One hundred and two of 109 episodes in a repository a coding loop wrote were credited to a person, at the
+confidence the attribution ladder reserves for "a name with no agent evidence behind it" (ADR-003 §8
+**H4**). The ladder is not broken — rung 8 is that rung precisely so the guess is visible — but
+`risk::collect` read the fall-through as an answer to the axis that asks *is the thing that wrote this a
+program* (ADR-001 §7.3), printed "a person wrote this, and is named as having done so", and took the
+thesis's axis to 0.00 in every repository whose harness does not stamp turn evidence or a claim trailer.
+Which is most of them, and the agent-written ones among them first. One of this repository's own episodes,
+before and after:
+
+```text
+$ fathom why ep-5d5c29560494ff4ba1b6      # before
+  11 of 12 features measured · weight denominator 1.36 · total 49.37 of 100.00 points
+authorship      0.00 authorship    0.00    0.05 0.00/3.68 a person wrote this, and is named as having done so
+
+$ fathom why ep-5d5c29560494ff4ba1b6      # after
+  10 of 12 features measured · weight denominator 1.31 · total 51.25 of 100.00 points
+authorship                    —       —    0.05         — nothing on this episode says who wrote it: `human`
+                                                       is what the ladder falls through to when no agent
+                                                       evidence exists … owned by the harness
+```
+
+* **The axis is absent where it was guessing.** `authorship` is `Measurement::missing` on a `human` episode
+    decided by the `identity` rung, so its weight leaves the denominator, `fathom why` prints the `—` row
+    and names the axis under *what `features-1` cannot see*, and the sentence beside it names the four doors:
+    harness turn evidence, a claim trailer naming an agent, `attribution.agents` declaring the identity, a
+    stored `fathom attribution correct`. A `human` that a *correction* asserted is a statement and still
+    scores `0.0`; `unknown` still scores `1.0`, because "nobody is credited" is a fact about the row.
+    `attribution` is untouched — 1 − confidence was already the honest reading of a 0.50.
+* **The adapters were asked whether they stamp, and the answer is written down.** None of them does, and
+    none of them can: pi cannot rewrite a commit message after the fact, and a `post-commit` hook that
+    amended one to add `Agent-Session:` would move the oid out from under every review already keyed to it.
+    The trailer is the agent's to paste, so [`docs/harness/pi.md`](docs/harness/pi.md) says that in the
+    recipe, names the cost, and points at the axis; [`docs/harness/git-hook.md`](docs/harness/git-hook.md)
+    says it in the row of the table that already admitted what a hook cannot know.
+* **What it costs.** In a repository with no harness the score is now computed over eleven axes instead of
+    twelve, so every other term is renormalised by `1/0.95` and the ceiling list is one line longer — and
+    the line is the point: a hole with a name and four doors beats a zero that reads as safe. A repository
+    that genuinely wants the axis at 0.0 can still say so, per identity, with `fathom attribution correct`.
+* **The numbers, on this repository.** Before: `authorship` measured on all 133 episodes in the index,
+    126 of them at `0.00` by `identity` — the beta pass that filed this put it at 102 of 109, and the ratio
+    has not improved since. After: 7 measured, the ones a trailer or a registry entry speaks for, at `0.70`,
+    and 126 printing `—`, which moves this repository's own score: `ep-5d5c29560494ff4ba1b6` went `49 → 51`,
+    still flagged, on a denominator of `1.36 → 1.31`. `crates/fathom-cli/tests/cli_why.rs` pins both halves
+    of that split on a fixture repository, and the collector's own test pins the boundary between a verdict
+    and a fall-through.
+
 ### Ten findings about files whose whole job is printing (`reco-pfb`)
 
 `fathom export --episodes defc5f6~5..defc5f6` — the five commits that closed epic 6 — carried ten

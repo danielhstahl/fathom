@@ -213,9 +213,9 @@ pub const SPECS: [Spec; 12] = [
         id: "authorship",
         asks: "is the thing that wrote this a program",
         unit: "authorship",
-        ruler: "an agent is 0.7, an uncredited author is 1.0, a person is 0",
+        ruler: "an agent is 0.7, an uncredited author is 1.0, a person named by evidence is 0, and a person inferred from no evidence at all does not measure",
         default: 0.05,
-        source: "`episode.author_kind`",
+        source: "`episode.author_kind`, `attribution_source`",
         owner: "e4.1",
     },
 ];
