@@ -14,22 +14,22 @@ blank_issues_enabled: false
 
 contact_links:
   - name: The troubleshooting page — read this before you file
-    url: https://github.com/danielstahl/fathom/blob/master/docs/troubleshooting.md
+    url: https://github.com/danielhstahl/fathom/blob/master/docs/troubleshooting.md
     about: >-
       Symptoms, exit codes, the three things that are not bugs, and the sixty seconds that usually
       explain a surprising number. If it already has your symptom, the fix is here and not in a new issue.
   - name: The feedback loop — where reports go, what happens to them, and when
-    url: https://github.com/danielstahl/fathom/blob/master/docs/concepts/feedback.md
+    url: https://github.com/danielhstahl/fathom/blob/master/docs/concepts/feedback.md
     about: >-
       The single feedback channel, the weekly triage cadence, the six dispositions a report can end with,
       and what gets published when something is fixed.
   - name: Documentation — concepts, recipes, the detector catalogue
-    url: https://github.com/danielstahl/fathom/tree/master/docs
+    url: https://github.com/danielhstahl/fathom/tree/master/docs
     about: >-
       The manual, generated where it can be: the CLI reference is printed from the binary that is on your
       machine, and the detector catalogue says what each finding means and which switch turns it off.
   - name: A finding you would rather not put in public
-    url: https://github.com/danielstahl/fathom/security/advisories/new
+    url: https://github.com/danielhstahl/fathom/security/advisories/new
     about: >-
       Private disclosure, and the only route that is not this tracker. Use it for anything that says how
       to make the tool lie — a crafted repository that produces a false "clean", a path that escapes the

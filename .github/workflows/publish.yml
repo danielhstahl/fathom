@@ -1,0 +1,185 @@
+# The version on the default branch is the release. This workflow turns it into one (`e7.7`'s cadence, §9
+# of `docs/concepts/release.md`, made mechanical).
+#
+# # Why this exists at all
+#
+# `dist-workspace.toml` sets `dispatch-releases = true`, so pushing a tag releases nothing: `release.yml`
+# runs on `workflow_dispatch` (or a pull request, to build the artefacts for review) and on nothing else.
+# That is deliberate — a release is an act, not a side effect of a merge — but it left the act with no
+# script: the version, the tag and the dispatch had to be typed by one person in the right order, and the
+# tag could name a version the tree does not carry (`cargo-dist` only says so at publish time, which is
+# the worst possible moment).
+#
+# So the trigger is the **version line**. One commit moves `[workspace.package] version` in `Cargo.toml`
+# — `python3 tools/release.py prepare --version X` moves the other six places it has to appear — and this
+# workflow notices. The invariant that makes that safe is the one `R13` and `gen_changelog.py`'s `C04`
+# already assert: the tag is *derived* from the version, never the other way round.
+#
+# # What it does, and what it refuses
+#
+# * **It runs after the gates, not beside them.** `workflow_run` fires when the `ci` workflow completes on
+#   the default branch, so a version bump whose CI is red or still running cuts nothing. `ci` includes
+#   `tools/release.py check` and `tools/check_release.py`, which is why this job does not re-derive the
+#   version's seven places: it only answers "has this version been cut?".
+# * **The cut is the commit that *moved* the version.** It compares the version at HEAD with the version at
+#   its parent, so a merge that merely follows a bump does not fire, and neither does a re-run. A push
+#   with no parent (a fresh repository) counts as a move. The corollary is a rule for whoever cuts by hand:
+#   **the bump commit is the release commit** — it has to carry the version line and its `CHANGELOG.md`
+#   section together, which is exactly what `tools/release.py prepare` writes in one commit.
+# * **It dispatches; it never publishes.** `release.yml` stays the single publisher: it builds every
+#   target, creates the GitHub Release, and — because `gh release create --target` is given this commit —
+#   creates the tag at the very commit that carries the version. Tag and release therefore cannot
+#   disagree, which is the desync that hand-pushed tags create. `release: published` then starts
+#   `sbom.yml` and `self-review.yml`, which add their assets to a release that already has binaries on it.
+# * **Refusing is the common case, and it is logged.** Already-cut, version-did-not-move and
+#   no-changelog-section each print which one happened rather than failing quietly. The third is a hard
+#   error: `cargo-dist` builds the release body out of `CHANGELOG.md`, so a version with no dated section
+#   announces nothing.
+#
+# # The manual path
+#
+# `workflow_dispatch` remains for the case the guards cannot see — a release run that died half way, after
+# the tag exists. Pass `version` (and `sha` if it is not the default branch's tip) and the "already cut"
+# and "did it move" guards are skipped: re-cutting a published release is still forbidden by
+# §9's "a cut is never edited after it is published", which is a human judgement, not a rule here.
+#
+# Permissions: `actions: write` to dispatch, `contents: read` to read the version. Nothing else; the
+# release itself is created by `release.yml` with its own `contents: write`.
+
+name: publish (cut a release for the version the branch carries)
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to cut (e.g. 0.1.0-alpha.2). Empty means: read it from Cargo.toml and require that this commit moved it."
+        required: false
+        type: string
+        default: ""
+      sha:
+        description: "Commit to cut from. Empty means the default branch's tip."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  cut:
+    # A green `ci` on the default branch, or a person who asked. `workflow_run` fires for runs on any
+    # branch; only the default branch's tip is releasable.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch) }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Resolve what to cut
+        id: want
+        run: |
+          {
+            echo "sha=${{ github.event.inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
+            echo "requested=${{ github.event.inputs.version }}"
+          } >> "$GITHUB_OUTPUT"
+
+      # `fetch-depth: 0` rather than 2: the ref here is a bare SHA, and the parent is what "did the version
+      # move" is measured against. A shallow fetch of a SHA is the kind of thing that fails on the third
+      # release and not the first.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.want.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide whether this commit is a release
+        id: decide
+        env:
+          REQUESTED: ${{ steps.want.outputs.requested }}
+        run: |
+          set -euo pipefail
+          version_at() {  # $1: a git rev; prints the workspace version it carries
+            git show "$1:Cargo.toml" > "$RUNNER_TEMP/Cargo-$1.toml"
+            python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1],"rb"))["workspace"]["package"]["version"])' \
+              "$RUNNER_TEMP/Cargo-$1.toml"
+          }
+          HEAD_VERSION=$(version_at HEAD)
+          BASE=$(git rev-parse --verify --quiet 'HEAD^' || echo "")
+
+          if [ -n "$REQUESTED" ]; then
+            VERSION="$REQUESTED"
+            echo "Requested by hand: v$VERSION (the move and cut checks are yours to overrule, §9)."
+          else
+            VERSION="$HEAD_VERSION"
+            if [ -z "$BASE" ]; then
+              echo "No parent commit: treating this as the first version."
+            else
+              BASE_VERSION=$(version_at "$BASE")
+              if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
+                echo "skipped=yes" >> "$GITHUB_OUTPUT"
+                echo "skip_reason=The version did not move: $BASE_VERSION -> $HEAD_VERSION." >> "$GITHUB_OUTPUT"
+                echo "::notice::v$VERSION was not cut: this commit did not change the version line."
+                exit 0
+              fi
+              echo "This commit moved the version: $BASE_VERSION -> $HEAD_VERSION."
+            fi
+          fi
+
+          # "Is it cut?" is a question about the remote, so it is asked of the API with the job's own token:
+          # `git ls-remote` needs credentials on a private repository, and a silent failure there would let a
+          # second release of the same version through. Exact ref match, because `matching-refs` is a prefix
+          # query and `v0.1.0-alpha.1` is the prefix of `v0.1.0-alpha.10`.
+          if ! TAGS=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v" --jq '.[].ref' 2>/dev/null); then
+            echo "::error::cannot read tags from the API, so this cannot tell whether v$VERSION is cut."
+            exit 1
+          fi
+          if printf '%s\n' "$TAGS" | grep -qx "refs/tags/v$VERSION"; then
+            echo "skipped=yes" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=v$VERSION already exists; a release is cut once." >> "$GITHUB_OUTPUT"
+            echo "::notice::v$VERSION is already tagged. Re-cutting a published release is a new version, not an edit."
+            exit 0
+          fi
+
+          # The release body is this file. No dated section means a release that announces nothing, and
+          # `cargo-dist` will not complain — so refuse here, before six runners are spent.
+          if ! grep -qE "^## \[${VERSION//./\\.}\] - [0-9]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no dated \`## [$VERSION]\` section, so the release would announce nothing."
+            echo "Fix: python3 tools/gen_changelog.py cut --version $VERSION, commit it, then re-run this"
+            echo "workflow with version=$VERSION (the next commit will not \"move\" the version, so it will"
+            echo "not fire by itself — that is the price of the bump commit being the release commit)."
+            exit 1
+          fi
+
+          {
+            echo "version=$VERSION"
+            echo "skipped=no"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch the release
+        if: ${{ steps.decide.outputs.skipped != 'yes' }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.decide.outputs.version }}"
+          SHA="${{ steps.want.outputs.sha }}"
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$SHA" -f "tag=v$VERSION"
+          echo "Dispatched release.yml at ${SHA:0:12} with tag v$VERSION."
+          echo "It builds every target, then creates the tag and the GitHub Release together."
+          echo "Watch: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/release.yml"
+          {
+            echo "### Cut \`v$VERSION\`"
+            echo ""
+            echo "* version \`${VERSION}\` moved in \`${SHA:0:12}\`"
+            echo "* dispatched \`release.yml\` at that commit — it creates the tag, the release and the artefacts"
+            echo "* [\`release.yml\` run](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release.yml)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Why nothing happened
+        if: ${{ steps.decide.outputs.skipped == 'yes' }}
+        run: 'echo "Nothing to cut: ${{ steps.decide.outputs.skip_reason }}"'

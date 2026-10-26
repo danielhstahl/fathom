@@ -1,6 +1,6 @@
 reco-cey: repository discovery and git object access via gix (e1.1) [c1].
 
-Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

@@ -16,7 +16,7 @@ Either install the alpha (Linux, macOS):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.sh | sh
+  https://github.com/danielhstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.sh | sh
 ```
 
 …or build it, which works from a clean clone with nothing installed but a toolchain:

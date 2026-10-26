@@ -1,844 +1,723 @@
 {
- "schema": "fathom.turn-ground-truth/1",
- "history": "authored-trailer-carrying-loop",
- "provenance": "authored",
- "authoring": {
-  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
-  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
-  "annotated_on": "2026-10-17",
-  "derived_from": "the same loop shape as loop-wip-commits with the harness actually wired: every commit carries Agent-Session/Agent-Turn, the two trailers episodes.rs reads into turn_id today. Session/turn ids in ADR-005 §3.3's `<session>:<index>` shape; the collision at s1:3 / s2:3 is the case §9.1's session-qualification exists to prevent.",
-  "shape": "the future ADR-003 §9.3 prices at 1.0: turn evidence on every commit, four sessions, and two turns in different sessions that share a turn index"
- },
- "source": {
-  "kind": "authored",
-  "commit_count": 21,
-  "extracted_by": "hand-authored; see authoring.derived_from"
- },
- "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
- "lineage": [
-  {
-   "oid": "3f141013d8227d007ec31cebdf1638250f890d54",
-   "parents": [],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000060000,
-   "at": "2025-10-09T08:54:20Z",
-   "subject": "reco-e61: the ingest reader",
-   "trailers": {
-    "agent-session": "s1",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t01.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": "s1",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t01",
-    "session_id": "trailer-carrying-loop"
-   }
+  "schema": "fathom.turn-ground-truth/1",
+  "history": "authored-trailer-carrying-loop",
+  "provenance": "authored",
+  "authoring": {
+    "annotated_by": "danielhstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+    "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+    "annotated_on": "2026-10-17",
+    "derived_from": "the same loop shape as loop-wip-commits with the harness actually wired: every commit carries Agent-Session/Agent-Turn, the two trailers episodes.rs reads into turn_id today. Session/turn ids in ADR-005 §3.3's `<session>:<index>` shape; the collision at s1:3 / s2:3 is the case §9.1's session-qualification exists to prevent.",
+    "shape": "the future ADR-003 §9.3 prices at 1.0: turn evidence on every commit, four sessions, and two turns in different sessions that share a turn index"
   },
-  {
-   "oid": "7663f37b891288dfa1561a1562fd44948cf9fba5",
-   "parents": [
-    "3f141013d8227d007ec31cebdf1638250f890d54"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000480000,
-   "at": "2025-10-09T09:01:20Z",
-   "subject": "reco-e61: (part 2) the ingest reader",
-   "trailers": {
-    "agent-session": "s1",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t01.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s1",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t01",
-    "session_id": "trailer-carrying-loop"
-   }
+  "source": {
+    "kind": "authored",
+    "commit_count": 21,
+    "extracted_by": "hand-authored; see authoring.derived_from"
   },
-  {
-   "oid": "7d0e1e0ebb344edb4c777f4fd69dc017034ae872",
-   "parents": [
-    "7663f37b891288dfa1561a1562fd44948cf9fba5"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000540000,
-   "at": "2025-10-09T09:02:20Z",
-   "subject": "reco-e62: the reader cache",
-   "trailers": {
-    "agent-session": "s1",
-    "agent-turn": "2",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t02.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s1",
-   "turn_id": "2",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t02",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "375daeeef664cb4afced1169c0bbf74a8493cd13",
-   "parents": [
-    "7d0e1e0ebb344edb4c777f4fd69dc017034ae872"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000600000,
-   "at": "2025-10-09T09:03:20Z",
-   "subject": "reco-e63: the reader retries",
-   "trailers": {
-    "agent-session": "s1",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t03.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": "s1",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t03",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "03480b2035a560544c5b6ba3aabc35a2f306f871",
-   "parents": [
-    "375daeeef664cb4afced1169c0bbf74a8493cd13"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001020000,
-   "at": "2025-10-09T09:10:20Z",
-   "subject": "reco-e63: (part 2) the reader retries",
-   "trailers": {
-    "agent-session": "s1",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t03.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": "s1",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t03",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "7093a7eaeb94bc98cf7a43c6425b4f98f6e3c088",
-   "parents": [
-    "03480b2035a560544c5b6ba3aabc35a2f306f871"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001080000,
-   "at": "2025-10-09T09:11:20Z",
-   "subject": "reco-e64: retry policy",
-   "trailers": {
-    "agent-session": "s2",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t04.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": "s2",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t04",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "6a04bea065fcdfd03fa7f1b6d016afccb7603f72",
-   "parents": [
-    "7093a7eaeb94bc98cf7a43c6425b4f98f6e3c088"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001140000,
-   "at": "2025-10-09T09:12:20Z",
-   "subject": "reco-e65: the retry test",
-   "trailers": {
-    "agent-session": "s2",
-    "agent-turn": "4",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t05.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": "s2",
-   "turn_id": "4",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t05",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "01b99c3d78b227437b7e9e3ded7e0dcedf402062",
-   "parents": [
-    "6a04bea065fcdfd03fa7f1b6d016afccb7603f72"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001560000,
-   "at": "2025-10-09T09:19:20Z",
-   "subject": "reco-e65: (part 2) the retry test",
-   "trailers": {
-    "agent-session": "s2",
-    "agent-turn": "4",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t05.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": "s2",
-   "turn_id": "4",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t05",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "6173e6ade5c5832394d65444d6bed6f839ddd638",
-   "parents": [
-    "01b99c3d78b227437b7e9e3ded7e0dcedf402062"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001620000,
-   "at": "2025-10-09T09:20:20Z",
-   "subject": "reco-e66: backoff",
-   "trailers": {
-    "agent-session": "s2",
-    "agent-turn": "5",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t06.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": "s2",
-   "turn_id": "5",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t06",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "c5706b36012004fd16fc871c7ae0a7f80040a9d9",
-   "parents": [
-    "6173e6ade5c5832394d65444d6bed6f839ddd638"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001680000,
-   "at": "2025-10-09T09:21:20Z",
-   "subject": "reco-e67: the writer batch",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t07.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t07",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "651eaec0a379cc68d5e6760a6e17fee7574ccd10",
-   "parents": [
-    "c5706b36012004fd16fc871c7ae0a7f80040a9d9"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002100000,
-   "at": "2025-10-09T09:28:20Z",
-   "subject": "reco-e67: (part 2) the writer batch",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t07.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t07",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "6dbde83ee38a93409f755377bd5df0eee8a8c1cb",
-   "parents": [
-    "651eaec0a379cc68d5e6760a6e17fee7574ccd10"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002160000,
-   "at": "2025-10-09T09:29:20Z",
-   "subject": "reco-e68: batch flush",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "2",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t08.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "2",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t08",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "770000bb5f5781b0008e3d873ca782c9e473fd3b",
-   "parents": [
-    "6dbde83ee38a93409f755377bd5df0eee8a8c1cb"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002220000,
-   "at": "2025-10-09T09:30:20Z",
-   "subject": "reco-e69: batch bounds",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t09.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t09",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "8150496dc014cce6df399a4c8e95573a38faf09f",
-   "parents": [
-    "770000bb5f5781b0008e3d873ca782c9e473fd3b"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002640000,
-   "at": "2025-10-09T09:37:20Z",
-   "subject": "reco-e69: (part 2) batch bounds",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t09.rs"
-   ],
-   "n_files": 1,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t09",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "07b214d8b09444751c7c66da703a11a8c110bc84",
-   "parents": [
-    "8150496dc014cce6df399a4c8e95573a38faf09f"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002700000,
-   "at": "2025-10-09T09:38:20Z",
-   "subject": "reco-e70: the writer fsck",
-   "trailers": {
-    "agent-session": "s3",
-    "agent-turn": "4",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t10.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": "s3",
-   "turn_id": "4",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t10",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "99a14253d1776ac97784dfd906e3664b5f1636e0",
-   "parents": [
-    "07b214d8b09444751c7c66da703a11a8c110bc84"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002760000,
-   "at": "2025-10-09T09:39:20Z",
-   "subject": "reco-e71: the event tail",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t11.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t11",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "488c2bd92a897896d5a0a521bf3161b6ee3578dd",
-   "parents": [
-    "99a14253d1776ac97784dfd906e3664b5f1636e0"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003180000,
-   "at": "2025-10-09T09:46:20Z",
-   "subject": "reco-e71: (part 2) the event tail",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "1",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t11.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "1",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t11",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "bb12c254f3aacfb79bf7f3dca85f92ebbba9b16a",
-   "parents": [
-    "488c2bd92a897896d5a0a521bf3161b6ee3578dd"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003240000,
-   "at": "2025-10-09T09:47:20Z",
-   "subject": "reco-e72: tail resume",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "2",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t12.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "2",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t12",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "16827259467cfeda7c613ec34f4627fed4c3d836",
-   "parents": [
-    "bb12c254f3aacfb79bf7f3dca85f92ebbba9b16a"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003300000,
-   "at": "2025-10-09T09:48:20Z",
-   "subject": "reco-e73: tail truncation",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t13.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t13",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "769eb5eee8125a539bac5d45f005c558667325ab",
-   "parents": [
-    "16827259467cfeda7c613ec34f4627fed4c3d836"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003720000,
-   "at": "2025-10-09T09:55:20Z",
-   "subject": "reco-e73: (part 2) tail truncation",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "3",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t13.rs"
-   ],
-   "n_files": 1,
-   "n_add": 17,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "3",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t13",
-    "session_id": "trailer-carrying-loop"
-   }
-  },
-  {
-   "oid": "4303e9632ca1b8614642a96037f9c5447c3b969e",
-   "parents": [
-    "769eb5eee8125a539bac5d45f005c558667325ab"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003780000,
-   "at": "2025-10-09T09:56:20Z",
-   "subject": "reco-e74: the tail budget",
-   "trailers": {
-    "agent-session": "s4",
-    "agent-turn": "4",
-    "assisted-by": "pi-agent"
-   },
-   "paths": [
-    "src/ingest/t14.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": "s4",
-   "turn_id": "4",
-   "merge": false,
-   "harness": {
-    "turn_id": "trailer-carrying-loop:t14",
-    "session_id": "trailer-carrying-loop"
-   }
+  "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+  "lineage": [
+    {
+      "oid": "3f141013d8227d007ec31cebdf1638250f890d54",
+      "parents": [],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000060000,
+      "at": "2025-10-09T08:54:20Z",
+      "subject": "reco-e61: the ingest reader",
+      "trailers": {
+        "agent-session": "s1",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t01.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": "s1",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t01",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "7663f37b891288dfa1561a1562fd44948cf9fba5",
+      "parents": ["3f141013d8227d007ec31cebdf1638250f890d54"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000480000,
+      "at": "2025-10-09T09:01:20Z",
+      "subject": "reco-e61: (part 2) the ingest reader",
+      "trailers": {
+        "agent-session": "s1",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t01.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s1",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t01",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "7d0e1e0ebb344edb4c777f4fd69dc017034ae872",
+      "parents": ["7663f37b891288dfa1561a1562fd44948cf9fba5"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000540000,
+      "at": "2025-10-09T09:02:20Z",
+      "subject": "reco-e62: the reader cache",
+      "trailers": {
+        "agent-session": "s1",
+        "agent-turn": "2",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t02.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s1",
+      "turn_id": "2",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t02",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "375daeeef664cb4afced1169c0bbf74a8493cd13",
+      "parents": ["7d0e1e0ebb344edb4c777f4fd69dc017034ae872"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000600000,
+      "at": "2025-10-09T09:03:20Z",
+      "subject": "reco-e63: the reader retries",
+      "trailers": {
+        "agent-session": "s1",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t03.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": "s1",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t03",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "03480b2035a560544c5b6ba3aabc35a2f306f871",
+      "parents": ["375daeeef664cb4afced1169c0bbf74a8493cd13"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001020000,
+      "at": "2025-10-09T09:10:20Z",
+      "subject": "reco-e63: (part 2) the reader retries",
+      "trailers": {
+        "agent-session": "s1",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t03.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": "s1",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t03",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "7093a7eaeb94bc98cf7a43c6425b4f98f6e3c088",
+      "parents": ["03480b2035a560544c5b6ba3aabc35a2f306f871"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001080000,
+      "at": "2025-10-09T09:11:20Z",
+      "subject": "reco-e64: retry policy",
+      "trailers": {
+        "agent-session": "s2",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t04.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": "s2",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t04",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "6a04bea065fcdfd03fa7f1b6d016afccb7603f72",
+      "parents": ["7093a7eaeb94bc98cf7a43c6425b4f98f6e3c088"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001140000,
+      "at": "2025-10-09T09:12:20Z",
+      "subject": "reco-e65: the retry test",
+      "trailers": {
+        "agent-session": "s2",
+        "agent-turn": "4",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t05.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": "s2",
+      "turn_id": "4",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t05",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "01b99c3d78b227437b7e9e3ded7e0dcedf402062",
+      "parents": ["6a04bea065fcdfd03fa7f1b6d016afccb7603f72"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001560000,
+      "at": "2025-10-09T09:19:20Z",
+      "subject": "reco-e65: (part 2) the retry test",
+      "trailers": {
+        "agent-session": "s2",
+        "agent-turn": "4",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t05.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": "s2",
+      "turn_id": "4",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t05",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "6173e6ade5c5832394d65444d6bed6f839ddd638",
+      "parents": ["01b99c3d78b227437b7e9e3ded7e0dcedf402062"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001620000,
+      "at": "2025-10-09T09:20:20Z",
+      "subject": "reco-e66: backoff",
+      "trailers": {
+        "agent-session": "s2",
+        "agent-turn": "5",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t06.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": "s2",
+      "turn_id": "5",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t06",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "c5706b36012004fd16fc871c7ae0a7f80040a9d9",
+      "parents": ["6173e6ade5c5832394d65444d6bed6f839ddd638"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001680000,
+      "at": "2025-10-09T09:21:20Z",
+      "subject": "reco-e67: the writer batch",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t07.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t07",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "651eaec0a379cc68d5e6760a6e17fee7574ccd10",
+      "parents": ["c5706b36012004fd16fc871c7ae0a7f80040a9d9"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002100000,
+      "at": "2025-10-09T09:28:20Z",
+      "subject": "reco-e67: (part 2) the writer batch",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t07.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t07",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "6dbde83ee38a93409f755377bd5df0eee8a8c1cb",
+      "parents": ["651eaec0a379cc68d5e6760a6e17fee7574ccd10"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002160000,
+      "at": "2025-10-09T09:29:20Z",
+      "subject": "reco-e68: batch flush",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "2",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t08.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "2",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t08",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "770000bb5f5781b0008e3d873ca782c9e473fd3b",
+      "parents": ["6dbde83ee38a93409f755377bd5df0eee8a8c1cb"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002220000,
+      "at": "2025-10-09T09:30:20Z",
+      "subject": "reco-e69: batch bounds",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t09.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t09",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "8150496dc014cce6df399a4c8e95573a38faf09f",
+      "parents": ["770000bb5f5781b0008e3d873ca782c9e473fd3b"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002640000,
+      "at": "2025-10-09T09:37:20Z",
+      "subject": "reco-e69: (part 2) batch bounds",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t09.rs"],
+      "n_files": 1,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t09",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "07b214d8b09444751c7c66da703a11a8c110bc84",
+      "parents": ["8150496dc014cce6df399a4c8e95573a38faf09f"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002700000,
+      "at": "2025-10-09T09:38:20Z",
+      "subject": "reco-e70: the writer fsck",
+      "trailers": {
+        "agent-session": "s3",
+        "agent-turn": "4",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t10.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": "s3",
+      "turn_id": "4",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t10",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "99a14253d1776ac97784dfd906e3664b5f1636e0",
+      "parents": ["07b214d8b09444751c7c66da703a11a8c110bc84"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002760000,
+      "at": "2025-10-09T09:39:20Z",
+      "subject": "reco-e71: the event tail",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t11.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t11",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "488c2bd92a897896d5a0a521bf3161b6ee3578dd",
+      "parents": ["99a14253d1776ac97784dfd906e3664b5f1636e0"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003180000,
+      "at": "2025-10-09T09:46:20Z",
+      "subject": "reco-e71: (part 2) the event tail",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "1",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t11.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "1",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t11",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "bb12c254f3aacfb79bf7f3dca85f92ebbba9b16a",
+      "parents": ["488c2bd92a897896d5a0a521bf3161b6ee3578dd"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003240000,
+      "at": "2025-10-09T09:47:20Z",
+      "subject": "reco-e72: tail resume",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "2",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t12.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "2",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t12",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "16827259467cfeda7c613ec34f4627fed4c3d836",
+      "parents": ["bb12c254f3aacfb79bf7f3dca85f92ebbba9b16a"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003300000,
+      "at": "2025-10-09T09:48:20Z",
+      "subject": "reco-e73: tail truncation",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t13.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t13",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "769eb5eee8125a539bac5d45f005c558667325ab",
+      "parents": ["16827259467cfeda7c613ec34f4627fed4c3d836"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003720000,
+      "at": "2025-10-09T09:55:20Z",
+      "subject": "reco-e73: (part 2) tail truncation",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "3",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t13.rs"],
+      "n_files": 1,
+      "n_add": 17,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "3",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t13",
+        "session_id": "trailer-carrying-loop"
+      }
+    },
+    {
+      "oid": "4303e9632ca1b8614642a96037f9c5447c3b969e",
+      "parents": ["769eb5eee8125a539bac5d45f005c558667325ab"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003780000,
+      "at": "2025-10-09T09:56:20Z",
+      "subject": "reco-e74: the tail budget",
+      "trailers": {
+        "agent-session": "s4",
+        "agent-turn": "4",
+        "assisted-by": "pi-agent"
+      },
+      "paths": ["src/ingest/t14.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": "s4",
+      "turn_id": "4",
+      "merge": false,
+      "harness": {
+        "turn_id": "trailer-carrying-loop:t14",
+        "session_id": "trailer-carrying-loop"
+      }
+    }
+  ],
+  "truth": {
+    "turns": [
+      {
+        "id": "t01",
+        "commits": ["3f141013d822", "7663f37b8912"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t01",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t02",
+        "commits": ["7d0e1e0ebb34"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t02",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t03",
+        "commits": ["375daeeef664", "03480b2035a5"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t03",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t04",
+        "commits": ["7093a7eaeb94"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t04",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t05",
+        "commits": ["6a04bea065fc", "01b99c3d78b2"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t05",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t06",
+        "commits": ["6173e6ade5c5"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t06",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t07",
+        "commits": ["c5706b360120", "651eaec0a379"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t07",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t08",
+        "commits": ["6dbde83ee38a"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t08",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t09",
+        "commits": ["770000bb5f57", "8150496dc014"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t09",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t10",
+        "commits": ["07b214d8b094"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t10",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t11",
+        "commits": ["99a14253d177", "488c2bd92a89"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t11",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t12",
+        "commits": ["bb12c254f3aa"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t12",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t13",
+        "commits": ["16827259467c", "769eb5eee812"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t13",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t14",
+        "commits": ["4303e9632ca1"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t14",
+        "session": "trailer-carrying-loop",
+        "joined_by": "authored",
+        "note": null
+      }
+    ],
+    "pathologies": [
+      {
+        "kind": "same_turn_rework",
+        "at": "03480b2035a5",
+        "episode": "t03",
+        "requires": ["375daeeef664"],
+        "paths": ["src/ingest/t03.rs"],
+        "why": "two commits, one turn, seven minutes: with evidence this is the boundary every strategy should get right, and the one the clock still cuts"
+      }
+    ],
+    "notes": [
+      "t03 (session s1, turn 3) and t04 (session s2, turn 3) are adjacent turns whose turn indices are equal. episodes.rs builds turn_id from the trailer without the session, and the hook rule compares turn ids only, so it reads them as one turn — ADR-003 §9.1 says a turn_id *is* `<session_id>:<turn_index>`, so the shipped transport loses half of it."
+    ]
   }
- ],
- "truth": {
-  "turns": [
-   {
-    "id": "t01",
-    "commits": [
-     "3f141013d822",
-     "7663f37b8912"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t01",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t02",
-    "commits": [
-     "7d0e1e0ebb34"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t02",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t03",
-    "commits": [
-     "375daeeef664",
-     "03480b2035a5"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t03",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t04",
-    "commits": [
-     "7093a7eaeb94"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t04",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t05",
-    "commits": [
-     "6a04bea065fc",
-     "01b99c3d78b2"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t05",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t06",
-    "commits": [
-     "6173e6ade5c5"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t06",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t07",
-    "commits": [
-     "c5706b360120",
-     "651eaec0a379"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t07",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t08",
-    "commits": [
-     "6dbde83ee38a"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t08",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t09",
-    "commits": [
-     "770000bb5f57",
-     "8150496dc014"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t09",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t10",
-    "commits": [
-     "07b214d8b094"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t10",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t11",
-    "commits": [
-     "99a14253d177",
-     "488c2bd92a89"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t11",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t12",
-    "commits": [
-     "bb12c254f3aa"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t12",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t13",
-    "commits": [
-     "16827259467c",
-     "769eb5eee812"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t13",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t14",
-    "commits": [
-     "4303e9632ca1"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t14",
-    "session": "trailer-carrying-loop",
-    "joined_by": "authored",
-    "note": null
-   }
-  ],
-  "pathologies": [
-   {
-    "kind": "same_turn_rework",
-    "at": "03480b2035a5",
-    "episode": "t03",
-    "requires": [
-     "375daeeef664"
-    ],
-    "paths": [
-     "src/ingest/t03.rs"
-    ],
-    "why": "two commits, one turn, seven minutes: with evidence this is the boundary every strategy should get right, and the one the clock still cuts"
-   }
-  ],
-  "notes": [
-   "t03 (session s1, turn 3) and t04 (session s2, turn 3) are adjacent turns whose turn indices are equal. episodes.rs builds turn_id from the trailer without the session, and the hook rule compares turn ids only, so it reads them as one turn — ADR-003 §9.1 says a turn_id *is* `<session_id>:<turn_index>`, so the shipped transport loses half of it."
-  ]
- }
 }

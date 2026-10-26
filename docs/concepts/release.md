@@ -3,12 +3,15 @@
 Status: the skeleton was built by `e0.7` (**reco-e77**); the artefact set was extended into packaging by
 `e7.4` (**reco-3q4**); the alpha was cut by `m0` (**reco-n1j**).
 Config: [`dist-workspace.toml`](../../dist-workspace.toml). Generated workflow:
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml). Gate:
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml), dispatched by
+[`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) — which is what turns *the version
+the branch carries* into a tag. Gate:
 [`tools/check_release.py`](../../tools/check_release.py), asserted by
 [`tests/test_release_contract.py`](../../tests/test_release_contract.py) and
 [`tests/test_packaging_contract.py`](../../tests/test_packaging_contract.py). Measured evidence:
 [`benchmarks/reports/dist-release-plan.json`](../../benchmarks/reports/dist-release-plan.json).
-Tools that make artefacts: [`tools/gen_shell_artifacts.py`](../../tools/gen_shell_artifacts.py)
+Tools that make artefacts: [`tools/release.py`](../../tools/release.py) (the one version, moved through
+all seven places it has to appear), [`tools/gen_shell_artifacts.py`](../../tools/gen_shell_artifacts.py)
 (completions, man pages), [`tools/package_release.py`](../../tools/package_release.py) (`.deb`, `.rpm`),
 [`tools/rehearse_installer.py`](../../tools/rehearse_installer.py) (§4), and
 [`packaging/README.md`](../../packaging/README.md) for what lives in that directory.
@@ -25,7 +28,7 @@ Linuxes that have one, a static build for the ones that don't, completions and a
 lie about the flags, and a written account of which steps need a secret a fork will never have (§8).
 
 The failure this document exists to prevent is the one `e0.7` left lying around: ADR-002 §10.3 records
-that `package.repository` is a **placeholder** (`github.com/danielstahl/fathom`), that `cargo-dist` bakes
+that `package.repository` is a **placeholder** (`github.com/danielhstahl/fathom`), that `cargo-dist` bakes
 the installers' download URL out of it, and that a stale value is *a broken install, not a cosmetic bug*.
 That is the shape of every problem here: silent, plausible, and discovered by a stranger following a
 one-liner in a README.
@@ -174,7 +177,8 @@ seven manifest lines: every man page header says `fathom <version>`, every `.deb
 `0.1.0~alpha.1` (a `-` is illegal in an upstream version, and `~` is how both package managers spell
 "sorts before"), and `dist-workspace.toml`'s `extra-artifacts` list names those files. `R15` and
 `python3 tools/gen_shell_artifacts.py check` are what make forgetting one of them a red build rather than
-a misnamed artefact; §3 step 3 is the order to do them in.
+a misnamed artefact; `python3 tools/release.py check` is the same claim as `P01`–`P08`, re-derived offline
+with no `dist` and no build, and §3 step 3 is the order `release.py prepare` does them in.
 
 A **prerelease** version, not `0.1.0`, for two reasons that are both about other people:
 
@@ -195,36 +199,74 @@ whole index state. Both are one line and one JSON object respectively, because `
 
 ## 3 The runbook: cutting the alpha
 
-Everything below is a handful of commands and a checklist. The first three can run on a laptop with no
-network; the rest need the remote, which is the thing this repository does not have yet.
+Everything below is a command and a checklist. Step 1 and step 3 run on a laptop with no network; the
+release needs the remote, and the *tag* needs neither a person nor a memory — see step 4.
 
-1. **Pre-flight.** `python3 tools/check_release.py --tag v0.1.0-alpha.1`. This is `R01`–`R17` plus the
-   tag check `R13`: the tag must name the version the package carries (cargo-dist refuses one that does
-   not, *at publish time*, which is the worst possible moment), and `CHANGELOG.md` must have a dated
-   section for it, because `cargo-dist` builds the release body out of that file — a version with no
-   section announces nothing.
+1. **Pre-flight.** `python3 tools/release.py check` says whether the version in `Cargo.toml` has arrived in
+   all seven places it must (`P01`–`P08`), and
+   `python3 tools/check_release.py --tag v0.1.0-alpha.1` is `R01`–`R17` plus the tag check `R13`: the tag
+   must name the version the package carries (cargo-dist refuses one that does not, *at publish time*,
+   which is the worst possible moment), and `CHANGELOG.md` must have a dated section for it, because
+   `cargo-dist` builds the release body out of that file — a version with no section announces nothing.
+   Step 3 runs both of these for you at the end of a bump; they are here because a *verification* tool is
+   useful without a *change* tool.
 2. **Replace the placeholder repository URL**, if the public remote is not
-   `github.com/danielstahl/fathom`. `package.repository` in `crates/fathom-cli/Cargo.toml` is the only
+   `github.com/danielhstahl/fathom`. `package.repository` in `crates/fathom-cli/Cargo.toml` is the only
    place it is written; `dist generate` rewrites the workflow, and `R09` fails the README until the
    documented install URL matches what the installer will bake. ADR-002 §10.3 is the reason this is a
    rule and not a comment.
-3. **Regenerate and commit.** Four generators, in this order, then `cargo fmt`:
+3. **Bump, regenerate, commit — one command.** The version is declared once and derived six times, so the
+   bump is a sequence, and the sequence has an order. `prepare` is that sequence:
 
    ```bash
-   dist generate                                # release.yml from dist-workspace.toml (never hand-edited)
-   dist plan --output-format=json | python3 tools/check_release.py capture
-   cargo build -p fathom-cli                    # the default-feature build the artefacts come from
-   python3 tools/gen_shell_artifacts.py write   # packaging/completions and packaging/man
-   python3 tools/gen_docs.py write --page cli   # the CLI reference, from the same binary
-   python3 tools/check_release.py write         # this page, from the captured plan
+   python3 tools/release.py prepare --version 0.1.0-alpha.2 --dry-run   # print the plan, write nothing
+   python3 tools/release.py prepare --version 0.1.0-alpha.2             # do it, then run both gates
    ```
 
-   Step 3 is where a version bump shows up in the man pages and step 1 is where it shows up in the
-   `.deb` names, so the order is not arbitrary — and `dist generate` is only safe because `dist` owns
+   What it does, in this order (the same order the steps of the previous version of this runbook listed by
+   hand, and for the same reasons):
+
+   ```bash
+   # 1. Cargo.toml: [workspace.package] version and the seven path-dep requirements (R05)
+   # 2. dist-workspace.toml: the .deb/.rpm names, in the `~` spelling R15 requires
+   # 3. README.md: the two install one-liners' download URLs (R09)
+   # 4. cargo update --workspace                              # the lockfile's eight member entries
+   # 5. python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # C04 refuses until step 1 lands
+   # 6. dist generate                            # release.yml from dist-workspace.toml, never hand-edited
+   # 7. cargo build -p fathom-cli                # the default-feature build the artefacts come from
+   # 8. python3 tools/gen_shell_artifacts.py write             # packaging/completions and packaging/man
+   # 9. python3 tools/gen_docs.py write --page cli             # the CLI reference, from the same binary
+   # 10. dist plan --output-format=json | python3 tools/check_release.py capture
+   # 11. python3 tools/check_release.py write    # this page, from the re-captured plan
+   # 12. cargo fmt
+   ```
+
+   Then it runs `tools/release.py check` and `tools/check_release.py --tag` and prints the verdict, so "I
+   think I got all of them" is not part of the process. If `dist` is not on the machine (the container, a
+   fresh laptop), steps 6 and 10–11 are skipped *out loud* and the tool prints the commands to finish by
+   hand — a skipped generator that says nothing is how a release page starts describing last week. Use
+   `--no-build` to skip step 7 and everything that reads the binary.
+
+   **One commit, both halves.** The bump commit has to carry the version line *and* its `CHANGELOG.md`
+   section together, because step 4 treats the commit that moves the version as the release commit. That
+   is what `prepare` writes in one go; splitting it across two commits leaves the second one unable to fire
+   the release, and the failing step says so and names the fix.
+
+   The order is not arbitrary: the man pages are where a bump shows up in the archive, the `.deb` names are
+   where it shows up in the release, and `dist generate` is only safe to run because `dist` owns
    `release.yml` and CI runs `dist generate --check`.
-4. **Tag and push.** `git tag v0.1.0-alpha.1 && git push --tags`. `dispatch-releases = true` means a
-   push does not release anything by itself: the workflow runs on a `workflow_dispatch` carrying the tag,
-   so the release is an explicit act.
+4. **Push.** `git push`. That is the release. `dispatch-releases = true` still means a tag does nothing by
+   itself — instead, `.github/workflows/publish.yml` runs when this repository's own `ci` workflow goes
+   green on the default branch, and asks three questions: *did this commit move the version*, *is there
+   already a tag for it*, and *does the changelog have a dated section for it*. If the answers are yes, no,
+   yes, it dispatches `release.yml` **at that commit** with `tag=v<version>`, and `release.yml` builds
+   every target and creates the tag and the GitHub Release together — so a tag can never name a version the
+   tree does not carry, and the two can never disagree.
+
+   The manual dispatch is still there (`.github/workflows/release.yml` → *Run workflow*, tag in the input,
+   same tag selected in the ref picker) for the case the guards cannot see: a release run that died after
+   the tag exists. `.github/workflows/publish.yml` takes a `version` input for the same reason. §9's rule
+   that a published cut is never edited stays a human's judgement, which is why it is not encoded here.
 5. **Verify on the three operating systems** — the criterion, and the part that cannot be delegated to a
    machine. For each of Linux, macOS (both an Intel and an Apple-silicon machine if both are available)
    and Windows: follow the README's one-liner **exactly as written, on a machine that has never seen this
@@ -385,7 +427,9 @@ stays open holding work nobody owns is how work stops happening:
 ## 7 What this document deliberately does not decide
 
 - **Which humans ran the installer on which machine.** That is §5, and `m0` cuts the alpha.
-- **The actual alpha tag.** Step 4 above is a person with push access, not a CI job.
+- **The actual alpha tag.** It is no longer a person typing `git tag` — the commit that moves the version
+   is the act, and `release.yml` writes the tag at that commit (§3 step 4). What is still a person is
+   deciding that `alpha.7` is the one to send out, and signing off the changelog section that says so.
 - **Cross-platform packaging proper.** `e7.4` (**reco-3q4**) added the msi, the `.deb`/`.rpm`, the musl
   target, the Homebrew tap and the shell artefacts (§1.1–§1.3); `aarch64-pc-windows-msvc` remains out
   (§1.1), and a public, login-free *per-PR* download is still true of the release and false of the
@@ -461,6 +505,11 @@ Two rules that keep a weekly cut cheap: **nothing waits for a release**, because
 or not anything interesting landed, and a release that has to be *worth it* is a release that gets postponed;
 and **a cut is never edited after it is published** — a bad alpha is followed by another alpha, because
 silently rewriting a release body is how a project loses the ability to say what it shipped when.
+
+And one rule that keeps the *act* cheap, since the cut stopped being a person typing a tag: the version line
+is the trigger. `python3 tools/release.py prepare --version X` on Tuesday, one commit, one push; the tag
+follows the commit that moved the version (§3 step 4). A cadence that needs someone to remember four
+regenerations and a `git tag` is a cadence that slips on a bad week.
 
 **The changelog is generated, and never regenerated.** `CHANGELOG.md` stays hand-written prose with arguments
 in it — that is what makes it worth reading, and no commit subject contains the reasoning. What is generated is

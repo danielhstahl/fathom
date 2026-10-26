@@ -32,13 +32,13 @@ One line per operating system, from the `0.1.0-alpha.1` prerelease. Linux and ma
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.sh | sh
+  https://github.com/danielhstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://github.com/danielstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.ps1 | iex
+irm https://github.com/danielhstahl/fathom/releases/download/v0.1.0-alpha.1/fathom-cli-installer.ps1 | iex
 ```
 
 Or take the artefact off the release page directly: a `.tar.xz` per platform — including a **static**

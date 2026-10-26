@@ -1,579 +1,491 @@
 {
- "schema": "fathom.turn-ground-truth/1",
- "history": "authored-episode-trailer-loop",
- "provenance": "authored",
- "authoring": {
-  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
-  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
-  "annotated_on": "2026-10-17",
-  "derived_from": "the one piece of evidence ADR-003's `trailer` rule (§4.2 rung 3, confidence 0.9) is written for and nothing in the tree writes: a `Fathom-Episode:` trailer. This history exists so the rule is measured against evidence rather than reported as a zero.",
-  "shape": "trailers naming the episode: most turns label every commit, t05 labels only its first (the spelling a human would actually write), and t08's trailer is a copy-paste of t07's, because a trailer is a note someone left and notes can be wrong"
- },
- "source": {
-  "kind": "authored",
-  "commit_count": 15,
-  "extracted_by": "hand-authored; see authoring.derived_from"
- },
- "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
- "lineage": [
-  {
-   "oid": "516e4061833397b09fd32c401569dec277be43c1",
-   "parents": [],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760000120000,
-   "at": "2025-10-09T08:55:20Z",
-   "subject": "reco-f81.0: the alice slice",
-   "trailers": {
-    "fathom-episode": "ep-alice"
-   },
-   "paths": [
-    "src/slice0.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t01",
-    "session_id": "episode-trailer-loop"
-   }
+  "schema": "fathom.turn-ground-truth/1",
+  "history": "authored-episode-trailer-loop",
+  "provenance": "authored",
+  "authoring": {
+    "annotated_by": "danielhstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+    "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+    "annotated_on": "2026-10-17",
+    "derived_from": "the one piece of evidence ADR-003's `trailer` rule (§4.2 rung 3, confidence 0.9) is written for and nothing in the tree writes: a `Fathom-Episode:` trailer. This history exists so the rule is measured against evidence rather than reported as a zero.",
+    "shape": "trailers naming the episode: most turns label every commit, t05 labels only its first (the spelling a human would actually write), and t08's trailer is a copy-paste of t07's, because a trailer is a note someone left and notes can be wrong"
   },
-  {
-   "oid": "0e36203811e2ed7c4f2064afd5496a88b4a721f9",
-   "parents": [
-    "516e4061833397b09fd32c401569dec277be43c1"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760000300000,
-   "at": "2025-10-09T08:58:20Z",
-   "subject": "reco-f81.0: the alice slice (step 2)",
-   "trailers": {
-    "fathom-episode": "ep-alice"
-   },
-   "paths": [
-    "src/slice0.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t01",
-    "session_id": "episode-trailer-loop"
-   }
+  "source": {
+    "kind": "authored",
+    "commit_count": 15,
+    "extracted_by": "hand-authored; see authoring.derived_from"
   },
-  {
-   "oid": "84c4f7e485a368cba62b8972694a8b49936e0426",
-   "parents": [
-    "0e36203811e2ed7c4f2064afd5496a88b4a721f9"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000420000,
-   "at": "2025-10-09T09:00:20Z",
-   "subject": "reco-f81.1: the bob slice",
-   "trailers": {
-    "fathom-episode": "ep-bob"
-   },
-   "paths": [
-    "src/slice1.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t02",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "6343db27fab42491f93618c2a5aff1acf5a90c7a",
-   "parents": [
-    "84c4f7e485a368cba62b8972694a8b49936e0426"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760000540000,
-   "at": "2025-10-09T09:02:20Z",
-   "subject": "reco-f81.2: the carol slice",
-   "trailers": {
-    "fathom-episode": "ep-carol"
-   },
-   "paths": [
-    "src/slice2.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t03",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "1b04ba8667418221e017e3aa334368e08022d17b",
-   "parents": [
-    "6343db27fab42491f93618c2a5aff1acf5a90c7a"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760000720000,
-   "at": "2025-10-09T09:05:20Z",
-   "subject": "reco-f81.2: the carol slice (step 2)",
-   "trailers": {
-    "fathom-episode": "ep-carol"
-   },
-   "paths": [
-    "src/slice2.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t03",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "e58b0934fc663295530c1f7813330e991d01d379",
-   "parents": [
-    "1b04ba8667418221e017e3aa334368e08022d17b"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000840000,
-   "at": "2025-10-09T09:07:20Z",
-   "subject": "reco-f81.3: the dave slice",
-   "trailers": {
-    "fathom-episode": "ep-dave"
-   },
-   "paths": [
-    "src/slice3.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t04",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "7a9b2a458c0b54f9df88694c7a00f9c660eac5cf",
-   "parents": [
-    "e58b0934fc663295530c1f7813330e991d01d379"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760000960000,
-   "at": "2025-10-09T09:09:20Z",
-   "subject": "reco-f81.4: the erin slice",
-   "trailers": {
-    "fathom-episode": "ep-erin"
-   },
-   "paths": [
-    "src/slice4.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t05",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "0ff8bf3a3ee39afdffd43d3a237d0713c7731265",
-   "parents": [
-    "7a9b2a458c0b54f9df88694c7a00f9c660eac5cf"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760001140000,
-   "at": "2025-10-09T09:12:20Z",
-   "subject": "reco-f81.4: the erin slice (step 2)",
-   "trailers": {},
-   "paths": [
-    "src/slice4.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t05",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "fd1bdc23b0696dabd70e3224bb521a7e3786fee1",
-   "parents": [
-    "0ff8bf3a3ee39afdffd43d3a237d0713c7731265"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760001320000,
-   "at": "2025-10-09T09:15:20Z",
-   "subject": "reco-f81.4: the erin slice (step 3)",
-   "trailers": {},
-   "paths": [
-    "src/slice4.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t05",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "3554d5225e3c72c4f3f95ebd1960587d7abd825b",
-   "parents": [
-    "fd1bdc23b0696dabd70e3224bb521a7e3786fee1"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001440000,
-   "at": "2025-10-09T09:17:20Z",
-   "subject": "reco-f81.5: the frank slice",
-   "trailers": {
-    "fathom-episode": "ep-frank"
-   },
-   "paths": [
-    "src/slice5.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t06",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "9a77cae86a5b41623582d77da35fdc2a1fddb6ce",
-   "parents": [
-    "3554d5225e3c72c4f3f95ebd1960587d7abd825b"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760001560000,
-   "at": "2025-10-09T09:19:20Z",
-   "subject": "reco-f81.6: the grace slice",
-   "trailers": {
-    "fathom-episode": "ep-grace"
-   },
-   "paths": [
-    "src/slice6.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t07",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "60d40fc7b81888c31994f2a99f6dbba3f82f126b",
-   "parents": [
-    "9a77cae86a5b41623582d77da35fdc2a1fddb6ce"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760001740000,
-   "at": "2025-10-09T09:22:20Z",
-   "subject": "reco-f81.6: the grace slice (step 2)",
-   "trailers": {
-    "fathom-episode": "ep-grace"
-   },
-   "paths": [
-    "src/slice6.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t07",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "be4c3cc965e57e4af49357458cc939a13858dab7",
-   "parents": [
-    "60d40fc7b81888c31994f2a99f6dbba3f82f126b"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001860000,
-   "at": "2025-10-09T09:24:20Z",
-   "subject": "reco-f81.7: the heidi slice",
-   "trailers": {
-    "fathom-episode": "ep-heidi"
-   },
-   "paths": [
-    "src/slice7.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t08",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "2b39b229ad8b00d7214b1b46923e6254ae37f025",
-   "parents": [
-    "be4c3cc965e57e4af49357458cc939a13858dab7"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760001980000,
-   "at": "2025-10-09T09:26:20Z",
-   "subject": "reco-f81.8: the ivan slice",
-   "trailers": {
-    "fathom-episode": "ep-ivan"
-   },
-   "paths": [
-    "src/slice8.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t09",
-    "session_id": "episode-trailer-loop"
-   }
-  },
-  {
-   "oid": "d1dbbffc631fe2fd299cf8b302c1bf914f2c3b14",
-   "parents": [
-    "2b39b229ad8b00d7214b1b46923e6254ae37f025"
-   ],
-   "author_name": "codex-agent",
-   "author_email": "codex-agent@example.invalid",
-   "author_millis": 1760002160000,
-   "at": "2025-10-09T09:29:20Z",
-   "subject": "reco-f81.8: the ivan slice (step 2)",
-   "trailers": {
-    "fathom-episode": "ep-ivan"
-   },
-   "paths": [
-    "src/slice8.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "episode-trailer-loop:t09",
-    "session_id": "episode-trailer-loop"
-   }
+  "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+  "lineage": [
+    {
+      "oid": "516e4061833397b09fd32c401569dec277be43c1",
+      "parents": [],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760000120000,
+      "at": "2025-10-09T08:55:20Z",
+      "subject": "reco-f81.0: the alice slice",
+      "trailers": {
+        "fathom-episode": "ep-alice"
+      },
+      "paths": ["src/slice0.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t01",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "0e36203811e2ed7c4f2064afd5496a88b4a721f9",
+      "parents": ["516e4061833397b09fd32c401569dec277be43c1"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760000300000,
+      "at": "2025-10-09T08:58:20Z",
+      "subject": "reco-f81.0: the alice slice (step 2)",
+      "trailers": {
+        "fathom-episode": "ep-alice"
+      },
+      "paths": ["src/slice0.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t01",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "84c4f7e485a368cba62b8972694a8b49936e0426",
+      "parents": ["0e36203811e2ed7c4f2064afd5496a88b4a721f9"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000420000,
+      "at": "2025-10-09T09:00:20Z",
+      "subject": "reco-f81.1: the bob slice",
+      "trailers": {
+        "fathom-episode": "ep-bob"
+      },
+      "paths": ["src/slice1.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t02",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "6343db27fab42491f93618c2a5aff1acf5a90c7a",
+      "parents": ["84c4f7e485a368cba62b8972694a8b49936e0426"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760000540000,
+      "at": "2025-10-09T09:02:20Z",
+      "subject": "reco-f81.2: the carol slice",
+      "trailers": {
+        "fathom-episode": "ep-carol"
+      },
+      "paths": ["src/slice2.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t03",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "1b04ba8667418221e017e3aa334368e08022d17b",
+      "parents": ["6343db27fab42491f93618c2a5aff1acf5a90c7a"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760000720000,
+      "at": "2025-10-09T09:05:20Z",
+      "subject": "reco-f81.2: the carol slice (step 2)",
+      "trailers": {
+        "fathom-episode": "ep-carol"
+      },
+      "paths": ["src/slice2.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t03",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "e58b0934fc663295530c1f7813330e991d01d379",
+      "parents": ["1b04ba8667418221e017e3aa334368e08022d17b"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000840000,
+      "at": "2025-10-09T09:07:20Z",
+      "subject": "reco-f81.3: the dave slice",
+      "trailers": {
+        "fathom-episode": "ep-dave"
+      },
+      "paths": ["src/slice3.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t04",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "7a9b2a458c0b54f9df88694c7a00f9c660eac5cf",
+      "parents": ["e58b0934fc663295530c1f7813330e991d01d379"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760000960000,
+      "at": "2025-10-09T09:09:20Z",
+      "subject": "reco-f81.4: the erin slice",
+      "trailers": {
+        "fathom-episode": "ep-erin"
+      },
+      "paths": ["src/slice4.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t05",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "0ff8bf3a3ee39afdffd43d3a237d0713c7731265",
+      "parents": ["7a9b2a458c0b54f9df88694c7a00f9c660eac5cf"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760001140000,
+      "at": "2025-10-09T09:12:20Z",
+      "subject": "reco-f81.4: the erin slice (step 2)",
+      "trailers": {},
+      "paths": ["src/slice4.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t05",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "fd1bdc23b0696dabd70e3224bb521a7e3786fee1",
+      "parents": ["0ff8bf3a3ee39afdffd43d3a237d0713c7731265"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760001320000,
+      "at": "2025-10-09T09:15:20Z",
+      "subject": "reco-f81.4: the erin slice (step 3)",
+      "trailers": {},
+      "paths": ["src/slice4.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t05",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "3554d5225e3c72c4f3f95ebd1960587d7abd825b",
+      "parents": ["fd1bdc23b0696dabd70e3224bb521a7e3786fee1"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001440000,
+      "at": "2025-10-09T09:17:20Z",
+      "subject": "reco-f81.5: the frank slice",
+      "trailers": {
+        "fathom-episode": "ep-frank"
+      },
+      "paths": ["src/slice5.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t06",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "9a77cae86a5b41623582d77da35fdc2a1fddb6ce",
+      "parents": ["3554d5225e3c72c4f3f95ebd1960587d7abd825b"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760001560000,
+      "at": "2025-10-09T09:19:20Z",
+      "subject": "reco-f81.6: the grace slice",
+      "trailers": {
+        "fathom-episode": "ep-grace"
+      },
+      "paths": ["src/slice6.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t07",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "60d40fc7b81888c31994f2a99f6dbba3f82f126b",
+      "parents": ["9a77cae86a5b41623582d77da35fdc2a1fddb6ce"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760001740000,
+      "at": "2025-10-09T09:22:20Z",
+      "subject": "reco-f81.6: the grace slice (step 2)",
+      "trailers": {
+        "fathom-episode": "ep-grace"
+      },
+      "paths": ["src/slice6.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t07",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "be4c3cc965e57e4af49357458cc939a13858dab7",
+      "parents": ["60d40fc7b81888c31994f2a99f6dbba3f82f126b"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001860000,
+      "at": "2025-10-09T09:24:20Z",
+      "subject": "reco-f81.7: the heidi slice",
+      "trailers": {
+        "fathom-episode": "ep-heidi"
+      },
+      "paths": ["src/slice7.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t08",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "2b39b229ad8b00d7214b1b46923e6254ae37f025",
+      "parents": ["be4c3cc965e57e4af49357458cc939a13858dab7"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760001980000,
+      "at": "2025-10-09T09:26:20Z",
+      "subject": "reco-f81.8: the ivan slice",
+      "trailers": {
+        "fathom-episode": "ep-ivan"
+      },
+      "paths": ["src/slice8.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t09",
+        "session_id": "episode-trailer-loop"
+      }
+    },
+    {
+      "oid": "d1dbbffc631fe2fd299cf8b302c1bf914f2c3b14",
+      "parents": ["2b39b229ad8b00d7214b1b46923e6254ae37f025"],
+      "author_name": "codex-agent",
+      "author_email": "codex-agent@example.invalid",
+      "author_millis": 1760002160000,
+      "at": "2025-10-09T09:29:20Z",
+      "subject": "reco-f81.8: the ivan slice (step 2)",
+      "trailers": {
+        "fathom-episode": "ep-ivan"
+      },
+      "paths": ["src/slice8.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "episode-trailer-loop:t09",
+        "session_id": "episode-trailer-loop"
+      }
+    }
+  ],
+  "truth": {
+    "turns": [
+      {
+        "id": "t01",
+        "commits": ["516e40618333", "0e36203811e2"],
+        "author": "codex-agent",
+        "kind": "agent",
+        "turn": "t01",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t02",
+        "commits": ["84c4f7e485a3"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t02",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t03",
+        "commits": ["6343db27fab4", "1b04ba866741"],
+        "author": "codex-agent",
+        "kind": "agent",
+        "turn": "t03",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t04",
+        "commits": ["e58b0934fc66"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t04",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t05",
+        "commits": ["7a9b2a458c0b", "0ff8bf3a3ee3", "fd1bdc23b069"],
+        "author": "codex-agent",
+        "kind": "agent",
+        "turn": "t05",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t06",
+        "commits": ["3554d5225e3c"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t06",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t07",
+        "commits": ["9a77cae86a5b", "60d40fc7b818"],
+        "author": "codex-agent",
+        "kind": "agent",
+        "turn": "t07",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t08",
+        "commits": ["be4c3cc965e5"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t08",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t09",
+        "commits": ["2b39b229ad8b", "d1dbbffc631f"],
+        "author": "codex-agent",
+        "kind": "agent",
+        "turn": "t09",
+        "session": "episode-trailer-loop",
+        "joined_by": "authored",
+        "note": null
+      }
+    ],
+    "pathologies": [
+      {
+        "kind": "absorbed_turn",
+        "at": "be4c3cc965e5",
+        "episode": "t08",
+        "requires": [],
+        "paths": ["src/slice7.rs"],
+        "why": "the lying trailer: t08 names ep-grace, so the trailer rule keeps a different turn's commit beside it and this turn disappears from the queue entirely"
+      },
+      {
+        "kind": "same_turn_rework",
+        "at": "0ff8bf3a3ee3",
+        "episode": "t05",
+        "requires": ["7a9b2a458c0b"],
+        "paths": ["src/slice4.rs"],
+        "why": "the turn that labels only its first commit: the rule fires at the boundary and then has nothing to say, which is the difference between a trailer rule and a turn-id rule"
+      }
+    ],
+    "notes": [
+      "t08 carries `Fathom-Episode: ep-grace` on a commit that is not part of ep-grace. Nothing in the design checks a trailer (§9.2 ranks the trailer below an event precisely because it can lie), so this is the measured price of rung 3's 0.9."
+    ]
   }
- ],
- "truth": {
-  "turns": [
-   {
-    "id": "t01",
-    "commits": [
-     "516e40618333",
-     "0e36203811e2"
-    ],
-    "author": "codex-agent",
-    "kind": "agent",
-    "turn": "t01",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t02",
-    "commits": [
-     "84c4f7e485a3"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t02",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t03",
-    "commits": [
-     "6343db27fab4",
-     "1b04ba866741"
-    ],
-    "author": "codex-agent",
-    "kind": "agent",
-    "turn": "t03",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t04",
-    "commits": [
-     "e58b0934fc66"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t04",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t05",
-    "commits": [
-     "7a9b2a458c0b",
-     "0ff8bf3a3ee3",
-     "fd1bdc23b069"
-    ],
-    "author": "codex-agent",
-    "kind": "agent",
-    "turn": "t05",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t06",
-    "commits": [
-     "3554d5225e3c"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t06",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t07",
-    "commits": [
-     "9a77cae86a5b",
-     "60d40fc7b818"
-    ],
-    "author": "codex-agent",
-    "kind": "agent",
-    "turn": "t07",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t08",
-    "commits": [
-     "be4c3cc965e5"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t08",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t09",
-    "commits": [
-     "2b39b229ad8b",
-     "d1dbbffc631f"
-    ],
-    "author": "codex-agent",
-    "kind": "agent",
-    "turn": "t09",
-    "session": "episode-trailer-loop",
-    "joined_by": "authored",
-    "note": null
-   }
-  ],
-  "pathologies": [
-   {
-    "kind": "absorbed_turn",
-    "at": "be4c3cc965e5",
-    "episode": "t08",
-    "requires": [],
-    "paths": [
-     "src/slice7.rs"
-    ],
-    "why": "the lying trailer: t08 names ep-grace, so the trailer rule keeps a different turn's commit beside it and this turn disappears from the queue entirely"
-   },
-   {
-    "kind": "same_turn_rework",
-    "at": "0ff8bf3a3ee3",
-    "episode": "t05",
-    "requires": [
-     "7a9b2a458c0b"
-    ],
-    "paths": [
-     "src/slice4.rs"
-    ],
-    "why": "the turn that labels only its first commit: the rule fires at the boundary and then has nothing to say, which is the difference between a trailer rule and a turn-id rule"
-   }
-  ],
-  "notes": [
-   "t08 carries `Fathom-Episode: ep-grace` on a commit that is not part of ep-grace. Nothing in the design checks a trailer (§9.2 ranks the trailer below an event precisely because it can lie), so this is the measured price of rung 3's 0.9."
-  ]
- }
 }

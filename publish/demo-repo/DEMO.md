@@ -1,7 +1,7 @@
 # signal — the repository Fathom demos itself on
 
 This is a real git repository with 27 commits, two human authors and one agent, and every one of them
-exists to put a row in a different part of [Fathom](https://github.com/danielstahl/fathom). Twenty-one
+exists to put a row in a different part of [Fathom](https://github.com/danielhstahl/fathom). Twenty-one
 of them are the miniature Fathom unpacks when you run `fathom --demo` — the bytes are literally the same,
 they come out of the pack `crates/fathom-cli/assets/fathom-demo.pack`. Five more were added for this
 tour: four episodes that argue with one function and then undo themselves, and one commit that is
@@ -11,7 +11,7 @@ page, the answer key and the CI job.
 tell you which commit planted what. When you have worked through it — or when you want the markings —
 [`PATHOLOGIES.md`](PATHOLOGIES.md) is the answer key, and every claim in both files is generated from the
 same catalogue that a machine runs against a real binary in
-[Fathom's CI](https://github.com/danielstahl/fathom/blob/main/docs/demo/five-minute.md).
+[Fathom's CI](https://github.com/danielhstahl/fathom/blob/main/docs/demo/five-minute.md).
 
 ```bash
 cargo install fathom-cli        # or: cargo build -p fathom-cli, or the installer in the README

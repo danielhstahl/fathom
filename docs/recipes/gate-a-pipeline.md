@@ -39,7 +39,7 @@ permissions:
   contents: read
 jobs:
   gate:
-    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    uses: danielhstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
     with:
       fathom-version: 1.0.0
       fail-on: warning        # delete this line to run exactly what your own fathom.toml declares
@@ -75,7 +75,7 @@ review-gate:
       # in this one the line is simply `sh ./ci/install-fathom.sh`.
       run: |
         curl --proto '=https' --tlsv1.2 -fsSL \
-          https://raw.githubusercontent.com/danielstahl/fathom/v1.0.0/ci/install-fathom.sh \
+          https://raw.githubusercontent.com/danielhstahl/fathom/v1.0.0/ci/install-fathom.sh \
           -o install-fathom.sh
         sh install-fathom.sh --version 1.0.0
       # Not `cargo build --no-default-features --features minimal`, whatever a past revision of this page

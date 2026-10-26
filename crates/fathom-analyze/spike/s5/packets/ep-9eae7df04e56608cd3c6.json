@@ -1,486 +1,486 @@
 {
- "episode": {
-  "delta_digest": "4243eaebbc4afc5933368d18178a2705d66f18c4647a930e04bf48aef62f919f",
-  "id": "ep-9eae7df04e56608cd3c6",
-  "lineage_seq": 5,
-  "n_commits": 1,
-  "subject": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
- },
- "items": [
-  {
-   "id": "c1",
-   "kind": "commit",
-   "label": "commit",
-   "oid": "406ca2b25f89",
-   "value": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
+  "episode": {
+    "delta_digest": "4243eaebbc4afc5933368d18178a2705d66f18c4647a930e04bf48aef62f919f",
+    "id": "ep-9eae7df04e56608cd3c6",
+    "lineage_seq": 5,
+    "n_commits": 1,
+    "subject": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
   },
-  {
-   "id": "f1",
-   "kind": "figure",
-   "label": "lines",
-   "pointer": "#/totals",
-   "section": "what",
-   "value": "+3 736 -69"
-  },
-  {
-   "id": "f2",
-   "kind": "figure",
-   "label": "files",
-   "pointer": "#/totals/n_files",
-   "section": "what",
-   "value": "25 file(s)"
-  },
-  {
-   "id": "f3",
-   "kind": "figure",
-   "label": "churn",
-   "pointer": "#/totals/churn",
-   "section": "what",
-   "value": "3 805 lines changed"
-  },
-  {
-   "id": "f4",
-   "kind": "figure",
-   "label": "reviewable churn",
-   "pointer": "#/totals/reviewable_churn",
-   "section": "what",
-   "value": "3 805 of 3 805 (spine-1/noisy-path, keeps 25%)"
-  },
-  {
-   "id": "f5",
-   "kind": "figure",
-   "label": "path classes",
-   "pointer": "#/files",
-   "section": "what",
-   "value": " 25"
-  },
-  {
-   "id": "f6",
-   "kind": "figure",
-   "label": "change kinds",
-   "pointer": "#/files",
-   "section": "what",
-   "value": "modified 25"
-  },
-  {
-   "id": "f7",
-   "kind": "figure",
-   "label": "directories",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "src/recommender/taxonomy 10f +2431 -0 · tests 3f +680 -2 · docs/concepts 2f +343 -3 · src/recommender/store 2f +93 -49 · src/recommender/config 4f +112 -12"
-  },
-  {
-   "id": "f8",
-   "kind": "figure",
-   "label": "more directories",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "3 not listed"
-  },
-  {
-   "id": "f9",
-   "kind": "figure",
-   "label": "surfaces",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0"
-  },
-  {
-   "id": "f10",
-   "kind": "figure",
-   "label": "moves",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "no path moves were recorded"
-  },
-  {
-   "id": "f11",
-   "kind": "figure",
-   "label": "basis",
-   "pointer": "#/totals",
-   "section": "where",
-   "value": "25 of 25 paths, ranked by churn; the census is the episode's own paths"
-  },
-  {
-   "id": "f12",
-   "kind": "figure",
-   "label": "surfaces",
-   "pointer": "#/files",
-   "section": "surface",
-   "value": "source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0"
-  },
-  {
-   "id": "f13",
-   "kind": "figure",
-   "label": "operator surfaces",
-   "pointer": "#/files",
-   "section": "surface",
-   "value": "1 (ci)"
-  },
-  {
-   "id": "f14",
-   "kind": "figure",
-   "label": "test side",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "3 file(s) · +680 -2"
-  },
-  {
-   "id": "f15",
-   "kind": "figure",
-   "label": "source side",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "18 file(s) · +2 690 -61"
-  },
-  {
-   "id": "f16",
-   "kind": "figure",
-   "label": "test share of churn",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "18% of the episode's churn is test-side"
-  },
-  {
-   "id": "f17",
-   "kind": "figure",
-   "label": "watch",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "source grew by 2 690 while 2 test lines were removed — the deleted cover is not re-established by anything in these rows"
-  },
-  {
-   "id": "f18",
-   "kind": "figure",
-   "label": "risk",
-   "pointer": "#/risk",
-   "section": "attention",
-   "value": "spine-1 67 = surfaces 46 + size 13 + breadth 8"
-  },
-  {
-   "id": "f19",
-   "kind": "figure",
-   "label": "surfaces (46/50)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": ".github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs"
-  },
-  {
-   "id": "f20",
-   "kind": "figure",
-   "label": "size (13/16)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "+3736 -69 = 3805 churn"
-  },
-  {
-   "id": "f21",
-   "kind": "figure",
-   "label": "breadth (8/12)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "4 surfaces over 25 files in 1 commit"
-  },
-  {
-   "id": "f22",
-   "kind": "figure",
-   "label": "cannot see",
-   "pointer": "#/risk/blind_spots",
-   "section": "attention",
-   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
-  },
-  {
-   "id": "p1",
-   "kind": "file",
-   "label": "file",
-   "path": ".github/workflows/contracts.yml",
-   "surface": "ci",
-   "value": "modified .github/workflows/contracts.yml +11 -0 ci"
-  },
-  {
-   "id": "p2",
-   "kind": "file",
-   "label": "file",
-   "path": "README.md",
-   "surface": "docs",
-   "value": "modified README.md +12 -3 docs"
-  },
-  {
-   "id": "p3",
-   "kind": "file",
-   "label": "file",
-   "path": "docs/concepts/config.md",
-   "surface": "docs",
-   "value": "modified docs/concepts/config.md +7 -3 docs"
-  },
-  {
-   "id": "p4",
-   "kind": "file",
-   "label": "file",
-   "path": "docs/concepts/paths.md",
-   "surface": "docs",
-   "value": "modified docs/concepts/paths.md +336 -0 docs"
-  },
-  {
-   "id": "p5",
-   "kind": "file",
-   "label": "file",
-   "path": "fathom.toml",
-   "surface": "source",
-   "value": "modified fathom.toml +18 -0 source"
-  },
-  {
-   "id": "p6",
-   "kind": "file",
-   "label": "file",
-   "path": "schemas/fathom.schema.json",
-   "surface": "source",
-   "value": "modified schemas/fathom.schema.json +36 -0 source"
-  },
-  {
-   "id": "p7",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/config/cli.py",
-   "surface": "source",
-   "value": "modified src/recommender/config/cli.py +14 -0 source"
-  },
-  {
-   "id": "p8",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/config/explain.py",
-   "surface": "source",
-   "value": "modified src/recommender/config/explain.py +65 -9 source"
-  },
-  {
-   "id": "p9",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/config/layer.py",
-   "surface": "source",
-   "value": "modified src/recommender/config/layer.py +14 -1 source"
-  },
-  {
-   "id": "p10",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/config/schema.py",
-   "surface": "source",
-   "value": "modified src/recommender/config/schema.py +19 -2 source"
-  },
-  {
-   "id": "p11",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/store/cache.py",
-   "surface": "source",
-   "value": "modified src/recommender/store/cache.py +6 -1 source"
-  },
-  {
-   "id": "p12",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/store/git.py",
-   "surface": "source",
-   "value": "modified src/recommender/store/git.py +87 -48 source"
-  },
-  {
-   "id": "p13",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/__init__.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/__init__.py +57 -0 source"
-  },
-  {
-   "id": "p14",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/__main__.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/__main__.py +8 -0 source"
-  },
-  {
-   "id": "p15",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/builtins.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/builtins.py +344 -0 source"
-  },
-  {
-   "id": "p16",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/classes.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/classes.py +150 -0 source"
-  },
-  {
-   "id": "p17",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/cli.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/cli.py +201 -0 source"
-  },
-  {
-   "id": "p18",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/corpus.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/corpus.py +404 -0 source"
-  },
-  {
-   "id": "p19",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/engine.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/engine.py +512 -0 source"
-  },
-  {
-   "id": "p20",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/explain.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/explain.py +217 -0 source"
-  },
-  {
-   "id": "p21",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/noise.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/noise.py +124 -0 source"
-  },
-  {
-   "id": "p22",
-   "kind": "file",
-   "label": "file",
-   "path": "src/recommender/taxonomy/rules.py",
-   "surface": "source",
-   "value": "modified src/recommender/taxonomy/rules.py +414 -0 source"
-  },
-  {
-   "id": "p23",
-   "kind": "file",
-   "label": "file",
-   "path": "tests/test_config_contract.py",
-   "surface": "test",
-   "value": "modified tests/test_config_contract.py +16 -1 test"
-  },
-  {
-   "id": "p24",
-   "kind": "file",
-   "label": "file",
-   "path": "tests/test_storage_contract.py",
-   "surface": "test",
-   "value": "modified tests/test_storage_contract.py +4 -1 test"
-  },
-  {
-   "id": "p25",
-   "kind": "file",
-   "label": "file",
-   "path": "tests/test_taxonomy_contract.py",
-   "surface": "test",
-   "value": "modified tests/test_taxonomy_contract.py +660 -0 test"
-  },
-  {
-   "id": "r1",
-   "kind": "risk",
-   "label": "risk",
-   "score": 67,
-   "value": "spine-1 67 = surfaces 46 + size 13 + breadth 8"
-  },
-  {
-   "id": "r2",
-   "kind": "risk",
-   "label": "risk component surfaces",
-   "value": "surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs"
-  },
-  {
-   "id": "r3",
-   "kind": "risk",
-   "label": "risk component size",
-   "value": "size 13/16 +3736 -69 = 3805 churn"
-  },
-  {
-   "id": "r4",
-   "kind": "risk",
-   "label": "risk component breadth",
-   "value": "breadth 8/12 4 surfaces over 25 files in 1 commit"
-  },
-  {
-   "id": "g1",
-   "kind": "gap",
-   "label": "gap (what)",
-   "value": "path-rule discount only — not answered here, it is e2.2's"
-  },
-  {
-   "id": "g2",
-   "kind": "gap",
-   "label": "gap (where)",
-   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
-  },
-  {
-   "id": "g3",
-   "kind": "gap",
-   "label": "gap (dependencies)",
-   "value": "no dependency delta here — not answered here, it is e2.6's"
-  },
-  {
-   "id": "g4",
-   "kind": "gap",
-   "label": "gap (surface)",
-   "value": "findings are e2.8's — not answered here, it is e2.8's"
-  },
-  {
-   "id": "g5",
-   "kind": "gap",
-   "label": "gap (tests)",
-   "value": "case names are e2.9's — not answered here, it is e2.9's"
-  },
-  {
-   "id": "g6",
-   "kind": "gap",
-   "label": "gap (blast)",
-   "value": "no module graph in this build — not answered here, it is e3.2's"
-  },
-  {
-   "id": "g7",
-   "kind": "gap",
-   "label": "gap (attention)",
-   "value": "spine-only ranking — not answered here, it is e4.4's"
-  },
-  {
-   "id": "m1",
-   "kind": "meta",
-   "label": "author",
-   "value": "danielstahl (human author, identity at 0.5 confidence)"
-  },
-  {
-   "id": "m2",
-   "kind": "meta",
-   "label": "boundary",
-   "value": "boundary rule message-shape at 0.7 confidence"
-  },
-  {
-   "id": "m3",
-   "kind": "meta",
-   "label": "totals",
-   "value": "25 file(s), +3736 -69, 1 commit(s), 0 binary"
-  },
-  {
-   "id": "m4",
-   "kind": "meta",
-   "label": "window",
-   "value": "0 minute(s) long"
-  }
- ],
- "schema": "fathom.narrative-evidence/1"
+  "items": [
+    {
+      "id": "c1",
+      "kind": "commit",
+      "label": "commit",
+      "oid": "406ca2b25f89",
+      "value": "reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9)"
+    },
+    {
+      "id": "f1",
+      "kind": "figure",
+      "label": "lines",
+      "pointer": "#/totals",
+      "section": "what",
+      "value": "+3 736 -69"
+    },
+    {
+      "id": "f2",
+      "kind": "figure",
+      "label": "files",
+      "pointer": "#/totals/n_files",
+      "section": "what",
+      "value": "25 file(s)"
+    },
+    {
+      "id": "f3",
+      "kind": "figure",
+      "label": "churn",
+      "pointer": "#/totals/churn",
+      "section": "what",
+      "value": "3 805 lines changed"
+    },
+    {
+      "id": "f4",
+      "kind": "figure",
+      "label": "reviewable churn",
+      "pointer": "#/totals/reviewable_churn",
+      "section": "what",
+      "value": "3 805 of 3 805 (spine-1/noisy-path, keeps 25%)"
+    },
+    {
+      "id": "f5",
+      "kind": "figure",
+      "label": "path classes",
+      "pointer": "#/files",
+      "section": "what",
+      "value": " 25"
+    },
+    {
+      "id": "f6",
+      "kind": "figure",
+      "label": "change kinds",
+      "pointer": "#/files",
+      "section": "what",
+      "value": "modified 25"
+    },
+    {
+      "id": "f7",
+      "kind": "figure",
+      "label": "directories",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "src/recommender/taxonomy 10f +2431 -0 · tests 3f +680 -2 · docs/concepts 2f +343 -3 · src/recommender/store 2f +93 -49 · src/recommender/config 4f +112 -12"
+    },
+    {
+      "id": "f8",
+      "kind": "figure",
+      "label": "more directories",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "3 not listed"
+    },
+    {
+      "id": "f9",
+      "kind": "figure",
+      "label": "surfaces",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0"
+    },
+    {
+      "id": "f10",
+      "kind": "figure",
+      "label": "moves",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "no path moves were recorded"
+    },
+    {
+      "id": "f11",
+      "kind": "figure",
+      "label": "basis",
+      "pointer": "#/totals",
+      "section": "where",
+      "value": "25 of 25 paths, ranked by churn; the census is the episode's own paths"
+    },
+    {
+      "id": "f12",
+      "kind": "figure",
+      "label": "surfaces",
+      "pointer": "#/files",
+      "section": "surface",
+      "value": "source 18f +2690 -61 · test 3f +680 -2 · docs 3f +355 -6 · ci 1f +11 -0"
+    },
+    {
+      "id": "f13",
+      "kind": "figure",
+      "label": "operator surfaces",
+      "pointer": "#/files",
+      "section": "surface",
+      "value": "1 (ci)"
+    },
+    {
+      "id": "f14",
+      "kind": "figure",
+      "label": "test side",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "3 file(s) · +680 -2"
+    },
+    {
+      "id": "f15",
+      "kind": "figure",
+      "label": "source side",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "18 file(s) · +2 690 -61"
+    },
+    {
+      "id": "f16",
+      "kind": "figure",
+      "label": "test share of churn",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "18% of the episode's churn is test-side"
+    },
+    {
+      "id": "f17",
+      "kind": "figure",
+      "label": "watch",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "source grew by 2 690 while 2 test lines were removed — the deleted cover is not re-established by anything in these rows"
+    },
+    {
+      "id": "f18",
+      "kind": "figure",
+      "label": "risk",
+      "pointer": "#/risk",
+      "section": "attention",
+      "value": "spine-1 67 = surfaces 46 + size 13 + breadth 8"
+    },
+    {
+      "id": "f19",
+      "kind": "figure",
+      "label": "surfaces (46/50)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": ".github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs"
+    },
+    {
+      "id": "f20",
+      "kind": "figure",
+      "label": "size (13/16)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "+3736 -69 = 3805 churn"
+    },
+    {
+      "id": "f21",
+      "kind": "figure",
+      "label": "breadth (8/12)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "4 surfaces over 25 files in 1 commit"
+    },
+    {
+      "id": "f22",
+      "kind": "figure",
+      "label": "cannot see",
+      "pointer": "#/risk/blind_spots",
+      "section": "attention",
+      "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+    },
+    {
+      "id": "p1",
+      "kind": "file",
+      "label": "file",
+      "path": ".github/workflows/contracts.yml",
+      "surface": "ci",
+      "value": "modified .github/workflows/contracts.yml +11 -0 ci"
+    },
+    {
+      "id": "p2",
+      "kind": "file",
+      "label": "file",
+      "path": "README.md",
+      "surface": "docs",
+      "value": "modified README.md +12 -3 docs"
+    },
+    {
+      "id": "p3",
+      "kind": "file",
+      "label": "file",
+      "path": "docs/concepts/config.md",
+      "surface": "docs",
+      "value": "modified docs/concepts/config.md +7 -3 docs"
+    },
+    {
+      "id": "p4",
+      "kind": "file",
+      "label": "file",
+      "path": "docs/concepts/paths.md",
+      "surface": "docs",
+      "value": "modified docs/concepts/paths.md +336 -0 docs"
+    },
+    {
+      "id": "p5",
+      "kind": "file",
+      "label": "file",
+      "path": "fathom.toml",
+      "surface": "source",
+      "value": "modified fathom.toml +18 -0 source"
+    },
+    {
+      "id": "p6",
+      "kind": "file",
+      "label": "file",
+      "path": "schemas/fathom.schema.json",
+      "surface": "source",
+      "value": "modified schemas/fathom.schema.json +36 -0 source"
+    },
+    {
+      "id": "p7",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/config/cli.py",
+      "surface": "source",
+      "value": "modified src/recommender/config/cli.py +14 -0 source"
+    },
+    {
+      "id": "p8",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/config/explain.py",
+      "surface": "source",
+      "value": "modified src/recommender/config/explain.py +65 -9 source"
+    },
+    {
+      "id": "p9",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/config/layer.py",
+      "surface": "source",
+      "value": "modified src/recommender/config/layer.py +14 -1 source"
+    },
+    {
+      "id": "p10",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/config/schema.py",
+      "surface": "source",
+      "value": "modified src/recommender/config/schema.py +19 -2 source"
+    },
+    {
+      "id": "p11",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/store/cache.py",
+      "surface": "source",
+      "value": "modified src/recommender/store/cache.py +6 -1 source"
+    },
+    {
+      "id": "p12",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/store/git.py",
+      "surface": "source",
+      "value": "modified src/recommender/store/git.py +87 -48 source"
+    },
+    {
+      "id": "p13",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/__init__.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/__init__.py +57 -0 source"
+    },
+    {
+      "id": "p14",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/__main__.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/__main__.py +8 -0 source"
+    },
+    {
+      "id": "p15",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/builtins.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/builtins.py +344 -0 source"
+    },
+    {
+      "id": "p16",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/classes.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/classes.py +150 -0 source"
+    },
+    {
+      "id": "p17",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/cli.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/cli.py +201 -0 source"
+    },
+    {
+      "id": "p18",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/corpus.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/corpus.py +404 -0 source"
+    },
+    {
+      "id": "p19",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/engine.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/engine.py +512 -0 source"
+    },
+    {
+      "id": "p20",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/explain.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/explain.py +217 -0 source"
+    },
+    {
+      "id": "p21",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/noise.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/noise.py +124 -0 source"
+    },
+    {
+      "id": "p22",
+      "kind": "file",
+      "label": "file",
+      "path": "src/recommender/taxonomy/rules.py",
+      "surface": "source",
+      "value": "modified src/recommender/taxonomy/rules.py +414 -0 source"
+    },
+    {
+      "id": "p23",
+      "kind": "file",
+      "label": "file",
+      "path": "tests/test_config_contract.py",
+      "surface": "test",
+      "value": "modified tests/test_config_contract.py +16 -1 test"
+    },
+    {
+      "id": "p24",
+      "kind": "file",
+      "label": "file",
+      "path": "tests/test_storage_contract.py",
+      "surface": "test",
+      "value": "modified tests/test_storage_contract.py +4 -1 test"
+    },
+    {
+      "id": "p25",
+      "kind": "file",
+      "label": "file",
+      "path": "tests/test_taxonomy_contract.py",
+      "surface": "test",
+      "value": "modified tests/test_taxonomy_contract.py +660 -0 test"
+    },
+    {
+      "id": "r1",
+      "kind": "risk",
+      "label": "risk",
+      "score": 67,
+      "value": "spine-1 67 = surfaces 46 + size 13 + breadth 8"
+    },
+    {
+      "id": "r2",
+      "kind": "risk",
+      "label": "risk component surfaces",
+      "value": "surfaces 46/50 .github/workflows/contracts.yml — a workflow change: permissions and secrets travel with the artefact · an operator must act on it · also touched: source, test, docs"
+    },
+    {
+      "id": "r3",
+      "kind": "risk",
+      "label": "risk component size",
+      "value": "size 13/16 +3736 -69 = 3805 churn"
+    },
+    {
+      "id": "r4",
+      "kind": "risk",
+      "label": "risk component breadth",
+      "value": "breadth 8/12 4 surfaces over 25 files in 1 commit"
+    },
+    {
+      "id": "g1",
+      "kind": "gap",
+      "label": "gap (what)",
+      "value": "path-rule discount only — not answered here, it is e2.2's"
+    },
+    {
+      "id": "g2",
+      "kind": "gap",
+      "label": "gap (where)",
+      "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+    },
+    {
+      "id": "g3",
+      "kind": "gap",
+      "label": "gap (dependencies)",
+      "value": "no dependency delta here — not answered here, it is e2.6's"
+    },
+    {
+      "id": "g4",
+      "kind": "gap",
+      "label": "gap (surface)",
+      "value": "findings are e2.8's — not answered here, it is e2.8's"
+    },
+    {
+      "id": "g5",
+      "kind": "gap",
+      "label": "gap (tests)",
+      "value": "case names are e2.9's — not answered here, it is e2.9's"
+    },
+    {
+      "id": "g6",
+      "kind": "gap",
+      "label": "gap (blast)",
+      "value": "no module graph in this build — not answered here, it is e3.2's"
+    },
+    {
+      "id": "g7",
+      "kind": "gap",
+      "label": "gap (attention)",
+      "value": "spine-only ranking — not answered here, it is e4.4's"
+    },
+    {
+      "id": "m1",
+      "kind": "meta",
+      "label": "author",
+      "value": "danielhstahl (human author, identity at 0.5 confidence)"
+    },
+    {
+      "id": "m2",
+      "kind": "meta",
+      "label": "boundary",
+      "value": "boundary rule message-shape at 0.7 confidence"
+    },
+    {
+      "id": "m3",
+      "kind": "meta",
+      "label": "totals",
+      "value": "25 file(s), +3736 -69, 1 commit(s), 0 binary"
+    },
+    {
+      "id": "m4",
+      "kind": "meta",
+      "label": "window",
+      "value": "0 minute(s) long"
+    }
+  ],
+  "schema": "fathom.narrative-evidence/1"
 }

@@ -17,7 +17,7 @@
 #   security-events: write      # only with upload-sarif: true
 # jobs:
 #   gate:
-#     uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1
+#     uses: danielhstahl/fathom/.github/workflows/fathom-check.yml@v1
 #     with:
 #       fathom-version: 1.0.0
 #       fail-on: warning
@@ -177,7 +177,7 @@ jobs:
         run: |
           set -eu
           curl --proto '=https' --tlsv1.2 -fsSL \
-            "https://raw.githubusercontent.com/danielstahl/fathom/$INSTALLER_REF/ci/install-fathom.sh" \
+            "https://raw.githubusercontent.com/danielhstahl/fathom/$INSTALLER_REF/ci/install-fathom.sh" \
             -o install-fathom.sh
           args=(--mode "$INSTALL_MODE" --prefix "$RUNNER_TEMP/fathom-bin")
           # Passed as flags rather than as the FATHOM_* defaults, so a repository can pin a version in its

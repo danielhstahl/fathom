@@ -1,6 +1,6 @@
 reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8) [c1].
 
-Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

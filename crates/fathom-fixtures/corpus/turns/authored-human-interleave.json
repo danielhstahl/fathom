@@ -1,499 +1,417 @@
 {
- "schema": "fathom.turn-ground-truth/1",
- "history": "authored-human-interleave",
- "provenance": "authored",
- "authoring": {
-  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
-  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
-  "annotated_on": "2026-10-17",
-  "derived_from": "ADR-003 §8's case: the real corpus's own interleaving (e4a03667 landing between two released tickets) widened to a person who edits while a long agent turn is running; turn durations from this repository's own beads board: 29 claimed-and-closed agent turns, turnaround p50 0.9 min, 23 of 27 releases re-claimed inside 5 minutes; turn duration p50 81 min, max 642 min.",
-  "shape": "one agent turn long enough (90+ minutes) for a person to land three commits inside it, so the author rule cuts an agent's act into pieces it never intended"
- },
- "source": {
-  "kind": "authored",
-  "commit_count": 12,
-  "extracted_by": "hand-authored; see authoring.derived_from"
- },
- "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
- "lineage": [
-  {
-   "oid": "61f71af3b2c447a273f248142916b47c54528981",
-   "parents": [],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000120000,
-   "at": "2025-10-09T08:55:20Z",
-   "subject": "reco-c41: the review queue",
-   "trailers": {},
-   "paths": [
-    "src/queue.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t01",
-    "session_id": "human-interleave"
-   }
+  "schema": "fathom.turn-ground-truth/1",
+  "history": "authored-human-interleave",
+  "provenance": "authored",
+  "authoring": {
+    "annotated_by": "danielhstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+    "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+    "annotated_on": "2026-10-17",
+    "derived_from": "ADR-003 §8's case: the real corpus's own interleaving (e4a03667 landing between two released tickets) widened to a person who edits while a long agent turn is running; turn durations from this repository's own beads board: 29 claimed-and-closed agent turns, turnaround p50 0.9 min, 23 of 27 releases re-claimed inside 5 minutes; turn duration p50 81 min, max 642 min.",
+    "shape": "one agent turn long enough (90+ minutes) for a person to land three commits inside it, so the author rule cuts an agent's act into pieces it never intended"
   },
-  {
-   "oid": "1c217ce423a26183f7c8979f2fb1b6682d866c97",
-   "parents": [
-    "61f71af3b2c447a273f248142916b47c54528981"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001200000,
-   "at": "2025-10-09T09:13:20Z",
-   "subject": "reco-c41: queue ordering",
-   "trailers": {},
-   "paths": [
-    "src/queue.rs",
-    "src/sort.rs"
-   ],
-   "n_files": 2,
-   "n_add": 24,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t01",
-    "session_id": "human-interleave"
-   }
+  "source": {
+    "kind": "authored",
+    "commit_count": 12,
+    "extracted_by": "hand-authored; see authoring.derived_from"
   },
-  {
-   "oid": "4837577a604d2473244f068fa559f9629a55be64",
-   "parents": [
-    "1c217ce423a26183f7c8979f2fb1b6682d866c97"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760001260000,
-   "at": "2025-10-09T09:14:20Z",
-   "subject": "typo: the queue label said 'inbox'",
-   "trailers": {},
-   "paths": [
-    "src/queue.rs"
-   ],
-   "n_files": 1,
-   "n_add": 17,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t02",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "0d8f6185cf6f536b6a27acd8d03aaaf6d8a69fb2",
-   "parents": [
-    "4837577a604d2473244f068fa559f9629a55be64"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001380000,
-   "at": "2025-10-09T09:16:20Z",
-   "subject": "reco-c41: queue filters",
-   "trailers": {},
-   "paths": [
-    "src/queue.rs",
-    "src/filters.rs"
-   ],
-   "n_files": 2,
-   "n_add": 17,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t03",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "2130d3ee8899c97d162695d459470826609c9615",
-   "parents": [
-    "0d8f6185cf6f536b6a27acd8d03aaaf6d8a69fb2"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002280000,
-   "at": "2025-10-09T09:31:20Z",
-   "subject": "test: filter interaction",
-   "trailers": {},
-   "paths": [
-    "tests/filters.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t03",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "ad75ba464e926239da7d1315cdb71c175744013f",
-   "parents": [
-    "2130d3ee8899c97d162695d459470826609c9615"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002340000,
-   "at": "2025-10-09T09:32:20Z",
-   "subject": "reco-c42: the dismiss key",
-   "trailers": {},
-   "paths": [
-    "src/keys.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t04",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "b0e8eb83e2e5f0b3c0c92513747b1d4f0ee16d90",
-   "parents": [
-    "ad75ba464e926239da7d1315cdb71c175744013f"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760002400000,
-   "at": "2025-10-09T09:33:20Z",
-   "subject": "revert the debug print left in sort",
-   "trailers": {},
-   "paths": [
-    "src/sort.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t05",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "6947f81ad6ee503de62327b03ca1faaaed30d969",
-   "parents": [
-    "b0e8eb83e2e5f0b3c0c92513747b1d4f0ee16d90"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002520000,
-   "at": "2025-10-09T09:35:20Z",
-   "subject": "reco-c43: snooze in the rail",
-   "trailers": {},
-   "paths": [
-    "src/rail.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t06",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "757c8d1407086823dd8edcec281ec6b9f07565cf",
-   "parents": [
-    "6947f81ad6ee503de62327b03ca1faaaed30d969"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760002580000,
-   "at": "2025-10-09T09:36:20Z",
-   "subject": "chore: changelog for the queue slice",
-   "trailers": {},
-   "paths": [
-    "CHANGELOG.md"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t07",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "60fcd8e5e130c3aba7984253bf56757ea3fcdce5",
-   "parents": [
-    "757c8d1407086823dd8edcec281ec6b9f07565cf"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002700000,
-   "at": "2025-10-09T09:38:20Z",
-   "subject": "reco-c44: the queue on the timeline",
-   "trailers": {},
-   "paths": [
-    "src/timeline.rs"
-   ],
-   "n_files": 1,
-   "n_add": 24,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t08",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "baa35018dad2ab0db0e194963cf3c3073acd7dc5",
-   "parents": [
-    "60fcd8e5e130c3aba7984253bf56757ea3fcdce5"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002760000,
-   "at": "2025-10-09T09:39:20Z",
-   "subject": "reco-c45: empty-state copy",
-   "trailers": {},
-   "paths": [
-    "src/copy.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t09",
-    "session_id": "human-interleave"
-   }
-  },
-  {
-   "oid": "134010e66a19cdd3b1d91f2f43f2265f754b60cd",
-   "parents": [
-    "baa35018dad2ab0db0e194963cf3c3073acd7dc5"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760002820000,
-   "at": "2025-10-09T09:40:20Z",
-   "subject": "fix: the snooze label was wrong",
-   "trailers": {},
-   "paths": [
-    "src/keys.rs"
-   ],
-   "n_files": 1,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "human-interleave:t10",
-    "session_id": "human-interleave"
-   }
+  "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+  "lineage": [
+    {
+      "oid": "61f71af3b2c447a273f248142916b47c54528981",
+      "parents": [],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000120000,
+      "at": "2025-10-09T08:55:20Z",
+      "subject": "reco-c41: the review queue",
+      "trailers": {},
+      "paths": ["src/queue.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t01",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "1c217ce423a26183f7c8979f2fb1b6682d866c97",
+      "parents": ["61f71af3b2c447a273f248142916b47c54528981"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001200000,
+      "at": "2025-10-09T09:13:20Z",
+      "subject": "reco-c41: queue ordering",
+      "trailers": {},
+      "paths": ["src/queue.rs", "src/sort.rs"],
+      "n_files": 2,
+      "n_add": 24,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t01",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "4837577a604d2473244f068fa559f9629a55be64",
+      "parents": ["1c217ce423a26183f7c8979f2fb1b6682d866c97"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760001260000,
+      "at": "2025-10-09T09:14:20Z",
+      "subject": "typo: the queue label said 'inbox'",
+      "trailers": {},
+      "paths": ["src/queue.rs"],
+      "n_files": 1,
+      "n_add": 17,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t02",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "0d8f6185cf6f536b6a27acd8d03aaaf6d8a69fb2",
+      "parents": ["4837577a604d2473244f068fa559f9629a55be64"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001380000,
+      "at": "2025-10-09T09:16:20Z",
+      "subject": "reco-c41: queue filters",
+      "trailers": {},
+      "paths": ["src/queue.rs", "src/filters.rs"],
+      "n_files": 2,
+      "n_add": 17,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t03",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "2130d3ee8899c97d162695d459470826609c9615",
+      "parents": ["0d8f6185cf6f536b6a27acd8d03aaaf6d8a69fb2"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002280000,
+      "at": "2025-10-09T09:31:20Z",
+      "subject": "test: filter interaction",
+      "trailers": {},
+      "paths": ["tests/filters.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t03",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "ad75ba464e926239da7d1315cdb71c175744013f",
+      "parents": ["2130d3ee8899c97d162695d459470826609c9615"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002340000,
+      "at": "2025-10-09T09:32:20Z",
+      "subject": "reco-c42: the dismiss key",
+      "trailers": {},
+      "paths": ["src/keys.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t04",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "b0e8eb83e2e5f0b3c0c92513747b1d4f0ee16d90",
+      "parents": ["ad75ba464e926239da7d1315cdb71c175744013f"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760002400000,
+      "at": "2025-10-09T09:33:20Z",
+      "subject": "revert the debug print left in sort",
+      "trailers": {},
+      "paths": ["src/sort.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t05",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "6947f81ad6ee503de62327b03ca1faaaed30d969",
+      "parents": ["b0e8eb83e2e5f0b3c0c92513747b1d4f0ee16d90"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002520000,
+      "at": "2025-10-09T09:35:20Z",
+      "subject": "reco-c43: snooze in the rail",
+      "trailers": {},
+      "paths": ["src/rail.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t06",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "757c8d1407086823dd8edcec281ec6b9f07565cf",
+      "parents": ["6947f81ad6ee503de62327b03ca1faaaed30d969"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760002580000,
+      "at": "2025-10-09T09:36:20Z",
+      "subject": "chore: changelog for the queue slice",
+      "trailers": {},
+      "paths": ["CHANGELOG.md"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t07",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "60fcd8e5e130c3aba7984253bf56757ea3fcdce5",
+      "parents": ["757c8d1407086823dd8edcec281ec6b9f07565cf"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002700000,
+      "at": "2025-10-09T09:38:20Z",
+      "subject": "reco-c44: the queue on the timeline",
+      "trailers": {},
+      "paths": ["src/timeline.rs"],
+      "n_files": 1,
+      "n_add": 24,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t08",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "baa35018dad2ab0db0e194963cf3c3073acd7dc5",
+      "parents": ["60fcd8e5e130c3aba7984253bf56757ea3fcdce5"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002760000,
+      "at": "2025-10-09T09:39:20Z",
+      "subject": "reco-c45: empty-state copy",
+      "trailers": {},
+      "paths": ["src/copy.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t09",
+        "session_id": "human-interleave"
+      }
+    },
+    {
+      "oid": "134010e66a19cdd3b1d91f2f43f2265f754b60cd",
+      "parents": ["baa35018dad2ab0db0e194963cf3c3073acd7dc5"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760002820000,
+      "at": "2025-10-09T09:40:20Z",
+      "subject": "fix: the snooze label was wrong",
+      "trailers": {},
+      "paths": ["src/keys.rs"],
+      "n_files": 1,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "human-interleave:t10",
+        "session_id": "human-interleave"
+      }
+    }
+  ],
+  "truth": {
+    "turns": [
+      {
+        "id": "t01",
+        "commits": ["61f71af3b2c4", "1c217ce423a2"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t01",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t02",
+        "commits": ["4837577a604d"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t02",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t03",
+        "commits": ["0d8f6185cf6f", "2130d3ee8899"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t03",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t04",
+        "commits": ["ad75ba464e92"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t04",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t05",
+        "commits": ["b0e8eb83e2e5"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t05",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t06",
+        "commits": ["6947f81ad6ee"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t06",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t07",
+        "commits": ["757c8d140708"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t07",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t08",
+        "commits": ["60fcd8e5e130"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t08",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t09",
+        "commits": ["baa35018dad2"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t09",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t10",
+        "commits": ["134010e66a19"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t10",
+        "session": "human-interleave",
+        "joined_by": "authored",
+        "note": null
+      }
+    ],
+    "pathologies": [
+      {
+        "kind": "turn_cut_by_interleave",
+        "at": "0d8f6185cf6f",
+        "episode": "t03",
+        "requires": ["61f71af3b2c4"],
+        "paths": ["src/queue.rs"],
+        "why": "t01 and t03 are one agent turn interrupted by a person; ADR-003 E1 and H2 make them two episodes, and the price is that one act is reviewed twice, the second time without the half that explains it. Annotated to put a number on §8 H3's claim, not to dispute it."
+      },
+      {
+        "kind": "silent_revert",
+        "at": "b0e8eb83e2e5",
+        "episode": "t05",
+        "requires": ["1c217ce423a2"],
+        "paths": ["src/sort.rs"],
+        "why": "a human removes a line an earlier commit of the same file added; on different cards the net effect — nothing — is invisible on both, and the reviewer of the first is graded on a change that no longer exists"
+      },
+      {
+        "kind": "same_turn_rework",
+        "at": "134010e66a19",
+        "episode": "t10",
+        "requires": ["6947f81ad6ee"],
+        "paths": ["src/keys.rs"],
+        "why": "the label fix belongs to the feature two turns earlier and no boundary can put them back together; annotated so the report can name what segmentation is not able to protect"
+      }
+    ],
+    "notes": [
+      "the three human turns all land inside t01–t03's underlying agent turn, so the absorbed_turn hazard runs the other way here: the risk is not that a human's commit disappears into an agent's card, it is that the agent's act disappears behind the human's."
+    ]
   }
- ],
- "truth": {
-  "turns": [
-   {
-    "id": "t01",
-    "commits": [
-     "61f71af3b2c4",
-     "1c217ce423a2"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t01",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t02",
-    "commits": [
-     "4837577a604d"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t02",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t03",
-    "commits": [
-     "0d8f6185cf6f",
-     "2130d3ee8899"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t03",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t04",
-    "commits": [
-     "ad75ba464e92"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t04",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t05",
-    "commits": [
-     "b0e8eb83e2e5"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t05",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t06",
-    "commits": [
-     "6947f81ad6ee"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t06",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t07",
-    "commits": [
-     "757c8d140708"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t07",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t08",
-    "commits": [
-     "60fcd8e5e130"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t08",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t09",
-    "commits": [
-     "baa35018dad2"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t09",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t10",
-    "commits": [
-     "134010e66a19"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t10",
-    "session": "human-interleave",
-    "joined_by": "authored",
-    "note": null
-   }
-  ],
-  "pathologies": [
-   {
-    "kind": "turn_cut_by_interleave",
-    "at": "0d8f6185cf6f",
-    "episode": "t03",
-    "requires": [
-     "61f71af3b2c4"
-    ],
-    "paths": [
-     "src/queue.rs"
-    ],
-    "why": "t01 and t03 are one agent turn interrupted by a person; ADR-003 E1 and H2 make them two episodes, and the price is that one act is reviewed twice, the second time without the half that explains it. Annotated to put a number on §8 H3's claim, not to dispute it."
-   },
-   {
-    "kind": "silent_revert",
-    "at": "b0e8eb83e2e5",
-    "episode": "t05",
-    "requires": [
-     "1c217ce423a2"
-    ],
-    "paths": [
-     "src/sort.rs"
-    ],
-    "why": "a human removes a line an earlier commit of the same file added; on different cards the net effect — nothing — is invisible on both, and the reviewer of the first is graded on a change that no longer exists"
-   },
-   {
-    "kind": "same_turn_rework",
-    "at": "134010e66a19",
-    "episode": "t10",
-    "requires": [
-     "6947f81ad6ee"
-    ],
-    "paths": [
-     "src/keys.rs"
-    ],
-    "why": "the label fix belongs to the feature two turns earlier and no boundary can put them back together; annotated so the report can name what segmentation is not able to protect"
-   }
-  ],
-  "notes": [
-   "the three human turns all land inside t01–t03's underlying agent turn, so the absorbed_turn hazard runs the other way here: the risk is not that a human's commit disappears into an agent's card, it is that the agent's act disappears behind the human's."
-  ]
- }
 }

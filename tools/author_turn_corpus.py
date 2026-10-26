@@ -50,9 +50,9 @@ SCHEMA = "fathom.turn-ground-truth/1"
 #: corpus underneath a published measurement by accident.
 EXCLUDED_SCENARIOS = {
     "ten_k_commits": "10 003 commits in 103 100-commit bot batches; it would outvote every hand-written "
-                     "boundary in the corpus 96 to 1",
+    "boundary in the corpus 96 to 1",
     "huge_file": "one 4 MiB blob: a size-stress case whose four agent turns are the shape "
-                 "clean_baseline already carries, for 14 s of generator time",
+    "clean_baseline already carries, for 14 s of generator time",
 }
 
 #: The vocabularies a `truth` block may use. Kept here so the writer, the reader and the test share one
@@ -66,8 +66,16 @@ JOIN_EVIDENCE = ("T1", "T2", "T3", "T4", "fixture", "authored")
 # ---------------------------------------------------------------------------------------------
 def _git(repository: pathlib.Path, *args: str) -> str:
     return subprocess.run(
-        ["git", *args], cwd=repository, capture_output=True, text=True, check=True,
-        env={**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"},
+        ["git", *args],
+        cwd=repository,
+        capture_output=True,
+        text=True,
+        check=True,
+        env={
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_CONFIG_SYSTEM": "/dev/null",
+        },
     ).stdout
 
 
@@ -79,10 +87,18 @@ def git_log(repository: pathlib.Path, head: str) -> list[dict]:
     a single stream. Pass one is the fields plus the stats — a record starts at `COMMIT\x1f` and every
     other line is a numstat line — pass two is the bodies, delimited by a byte no commit message carries.
     """
-    stats = _git(repository, "log", "--reverse", "--numstat",
-                 "--format=COMMIT\x1f%H\x1f%an\x1f%ae\x1f%at\x1f%P\x1f%s", head)
+    stats = _git(
+        repository,
+        "log",
+        "--reverse",
+        "--numstat",
+        "--format=COMMIT\x1f%H\x1f%an\x1f%ae\x1f%at\x1f%P\x1f%s",
+        head,
+    )
     bodies = {}
-    for chunk in _git(repository, "log", "--reverse", "--format=%x1e%H\x1f%b", head).split("\x1e"):
+    for chunk in _git(
+        repository, "log", "--reverse", "--format=%x1e%H\x1f%b", head
+    ).split("\x1e"):
         if chunk.strip():
             oid, _, body = chunk.partition("\x1f")
             bodies[oid.strip()] = body
@@ -90,15 +106,18 @@ def git_log(repository: pathlib.Path, head: str) -> list[dict]:
     current = None
     for line in stats.splitlines():
         if line.startswith("COMMIT\x1f"):
-            oid, name, email, when, parents, subject = line[len("COMMIT\x1f"):].split("\x1f", 5)
+            oid, name, email, when, parents, subject = line[len("COMMIT\x1f") :].split(
+                "\x1f", 5
+            )
             current = {
                 "oid": oid,
                 "parents": parents.split(),
                 "author_name": name,
                 "author_email": email,
                 "author_millis": int(when) * 1000,
-                "at": datetime.datetime.fromtimestamp(int(when), datetime.timezone.utc)
-                      .strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "at": datetime.datetime.fromtimestamp(
+                    int(when), datetime.timezone.utc
+                ).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "subject": subject,
                 "trailers": parse_trailers(bodies.get(oid, "")),
                 "paths": [],
@@ -160,16 +179,25 @@ def bead_evidence() -> dict:
     cannot fire today.
     """
     try:
-        out = subprocess.run(["bd", "list", "--all", "--json"], cwd=ROOT,
-                             capture_output=True, text=True, timeout=120).stdout
+        out = subprocess.run(
+            ["bd", "list", "--all", "--json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        ).stdout
         issues = json.loads(out)
-    except Exception as error:                                    # noqa: BLE001 - a spike degrades
+    except Exception as error:  # noqa: BLE001 - a spike degrades
         print(f"  note: `bd list` unavailable ({error}); no harness evidence recorded")
         return {}
     return {
-        i["id"]: {"status": i.get("status"), "started_at": i.get("started_at"),
-                  "closed_at": i.get("closed_at"), "assignee": i.get("assignee"),
-                  "closed_by_session": i.get("closed_by_session")}
+        i["id"]: {
+            "status": i.get("status"),
+            "started_at": i.get("started_at"),
+            "closed_at": i.get("closed_at"),
+            "assignee": i.get("assignee"),
+            "closed_by_session": i.get("closed_by_session"),
+        }
         for i in issues
     }
 
@@ -198,25 +226,33 @@ def extract_self(head: str | None = None) -> dict:
         commit["session_id"] = None
     path = TURNS / "fathom-self.json"
     existing = json.loads(path.read_text()) if path.exists() else None
-    truth = existing["truth"] if existing else empty_truth(
-        "fill this in by hand: one turn per object, every commit claimed exactly once")
+    truth = (
+        existing["truth"]
+        if existing
+        else empty_truth(
+            "fill this in by hand: one turn per object, every commit claimed exactly once"
+        )
+    )
     if not existing:
-        print("  wrote a skeleton; the truth half is empty and validation will refuse it until a "
-              "person fills it in", file=sys.stderr)
+        print(
+            "  wrote a skeleton; the truth half is empty and validation will refuse it until a "
+            "person fills it in",
+            file=sys.stderr,
+        )
     doc = {
         "schema": SCHEMA,
         "history": "fathom-self",
         "provenance": "real",
         "authoring": {
-            "annotated_by": "danielstahl, from the beads board and `git log`; protocol in "
-                            "crates/fathom-fixtures/corpus/turns/README.md §2",
+            "annotated_by": "danielhstahl, from the beads board and `git log`; protocol in "
+            "crates/fathom-fixtures/corpus/turns/README.md §2",
             "protocol": "corpus/turns/README.md §2 (T1 harness turn, T2 named unit, T3 continuation of "
-                        "the same act, T4 otherwise separate)",
+            "the same act, T4 otherwise separate)",
             "annotated_on": "2026-10-17",
             "derived_from": "Fathom's own history: every commit this repository has, produced by the "
-                            "looprs + beads + pi harness on this machine. The harness's own claim/close "
-                            "windows are carried in `lineage[].harness` and are a second, independent "
-                            "derivation of the same turn boundaries.",
+            "looprs + beads + pi harness on this machine. The harness's own claim/close "
+            "windows are carried in `lineage[].harness` and are a second, independent "
+            "derivation of the same turn boundaries.",
         },
         "source": {
             "kind": "git",
@@ -249,15 +285,35 @@ def fixture_scenarios() -> list[str]:
 def generate_scenario(scenario: str) -> dict:
     """Build the scenario with the crate's own generator and read the manifest it wrote."""
     with tempfile.TemporaryDirectory(prefix=f"s2-{scenario}-") as destination:
-        subprocess.run(["cargo", "run", "-q", "--offline", "-p", "fathom-fixtures", "--",
-                        "--scenario", scenario, destination],
-                       cwd=ROOT, capture_output=True, text=True, check=True, timeout=600)
+        subprocess.run(
+            [
+                "cargo",
+                "run",
+                "-q",
+                "--offline",
+                "-p",
+                "fathom-fixtures",
+                "--",
+                "--scenario",
+                scenario,
+                destination,
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=600,
+        )
         return json.loads((pathlib.Path(destination) / "fixture.json").read_text())
 
 
 def iso_to_millis(stamp: str) -> int:
-    return int(datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-               .replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
+    return int(
+        datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+        .replace(tzinfo=datetime.timezone.utc)
+        .timestamp()
+        * 1000
+    )
 
 
 def extract_scenario(scenario: str) -> dict:
@@ -267,62 +323,77 @@ def extract_scenario(scenario: str) -> dict:
     commits = manifest["commits"]
     lineage = []
     for commit in commits:
-        trailers = {str(k).lower(): v for k, v in (commit.get("trailers") or {}).items()}
+        trailers = {
+            str(k).lower(): v for k, v in (commit.get("trailers") or {}).items()
+        }
         # Exactly what `crates/fathom-analyze/src/episodes.rs:79` does today: the turn and session a commit
         # can be *read* as carrying, taken from the trailer, with no session-qualifying — which is the thing
         # ADR-003 §9.1 says a `turn_id` already is. Kept as-is so the spike measures the shipped behaviour
         # and not the spike author's opinion of it.
         session_id = trailers.get("agent-session") or trailers.get("session")
         turn_id = trailers.get("agent-turn") or trailers.get("turn")
-        harness_turn = ("%s:%s" % (commit["session"], commit["turn"])
-                        if commit.get("session") and commit.get("turn") else None)
-        lineage.append({
-            "oid": commit["sha"],
-            "parents": commit["parents"],
-            "author_name": commit["author"],
-            "author_email": "",
-            "author_millis": iso_to_millis(commit["timestamp"]),
-            "at": commit["timestamp"],
-            "subject": commit["subject"],
-            "trailers": trailers,
-            "paths": [change["path"] for change in commit["changes"]],
-            "n_files": commit["n_files"],
-            "n_add": commit["n_add"],
-            "n_del": commit["n_del"],
-            "n_binary": commit["n_binary"],
-            "session_id": session_id,
-            "turn_id": turn_id,
-            "merge": commit.get("merge", False),
-            "harness": {"turn_id": harness_turn, "session_id": commit.get("session")},
-        })
+        harness_turn = (
+            "%s:%s" % (commit["session"], commit["turn"])
+            if commit.get("session") and commit.get("turn")
+            else None
+        )
+        lineage.append(
+            {
+                "oid": commit["sha"],
+                "parents": commit["parents"],
+                "author_name": commit["author"],
+                "author_email": "",
+                "author_millis": iso_to_millis(commit["timestamp"]),
+                "at": commit["timestamp"],
+                "subject": commit["subject"],
+                "trailers": trailers,
+                "paths": [change["path"] for change in commit["changes"]],
+                "n_files": commit["n_files"],
+                "n_add": commit["n_add"],
+                "n_del": commit["n_del"],
+                "n_binary": commit["n_binary"],
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "merge": commit.get("merge", False),
+                "harness": {
+                    "turn_id": harness_turn,
+                    "session_id": commit.get("session"),
+                },
+            }
+        )
     by_index = {index: commit["sha"] for index, commit in enumerate(commits)}
     turns = []
     for episode in truth_file["episodes"]:
-        indices = episode["commits"] or list(range(episode["span"][0],
-                                                   episode["span"][0] + episode["span"][1]))
-        turns.append({
-            "id": episode["id"],
-            "commits": [by_index[i][:12] for i in indices],
-            "author": episode["author"],
-            "kind": episode["kind"] or "unknown",
-            "turn": episode["turn"],
-            "session": episode["session"],
-            "expected_rule": episode["rule"],
-            "joined_by": "fixture",
-            "note": episode["note"],
-        })
+        indices = episode["commits"] or list(
+            range(episode["span"][0], episode["span"][0] + episode["span"][1])
+        )
+        turns.append(
+            {
+                "id": episode["id"],
+                "commits": [by_index[i][:12] for i in indices],
+                "author": episode["author"],
+                "kind": episode["kind"] or "unknown",
+                "turn": episode["turn"],
+                "session": episode["session"],
+                "expected_rule": episode["rule"],
+                "joined_by": "fixture",
+                "note": episode["note"],
+            }
+        )
     pathologies = []
     for finding in truth_file["findings"]:
         if finding["expect"] != "fire" or finding["at"] is None:
             continue
-        pathologies.append({
-            "kind": finding["kind"],
-            "at": by_index[finding["at"]][:12],
-            "episode": finding["episode"],
-            "paths": finding["paths"],
-            "why": finding["detail"],
-            "source": f"corpus/{scenario}.json findings (hand-authored by e0.10)",
-        })
+        pathologies.append(
+            {
+                "kind": finding["kind"],
+                "at": by_index[finding["at"]][:12],
+                "episode": finding["episode"],
+                "paths": finding["paths"],
+                "why": finding["detail"],
+                "source": f"corpus/{scenario}.json findings (hand-authored by e0.10)",
+            }
+        )
     return {
         "schema": SCHEMA,
         "history": f"fixture-{scenario}",
@@ -330,10 +401,10 @@ def extract_scenario(scenario: str) -> dict:
         "authoring": {
             "annotated_by": "e0.10 (`reco-whw`), hand-authored in tools/author_corpus.py",
             "protocol": "crates/fathom-fixtures/corpus/<scenario>.json `episodes` — the semantics half "
-                        "of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
+            "of a scenario file, which `--bless` may not touch (docs/concepts/fixtures.md §4)",
             "annotated_on": "2026-10-16",
             "derived_from": f"the {scenario} scenario: a deterministic repository the fixture generator "
-                            "writes object-by-object, with the episode truth a person wrote for it",
+            "writes object-by-object, with the episode truth a person wrote for it",
         },
         "source": {
             "kind": "fixture",
@@ -343,10 +414,13 @@ def extract_scenario(scenario: str) -> dict:
             "extracted_by": "tools/author_turn_corpus.py --scenarios",
         },
         "clock": "synthetic: every commit sits `seq/1000` seconds after the last, so a gap number here "
-                 "measures the scenario author's clock, not anybody's",
+        "measures the scenario author's clock, not anybody's",
         "lineage": lineage,
-        "truth": {"turns": turns, "pathologies": pathologies,
-                  "notes": [truth_file.get("purpose") or ""]},
+        "truth": {
+            "turns": turns,
+            "pathologies": pathologies,
+            "notes": [truth_file.get("purpose") or ""],
+        },
     }
 
 
@@ -373,34 +447,48 @@ def validate(doc: dict) -> list[str]:
     if not lineage:
         problems.append("no commits")
     if not turns:
-        problems.append("truth.turns is empty: a skeleton was never annotated by a person")
+        problems.append(
+            "truth.turns is empty: a skeleton was never annotated by a person"
+        )
     claimed: list[str] = []
     for turn in turns:
         matches = []
         for prefix in turn["commits"]:
             found = resolve(prefix, oids)
             if len(found) != 1:
-                problems.append(f"turn {turn['id']}: commit prefix {prefix!r} matches {len(found)} "
-                                "commits, expected exactly 1")
+                problems.append(
+                    f"turn {turn['id']}: commit prefix {prefix!r} matches {len(found)} "
+                    "commits, expected exactly 1"
+                )
             matches.extend(found)
         indices = sorted(oids.index(oid) for oid in matches if oid in oids)
         if indices and indices != list(range(indices[0], indices[-1] + 1)):
-            problems.append(f"turn {turn['id']}: commits are not contiguous on the lineage "
-                            f"({indices}); an episode is a contiguous run (ADR-003 E1)")
+            problems.append(
+                f"turn {turn['id']}: commits are not contiguous on the lineage "
+                f"({indices}); an episode is a contiguous run (ADR-003 E1)"
+            )
         if turn.get("kind") not in TURN_KINDS:
-            problems.append(f"turn {turn['id']}: kind {turn.get('kind')!r} not in {TURN_KINDS}")
+            problems.append(
+                f"turn {turn['id']}: kind {turn.get('kind')!r} not in {TURN_KINDS}"
+            )
         if turn.get("joined_by") == "T3" and not (turn.get("note") or "").strip():
-            problems.append(f"turn {turn['id']}: joined_by T3 is the judgement call and must carry a "
-                            "note saying what it judged")
+            problems.append(
+                f"turn {turn['id']}: joined_by T3 is the judgement call and must carry a "
+                "note saying what it judged"
+            )
         if turn.get("joined_by") not in JOIN_EVIDENCE:
-            problems.append(f"turn {turn['id']}: joined_by {turn.get('joined_by')!r} not in "
-                            f"{JOIN_EVIDENCE}")
+            problems.append(
+                f"turn {turn['id']}: joined_by {turn.get('joined_by')!r} not in "
+                f"{JOIN_EVIDENCE}"
+            )
         claimed.extend(matches)
     for oid in oids:
         count = claimed.count(oid)
         if count != 1:
-            problems.append(f"commit {oid[:12]} is claimed by {count} turns; every commit belongs to "
-                            "exactly one (ADR-003 E3)")
+            problems.append(
+                f"commit {oid[:12]} is claimed by {count} turns; every commit belongs to "
+                "exactly one (ADR-003 E3)"
+            )
     ids = [turn["id"] for turn in turns]
     if len(ids) != len(set(ids)):
         problems.append("turn ids are not unique")
@@ -408,22 +496,33 @@ def validate(doc: dict) -> list[str]:
     for pathology in truth.get("pathologies") or []:
         at = resolve(pathology["at"], oids)
         if len(at) != 1:
-            problems.append(f"pathology {pathology.get('kind')}: `at` {pathology['at']!r} is ambiguous")
+            problems.append(
+                f"pathology {pathology.get('kind')}: `at` {pathology['at']!r} is ambiguous"
+            )
             continue
         if pathology["episode"] not in by_id:
-            problems.append(f"pathology {pathology.get('kind')}: episode {pathology['episode']!r} is "
-                            "not a turn")
-        elif at[0] not in by_id[pathology["episode"]]["commits"] and \
-                not any(at[0].startswith(p) for p in by_id[pathology["episode"]]["commits"]):
-            problems.append(f"pathology {pathology.get('kind')}: its `at` commit is not a member of the "
-                            "episode it names — a pathology is annotated at a commit *and* an episode, and "
-                            "the two must agree")
+            problems.append(
+                f"pathology {pathology.get('kind')}: episode {pathology['episode']!r} is "
+                "not a turn"
+            )
+        elif at[0] not in by_id[pathology["episode"]]["commits"] and not any(
+            at[0].startswith(p) for p in by_id[pathology["episode"]]["commits"]
+        ):
+            problems.append(
+                f"pathology {pathology.get('kind')}: its `at` commit is not a member of the "
+                "episode it names — a pathology is annotated at a commit *and* an episode, and "
+                "the two must agree"
+            )
         for other in pathology.get("requires") or []:
             if not resolve(other, oids):
-                problems.append(f"pathology {pathology.get('kind')}: requires {other!r} matches nothing")
+                problems.append(
+                    f"pathology {pathology.get('kind')}: requires {other!r} matches nothing"
+                )
     authoring = doc.get("authoring") or {}
     if not (authoring.get("annotated_by") or "").strip():
-        problems.append("authoring.annotated_by is empty: a corpus nobody signed is a corpus nobody trusts")
+        problems.append(
+            "authoring.annotated_by is empty: a corpus nobody signed is a corpus nobody trusts"
+        )
     if doc.get("provenance") not in ("real", "fixture", "authored"):
         problems.append(f"provenance {doc.get('provenance')!r} unknown")
     return problems
@@ -443,16 +542,31 @@ def dump(path: pathlib.Path, doc: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--self", action="store_true", dest="self_history",
-                        help="refresh fathom-self.json's facts half from git")
-    parser.add_argument("--head", default=None, help="freeze the real stratum at this head")
-    parser.add_argument("--scenarios", action="store_true",
-                        help="re-extract the fixture stratum (runs the fixture generator)")
+    parser.add_argument(
+        "--self",
+        action="store_true",
+        dest="self_history",
+        help="refresh fathom-self.json's facts half from git",
+    )
+    parser.add_argument(
+        "--head", default=None, help="freeze the real stratum at this head"
+    )
+    parser.add_argument(
+        "--scenarios",
+        action="store_true",
+        help="re-extract the fixture stratum (runs the fixture generator)",
+    )
     parser.add_argument("--scenario", default=None, help="one scenario only")
-    parser.add_argument("--check", action="store_true",
-                        help="re-derive everything and exit 1 on any drift or incoherence")
-    parser.add_argument("--validate-only", action="store_true",
-                        help="validate the committed files without regenerating anything")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="re-derive everything and exit 1 on any drift or incoherence",
+    )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="validate the committed files without regenerating anything",
+    )
     args = parser.parse_args()
 
     problems: list[str] = []
@@ -466,43 +580,55 @@ def main() -> int:
             files = sorted(TURNS.glob("*.json"))
             turns = sum(len(json.loads(p.read_text())["truth"]["turns"]) for p in files)
             commits = sum(len(json.loads(p.read_text())["lineage"]) for p in files)
-            print(f"turn corpus OK: {len(files)} histories, {commits} commits, {turns} annotated turns")
+            print(
+                f"turn corpus OK: {len(files)} histories, {commits} commits, {turns} annotated turns"
+            )
         for problem in problems:
             print("turn corpus:", problem, file=sys.stderr)
         return 1 if problems else 0
 
     if args.self_history:
         doc = extract_self(args.head)
-        print(f"  {dump(TURNS / 'fathom-self.json', doc)} fathom-self.json "
-              f"({len(doc['lineage'])} commits, {len(doc['truth']['turns'])} turns)")
+        print(
+            f"  {dump(TURNS / 'fathom-self.json', doc)} fathom-self.json "
+            f"({len(doc['lineage'])} commits, {len(doc['truth']['turns'])} turns)"
+        )
         written += 1
     if args.scenarios or args.scenario:
-        for scenario in ([args.scenario] if args.scenario else fixture_scenarios()):
+        for scenario in [args.scenario] if args.scenario else fixture_scenarios():
             doc = extract_scenario(scenario)
             for problem in validate(doc):
                 problems.append(f"fixture-{scenario}: {problem}")
-            print(f"  {dump(TURNS / f'fixture-{scenario}.json', doc)} fixture-{scenario}.json "
-                  f"({len(doc['lineage'])} commits, {len(doc['truth']['turns'])} turns)")
+            print(
+                f"  {dump(TURNS / f'fixture-{scenario}.json', doc)} fixture-{scenario}.json "
+                f"({len(doc['lineage'])} commits, {len(doc['truth']['turns'])} turns)"
+            )
             written += 1
     if args.check:
         # Re-derive and diff: the committed bytes must be what these commands produce right now.
         current = json.loads((TURNS / "fathom-self.json").read_text())
         fresh = extract_self(args.head)
         if current != fresh:
-            problems.append("fathom-self.json is not what `--self` produces: the real history moved, or "
-                            "the extractor changed. Refresh, review, commit together.")
+            problems.append(
+                "fathom-self.json is not what `--self` produces: the real history moved, or "
+                "the extractor changed. Refresh, review, commit together."
+            )
         for path in sorted(TURNS.glob("authored-*.json")):
             for problem in validate(json.loads(path.read_text())):
                 problems.append(f"{path.name}: {problem}")
         for path in sorted(TURNS.glob("fixture-*.json")):
-            name = path.name[len("fixture-"):-len(".json")]
+            name = path.name[len("fixture-") : -len(".json")]
             if name in EXCLUDED_SCENARIOS:
-                problems.append(f"{path.name} is an excluded scenario; delete it or the exclusion")
+                problems.append(
+                    f"{path.name} is an excluded scenario; delete it or the exclusion"
+                )
                 continue
             fresh = extract_scenario(name)
             if json.loads(path.read_text()) != fresh:
-                problems.append(f"{path.name} is not what `--scenarios` produces: the fixture moved "
-                                "under the corpus (re-extract deliberately, never silently)")
+                problems.append(
+                    f"{path.name} is not what `--scenarios` produces: the fixture moved "
+                    "under the corpus (re-extract deliberately, never silently)"
+                )
     if not written:
         parser.print_help()
         return 2

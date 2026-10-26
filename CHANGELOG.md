@@ -4469,7 +4469,7 @@ claim no product behaviour appeared on this page at all, which stopped being tru
   [ADR-002 §10.3](docs/adr/0002-workspace.md) and in `crates/fathom-store/Cargo.toml`.
 - `fathom-mcp`'s `net-http-transport` is a marker feature with no server crate behind it yet — every
   candidate links `hyper`, which `deny.toml` bans unconditionally. `e6.4` owns that choice.
-- `package.repository` for `fathom-cli` is a **placeholder** (`https://github.com/danielstahl/fathom`);
+- `package.repository` for `fathom-cli` is a **placeholder** (`https://github.com/danielhstahl/fathom`);
   `cargo-dist` refuses to generate without one. Replace it when the public remote exists — the installer
   scripts derive their download URLs from it.
 - cargo-deny 0.20 removed `[licenses] deny`, so copyleft refusal now lives in the allow-list plus rule

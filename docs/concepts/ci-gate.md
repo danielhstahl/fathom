@@ -294,7 +294,7 @@ permissions:
   contents: read
 jobs:
   gate:
-    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    uses: danielhstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
     with:
       fathom-version: 1.0.0
       fail-on: warning

@@ -1,436 +1,436 @@
 {
- "episode": {
-  "delta_digest": "635880eaedcad3412176eebcd422aab8046c22865f8f35b4ddf1b9da2b33296a",
-  "id": "ep-2fc505f5b0b04e3936cc",
-  "lineage_seq": 21,
-  "n_commits": 1,
-  "subject": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded,"
- },
- "items": [
-  {
-   "id": "c1",
-   "kind": "commit",
-   "label": "commit",
-   "oid": "073794eb3471",
-   "value": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8)"
+  "episode": {
+    "delta_digest": "635880eaedcad3412176eebcd422aab8046c22865f8f35b4ddf1b9da2b33296a",
+    "id": "ep-2fc505f5b0b04e3936cc",
+    "lineage_seq": 21,
+    "n_commits": 1,
+    "subject": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded,"
   },
-  {
-   "id": "f1",
-   "kind": "figure",
-   "label": "lines",
-   "pointer": "#/totals",
-   "section": "what",
-   "value": "+4 662 -352"
-  },
-  {
-   "id": "f2",
-   "kind": "figure",
-   "label": "files",
-   "pointer": "#/totals/n_files",
-   "section": "what",
-   "value": "18 file(s)"
-  },
-  {
-   "id": "f3",
-   "kind": "figure",
-   "label": "churn",
-   "pointer": "#/totals/churn",
-   "section": "what",
-   "value": "5 014 lines changed"
-  },
-  {
-   "id": "f4",
-   "kind": "figure",
-   "label": "reviewable churn",
-   "pointer": "#/totals/reviewable_churn",
-   "section": "what",
-   "value": "5 014 of 5 014 (spine-1/noisy-path, keeps 25%)"
-  },
-  {
-   "id": "f5",
-   "kind": "figure",
-   "label": "path classes",
-   "pointer": "#/files",
-   "section": "what",
-   "value": " 18"
-  },
-  {
-   "id": "f6",
-   "kind": "figure",
-   "label": "change kinds",
-   "pointer": "#/files",
-   "section": "what",
-   "value": "modified 18"
-  },
-  {
-   "id": "f7",
-   "kind": "figure",
-   "label": "directories",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "crates/fathom-tui/src/diff 6f +1883 -342 · crates/fathom-tui/src 5f +1321 -6 · crates/fathom-tui/tests 2f +1112 -0 · docs/concepts 2f +297 -4 · . 2f +40 -0"
-  },
-  {
-   "id": "f8",
-   "kind": "figure",
-   "label": "more directories",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "1 not listed"
-  },
-  {
-   "id": "f9",
-   "kind": "figure",
-   "label": "surfaces",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4"
-  },
-  {
-   "id": "f10",
-   "kind": "figure",
-   "label": "moves",
-   "pointer": "#/files",
-   "section": "where",
-   "value": "no path moves were recorded"
-  },
-  {
-   "id": "f11",
-   "kind": "figure",
-   "label": "basis",
-   "pointer": "#/totals",
-   "section": "where",
-   "value": "18 of 18 paths, ranked by churn; the census is the episode's own paths"
-  },
-  {
-   "id": "f12",
-   "kind": "figure",
-   "label": "surfaces",
-   "pointer": "#/files",
-   "section": "surface",
-   "value": "source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4"
-  },
-  {
-   "id": "f13",
-   "kind": "figure",
-   "label": "operator surfaces",
-   "pointer": "#/files",
-   "section": "surface",
-   "value": "none — nothing here needs an action outside the review"
-  },
-  {
-   "id": "f14",
-   "kind": "figure",
-   "label": "test side",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "2 file(s) · +1 112 -0"
-  },
-  {
-   "id": "f15",
-   "kind": "figure",
-   "label": "source side",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "11 file(s) · +3 204 -348"
-  },
-  {
-   "id": "f16",
-   "kind": "figure",
-   "label": "test share of churn",
-   "pointer": "#/files",
-   "section": "tests",
-   "value": "22% of the episode's churn is test-side"
-  },
-  {
-   "id": "f17",
-   "kind": "figure",
-   "label": "risk",
-   "pointer": "#/risk",
-   "section": "attention",
-   "value": "spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1"
-  },
-  {
-   "id": "f18",
-   "kind": "figure",
-   "label": "size (14/16)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "+4662 -352 = 5014 churn"
-  },
-  {
-   "id": "f19",
-   "kind": "figure",
-   "label": "surfaces (10/50)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs"
-  },
-  {
-   "id": "f20",
-   "kind": "figure",
-   "label": "breadth (6/12)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "3 surfaces over 18 files in 1 commit"
-  },
-  {
-   "id": "f21",
-   "kind": "figure",
-   "label": "deletions (1/14)",
-   "pointer": "#/risk/components",
-   "section": "attention",
-   "value": "7% of the churn is removal (-352 against +4662)"
-  },
-  {
-   "id": "f22",
-   "kind": "figure",
-   "label": "cannot see",
-   "pointer": "#/risk/blind_spots",
-   "section": "attention",
-   "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
-  },
-  {
-   "id": "p1",
-   "kind": "file",
-   "label": "file",
-   "path": "CHANGELOG.md",
-   "surface": "docs",
-   "value": "modified CHANGELOG.md +39 -0 docs"
-  },
-  {
-   "id": "p2",
-   "kind": "file",
-   "label": "file",
-   "path": "README.md",
-   "surface": "docs",
-   "value": "modified README.md +1 -0 docs"
-  },
-  {
-   "id": "p3",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/app.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/app.rs +28 -6 source"
-  },
-  {
-   "id": "p4",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/budget.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/budget.rs +20 -1 source"
-  },
-  {
-   "id": "p5",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/doc.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/doc.rs +537 -119 source"
-  },
-  {
-   "id": "p6",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/materialize.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/materialize.rs +645 -0 source"
-  },
-  {
-   "id": "p7",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/mod.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/mod.rs +227 -60 source"
-  },
-  {
-   "id": "p8",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/model.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/model.rs +40 -1 source"
-  },
-  {
-   "id": "p9",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/diff/tree.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/diff/tree.rs +414 -161 source"
-  },
-  {
-   "id": "p10",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/event.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/event.rs +9 -0 source"
-  },
-  {
-   "id": "p11",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/frame.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/frame.rs +17 -0 source"
-  },
-  {
-   "id": "p12",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/lib.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/lib.rs +1 -0 source"
-  },
-  {
-   "id": "p13",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/src/materialize.rs",
-   "surface": "source",
-   "value": "modified crates/fathom-tui/src/materialize.rs +1266 -0 source"
-  },
-  {
-   "id": "p14",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/tests/diff_materialize.rs",
-   "surface": "test",
-   "value": "modified crates/fathom-tui/tests/diff_materialize.rs +679 -0 test"
-  },
-  {
-   "id": "p15",
-   "kind": "file",
-   "label": "file",
-   "path": "crates/fathom-tui/tests/materialize.rs",
-   "surface": "test",
-   "value": "modified crates/fathom-tui/tests/materialize.rs +433 -0 test"
-  },
-  {
-   "id": "p16",
-   "kind": "file",
-   "label": "file",
-   "path": "docs/adr/0006-tui.md",
-   "surface": "docs",
-   "value": "modified docs/adr/0006-tui.md +9 -0 docs"
-  },
-  {
-   "id": "p17",
-   "kind": "file",
-   "label": "file",
-   "path": "docs/concepts/diff-viewer.md",
-   "surface": "docs",
-   "value": "modified docs/concepts/diff-viewer.md +37 -4 docs"
-  },
-  {
-   "id": "p18",
-   "kind": "file",
-   "label": "file",
-   "path": "docs/concepts/materialization.md",
-   "surface": "docs",
-   "value": "modified docs/concepts/materialization.md +260 -0 docs"
-  },
-  {
-   "id": "r1",
-   "kind": "risk",
-   "label": "risk",
-   "score": 31,
-   "value": "spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1"
-  },
-  {
-   "id": "r2",
-   "kind": "risk",
-   "label": "risk component size",
-   "value": "size 14/16 +4662 -352 = 5014 churn"
-  },
-  {
-   "id": "r3",
-   "kind": "risk",
-   "label": "risk component surfaces",
-   "value": "surfaces 10/50 crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs"
-  },
-  {
-   "id": "r4",
-   "kind": "risk",
-   "label": "risk component breadth",
-   "value": "breadth 6/12 3 surfaces over 18 files in 1 commit"
-  },
-  {
-   "id": "r5",
-   "kind": "risk",
-   "label": "risk component deletions",
-   "value": "deletions 1/14 7% of the churn is removal (-352 against +4662)"
-  },
-  {
-   "id": "g1",
-   "kind": "gap",
-   "label": "gap (what)",
-   "value": "path-rule discount only — not answered here, it is e2.2's"
-  },
-  {
-   "id": "g2",
-   "kind": "gap",
-   "label": "gap (where)",
-   "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
-  },
-  {
-   "id": "g3",
-   "kind": "gap",
-   "label": "gap (dependencies)",
-   "value": "no dependency delta here — not answered here, it is e2.6's"
-  },
-  {
-   "id": "g4",
-   "kind": "gap",
-   "label": "gap (surface)",
-   "value": "findings are e2.8's — not answered here, it is e2.8's"
-  },
-  {
-   "id": "g5",
-   "kind": "gap",
-   "label": "gap (tests)",
-   "value": "case names are e2.9's — not answered here, it is e2.9's"
-  },
-  {
-   "id": "g6",
-   "kind": "gap",
-   "label": "gap (blast)",
-   "value": "no module graph in this build — not answered here, it is e3.2's"
-  },
-  {
-   "id": "g7",
-   "kind": "gap",
-   "label": "gap (attention)",
-   "value": "spine-only ranking — not answered here, it is e4.4's"
-  },
-  {
-   "id": "m1",
-   "kind": "meta",
-   "label": "author",
-   "value": "danielstahl (human author, identity at 0.5 confidence)"
-  },
-  {
-   "id": "m2",
-   "kind": "meta",
-   "label": "boundary",
-   "value": "boundary rule message-shape at 0.7 confidence"
-  },
-  {
-   "id": "m3",
-   "kind": "meta",
-   "label": "totals",
-   "value": "18 file(s), +4662 -352, 1 commit(s), 0 binary"
-  },
-  {
-   "id": "m4",
-   "kind": "meta",
-   "label": "window",
-   "value": "0 minute(s) long"
-  }
- ],
- "schema": "fathom.narrative-evidence/1"
+  "items": [
+    {
+      "id": "c1",
+      "kind": "commit",
+      "label": "commit",
+      "oid": "073794eb3471",
+      "value": "reco-myd: background materialisation — hunks decoded off the UI thread, bounded, cancellable, and the next episode already warm (e1.8)"
+    },
+    {
+      "id": "f1",
+      "kind": "figure",
+      "label": "lines",
+      "pointer": "#/totals",
+      "section": "what",
+      "value": "+4 662 -352"
+    },
+    {
+      "id": "f2",
+      "kind": "figure",
+      "label": "files",
+      "pointer": "#/totals/n_files",
+      "section": "what",
+      "value": "18 file(s)"
+    },
+    {
+      "id": "f3",
+      "kind": "figure",
+      "label": "churn",
+      "pointer": "#/totals/churn",
+      "section": "what",
+      "value": "5 014 lines changed"
+    },
+    {
+      "id": "f4",
+      "kind": "figure",
+      "label": "reviewable churn",
+      "pointer": "#/totals/reviewable_churn",
+      "section": "what",
+      "value": "5 014 of 5 014 (spine-1/noisy-path, keeps 25%)"
+    },
+    {
+      "id": "f5",
+      "kind": "figure",
+      "label": "path classes",
+      "pointer": "#/files",
+      "section": "what",
+      "value": " 18"
+    },
+    {
+      "id": "f6",
+      "kind": "figure",
+      "label": "change kinds",
+      "pointer": "#/files",
+      "section": "what",
+      "value": "modified 18"
+    },
+    {
+      "id": "f7",
+      "kind": "figure",
+      "label": "directories",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "crates/fathom-tui/src/diff 6f +1883 -342 · crates/fathom-tui/src 5f +1321 -6 · crates/fathom-tui/tests 2f +1112 -0 · docs/concepts 2f +297 -4 · . 2f +40 -0"
+    },
+    {
+      "id": "f8",
+      "kind": "figure",
+      "label": "more directories",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "1 not listed"
+    },
+    {
+      "id": "f9",
+      "kind": "figure",
+      "label": "surfaces",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4"
+    },
+    {
+      "id": "f10",
+      "kind": "figure",
+      "label": "moves",
+      "pointer": "#/files",
+      "section": "where",
+      "value": "no path moves were recorded"
+    },
+    {
+      "id": "f11",
+      "kind": "figure",
+      "label": "basis",
+      "pointer": "#/totals",
+      "section": "where",
+      "value": "18 of 18 paths, ranked by churn; the census is the episode's own paths"
+    },
+    {
+      "id": "f12",
+      "kind": "figure",
+      "label": "surfaces",
+      "pointer": "#/files",
+      "section": "surface",
+      "value": "source 11f +3204 -348 · test 2f +1112 -0 · docs 5f +346 -4"
+    },
+    {
+      "id": "f13",
+      "kind": "figure",
+      "label": "operator surfaces",
+      "pointer": "#/files",
+      "section": "surface",
+      "value": "none — nothing here needs an action outside the review"
+    },
+    {
+      "id": "f14",
+      "kind": "figure",
+      "label": "test side",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "2 file(s) · +1 112 -0"
+    },
+    {
+      "id": "f15",
+      "kind": "figure",
+      "label": "source side",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "11 file(s) · +3 204 -348"
+    },
+    {
+      "id": "f16",
+      "kind": "figure",
+      "label": "test share of churn",
+      "pointer": "#/files",
+      "section": "tests",
+      "value": "22% of the episode's churn is test-side"
+    },
+    {
+      "id": "f17",
+      "kind": "figure",
+      "label": "risk",
+      "pointer": "#/risk",
+      "section": "attention",
+      "value": "spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1"
+    },
+    {
+      "id": "f18",
+      "kind": "figure",
+      "label": "size (14/16)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "+4662 -352 = 5014 churn"
+    },
+    {
+      "id": "f19",
+      "kind": "figure",
+      "label": "surfaces (10/50)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs"
+    },
+    {
+      "id": "f20",
+      "kind": "figure",
+      "label": "breadth (6/12)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "3 surfaces over 18 files in 1 commit"
+    },
+    {
+      "id": "f21",
+      "kind": "figure",
+      "label": "deletions (1/14)",
+      "pointer": "#/risk/components",
+      "section": "attention",
+      "value": "7% of the churn is removal (-352 against +4662)"
+    },
+    {
+      "id": "f22",
+      "kind": "figure",
+      "label": "cannot see",
+      "pointer": "#/risk/blind_spots",
+      "section": "attention",
+      "value": "whether a migration can be rolled back · an environment variable declared and never read · a new import cycle · a removed public API · what depends on the touched code (blast radius) · a committed secret whose value is real · whether a deleted test was the only cover for the behaviour"
+    },
+    {
+      "id": "p1",
+      "kind": "file",
+      "label": "file",
+      "path": "CHANGELOG.md",
+      "surface": "docs",
+      "value": "modified CHANGELOG.md +39 -0 docs"
+    },
+    {
+      "id": "p2",
+      "kind": "file",
+      "label": "file",
+      "path": "README.md",
+      "surface": "docs",
+      "value": "modified README.md +1 -0 docs"
+    },
+    {
+      "id": "p3",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/app.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/app.rs +28 -6 source"
+    },
+    {
+      "id": "p4",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/budget.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/budget.rs +20 -1 source"
+    },
+    {
+      "id": "p5",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/doc.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/doc.rs +537 -119 source"
+    },
+    {
+      "id": "p6",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/materialize.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/materialize.rs +645 -0 source"
+    },
+    {
+      "id": "p7",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/mod.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/mod.rs +227 -60 source"
+    },
+    {
+      "id": "p8",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/model.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/model.rs +40 -1 source"
+    },
+    {
+      "id": "p9",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/diff/tree.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/diff/tree.rs +414 -161 source"
+    },
+    {
+      "id": "p10",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/event.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/event.rs +9 -0 source"
+    },
+    {
+      "id": "p11",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/frame.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/frame.rs +17 -0 source"
+    },
+    {
+      "id": "p12",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/lib.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/lib.rs +1 -0 source"
+    },
+    {
+      "id": "p13",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/src/materialize.rs",
+      "surface": "source",
+      "value": "modified crates/fathom-tui/src/materialize.rs +1266 -0 source"
+    },
+    {
+      "id": "p14",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/tests/diff_materialize.rs",
+      "surface": "test",
+      "value": "modified crates/fathom-tui/tests/diff_materialize.rs +679 -0 test"
+    },
+    {
+      "id": "p15",
+      "kind": "file",
+      "label": "file",
+      "path": "crates/fathom-tui/tests/materialize.rs",
+      "surface": "test",
+      "value": "modified crates/fathom-tui/tests/materialize.rs +433 -0 test"
+    },
+    {
+      "id": "p16",
+      "kind": "file",
+      "label": "file",
+      "path": "docs/adr/0006-tui.md",
+      "surface": "docs",
+      "value": "modified docs/adr/0006-tui.md +9 -0 docs"
+    },
+    {
+      "id": "p17",
+      "kind": "file",
+      "label": "file",
+      "path": "docs/concepts/diff-viewer.md",
+      "surface": "docs",
+      "value": "modified docs/concepts/diff-viewer.md +37 -4 docs"
+    },
+    {
+      "id": "p18",
+      "kind": "file",
+      "label": "file",
+      "path": "docs/concepts/materialization.md",
+      "surface": "docs",
+      "value": "modified docs/concepts/materialization.md +260 -0 docs"
+    },
+    {
+      "id": "r1",
+      "kind": "risk",
+      "label": "risk",
+      "score": 31,
+      "value": "spine-1 31 = size 14 + surfaces 10 + breadth 6 + deletions 1"
+    },
+    {
+      "id": "r2",
+      "kind": "risk",
+      "label": "risk component size",
+      "value": "size 14/16 +4662 -352 = 5014 churn"
+    },
+    {
+      "id": "r3",
+      "kind": "risk",
+      "label": "risk component surfaces",
+      "value": "surfaces 10/50 crates/fathom-tui/src/materialize.rs — source: the logic a reviewer has to read · also touched: test, docs"
+    },
+    {
+      "id": "r4",
+      "kind": "risk",
+      "label": "risk component breadth",
+      "value": "breadth 6/12 3 surfaces over 18 files in 1 commit"
+    },
+    {
+      "id": "r5",
+      "kind": "risk",
+      "label": "risk component deletions",
+      "value": "deletions 1/14 7% of the churn is removal (-352 against +4662)"
+    },
+    {
+      "id": "g1",
+      "kind": "gap",
+      "label": "gap (what)",
+      "value": "path-rule discount only — not answered here, it is e2.2's"
+    },
+    {
+      "id": "g2",
+      "kind": "gap",
+      "label": "gap (where)",
+      "value": "shape sentence is e2.3's — not answered here, it is e2.3's"
+    },
+    {
+      "id": "g3",
+      "kind": "gap",
+      "label": "gap (dependencies)",
+      "value": "no dependency delta here — not answered here, it is e2.6's"
+    },
+    {
+      "id": "g4",
+      "kind": "gap",
+      "label": "gap (surface)",
+      "value": "findings are e2.8's — not answered here, it is e2.8's"
+    },
+    {
+      "id": "g5",
+      "kind": "gap",
+      "label": "gap (tests)",
+      "value": "case names are e2.9's — not answered here, it is e2.9's"
+    },
+    {
+      "id": "g6",
+      "kind": "gap",
+      "label": "gap (blast)",
+      "value": "no module graph in this build — not answered here, it is e3.2's"
+    },
+    {
+      "id": "g7",
+      "kind": "gap",
+      "label": "gap (attention)",
+      "value": "spine-only ranking — not answered here, it is e4.4's"
+    },
+    {
+      "id": "m1",
+      "kind": "meta",
+      "label": "author",
+      "value": "danielhstahl (human author, identity at 0.5 confidence)"
+    },
+    {
+      "id": "m2",
+      "kind": "meta",
+      "label": "boundary",
+      "value": "boundary rule message-shape at 0.7 confidence"
+    },
+    {
+      "id": "m3",
+      "kind": "meta",
+      "label": "totals",
+      "value": "18 file(s), +4662 -352, 1 commit(s), 0 binary"
+    },
+    {
+      "id": "m4",
+      "kind": "meta",
+      "label": "window",
+      "value": "0 minute(s) long"
+    }
+  ],
+  "schema": "fathom.narrative-evidence/1"
 }

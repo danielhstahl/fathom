@@ -1,6 +1,6 @@
 # The five seeded pathologies — the answer key
 
-This repository is a fixture: every commit exists to put a row somewhere in [Fathom](https://github.com/danielstahl/fathom). [`DEMO.md`](DEMO.md) is the tour and deliberately *does not* name the answers; this page does, so the tour can be given to a newcomer cold and still be marked afterwards.
+This repository is a fixture: every commit exists to put a row somewhere in [Fathom](https://github.com/danielhstahl/fathom). [`DEMO.md`](DEMO.md) is the tour and deliberately *does not* name the answers; this page does, so the tour can be given to a newcomer cold and still be marked afterwards.
 
 It is generated — `python3 tools/demo_exhibits.py write` in the Fathom repository writes this file, and `tools/demo_acceptance.py check` runs every row against a real binary and fails if what the row promises is not what the product says. Three of the five are honest gaps rather than findings, and each one names the ticket that would close it.
 

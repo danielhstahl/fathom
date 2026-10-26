@@ -10,18 +10,18 @@ publish = false
 # **manufacturer** the Windows msi reports in "Add or remove programs" (WiX reads `authors`, and the msi
 # build fails without it). When that list becomes longer than one name, the first entry is the one the
 # installer will keep saying, so changing it after the first msi ships is a rename users have to watch.
-authors = ["danielstahl"]
+authors = ["danielhstahl"]
 
 # cargo-dist needs a home for the artefacts before there is a public remote to point at — the same
 # pattern ADR-002 §10.1 used for `license`: a documented default so `e0.7` is not blocked by an open
 # question, plus a note that it must be confirmed. Replace this with the real URL in the same PR that
 # pushes the repository: the installer scripts, the release body and `dist-manifest.json` all take their
 # base from it, so a wrong value is a broken install rather than a cosmetic one.
-repository = "https://github.com/danielstahl/fathom"
+repository = "https://github.com/danielhstahl/fathom"
 # The same placeholder, in its second place: `cargo-dist` puts it in the Homebrew formula's `homepage`,
 # and a formula without one is a package a reviewer cannot look at before installing it. Replace it in
 # the same PR that replaces `repository` (`docs/concepts/release.md` §3 step 2).
-homepage = "https://github.com/danielstahl/fathom"
+homepage = "https://github.com/danielhstahl/fathom"
 
 [[bin]]
 name = "fathom"

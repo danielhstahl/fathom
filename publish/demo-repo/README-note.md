@@ -3,7 +3,7 @@
 ## Reviewing this repository with Fathom
 
 This history is a fixture: every commit exists to put a row somewhere in
-[Fathom](https://github.com/danielstahl/fathom). Five of them exist to plant a pathology on purpose — a
+[Fathom](https://github.com/danielhstahl/fathom). Five of them exist to plant a pathology on purpose — a
 churn loop, an unplanned dependency, a new cycle, a deleted test and a commit that is whitespace and
 nothing else.
 
@@ -15,5 +15,5 @@ nothing else.
   call Fathom's reusable workflow, the same five any repository can copy.
 
 Both markdown files are generated from the catalogue that a machine runs against a real binary in
-[Fathom's CI](https://github.com/danielstahl/fathom/blob/main/docs/demo/five-minute.md), so a claim here
+[Fathom's CI](https://github.com/danielhstahl/fathom/blob/main/docs/demo/five-minute.md), so a claim here
 that stops being true fails a build rather than disappointing a visitor.

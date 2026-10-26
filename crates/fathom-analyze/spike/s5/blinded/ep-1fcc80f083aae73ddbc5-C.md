@@ -6,7 +6,7 @@ reco-nts: episode segmentation — boundaries, identity that survives a rewrite,
 
 reco-nts: episode segmentation — boundaries, identity that survives a rewrite, and the review state that rides on it (e1.3) [c1].
 
-Authorship: danielstahl (agent author, declared at 0.95 confidence) [m1].
+Authorship: danielhstahl (agent author, declared at 0.95 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

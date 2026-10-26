@@ -6,7 +6,7 @@ reco-5vz: path taxonomy and noise policy engine — one table for what a path IS
 
 reco-5vz: path taxonomy and noise policy engine — one table for what a path IS and how noisy it is (e0.9) [c1].
 
-Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

@@ -6,7 +6,7 @@ reco-f28: incremental indexing with a tree-hash analysis cache (e1.4)
 
 reco-f28: incremental indexing with a tree-hash analysis cache (e1.4) [c1].
 
-Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule time-gap at 0.6 confidence [m2].
 

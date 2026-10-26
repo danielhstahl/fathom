@@ -34,6 +34,7 @@ The commits this file describes are *bytes*: `commits()` returns them with their
 dates, so the assembly in `publish_demo_repo.py` and the checks in `demo_acceptance.py` argue about the
 same history and not about a description of it.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,8 +57,15 @@ END = "<!-- END GENERATED: exhibits -->"
 #: The one command the tour hands a newcomer, as a list. `fathom index` is the prerequisite every verb
 #: needs (nothing but `fathom --demo` indexes on its own behalf), so this is the command that *answers*.
 ONE_COMMAND = [
-    "fathom", "export", "--episodes", "$FIRST..HEAD",
-    "--format", "markdown", "--out", "$ROOT/review.md", "--plain",
+    "fathom",
+    "export",
+    "--episodes",
+    "$FIRST..HEAD",
+    "--format",
+    "markdown",
+    "--out",
+    "$ROOT/review.md",
+    "--plain",
 ]
 
 #: The miniature's first commit, so a range covers the whole history (`five_minute_demo.py` agrees;
@@ -129,6 +137,7 @@ pub fn open_segment(store: &crate::core::Store) -> usize {
 #: on a bad idea actually does.
 RETRY_RESTORED = RETRY_FIRST
 
+
 def reindent(text: str) -> str:
     """The same tokens, two columns wider: every indented line gains two spaces, and every block-closing
     brace is re-indented to match.
@@ -142,7 +151,6 @@ def reindent(text: str) -> str:
         ("  " + line if line.startswith("    ") or line.startswith("}") else line)
         for line in text.splitlines(keepends=True)
     )
-
 
 
 def commits(worktree: pathlib.Path) -> list[gen_demo_repo.Step]:
@@ -201,6 +209,7 @@ def commits(worktree: pathlib.Path) -> list[gen_demo_repo.Step]:
 # `$FIRST`, `$ROOT`, `$COMMIT` and `$EXHIBIT` in `argv` are substituted by `demo_acceptance.py`.
 # ---------------------------------------------------------------------------
 
+
 #: What a probe's `argv` may name. `$COMMIT` is the row's first seeded commit, resolved out of
 #: `git log` by the acceptance run rather than hard-coded here.
 def substitutions() -> dict[str, str]:
@@ -212,12 +221,12 @@ CATALOGUE: list[dict] = [
         "id": "deleted_test",
         "pathology": "deleted test",
         "seed": "`tests: fold the empty-store case into the append test` removes a `#[test]` and its "
-                "assertion, and the episode's own test totals go to −1 case, −1 assertion line.",
+        "assertion, and the episode's own test totals go to −1 case, −1 assertion line.",
         "seeded": "the miniature (ships in the binary)",
         "commits": ["tests: fold the empty-store case into the append test"],
         "status": "named",
         "look": "the rail's `tests` column, then `fathom why` on the episode and the exported record's "
-                "*Findings with evidence*",
+        "*Findings with evidence*",
         "probe": {
             "argv": ONE_COMMAND,
             "expect": ["test_weakening", "1 test case(s) removed"],
@@ -230,15 +239,18 @@ CATALOGUE: list[dict] = [
         ],
         "short": "default-on detector, `high`, and the deleted `#[test]` is quoted as evidence",
         "why_named": "`test_weakening` is a default-on detector, so the finding arrives with a reason, a "
-                     "jump target, a confidence below 1.0 and the suppression key `test_weakening:<path>`.",
+        "jump target, a confidence below 1.0 and the suppression key `test_weakening:<path>`.",
     },
     {
         "id": "unplanned_dependency",
         "pathology": "unplanned dependency",
         "seed": "`add toml to the dependency surface` declares a dependency no lockfile resolves, on top "
-                "of two ecosystems' worth of new direct dependencies earlier in the history.",
+        "of two ecosystems' worth of new direct dependencies earlier in the history.",
         "seeded": "the miniature (ships in the binary)",
-        "commits": ["add toml to the dependency surface", "bump serde to 1.0.190 for the flatten fix"],
+        "commits": [
+            "add toml to the dependency surface",
+            "bump serde to 1.0.190 for the flatten fix",
+        ],
         "status": "named",
         "look": "`fathom check`'s `dependencies` row, then the exported record's *Dependency delta*",
         "probe": {
@@ -248,8 +260,16 @@ CATALOGUE: list[dict] = [
         "also": [
             {
                 "argv": [
-                    "fathom", "check", "--base", "$FIRST", "--head", "HEAD",
-                    "--fail-on", "warning", "--no-summary", "--plain",
+                    "fathom",
+                    "check",
+                    "--base",
+                    "$FIRST",
+                    "--head",
+                    "HEAD",
+                    "--fail-on",
+                    "warning",
+                    "--no-summary",
+                    "--plain",
                 ],
                 "expect": ["dependencies/new-direct", "fathom check failed"],
                 "exit": 7,
@@ -257,20 +277,20 @@ CATALOGUE: list[dict] = [
         ],
         "short": "the gate's `dependencies` check raises one per dependency, and the run exits 7",
         "why_named": "the `dependencies` check raises `dependencies/new-direct` per dependency and "
-                     "`fathom check --fail-on warning` exits **7** over this range: the gate blocks, which "
-                     "is the exhibit, not a defect in it.",
+        "`fathom check --fail-on warning` exits **7** over this range: the gate blocks, which "
+        "is the exhibit, not a defect in it.",
     },
     {
         "id": "new_cycle",
         "pathology": "new cycle",
         "seed": "`summary: fold a window into one figure` gives `Store::summary` a call to "
-                "`crate::api::summary` while `api` already imports `core`: a two-module cycle, put there "
-                "on purpose and said so in the commit body.",
+        "`crate::api::summary` while `api` already imports `core`: a two-module cycle, put there "
+        "on purpose and said so in the commit body.",
         "seeded": "the miniature (ships in the binary)",
         "commits": ["summary: fold a window into one figure"],
         "status": "gap",
         "look": "read the two files (`src/core/mod.rs`, `src/api.rs`) — and then read the sentence in the "
-                "exported record that says the ranking cannot see an import cycle",
+        "exported record that says the ranking cannot see an import cycle",
         "probe": {
             "argv": ONE_COMMAND,
             "expect": ["a new import cycle"],
@@ -279,8 +299,15 @@ CATALOGUE: list[dict] = [
         "also": [
             {
                 "argv": [
-                    "fathom", "check", "--base", "$FIRST", "--head", "HEAD",
-                    "--only", "cycles", "--plain",
+                    "fathom",
+                    "check",
+                    "--base",
+                    "$FIRST",
+                    "--head",
+                    "HEAD",
+                    "--only",
+                    "cycles",
+                    "--plain",
                 ],
                 "expect": ["0 cycle(s) in the revision"],
                 "absent": ["graph:cycle"],
@@ -293,17 +320,17 @@ CATALOGUE: list[dict] = [
         "short": "the anchor revision is written with nodes and no edges, so no history can make it fire",
         "owner": "`e3.5` (`cycles`) and `e3.11` (the graph row)",
         "close": "the index writes the anchor revision's edges. Today a full snapshot carries nodes and "
-                 "no edges (`graph_snapshot.edge_count` is 0 for the first revision of every repository), "
-                 "so every revision above the anchor inherits a graph with fewer edges than the tree has, "
-                 "and `fathom check --only cycles` prints `0 cycle(s) in the revision` for a repository "
-                 "with a cycle in it. Until that is fixed no history — this one or yours — can make the "
-                 "cycle check fire, and a demo that printed a cycle finding would be printing a lie.",
+        "no edges (`graph_snapshot.edge_count` is 0 for the first revision of every repository), "
+        "so every revision above the anchor inherits a graph with fewer edges than the tree has, "
+        "and `fathom check --only cycles` prints `0 cycle(s) in the revision` for a repository "
+        "with a cycle in it. Until that is fixed no history — this one or yours — can make the "
+        "cycle check fire, and a demo that printed a cycle finding would be printing a lie.",
     },
     {
         "id": "churn_loop",
         "pathology": "churn loop",
         "seed": "four episodes on `src/retry.rs`, all inside `flush_with_retry`: the bound is there, "
-                "removed, moved, then put back with the comment that said why the first time.",
+        "removed, moved, then put back with the comment that said why the first time.",
         "seeded": "the demo repository's own commits",
         "commits": [
             "retry: bound the flush retry at three attempts",
@@ -313,7 +340,7 @@ CATALOGUE: list[dict] = [
         ],
         "status": "gap",
         "look": "`fathom episodes --plain` lists four `retry:` episodes in a row; the fourth's diff adds "
-                "back the line the second deleted (`git show` each of the four, in order)",
+        "back the line the second deleted (`git show` each of the four, in order)",
         "probe": {
             "argv": ONE_COMMAND,
             "absent": ["churn_loop"],
@@ -321,9 +348,15 @@ CATALOGUE: list[dict] = [
         "also": [
             {
                 "argv": ["fathom", "episodes", "--plain"],
-                "expect": ["retry: put the retry bound back", "retry: let the flush run to a fourth attempt"],
+                "expect": [
+                    "retry: put the retry bound back",
+                    "retry: let the flush run to a fourth attempt",
+                ],
             },
-            {"git": ["show", "--format=%s", "$COMMIT"], "expect": ["retry: bound the flush retry"]},
+            {
+                "git": ["show", "--format=%s", "$COMMIT"],
+                "expect": ["retry: bound the flush retry"],
+            },
         ],
         "proof": {
             "kind": "put_back",
@@ -336,22 +369,22 @@ CATALOGUE: list[dict] = [
         "short": "the detector ships switched off, and does not fire here even when forced on",
         "owner": "`e4.3a` (the disposition set that prices `churn_loop`)",
         "close": "`churn_loop` ships switched off — its own page says four detectors are off because "
-                 "their false-positive rate has not been measured on real repositories. This repository "
-                 "turns it on in `fathom.toml` anyway, so the day the calibration lands the finding "
-                 "appears with no further change here. It does not fire today even switched on, which is "
-                 "the second half of why this row is a gap and not a `named` row.",
+        "their false-positive rate has not been measured on real repositories. This repository "
+        "turns it on in `fathom.toml` anyway, so the day the calibration lands the finding "
+        "appears with no further change here. It does not fire today even switched on, which is "
+        "the second half of why this row is a gap and not a `named` row.",
     },
     {
         "id": "reformat_only",
         "pathology": "reformat-only commit",
         "seed": "`style: reindent the queue module to the house width`: eight lines changed, every one of "
-                "them whitespace. `git diff -w` against its parent is empty — that is the definition, and "
-                "the acceptance run proves it instead of claiming it.",
+        "them whitespace. `git diff -w` against its parent is empty — that is the definition, and "
+        "the acceptance run proves it instead of claiming it.",
         "seeded": "the demo repository's own commits",
         "commits": ["style: reindent the queue module to the house width"],
         "status": "gap",
         "look": "`fathom why` on the commit: the size axis says the churn is reviewable rather than "
-                "discounted, and the noise axis says it found nothing generated, locked, vendored or binary",
+        "discounted, and the noise axis says it found nothing generated, locked, vendored or binary",
         "probe": {
             "argv": ONE_COMMAND,
             "absent": ["`reformat`"],
@@ -362,13 +395,16 @@ CATALOGUE: list[dict] = [
                 "expect": ["all of it hand-written"],
             }
         ],
-        "proof": {"kind": "whitespace_only", "commit": "style: reindent the queue module to the house width"},
+        "proof": {
+            "kind": "whitespace_only",
+            "commit": "style: reindent the queue module to the house width",
+        },
         "short": "nothing assigns `reformat` yet, so the noise axis cannot discount it",
         "owner": "`e2.2` (separating a reformat from a rewrite)",
         "close": "`NoiseClass::Reformat` exists in the ingest record and is never assigned: the only "
-                 "classifier that runs today marks every file `Unknown`, so a whitespace-only commit is "
-                 "indistinguishable from a real change in the noise axis. The types are in place; the "
-                 "comparison (a change whose hunks are equal under whitespace folding) is not.",
+        "classifier that runs today marks every file `Unknown`, so a whitespace-only commit is "
+        "indistinguishable from a real change in the noise axis. The types are in place; the "
+        "comparison (a change whose hunks are equal under whitespace folding) is not.",
     },
 ]
 
@@ -377,8 +413,10 @@ def by_id(identifier: str) -> dict:
     for row in CATALOGUE:
         if row["id"] == identifier:
             return row
-    raise KeyError(f"no exhibit named {identifier!r}; the catalogue has "
-                   f"{', '.join(row['id'] for row in CATALOGUE)}")
+    raise KeyError(
+        f"no exhibit named {identifier!r}; the catalogue has "
+        f"{', '.join(row['id'] for row in CATALOGUE)}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +434,9 @@ def render_table() -> str:
     for row in CATALOGUE:
         # `short`, not the first sentence of the long field: a table cell that runs for six lines is a cell
         # nobody reads, and the long version is one link away in the answer key.
-        named = f"**{'yes' if row['status'] == 'named' else 'not yet'}** — {row['short']}"
+        named = (
+            f"**{'yes' if row['status'] == 'named' else 'not yet'}** — {row['short']}"
+        )
         lines.append(
             f"| `{row['pathology']}` | {row['seeded']} | {named} | {row['look']} |"
         )
@@ -410,7 +450,7 @@ def render_pathologies() -> str:
         "# The five seeded pathologies — the answer key",
         "",
         "This repository is a fixture: every commit exists to put a row somewhere in "
-        "[Fathom](https://github.com/danielstahl/fathom). [`DEMO.md`](DEMO.md) is the tour and deliberately "
+        "[Fathom](https://github.com/danielhstahl/fathom). [`DEMO.md`](DEMO.md) is the tour and deliberately "
         "*does not* name the answers; this page does, so the tour can be given to a newcomer cold and "
         "still be marked afterwards.",
         "",
@@ -433,9 +473,11 @@ def render_pathologies() -> str:
     out.append("")
     for index, row in enumerate(CATALOGUE, 1):
         out += [f"### {index}. {row['pathology']}", "", row["seed"], ""]
-        out += [f"- **Seeded in:** {row['seeded']}",
-                f"- **Where to look:** {row['look']}",
-                f"- **Status:** {'a finding today' if row['status'] == 'named' else 'an honest gap'}"]
+        out += [
+            f"- **Seeded in:** {row['seeded']}",
+            f"- **Where to look:** {row['look']}",
+            f"- **Status:** {'a finding today' if row['status'] == 'named' else 'an honest gap'}",
+        ]
         if row["status"] == "named":
             out.append(f"- **Why it is named:** {row['why_named']}")
         else:
@@ -469,8 +511,10 @@ def write(path: pathlib.Path, block: str, label: str, whole_file: bool = False) 
         current = path.read_text(encoding="utf-8") if path.is_file() else None
     else:
         if not path.is_file():
-            print(f"{path} is missing; the prose around this block is written, the block is generated",
-                  file=sys.stderr)
+            print(
+                f"{path} is missing; the prose around this block is written, the block is generated",
+                file=sys.stderr,
+            )
             return 1
         text = path.read_text(encoding="utf-8")
         if BEGIN not in text or END not in text:
@@ -489,9 +533,7 @@ def write(path: pathlib.Path, block: str, label: str, whole_file: bool = False) 
 def _block_of(text: str, label: str) -> str:
     import re
 
-    match = re.search(
-        re.escape(BEGIN) + r".*?" + re.escape(END), text, re.S
-    )
+    match = re.search(re.escape(BEGIN) + r".*?" + re.escape(END), text, re.S)
     if match is None:
         raise SystemExit(f"no {label} block between the markers")
     return match.group(0)
@@ -499,8 +541,13 @@ def _block_of(text: str, label: str) -> str:
 
 def check() -> int:
     problems: list[str] = []
-    if not PATHOLOGIES.is_file() or PATHOLOGIES.read_text(encoding="utf-8") != render_pathologies():
-        problems.append(f"{PATHOLOGIES.relative_to(ROOT)} is not what this catalogue renders")
+    if (
+        not PATHOLOGIES.is_file()
+        or PATHOLOGIES.read_text(encoding="utf-8") != render_pathologies()
+    ):
+        problems.append(
+            f"{PATHOLOGIES.relative_to(ROOT)} is not what this catalogue renders"
+        )
     if DOC.is_file():
         text = DOC.read_text(encoding="utf-8")
         try:
@@ -509,13 +556,18 @@ def check() -> int:
             problems.append(f"{DOC.relative_to(ROOT)}: {error}")
         else:
             if current != render_table():
-                problems.append(f"{DOC.relative_to(ROOT)}'s exhibit table is not what this catalogue renders")
+                problems.append(
+                    f"{DOC.relative_to(ROOT)}'s exhibit table is not what this catalogue renders"
+                )
     else:
         problems.append(f"{DOC.relative_to(ROOT)} is missing")
     for problem in problems:
         print(f"demo exhibits: {problem}", file=sys.stderr)
     if problems:
-        print("  refresh them with `python3 tools/demo_exhibits.py write`", file=sys.stderr)
+        print(
+            "  refresh them with `python3 tools/demo_exhibits.py write`",
+            file=sys.stderr,
+        )
     return 1 if problems else 0
 
 

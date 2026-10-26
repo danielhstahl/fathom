@@ -1,682 +1,570 @@
 {
- "schema": "fathom.turn-ground-truth/1",
- "history": "authored-rework-and-revert-traps",
- "provenance": "authored",
- "authoring": {
-  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
-  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
-  "annotated_on": "2026-10-17",
-  "derived_from": "the shapes §4.3's `message-shape` row and TB7/TB8 were written to survive, plus the two revert shapes the fixture corpus asserts as findings (`reverted_change`, `test_deletion`) at turn granularity rather than commit granularity.",
-  "shape": "feat→fix→test inside one turn, a turn that reverts itself, a turn that reverts another turn, two turns with identical subjects, a continuation that is not one, and a merge"
- },
- "source": {
-  "kind": "authored",
-  "commit_count": 18,
-  "extracted_by": "hand-authored; see authoring.derived_from"
- },
- "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
- "lineage": [
-  {
-   "oid": "9093500adf228e81c98d7f28f931f576f32f0679",
-   "parents": [],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000120000,
-   "at": "2025-10-09T08:55:20Z",
-   "subject": "feat: the export range parser",
-   "trailers": {},
-   "paths": [
-    "src/export/range.rs"
-   ],
-   "n_files": 1,
-   "n_add": 59,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t01",
-    "session_id": "rework-and-revert-traps"
-   }
+  "schema": "fathom.turn-ground-truth/1",
+  "history": "authored-rework-and-revert-traps",
+  "provenance": "authored",
+  "authoring": {
+    "annotated_by": "danielhstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+    "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+    "annotated_on": "2026-10-17",
+    "derived_from": "the shapes §4.3's `message-shape` row and TB7/TB8 were written to survive, plus the two revert shapes the fixture corpus asserts as findings (`reverted_change`, `test_deletion`) at turn granularity rather than commit granularity.",
+    "shape": "feat→fix→test inside one turn, a turn that reverts itself, a turn that reverts another turn, two turns with identical subjects, a continuation that is not one, and a merge"
   },
-  {
-   "oid": "734ca547d08c3c06bb5c5d30a8efe97b71c5e630",
-   "parents": [
-    "9093500adf228e81c98d7f28f931f576f32f0679"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000300000,
-   "at": "2025-10-09T08:58:20Z",
-   "subject": "fix: the range parser on an empty range",
-   "trailers": {},
-   "paths": [
-    "src/export/range.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t01",
-    "session_id": "rework-and-revert-traps"
-   }
+  "source": {
+    "kind": "authored",
+    "commit_count": 18,
+    "extracted_by": "hand-authored; see authoring.derived_from"
   },
-  {
-   "oid": "060188ae694e71e81cb69e888a418309c565d130",
-   "parents": [
-    "734ca547d08c3c06bb5c5d30a8efe97b71c5e630"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000540000,
-   "at": "2025-10-09T09:02:20Z",
-   "subject": "test: range cases",
-   "trailers": {},
-   "paths": [
-    "tests/export_range.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t01",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "6a7a9f153e993e2c247812d7fdd7ee82fa17f374",
-   "parents": [
-    "060188ae694e71e81cb69e888a418309c565d130"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000660000,
-   "at": "2025-10-09T09:04:20Z",
-   "subject": "feat: the export footer",
-   "trailers": {},
-   "paths": [
-    "src/export/footer.rs"
-   ],
-   "n_files": 1,
-   "n_add": 17,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t02",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "0814cdf09698b554f29931c4a9afe2b989975f5d",
-   "parents": [
-    "6a7a9f153e993e2c247812d7fdd7ee82fa17f374"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000960000,
-   "at": "2025-10-09T09:09:20Z",
-   "subject": "revert \"feat: the export footer\"",
-   "trailers": {},
-   "paths": [
-    "src/export/footer.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t02",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "1fa205315d7660d3f25f8be761d01dccbbe01994",
-   "parents": [
-    "0814cdf09698b554f29931c4a9afe2b989975f5d"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001020000,
-   "at": "2025-10-09T09:10:20Z",
-   "subject": "reco-h83: the footer, second attempt",
-   "trailers": {},
-   "paths": [
-    "src/export/footer.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t03",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "c24f0de9950eb5dd6c095ff24b7f45538a1e366c",
-   "parents": [
-    "1fa205315d7660d3f25f8be761d01dccbbe01994"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001140000,
-   "at": "2025-10-09T09:12:20Z",
-   "subject": "feat: pane layout",
-   "trailers": {},
-   "paths": [
-    "src/panes/layout.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t04",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "d851766759ac8677e1b18df3c20930e290b1f074",
-   "parents": [
-    "c24f0de9950eb5dd6c095ff24b7f45538a1e366c"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002340000,
-   "at": "2025-10-09T09:32:20Z",
-   "subject": "chore: layout for the docs page",
-   "trailers": {},
-   "paths": [
-    "docs/concepts/layout.md"
-   ],
-   "n_files": 1,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t04",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "3e0406f9fa7615ea4d44ec46b1b8756210b1dd32",
-   "parents": [
-    "d851766759ac8677e1b18df3c20930e290b1f074"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002460000,
-   "at": "2025-10-09T09:34:20Z",
-   "subject": "feat: the summary card",
-   "trailers": {},
-   "paths": [
-    "src/card.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t05",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "d8dd9183771b664c55cd85d874827865e9505229",
-   "parents": [
-    "3e0406f9fa7615ea4d44ec46b1b8756210b1dd32"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002640000,
-   "at": "2025-10-09T09:37:20Z",
-   "subject": "wip",
-   "trailers": {},
-   "paths": [
-    "src/card.rs"
-   ],
-   "n_files": 1,
-   "n_add": 31,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t05",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "ef24b9e6308afa917cfad2040fa24fd69d5b2f38",
-   "parents": [
-    "d8dd9183771b664c55cd85d874827865e9505229"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002700000,
-   "at": "2025-10-09T09:38:20Z",
-   "subject": "reco-h84: the same subject twice",
-   "trailers": {},
-   "paths": [
-    "src/dup.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t06",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "27f98e742c9b0e3e50d712b5a4b96a765391fe6a",
-   "parents": [
-    "ef24b9e6308afa917cfad2040fa24fd69d5b2f38"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002760000,
-   "at": "2025-10-09T09:39:20Z",
-   "subject": "reco-h84: the same subject twice",
-   "trailers": {},
-   "paths": [
-    "src/dup.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t07",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "d5320805ab78993b5c94a5f76c95ac685d87100b",
-   "parents": [
-    "27f98e742c9b0e3e50d712b5a4b96a765391fe6a"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002820000,
-   "at": "2025-10-09T09:40:20Z",
-   "subject": "reco-h85: add a lint rule to the linter",
-   "trailers": {},
-   "paths": [
-    "src/lint/rule.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t08",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "138d794595310c603d0d6e63928bbf04930f6aeb",
-   "parents": [
-    "d5320805ab78993b5c94a5f76c95ac685d87100b"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760002940000,
-   "at": "2025-10-09T09:42:20Z",
-   "subject": "reco-h86: merge the export branch",
-   "trailers": {},
-   "paths": [],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t09",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "196723e0f0675787ceef15c4a8f67b9d02cc4aca",
-   "parents": [
-    "138d794595310c603d0d6e63928bbf04930f6aeb"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003060000,
-   "at": "2025-10-09T09:44:20Z",
-   "subject": "reco-h87: delete the retired exporter",
-   "trailers": {},
-   "paths": [
-    "src/export/legacy.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t10",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "0c3ed0f167e3ffe5017ac25f4a1fb337dfe342ed",
-   "parents": [
-    "196723e0f0675787ceef15c4a8f67b9d02cc4aca"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003300000,
-   "at": "2025-10-09T09:48:20Z",
-   "subject": "reco-h87: and its tests",
-   "trailers": {},
-   "paths": [
-    "tests/legacy.rs"
-   ],
-   "n_files": 1,
-   "n_add": 17,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t10",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "6036dba9a830e525e6c352d13496c9f251d4996c",
-   "parents": [
-    "0c3ed0f167e3ffe5017ac25f4a1fb337dfe342ed"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760003420000,
-   "at": "2025-10-09T09:50:20Z",
-   "subject": "revert: the export range parser",
-   "trailers": {},
-   "paths": [
-    "src/export/range.rs"
-   ],
-   "n_files": 1,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t11",
-    "session_id": "rework-and-revert-traps"
-   }
-  },
-  {
-   "oid": "75306631c507b398b18672ce535d5ee3a3b9f4f2",
-   "parents": [
-    "6036dba9a830e525e6c352d13496c9f251d4996c"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003600000,
-   "at": "2025-10-09T09:53:20Z",
-   "subject": "reco-h88: what the revert broke",
-   "trailers": {},
-   "paths": [
-    "src/export/range.rs",
-    "src/export/footer.rs"
-   ],
-   "n_files": 2,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "rework-and-revert-traps:t12",
-    "session_id": "rework-and-revert-traps"
-   }
+  "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+  "lineage": [
+    {
+      "oid": "9093500adf228e81c98d7f28f931f576f32f0679",
+      "parents": [],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000120000,
+      "at": "2025-10-09T08:55:20Z",
+      "subject": "feat: the export range parser",
+      "trailers": {},
+      "paths": ["src/export/range.rs"],
+      "n_files": 1,
+      "n_add": 59,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t01",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "734ca547d08c3c06bb5c5d30a8efe97b71c5e630",
+      "parents": ["9093500adf228e81c98d7f28f931f576f32f0679"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000300000,
+      "at": "2025-10-09T08:58:20Z",
+      "subject": "fix: the range parser on an empty range",
+      "trailers": {},
+      "paths": ["src/export/range.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t01",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "060188ae694e71e81cb69e888a418309c565d130",
+      "parents": ["734ca547d08c3c06bb5c5d30a8efe97b71c5e630"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000540000,
+      "at": "2025-10-09T09:02:20Z",
+      "subject": "test: range cases",
+      "trailers": {},
+      "paths": ["tests/export_range.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t01",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "6a7a9f153e993e2c247812d7fdd7ee82fa17f374",
+      "parents": ["060188ae694e71e81cb69e888a418309c565d130"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000660000,
+      "at": "2025-10-09T09:04:20Z",
+      "subject": "feat: the export footer",
+      "trailers": {},
+      "paths": ["src/export/footer.rs"],
+      "n_files": 1,
+      "n_add": 17,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t02",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "0814cdf09698b554f29931c4a9afe2b989975f5d",
+      "parents": ["6a7a9f153e993e2c247812d7fdd7ee82fa17f374"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000960000,
+      "at": "2025-10-09T09:09:20Z",
+      "subject": "revert \"feat: the export footer\"",
+      "trailers": {},
+      "paths": ["src/export/footer.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t02",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "1fa205315d7660d3f25f8be761d01dccbbe01994",
+      "parents": ["0814cdf09698b554f29931c4a9afe2b989975f5d"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001020000,
+      "at": "2025-10-09T09:10:20Z",
+      "subject": "reco-h83: the footer, second attempt",
+      "trailers": {},
+      "paths": ["src/export/footer.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t03",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "c24f0de9950eb5dd6c095ff24b7f45538a1e366c",
+      "parents": ["1fa205315d7660d3f25f8be761d01dccbbe01994"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001140000,
+      "at": "2025-10-09T09:12:20Z",
+      "subject": "feat: pane layout",
+      "trailers": {},
+      "paths": ["src/panes/layout.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t04",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "d851766759ac8677e1b18df3c20930e290b1f074",
+      "parents": ["c24f0de9950eb5dd6c095ff24b7f45538a1e366c"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002340000,
+      "at": "2025-10-09T09:32:20Z",
+      "subject": "chore: layout for the docs page",
+      "trailers": {},
+      "paths": ["docs/concepts/layout.md"],
+      "n_files": 1,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t04",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "3e0406f9fa7615ea4d44ec46b1b8756210b1dd32",
+      "parents": ["d851766759ac8677e1b18df3c20930e290b1f074"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002460000,
+      "at": "2025-10-09T09:34:20Z",
+      "subject": "feat: the summary card",
+      "trailers": {},
+      "paths": ["src/card.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t05",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "d8dd9183771b664c55cd85d874827865e9505229",
+      "parents": ["3e0406f9fa7615ea4d44ec46b1b8756210b1dd32"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002640000,
+      "at": "2025-10-09T09:37:20Z",
+      "subject": "wip",
+      "trailers": {},
+      "paths": ["src/card.rs"],
+      "n_files": 1,
+      "n_add": 31,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t05",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "ef24b9e6308afa917cfad2040fa24fd69d5b2f38",
+      "parents": ["d8dd9183771b664c55cd85d874827865e9505229"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002700000,
+      "at": "2025-10-09T09:38:20Z",
+      "subject": "reco-h84: the same subject twice",
+      "trailers": {},
+      "paths": ["src/dup.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t06",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "27f98e742c9b0e3e50d712b5a4b96a765391fe6a",
+      "parents": ["ef24b9e6308afa917cfad2040fa24fd69d5b2f38"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002760000,
+      "at": "2025-10-09T09:39:20Z",
+      "subject": "reco-h84: the same subject twice",
+      "trailers": {},
+      "paths": ["src/dup.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t07",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "d5320805ab78993b5c94a5f76c95ac685d87100b",
+      "parents": ["27f98e742c9b0e3e50d712b5a4b96a765391fe6a"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002820000,
+      "at": "2025-10-09T09:40:20Z",
+      "subject": "reco-h85: add a lint rule to the linter",
+      "trailers": {},
+      "paths": ["src/lint/rule.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t08",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "138d794595310c603d0d6e63928bbf04930f6aeb",
+      "parents": ["d5320805ab78993b5c94a5f76c95ac685d87100b"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760002940000,
+      "at": "2025-10-09T09:42:20Z",
+      "subject": "reco-h86: merge the export branch",
+      "trailers": {},
+      "paths": [],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t09",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "196723e0f0675787ceef15c4a8f67b9d02cc4aca",
+      "parents": ["138d794595310c603d0d6e63928bbf04930f6aeb"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003060000,
+      "at": "2025-10-09T09:44:20Z",
+      "subject": "reco-h87: delete the retired exporter",
+      "trailers": {},
+      "paths": ["src/export/legacy.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t10",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "0c3ed0f167e3ffe5017ac25f4a1fb337dfe342ed",
+      "parents": ["196723e0f0675787ceef15c4a8f67b9d02cc4aca"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003300000,
+      "at": "2025-10-09T09:48:20Z",
+      "subject": "reco-h87: and its tests",
+      "trailers": {},
+      "paths": ["tests/legacy.rs"],
+      "n_files": 1,
+      "n_add": 17,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t10",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "6036dba9a830e525e6c352d13496c9f251d4996c",
+      "parents": ["0c3ed0f167e3ffe5017ac25f4a1fb337dfe342ed"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760003420000,
+      "at": "2025-10-09T09:50:20Z",
+      "subject": "revert: the export range parser",
+      "trailers": {},
+      "paths": ["src/export/range.rs"],
+      "n_files": 1,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t11",
+        "session_id": "rework-and-revert-traps"
+      }
+    },
+    {
+      "oid": "75306631c507b398b18672ce535d5ee3a3b9f4f2",
+      "parents": ["6036dba9a830e525e6c352d13496c9f251d4996c"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003600000,
+      "at": "2025-10-09T09:53:20Z",
+      "subject": "reco-h88: what the revert broke",
+      "trailers": {},
+      "paths": ["src/export/range.rs", "src/export/footer.rs"],
+      "n_files": 2,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "rework-and-revert-traps:t12",
+        "session_id": "rework-and-revert-traps"
+      }
+    }
+  ],
+  "truth": {
+    "turns": [
+      {
+        "id": "t01",
+        "commits": ["9093500adf22", "734ca547d08c", "060188ae694e"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t01",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t02",
+        "commits": ["6a7a9f153e99", "0814cdf09698"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t02",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t03",
+        "commits": ["1fa205315d76"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t03",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t04",
+        "commits": ["c24f0de9950e", "d851766759ac"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t04",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t05",
+        "commits": ["3e0406f9fa76", "d8dd9183771b"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t05",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t06",
+        "commits": ["ef24b9e6308a"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t06",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t07",
+        "commits": ["27f98e742c9b"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t07",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t08",
+        "commits": ["d5320805ab78"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t08",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t09",
+        "commits": ["138d79459531"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t09",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t10",
+        "commits": ["196723e0f067", "0c3ed0f167e3"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t10",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t11",
+        "commits": ["6036dba9a830"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t11",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t12",
+        "commits": ["75306631c507"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t12",
+        "session": "rework-and-revert-traps",
+        "joined_by": "authored",
+        "note": null
+      }
+    ],
+    "pathologies": [
+      {
+        "kind": "silent_revert",
+        "at": "0814cdf09698",
+        "episode": "t02",
+        "requires": ["6a7a9f153e99"],
+        "paths": ["src/export/footer.rs"],
+        "why": "the turn that undoes itself: split, one card adds a footer and the other removes a footer nobody was shown, and the net — nothing — appears on neither"
+      },
+      {
+        "kind": "cross_turn_correction",
+        "at": "6036dba9a830",
+        "episode": "t11",
+        "requires": ["9093500adf22"],
+        "paths": ["src/export/range.rs"],
+        "why": "a human reverts a feature from three turns earlier. The boundary is right and must stay; the reviewer needs the lineage window, and this names the ceiling on what a boundary can protect"
+      },
+      {
+        "kind": "churn_across_boundary",
+        "at": "0c3ed0f167e3",
+        "episode": "t10",
+        "requires": ["196723e0f067"],
+        "paths": ["src/export/legacy.rs", "tests/legacy.rs"],
+        "why": "the code and its tests go in two commits four minutes apart; on two cards one shows an orphaned test file and the other a deletion with no test change"
+      }
+    ],
+    "notes": [
+      "t01 is TB7's own example — feat then fix then test, one turn, one file — and the case the guards are there for. t04 is the case they fire on and this annotation disagrees with: a conventional-type change 20 minutes later on a path the first commit never touched, which TB7 reads as a new turn and the annotator reads as one turn finishing its own sentence. It is in the corpus to count that disagreement, not to hide it: it is one of the five false splits message-shape makes over the whole corpus.",
+      "t06 and t07 have byte-identical subjects and the same author, so their identities are equal and their boundary is a TB10 twin pair: two episodes with ids `ep-x` and `ep-x-2`, which is the corpus's check that identity and boundary are different questions."
+    ]
   }
- ],
- "truth": {
-  "turns": [
-   {
-    "id": "t01",
-    "commits": [
-     "9093500adf22",
-     "734ca547d08c",
-     "060188ae694e"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t01",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t02",
-    "commits": [
-     "6a7a9f153e99",
-     "0814cdf09698"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t02",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t03",
-    "commits": [
-     "1fa205315d76"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t03",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t04",
-    "commits": [
-     "c24f0de9950e",
-     "d851766759ac"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t04",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t05",
-    "commits": [
-     "3e0406f9fa76",
-     "d8dd9183771b"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t05",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t06",
-    "commits": [
-     "ef24b9e6308a"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t06",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t07",
-    "commits": [
-     "27f98e742c9b"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t07",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t08",
-    "commits": [
-     "d5320805ab78"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t08",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t09",
-    "commits": [
-     "138d79459531"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t09",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t10",
-    "commits": [
-     "196723e0f067",
-     "0c3ed0f167e3"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t10",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t11",
-    "commits": [
-     "6036dba9a830"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t11",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t12",
-    "commits": [
-     "75306631c507"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t12",
-    "session": "rework-and-revert-traps",
-    "joined_by": "authored",
-    "note": null
-   }
-  ],
-  "pathologies": [
-   {
-    "kind": "silent_revert",
-    "at": "0814cdf09698",
-    "episode": "t02",
-    "requires": [
-     "6a7a9f153e99"
-    ],
-    "paths": [
-     "src/export/footer.rs"
-    ],
-    "why": "the turn that undoes itself: split, one card adds a footer and the other removes a footer nobody was shown, and the net — nothing — appears on neither"
-   },
-   {
-    "kind": "cross_turn_correction",
-    "at": "6036dba9a830",
-    "episode": "t11",
-    "requires": [
-     "9093500adf22"
-    ],
-    "paths": [
-     "src/export/range.rs"
-    ],
-    "why": "a human reverts a feature from three turns earlier. The boundary is right and must stay; the reviewer needs the lineage window, and this names the ceiling on what a boundary can protect"
-   },
-   {
-    "kind": "churn_across_boundary",
-    "at": "0c3ed0f167e3",
-    "episode": "t10",
-    "requires": [
-     "196723e0f067"
-    ],
-    "paths": [
-     "src/export/legacy.rs",
-     "tests/legacy.rs"
-    ],
-    "why": "the code and its tests go in two commits four minutes apart; on two cards one shows an orphaned test file and the other a deletion with no test change"
-   }
-  ],
-  "notes": [
-   "t01 is TB7's own example — feat then fix then test, one turn, one file — and the case the guards are there for. t04 is the case they fire on and this annotation disagrees with: a conventional-type change 20 minutes later on a path the first commit never touched, which TB7 reads as a new turn and the annotator reads as one turn finishing its own sentence. It is in the corpus to count that disagreement, not to hide it: it is one of the five false splits message-shape makes over the whole corpus.",
-   "t06 and t07 have byte-identical subjects and the same author, so their identities are equal and their boundary is a TB10 twin pair: two episodes with ids `ep-x` and `ep-x-2`, which is the corpus's check that identity and boundary are different questions."
-  ]
- }
 }

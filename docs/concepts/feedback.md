@@ -41,7 +41,7 @@ in the release notes. If you found one of those, the favour is to copy it into t
 where it landed.
 
 The one exception, and it is a real one: **a private security report** goes to
-[the adviser form](https://github.com/danielstahl/fathom/security/advisories/new), and it lands in
+[the adviser form](https://github.com/danielhstahl/fathom/security/advisories/new), and it lands in
 [the threat model](../security/threat-model.md)'s register instead of the beta ledger. Anything whose value
 is "here is how to make the tool say *clean* about an unsafe repository" belongs there and not here.
 

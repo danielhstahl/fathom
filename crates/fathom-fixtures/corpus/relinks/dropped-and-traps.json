@@ -1,301 +1,267 @@
 {
- "schema": "fathom.relink-ground-truth/1",
- "file": "dropped-and-traps",
- "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R3, R5, R6, R7)",
- "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
- "claim": "A false relink needs two things: a dead episode whose verdict is in play, and a live episode the human says it does not belong to. The corpus's whole trap section is built out of those pairs — a rebase that rewords one turn and abandons another, in a history where the abandoned turn touches the same files as the one being followed. These are the events §13.1's refusal is about, and they are the ones a similarity threshold is priced against.",
- "events": [
-  {
-   "id": "dropped-turn/every-turn",
-   "family": "dropped-turn",
-   "relation": "other",
-   "history": "*",
-   "expand": "each-turn",
-   "op": {
-    "kind": "drop"
-   },
-   "decisions": "all",
-   "expect": [
+  "schema": "fathom.relink-ground-truth/1",
+  "file": "dropped-and-traps",
+  "protocol": "crates/fathom-fixtures/corpus/relinks/README.md §4 (R3, R5, R6, R7)",
+  "authored_by": "looprs, spike s6 (`reco-f5a`), 2026-10-24, over s2's annotated turn corpus",
+  "claim": "A false relink needs two things: a dead episode whose verdict is in play, and a live episode the human says it does not belong to. The corpus's whole trap section is built out of those pairs — a rebase that rewords one turn and abandons another, in a history where the abandoned turn touches the same files as the one being followed. These are the events §13.1's refusal is about, and they are the ones a similarity threshold is priced against.",
+  "events": [
     {
-     "from": "<target>",
-     "to": null,
-     "catch": "none",
-     "note": "§5.10: the work is gone and the episode goes `live = 0` keeping its row, so \"you accepted this, its commits are gone\" stays a readable fact. Anything attached to a surviving episode is a verdict about content nobody looked at."
+      "id": "dropped-turn/every-turn",
+      "family": "dropped-turn",
+      "relation": "other",
+      "history": "*",
+      "expand": "each-turn",
+      "op": {
+        "kind": "drop"
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "<target>",
+          "to": null,
+          "catch": "none",
+          "note": "§5.10: the work is gone and the episode goes `live = 0` keeping its row, so \"you accepted this, its commits are gone\" stays a readable fact. Anything attached to a surviving episode is a verdict about content nobody looked at."
+        }
+      ],
+      "note": "One force-push that loses one turn, once per annotated turn in the corpus. Under the all-dispositioned board every surviving episode already carries a decision, so RL0 should make this family unwritable; the sparse board is where a wrong landing becomes possible, which is why the spike scores both."
+    },
+    {
+      "id": "dropped-and-reworded/fixture-churn_loop-follow-the-earlier",
+      "family": "dropped-and-reworded",
+      "relation": "rebase",
+      "history": "fixture-churn_loop",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["ep-churn"],
+        "suffix": " (message cleaned up)",
+        "drop": ["ep-add"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "ep-churn",
+          "to": "ep-churn",
+          "catch": "tier-2",
+          "note": "the reworded turn: same author, same two files, so shape holds and the carry is owed."
+        },
+        {
+          "from": "ep-add",
+          "to": null,
+          "catch": "none",
+          "note": "the abandoned turn, whose path set is *identical* to the one just followed — `{src/queue.rs, src/scheduler.rs}` in both, because that is what a churn loop is. Tier 2 sees two dead episodes with the same shape digest and one live episode, and RL3's `last_utc DESC` is the only thing that can tell them apart. Here it can: the true donor is the later one."
+        }
+      ],
+      "note": "The churn fixture, where three of the five turns touch the same two files. This is the friendlier ordering of the trap; the next event flips it."
+    },
+    {
+      "id": "dropped-and-reworded/fixture-churn_loop-follow-the-later",
+      "family": "dropped-and-reworded",
+      "relation": "rebase",
+      "history": "fixture-churn_loop",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["ep-add"],
+        "suffix": " (message cleaned up)",
+        "drop": ["ep-settle"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "ep-add",
+          "to": "ep-add",
+          "catch": "tier-2",
+          "note": "owed, and reachable only by preferring the earlier of two same-shape dead episodes."
+        },
+        {
+          "from": "ep-settle",
+          "to": null,
+          "catch": "none",
+          "note": "`Settle on the original window`, abandoned in the same rebase — later in time than the turn being followed, with the same author and the same two files, so it is the candidate RL3 reaches first. The annotation is explicit that this verdict goes nowhere: `Settle on the original window` was a decision about the sixth round of churn, not about the first commit."
+        }
+      ],
+      "note": "The same fixture with the trap inverted, and the only event pair in the corpus whose entire difference is the *order* of two commits. If the ladder gets both events right, tie-breaks are not the weak link; if it gets one wrong, the finding is RL3's and not the digest's."
+    },
+    {
+      "id": "dropped-and-reworded/authored-two-agents-and-a-bot",
+      "family": "dropped-and-reworded",
+      "relation": "rebase",
+      "history": "authored-two-agents-and-a-bot",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["t05"],
+        "suffix": " (chore(deps): reworded)",
+        "drop": ["t03", "t09"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "t05",
+          "to": "t05",
+          "catch": "tier-2",
+          "note": "the bump that survived the rebase."
+        },
+        {
+          "from": "t03",
+          "to": null,
+          "catch": "none",
+          "note": "the serde bump, abandoned: same author (`deps-bot`), same path set `{Cargo.toml, Cargo.lock}`, earlier."
+        },
+        {
+          "from": "t09",
+          "to": null,
+          "catch": "none",
+          "note": "the serde_json bump, abandoned: same author, same path set, **later than the turn being followed** — the wrong donor RL3 prefers. Attaching a dismissed-or-accepted dependency bump here says a review of `serde_json` happened on `tokio`'s change."
+        }
+      ],
+      "note": "Three bot bumps over one lockfile, which is the most common shape in a busy repository and the worst case for author+paths evidence: the digest says all three are the same change, and only the message says they are not."
+    },
+    {
+      "id": "revert-then-redo/authored-rework-and-revert-traps",
+      "family": "revert-then-redo",
+      "relation": "other",
+      "history": "authored-rework-and-revert-traps",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["t01", "t12"],
+        "suffix": " (reworded)",
+        "drop": ["t11"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "t01",
+          "to": "t01",
+          "catch": "tier-2",
+          "note": "`feat: the export range parser`, reworded in the rebase: same author, same file."
+        },
+        {
+          "from": "t12",
+          "to": "t12",
+          "catch": "tier-2",
+          "note": "`reco-h88: what the revert broke`, also reworded, over both files."
+        },
+        {
+          "from": "t11",
+          "to": null,
+          "catch": "none",
+          "note": "`revert: the export range parser`, by `dana`, abandoned in the same rebase. Its path set is t01's exactly, so any evidence that ignores *who* wrote it links an accepted revert onto the feature it reverted — the single most damaging thing a relink can say, because it converts \"this was withdrawn\" into \"this was approved\". Tier 2 cannot reach it (author differs); an author-agnostic path-similarity tier reaches it at Jaccard 1.0."
+        }
+      ],
+      "note": "The revert trap the corpus was authored to contain (`authored-rework-and-revert-traps`, e0.10's `reverted_change` finding), with the rebase on top of it. This event is the reason the spike evaluates author-agnostic fuzzy candidates separately: the author field is the only thing standing between a similarity tier and this mistake."
+    },
+    {
+      "id": "dropped-and-reworded/fathom-self-homeless-commit",
+      "family": "dropped-and-reworded",
+      "relation": "rebase",
+      "history": "fathom-self",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["t08"],
+        "suffix": " (reworded)",
+        "drop": ["t14"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "t08",
+          "to": "t08",
+          "catch": "tier-2",
+          "note": "`reco-5vz: path taxonomy and noise policy engine`, reworded. Its first member touches `.github/workflows/contracts.yml`, `README.md` and two concepts pages."
+        },
+        {
+          "from": "t14",
+          "to": null,
+          "catch": "none",
+          "note": "the real stratum's own homeless turn — `contracts.yml: grep the keyprobe's real machine keys`, no bead, no trailer, one file, and s2 already recorded it as an annotated pathology no boundary rule can save (`fathom-self/t14`, `absorbed_turn`). Its one file is inside t08's path set, so the path Jaccard is 1.0 by containment and a fuzzy path tier will say so; the sign-off it carries is about a CI grep, not about a config-engine change."
+        }
+      ],
+      "note": "The real history, using the two turns s2's own write-up names as unsalvageable by any boundary rule. Nothing here is authored to be a trap: the homeless commit is a real commit this repository made."
+    },
+    {
+      "id": "dropped-and-reworded/fathom-self-adr-cluster",
+      "family": "dropped-and-reworded",
+      "relation": "rebase",
+      "history": "fathom-self",
+      "op": {
+        "kind": "reword+drop",
+        "targets": ["t03"],
+        "suffix": " (reworded)",
+        "drop": ["t09"]
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "t03",
+          "to": "t03",
+          "catch": "tier-2"
+        },
+        {
+          "from": "t09",
+          "to": null,
+          "catch": "none",
+          "note": "`reco-e0e: ADR-006 — TUI information architecture` abandoned while `docs: ADR-001 product thesis…` is reworded. Both are `danielhstahl`, both touch `docs/adr/README.md`, so a path-overlap tier with a low threshold and a subject-token tier both find a confident-looking match between two different ADRs written eleven minutes apart."
+        }
+      ],
+      "note": "Documentation turns in one directory: the shape of history a docs-heavy loop produces, and the place where a subject-token similarity does its worst damage, because every subject in the cluster says `ADR`."
+    },
+    {
+      "id": "branch-rebase/every-history",
+      "family": "branch-rebase",
+      "relation": "rebase",
+      "history": "*",
+      "op": {
+        "kind": "rebase+reword+drop",
+        "reword_nth": [2, 5],
+        "drop_nth": [3],
+        "suffix": " (reworded while rebasing)"
+      },
+      "decisions": "all",
+      "expect": [
+        {
+          "from": "nth:2",
+          "to": "nth:2",
+          "catch": "tier-2",
+          "note": "reworded during the rebase of the whole branch: the fallback digest is gone, the shape holds."
+        },
+        {
+          "from": "nth:5",
+          "to": "nth:5",
+          "catch": "tier-2"
+        },
+        {
+          "from": "nth:3",
+          "to": null,
+          "catch": "none",
+          "note": "the abandoned turn, sandwiched between the two carries in walk order — the realistic rebase, which does not tidy one commit at a time."
+        }
+      ],
+      "note": "The most realistic event in the corpus and the only one that runs on every history: every commit on the branch gets a new oid and date, two messages get cleaned up, and one turn is dropped. Ordinals are fixed in this file for all histories, so the sample is the corpus and not a selection; ordinals past a history's end contribute nothing."
+    },
+    {
+      "id": "branch-rebase-heavy/every-history",
+      "family": "branch-rebase-heavy",
+      "relation": "rebase",
+      "history": "*",
+      "op": {
+        "kind": "rebase+reword+drop",
+        "reword_every": 2,
+        "drop_nth": [4, 7],
+        "suffix": " (reworded to the new convention)"
+      },
+      "decisions": "all",
+      "expect_rule": {
+        "reworded": {
+          "to": "self",
+          "catch": "tier-2",
+          "note": "every other message on the branch got rewritten to the new convention: each one's path set is untouched, so tier 2 has its evidence for every one of them — and so does every weaker rung, which is the point of running them all against a history where there are many dead episodes and not one."
+        },
+        "dropped": {
+          "to": null,
+          "catch": "none",
+          "note": "two turns abandoned in the same rebase, in the middle of the run of reworded neighbours a guessing tier would happily reach for. Their verdicts belong to content that is gone; the report counts a landing here as a false relink and the cost is the reviewer's sign-off on a change that no longer exists, attached to one that does."
+        }
+      },
+      "note": "The hardest event the corpus runs on every history: a third to a half of the branch's episodes die at once, so a tie-break, a similarity or a hunch all have real competition. The single-death events elsewhere in the corpus are the honest unit of a tier's evidence; this one is the honest unit of a tier's judgement. The rule form of `expect` is used here because a claim that holds for every odd-ordinal turn is one claim, and writing it thirty-two times would be a transcription, not an annotation."
     }
-   ],
-   "note": "One force-push that loses one turn, once per annotated turn in the corpus. Under the all-dispositioned board every surviving episode already carries a decision, so RL0 should make this family unwritable; the sparse board is where a wrong landing becomes possible, which is why the spike scores both."
-  },
-  {
-   "id": "dropped-and-reworded/fixture-churn_loop-follow-the-earlier",
-   "family": "dropped-and-reworded",
-   "relation": "rebase",
-   "history": "fixture-churn_loop",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "ep-churn"
-    ],
-    "suffix": " (message cleaned up)",
-    "drop": [
-     "ep-add"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "ep-churn",
-     "to": "ep-churn",
-     "catch": "tier-2",
-     "note": "the reworded turn: same author, same two files, so shape holds and the carry is owed."
-    },
-    {
-     "from": "ep-add",
-     "to": null,
-     "catch": "none",
-     "note": "the abandoned turn, whose path set is *identical* to the one just followed — `{src/queue.rs, src/scheduler.rs}` in both, because that is what a churn loop is. Tier 2 sees two dead episodes with the same shape digest and one live episode, and RL3's `last_utc DESC` is the only thing that can tell them apart. Here it can: the true donor is the later one."
-    }
-   ],
-   "note": "The churn fixture, where three of the five turns touch the same two files. This is the friendlier ordering of the trap; the next event flips it."
-  },
-  {
-   "id": "dropped-and-reworded/fixture-churn_loop-follow-the-later",
-   "family": "dropped-and-reworded",
-   "relation": "rebase",
-   "history": "fixture-churn_loop",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "ep-add"
-    ],
-    "suffix": " (message cleaned up)",
-    "drop": [
-     "ep-settle"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "ep-add",
-     "to": "ep-add",
-     "catch": "tier-2",
-     "note": "owed, and reachable only by preferring the earlier of two same-shape dead episodes."
-    },
-    {
-     "from": "ep-settle",
-     "to": null,
-     "catch": "none",
-     "note": "`Settle on the original window`, abandoned in the same rebase — later in time than the turn being followed, with the same author and the same two files, so it is the candidate RL3 reaches first. The annotation is explicit that this verdict goes nowhere: `Settle on the original window` was a decision about the sixth round of churn, not about the first commit."
-    }
-   ],
-   "note": "The same fixture with the trap inverted, and the only event pair in the corpus whose entire difference is the *order* of two commits. If the ladder gets both events right, tie-breaks are not the weak link; if it gets one wrong, the finding is RL3's and not the digest's."
-  },
-  {
-   "id": "dropped-and-reworded/authored-two-agents-and-a-bot",
-   "family": "dropped-and-reworded",
-   "relation": "rebase",
-   "history": "authored-two-agents-and-a-bot",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "t05"
-    ],
-    "suffix": " (chore(deps): reworded)",
-    "drop": [
-     "t03",
-     "t09"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "t05",
-     "to": "t05",
-     "catch": "tier-2",
-     "note": "the bump that survived the rebase."
-    },
-    {
-     "from": "t03",
-     "to": null,
-     "catch": "none",
-     "note": "the serde bump, abandoned: same author (`deps-bot`), same path set `{Cargo.toml, Cargo.lock}`, earlier."
-    },
-    {
-     "from": "t09",
-     "to": null,
-     "catch": "none",
-     "note": "the serde_json bump, abandoned: same author, same path set, **later than the turn being followed** — the wrong donor RL3 prefers. Attaching a dismissed-or-accepted dependency bump here says a review of `serde_json` happened on `tokio`'s change."
-    }
-   ],
-   "note": "Three bot bumps over one lockfile, which is the most common shape in a busy repository and the worst case for author+paths evidence: the digest says all three are the same change, and only the message says they are not."
-  },
-  {
-   "id": "revert-then-redo/authored-rework-and-revert-traps",
-   "family": "revert-then-redo",
-   "relation": "other",
-   "history": "authored-rework-and-revert-traps",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "t01",
-     "t12"
-    ],
-    "suffix": " (reworded)",
-    "drop": [
-     "t11"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "t01",
-     "to": "t01",
-     "catch": "tier-2",
-     "note": "`feat: the export range parser`, reworded in the rebase: same author, same file."
-    },
-    {
-     "from": "t12",
-     "to": "t12",
-     "catch": "tier-2",
-     "note": "`reco-h88: what the revert broke`, also reworded, over both files."
-    },
-    {
-     "from": "t11",
-     "to": null,
-     "catch": "none",
-     "note": "`revert: the export range parser`, by `dana`, abandoned in the same rebase. Its path set is t01's exactly, so any evidence that ignores *who* wrote it links an accepted revert onto the feature it reverted — the single most damaging thing a relink can say, because it converts \"this was withdrawn\" into \"this was approved\". Tier 2 cannot reach it (author differs); an author-agnostic path-similarity tier reaches it at Jaccard 1.0."
-    }
-   ],
-   "note": "The revert trap the corpus was authored to contain (`authored-rework-and-revert-traps`, e0.10's `reverted_change` finding), with the rebase on top of it. This event is the reason the spike evaluates author-agnostic fuzzy candidates separately: the author field is the only thing standing between a similarity tier and this mistake."
-  },
-  {
-   "id": "dropped-and-reworded/fathom-self-homeless-commit",
-   "family": "dropped-and-reworded",
-   "relation": "rebase",
-   "history": "fathom-self",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "t08"
-    ],
-    "suffix": " (reworded)",
-    "drop": [
-     "t14"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "t08",
-     "to": "t08",
-     "catch": "tier-2",
-     "note": "`reco-5vz: path taxonomy and noise policy engine`, reworded. Its first member touches `.github/workflows/contracts.yml`, `README.md` and two concepts pages."
-    },
-    {
-     "from": "t14",
-     "to": null,
-     "catch": "none",
-     "note": "the real stratum's own homeless turn — `contracts.yml: grep the keyprobe's real machine keys`, no bead, no trailer, one file, and s2 already recorded it as an annotated pathology no boundary rule can save (`fathom-self/t14`, `absorbed_turn`). Its one file is inside t08's path set, so the path Jaccard is 1.0 by containment and a fuzzy path tier will say so; the sign-off it carries is about a CI grep, not about a config-engine change."
-    }
-   ],
-   "note": "The real history, using the two turns s2's own write-up names as unsalvageable by any boundary rule. Nothing here is authored to be a trap: the homeless commit is a real commit this repository made."
-  },
-  {
-   "id": "dropped-and-reworded/fathom-self-adr-cluster",
-   "family": "dropped-and-reworded",
-   "relation": "rebase",
-   "history": "fathom-self",
-   "op": {
-    "kind": "reword+drop",
-    "targets": [
-     "t03"
-    ],
-    "suffix": " (reworded)",
-    "drop": [
-     "t09"
-    ]
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "t03",
-     "to": "t03",
-     "catch": "tier-2"
-    },
-    {
-     "from": "t09",
-     "to": null,
-     "catch": "none",
-     "note": "`reco-e0e: ADR-006 — TUI information architecture` abandoned while `docs: ADR-001 product thesis…` is reworded. Both are `danielstahl`, both touch `docs/adr/README.md`, so a path-overlap tier with a low threshold and a subject-token tier both find a confident-looking match between two different ADRs written eleven minutes apart."
-    }
-   ],
-   "note": "Documentation turns in one directory: the shape of history a docs-heavy loop produces, and the place where a subject-token similarity does its worst damage, because every subject in the cluster says `ADR`."
-  },
-  {
-   "id": "branch-rebase/every-history",
-   "family": "branch-rebase",
-   "relation": "rebase",
-   "history": "*",
-   "op": {
-    "kind": "rebase+reword+drop",
-    "reword_nth": [
-     2,
-     5
-    ],
-    "drop_nth": [
-     3
-    ],
-    "suffix": " (reworded while rebasing)"
-   },
-   "decisions": "all",
-   "expect": [
-    {
-     "from": "nth:2",
-     "to": "nth:2",
-     "catch": "tier-2",
-     "note": "reworded during the rebase of the whole branch: the fallback digest is gone, the shape holds."
-    },
-    {
-     "from": "nth:5",
-     "to": "nth:5",
-     "catch": "tier-2"
-    },
-    {
-     "from": "nth:3",
-     "to": null,
-     "catch": "none",
-     "note": "the abandoned turn, sandwiched between the two carries in walk order — the realistic rebase, which does not tidy one commit at a time."
-    }
-   ],
-   "note": "The most realistic event in the corpus and the only one that runs on every history: every commit on the branch gets a new oid and date, two messages get cleaned up, and one turn is dropped. Ordinals are fixed in this file for all histories, so the sample is the corpus and not a selection; ordinals past a history's end contribute nothing."
-  },
-  {
-   "id": "branch-rebase-heavy/every-history",
-   "family": "branch-rebase-heavy",
-   "relation": "rebase",
-   "history": "*",
-   "op": {
-    "kind": "rebase+reword+drop",
-    "reword_every": 2,
-    "drop_nth": [
-     4,
-     7
-    ],
-    "suffix": " (reworded to the new convention)"
-   },
-   "decisions": "all",
-   "expect_rule": {
-    "reworded": {
-     "to": "self",
-     "catch": "tier-2",
-     "note": "every other message on the branch got rewritten to the new convention: each one's path set is untouched, so tier 2 has its evidence for every one of them — and so does every weaker rung, which is the point of running them all against a history where there are many dead episodes and not one."
-    },
-    "dropped": {
-     "to": null,
-     "catch": "none",
-     "note": "two turns abandoned in the same rebase, in the middle of the run of reworded neighbours a guessing tier would happily reach for. Their verdicts belong to content that is gone; the report counts a landing here as a false relink and the cost is the reviewer's sign-off on a change that no longer exists, attached to one that does."
-    }
-   },
-   "note": "The hardest event the corpus runs on every history: a third to a half of the branch's episodes die at once, so a tie-break, a similarity or a hunch all have real competition. The single-death events elsewhere in the corpus are the honest unit of a tier's evidence; this one is the honest unit of a tier's judgement. The rule form of `expect` is used here because a claim that holds for every odd-ordinal turn is one claim, and writing it thirty-two times would be a transcription, not an annotation."
-  }
- ]
+  ]
 }

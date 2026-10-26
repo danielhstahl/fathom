@@ -25,7 +25,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
 
 # ADR-002 §8: everything here is a gate, so nothing here needs write access. `cargo-dist` asks for its
 # own, narrower permissions in `release.yml`.
@@ -202,6 +202,13 @@ jobs:
   # README quoting the URL the installers bake, and the captured plan still describing the config. `dist
   # generate --check` compares a workflow to its config; `check_release.py` compares the release to what
   # its users are told, and needs neither `dist` nor a network.
+  #
+  # The third and fourth steps are the version bump's own rules (`P01`-`P08` in `tools/release.py`): the
+  # seven places the one version has to arrive, checked offline, and the proof that those checks can fail.
+  # `check` is the aggregate CI cares about (a version in six of seven places is a red build, not a shrug);
+  # `self-test` is why it is trusted. This greenness is load-bearing beyond the pull request:
+  # `.github/workflows/publish.yml` cuts a release from the commit this job goes green on, so a version
+  # that only half-moved never reaches a tag.
   release-skeleton:
     name: release skeleton matches dist-workspace.toml
     runs-on: ubuntu-latest
@@ -216,6 +223,10 @@ jobs:
           python-version: "3.12"
       - name: The release path (R01-R17)
         run: python3 tools/check_release.py
+      - name: One version, seven places (P01-P08)
+        run: python3 tools/release.py check
+      - name: the version bump's negative controls
+        run: python3 tools/release.py self-test
       # The packager needs no toolchain to prove its own rules: `--self-test` builds a throwaway tree in
       # a temp directory and requires five corruptions of it to be refused.
       - name: the .deb/.rpm packager's negative controls

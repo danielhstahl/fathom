@@ -1,609 +1,506 @@
 {
- "schema": "fathom.turn-ground-truth/1",
- "history": "authored-review-cycle-resume",
- "provenance": "authored",
- "authoring": {
-  "annotated_by": "danielstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
-  "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
-  "annotated_on": "2026-10-17",
-  "derived_from": "the round-trip shape ADR-003 §4.3's `message-shape` row is written for: a turn, a person asks for changes, the agent comes back. Resumption gaps from the real corpus's own 33.6-minute within-turn pair and TB5's own hypothetical (a turn that pages a human and returns 40 minutes later); continuation markers are §4.4's published list.",
-  "shape": "review round-trips: continuation subjects (wip, fixup!, address review, typo, lint) at clock gaps of 1–180 minutes, including one turn that really is one turn across a 40-minute wait and one commit whose subject is the TB8 trap"
- },
- "source": {
-  "kind": "authored",
-  "commit_count": 16,
-  "extracted_by": "hand-authored; see authoring.derived_from"
- },
- "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
- "lineage": [
-  {
-   "oid": "78b773c44906a68b7977cf9d1b1de61360c1dfdc",
-   "parents": [],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000120000,
-   "at": "2025-10-09T08:55:20Z",
-   "subject": "feat: the flag parser",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t01",
-    "session_id": "review-cycle-resume"
-   }
+  "schema": "fathom.turn-ground-truth/1",
+  "history": "authored-review-cycle-resume",
+  "provenance": "authored",
+  "authoring": {
+    "annotated_by": "danielhstahl (loop session working reco-q6r), per crates/fathom-fixtures/corpus/turns/README.md §2",
+    "protocol": "corpus/turns/README.md §2; the turn each commit belongs to is stated by construction, before any rule is consulted",
+    "annotated_on": "2026-10-17",
+    "derived_from": "the round-trip shape ADR-003 §4.3's `message-shape` row is written for: a turn, a person asks for changes, the agent comes back. Resumption gaps from the real corpus's own 33.6-minute within-turn pair and TB5's own hypothetical (a turn that pages a human and returns 40 minutes later); continuation markers are §4.4's published list.",
+    "shape": "review round-trips: continuation subjects (wip, fixup!, address review, typo, lint) at clock gaps of 1–180 minutes, including one turn that really is one turn across a 40-minute wait and one commit whose subject is the TB8 trap"
   },
-  {
-   "oid": "604def72a1d613bdae90b9b90c27d1c0cf43d153",
-   "parents": [
-    "78b773c44906a68b7977cf9d1b1de61360c1dfdc"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000420000,
-   "at": "2025-10-09T09:00:20Z",
-   "subject": "feat: flag defaults",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs",
-    "src/defaults.rs"
-   ],
-   "n_files": 2,
-   "n_add": 66,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t01",
-    "session_id": "review-cycle-resume"
-   }
+  "source": {
+    "kind": "authored",
+    "commit_count": 16,
+    "extracted_by": "hand-authored; see authoring.derived_from"
   },
-  {
-   "oid": "eaf098055dadc22e34aa439e6d8221233f3fbf36",
-   "parents": [
-    "604def72a1d613bdae90b9b90c27d1c0cf43d153"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760000600000,
-   "at": "2025-10-09T09:03:20Z",
-   "subject": "docs: reword the flag help text",
-   "trailers": {},
-   "paths": [
-    "docs/concepts/config.md"
-   ],
-   "n_files": 1,
-   "n_add": 73,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t02",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "635bed96f2332ed9efbc2ed1a273483043833ca8",
-   "parents": [
-    "eaf098055dadc22e34aa439e6d8221233f3fbf36"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760000660000,
-   "at": "2025-10-09T09:04:20Z",
-   "subject": "address review on the flag parser",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 10,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t03",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "16de1ed190d42d2b8550f1c078f407c4d84bdaac",
-   "parents": [
-    "635bed96f2332ed9efbc2ed1a273483043833ca8"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760001200000,
-   "at": "2025-10-09T09:13:20Z",
-   "subject": "fix: the review missed the default path",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t03",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "01d52de2dc66c2805838391e95cf436b94c8d992",
-   "parents": [
-    "16de1ed190d42d2b8550f1c078f407c4d84bdaac"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003600000,
-   "at": "2025-10-09T09:53:20Z",
-   "subject": "reco-d52: resumed after the paging wait",
-   "trailers": {},
-   "paths": [
-    "src/pager.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t04",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "232d89a055338d04dc33f2e4fc5abf0c9d4419e9",
-   "parents": [
-    "01d52de2dc66c2805838391e95cf436b94c8d992"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760003960000,
-   "at": "2025-10-09T09:59:20Z",
-   "subject": "reco-d52: the paging wait, second half",
-   "trailers": {},
-   "paths": [
-    "src/pager.rs"
-   ],
-   "n_files": 1,
-   "n_add": 45,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t04",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "6a5e186cc0cbc347281fd5a32dc2f74201ef89f9",
-   "parents": [
-    "232d89a055338d04dc33f2e4fc5abf0c9d4419e9"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760004020000,
-   "at": "2025-10-09T10:00:20Z",
-   "subject": "add a lint rule for the new module",
-   "trailers": {},
-   "paths": [
-    "src/lints/no_std.rs"
-   ],
-   "n_files": 1,
-   "n_add": 17,
-   "n_del": 4,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t05",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "a9bfbe04bdf10f2812fa4880ef1d34ef9c55b39f",
-   "parents": [
-    "6a5e186cc0cbc347281fd5a32dc2f74201ef89f9"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760004140000,
-   "at": "2025-10-09T10:02:20Z",
-   "subject": "feat: the flag file loader",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs",
-    "src/toml.rs"
-   ],
-   "n_files": 2,
-   "n_add": 38,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t06",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "4933eb7d3083f9c8f57411bd31279a527cd07211",
-   "parents": [
-    "a9bfbe04bdf10f2812fa4880ef1d34ef9c55b39f"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760004320000,
-   "at": "2025-10-09T10:05:20Z",
-   "subject": "fix: loader on an empty file",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t06",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "b88718e0fb0d4c5e70371e7f35345ae4f0585160",
-   "parents": [
-    "4933eb7d3083f9c8f57411bd31279a527cd07211"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760004560000,
-   "at": "2025-10-09T10:09:20Z",
-   "subject": "test: loader cases",
-   "trailers": {},
-   "paths": [
-    "tests/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 59,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t06",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "8850461834f4f620de7599211620f8b0e340e244",
-   "parents": [
-    "b88718e0fb0d4c5e70371e7f35345ae4f0585160"
-   ],
-   "author_name": "dana",
-   "author_email": "dana@example.invalid",
-   "author_millis": 1760004680000,
-   "at": "2025-10-09T10:11:20Z",
-   "subject": "typo in the flag docs",
-   "trailers": {},
-   "paths": [
-    "docs/concepts/config.md"
-   ],
-   "n_files": 1,
-   "n_add": 80,
-   "n_del": 1,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t07",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "1a73015e6fc817f431b08ffe50c575245ca06b2d",
-   "parents": [
-    "8850461834f4f620de7599211620f8b0e340e244"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760004860000,
-   "at": "2025-10-09T10:14:20Z",
-   "subject": "address review: second round",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t08",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "8aea3829dafbeba2c456349979b75ff4f165e2e6",
-   "parents": [
-    "1a73015e6fc817f431b08ffe50c575245ca06b2d"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760010140000,
-   "at": "2025-10-09T11:42:20Z",
-   "subject": "address review: what survived the rebase",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs",
-    "src/toml.rs"
-   ],
-   "n_files": 2,
-   "n_add": 59,
-   "n_del": 0,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t08",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "997eaceea592ce75ebd6af343ff13c6ca05b1879",
-   "parents": [
-    "8aea3829dafbeba2c456349979b75ff4f165e2e6"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760010260000,
-   "at": "2025-10-09T11:44:20Z",
-   "subject": "fixup! feat: the flag parser",
-   "trailers": {},
-   "paths": [
-    "src/flags.rs"
-   ],
-   "n_files": 1,
-   "n_add": 52,
-   "n_del": 3,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t09",
-    "session_id": "review-cycle-resume"
-   }
-  },
-  {
-   "oid": "4c34fcf3fcd6e79ee91c44193a8263423dfade0d",
-   "parents": [
-    "997eaceea592ce75ebd6af343ff13c6ca05b1879"
-   ],
-   "author_name": "pi-agent",
-   "author_email": "pi-agent@example.invalid",
-   "author_millis": 1760010320000,
-   "at": "2025-10-09T11:45:20Z",
-   "subject": "reco-d53: explain the flag precedence",
-   "trailers": {},
-   "paths": [
-    "src/explain.rs"
-   ],
-   "n_files": 1,
-   "n_add": 38,
-   "n_del": 2,
-   "n_binary": 0,
-   "session_id": null,
-   "turn_id": null,
-   "merge": false,
-   "harness": {
-    "turn_id": "review-cycle-resume:t10",
-    "session_id": "review-cycle-resume"
-   }
+  "clock": "authored: gaps chosen from the distribution named in derived_from; the epoch is arbitrary and nothing reads it",
+  "lineage": [
+    {
+      "oid": "78b773c44906a68b7977cf9d1b1de61360c1dfdc",
+      "parents": [],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000120000,
+      "at": "2025-10-09T08:55:20Z",
+      "subject": "feat: the flag parser",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t01",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "604def72a1d613bdae90b9b90c27d1c0cf43d153",
+      "parents": ["78b773c44906a68b7977cf9d1b1de61360c1dfdc"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000420000,
+      "at": "2025-10-09T09:00:20Z",
+      "subject": "feat: flag defaults",
+      "trailers": {},
+      "paths": ["src/flags.rs", "src/defaults.rs"],
+      "n_files": 2,
+      "n_add": 66,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t01",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "eaf098055dadc22e34aa439e6d8221233f3fbf36",
+      "parents": ["604def72a1d613bdae90b9b90c27d1c0cf43d153"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760000600000,
+      "at": "2025-10-09T09:03:20Z",
+      "subject": "docs: reword the flag help text",
+      "trailers": {},
+      "paths": ["docs/concepts/config.md"],
+      "n_files": 1,
+      "n_add": 73,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t02",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "635bed96f2332ed9efbc2ed1a273483043833ca8",
+      "parents": ["eaf098055dadc22e34aa439e6d8221233f3fbf36"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760000660000,
+      "at": "2025-10-09T09:04:20Z",
+      "subject": "address review on the flag parser",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 10,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t03",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "16de1ed190d42d2b8550f1c078f407c4d84bdaac",
+      "parents": ["635bed96f2332ed9efbc2ed1a273483043833ca8"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760001200000,
+      "at": "2025-10-09T09:13:20Z",
+      "subject": "fix: the review missed the default path",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t03",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "01d52de2dc66c2805838391e95cf436b94c8d992",
+      "parents": ["16de1ed190d42d2b8550f1c078f407c4d84bdaac"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003600000,
+      "at": "2025-10-09T09:53:20Z",
+      "subject": "reco-d52: resumed after the paging wait",
+      "trailers": {},
+      "paths": ["src/pager.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t04",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "232d89a055338d04dc33f2e4fc5abf0c9d4419e9",
+      "parents": ["01d52de2dc66c2805838391e95cf436b94c8d992"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760003960000,
+      "at": "2025-10-09T09:59:20Z",
+      "subject": "reco-d52: the paging wait, second half",
+      "trailers": {},
+      "paths": ["src/pager.rs"],
+      "n_files": 1,
+      "n_add": 45,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t04",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "6a5e186cc0cbc347281fd5a32dc2f74201ef89f9",
+      "parents": ["232d89a055338d04dc33f2e4fc5abf0c9d4419e9"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760004020000,
+      "at": "2025-10-09T10:00:20Z",
+      "subject": "add a lint rule for the new module",
+      "trailers": {},
+      "paths": ["src/lints/no_std.rs"],
+      "n_files": 1,
+      "n_add": 17,
+      "n_del": 4,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t05",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "a9bfbe04bdf10f2812fa4880ef1d34ef9c55b39f",
+      "parents": ["6a5e186cc0cbc347281fd5a32dc2f74201ef89f9"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760004140000,
+      "at": "2025-10-09T10:02:20Z",
+      "subject": "feat: the flag file loader",
+      "trailers": {},
+      "paths": ["src/flags.rs", "src/toml.rs"],
+      "n_files": 2,
+      "n_add": 38,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t06",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "4933eb7d3083f9c8f57411bd31279a527cd07211",
+      "parents": ["a9bfbe04bdf10f2812fa4880ef1d34ef9c55b39f"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760004320000,
+      "at": "2025-10-09T10:05:20Z",
+      "subject": "fix: loader on an empty file",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t06",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "b88718e0fb0d4c5e70371e7f35345ae4f0585160",
+      "parents": ["4933eb7d3083f9c8f57411bd31279a527cd07211"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760004560000,
+      "at": "2025-10-09T10:09:20Z",
+      "subject": "test: loader cases",
+      "trailers": {},
+      "paths": ["tests/flags.rs"],
+      "n_files": 1,
+      "n_add": 59,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t06",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "8850461834f4f620de7599211620f8b0e340e244",
+      "parents": ["b88718e0fb0d4c5e70371e7f35345ae4f0585160"],
+      "author_name": "dana",
+      "author_email": "dana@example.invalid",
+      "author_millis": 1760004680000,
+      "at": "2025-10-09T10:11:20Z",
+      "subject": "typo in the flag docs",
+      "trailers": {},
+      "paths": ["docs/concepts/config.md"],
+      "n_files": 1,
+      "n_add": 80,
+      "n_del": 1,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t07",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "1a73015e6fc817f431b08ffe50c575245ca06b2d",
+      "parents": ["8850461834f4f620de7599211620f8b0e340e244"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760004860000,
+      "at": "2025-10-09T10:14:20Z",
+      "subject": "address review: second round",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t08",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "8aea3829dafbeba2c456349979b75ff4f165e2e6",
+      "parents": ["1a73015e6fc817f431b08ffe50c575245ca06b2d"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760010140000,
+      "at": "2025-10-09T11:42:20Z",
+      "subject": "address review: what survived the rebase",
+      "trailers": {},
+      "paths": ["src/flags.rs", "src/toml.rs"],
+      "n_files": 2,
+      "n_add": 59,
+      "n_del": 0,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t08",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "997eaceea592ce75ebd6af343ff13c6ca05b1879",
+      "parents": ["8aea3829dafbeba2c456349979b75ff4f165e2e6"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760010260000,
+      "at": "2025-10-09T11:44:20Z",
+      "subject": "fixup! feat: the flag parser",
+      "trailers": {},
+      "paths": ["src/flags.rs"],
+      "n_files": 1,
+      "n_add": 52,
+      "n_del": 3,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t09",
+        "session_id": "review-cycle-resume"
+      }
+    },
+    {
+      "oid": "4c34fcf3fcd6e79ee91c44193a8263423dfade0d",
+      "parents": ["997eaceea592ce75ebd6af343ff13c6ca05b1879"],
+      "author_name": "pi-agent",
+      "author_email": "pi-agent@example.invalid",
+      "author_millis": 1760010320000,
+      "at": "2025-10-09T11:45:20Z",
+      "subject": "reco-d53: explain the flag precedence",
+      "trailers": {},
+      "paths": ["src/explain.rs"],
+      "n_files": 1,
+      "n_add": 38,
+      "n_del": 2,
+      "n_binary": 0,
+      "session_id": null,
+      "turn_id": null,
+      "merge": false,
+      "harness": {
+        "turn_id": "review-cycle-resume:t10",
+        "session_id": "review-cycle-resume"
+      }
+    }
+  ],
+  "truth": {
+    "turns": [
+      {
+        "id": "t01",
+        "commits": ["78b773c44906", "604def72a1d6"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t01",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t02",
+        "commits": ["eaf098055dad"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t02",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t03",
+        "commits": ["635bed96f233", "16de1ed190d4"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t03",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t04",
+        "commits": ["01d52de2dc66", "232d89a05533"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t04",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t05",
+        "commits": ["6a5e186cc0cb"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t05",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t06",
+        "commits": ["a9bfbe04bdf1", "4933eb7d3083", "b88718e0fb0d"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t06",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t07",
+        "commits": ["8850461834f4"],
+        "author": "dana",
+        "kind": "human",
+        "turn": "t07",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t08",
+        "commits": ["1a73015e6fc8", "8aea3829dafb"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t08",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t09",
+        "commits": ["997eaceea592"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t09",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      },
+      {
+        "id": "t10",
+        "commits": ["4c34fcf3fcd6"],
+        "author": "pi-agent",
+        "kind": "agent",
+        "turn": "t10",
+        "session": "review-cycle-resume",
+        "joined_by": "authored",
+        "note": null
+      }
+    ],
+    "pathologies": [
+      {
+        "kind": "same_turn_rework",
+        "at": "16de1ed190d4",
+        "episode": "t03",
+        "requires": ["635bed96f233"],
+        "paths": ["src/flags.rs"],
+        "why": "the second fix is the first fix being wrong; two cards and the reviewer signs a parser twice without being told the first sign-off was against a broken version"
+      },
+      {
+        "kind": "same_turn_rework",
+        "at": "232d89a05533",
+        "episode": "t04",
+        "requires": ["01d52de2dc66"],
+        "paths": ["src/pager.rs"],
+        "why": "TB5's case in the corpus: one turn that waited 40 minutes for a person. The published gap cuts it, and only turn evidence — which nothing writes today — could keep it"
+      },
+      {
+        "kind": "same_turn_rework",
+        "at": "8aea3829dafb",
+        "episode": "t08",
+        "requires": ["1a73015e6fc8"],
+        "paths": ["src/flags.rs"],
+        "why": "88 minutes apart and one turn: the rebase aftermath belongs with what the rebase moved"
+      }
+    ],
+    "notes": [
+      "t05 is the TB8 trap: `add a lint rule` contains the continuation marker `lint` and must not be kept with whatever precedes it.",
+      "t09 (`fixup! feat: the flag parser`) keeps with t01 by §5.6's normalisation, which the corpus records as two turns: the fixup is a turn of its own that groups by identity, not by boundary."
+    ]
   }
- ],
- "truth": {
-  "turns": [
-   {
-    "id": "t01",
-    "commits": [
-     "78b773c44906",
-     "604def72a1d6"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t01",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t02",
-    "commits": [
-     "eaf098055dad"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t02",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t03",
-    "commits": [
-     "635bed96f233",
-     "16de1ed190d4"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t03",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t04",
-    "commits": [
-     "01d52de2dc66",
-     "232d89a05533"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t04",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t05",
-    "commits": [
-     "6a5e186cc0cb"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t05",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t06",
-    "commits": [
-     "a9bfbe04bdf1",
-     "4933eb7d3083",
-     "b88718e0fb0d"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t06",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t07",
-    "commits": [
-     "8850461834f4"
-    ],
-    "author": "dana",
-    "kind": "human",
-    "turn": "t07",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t08",
-    "commits": [
-     "1a73015e6fc8",
-     "8aea3829dafb"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t08",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t09",
-    "commits": [
-     "997eaceea592"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t09",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   },
-   {
-    "id": "t10",
-    "commits": [
-     "4c34fcf3fcd6"
-    ],
-    "author": "pi-agent",
-    "kind": "agent",
-    "turn": "t10",
-    "session": "review-cycle-resume",
-    "joined_by": "authored",
-    "note": null
-   }
-  ],
-  "pathologies": [
-   {
-    "kind": "same_turn_rework",
-    "at": "16de1ed190d4",
-    "episode": "t03",
-    "requires": [
-     "635bed96f233"
-    ],
-    "paths": [
-     "src/flags.rs"
-    ],
-    "why": "the second fix is the first fix being wrong; two cards and the reviewer signs a parser twice without being told the first sign-off was against a broken version"
-   },
-   {
-    "kind": "same_turn_rework",
-    "at": "232d89a05533",
-    "episode": "t04",
-    "requires": [
-     "01d52de2dc66"
-    ],
-    "paths": [
-     "src/pager.rs"
-    ],
-    "why": "TB5's case in the corpus: one turn that waited 40 minutes for a person. The published gap cuts it, and only turn evidence — which nothing writes today — could keep it"
-   },
-   {
-    "kind": "same_turn_rework",
-    "at": "8aea3829dafb",
-    "episode": "t08",
-    "requires": [
-     "1a73015e6fc8"
-    ],
-    "paths": [
-     "src/flags.rs"
-    ],
-    "why": "88 minutes apart and one turn: the rebase aftermath belongs with what the rebase moved"
-   }
-  ],
-  "notes": [
-   "t05 is the TB8 trap: `add a lint rule` contains the continuation marker `lint` and must not be kept with whatever precedes it.",
-   "t09 (`fixup! feat: the flag parser`) keeps with t01 by §5.6's normalisation, which the corpus records as two turns: the fixup is a turn of its own that groups by identity, not by boundary."
-  ]
- }
 }

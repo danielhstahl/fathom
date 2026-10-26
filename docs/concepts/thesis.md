@@ -5,7 +5,7 @@
 | **Status** | Accepted (draft 1). One open item: harness-owner ACK on the non-goal boundary (§8), requested in a comment on `reco-982`. |
 | **Date** | 2026-10-14 |
 | **Ticket** | `reco-982` (plan key `e0.1`) |
-| **Deciders** | danielstahl (product + coding-harness owner) |
+| **Deciders** | danielhstahl (product + coding-harness owner) |
 | **Supersedes** | nothing — this is the first document |
 | **Referenced by** | every later ticket; ADR-002…ADR-006 in particular |
 
@@ -922,9 +922,9 @@ Tracked, not hidden. Each is owned by the named ticket; none blocks ADR-001 acce
 
 | Item | Reviewer | Status | Date |
 |---|---|---|---|
-| Thesis (§1), falsifiability list (§6), principles (§7) | danielstahl (product owner) | **accepted** | 2026-10-14 |
-| Persona (§2), core nouns (§4.1), metric contract (§5) | danielstahl (product owner) | **accepted** | 2026-10-14 |
-| Non-goal boundary vs the coding harness (§8) | danielstahl (coding-harness owner) | **proposed — explicit ACK requested on `reco-982`** | — |
+| Thesis (§1), falsifiability list (§6), principles (§7) | danielhstahl (product owner) | **accepted** | 2026-10-14 |
+| Persona (§2), core nouns (§4.1), metric contract (§5) | danielhstahl (product owner) | **accepted** | 2026-10-14 |
+| Non-goal boundary vs the coding harness (§8) | danielhstahl (coding-harness owner) | **proposed — explicit ACK requested on `reco-982`** | — |
 
 The non-goal boundary is derived from the harness owner's own framing of this project: *Fathom lives
 alongside a coding harness, and this project plus the harness is together sufficient for a human to

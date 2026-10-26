@@ -55,8 +55,8 @@
   ],
   "hosting": {
     "artifact_base_url": "https://github.com",
-    "artifact_download_path": "/danielstahl/fathom/releases/download/v0.1.0-alpha.1",
-    "owner": "danielstahl",
+    "artifact_download_path": "/danielhstahl/fathom/releases/download/v0.1.0-alpha.1",
+    "owner": "danielhstahl",
     "repo": "fathom"
   },
   "installer_env": [
@@ -101,24 +101,13 @@
       "what": "the unmanaged-install directory"
     }
   ],
-  "installers": [
-    "homebrew",
-    "msi",
-    "powershell",
-    "shell"
-  ],
+  "installers": ["homebrew", "msi", "powershell", "shell"],
   "pr_run_mode": "upload",
   "targets": [
     {
       "archive": "fathom-cli-aarch64-apple-darwin.tar.xz",
       "checksum": "fathom-cli-aarch64-apple-darwin.tar.xz.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=aarch64-apple-darwin",
       "runner": "macos-14",
       "triple": "aarch64-apple-darwin"
@@ -126,13 +115,7 @@
     {
       "archive": "fathom-cli-aarch64-unknown-linux-gnu.tar.xz",
       "checksum": "fathom-cli-aarch64-unknown-linux-gnu.tar.xz.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=aarch64-unknown-linux-gnu",
       "runner": "ubuntu-24.04-arm",
       "triple": "aarch64-unknown-linux-gnu"
@@ -140,13 +123,7 @@
     {
       "archive": "fathom-cli-x86_64-apple-darwin.tar.xz",
       "checksum": "fathom-cli-x86_64-apple-darwin.tar.xz.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=x86_64-apple-darwin",
       "runner": "macos-15-intel",
       "triple": "x86_64-apple-darwin"
@@ -154,13 +131,7 @@
     {
       "archive": "fathom-cli-x86_64-pc-windows-msvc.zip",
       "checksum": "fathom-cli-x86_64-pc-windows-msvc.zip.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=x86_64-pc-windows-msvc",
       "runner": "windows-2022",
       "triple": "x86_64-pc-windows-msvc"
@@ -168,13 +139,7 @@
     {
       "archive": "fathom-cli-x86_64-unknown-linux-gnu.tar.xz",
       "checksum": "fathom-cli-x86_64-unknown-linux-gnu.tar.xz.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=x86_64-unknown-linux-gnu",
       "runner": "ubuntu-22.04",
       "triple": "x86_64-unknown-linux-gnu"
@@ -182,13 +147,7 @@
     {
       "archive": "fathom-cli-x86_64-unknown-linux-musl.tar.xz",
       "checksum": "fathom-cli-x86_64-unknown-linux-musl.tar.xz.sha256",
-      "contents": [
-        "CHANGELOG.md",
-        "README.md",
-        "completions",
-        "fathom",
-        "man"
-      ],
+      "contents": ["CHANGELOG.md", "README.md", "completions", "fathom", "man"],
       "dist_args": "--artifacts=local --target=x86_64-unknown-linux-musl",
       "runner": "ubuntu-22.04",
       "triple": "x86_64-unknown-linux-musl"

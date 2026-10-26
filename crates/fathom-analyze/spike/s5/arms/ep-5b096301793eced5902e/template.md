@@ -1,6 +1,6 @@
 reco-279: spike s3 — what a graph-per-revision actually costs at 10k commits, measured five ways, and the snapshot policy that closed ADR-004 §14.1 (s3) [c1].
 
-Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

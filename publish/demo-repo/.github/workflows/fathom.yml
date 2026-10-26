@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   gate:
-    uses: danielstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
+    uses: danielhstahl/fathom/.github/workflows/fathom-check.yml@v1.0.0
     with:
       # Reporting, not blocking: the exhibit is the finding, not a red tick. And `fail-on` has to stay
       # empty for that sentence to be true — the CLI treats a named threshold as meaning it, and promotes a

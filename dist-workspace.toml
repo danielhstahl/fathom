@@ -84,12 +84,12 @@ dispatch-releases = true
 source-tarball = true
 
 # The Homebrew tap to publish the formula to. Conventional: the repo name starts with `homebrew-`, and
-# `brew install danielstahl/fathom/fathom` drops the prefix. Like `package.repository` (ADR-002 §10.3)
+# `brew install danielhstahl/fathom/fathom` drops the prefix. Like `package.repository` (ADR-002 §10.3)
 # this is a **placeholder** — the public remote does not exist yet — and it is the reason
 # `publish-jobs` is commented out below rather than set: the formula is a release artefact today, and
 # publishing it needs a repository and a maintainer-only token (`HOMEBREW_TAP_TOKEN`) that a fork cannot
 # have. `tools/check_release.py` R15 fails if the two ever disagree.
-tap = "danielstahl/homebrew-fathom"
+tap = "danielhstahl/homebrew-fathom"
 # The formula is `fathom`, not `fathom-cli`: the crate is a package name and the thing a person types is
 # `brew install fathom`. `formula` is the one line that keeps the two apart.
 formula = "fathom"
