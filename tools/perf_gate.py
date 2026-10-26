@@ -179,10 +179,16 @@ COVERAGE: dict[str, tuple[str, str]] = {
     "ingest.file_size_cap.mib": ("`crates/fathom-ingest/tests/memory_cap.rs`", "the cap is asserted as a bound, not benched"),
     # --- size on disk -----------------------------------------------------------------
     "store.size.mib": ("this harness", "`stat` of the whole store file after the cold run"),
-    "store.bytes_per_commit_spine": ("this harness", "`dbstat` pages of the spine tables, over the commit count"),
-    "store.bytes_per_commit_graph": ("not measured yet",
-                                     "`s3` measured 22 335 B/revision on a prototype, and `e3.2` owns "
-                                     "the lane that has to fit it"),
+    "store.bytes_per_commit_spine": ("this harness", "`dbstat` pages of the commit tables "
+                                                    "(`git_commit`, `git_commit_file`, `ref_tip` and their "
+                                                    "indexes) over the commit count; the graph lane, the "
+                                                    "cache and the episode/blob rows are charged elsewhere "
+                                                    "(`reco-7yq`)"),
+    "store.bytes_per_commit_graph": ("this harness",
+                                     "`dbstat` pages of the `graph_*` lane over the revisions the lane "
+                                     "holds, so the denominator is the revision `s3` measured "
+                                     "(22 335 B/revision, ADR-004 §13.7) and not a commit of history; "
+                                     "pages, so it is an upper bound on the payload basis §13.7 quotes"),
     "cache.budget.mib": ("not measured yet", "needs cache rows in the store; `e1.4` writes them"),
     "store.wal_cap.mib": ("not measured yet",
                           "`e1.2`'s writer owns the WAL watermark (ADR-004 §7.4): a size at which a "
@@ -216,7 +222,9 @@ COVERAGE: dict[str, tuple[str, str]] = {
                                 "build. Beside it, unbudgeted, `cache.rows_read_pct`: the share of "
                                 "stored rows an answer was ever read out of (`reco-3sa`)"),
     "store.bytes_per_file_row_spine": ("tools/perf_realrepo.py",
-                                       "`dbstat` pages of the spine tables over the file rows they hold")
+                                       "`dbstat` pages of the commit tables over the file rows they "
+                                       "hold (since `reco-7yq`, which took the graph lane out of the "
+                                       "numerator)")
 }
 
 
@@ -240,7 +248,12 @@ def measurement_plan() -> list[dict]:
                 "of 5 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the "
                 "whole-process time is quoted beside it"},
         {"id": "store.bytes_per_commit_spine.small", "budget": "store.bytes_per_commit_spine.small",
-         "how": "`dbstat` pages of the spine tables over the commit count; cache rows are not charged"},
+         "how": "`dbstat` pages of the commit tables over the commit count; the graph lane, the cache "
+                "rows and the episode/blob rows are not charged here (`reco-7yq`)"},
+        {"id": "store.bytes_per_commit_graph.small", "budget": "store.bytes_per_commit_graph.small",
+         "how": "`dbstat` pages of the `graph_*` lane over the revisions the lane holds — a revision, "
+                "because §11.6's byte model is `s3`'s per-revision measurement and the lane is a "
+                "coverage window, not the history (`reco-7yq`)"},
         {"id": "store.size.mib.small", "budget": "store.size.mib.small",
          "how": "the whole `.fathom/index.sqlite3`, cache included"},
         {"id": "query.metrics.ms.small", "budget": "query.metrics.ms.small",
@@ -436,9 +449,13 @@ def noise_floor(row: "Measurement", base: float,
     A floor is a statement about the noisiest thing in the measurement, so the widest of these wins; a
     constant chosen for the noisiest probe in the suite is a blindfold on the quiet ones, which is why
     it is the last resort and not the rule. A deterministic reading does not buy its way out of the
-    constant either: what varies on the byte counters is not the reading but the run — how much of the
-    graph lane one gate run happens to write moves `store.bytes_per_commit_spine.small` by more than a
-    fifth, which is `reco-7yq`'s denominator talking.
+    constant either: what varies on the byte counters is the run, not the reading.
+    `store.bytes_per_commit_spine.small` used to move by more than a fifth between sample counts,
+    because the graph lane was billed to it and how much of the lane a store holds depends on how many
+    index runs made it; `reco-7yq` moved the lane to a row of its own with a denominator that moves
+    with it, and read the byte split off the store a cold index leaves, which is why the two store rows
+    now repeat byte for byte across runs of one tree. `store.size.mib.small` is still blessed without a
+    floor of its own, so the constant is what guards it.
     """
     candidates: list[tuple[float, str]] = []
     if row.noise is not None:
@@ -759,6 +776,55 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                        "rss.cold_index.peak_mib.small", None,
                        how="VmHWM of the index child, sampled while it ran", scaled=False))
 
+    # --- size on disk ------------------------------------------------------------------
+    # The split is taken on the store a cold index leaves, before the warm commits, for one reason:
+    # the graph lane is a coverage window that successive index runs settle deeper into, so a number
+    # read after the warm phase moves with how many index runs this harness happened to make — which
+    # is the confound `reco-7yq` was filed about, in a new place. A cold store is a function of the
+    # corpus and the configuration and of nothing else, and two fresh gate runs of one tree report the
+    # same bytes for it.
+    commits = int(M.git(fixture, "rev-list", "--all", "--count"))
+    split = M.store_split(harness.store)
+    spine, graph, total = split["spine"], split["graph"], split["total"]
+    lane = M.graph_lane_basis(harness.store)
+    if spine is None:
+        record(Measurement("store.bytes_per_commit_spine.small", "bytes", None,
+                           "store.bytes_per_commit_spine.small",
+                           blocked_by="this SQLite build has no `dbstat`, so the store cannot be split "
+                                      "into §11.6's denominators; the whole file is still measured"))
+        record(Measurement("store.bytes_per_commit_graph.small", "bytes", None,
+                           "store.bytes_per_commit_graph.small",
+                           blocked_by="the same: no `dbstat`, so the lane's pages cannot be counted"))
+    else:
+        record(Measurement("store.bytes_per_commit_spine.small", "bytes", spine // max(1, commits),
+                           "store.bytes_per_commit_spine.small",
+                           how=f"{spine:,} spine bytes — `git_commit`, `git_commit_file`, `ref_tip` "
+                               f"and their indexes — over {commits} commits, `dbstat` pages of the "
+                               f"store a cold index leaves; the same file holds {graph:,} bytes of graph "
+                               f"lane, {split['cache']:,} of cache and session rows and "
+                               f"{split['other']:,} of episodes, blobs and ledger, and none of them are "
+                               "charged here (`reco-7yq`)",
+                           scaled=False))
+        record(Measurement("store.bytes_per_commit_graph.small", "bytes",
+                           graph // lane["revisions"] if lane.get("revisions") else None,
+                           "store.bytes_per_commit_graph.small",
+                           blocked_by=None if lane.get("revisions") else
+                           "the lane holds no snapshots (`graph.enabled`? a `--no-graph` run?), so there "
+                           "is no revision to divide its bytes by",
+                           how=f"{graph:,} `dbstat` bytes of `graph_*` over the {lane['revisions']} "
+                               f"revisions the lane holds after one cold index ({lane['anchors']} full "
+                               f"snapshots, {lane['deltas']} delta rows). The denominator is a revision, "
+                               "as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in §13.7 — not "
+                               f"a commit of history: over the {commits} commits in the fixture this is "
+                               f"{graph // max(1, commits):,} B/commit, and that quotient falls as a "
+                               "repository ages, because the lane is a window and not a ledger "
+                               "(`reco-7yq`)",
+                           scaled=False))
+    record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
+                       "store.size.mib.small",
+                       how="the whole `.fathom/index.sqlite3`, as the cold index left it",
+                       scaled=False))
+
     # --- warm: one new commit, then the same verb again -------------------------------------
     warm, warm_rss = [], 0
     for index in range(harness.samples):
@@ -798,24 +864,6 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
              f"{len(noop_wall)} runs timed fork to exit are {round(p95(noop_wall), 1)} ms, which is the "
              "toll every verb pays: process start, `Repository::discover`, `Store::open`")))
 
-    # --- size on disk ----------------------------------------------------------------------
-    commits = int(M.git(fixture, "rev-list", "--all", "--count"))
-    split = M.store_split(harness.store)
-    spine, total = split["spine"], split["total"]
-    if spine is None:
-        record(Measurement("store.bytes_per_commit_spine.small", "bytes", None,
-                           "store.bytes_per_commit_spine.small",
-                           blocked_by="this SQLite build has no `dbstat`, so the spine cannot be "
-                                      "split from the cache; the whole file is still measured"))
-    else:
-        record(Measurement("store.bytes_per_commit_spine.small", "bytes", spine // max(1, commits),
-                           "store.bytes_per_commit_spine.small",
-                           how=f"{spine:,} spine bytes over {commits} commits, `dbstat` pages; "
-                               f"{split['cache']:,} more bytes of cache and session rows are not charged here",
-                               scaled=False))
-    record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
-                       "store.size.mib.small",
-                       how="the whole `.fathom/index.sqlite3`", scaled=False))
     # --- the query families the shipped verbs can answer -----------------------------------
     # These two probes are the reason `reco-dkr` exists: at ~15 ms a ±15 % ratchet is ±2 ms, which is
     # smaller than the noise a three-sample probe can produce, so the same tree went red and green on
@@ -1332,7 +1380,7 @@ def self_test() -> int:
     ids = ["cold.index.ms.small", "warm.reindex.ms.small", "warm.reindex.noop.ms.small",
            "query.timeline.ms.small", "query.card.ms.small", "query.diff_open.ms.small",
            "query.metrics.ms.small", "rss.cold_index.peak_mib.small", "rss.tui.mib.small",
-           "store.bytes_per_commit_spine.small"]
+           "store.bytes_per_commit_spine.small", "store.bytes_per_commit_graph.small"]
     blessed, clean = {}, []
     for budget_id in ids:
         row = budgets[budget_id]

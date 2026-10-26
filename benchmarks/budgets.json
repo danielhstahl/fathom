@@ -1192,7 +1192,7 @@
    "budget": 4096,
    "family": "store.bytes_per_commit_spine",
    "id": "store.bytes_per_commit_spine.small",
-   "rationale": "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk).",
+   "rationale": "The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness charges exactly those three tables and their indexes and measures 1 466 B/commit on the 500-commit fixture; before it, every non-cache table \u2014 the graph lane, the blobs, the episode rows \u2014 was billed here, which is how a budget about the commit tables went red while the commit tables sat at a third of their ceiling (ADR-004 \u00a711.10). The 4 KiB is now what \u00a711.6 always said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` adds, with the lane on its own account below.",
    "size_class": "small",
    "statistic": "p50",
    "unit": "bytes"
@@ -1201,7 +1201,7 @@
    "budget": 4096,
    "family": "store.bytes_per_commit_spine",
    "id": "store.bytes_per_commit_spine.medium",
-   "rationale": "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk).",
+   "rationale": "The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness charges exactly those three tables and their indexes and measures 1 466 B/commit on the 500-commit fixture; before it, every non-cache table \u2014 the graph lane, the blobs, the episode rows \u2014 was billed here, which is how a budget about the commit tables went red while the commit tables sat at a third of their ceiling (ADR-004 \u00a711.10). The 4 KiB is now what \u00a711.6 always said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` adds, with the lane on its own account below.",
    "size_class": "medium",
    "statistic": "p50",
    "unit": "bytes"
@@ -1210,7 +1210,7 @@
    "budget": 4096,
    "family": "store.bytes_per_commit_spine",
    "id": "store.bytes_per_commit_spine.large",
-   "rationale": "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk).",
+   "rationale": "The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness charges exactly those three tables and their indexes and measures 1 466 B/commit on the 500-commit fixture; before it, every non-cache table \u2014 the graph lane, the blobs, the episode rows \u2014 was billed here, which is how a budget about the commit tables went red while the commit tables sat at a third of their ceiling (ADR-004 \u00a711.10). The 4 KiB is now what \u00a711.6 always said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` adds, with the lane on its own account below.",
    "size_class": "large",
    "statistic": "p50",
    "unit": "bytes"
@@ -1219,7 +1219,7 @@
    "budget": 4096,
    "family": "store.bytes_per_commit_spine",
    "id": "store.bytes_per_commit_spine.xlarge",
-   "rationale": "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk).",
+   "rationale": "The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness charges exactly those three tables and their indexes and measures 1 466 B/commit on the 500-commit fixture; before it, every non-cache table \u2014 the graph lane, the blobs, the episode rows \u2014 was billed here, which is how a budget about the commit tables went red while the commit tables sat at a third of their ceiling (ADR-004 \u00a711.10). The 4 KiB is now what \u00a711.6 always said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` adds, with the lane on its own account below.",
    "size_class": "xlarge",
    "statistic": "p50",
    "unit": "bytes"
@@ -1228,7 +1228,7 @@
    "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.small",
-   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then \u2014 measured on the fixture since `reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload basis, which is the smaller quantity and never mixed with pages. The denominator is a revision the lane holds, not a commit of history: the lane is a coverage window (\u00a78.5), so a per-commit quotient falls as a repository ages and describes nothing but the corpus's age.",
    "size_class": "small",
    "statistic": "p50",
    "unit": "bytes"
@@ -1237,7 +1237,7 @@
    "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.medium",
-   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then \u2014 measured on the fixture since `reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload basis, which is the smaller quantity and never mixed with pages. The denominator is a revision the lane holds, not a commit of history: the lane is a coverage window (\u00a78.5), so a per-commit quotient falls as a repository ages and describes nothing but the corpus's age.",
    "size_class": "medium",
    "statistic": "p50",
    "unit": "bytes"
@@ -1246,7 +1246,7 @@
    "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.large",
-   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then \u2014 measured on the fixture since `reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload basis, which is the smaller quantity and never mixed with pages. The denominator is a revision the lane holds, not a commit of history: the lane is a coverage window (\u00a78.5), so a per-commit quotient falls as a repository ages and describes nothing but the corpus's age.",
    "size_class": "large",
    "statistic": "p50",
    "unit": "bytes"
@@ -1255,7 +1255,7 @@
    "budget": 32768,
    "family": "store.bytes_per_commit_graph",
    "id": "store.bytes_per_commit_graph.xlarge",
-   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then.",
+   "rationale": "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 \u00a713.7). 32 KiB is that measurement with 1.47\u00d7 headroom \u2014 the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then \u2014 measured on the fixture since `reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload basis, which is the smaller quantity and never mixed with pages. The denominator is a revision the lane holds, not a commit of history: the lane is a coverage window (\u00a78.5), so a per-commit quotient falls as a repository ages and describes nothing but the corpus's age.",
    "size_class": "xlarge",
    "statistic": "p50",
    "unit": "bytes"

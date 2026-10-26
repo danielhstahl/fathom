@@ -86,9 +86,9 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `rss.daemon.mib` | MiB | peak | 150.0 | 220.0 | 320.0 | 480.0 | not measured yet | no daemon before `e6.3` |
 | `rss.sqlite_page_cache.mib` | MiB | cap | 8.0 | 8.0 | 16.0 | 16.0 | not measured yet | `fathom-store`'s connection factory applies `PRAGMA cache_size` (ADR-004 §7's pragmas, landed with `e1.2`'s migration); no query path can observe a page cache, so it is a config assertion |
 | `rss.tui.mib` | MiB | peak | 120.0 | 180.0 | 260.0 | 400.0 | this harness | `VmHWM` of the TUI child, sampled after every keystroke |
-| `store.bytes_per_commit_graph` | bytes | p50 | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | not measured yet | `s3` measured 22 335 B/revision on a prototype, and `e3.2` owns the lane that has to fit it |
-| `store.bytes_per_commit_spine` | bytes | p50 | 4,096.0 | 4,096.0 | 4,096.0 | 4,096.0 | this harness | `dbstat` pages of the spine tables, over the commit count |
-| `store.bytes_per_file_row_spine` | bytes | p50 per file row | 3,072.0 | 3,072.0 | 3,072.0 | 3,072.0 | tools/perf_realrepo.py | `dbstat` pages of the spine tables over the file rows they hold |
+| `store.bytes_per_commit_graph` | bytes | p50 | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | this harness | `dbstat` pages of the `graph_*` lane over the revisions the lane holds, so the denominator is the revision `s3` measured (22 335 B/revision, ADR-004 §13.7) and not a commit of history; pages, so it is an upper bound on the payload basis §13.7 quotes |
+| `store.bytes_per_commit_spine` | bytes | p50 | 4,096.0 | 4,096.0 | 4,096.0 | 4,096.0 | this harness | `dbstat` pages of the commit tables (`git_commit`, `git_commit_file`, `ref_tip` and their indexes) over the commit count; the graph lane, the cache and the episode/blob rows are charged elsewhere (`reco-7yq`) |
+| `store.bytes_per_file_row_spine` | bytes | p50 per file row | 3,072.0 | 3,072.0 | 3,072.0 | 3,072.0 | tools/perf_realrepo.py | `dbstat` pages of the commit tables over the file rows they hold (since `reco-7yq`, which took the graph lane out of the numerator) |
 | `store.size.mib` | MiB | ceiling | 400.0 | 2,048.0 | 8,192.0 | 24,576.0 | this harness | `stat` of the whole store file after the cold run |
 | `store.wal_cap.mib` | MiB | cap | 64.0 | 64.0 | 128.0 | 128.0 | not measured yet | `e1.2`'s writer owns the WAL watermark (ADR-004 §7.4): a size at which a warning fires is asserted by the writer's tests, not benched |
 | `warm.graph.marginal.ms` | ms | p95 | 50.0 | 60.0 | 80.0 | 120.0 | not measured yet | the graph lane is `e3.2`'s and is not built; `s3` measured its prototype floor (0.68 ms p50 / 33 ms p95 per revision) |
@@ -118,7 +118,8 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 | `warm.reindex.ms.small` | `warm.reindex.ms.small` | one new commit with unique content, then `fathom index`, p95 of 3 |
 | `rss.warm_reindex.peak_mib.small` | — | `VmHWM` of the warm index child (trend: no budget names the warm path's RSS alone) |
 | `warm.reindex.noop.ms.small` | `warm.reindex.noop.ms.small` | the run's own store-side `elapsed_ms` from `fathom index --json` with nothing new, p95 of 5 — the walk, the analyses and the episode rebuild are skipped (`reco-7tc`), and the whole-process time is quoted beside it |
-| `store.bytes_per_commit_spine.small` | `store.bytes_per_commit_spine.small` | `dbstat` pages of the spine tables over the commit count; cache rows are not charged |
+| `store.bytes_per_commit_spine.small` | `store.bytes_per_commit_spine.small` | `dbstat` pages of the commit tables over the commit count; the graph lane, the cache rows and the episode/blob rows are not charged here (`reco-7yq`) |
+| `store.bytes_per_commit_graph.small` | `store.bytes_per_commit_graph.small` | `dbstat` pages of the `graph_*` lane over the revisions the lane holds — a revision, because §11.6's byte model is `s3`'s per-revision measurement and the lane is a coverage window, not the history (`reco-7yq`) |
 | `store.size.mib.small` | `store.size.mib.small` | the whole `.fathom/index.sqlite3`, cache included |
 | `query.metrics.ms.small` | `query.metrics.ms.small` | `fathom stats --json`, p95 of 5 — the verb the budget names |
 | `query.card.ms.cli.small` | `query.card.ms.small` | `fathom show --json HEAD~7`: the card's read end to end, p95 of 5 |
@@ -147,7 +148,7 @@ closes — which is when the budget starts gating again.
 
 | measurement | budget | ceiling | owner | expires | why |
 |---|---|---|---|---|---|
-| `store.bytes_per_commit_spine.small` | 4,096 | 10,500 (1.15 × tolerance) | `reco-7yq` | 2026-12-15 | the harness bills every non-cache table to a budget whose byte model is the commit tables: on this corpus at the epic's close `graph_*` is 6,865 B/commit of the ~8,275 measured (49.8 % of the store is the graph lane), while `git_commit` + `git_commit_file` + `ref_tip` are 1,376 B/commit. The number also moves with how much of the lane one gate run happens to write (8,289 at 3 samples, 10,446 at 5), which is the same defect talking. ADR-004 §11.6 gives the lane its own budget (`store.bytes_per_commit_graph`, 32 KiB/revision) and `perf_gate.py` has never measured it. ADR-004 §11.10; delete this row when reco-7yq gives `store_split` the ADR's three denominators. |
+| (none) | — | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
 
 ## Proving the gate can fail
 

@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 import perf_gate as G  # noqa: E402
+import mvp_acceptance as M  # noqa: E402  (the dbstat split the store budgets are computed from)
 
 BUDGETS_MD = ROOT / "benchmarks" / "BUDGETS.md"
 BUDGETS_JSON = ROOT / "benchmarks" / "budgets.json"
@@ -437,6 +438,107 @@ def test_a_verb_that_flaps_between_two_modes_is_not_a_regression_on_its_centre()
         "the same tree was judged on which mode its three samples landed in: "
         + "; ".join(v.detail for v in verdicts if v.failed))
     assert verdicts[0].resolves, "a run whose centre did not move is a clean read, not a shrug"
+
+
+# ---------------------------------------------------------------------------------------------
+# The store's denominators (`reco-7yq`): §11.6 budgets the commit tables and the graph lane
+# separately, so the split those budgets are computed from has to tell them apart — and an index has
+# to be charged to the table it indexes, not to whatever its name happens to start with.
+# ---------------------------------------------------------------------------------------------
+
+#: Every page the synthetic store below creates, and the denominator §11.6 says it belongs to.
+STORE_PAGES = {
+    "git_commit": "spine", "git_commit_file": "spine", "ref_tip": "spine",
+    # An index named after neither table, which a name-prefix rule loses: `sqlite_master` knows it is
+    # `git_commit`'s, and the spine budget is a claim about `git_commit`.
+    "commit_tree": "spine", "sqlite_autoindex_git_commit_1": "spine",
+    "graph_snapshot": "graph", "graph_snapshot_base": "graph", "graph_delta": "graph",
+    "graph_chunk": "graph", "sqlite_autoindex_graph_chunk_1": "graph",
+    "sqlite_autoindex_graph_snapshot_1": "graph",
+    "cache": "cache", "cache_input": "cache", "session_state": "cache",
+    "sqlite_autoindex_cache_1": "cache", "sqlite_autoindex_session_state_1": "cache",
+    "sqlite_autoindex_ref_tip_1": "spine",
+    "blob": "other", "sqlite_autoindex_blob_1": "other",
+    "episode": "other", "sqlite_autoindex_episode_1": "other",
+    "meta": "other", "sqlite_autoindex_meta_1": "other", "sqlite_schema": "other",
+}
+
+
+def _synthetic_store(tmp_path: Path) -> Path:
+    """A store-shaped file: §11.6's tables, their indexes, and enough rows to own pages."""
+    import sqlite3
+
+    db = tmp_path / "index.sqlite3"
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        "CREATE TABLE git_commit (oid TEXT PRIMARY KEY, subject TEXT, tree TEXT);"
+        "CREATE INDEX commit_tree ON git_commit (tree);"
+        "CREATE TABLE git_commit_file (oid TEXT, path TEXT);"
+        "CREATE TABLE ref_tip (name TEXT PRIMARY KEY, oid TEXT);"
+        "CREATE TABLE graph_snapshot (tree_oid TEXT PRIMARY KEY, kind TEXT);"
+        "CREATE INDEX graph_snapshot_base ON graph_snapshot (kind);"
+        "CREATE TABLE graph_delta (src TEXT, dst TEXT, kind TEXT);"
+        "CREATE TABLE graph_chunk (sha256 TEXT PRIMARY KEY, kind TEXT);"
+        "CREATE TABLE cache (analyzer TEXT, key TEXT PRIMARY KEY, blob TEXT);"
+        "CREATE TABLE cache_input (key TEXT, part TEXT);"
+        "CREATE TABLE session_state (key TEXT PRIMARY KEY, value TEXT);"
+        "CREATE TABLE blob (sha256 TEXT PRIMARY KEY, bytes INTEGER);"
+        "CREATE TABLE episode (oid TEXT PRIMARY KEY);"
+        "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);")
+    conn.executemany("INSERT INTO git_commit VALUES (?, ?, ?)",
+                     [(f"{i:040}", f"subject {i}", f"{i + 1:040}") for i in range(400)])
+    conn.executemany("INSERT INTO graph_delta VALUES (?, ?, ?)",
+                     [(f"{i:040}", f"{i + 1:040}", "edit") for i in range(400)])
+    conn.executemany("INSERT INTO cache VALUES (?, ?, ?)",
+                     [("diff.per_file", f"{i:040}", "x" * 200) for i in range(400)])
+    conn.commit()
+    conn.close()
+    return db
+
+
+def _synthetic_owners(db: Path) -> list[tuple[str, str]]:
+    import sqlite3
+
+    connection = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        return list(connection.execute(
+            "SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND name IS NOT NULL"))
+    finally:
+        connection.close()
+
+
+def test_the_store_split_partitions_the_file_into_the_adrs_denominators(tmp_path):
+    """`store.bytes_per_commit_spine` charges the commit tables and nothing else (`reco-7yq`)."""
+    db = _synthetic_store(tmp_path)
+    split = M.store_split(db)
+    assert split["spine"], "the spine came out of the split empty"
+    assert split["graph"], "the graph lane came out of the split empty — then it is still in the spine"
+    owners = dict(_synthetic_owners(db))
+    assert {name: M.store_bucket(name, owners) for name in split["tables"]} == STORE_PAGES, (
+        "a `dbstat` page was charged to the wrong denominator")
+    for bucket in ("spine", "graph", "cache", "other"):
+        expected = sum(size for name, size in split["tables"].items()
+                       if STORE_PAGES[name] == bucket)
+        assert split[bucket] == expected, f"{bucket} does not sum over its own pages"
+    assert split["spine"] + split["graph"] + split["cache"] + split["other"] == split["total"], (
+        "the four buckets are not a partition of the file")
+    # The defect this is a regression test for, named: the lane used to be *not-cache*, and *not-cache*
+    # was called the spine. This assert is the difference between the two byte models.
+    assert split["spine"] < split["total"] - split["cache"]
+
+
+def test_the_graph_lane_is_measured_now_that_it_has_a_budget_of_its_own():
+    """A budget on the books and a number nobody measures is a budget nobody fails (§11.7)."""
+    coverage = G.coverage()
+    for family in ("store.bytes_per_commit_spine", "store.bytes_per_commit_graph"):
+        assert coverage[family][0] != "not measured yet", (
+            f"{family}: {coverage[family][1]} — §11.6 budgets it, so the gate has to charge it")
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    for ident in ("store.bytes_per_commit_spine.small", "store.bytes_per_commit_graph.small"):
+        row = blessed.get(ident)
+        assert row, f"{ident} is not blessed: the gate measures it and the baseline does not believe it"
+        assert row["scaled"] is False, f"{ident}: bytes on disk are not a machine property"
+        assert row["value"] > 0, f"{ident}: a blessed zero is a measurement that can never fail"
 
 
 def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():

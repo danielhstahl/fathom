@@ -227,6 +227,13 @@ Bytes are row text plus blob payload — the basis `s3` measured, therefore the 
 5.4× reduction over the prototype is almost entirely interning, and it lands near the "real figure
 near 8 KiB" this page predicted, which is the number the 32 KiB budget was set with room for.
 
+The fixture corpus now gates that same budget every pull request: a cold index of the 500-commit
+corpus writes **8 064 store pages per revision** the lane holds (32 revisions — 3 full snapshots and
+560 delta rows), where this table's 6 041 B is the same lane's payload. Pages are the larger of the
+two quantities, so the pair belongs in that order, and the denominator is a revision the lane holds:
+the lane is a coverage window, so dividing by the commits of a history would describe the history's
+age rather than this encoding's cost (`reco-7yq`, ADR-004 §11.6).
+
 **The measurement moved where the cost is.** The anchor's manifest — one line per live module, each
 line a path's interned id plus the chunk's content address — is now the largest single term: 4 386 204
 B of the 6 041 509 B total, against 339 740 B for all 13 697 delta rows put together. Interning made

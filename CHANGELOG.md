@@ -17,6 +17,48 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The graph lane stopped paying for the commit tables (`reco-7yq`)
+
+ADR-004 §11.6 budgets the store twice — `store.bytes_per_commit_spine = 4 KiB` for the commit tables,
+`store.bytes_per_commit_graph = 32 KiB` for the graph lane — and the harness had one bucket beside the
+cache and called it the spine. *not*-spine was `cache`, `cache_input`, `session_state`, `index_run`,
+`schema_meta`, so the lane, the blobs and the episode rows all joined `git_commit`'s bill, and §11.6's
+second budget had never been measured by anything. The number epic 7 put on the register read
+8,273 B/commit against a 4,096 B ceiling with more than half of it a lane that has its own 32 KiB
+ceiling, while the commit tables the budget is a claim about sat at 1,376 B — a third of theirs. A
+budget measuring something its own rationale does not describe is the defect; which number goes red is
+the symptom.
+
+* **`store_split` got the ADR's denominators.** Four buckets — the commit tables (`git_commit`,
+    `git_commit_file`, `ref_tip`), the `graph_*` lane, the cache side, and the residue — with every
+    `dbstat` page in exactly one of them, so they sum to the file instead of one of them being "what is
+    left". An index is charged to the table `sqlite_master` says it indexes rather than to whatever its own
+    name starts with, which is how `commit_tree` and `commit_author_time` reach the spine: a name-prefix
+    rule loses them, and they are 45 KiB of `git_commit` on this corpus.
+* **The lane is measured at last.** `store.bytes_per_commit_graph.small` divides the lane's pages by the
+    **revisions the lane holds**, because that is the denominator `s3`'s 22 335 B/revision and `e3.2`'s
+    6 041 B use — not by the commits of history. Since `reco-r3x` the lane is a coverage window, so a
+    per-commit quotient is 516 B on this corpus and half that on one twice the age: it would describe the
+    repository's age and not the encoding's cost. Pages and payload are named as different quantities
+    instead of being compared as one (§8.4). The fixture now measures **8,064 B/revision** against 32 KiB
+    and **1,466 B/commit** of commit tables against 4 KiB, and the row that was `not measured yet` in
+    `benchmarks/BUDGETS.md` is not any more.
+* **The measurement point moved, and that is the volatility fix.** How deep the lane has been settled
+    depends on how many index runs made the store, which is why the old row read 8,289 B/commit at three
+    samples and 10,446 at five. The byte split is read off the store a cold index leaves, before the warm
+    commits: a cold store is a function of the corpus and the configuration and nothing else, and the two
+    store rows now repeat byte for byte at one sample and at three.
+* **The register is empty.** `store.bytes_per_commit_spine.small`'s row in `perf-gate.json`'s
+    `known_breaches` said *delete this row when `reco-7yq` gives `store_split` the ADR's three
+    denominators*, and this is that change: the row is out of the baseline and out of ADR-004 §11.10's
+    table, and both store rows are re-blessed — bytes are `scaled: false`, so no runner factor is
+    involved — while `store.size.mib.small` stays where it was, its 3.402 → 3.375 MiB move sitting inside
+    the 1 MiB floor §11.10 already admits for it. Emptying the register needed a fix of its own:
+    `tools/epic7_acceptance.py` asserted `owners and not unknown and not unresolved`, so a ledger emptied
+    by closing every defect on it read as a failure. The epic now says "no id is a breach today" and checks
+    the discipline exactly as hard, because an emptied register is the outcome the ledger exists to reach
+    rather than an absence of one.
+
 ### A `human` nobody credited is no longer scored as a person (`reco-0er`)
 
 The beta pass that pointed Fathom at its own repository wrote this down

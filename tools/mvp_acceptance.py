@@ -15,6 +15,7 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 | re-index after one new commit | `warm.reindex.ms.small` | commit, then `fathom index`, 3 runs |
 | re-index with nothing new | `warm.reindex.noop.ms.small` | `fathom index` twice in a row, timed as the run's own store-side `elapsed_ms` |
 | store size per commit | `store.bytes_per_commit_spine.small` | `stat` the store after the cold run |
+| graph lane per revision | `store.bytes_per_commit_graph.small` | `dbstat` pages of `graph_*`, over the revisions the lane holds |
 | peak RSS of the index process | `rss.cold_index.peak_mib.small` | `VmHWM` of the child |
 | a commit made elsewhere, noticed by the watcher | `watch.detect.ms.small` | `fathom watch --json`, one commit, time to the line |
 | a commit made elsewhere, noticed by an **open** TUI | `watch.detect.ms.small` | pty: commit from the harness, time until the frame changed by itself (`reco-bpc`) |
@@ -54,6 +55,7 @@ BUDGETS = {
     "warm.reindex.ms": ("small", "p95", "ms"),
     "warm.reindex.noop.ms": ("small", "p95", "ms"),
     "store.bytes_per_commit_spine": ("small", "p50", "bytes"),
+    "store.bytes_per_commit_graph": ("small", "p50", "bytes"),
     "rss.cold_index.peak_mib": ("small", "peak", "MiB"),
     "rss.tui.mib": ("small", "ceiling", "MiB"),
     "watch.detect.ms": ("small", "p95", "ms"),
@@ -206,36 +208,105 @@ def run_timed_json(argv: list[str], cwd: Path) -> tuple[float, float | None]:
         return wall, None
 
 
-# The store holds more than the spine: the analyse cache and the session rows live in the same file,
-# and `store.bytes_per_commit_spine` is a claim about the spine alone. The split is measured, not
-# assumed, because a budget checked against the wrong half of a file is not a check.
+# ADR-004 §11.6 budgets the store by *three* byte models and the split had two buckets: the cache
+# side, and everything else under the name "spine". That complement is what `reco-7yq` is about — the
+# graph lane, the blobs and the episode rows were all billed to `store.bytes_per_commit_spine`, a
+# budget whose rationale is `git_commit` + `git_commit_file`, so a lane that grew could fail a
+# commit-table budget while the commit tables sat at a third of their ceiling. The buckets below are
+# the ADR's denominators: the commit tables, the graph lane, the cache side, and the residue that
+# neither of the two budgeted models describes.
+#
+# A `dbstat` row names an index as often as it names a table, and an index belongs to the table it
+# indexes rather than to whatever its own name starts with: `commit_tree` and `commit_author_time` are
+# `git_commit`'s indexes and are charged to the spine because `sqlite_master` says so, not because
+# they are named after it. Name-matching got that wrong; the schema map does not.
+SPINE_TABLES = ("git_commit", "git_commit_file", "ref_tip")
+GRAPH_TABLES = ("graph_",)
 NOT_SPINE = ("cache", "cache_input", "session_state", "index_run", "schema_meta")
+#: Every `dbstat` page lands in exactly one of these, and the four sum to `store_split`'s `total`.
+BUCKETS = ("spine", "graph", "cache", "other")
+
+
+def store_bucket(name: str, owners: dict[str, str] | None = None) -> str:
+    """Which §11.6 denominator one `dbstat` row belongs to.
+
+    `owners` maps an index name to the table it indexes, as `sqlite_master` knows it. Anonymous
+    `sqlite_autoindex_*` rows are not always in that map, so their prefix is stripped as well —
+    `sqlite_autoindex_git_commit_1` is `git_commit`'s primary key and belongs to the spine.
+    """
+    base = (name or "")
+    base = (owners or {}).get(base) or base
+    base = base.removeprefix("sqlite_autoindex_")
+    if base.startswith(GRAPH_TABLES):
+        return "graph"
+    if base.startswith(SPINE_TABLES):
+        return "spine"
+    if base.startswith(NOT_SPINE):
+        return "cache"
+    return "other"
 
 
 def store_split(db: Path) -> dict:
-    """Per-table page bytes, split into spine and not-spine, using SQLite's own `dbstat`."""
+    """Per-table page bytes, split into ADR-004 §11.6's denominators, using SQLite's own `dbstat`.
+
+    The four buckets are `spine` (`git_commit`, `git_commit_file`, `ref_tip` and their indexes — what
+    `store.bytes_per_commit_spine` is a claim about), `graph` (the `graph_*` lane, which
+    `store.bytes_per_commit_graph` budgets per revision), `cache` (the analyse cache, the session rows
+    and the run log: the half this budget has never charged) and `other` (episodes, blobs, the ledger:
+    durable, real, and described by neither budgeted byte model). They are a partition — the four sum
+    to `total` — because a budget checked against the wrong part of a file is not a check.
+    """
     import sqlite3
 
-    out = {"total": 0, "spine": 0, "cache": 0, "tables": {}}
+    out: dict = {"total": 0, "tables": {}}
+    out.update({bucket: 0 for bucket in BUCKETS})
     if not db.exists():
         return out
     connection = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
+        owners = dict(connection.execute(
+            "SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND name IS NOT NULL"))
         for name, size in connection.execute(
                 "SELECT name, SUM(pgsize) FROM dbstat GROUP BY name"):
             out["total"] += size
             out["tables"][name] = size
-            base = (name or "").removeprefix("sqlite_autoindex_")
-            if any(base.startswith(prefix) for prefix in NOT_SPINE):
-                out["cache"] += size
-            else:
-                out["spine"] += size
+            out[store_bucket(name, owners)] += size
     except sqlite3.Error:
-        # No `dbstat` in this SQLite build: the file size is all that can be honestly claimed.
+        # No `dbstat` in this SQLite build: the file size is all that can be honestly claimed, and it
+        # cannot be split, so every bucket says it does not know rather than guessing (§8.4).
         out["total"] = db.stat().st_size
-        out["spine"] = None
-        out["cache"] = None
+        out.update({bucket: None for bucket in BUCKETS})
         out["tables"] = {}
+    finally:
+        connection.close()
+    return out
+
+
+def graph_lane_basis(db: Path) -> dict:
+    """What the graph lane actually holds, so its denominator is a count and not an assumption.
+
+    `store.bytes_per_commit_graph` is budgeted **per revision** — ADR-004 §11.6 took it from `s3`'s
+    22 335 B/revision (§13.7) and `e3.2` re-measured it at 6 041 — and since `reco-r3x` the lane is a
+    coverage window, not the whole history: a store at rest holds about `graph.window` snapshots
+    however many commits it holds. So the lane's per-revision cost is divided by the revisions it
+    holds, which is also what makes the quotient stable across runs that wrote different amounts of
+    the lane: numerator and denominator move together.
+    """
+    import sqlite3
+
+    out: dict = {}
+    if not db.exists():
+        return out
+    connection = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        revisions, anchors = connection.execute(
+            "select count(*), sum(kind = 'full') from graph_snapshot").fetchone()
+        out["revisions"] = int(revisions or 0)
+        out["anchors"] = int(anchors or 0)
+        out["deltas"] = int(connection.execute(
+            "select count(*) from graph_delta").fetchone()[0])
+    except sqlite3.Error:
+        return {}
     finally:
         connection.close()
     return out
@@ -296,12 +367,25 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
 
     commits = int(git(fixture, "rev-list", "--all", "--count"))
     split = store_split(store)
-    spine = split["spine"]
+    spine, graph = split["spine"], split["graph"]
+    lane = graph_lane_basis(store)
     record("store bytes per commit, spine tables only", "store.bytes_per_commit_spine.small",
            None if spine is None else spine // max(1, commits), unit="bytes",
-           note=f"{spine:,} spine bytes + {split['cache']:,} cache/other bytes = "
-                f"{split['total']:,} in the file, for {commits} commits; the split is dbstat's, "
-                "so the cache the analysis wrote is not charged to the spine")
+           note=f"{spine:,} spine bytes ({', '.join(SPINE_TABLES)} and their indexes) over "
+                f"{commits} commits; the same file holds {graph:,} bytes of graph lane, "
+                f"{split['cache']:,} of cache and session rows and {split['other']:,} of episodes, "
+                "blobs and ledger, none of which this budget charges. The split is dbstat's, so it is "
+                "measured, not assumed (`reco-7yq`)")
+    record("store bytes per revision, graph lane only", "store.bytes_per_commit_graph.small",
+           None if graph is None or not lane.get("revisions") else
+           graph // max(1, lane["revisions"]), unit="bytes",
+           blocked_by=None if lane.get("revisions") else
+           "the store holds no graph snapshots, so there is no revision to divide the lane's bytes by",
+           note=f"{graph:,} graph-lane bytes over the {lane.get('revisions', 0)} revisions the lane "
+                f"holds ({lane.get('anchors', 0)} full snapshots at "
+                f"`graph.window`, {lane.get('deltas', 0)} delta rows): the budget's denominator is a "
+                "revision, as it was for `s3`'s 22 335 B and `e3.2`'s 6 041 B, not a commit of "
+                "history, because the lane is a window and its bytes do not grow with the repository")
     record("store file size", "store.size.mib.small",
            round(split["total"] / (1024 * 1024), 2), unit="MiB",
            note="the whole `.fathom/index.sqlite3`, cache included")

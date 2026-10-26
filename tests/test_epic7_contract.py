@@ -107,11 +107,10 @@ def test_the_four_exit_criteria_hold_end_to_end(tmp_path: pathlib.Path) -> None:
     notes = " ".join(" ".join(c["notes"]) for c in payload["clauses"])
     assert "built and rehearsed" in notes, notes
     assert "three humans on three machines" in notes, notes
-    assert "reco-7yq" in notes, \
-        "the consciously-relaxed budgets name their owners in the report, not only in the ADR"
-    assert "reco-r3x" not in notes, \
-        "reco-r3x closed: its two breaches came off the register, and a relaxation left behind after its " \
-        "defect closes is the stale row this same gate fails the build for"
+    assert "reco-r3x" not in notes and "reco-7yq" not in notes, \
+        "closed tickets must not be presented as live relaxations: `reco-r3x`'s two breaches and " \
+        "`reco-7yq`'s came off the register when their defects closed, and a relaxation left behind after " \
+        "its defect closes is the stale row this same gate fails the build for"
 
 
 def test_the_harness_reports_a_failed_clause_as_a_failure(tmp_path: pathlib.Path) -> None:
@@ -151,19 +150,49 @@ def test_the_harness_reports_a_failed_clause_as_a_failure(tmp_path: pathlib.Path
 # ---------------------------------------------------------------------------------------------
 
 def _honest_trio() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, str]], dict[str, float]]:
-    """The register, the ledger and the biting budgets as the tree actually has them."""
+    """A register, a ledger and a biting set that agree, with exactly one breach on them.
+
+    The committed register is empty as of `reco-7yq` — its last row said *delete this row when the
+    three denominators land*, and it landed — so this trio is built rather than read. It is built out of
+    the committed baseline: a measurement the tree really holds, charged at twice its own budget and
+    bounded just above itself. The discipline the tests below probe (an owner, an expiry, a ceiling, a
+    breach that bites) has to hold for a register the tree does not currently have, because that is the
+    register the next breach will be written into.
+    """
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
-    register = json.loads(json.dumps(baseline["known_breaches"]))
-    ledger = epic7_acceptance.relax_ledger()
-    biting = {bid: float(baseline["measurements"][bid]["value"]) for bid in register}
-    return register, ledger, biting
+    bid = "store.bytes_per_commit_graph.small"
+    assert bid in baseline["measurements"], \
+        f"{bid} is not in the blessed baseline; point this trio at a measurement the tree has"
+    budgets = json.loads((ROOT / "benchmarks" / "budgets.json").read_text(encoding="utf-8"))
+    bound = float({b["id"]: b["budget"] for b in budgets["budgets"]}[bid])
+    measured = round(bound * 2, 1)  # a breach, so: twice its own budget and inside its own ceiling
+    ceiling = round(measured * 1.1, 1)
+    register = {bid: {"budget": bound, "ceiling": ceiling, "expires": "2099-01-01",
+                      "owner": "reco-7yq", "tolerance": 1.25,
+                      "why": "synthetic trio: built by the test from the committed baseline"}}
+    ledger = {bid: {"measured": f"{measured:,.0f} B", "budget": f"{bound:,.0f} B",
+                    "ceiling": f"{ceiling:,.0f} B", "owner": "`reco-7yq`", "expires": "2099-01-01"}}
+    return register, ledger, {bid: measured}
 
 
 def test_the_real_ledger_agrees_with_itself() -> None:
     """Not a mock: the committed ADR, the committed baseline and the committed measurements."""
     register, ledger, biting = _honest_trio()
-    assert register, "the perf clause says something is consciously relaxed; the register is empty"
     assert epic7_acceptance.ledger_problems(register, ledger, biting, TODAY) == []
+
+
+def test_the_committed_register_is_empty_and_agrees_with_the_adr() -> None:
+    """An empty register is a claim, and it has to be true in both documents at once.
+
+    `reco-7yq` took the last row off. That is only a good outcome if the ADR deleted its written
+    relaxation in the same change — a row in one document and not the other is the disagreement this
+    gate exists to fail a build on, and it is a disagreement about a row that no longer exists.
+    """
+    register = json.loads(BASELINE.read_text(encoding="utf-8"))["known_breaches"]
+    ledger = epic7_acceptance.relax_ledger()
+    assert register == {}, f"a consciously-relaxed budget is back on the register: {register}"
+    assert ledger == {}, f"ADR-004 §11.10 still writes a relaxation for a closed defect: {ledger}"
+    assert epic7_acceptance.ledger_problems(register, ledger, {}, TODAY) == []
 
 
 def test_a_budget_over_its_ceiling_with_no_writing_is_a_problem() -> None:

@@ -307,12 +307,16 @@ through the pty).
   what the cast shows. The first P1 above has since split that sentence in two: the rail's *rows* come
   from the spine and are there now, and the ranked, risk-scored, delta-carrying frame this walkthrough
   asked for still waits on `e2.11` and `e4.4`.
-* Not everything in that table is met, and the rows that are not belong to no ticket in this walkthrough.
-  `store.bytes_per_commit_spine.small` is 4,333 bytes against a 4,096 budget on the deterministic fixture —
-  byte-identical run to run, so that is a spine that grew, not a noisy box, and `make bench-check` fails on
-  it until somebody owns it. The keystroke p95 is the worst of three pty samples and moved by a factor of
-  two between runs of the same binary here, while the rail's own per-keystroke store numbers stayed under
-  3 ms; believe the second one more.
+* Not everything in that table is met, and the rows that are not belong to no defect this walkthrough
+  found. `store.bytes_per_commit_spine.small` read 4,333 bytes against a 4,096 budget on the run recorded
+  above — byte-identical run to run, so it was a denominator, not a noisy box: the split then had two
+  buckets, "the cache" and "not the cache", and the second was called the spine, so the graph lane and the
+  blob rows paid a budget about `git_commit` + `git_commit_file`. `reco-7yq` gave the store §11.6's three
+  denominators and the same store now measures **1,466 B/commit** of commit tables, with the lane billed
+  to `store.bytes_per_commit_graph` (8,064 B/revision, inside 32 KiB) — ADR-004 §11.10 carries the
+  arithmetic, and the row above is the recorded run under the byte model it replaced. The keystroke p95 is
+  the worst of three pty samples and moved by a factor of two between runs of the same binary here, while
+  the rail's own per-keystroke store numbers stayed under 3 ms; believe the second one more.
 * Not a fair machine. Every timing here is one machine, three samples, warm page cache, debug
   features off — the `environment` block of `benchmarks/reports/e1-12-mvp-acceptance.json` names which
   machine, and it is not the CI box. The budgets' own CI gate (`e0.11`) is where these numbers become

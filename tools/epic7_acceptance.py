@@ -633,8 +633,10 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
                     | {row["owner"] for row in ledger.values()})
     unknown = [owner for owner in owners if owner and not BEAD_ID.fullmatch(owner)]
     unresolved = [owner for owner in owners if BEAD_ID.fullmatch(owner) and bead_issue(owner) is None]
-    c.add("every breach has an owner, and the owner exists", owners and not unknown and not unresolved,
-          f"owners: {', '.join(owners) or 'none'}"
+    c.add("every breach has an owner, and the owner exists",
+          not unknown and not unresolved and bool(owners or not register),
+          (f"owners: {', '.join(owners)}" if owners else
+           "no budget is consciously relaxed, so no owner is owed")
           + (f"; not beads ids: {unknown}" if unknown else "")
           + (f"; not on the board: {unresolved}" if unresolved else ""))
     over = [part for part in problems if "own ceiling" in part]
@@ -645,6 +647,14 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
                f"and accepted up to {format(float(entry.get('ceiling', 0)), ',g')} "
                f"(×{entry.get('tolerance', 1.25)} tolerance) until {entry.get('expires', 'no expiry')}, "
                f"owned by `{entry.get('owner', 'nobody')}` — ADR-004 §11.10 carries the reasoning.")
+    if not register:
+        # An empty ledger is a claim, not an absence: it says nothing measured is over its budget and
+        # nothing is being quietly waved at. Say it, because "the register is empty" and "nobody read the
+        # register" look identical in a report that does not print which happened.
+        c.note("the register of consciously-relaxed budgets is empty: every id the fixture gate measures "
+               "is inside its budget or on no budget at all, and the last row came off when the defect it "
+               "was written about closed. The ledger is still checked, not skipped — a breach with no row "
+               "is red here exactly as a row that has stopped biting is (ADR-004 §11.10).")
     if skip_benches:
         c.note("the criterion half of `perf_gate.py` was skipped (`--skip-benches`); CI's `perf` job runs "
                "it, and this run measured the end-to-end half, which is the half the budgets are written "
@@ -655,7 +665,8 @@ def clause_perf(binary: Path, work: Path, *, skip_benches: bool = True) -> Crite
               "blessed_commit": baseline.get("blessed_commit")}
     c.note(f"the baseline was blessed at {baseline.get('blessed_commit')} "
            f"({baseline.get('blessed_utc')}); ADR-004 §11.10 says which numbers moved at that commit and "
-           "why, and which three are breaches rather than passes.")
+           "why, and " + (f"{len(register)} ids are breaches rather than passes"
+                          if register else "no id is a breach today — the register is empty") + ".")
 
     # --- the real repositories, and the prose that owns their misses -------------------------------
     real = json.loads(REALREPO_REPORT.read_text()) if REALREPO_REPORT.is_file() else {}

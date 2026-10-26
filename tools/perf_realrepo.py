@@ -27,8 +27,9 @@ What it measures, and where each number is charged:
   time to first frame, `t`, `j`, `d`, the first `@@` on screen, and the TUI's own `VmHWM`
   (`cold.queue_visible.ms`, `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms`,
   `query.diff_first_hunk.ms`, `rss.tui.mib`).
-* **bytes** — the store file, the spine/cache split from `dbstat`, and the size of the analysis cache's
-  blob directory, which is what `cache.budget.mib` has always been about and had never been measured.
+* **bytes** — the store file, §11.6's three-way `dbstat` split (commit tables, graph lane, cache, and
+  the rest), and the size of the analysis cache's blob directory, which is what `cache.budget.mib` has
+  always been about and had never been measured.
 * **where the time actually went** — the store's own per-analyzer counters (`cache` rows, result bytes
   and `cost_ms` per analyzer). Every regression fixed by this ticket was found in that table.
 
@@ -283,7 +284,9 @@ class Repo:
         wal = sum(f.stat().st_size for f in self.fathom_dir.glob("index.sqlite3-*"))
         return {"sqlite_bytes": db, "wal_bytes": wal, "objects_bytes": objects,
                 "total_bytes": db + wal + objects,
-                "spine_bytes": split.get("spine"), "cache_bytes": split.get("cache"),
+                "spine_bytes": split.get("spine"), "graph_bytes": split.get("graph"),
+                "cache_bytes": split.get("cache"), "other_bytes": split.get("other"),
+                "graph_revisions": M.graph_lane_basis(self.store).get("revisions"),
                 "tables": split.get("tables", {})}
 
     def spine_rows(self) -> int:
@@ -438,8 +441,21 @@ class Repo:
                         int((sizes["spine_bytes"] or 0) // max(1, facts["commits"])),
                         f"store.bytes_per_commit_spine.{cls}",
                         budget_value(f"store.bytes_per_commit_spine.{cls}"),
-                        how="`dbstat` pages of the spine tables over the commit count",
+                        how="`dbstat` pages of the commit tables (`git_commit`, `git_commit_file`, "
+                            "`ref_tip` and their indexes) over the commit count; the graph lane has its "
+                            "own row since `reco-7yq` and is not charged here",
                         detail={"spine_bytes": sizes["spine_bytes"]}))
+        graph_revisions = sizes.get("graph_revisions") or 0
+        self.record(Row(f"store.bytes_per_commit_graph.{self.label}", "bytes",
+                        int((sizes["graph_bytes"] or 0) // graph_revisions) if graph_revisions else None,
+                        f"store.bytes_per_commit_graph.{cls}",
+                        budget_value(f"store.bytes_per_commit_graph.{cls}"),
+                        how="`dbstat` pages of the `graph_*` lane over the revisions the lane holds — "
+                            "the denominator §11.6's byte model is written against, not the commit "
+                            "count, because the lane is a coverage window (`reco-7yq`); blocked here "
+                            "means the lane holds no snapshots, so there is no revision to divide by",
+                        detail={"graph_bytes": sizes["graph_bytes"],
+                                "graph_revisions": graph_revisions}))
         self.record(Row(f"cache.budget.mib.{self.label}", "MiB",
                         round(sizes["objects_bytes"] / (1024 * 1024), 1),
                         f"cache.budget.mib.{cls}", budget_value(f"cache.budget.mib.{cls}"),
@@ -506,8 +522,9 @@ class Repo:
                         int((sizes["spine_bytes"] or 0) // max(1, file_rows)),
                         f"store.bytes_per_file_row_spine.{cls}",
                         budget_value(f"store.bytes_per_file_row_spine.{cls}"),
-                        how="`dbstat` pages of the spine tables over the file rows they hold, which is "
-                            "the denominator §11.6's per-commit model is missing",
+                        how="`dbstat` pages of the commit tables over the file rows they hold, which is "
+                            "the denominator §11.6's per-commit model is missing (the graph lane left "
+                            "this numerator with `reco-7yq`)",
                         detail={"spine_bytes": sizes["spine_bytes"], "file_rows": file_rows}))
         self.record(Row(f"warm.reindex.ms_per_commit_in_store.{self.label}", "ms",
                         round(warm["wall_ms"] / max(1, facts["commits"]), 3),
@@ -670,8 +687,8 @@ def write_markdown(report: dict) -> str:
         "| no-op re-index | a third run with nothing moved, store-side `elapsed_ms`, p95 of 3 |",
         "| peak RSS | `VmHWM` from `/proc/<pid>/status` sampled while the child lives — the high-water "
         "mark, not a snapshot, so a allocator that peaks and relaxes is still caught |",
-        "| store bytes | the SQLite file plus its WAL, and the split into spine and cache tables from "
-        "`dbstat` (`mvp_acceptance.store_split`) |",
+        "| store bytes | the SQLite file plus its WAL, and §11.6's three-way split — commit tables, "
+        "graph lane, cache — from `dbstat` (`mvp_acceptance.store_split`) |",
         "| cache bytes | the payload of `.fathom/objects/`, which is the class-R cache `cache.budget.*` "
         "is a cap on, and which no earlier harness measured |",
         "| query latency | `fathom stats --json` for `query.metrics`, `fathom show --json HEAD~7` for "
@@ -766,15 +783,20 @@ def write_markdown(report: dict) -> str:
         "",
         "## Store shape",
         "",
-        "| repository | sqlite + WAL | spine tables | cache tables | object cache | spine bytes/commit |",
-        "| --- | ---: | ---: | ---: | ---: | ---: |",
+        "| repository | sqlite + WAL | commit tables | graph lane | cache tables | object cache | commit bytes/commit |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for repo in report["repositories"]:
         sizes = repo["sizes"]
         commits = max(repo["facts"]["commits"], 1)
+        # The graph lane got its own column with `reco-7yq`, which is also the change that stopped charging
+        # it to the commit-table column beside it. A report written before that run has no lane bytes to
+        # show, and says so rather than borrowing the commit-table number.
+        lane = sizes.get("graph_bytes")
         out.append(
             f"| `{repo['facts']['path']}` | {mib(sizes['sqlite_bytes'] + sizes['wal_bytes'])} MiB | "
-            f"{mib(sizes['spine_bytes'])} MiB | {mib(sizes['cache_bytes'])} MiB | "
+            f"{mib(sizes['spine_bytes'])} MiB | "
+            f"{'—' if lane is None else f'{mib(lane)} MiB'} | {mib(sizes['cache_bytes'])} MiB | "
             f"{mib(sizes['objects_bytes'])} MiB | {sizes['spine_bytes'] // commits:,} B |"
         )
     out += [

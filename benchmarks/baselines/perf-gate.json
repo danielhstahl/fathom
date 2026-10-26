@@ -25,17 +25,7 @@
   "shape": "the `e0.10`/`e1.12` deterministic 500-commit agent fixture",
   "size_class": "small"
  },
- "known_breaches": {
-  "store.bytes_per_commit_spine.small": {
-   "budget": 4096.0,
-   "ceiling": 10500.0,
-   "expires": "2026-12-15",
-   "owner": "reco-7yq",
-   "status": "known breach, bounded, awaiting its fix",
-   "tolerance": 1.15,
-   "why": "the harness bills every non-cache table to a budget whose byte model is the commit tables: on this corpus at the epic's close `graph_*` is 6,865 B/commit of the ~8,275 measured (49.8 % of the store is the graph lane), while `git_commit` + `git_commit_file` + `ref_tip` are 1,376 B/commit. The number also moves with how much of the lane one gate run happens to write (8,289 at 3 samples, 10,446 at 5), which is the same defect talking. ADR-004 \u00a711.6 gives the lane its own budget (`store.bytes_per_commit_graph`, 32 KiB/revision) and `perf_gate.py` has never measured it. ADR-004 \u00a711.10; delete this row when reco-7yq gives `store_split` the ADR's three denominators."
-  }
- },
+ "known_breaches": {},
  "measurements": {
   "calibrate: 100k-row batched insert + 10k FTS queries": {
    "budget": null,
@@ -181,13 +171,23 @@
    "unit": "MiB",
    "value": 24.2
   },
+  "store.bytes_per_commit_graph.small": {
+   "budget": "store.bytes_per_commit_graph.small",
+   "higher_is_better": false,
+   "how": "258,048 `dbstat` bytes of `graph_*` over the 32 revisions the lane holds after one cold index (3 full snapshots, 560 delta rows). The denominator is a revision, as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in \u00a713.7 \u2014 not a commit of history: over the 500 commits in the fixture this is 516 B/commit, and that quotient falls as a repository ages, because the lane is a window and not a ledger (`reco-7yq`)",
+   "noise": 403.2,
+   "scaled": false,
+   "unit": "bytes",
+   "value": 8064
+  },
   "store.bytes_per_commit_spine.small": {
    "budget": "store.bytes_per_commit_spine.small",
    "higher_is_better": false,
-   "how": "4,161,536 spine bytes over 503 commits, `dbstat` pages; 782,336 more bytes of cache and session rows are not charged here",
+   "how": "733,184 spine bytes \u2014 `git_commit`, `git_commit_file`, `ref_tip` and their indexes \u2014 over 500 commits, `dbstat` pages of the store a cold index leaves; the same file holds 258,048 bytes of graph lane, 765,952 of cache and session rows and 1,781,760 of episodes, blobs and ledger, and none of them are charged here (`reco-7yq`)",
+   "noise": 73.3,
    "scaled": false,
    "unit": "bytes",
-   "value": 5545
+   "value": 1466
   },
   "store.size.mib.small": {
    "budget": "store.size.mib.small",

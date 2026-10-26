@@ -1087,11 +1087,11 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `store.bytes_per_commit_graph` | bytes | p50 | 32,768 | 32,768 | 32,768 | 32,768 | Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 §13.7). 32 KiB is that measurement with 1.47× headroom — the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then. |
+| `store.bytes_per_commit_graph` | bytes | p50 | 32,768 | 32,768 | 32,768 | 32,768 | Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision plus a shared anchor every 32, at 22 335 B/revision for a 2 298-module, 54 025-row graph over 10 004 commits (ADR-004 §13.7). 32 KiB is that measurement with 1.47× headroom — the same relation `store.bytes_per_commit_spine`'s 4 KiB bears to its measured 2 462 B. It replaces the 24 KiB taken from `e3.2`'s ticket text, which was a wish that a full snapshot with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a different shape rather than a smaller one. `e3.2`'s node-id interning should take the real figure near 8 KiB, and budgets ratchet, so it tightens then — measured on the fixture since `reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload basis, which is the smaller quantity and never mixed with pages. The denominator is a revision the lane holds, not a commit of history: the lane is a coverage window (§8.5), so a per-commit quotient falls as a repository ages and describes nothing but the corpus's age. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `store.bytes_per_commit_spine` | bytes | p50 | 4,096 | 4,096 | 4,096 | 4,096 | git_commit + git_commit_file + their indexes + episode rows. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). |
+| `store.bytes_per_commit_spine` | bytes | p50 | 4,096 | 4,096 | 4,096 | 4,096 | The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness charges exactly those three tables and their indexes and measures 1 466 B/commit on the 500-commit fixture; before it, every non-cache table — the graph lane, the blobs, the episode rows — was billed here, which is how a budget about the commit tables went red while the commit tables sat at a third of their ceiling (ADR-004 §11.10). The 4 KiB is now what §11.6 always said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` adds, with the lane on its own account below. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1214,6 +1214,19 @@ will add) plus `store.bytes_per_commit_graph = 32 KiB` — which is no longer a 
 on down the row. **The size budgets are arithmetic on a measured byte model**, which is the only
 reason they are worth failing a build on.
 
+**Three denominators, and all three measured** (as of `reco-7yq`). `mvp_acceptance.store_split`
+partitions every `dbstat` page of the store into the commit tables, the `graph_*` lane, the cache side
+and the residue — charging every index to the table `sqlite_master` says it indexes, which is how
+`commit_tree` and `commit_author_time` reach the spine while a name-prefix rule loses them — and
+`tools/perf_gate.py` bills the first two to their own budgets. A cold index of the 500-commit fixture
+leaves **1 466 B/commit** of commit tables against the 4 KiB above and **8 064 B/revision** of lane
+against its 32 KiB; the rest of the file — 765 952 B of cache and session rows and 1 781 760 B of
+episode, blob and ledger rows — is charged to no per-commit budget of this section, because this
+section has never described it. Before `reco-7yq` the split had two buckets, "the cache" and "not the
+cache", and the second was named the spine, so the lane paid a budget whose byte model is
+`git_commit` + `git_commit_file` and this paragraph described a quantity the harness did not measure.
+§11.10 carries the number that came out of that.
+
 ### 11.7 What the budgets assume
 
 Every warm budget rests on the O() claims R1–R3 and R7 (§6.6). If warm cost scales with the
@@ -1296,7 +1309,7 @@ The dispositions, stated rather than implied:
 | `query.metrics.ms` | 176 ms | 400 ms | **passes** as of this ticket. |
 | `query.card.ms` | 179 ms | 50 ms | **held, failing.** Whole-process now 3.6× over instead of 12×. `Store::inventory()` + `cache_inventory()` are the next term, named in the fix's commit message. |
 | `rss.cold_index.peak_mib` | 1,636 MiB | 500 MiB | **held, failing, not root-caused here.** ~25 KiB resident per file row on aws; §11.6's 38 MiB-at-1 000-commits floor was measured on a corpus whose commits are an order of magnitude smaller than a real one's. Candidates: the deferring spine sink and the object reads `diff.per_file` makes. |
-| `store.bytes_per_commit_spine` | 27,264 B | 4,096 B | **explained and re-based**, not relaxed: it is 2,242 B/row × 12.1 rows/commit, and `store.bytes_per_file_row_spine` (3 KiB) is the budget that says something true about it. §11.6 has to be read with the row in it. |
+| `store.bytes_per_commit_spine` | 27,264 B | 4,096 B | **explained and re-based**, not relaxed: it is 2,242 B/row × 12.1 rows/commit, and `store.bytes_per_file_row_spine` (3 KiB) is the budget that says something true about it. §11.6 has to be read with the row in it. (`reco-7yq` has since narrowed what the harness charges to this budget to the commit tables, so 27,264 B is the lane-inclusive measurement this disposition was written against.) |
 | `cache.budget.mib` | 104.8 MiB | 512 MiB | **passes** as of this ticket, having been a 1.5× miss before it; `cache.bytes_per_cached_row` is what keeps it passing. |
 | `store.size.mib` | 291 MiB | 2,048 MiB | passes. |
 | `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. |
@@ -1326,7 +1339,8 @@ wish, and §11.7 has already told us what a budget nobody fails on is worth.
 
 **What it found: the fixture gate had been red for a week and no word had been written about it.** The
 baseline was last blessed at `89f7198` (2026-10-17); ninety-three commits later, at `36b011f`, eight ids
-were red. Three are over their published budget and are on the register below. The rest were red *against
+were red. Three are over their published budget and went on the register at the end of this section — which
+`reco-7yq` has since emptied — and the rest were red *against
 the blessed baseline* while sitting inside their budget, so they were **re-blessed** at `36b011f` — the
 ratchet act of §11.2–11.5, not a waiver:
 
@@ -1382,16 +1396,31 @@ to graph less than the tool reads: the default stays one anchor period (`32`), w
 what the three 30-revision windows — scorecard, churn, hotspots — need, and a repository that wants the
 architecture of its whole history raises the knob and pays for it once, in the run where it asks.
 
-The third is a denominator, not a cost. `store.bytes_per_commit_spine.small` is `dbstat` pages of "the
-spine tables", and `tools/mvp_acceptance.py` defines *not*-spine as `cache`, `cache_input`,
-`session_state`, `index_run`, `schema_meta` — so the graph lane is billed to a budget whose byte model
-(§11.6) is `git_commit` + `git_commit_file`. On this corpus `graph_*` is **6,865 B/commit of the 8,289**
-measured — 49.8 % of the store — while the commit tables are **1,376 B/commit**, a third of their
-ceiling. §11.6 gives the lane a budget of its own (`store.bytes_per_commit_graph`, 32 KiB/revision, `s3`'s
-measured 22,335 B) and `perf_gate.py` still lists that one as *not measured yet*. **`reco-7yq`** owns
-giving `store_split` §11.6's denominators and measuring that row at last. Its ceiling sits above the
-measured value for the same reason the number moves: how much of the lane one gate run happens to write
-depends on how many index runs it made, 8,289 B/commit at three samples and 10,446 at five.
+**What `reco-7yq` did about the third, which was a denominator and not a cost.** `store_split` had two
+buckets — "the cache" (`cache`, `cache_input`, `session_state`, `index_run`, `schema_meta`) and "not the
+cache", which it called the spine — so the graph lane was billed to a budget whose byte model (§11.6) is
+`git_commit` + `git_commit_file`. On this corpus at the close `graph_*` was **6,865 B/commit of the
+8,289** measured, 49.8 % of the store, while the commit tables were **1,376 B/commit**, a third of their
+ceiling; §11.6's budget for the lane (`store.bytes_per_commit_graph`, 32 KiB/revision, `s3`'s measured
+22,335 B) was listed in `perf_gate.py` as *not measured yet*, which is the same sentence from the other
+side. The split now has the ADR's three denominators plus the residue — commit tables, `graph_*` lane,
+cache side, everything else — and an index is charged to the table `sqlite_master` says it indexes, so
+`commit_tree` and `commit_author_time` reach the spine instead of being lost to a name prefix. Measured on
+the same fixture with the same binary: the commit tables are **1,466 B/commit** against their 4 KiB, and
+the lane — measured at last, and therefore off the *not measured yet* list — is **8,064 B/revision**
+against its 32 KiB, which sits between `e3.2`'s interned 6 041 B on the payload basis and `s3`'s
+un-interned 22 335 B, on the pages basis, which is the larger quantity and is never mixed with payload.
+The denominator is a **revision the lane holds** (32 after a cold index: 3 full snapshots, 560 delta
+rows), not a commit of history, for the reason `reco-r3x` just established: the lane is a coverage window,
+so a per-commit quotient is 516 B here and half that in a repository twice the age, and it would describe
+the corpus rather than the encoding. The byte split is also taken on the store **a cold index leaves**,
+before the warm commits, because how much of the lane a store holds depends on how many index runs made it
+— the same confound that made the old number 8,289 B/commit at three samples and 10,446 at five — and a
+cold store is a function of the corpus and the configuration and nothing else. Two rows were re-blessed
+for it: `store.bytes_per_commit_spine.small` 5,545 → **1,466 B**, which is a denominator moving and not a
+speedup, and the new `store.bytes_per_commit_graph.small` at 8,064. `store.size.mib.small` was left alone:
+moving the measurement point moved it from 3.402 to 3.375 MiB, inside the 1 MiB floor §11.10 admits two
+paragraphs below, and a ticket is not licence to move a number nothing touched.
 
 **The third finding is about the gate, not the code, and it is the one that will bite next.**
 `query.metrics.ms.small` (`fathom stats --json`, p95 of three) measured **14.8, 14.9 and 21.6 ms** in
@@ -1451,8 +1480,9 @@ whose `elapsed_ms` the store prints as whole milliseconds — three ticks of tha
 (`STORE_CLOCK_FLOOR_MS`), so it can see a doubling of the no-op and nothing finer. What guards those ids is
 their budgets — 12 ms against a 1.8 ms keystroke, 10 ms against a 4 ms no-op — and the ratchet now says so
 out loud. A deterministic reading does not buy its way out of the constant floor either: what varies on the
-byte counters is not the reading but the run — how much of the graph lane one gate run happens to write moves
-`store.bytes_per_commit_spine.small` by more than a fifth, which is `reco-7yq`'s denominator talking.
+byte counters is not the reading but the run — how much of the graph lane one gate run happened to write
+moved `store.bytes_per_commit_spine.small` by more than a fifth, until `reco-7yq` moved the lane into its own
+budget with its own denominator.
 And because a blind spot is a fact about the gate rather than about the run, the gate now prints the standing
 list too — **IDS THE ±15 % RATCHET CANNOT RESOLVE**, in the report under
 `resolution.ids_the_ratchet_cannot_resolve` — which after this ticket is seven on a run without the
@@ -1483,13 +1513,19 @@ worse.
 
 | budget id | measured at the close | budget | ceiling | owner | expires |
 | --- | ---: | ---: | ---: | --- | --- |
-| `store.bytes_per_commit_spine.small` | 8,273 B | 4,096 B | 10,500 B | `reco-7yq` | 2026-12-15 |
+| — | — | — | — | — | — |
 
-One row, one owner, one date — the register started as three. The ticket that closes a defect deletes its row
-and re-blesses; an expired row is a red build, because a grace period nobody extended is not a decision. Two
-rows have come off this table that way (`reco-r3x`, above), which is the ledger doing its job rather than
-being renegotiated. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a bound, a clock, and
-no quiet way to widen the exception.
+**The register is empty**, which is the state this ledger exists to reach rather than a relaxation of it: it
+started as three rows, `reco-r3x` took two off and `reco-7yq` took the last — the denominator defect above,
+whose row said *delete this row when `reco-7yq` gives `store_split` the ADR's three denominators*, and that
+is what happened. The ticket that closes a defect deletes its row and re-blesses; an expired row is a red
+build, because a grace period nobody extended is not a decision; a row whose breach has stopped biting is as
+much a lie as a breach with no row. Three rows have come off this table that way, which is the ledger doing
+its job rather than being renegotiated. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a
+bound, a clock, and no quiet way to widen the exception. An empty register is checked as hard as a full one:
+`tools/epic7_acceptance.py` still refuses the epic if anything measured is over its budget with nothing
+written about it, and it says out loud that the register is empty so that a reader can tell "nothing is
+relaxed" from "the ledger was not read".
 
 **The real repositories.** §11.9's dispositions are unchanged and are now *checked* rather than reread:
 the epic gate parses `benchmarks/reports/e7-2-real-repos.json`'s per-budget verdicts and fails if any

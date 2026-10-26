@@ -180,8 +180,14 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "§11.6, not guessed."),
     ("store.bytes_per_commit_spine", {"small": 4_096, "medium": 4_096, "large": 4_096,
                                       "xlarge": 4_096}, "bytes", "p50",
-     "git_commit + git_commit_file + their indexes + episode rows. Prototype measured: "
-     "2 462 B/commit (spine) + 225 B/commit (episode, risk)."),
+     "The commit tables and their indexes: `git_commit`, `git_commit_file`, `ref_tip`. Prototype "
+     "measured: 2 462 B/commit (spine) + 225 B/commit (episode, risk). Since `reco-7yq` the harness "
+     "charges exactly those three tables and their indexes and measures 1 466 B/commit on the "
+     "500-commit fixture; before it, every non-cache table — the graph lane, the blobs, the episode "
+     "rows — was billed here, which is how a budget about the commit tables went red while the commit "
+     "tables sat at a third of their ceiling (ADR-004 §11.10). The 4 KiB is now what §11.6 always "
+     "said it was: headroom over the commit tables for the hex-OID choice and the columns `e1.2` "
+     "adds, with the lane on its own account below."),
     ("store.bytes_per_commit_graph", {"small": 32_768, "medium": 32_768, "large": 32_768,
                                       "xlarge": 32_768}, "bytes", "p50",
      "Graph lane per revision, measured by `s3` on the policy it chose: delta rows every revision "
@@ -192,7 +198,12 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "with structural sharing would fit it: measured, a full snapshot costs 16.7 MB/revision "
      "unshared and 1.09 MB/revision with content-defined chunking, and the policy that fits is a "
      "different shape rather than a smaller one. `e3.2`'s node-id interning should take the real "
-     "figure near 8 KiB, and budgets ratchet, so it tightens then."),
+     "figure near 8 KiB, and budgets ratchet, so it tightens then — measured on the fixture since "
+     "`reco-7yq`, the lane costs 8 064 store pages per revision it holds (3 full snapshots and 560 "
+     "delta rows for 32 revisions), against the 6 041 B/revision `e3.2` reported on the payload "
+     "basis, which is the smaller quantity and never mixed with pages. The denominator is a "
+     "revision the lane holds, not a commit of history: the lane is a coverage window (§8.5), so a "
+     "per-commit quotient falls as a repository ages and describes nothing but the corpus's age."),
     ("cache.budget.mib", {"small": 256, "medium": 512, "large": 2_048, "xlarge": 4_096},
      "MiB", "ceiling",
      "LRU cap on class-R cache rows and their blobs: measured as 51 % of store bytes in "
