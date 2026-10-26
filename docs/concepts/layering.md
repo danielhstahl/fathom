@@ -18,6 +18,9 @@
   `tests/layers.rs` (41 tests) is the acceptance fixture; `tests/layers_episode.rs` (6) is the store
   side, and it is where `verify` lives — the graph built by applying the stored delta rows must produce
   the violations a fresh materialisation of the same revision produces.
+  `crates/fathom-analyze/tests/structure_workspace.rs` (12) is the crate-boundary half: a workspace corpus,
+  the edges the extractor resolves in it, and the violation `[layering]` finds across the boundary
+  (**reco-842`).
 - **Read this if**: you want to know why a layering violation is printed as one file, one line and one
   rule name, what makes it *new* rather than merely present, and which rules a `fathom.toml` cannot get
   away with.
@@ -95,16 +98,34 @@ says so rather than printing a clean bill), **`mode = "off"`** (nothing was exam
 
 A rule can also be in force over an edge kind that does not exist, which is none of the three and worse than
 the first: the numbers look like the third one. A `[layers]` table whose entries are crate directories, with
-rules written between them, asks the module graph about *crate* edges, and in a Cargo workspace the
-extractor writes none — every `use fathom_store::…` leaves the corpus and is stored as nothing (item 4 of
-[the graph page](architecture-graph.md)). The assessment then reports every row as judged and clear,
-which is true of the rows and says nothing about the edges the rules were written for. So a rule list has to
-be checked against what the corpus can show it, and where it cannot, the honest line is `[check.severity]
-layering = "off"` in the repository's own `fathom.toml` beside a sentence about where the rule really lives.
-This repository does exactly that: its crate boundaries are ADR-002 §5, enforced by
-`python3 tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) against the Cargo manifests, and
-`tests/test_workspace_contract.py` fails if the `[layers]` table and the ADR's crate list drift or if the
-gate stops saying out loud that the layering check is off here.
+rules written between them, asks the module graph about *crate* edges; if the extractor writes none, every
+`use fathom_store::…` has left the corpus and been stored as nothing (item 4 of
+[the graph page](architecture-graph.md)), and the assessment reports every row as judged and clear — true of
+the rows, silent about the edges the rules were written for. So a rule list has to be checked against what
+the corpus can show it. Where it cannot, the honest line is `[check.severity] layering = "off"` in the
+repository's own `fathom.toml`, beside a sentence about where the rule really lives; and the trap is open
+for any monorepo whose import spelling is decided by a manifest the extractor never reads — a Maven
+coordinate, a Python src-layout whose distribution name is not its directory, a Go module whose prefix is
+not a path in the tree.
+
+This repository was in that trap and is out of it (**reco-842**, closing what **reco-dg7** had declared
+instead of fixing). A Cargo workspace member is now a corpus location — `crates/fathom-store/src/row.rs` is
+the module `fathom_store::row` — so a crate-boundary `use` is a graph row and `[layering]` has something to
+fire on. This file's `[check.severity] layering = "off"` was deleted with the sentence that justified it, and
+`fathom.toml` now carries the rules ADR-002 §5 states: `no_upward` for §5.1's R1, one `forbid` per §5.2's
+downhill-but-refused edge. `tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) still enforces the
+same boundaries against the Cargo manifests — the lint refuses an edge a manifest *declares*, this refuses
+an edge the source *reaches along*, and both answers are wanted. `tests/test_workspace_contract.py` is the
+pin either way: it fails if the `[layers]` table and the ADR's crate list drift, and it now fails if the
+`[layering]` rules and the model's forbidden-edge list drift.
+
+The third state a clean row can mean is now counted instead of inferred. `cross_layer_edges` counts the
+judged rows whose two ends carry *different* layer tags — the only rows `no_upward` or a `forbid` could
+possibly disagree about. When it is zero while rules are in force and rows were judged, the row says so:
+*no row crossed a layer boundary, so every rule here ran on rows it could not have disagreed with — check
+that the corpus can show the edges the rules name*. That is not a finding about the architecture; it is the
+report declining to be read as a clean bill of one. `tests/structure_workspace.rs` carries both halves — a
+workspace whose rules fire once, and the same corpus with every crate in one layer, where nothing can.
 
 A layer declared but left out of `order` is a caveat, not a refusal: its edges are counted `unranked` and
 not judged for upwardness, because guessing a rank from the order the table was written in would be
@@ -145,6 +166,12 @@ disagreed.
 The same care applies to a wildcard leg: `use store::*` supports a claim about `store`, so it can produce
 a violation, but the row cites a named statement when one exists and marks the finding when it does not.
 
+A Rust import that crosses a crate boundary is **file**-granular, not package-granular, and that is the same
+rule rather than an exception to it: `use fathom_store::row::Row` names the module `row`, and a module is
+one file, so the edge is a file-to-file fact in the language's own terms. The spelling that names a module
+and nothing inside it — `use fathom_store::row;` — is stored as a wildcard edge to that file, because the
+dependency is real and which of the module's items it uses is not something the parser can name.
+
 ## 5. The delta, and the line between news and debt
 
 Two revisions in [the lane](graph-storage.md) produce two assessments, and `Delta::of(before, after)`
@@ -168,11 +195,12 @@ work around. A key with no `::` matches nothing and says so: a bare pair would n
 forgives.
 
 The exported object carries `violations`, `new_violations`, `baselined_violations`,
-`resolved_violations` and `edges_checked`, and each figure is rederivable from the lists in the same object
-— which is what `tests/layers.rs` asserts, since a number that cannot be recomputed is a number nobody can
-debug. The delta also says `episode: false` when there was no earlier revision: a cold index has no
-introduced and no resolved because nobody asked the question, and two zeros must not be printed as "nothing
-changed".
+`resolved_violations`, `edges_checked` and `cross_layer_edges`, and each figure is rederivable from the lists
+beside it — which is what `tests/layers.rs` asserts, since a number that cannot be recomputed is a number
+nobody can debug. `edges_checked` is the denominator every zero is a claim about, and `cross_layer_edges` is
+the one that says whether the rules had anything to bite on (§2). The delta also says `episode: false` when
+there was no earlier revision: a cold index has no introduced and no resolved because nobody asked the
+question, and two zeros must not be printed as "nothing changed".
 
 ## 6. What is not here
 

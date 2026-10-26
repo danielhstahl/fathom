@@ -21,9 +21,12 @@
 //! # The exported numbers
 //!
 //! [`Report::to_json`] puts four numbers at the top level — `violations`, `new_violations`,
-//! `baselined_violations`, `resolved_violations` — and one denominator, `edges_checked`. That is the
-//! contract the scorecard (**reco-al1**) trends and the CI gate (**reco-ngk**) exits on; everything
-//! else is below them, and each of them is a number a reader can re-derive from the lists beside it.
+//! `baselined_violations`, `resolved_violations` — and two denominators, `edges_checked` and
+//! `cross_layer_edges`. That is the contract the scorecard (**reco-al1**) trends and the CI gate
+//! (**reco-ngk**) exits on; everything else is below them, and each of them is a number a reader can
+//! re-derive from the lists beside it. The second denominator is the one that says whether the first
+//! one meant anything: a rule set with no cross-layer row to judge has found nothing in a sense of
+//! "nothing" that a reviewer cannot afford to confuse with the other one (**reco-842**).
 
 use serde_json::{Value, json};
 
@@ -331,6 +334,7 @@ impl Report {
             "baselined_violations": self.baselined_violations(),
             "resolved_violations": self.resolved_violations(),
             "edges_checked": self.counters.checked,
+            "cross_layer_edges": self.counters.cross_layer,
             "rules_active": self.counters.rules,
             "rules_refused": self.counters.refused,
             "alarms": self.alarms(),

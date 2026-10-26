@@ -679,11 +679,12 @@ def test_the_lockfile_names_every_crate_and_none_of_the_banned_crates():
 # ---------------------------------------------------------------------------
 #
 # `fathom check` reads `fathom.toml`, so this file is where ADR-002 meets the gate that is supposed to
-# answer the layering question about the repository it ships in. Two things have to stay true, and
-# **reco-dg7** is the ticket that wrote them down: the `[layers]` table is §3's crate list, and the
-# boundary rules are *not* restated as a `[layering]` block, because a rule the module graph cannot
-# fire is a rule the reader believes. `tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) is
-# what enforces §5, at crate granularity — the granularity §5 is written at.
+# answer the layering question about the repository it ships in. Three things have to stay true: the
+# `[layers]` table is §3's crate list, the `[layering]` rules are §5's rules, and the two agree with
+# `tools/workspace_model.py`, which owns both. They did not use to be able to: a rule over crate
+# directories needed a crate edge, the extractor wrote none, and **reco-dg7** declared the volume `off`
+# rather than buy a clean bill of health for an architecture the gate had not looked at. **reco-842**
+# closed the extractor gap, and the pins below are what changed with it.
 
 FATHOM_TOML = ROOT / "fathom.toml"
 
@@ -712,47 +713,78 @@ def test_fathoms_own_layers_table_is_the_models_crate_list():
         assert (ROOT / path).is_dir(), f"[layers] names {path}, which is not a directory"
 
 
-def test_the_gate_is_told_where_this_repositorys_boundaries_are_enforced():
-    """**reco-dg7**: the layering row says `off`, in this file, rather than reporting a blockage.
+def test_the_gate_judges_this_repositorys_own_boundaries():
+    """**reco-842**: ADR-002 §5 is a `[layering]` block here, not a promise in a comment.
 
-    `fathom check` on this repository used to answer the layering question with `blocked`: nothing was
-    declared, so "respected" had no definition. The remedy it prints is either a `[layering]` table or
-    the volume below, and the volume is the honest one here — see the comment above `[check.severity]`
-    for the measurement. This test is the pin: if the config drifts back to silence, or drifts forward
-    into rules that cannot fire, it fails here rather than in a stranger's CI log.
+    **reco-dg7** wrote the opposite pin — `[check.severity] layering = "off"`, with the reason measured —
+    because a rule the module graph cannot fire is a rule the reader believes, and no Rust dependency
+    row crossed a crate boundary. The extractor now resolves a workspace member as a corpus location,
+    so the rules are written, and this test is what keeps them the same rules §5 states: a `[layering]`
+    block that drifts from `tools/workspace_model.py` enforces a different architecture than the one the
+    ADR renders, and looks identical from the outside.
     """
     config = CW.read_toml(FATHOM_TOML)
     text = FATHOM_TOML.read_text()
     layers = config["layers"]
-    assert "layering" not in config, (
-        "a `[layering]` block here would judge nothing: the module graph stores no crate edge for Rust, "
-        "so it would print a clean bill of health for an architecture the gate never looked at"
+    severity = config.get("check", {}).get("severity", {})
+    assert "layering" not in severity, (
+        "`[check.severity] layering` is the line reco-842 was filed to delete: switching the row off is "
+        "the honest answer only while the graph cannot show a crate edge, and it can now"
     )
-    assert config["check"]["severity"]["layering"] == "off", "the gate's layering volume is not declared"
-    # The reason travels with the key, or it is a key nobody will defend in six months.
-    assert "check_workspace" in text and "E01" in text, "the comment must name what enforces §5 instead"
-    assert "leaves the corpus" in text, "the comment must name why a crate edge is not a graph row"
-    # And the two rules worth writing when that changes are written, so the day is a copy-paste.
-    # Only the *downhill* forbidden pairs: `no_upward = true` is what refuses an uphill edge, so §5.2's
-    # downhill-but-forbidden ones are the pairs that need a rule of their own — which is the sentence
-    # this file keeps pointing at.
+    rules = config.get("layering")
+    assert rules, (
+        "no `[layering]` block: ADR-002 §5's boundaries are then a comment, and `fathom check` reports "
+        "an architecture it never looked at"
+    )
+    assert rules.get("mode") in ("warn", "deny"), (
+        "`layering.mode = \"off\"` examines nothing and says so; this block is here to be looked at"
+    )
+    assert rules.get("no_upward") is True, (
+        "§5.1's R1 is 'no uphill edge', and `no_upward` is the one rule that refuses every one of them"
+    )
+
+    # Which crate is which layer, read off `[layers]` the way the gate reads it.
     layer_of = {
         path.rsplit("/", 1)[-1]: name
         for name, paths in layers.items()
         for path in paths
         if path.startswith("crates/")
     }
+    # `order` is bottom-first and it must be §3's ladder: a layer ranked here that the model ranks
+    # elsewhere makes `no_upward` fire on the wrong pair, or on no pair.
+    ranked = {layer_of[c.name]: c.layer for c in M.CRATES if c.name in layer_of}
+    assert rules["order"] == sorted(ranked, key=lambda name: ranked[name]), (
+        "layering.order must be the model's ladder, bottom first: the model ranks "
+        + ", ".join(f"{k}={v}" for k, v in sorted(ranked.items()))
+    )
+    # And the `forbid` list is exactly §5.2's downhill-but-refused edges. Only those: `no_upward` above
+    # is what refuses an uphill one, so a `forbid` for it would be a second name for one rule.
     forbidden = {
         (layer_of[src], layer_of[dst])
         for src, dst, _why in M.FORBIDDEN_EDGES
         if M.layer_of(dst) < M.layer_of(src)
     }
-    assert {("l4_surfaces", "l1_durable_state"), ("l4_surfaces", "l2_outside_door")} <= forbidden
-    for src_layer, dst_layer in sorted(forbidden):
-        pair = f"{src_layer} -> {dst_layer}"
-        assert pair in text, (
-            f"§5.2 forbids a downhill edge; the comment must name the rule ({pair}) to write later"
-        )
+    declared = set()
+    for entry in rules.get("forbid", []):
+        body = entry.split(": ", 1)[-1]
+        src, _, dst = body.partition("->")
+        declared.add((src.strip(), dst.strip()))
+    assert declared == forbidden, (
+        f"layering.forbid and the model's forbidden edges disagree: config says {sorted(declared)}, "
+        f"the model says {sorted(forbidden)}"
+    )
+    # The reason travels with the key, or it is a key nobody will defend in six months: the file has to
+    # say what else enforces §5 (the manifest lint, at the granularity §5 is written at) and which ticket
+    # made this block fireable.
+    assert "check_workspace" in text and "E01" in text, (
+        "the comment must name the other half of §5: `check_workspace.py lint` refuses an edge a manifest "
+        "declares, `[layering]` refuses an edge the source reaches along"
+    )
+    assert "reco-842" in text, "the comment must name why these rules are fireable now"
+    assert "contracts" in text, (
+        "the comment must say why `contracts` is a layer but not a rank: an unranked edge is a stated "
+        "state, not a guessed one"
+    )
 
 
 def test_ci_builds_on_all_three_operating_systems_and_both_channels():

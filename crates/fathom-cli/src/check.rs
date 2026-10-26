@@ -685,6 +685,21 @@ fn gather_graph(
                 let mut run = CheckRun::ran(Check::Layering, Some(volume), examined, findings);
                 run.notes = rule_notices.clone();
                 run.notes.extend(report.notices.clone());
+                // The third thing a clean layering row can mean, after "no rules" and "no rows": rules in
+                // force, rows judged, and not one row crossing a layer boundary. Then the zero is a fact
+                // about what the corpus can show and not about the architecture holding (**reco-842**),
+                // and the row says so instead of leaving a reader to guess which zero they are reading.
+                if let Some(blind) = report.counters.blind_spot() {
+                    run.notes.push(format!("layering: {blind}"));
+                } else {
+                    // The other half of the same claim: the row has to say what kind of clean it is, and
+                    // the kind is "clean over N rows that a layering rule could actually disagree about".
+                    run.notes.push(format!(
+                        "{} of the {examined} judged dependency rows cross a layer boundary; the rest \
+                         sit between two modules of one layer, where no `[layering]` rule can differ",
+                        report.counters.cross_layer
+                    ));
+                }
                 // *"using ratchet baselines so existing debt does not block"* has to be visible in the row,
                 // or a green run reads as "there was nothing to forgive" and the ledger looks decorative.
                 let forgiven = report.baselined_violations();

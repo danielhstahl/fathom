@@ -114,6 +114,19 @@ the first version silently dropped: `use a::{b, c}`, `use a::*`, `use a::{self a
 `use a::{c, d}` nested inside a scoped path. The three misses are `macro_rules!` output (§The
 blind spots).
 
+**A module path is crate-relative, not corpus-relative (`reco-842`).** The corpus above is one flat
+crate, where the two spellings are the same string and the difference cannot show. A Cargo workspace
+is one corpus of several crates, and `crates/fathom-store/src/row.rs` is the module `fathom_store::row`
+— not `crates::fathom-store::src::row`. Reading it the second way resolved nothing: every `use crate::…`,
+every `mod …;` and every `use sibling::…` in a workspace asked the index for a path it did not hold, and
+the edge was filed under "leaves the corpus". So the extractor derives the crate a file belongs to from
+the layout Cargo itself defines — `…/<package>/src/**`, rooted at `src/lib.rs` or `src/main.rs`, named
+after the package directory with `-` spelled `_` — and anchors `crate`, `self`, `super`, `mod x;` and a
+leading member name on it. A sibling crate is in the corpus and its edges are rows; a name the corpus
+cannot place (`serde`, a package whose `[lib] path = ` was rewritten) is still an out-of-corpus reference.
+The measured cost of getting this wrong was a graph in which no dependency row crossed a crate boundary,
+which is [the layering gate](layering.md) judging an architecture it could not see.
+
 **Python is where a naive walker loses the API.** The first version of the Python extractor
 reported ~85 % recall on definitions and looked fine; the misses were `@property`, `@classmethod`,
 `@staticmethod` and every method of every `@dataclass`, because those declarations sit inside a

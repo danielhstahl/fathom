@@ -14,6 +14,13 @@
 //!   edge to a forwarder.
 //! * **Visibility is a path property, not an item property.** An item is public API only if every
 //!   module between it and the crate root is `pub`, or a `pub use` gives it a public path.
+//!
+//! A third is load-bearing for the shape of a real repository: **a module path is crate-relative, not
+//! corpus-relative** ([`crate_of`]). A Cargo workspace is one corpus of several crates, and reading
+//! `crates/fathom-store/src/row.rs` as the module `crates::fathom-store::src::row` — which is what a
+//! corpus-relative path says — resolves nothing at all: every `use crate::…`, every `mod …;` and every
+//! `use sibling::…` asks the index for a path it does not hold, and was stored as nothing. That is
+//! **reco-842**, and it is why a Cargo workspace could not answer its own layering question until now.
 
 use crate::structure::engine::{
     self, CorpusView, Draft, Index, Lang, RawImport, follow, origin_key, publish_origin,
@@ -22,7 +29,9 @@ use crate::structure::model::{
     Complexity, Language, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
-use crate::structure::util::{self, base_type, field, kids, qualify, span_of, stem, text};
+use crate::structure::util::{
+    self, base_type, dir_of, field, file_name, kids, qualify, span_of, stem, text,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use tree_sitter::{Language as TsLanguage, Node};
 
@@ -83,7 +92,21 @@ pub const LANG: Lang = Lang {
     export_names,
 };
 
-fn seed(_file: &str, _draft: &Draft, _index: &mut Index) {}
+/// The `index.extra` prefix under which a workspace member's import name is registered.
+const CRATE_KEY: &str = "crate:";
+
+fn seed(file: &str, _draft: &Draft, index: &mut Index) {
+    // `…/fathom-store/src/lib.rs` is what makes `fathom_store::` a name this corpus can place: the
+    // sibling crate's own root, found in the corpus rather than guessed at. `or_insert` keeps the
+    // first in path order, so two packages that share a directory name resolve to one of them
+    // deterministically rather than to whichever the tree walk happened to reach first.
+    if let Some((root, name)) = crate_root_file(file) {
+        index
+            .extra
+            .entry(format!("{CRATE_KEY}{name}"))
+            .or_insert(root);
+    }
+}
 
 /// What a declaration sits inside, which decides whether a function is a `fn` or a `method`.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -103,6 +126,13 @@ struct Scope {
 }
 
 pub fn scan(root: Node, src: &[u8], file: &str, out: &mut Draft, policy: &ExtractPolicy) {
+    let scanned = crate_of(file);
+    // Resolution reads these back: `crate::`, `self`, `super` and `mod x;` are every one anchored on
+    // the crate this file belongs to, and `resolve` is handed the draft rather than the path.
+    out.aux.insert("croot".to_string(), scanned.root.clone());
+    if let Some(name) = &scanned.name {
+        out.aux.insert("cname".to_string(), name.clone());
+    }
     let module_path = file_module(file);
     out.aux.insert("module".to_string(), module_path.join("::"));
     items(
@@ -118,10 +148,94 @@ pub fn scan(root: Node, src: &[u8], file: &str, out: &mut Draft, policy: &Extrac
     );
 }
 
-/// `lib.rs`/`main.rs` is the crate root; `geo/mod.rs` is `geo`; `geo/point.rs` is `geo::point`.
+/// The Cargo crate a corpus path belongs to, read off the path.
+///
+/// A Cargo workspace is **one corpus** of **several crates**, and a Rust module path is relative to a
+/// crate root, not to the corpus root. The layout Cargo itself defines says where the root is, and that
+/// is all this needs:
+///
+/// * `…/<package>/src/**` belongs to the crate rooted at `…/<package>/src`, whose root module file is
+///   `src/lib.rs` (a library) or `src/main.rs` (a binary) and whose import name is the package
+///   directory with `-` spelled `_` — Cargo's own defaults, which say `[package] name` falls back to
+///   the directory name and `[lib] path` to `src/lib.rs`;
+/// * a path with no `src` component says nothing about a crate, and stays in the corpus-wide namespace
+///   this extractor has always used for one flat crate: `crates/fathom-cli/tests/cli.rs`, `fuzz/**`,
+///   and every fixture corpus in this repository.
+///
+/// A package whose `[lib] path = ` is not `src/lib.rs` is outside what a path can say. The manifests are
+/// the only authority on that, they are not in the corpus the extractor is handed, and guessing from a
+/// directory that merely happens to be named `src` is how a graph invents a dependency.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Crate {
+    /// Corpus-relative directory holding the crate's root module file; `""` when the path says nothing.
+    root: String,
+    /// The name an import uses for this crate (`fathom_store`), when the path can name one.
+    name: Option<String>,
+}
+
+/// Which crate a file belongs to, per [`Crate`].
+fn crate_of(file: &str) -> Crate {
+    let binding = dir_of(file);
+    let parts: Vec<&str> = binding.split('/').filter(|part| !part.is_empty()).collect();
+    // The *first* `src`, because `crates/x/src/engine/util.rs` is one crate with a nested module, not
+    // two packages that happen to share a directory name.
+    let Some(at) = parts.iter().position(|part| *part == "src") else {
+        return Crate::default();
+    };
+    Crate {
+        root: parts[..=at].join("/"),
+        // `src/lib.rs` at the corpus root has no package directory above it, so it has a root and no
+        // name: `crate::` resolves inside it, and nobody outside it can name it.
+        name: if at > 0 {
+            Some(crate_name(parts[at - 1]))
+        } else {
+            None
+        },
+    }
+}
+
+/// `fathom-store` → `fathom_store`: the spelling `use fathom_store::…` uses, which is what Cargo makes
+/// of a package name that was never written down.
+fn crate_name(package: &str) -> String {
+    package
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+/// The `(root, name)` a *crate root module file* asserts: only `…/<package>/src/lib.rs` and
+/// `…/<package>/src/main.rs` declare a crate, and they are the only evidence a sibling's name has.
+fn crate_root_file(file: &str) -> Option<(String, String)> {
+    let scanned = crate_of(file);
+    let name = scanned.name.clone()?;
+    let leaf = file_name(file);
+    if leaf != "lib.rs" && leaf != "main.rs" {
+        return None;
+    }
+    if dir_of(file).rsplit('/').next() != Some("src") {
+        return None;
+    }
+    Some((scanned.root, name))
+}
+
+/// The module path a file declares, **crate-relative**: `crates/fathom-store/src/row.rs` is `row`,
+/// `crates/fathom-store/src/geo/mod.rs` is `geo`, and `crates/fathom-store/src/lib.rs` is the crate
+/// root itself — the empty path. `lib.rs`/`main.rs` is the crate root; `geo/mod.rs` is `geo`.
 fn file_module(file: &str) -> Vec<String> {
+    let Crate { root, .. } = crate_of(file);
     let path = stem(file);
-    let path = path.trim_end_matches("/mod").trim_end_matches("mod");
+    let relative: &str = if root.is_empty() {
+        &path
+    } else {
+        path.strip_prefix(&format!("{root}/")).unwrap_or(&path)
+    };
+    let path = relative.trim_end_matches("/mod").trim_end_matches("mod");
     if path.is_empty() || path == "lib" || path == "main" {
         return Vec::new();
     }
@@ -623,18 +737,33 @@ fn use_names(list: Node, src: &[u8], prefix: String, out: &mut Vec<(String, Stri
 // resolution
 // ---------------------------------------------------------------------------
 
-/// Module path → the file that declares it.
-fn module_file(index: &Index, module: &[String]) -> Option<String> {
-    if module.is_empty() {
-        for root in ["lib.rs", "main.rs", "mod.rs"] {
-            if index.has(root) {
-                return Some(root.to_string());
+/// Module path → the file that declares it, inside the crate rooted at `root`.
+///
+/// `root` is the crate-relative anchor [`crate_of`] found for the file doing the asking (empty for a
+/// corpus with nothing to anchor on, which is the corpus-wide namespace of a single flat crate). The
+/// empty module is the crate root itself, and a crate root is a file: `…/src/lib.rs`, or `…/src/main.rs`
+/// for a binary crate. Without that half, `use fathom_core::Episode` — a name the crate root re-exports
+/// from somewhere deeper — has no candidate to be looked up in.
+fn module_file(index: &Index, root: &[String], module: &[String]) -> Option<String> {
+    let mut base = root.to_vec();
+    base.extend_from_slice(module);
+    if base.is_empty() {
+        for root_file in ["lib.rs", "main.rs", "mod.rs"] {
+            if index.has(root_file) {
+                return Some(root_file.to_string());
             }
         }
         return None;
     }
-    let joined = module.join("/");
-    [format!("{joined}.rs"), format!("{joined}/mod.rs")]
+    let joined = base.join("/");
+    let mut candidates = vec![format!("{joined}.rs"), format!("{joined}/mod.rs")];
+    if module.is_empty() {
+        // Only the crate root may be answered by a `lib`/`main`: a module named `geo` is not answered
+        // by `geo/lib.rs`.
+        candidates.push(format!("{joined}/lib.rs"));
+        candidates.push(format!("{joined}/main.rs"));
+    }
+    candidates
         .into_iter()
         .find(|candidate| index.has(candidate))
 }
@@ -646,6 +775,16 @@ pub fn resolve(
     policy: &ExtractPolicy,
     truncated: &mut usize,
 ) -> Vec<engine::Edge> {
+    let own_root: Vec<String> = draft
+        .aux
+        .get("croot")
+        .map(|root| {
+            root.split('/')
+                .filter(|s| !s.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default();
     let mut out: Vec<engine::Edge> = Vec::new();
     for import in &draft.imports {
         let mut segments: Vec<String> = import
@@ -657,26 +796,60 @@ pub fn resolve(
         if segments.is_empty() {
             continue;
         }
+        // A specifier whose first segment is a workspace member's name names that crate, and the rest
+        // of it is a module path inside it. This is the edge reco-842 was filed for: `use
+        // fathom_store::row::Row` written in `fathom-analyze` used to be an out-of-corpus reference,
+        // exactly like a third-party base, and a `[layering]` rule over crate-shaped `[layers]` entries
+        // had nothing to fire on.
+        let mut root = own_root.clone();
+        let mut named_crate = false;
+        if import.form != "mod_decl" {
+            // A `mod x;` is always this crate's own module tree; only a `use` can name a sibling.
+            let sibling = segments
+                .first()
+                .and_then(|head| index.extra.get(&format!("{CRATE_KEY}{head}")).cloned());
+            if let Some(sibling) = sibling {
+                root = sibling
+                    .split('/')
+                    .filter(|segment| !segment.is_empty())
+                    .map(String::from)
+                    .collect();
+                segments.remove(0);
+                named_crate = true;
+            }
+        }
         let mut base: Vec<String> = Vec::new();
         while let Some(head) = segments.first().map(String::as_str) {
             match head {
                 "crate" => {
+                    root = own_root.clone();
+                    named_crate = true;
                     segments.remove(0);
                 }
                 "self" => {
-                    base = import.module.clone();
+                    // `use geo::point::self` / `use crate::{self, x}`: the module the statement names,
+                    // with nothing left over. `self` after a crate name is the crate root itself.
+                    if named_crate {
+                        base = Vec::new();
+                    } else {
+                        base = import.module.clone();
+                        root = own_root.clone();
+                    }
                     segments.remove(0);
                 }
                 "super" => {
                     base = import.module.clone();
                     base.pop();
+                    if !named_crate {
+                        root = own_root.clone();
+                    }
                     segments.remove(0);
                 }
                 _ => break,
             }
         }
         if import.form == "mod_decl" {
-            if let Some(target) = module_file(index, &segments) {
+            if let Some(target) = module_file(index, &root, &segments) {
                 let name = segments.last().cloned().unwrap_or_default();
                 let mut edge = engine::Edge::resolved(target, name);
                 edge.form = import.form.to_string();
@@ -688,10 +861,11 @@ pub fn resolve(
             continue;
         }
         base.extend(segments.iter().cloned());
-        // Longest prefix that is a module wins; what is left over is the symbol named.
+        // Longest prefix that is a module wins; what is left over is the symbol named. The `0` cut is
+        // the crate root itself, which is where a façade re-export lives.
         let mut resolved = false;
-        for cut in (1..=base.len()).rev() {
-            let Some(target) = module_file(index, &base[..cut]) else {
+        for cut in (0..=base.len()).rev() {
+            let Some(target) = module_file(index, &root, &base[..cut]) else {
                 continue;
             };
             let rest = &base[cut..];
@@ -720,6 +894,18 @@ pub fn resolve(
                 if chain.truncated {
                     *truncated += 1;
                 }
+                out.push(edge);
+                resolved = true;
+                break;
+            }
+            if rest.is_empty() {
+                // `use fathom_store::row;` names a *module*, not a declaration inside it: the name the
+                // specifier ends with is the file's own, which the file does not declare as a symbol.
+                // The dependency is real and which of the module's items it uses is unnamed, which is
+                // `s1` finding 2's kind rather than an absence.
+                let mut edge = engine::Edge::wildcard(target);
+                edge.form = import.form.to_string();
+                edge.specifier = import.spec.clone();
                 out.push(edge);
                 resolved = true;
                 break;

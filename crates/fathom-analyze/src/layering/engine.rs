@@ -66,6 +66,14 @@ pub struct Counters {
     pub untagged: usize,
     /// Rows whose layer is absent from `layering.order`, while `no_upward` is on.
     pub unranked: usize,
+    /// Rows whose two endpoints carry **different** layer tags.
+    ///
+    /// This is the denominator that tells a reader whether the declared rules had anything to disagree
+    /// about. A repository whose `[layers]` entries are crate directories and whose extractor cannot
+    /// place a crate-boundary import checks thousands of same-layer rows, reports zero violations, and
+    /// means neither of those numbers the way a reader hears them (**reco-842**): the rows were judged,
+    /// and no rule could have fired on any of them. Zero here with rules in force says that out loud.
+    pub cross_layer: usize,
     /// Package-granular rows whose package has no single layer tag, so the claim was not available.
     pub indeterminate: usize,
     /// Cycles looked at, when a cycle rule was on.
@@ -91,12 +99,33 @@ impl Counters {
             "skipped_unnamed": self.skipped_unnamed,
             "untagged": self.untagged,
             "unranked": self.unranked,
+            "cross_layer": self.cross_layer,
             "indeterminate": self.indeterminate,
             "cycles": self.cycles,
             "rules": self.rules,
             "refused": self.refused,
             "statements_located": self.statements_located,
         })
+    }
+
+    /// The one sentence that says the rules had nothing to disagree about, when that is the state.
+    ///
+    /// [`Rules::is_inert`] covers "no rules", and [`Counters::checked`] == 0 covers "no rows". This is the
+    /// third state, the one neither of them catches: rules in force, rows judged, and not one row whose
+    /// endpoints sit in different layers — so the zero violations is a fact about the corpus's shape and
+    /// not about the architecture holding (**reco-842**, where the whole graph of a Cargo workspace held
+    /// no crate-boundary edge and the row still read clean). A surface that prints the row should print
+    /// this beside it.
+    #[must_use]
+    pub fn blind_spot(&self) -> Option<String> {
+        if self.rules > 0 && self.checked > 0 && self.cross_layer == 0 {
+            return Some(
+                "no row crossed a layer boundary, so every rule here ran on rows it could not have \
+                 disagreed with — check that the corpus can show the edges the rules name"
+                    .to_string(),
+            );
+        }
+        None
     }
 
     /// The one line that says what was looked at.
@@ -107,6 +136,9 @@ impl Counters {
             self.checked, self.judged, self.rules, self.permitted
         );
         let mut caveats: Vec<String> = Vec::new();
+        if let Some(blind) = self.blind_spot() {
+            caveats.push(blind);
+        }
         if self.untagged > 0 {
             caveats.push(format!("{} row(s) touch an untagged module", self.untagged));
         }
@@ -383,6 +415,9 @@ fn judge(
     };
     if src_tag.is_empty() || dst_tag.is_empty() {
         counters.untagged += 1;
+    }
+    if !src_tag.is_empty() && !dst_tag.is_empty() && src_tag != dst_tag {
+        counters.cross_layer += 1;
     }
     let unit = if package { Unit::Package } else { Unit::File };
     Some(Judged {

@@ -164,40 +164,53 @@ l1_durable_state = ["crates/fathom-store"]
 l0_vocabulary = ["crates/fathom-core"]
 contracts = ["src/recommender", "tools"]
 
-# ADR-002's boundary rules are enforced, and they are not restated here as a `[layering]` table —
-# and the gate is told so, rather than leaving a stranger to diagnose why its layering row is blocked
-# (**reco-dg7**).
+# ADR-002 §5's crate boundaries, restated as rules the gate can judge — which is only true since
+# **reco-842** closed the extractor gap that made them unfireable here.
 #
-# The policy is real and it does fail a build: R1 (no uphill edge), §5.2's downhill-but-forbidden
-# edges and §5.3's façade are lint `E01`–`E05`, `M02` and `M03`, run by
-# `python3 tools/check_workspace.py lint` on every commit. They are crate-level because they are
-# claims about the `[dependencies]` of eight Cargo manifests, which is the granularity that can
-# actually answer them.
+# `tools/check_workspace.py lint` (`E01`–`E05`, `M02`, `M03`) has enforced §5 on every commit all along,
+# at the granularity of the `[dependencies]` of eight Cargo manifests. `[layering]` judges a different
+# object: the module graph, and until a workspace member was a corpus location a crate-boundary `use`
+# left that corpus and was stored as nothing (item 4 of `docs/concepts/architecture-graph.md`). A rule
+# over crate-shaped `[layers]` entries then judged ~2 400 same-crate edges, printed "0 findings", and
+# called an architecture it had not looked at respected — the exact state `docs/concepts/layering.md` §2
+# refuses in somebody else's config, and the reason this file carried
+# `[check.severity] layering = "off"` (**reco-dg7**) instead. That line is gone.
 #
-# `[layering]` judges a different object: the module graph, whose corpus is `e3.1`'s extractor's, and a
-# Rust dependency that leaves a crate is a dependency that leaves the corpus — the fourth "thing that may
-# be wrong" in `docs/concepts/architecture-graph.md` stores it as nothing.
-# Measured, not argued: seed an uphill `use fathom_analyze::…` into `crates/fathom-core` on a scratch
-# branch and `fathom index` it, and the revision gains one graph node and no dependency row; and across
-# this index's graph deltas not one of the ~2 200 dependency rows carries two different layer tags. So a `[layering]` block naming these layers would judge nothing, `fathom check`
-# would print "2 400-odd dependency edges judged, 0 findings", and this repository would have written
-# itself a clean bill of health for an architecture the gate never looked at. `docs/concepts/layering.md`
-# §2 refuses exactly that state in somebody else's config; this file will not buy it in its own.
-# The gap itself is reco-842: a workspace member is a corpus boundary the extractor does not model yet.
+# `order` is §3's ladder, bottom-first: every arrow the graph holds must point at or below its own rung.
+# `no_upward` is §5.1's R1, and one line refuses every uphill edge at once; the two `forbid` lines are
+# §5.2's *downhill-but-refused* edges, which need a rule of their own precisely because `no_upward`
+# cannot see them. §5.3's façade rule is narrower than either — which module inside the crate a surface
+# may name — and `[layering]` has no selector for a module prefix inside a layer, so `IMPORT_FACADES`
+# stays the lint's job. The two are not duplicates: the lint refuses an edge a manifest declares, this
+# refuses an edge the source actually reaches along.
 #
-# So the volume is off, in the words the gate's own remedy line asks for, and `[layers]` stays because
-# it answers the questions that are genuinely asked at its granularity: the layer tags ride on every
-# graph row, and `deps.license.library_layers` reads them. Everything else the gate reads is left at
-# its built-in default, for the reason every other block in this file gives: the built-ins are what
-# `tests/test_ci_gate_contract.py` scores.
+# `contracts` is in `[layers]` and deliberately not in `order`. `src/recommender` and `tools` are a layer
+# for the license and graph questions, not a rung in the crate ladder, and an edge into one is counted
+# `unranked` — a stated state — rather than guessed into a rank this file does not claim. Test, example
+# and bench trees are not ignored either: a dev-dependency is still a crate edge, and §5.1 makes no
+# exception for it.
 #
-# What would make a `[layering]` block worth writing is an extractor for which a sibling workspace
-# member is not a third-party base. The day a crate edge is a graph row, the rules to write are
-# `no_upward = true` (§5.1's R1, and it refuses every uphill edge at once) plus one refusal per the
-# downhill edges §5.2 forbids:
-#   forbid = ["one-reality: l4_surfaces -> l1_durable_state",
-#             "one-door:    l4_surfaces -> l2_outside_door"]
-# and the tests named above are what keep the layer names honest until then.
+# Measured at 7be179f, the commit this block was written against. `fathom check --only layering` judges
+# 7 222 dependency rows of this repository's own head graph, 869 of them across a layer boundary, and
+# reports 0 findings; `fathom check --only layering --base HEAD~5 --head HEAD` reports the same zero for
+# the range. The row prints its own denominator — *"869 of the 7 222 judged dependency rows cross a layer
+# boundary"* — because a zero over rows no rule could disagree about is a different zero from this one,
+# and **reco-842** is the ticket that could not tell the two apart.
+[layering]
+mode = "warn"
+order = [
+  "l0_vocabulary",
+  "l1_durable_state",
+  "l2_outside_door",
+  "l3_analysis",
+  "l4_surfaces",
+  "l5_composition",
+]
+no_upward = true
+forbid = [
+  "one-reality: l4_surfaces -> l1_durable_state",
+  "one-door: l4_surfaces -> l2_outside_door",
+]
 [check]
 # The mode this repository runs its own gate in, declared rather than inherited — **reco-azy** is the ticket
 # that asked which of the two this was, and the answer is `warn`: an opinion, written down, about a gate that
@@ -223,17 +236,20 @@ contracts = ["src/recommender", "tools"]
 #
 # Why not silence those and flip the mode. `[check] ignore` would make a `deny` gate green in one line, and it
 # would be exactly the state the gate exists to refuse: a clean bill of health for a surface it never judged.
-# `docs/concepts/layering.md` §2 refuses that in somebody else's config, and this file already honoured it by
-# switching `[check.severity] layering` **off** rather than pretend (**reco-dg7**). The other failure mode is
-# the one `docs/concepts/ci-gate.md` names: a gate that blocks a repository the day it is installed is a gate
-# that gets deleted the day it blocks a release.
+# `docs/concepts/layering.md` §2 refuses that in somebody else's config, and this file honoured it in its own
+# for two tickets — `[check.severity] layering = "off"` was the honest line while the graph held no crate edge
+# (**reco-dg7**), and the `[layering]` block above is what replaced it once **reco-842** made one possible.
+# The other failure mode is the one `docs/concepts/ci-gate.md` names: a gate that blocks a repository the day
+# it is installed is a gate that gets deleted the day it blocks a release.
 #
 # What `warn` is *not*, and the half that is enforced anyway. In `warn` nothing decides an exit code, so the
 # two invariants ADR-002 §7.3 cares most about — a required check that could not run, and a run that examined
-# nothing — leave this build green: over a repository with no `[layering]` rules, `fathom check --only
-# layering` prints `fathom check failed: nothing was examined` and exits 0. That is asserted, not hoped for:
-# the `check-gate` job in `.github/workflows/ci.yml` reads the run's `--format json` and fails when a check
-# row is `blocked` or when no row `ran`. The volume here is advisory; the "did it look at all" rule is not.
+# nothing — leave this build green: in a repository with no `[layering]` rules, `fathom check --only
+# layering` prints `fathom check failed: nothing was examined` and exits 0, and used to do that here. It does
+# not now: the row runs, prints how many dependency rows it judged, and 0 findings is an answer rather than
+# an absence. That is asserted, not hoped for: the `check-gate` job in `.github/workflows/ci.yml` reads the
+# run's `--format json` and fails when a check row is `blocked` or when no row `ran`. The volume here is
+# advisory; the "did it look at all" rule is not.
 #
 # What turns this to `deny`, in order:
 #   1. **reco-9k3** — the `api` check says something *true* about this repository's Python, and says which of
@@ -245,9 +261,6 @@ contracts = ["src/recommender", "tools"]
 #     the whole decision and does not pretend to be one now;
 #   3. then, and only then, `mode = "deny"` — at the merge where 1 and 2 have both landed.
 mode = "warn"
-
-[check.severity]
-layering = "off"
 
 [risk]
 # An unreviewed episode is only worth an interruption if the interruption teaches something;

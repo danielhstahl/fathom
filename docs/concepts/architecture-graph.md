@@ -60,9 +60,14 @@ These are not caveats appended to a report; each one changes the shape of an ans
    caller list built from them says *names a package rather than a file* rather than pretending to
    file-level precision it does not have.
 4. **A dependency that leaves the corpus is stored as nothing** — a third-party base, a standard-library
-   import, and, in a Cargo workspace, a sibling crate: `use fathom_store::…` written in `fathom-analyze`
-   names no path in this corpus. No row is written, the omission is counted, and a `[layering]` rule
-   over crate-shaped `[layers]` entries has nothing to fire on.
+   import. No row is written, the omission is counted, and a `[layering]` rule over an edge kind the corpus
+   cannot show has nothing to fire on. In a Cargo workspace a *sibling crate* is not one of these, and used
+   to be: a Rust module path is crate-relative, so reading `crates/fathom-store/src/row.rs` as a
+   corpus-relative module made every `use crate::…`, every `mod …;` and every `use fathom_store::…` in a
+   workspace ask for a path no corpus holds — and a `[layering]` block whose `[layers]` entries are crate
+   directories judged ~2 400 same-crate edges and reported them clean (**reco-842**). A member name the
+   corpus cannot place is still an out-of-corpus reference: `serde`, a crate outside the tree, a package
+   whose `[lib] path = ` is not `src/lib.rs`.
 
 ## Where it lives, and what it costs
 

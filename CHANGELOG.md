@@ -17,6 +17,61 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A Cargo workspace could not answer its own layering question (`reco-842`)
+
+`use fathom_analyze::graph::model::Graph;` written in `crates/fathom-core` produced a graph node and no
+dependency row. That was not a corner of the Rust extractor: it is what the extractor did with every
+specifier in a workspace, and this repository is a workspace of eight crates. `resolve()` joined the
+specifier's segments and asked the index for a *corpus-relative* path, so `fathom_analyze::graph::model`
+was looked up as `crates/fathom-analyze/src/graph/model` — a path no corpus holds. The module a file is in
+was written the same way, which is the other half of the same mistake: `crates/fathom-core/src/lib.rs` is
+the root of the crate `fathom_core`, not a module named `crates::fathom-core::src::lib`. So `use crate::…`
+asked for a path outside its own crate, `mod tool;` asked for one outside it too, and a sibling crate name
+was out of the corpus in exactly the sense a third-party base is — item 4 of
+[the graph page](docs/concepts/architecture-graph.md): a dependency that leaves the corpus writes no row,
+the omission is counted, and a rule written between the layers it would have connected has nothing to fire
+on. The 41 files in `crates/fathom-cli/src` that write `fathom_core::` wrote no row between `l5_composition`
+and `l1_durable_state`. `docs/concepts/layering.md` §2 refuses reading a row like that as a clean bill; this
+repository was doing it to itself, which is why **reco-dg7** answered the question with
+`[check.severity] layering = "off"` instead of answering it.
+
+* **`seed()` was a stub, and so no Rust file ever declared a crate.** A file is now attributed to its crate
+    by the layout Cargo itself defines — the first `src` component is the crate root, the directory above it
+    is the package, and the import name is that directory with `-` spelled `_` — and the crate root's file
+    (`lib.rs`, or `main.rs` in a binary crate) asserts the name once, for the whole corpus. A binary crate is
+    named for its package, not for `lib`, which is the name its users type and the name the extractor had
+    never registered. `crate`, `self`, `super` and `mod x;` are anchored on that root, and `file_module()`
+    returns a path relative to it, so `crates/fathom-core/src/graph/model.rs` is `fathom_core::graph::model`
+    and every `use crate::…` in every crate resolved for the first time.
+* **A sibling is resolved inside the crate that names it.** A leading workspace-member name swaps the
+    resolution root, and the longest-prefix walk starts at the crate root instead of the corpus root — which
+    is also what lets a façade be followed: `use beta_kit::Kit` where `beta_kit/lib.rs` re-exports `Kit` from
+    `thing.rs` now lands on `thing.rs`, the file that declares it, with the hop recorded in `via`.
+    `use beta_kit::tool;` names a module and not a symbol, so it is stored as a wildcard carrying the
+    specifier: which files a module's declaration pulls in is not a fact the language hands you, and
+    inventing `tool/mod.rs` would have been the extractor's invention rather than Cargo's.
+* **A third-party base still leaves the corpus, and says so.** `serde::Serialize` is unresolved after the
+    change exactly as before it; the new rule fires only on a name some corpus file asserts as its own crate
+    root. A resolved Rust import names a module, and a module is one file, so the edge is file-granular — the
+    same rule Go's package granularity is an instance of, not an exception to it. Nothing here claims a
+    package-level edge a Cargo dependency graph would give and this extractor does not read.
+* **A clean row now says which kind of clean it is.** `cross_layer_edges` counts the judged rows whose two
+    ends carry different `[layers]` tags — the only rows `no_upward` or a `forbid` can disagree about — and
+    when it is zero while rules are in force and rows were judged, the row says so instead of printing a
+    zero. `edges_checked` was the denominator every finding-count is a claim about; this is the one that says
+    whether the rules had anything to bite on, and it is the number **reco-842** could not get.
+
+`fathom.toml` carries `[layering]` rules for the first time: `no_upward`, and one `forbid` per ADR-002 §5.2's
+downhill-but-refused edge, over §3's ladder — the boundaries **reco-dg7** had declared unjudgeable, and the
+`layering = "off"` line is gone. `tools/check_workspace.py lint` still refuses an edge a Cargo manifest
+*declares*; this refuses an edge the source *reaches along*, and `tests/test_workspace_contract.py` now pins
+the `[layering]` rules against `tools/workspace_model.py`'s forbidden-edge list so the two cannot drift.
+Measured at `7be179f`: `fathom check --only layering` judges 7 222 dependency rows, 869 of them across a
+layer boundary, and reports 0 findings — against the 2 462 rows and no cross-crate edge at all that the
+ticket measured on this same tree. Twelve tests are in
+`crates/fathom-analyze/tests/structure_workspace.rs`, on a fixture workspace of two crates and a façade;
+the Rust claims already owned by `tests/structure_core.rs` and `tests/structure_tail.rs` did not move.
+
 ### The graph lane stopped paying for the commit tables (`reco-7yq`)
 
 ADR-004 §11.6 budgets the store twice — `store.bytes_per_commit_spine = 4 KiB` for the commit tables,
