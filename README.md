@@ -2,6 +2,8 @@
 
 **A terminal UI that keeps a human's mental model of a codebase a coding agent is writing.**
 
+![Fathom screenshot](./docs/screenshots/fathom.png)
+
 The bottleneck in agentic software delivery is no longer writing code. It is the human rebuilding a
 correct mental model of what the agent did. Fathom is the tool for that: it turns agent turns into
 reviewable **episodes**, describes each with an evidence-backed **delta**, ranks what deserves attention

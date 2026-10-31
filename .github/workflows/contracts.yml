@@ -219,7 +219,7 @@ jobs:
           printf 'DATABASE_URL = os.environ["DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/before/src/settings.py
           printf 'PG_DATABASE_URL = os.environ["PG_DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/after/src/settings.py
           printf 'name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n' > /tmp/nc/before/.github/workflows/release.yml
-          # `$` is split out so GitHub's expression parser never sees `${{ … }}` in *this*
+          # `$` is split out so GitHub's expression parser never sees variable interpolation in *this*
           # workflow and tries to resolve a secret of ours; the fixture file gets the literal.
           DOLLAR='$'
           printf "name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - run: sign ${DOLLAR}{{ secrets.SIGNING_KEY }}\n" > /tmp/nc/after/.github/workflows/release.yml
