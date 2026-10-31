@@ -66,6 +66,14 @@ is passed in the same way (`Options::now`, ADR-002 §4.4): the rail ages every
 row against a `Timestamp` it was handed, never against `now`, which is what makes every golden in
 `tests/golden/timeline/` stable enough to read.
 
+An interactive frame does not freeze at that one read. Held there, a rail ages badly in silence: the
+newest row keeps the age it had when the frame opened, and says so for as long as the reviewer leaves
+it up. So the loop carries the instant forward on the monotonic clock it already holds for the toast
+and the chord timeout (`App::age_clock`, **reco-5oe**) — a monotonic clock is the right instrument for
+an age, because NTP cannot step it backwards and make a row younger, and a laptop that slept cannot
+make an episode younger than it was when the lid closed. A one-frame render — `--plain`, `--json` — is
+exactly that one instant and nothing else, which is what keeps a piped frame reproducible.
+
 An `Episode` carries exactly the fields the rail can name: identity and digests, members, created/last,
 author kind/name/confidence, summary, paths, file/add/del/binary counts, review state, session and turn,
 boundary rule and confidence, an optional risk, and whether the episode is still live. There is no
@@ -81,12 +89,23 @@ where the run handed it no document it prints the verb that would fill the row (
 | Column | Source | What it cannot say |
 |---|---|---|
 | `e8f1a2` | `Episode::short_id` | — (never dropped) |
-| `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser |
+| `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser; `<1m` below a minute, `ahead` for a row the frame has not reached |
 | `agent` | `AuthorKind` badge: `agent`, `human`, `?` | the `?` **is** the answer: attribution failed, and blank would read as "no author" |
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
 | `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
+
+The age column has four shapes and none of them is a zero (**reco-5oe**): `<1m` below a minute, `h:mm`
+below a day, `2d4h`, then `3mo`. `0:00` was what the `h:mm` arithmetic said at forty seconds, and it
+read as *this hour* about a row that was seconds old — which is the claim the ticket was filed on.
+A row dated ahead of the frame gets `ahead`, and the card's sentence gets *dated ahead of this frame*,
+because an age cannot be negative and the frame must not pretend otherwise; that is clock skew or a
+fixture dated forward, and saying so is the answer, exactly as
+[the glance pane](ambient-mode.md) says `unknown` for a queue it never read.
+
+The column turns on a minute and on nothing finer, and a rail whose rung has already traded the age for
+a date turns on nothing until the day does (ADR-006 §0.1: a draw is for a change somebody can see).
 
 The sparkline is a **log** scale against the largest loaded episode, in six cells, clamped to at least
 one filled cell: a linear scale puts every ordinary 40-line commit at zero cells beside an agent's
@@ -258,14 +277,14 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 
 | Situation | What the rail prints |
 |---|---|
-| there is no index | `no index here yet — run \`fathom index\` here, then reopen fathom` |
-| the index is finished and this pane is the queue | `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them as the index knows them; \`fathom show <episode>\` prints one in full` |
-| the index is finished and holds no episodes | `index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; \`fathom doctor\` says whether that is the repository or the run` |
-| the epoch is still `building` | `index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, \`fathom index --rebuild\` starts a clean one` |
-| the store would not open | `the index would not open — \`fathom doctor\` says what is wrong` |
+| there is no index | ``no index here yet — run `fathom index` here, then reopen fathom`` |
+| the index is finished and this pane is the queue | ``index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as the index knows them; `fathom show <episode>` prints one in full`` |
+| the index is finished and holds no episodes | ``index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; `fathom doctor` says whether that is the repository or the run`` |
+| the epoch is still `building` | ``index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, `fathom index --rebuild` starts a clean one`` |
+| the store would not open | ``the index would not open — `fathom doctor` says what is wrong`` |
 | the caller said nothing (a test frame, an embedding shell) | `nothing loaded yet — the shell was handed no index state` |
 | the index answered nothing | whatever `Batch::why_empty` said, verbatim |
-| the filter selects nothing | `the filter selects nothing — \`F\` edits it, \`filter clear\` is in the palette` |
+| the filter selects nothing | ``the filter selects nothing — `F` edits it, `filter clear` is in the palette`` |
 | a page of a bigger index | strip: `500 of 3 412 · index holds 3 412 (index epoch 41)` |
 | the selection left the index | `…left the index`, cursor at the top |
 | the card has nothing selected | `no episode selected`, then the two keys that would |

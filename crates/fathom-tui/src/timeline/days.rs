@@ -1,11 +1,14 @@
 //! `fathom_tui::timeline::days` — the calendar arithmetic the rail needs, and nothing else.
 //!
 //! `fathom-core` gives a `Timestamp` and its `(year, month, day)`; the rail additionally needs a
-//! weekday name, a day boundary to group and range-filter on, and an *age* rendered three ways
-//! (h:mm, d+hh, and date-only) because ADR-006 §5.2's narrow ladder is defined as "relative time
-//! collapses to date-only". All of that is arithmetic on the value it is given: no clock is read,
-//! because `fathom-tui` is IO-free and a fixture that reads a clock is a fixture with a flake in it
-//! (ADR-002 §4.4).
+//! weekday name, a day boundary to group and range-filter on, and an *age* rendered four ways
+//! (`<1m`, h:mm, d+hh, and date-only) because ADR-006 §5.2's narrow ladder is defined as "relative
+//! time collapses to date-only", and because the finest of them is a bucket rather than an
+//! arithmetic: an age under a minute is not `0:00`, which is a number that is true of an hour-old row
+//! too (`reco-5oe`). All of that is arithmetic on the value it is given: no clock is read, because
+//! `fathom-tui` is IO-free and a fixture that reads a clock is a fixture with a flake in it
+//! (ADR-002 §4.4). [`minute_of`] is the one question this module answers on the frame loop's behalf —
+//! at what resolution an age changes — because answering it reads no clock either.
 //!
 //! The weekday is UTC-derived from the day number, and the rail says so in its card header (`· UTC`)
 //! rather than pretending to know the reviewer's zone: local time is `e1.6`'s host's to supply, and
@@ -19,6 +22,28 @@ const MICROS_PER_DAY: i64 = 86_400_000_000;
 const MICROS_PER_HOUR: i64 = 3_600_000_000;
 /// Microseconds in a minute.
 const MICROS_PER_MIN: i64 = 60_000_000;
+
+/// The rail's age column for a row less than a minute old (`reco-5oe`).
+///
+/// `0:00` is what the h:mm arithmetic says, and it is the claim the ticket was filed against: a row
+/// that landed four seconds ago and a frame that has not been handed a newer instant in an hour print
+/// the same four cells, and only one of them is telling the truth. `<1m` is the honest shape of
+/// "under this column's resolution" — the shape [`crate::ambient::age`] gives a glance pane, in the
+/// rail's own dialect.
+const UNDER_A_MINUTE: &str = "<1m";
+
+/// The same column for a row the frame has not reached yet: a commit dated ahead by clock skew, or a
+/// fixture dated forward. It is not `<1m`, which would claim the row is brand new when the frame is
+/// the thing that is behind.
+const AHEAD_OF_THE_FRAME: &str = "ahead";
+
+/// The card's sentence for a row less than a minute old, because `<1m ago` is not English —
+/// [`crate::ambient::ago`] is split from [`crate::ambient::age`] for exactly the same reason.
+const UNDER_A_MINUTE_AGO: &str = "just now";
+
+/// The card's sentence for a row ahead of the frame, spelled out because the card has the room the
+/// column does not.
+const AHEAD_OF_THE_FRAME_AGO: &str = "dated ahead of this frame";
 
 /// Weekday names, indexed by `days % 7` from the Unix epoch (1970-01-01 was a Thursday).
 const WEEKDAYS: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
@@ -96,15 +121,26 @@ pub fn iso(at: Timestamp) -> String {
     format!("{year:04}-{month:02}-{day:02}")
 }
 
-/// How long ago, in the rail's own dialect: `0:12` for under a day (h:mm), then `2d4h`, then
-/// `3mo`. Age is never negative: a commit dated in the future (clock skew, a fixture dated ahead)
-/// reads `0:00` rather than crashing or printing a minus sign in a column of ages.
+/// How long ago, in the rail's own dialect: `<1m` for under a minute, `0:12` for under a day (h:mm),
+/// then `2d4h`, then `3mo`.
+///
+/// Two rows do not get arithmetic, and neither of them gets a zero (`reco-5oe`):
+///
+/// * **under a minute** gets [`UNDER_A_MINUTE`], because `0:00` reads as "an hour ago" to an eye that
+///   is scanning the column and as "this frame is stale" to nobody;
+/// * **ahead of the frame** gets [`AHEAD_OF_THE_FRAME`], because an age cannot be negative and the
+///   frame must not pretend otherwise. A row the frame has not reached yet is clock skew or a fixture
+///   dated forward, and saying so is the answer ([`crate::ambient::age_since`] makes the same call
+///   with `unknown`).
 #[must_use]
 pub fn relative(now: Timestamp, at: Timestamp) -> String {
-    let age = now
-        .as_unix_micros()
-        .saturating_sub(at.as_unix_micros())
-        .max(0);
+    let age = now.as_unix_micros().saturating_sub(at.as_unix_micros());
+    if age < 0 {
+        return AHEAD_OF_THE_FRAME.to_owned();
+    }
+    if age < MICROS_PER_MIN {
+        return UNDER_A_MINUTE.to_owned();
+    }
     if age < MICROS_PER_DAY {
         let hours = age / MICROS_PER_HOUR;
         let minutes = (age % MICROS_PER_HOUR) / MICROS_PER_MIN;
@@ -122,10 +158,31 @@ pub fn relative(now: Timestamp, at: Timestamp) -> String {
     format!("{}y", days / 365)
 }
 
-/// `4 commits · agent 0.94 · 0:12 ago`, the card's age clause on its own: `0:12 ago`, `2d4h ago`.
+/// `4 commits · agent 0.94 · 0:12 ago`, the card's age clause on its own: `just now`, `0:12 ago`,
+/// `2d4h ago`, `dated ahead of this frame`.
 #[must_use]
 pub fn relative_ago(now: Timestamp, at: Timestamp) -> String {
+    let age = now.as_unix_micros().saturating_sub(at.as_unix_micros());
+    if age < 0 {
+        return AHEAD_OF_THE_FRAME_AGO.to_owned();
+    }
+    if age < MICROS_PER_MIN {
+        return UNDER_A_MINUTE_AGO.to_owned();
+    }
     format!("{} ago", relative(now, at))
+}
+
+/// The instant counted in whole minutes since the epoch — the resolution the rail's age column
+/// turns on (`reco-5oe`).
+///
+/// Every spelling [`relative`] can print is constant between two minute marks, so a frame that
+/// re-ages asks this question instead of comparing rendered text: nothing finer can be seen, and
+/// nothing finer may cost a draw. Where the ladder has already collapsed the age to [`date_only`],
+/// the column does not turn on the instant at all, and the caller says so
+/// ([`crate::app::App::age_clock`]).
+#[must_use]
+pub const fn minute_of(at: Timestamp) -> i64 {
+    at.as_unix_micros().div_euclid(MICROS_PER_MIN)
 }
 
 /// Parse a date the reviewer can type in the filter editor: `2026-10-14`, `today`, `yesterday`,

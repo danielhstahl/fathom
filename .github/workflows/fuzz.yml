@@ -114,8 +114,9 @@ jobs:
       - name: Fuzz
         working-directory: fuzz
         run: >-
+          total_time=$(( ${{ steps.minutes.value }} * 60 ))
           cargo +nightly fuzz run ${{ matrix.target }} --
-          -max_total_time=${{ steps.minutes.value * 60 }}
+          -max_total_time=$total_time
           -rss_limit_mb=4096 -timeout=25 -error_exitcode=86
       - name: Keep the artefacts if it crashed
         if: failure()

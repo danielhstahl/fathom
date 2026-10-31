@@ -7,8 +7,9 @@ generated page cannot quietly stop covering something:
 
     python3 tools/check_docs_site.py            # what CI runs
     python3 tools/check_docs_site.py --verbose  # print every check that passed
+    python3 tools/check_docs_site.py --no-html  # skip the Pages build (the render rules, about a second)
 
-Five groups of rules, named as they are named here so a failure message points at the rule:
+Six groups of rules, named as they are named here so a failure message points at the rule:
 
 **Site shape.** `docs/index.md` is the front door; every page under `docs/` is reachable from it (or from
 `README.md`) by following links, has exactly one `# ` heading, and contains no `TODO`/`TBD` left standing
@@ -34,6 +35,12 @@ someone maintains:
 **The catalogue is complete.** Every detector has a section *and* an example block, and every example the
 page claims to show is a fixture that exists.
 
+**Rendered site.** `docs/` is also published as HTML on GitHub Pages, built by
+`tools/build_docs_site.py`, and this gate builds it too: a page that is well-formed markdown and still
+renders wrong — a table row whose code span contains an unescaped `|`, a link at a directory with nothing
+in it, a header row pasted into the middle of a sentence — is a broken page either way, and the reader
+sees the render and not the source.
+
 Exit: 0 clean, 1 with one line per problem.
 """
 from __future__ import annotations
@@ -48,6 +55,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "src"))
 
 import gen_docs  # noqa: E402
+import build_docs_site  # noqa: E402  (`check_html_build` renders the whole site in memory)
 
 DOCS = ROOT / "docs"
 INDEX = DOCS / "index.md"
@@ -168,6 +176,10 @@ def check_anchors(problems: list[str], report: list[str]) -> None:
                 continue
             path, _ = resolve(source, target)
             if path is None or not path.exists() or not path.is_file():
+                continue
+            if path.suffix.lower() not in (".md", ".markdown"):
+                # A link at a PNG, a JSON report or a `.cast` file has no headings to land on, and
+                # reading it as text is how this check crashed on the README's screenshot link.
                 continue
             total += 1
             if path not in cache:
@@ -313,6 +325,32 @@ def check_nav(problems: list[str], report: list[str]) -> None:
     report.append("nav: the front door links the %d pages it must" % (len(HOME_DOCS) + len(GENERATED_PAGES)))
 
 
+def check_html_build(problems: list[str], report: list[str]) -> None:
+    """Build the Pages site in memory and assert its invariants (see `tools/build_docs_site.py`).
+
+    The builder is the only thing in this repository that renders the manual, so it is also the only place
+    that can notice a page whose markdown is legal and whose render is wrong. The same rules run in
+    `.github/workflows/docs.yml`, on the artefact that gets published; they are here too so that
+    `python3 tools/check_docs_site.py` — the one command the README names for documentation — cannot pass
+    on a manual that will not build.
+    """
+    blob, repo = build_docs_site.source_urls(ROOT)
+    cfg = build_docs_site.Config(root=ROOT, docs=DOCS, source_url=blob or "https://example.invalid/blob/none",
+                                 repo_url=repo)
+    builder = build_docs_site.Builder(cfg)
+    files = builder.generate()
+    found = builder.check(files)
+    problems.extend("html: %s" % problem for problem in found)
+    pages = len(builder.pages)
+    remote = ("remote links resolve to %s" % blob if blob else
+              "remote links were made absolute but not pointed anywhere: no git remote and no "
+              "GITHUB_REPOSITORY, so install with --source-url to assert that half")
+    note = ("; %d hand-written .html under docs/ is not published (%s)" %
+            (len(builder.handwritten), ", ".join(builder.rel(path) for path in builder.handwritten))
+            if builder.handwritten else "")
+    report.append("html: %d pages, %d files built; %s%s" % (pages, len(files), remote, note))
+
+
 def check_commands(problems: list[str], report: list[str], binary) -> None:
     """Every command a page tells the reader to type must parse (see `tools/check_docs_commands.py`)."""
     if not binary.exists():
@@ -329,6 +367,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="check_docs_site.py", description=__doc__.splitlines()[0])
     parser.add_argument("--bin", default=str(ROOT / "target/debug/fathom"),
                         help="the fathom binary to read clap's verb tree from (optional)")
+    parser.add_argument("--no-html", action="store_true",
+                        help="skip the Pages build (the render rules; about a second of the run)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
     binary = pathlib.Path(args.bin)
@@ -346,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
     check_detectors(problems, report)
     check_views(problems, report)
     check_commands(problems, report, binary)
+    if not args.no_html:
+        check_html_build(problems, report)
 
     for problem in problems:
         print(problem)
