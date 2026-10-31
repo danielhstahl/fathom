@@ -51,12 +51,20 @@ def _problems() -> list[str]:
     site.check_features(problems, report)
     site.check_detectors(problems, report)
     site.check_views(problems, report)
+    site.check_html_build(problems, report)
     return problems
 
 
 def test_the_site_shape_holds():
     """No orphan pages, no dangling anchors, one title per page, no placeholders in prose."""
     assert _problems() == []
+
+
+def test_the_html_site_builds():
+    """The same build `.github/workflows/docs.yml` publishes, asserted in memory."""
+    problems: list[str] = []
+    site.check_html_build(problems, [])
+    assert problems == []
 
 
 def test_no_orphan_pages():

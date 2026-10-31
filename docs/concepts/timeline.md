@@ -258,14 +258,14 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 
 | Situation | What the rail prints |
 |---|---|
-| there is no index | `no index here yet — run \`fathom index\` here, then reopen fathom` |
-| the index is finished and this pane is the queue | `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them as the index knows them; \`fathom show <episode>\` prints one in full` |
-| the index is finished and holds no episodes | `index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; \`fathom doctor\` says whether that is the repository or the run` |
-| the epoch is still `building` | `index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, \`fathom index --rebuild\` starts a clean one` |
-| the store would not open | `the index would not open — \`fathom doctor\` says what is wrong` |
+| there is no index | ``no index here yet — run `fathom index` here, then reopen fathom`` |
+| the index is finished and this pane is the queue | ``index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as the index knows them; `fathom show <episode>` prints one in full`` |
+| the index is finished and holds no episodes | ``index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; `fathom doctor` says whether that is the repository or the run`` |
+| the epoch is still `building` | ``index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, `fathom index --rebuild` starts a clean one`` |
+| the store would not open | ``the index would not open — `fathom doctor` says what is wrong`` |
 | the caller said nothing (a test frame, an embedding shell) | `nothing loaded yet — the shell was handed no index state` |
 | the index answered nothing | whatever `Batch::why_empty` said, verbatim |
-| the filter selects nothing | `the filter selects nothing — \`F\` edits it, \`filter clear\` is in the palette` |
+| the filter selects nothing | ``the filter selects nothing — `F` edits it, `filter clear` is in the palette`` |
 | a page of a bigger index | strip: `500 of 3 412 · index holds 3 412 (index epoch 41)` |
 | the selection left the index | `…left the index`, cursor at the top |
 | the card has nothing selected | `no episode selected`, then the two keys that would |

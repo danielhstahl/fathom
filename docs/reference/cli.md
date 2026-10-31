@@ -15,13 +15,11 @@ One binary, eighteen verbs, one exit-code contract. `fathom` with no verb opens 
 `tui` feature was compiled in ([the cheatsheet](cheatsheet.md) is its keyboard reference); every verb
 has a headless form, because ADR-006 §6.7 refuses a fact that only exists on a screen.
 
-```text
 <!-- BEGIN GENERATED: usage -->
 ```text
 fathom [OPTIONS] [COMMAND]
 ```
 <!-- END GENERATED: usage -->
-```
 
 ## The verbs
 

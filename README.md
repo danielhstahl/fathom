@@ -21,7 +21,9 @@ recipes, the [detector catalogue](docs/detectors/index.md), the [CLI reference](
 [troubleshooting](docs/troubleshooting.md). Parts of it are generated from the code — `fathom --help`, the
 keymap, `features.rs` and the blessed detector catalogue — by `python3 tools/gen_docs.py write`, and CI
 fails if the committed pages disagree with the program (`python3 tools/gen_docs.py check`,
-`python3 tools/check_docs_site.py`).
+`python3 tools/check_docs_site.py`). The same tree is published as HTML on GitHub Pages by
+`.github/workflows/docs.yml`, built by `python3 tools/build_docs_site.py`, whose output directory is a build
+artefact and never committed ([publishing the docs as HTML](docs/reference/site.md)).
 
 ## Quickstart
 

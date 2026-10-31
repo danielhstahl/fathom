@@ -35,3 +35,11 @@ fuzz/fuzz/
 # example), its `target/` is not.
 plugins/*/target/
 # --- end fuzzing ------------------------------------------------------------------------------
+
+# --- Documentation site (`reco-x69`) ---------------------------------------------------------------
+# `python3 tools/build_docs_site.py write` renders `docs/` into the HTML that GitHub Pages publishes.
+# It is build output in the sense `target/` is: the markdown in `docs/` is the source of truth, the
+# directory is regenerable from it, and CI publishes it as a Pages artefact instead of committing it.
+# `check` (what CI runs) builds in memory and writes nothing, so this path is only here when someone
+# asks for it.
+.docs-site/

@@ -263,8 +263,8 @@ The four P1s, in the order a reviewer meets them:
    queue offers *`fathom --demo`*, a flag that does not exist. ADR-006's note on that row is "a
    shrug is not a remedy"; this is worse than a shrug. **Closed since:** the composition root
    now reads the store and hands the shell what it found, so an empty pane over a finished index
-   prints `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them
-   …`, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table. (The tail of
+   prints ``index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them
+   …``, and `fathom --demo` is gone from every string and from ADR-006 §10.3's table. (The tail of
    that sentence was rewritten once more when the read above arrived: it used to promise that nothing in
    this build could list the episodes, and that stopped being true.) **And the flag exists now:** `e5.9`
    (`reco-2uo`) shipped `fathom --demo` for real — a 21-commit miniature inside the binary, indexed by the
