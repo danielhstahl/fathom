@@ -17,6 +17,49 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### A timeline that had been open for an hour still said its newest row was brand new (`reco-5oe`)
+
+The rail's age column printed `0:00` for a commit that landed four seconds ago, and printed `0:00` an
+hour later. Two defects were in that one screen and they are different shapes of it. `0:00` is what the
+`h:mm` arithmetic says at forty seconds: a spelling whose resolution is a minute, printed as though it
+measured seconds, about a row that had not had one yet. And the frame is handed exactly one wall-clock
+instant at the CLI's edge — ADR-002 §4.4, because nothing below the composition root may read a clock —
+which an interactive run then aged every row against for as long as it stayed open. An episode that
+landed *after* the frame opened was dated ahead of it, clamped to the same `0:00`, and read "this
+hour" for the rest of the session. A reviewer who believed that column was being lied to by a clock,
+not by the index.
+
+* **The bucket.** `days::relative` says `<1m` below a minute and then `0:12`, `2d4h`, `3mo` exactly as
+    before, and the card says `just now`, because `<1m ago` is not English. A row the frame has not
+    reached — clock skew, a fixture dated forward — says `ahead`, and the card says *dated ahead of
+    this frame*, instead of the clamped zero that made a future commit look like the newest thing on
+    the screen. The same call [`ambient::age_since`](docs/concepts/ambient-mode.md) already makes with
+    `unknown`: an age that cannot be computed is not an age of zero.
+* **The clock.** `App::age_clock` anchors the frame's one wall-clock read to the monotonic instant the
+    loop already wakes on — `SIGNAL_POLL`, the same clock that ages the toast and the chord timeout —
+    and derives "now" from the distance between them. Monotonic is the right instrument for an age: NTP
+    cannot step it backwards and make a row younger, and a laptop that slept cannot make an episode
+    younger than it was when the lid closed. `run_loop` asks it next to `age_toast`, so the fix costs a
+    subtraction per wake-up and no new timer.
+* **The ticklessness, kept.** A draw is for a change somebody can see (ADR-006 §0.1), so the answer is
+    "draw" only when the instant crossed a minute, and only when the rail is on a rung that prints an
+    age at all. Below `Columns::NoSparkline` the age column is a date read off the row and the only
+    `now` on the screen is the footer's day label, so there a minute turns nothing and a day does.
+    `Rail::set_now` reports the minute crossing; the caller who owns the layout decides whether it is
+    visible.
+* **What did not move.** A one-frame render — `--plain`, `--json`, every golden — is still the single
+    instant it was handed, so a piped frame stays reproducible (ADR-006 §6.7). `fathom-tui` still reads
+    no clock: the instant is derived from one the caller already had, which is what makes the minute
+    turn testable at all.
+* **Tests**: `crates/fathom-tui/tests/timeline_age.rs`, eleven cases with the monotonic instant
+    injected so none of them sleeps — every bucket edge, the ahead row, the card's sentences, a rail
+    aged forty minutes in one call, same-minute wake-ups that buy no frame, the date-only rung that
+    will not draw for a minute, a frame whose instant moved on its own, and a quiet `run_loop` that
+    asks its clock and still draws one frame and stops.
+* **Docs**: [ADR-006 §5.2](docs/adr/0006-tui.md) states the four spellings and the resolution a redraw
+    turns on; [concepts/timeline.md](docs/concepts/timeline.md) says where the instant comes from and
+    what carries it forward.
+
 ### A Cargo workspace could not answer its own layering question (`reco-842`)
 
 `use fathom_analyze::graph::model::Graph;` written in `crates/fathom-core` produced a graph node and no

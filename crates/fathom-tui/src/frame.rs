@@ -7,8 +7,12 @@
 //! that arrived, applies all of it, and draws once. A key held down therefore costs one frame per
 //! coalesced batch instead of one per keystroke, and an idle Fathom beside somebody else's shell
 //! costs nothing at all. The only timed wake-ups are the [`crate::terminal::SIGNAL_POLL`] check
-//! that notices `<C-c>` and the [`crate::keymap::CHORD_TIMEOUT`] that decides a half-typed `g` was
-//! meant as the graph view.
+//! that notices `<C-c>`, the [`crate::keymap::CHORD_TIMEOUT`] that decides a half-typed `g` was
+//! meant as the graph view, and the toast's own deadline. None of them buys a draw on its own: a
+//! wake-up that changed nothing draws nothing. The one thing that can change without an event is how
+//! old the rail's rows are, and [`App::age_clock`] is asked on the `SIGNAL_POLL` wake-up so a rail
+//! that has been open all morning stops claiming its newest row is brand new (`reco-5oe`) — a minute
+//! of drift is the finest change it will ever spend a frame on.
 //!
 //! The loop is written against [`FrameSink`] rather than at a terminal, so the same code runs the
 //! real screen and a `Vec<Vec<String>>` in a test — which is what makes the 80×24 / 100×30 / 200×60
@@ -118,6 +122,11 @@ pub struct Options {
     pub notices: Vec<String>,
     /// The instant the run is drawn for, passed in: only `fathom-cli` reads the clock
     /// (ADR-002 §4.4).
+    ///
+    /// It is a starting instant, not a frozen one: an interactive loop carries it forward from its own
+    /// monotonic clock so a frame that stays open for an hour ages its rows with it
+    /// ([`App::age_clock`], `reco-5oe`). A one-frame render — `--plain`, `--json` — is exactly this
+    /// instant and nothing else, which is what makes a piped frame reproducible.
     pub now: Timestamp,
     /// The environment the copy and `$EDITOR` plans read: variables and the `PATH` answer, gathered by
     /// `fathom-cli`, because this crate reads neither (ADR-002 §3).
@@ -575,6 +584,17 @@ pub fn run_loop(
         // to draw, so a reviewer who reads it and then does nothing at all gets the key hints back
         // instead of staring at somebody else's last act until the next keystroke (`reco-2ll`).
         if app.age_toast(Instant::now()) {
+            scheduler.mark_dirty();
+        }
+        // The rail's ages are a clock reading, not a snapshot (`reco-5oe`). The frame was handed one
+        // instant and would otherwise print it forever: an episode that landed while the reviewer was
+        // reading says `<1m` for as long as the frame stays open, which is a fact about the frame's
+        // age and not about the repository. The loop already owns the monotonic clock this needs and
+        // already wakes on it ten times a second, so this is a subtraction per wake-up and a draw once
+        // a minute at the most — the rail's own resolution, and nothing is drawn that a person cannot
+        // see. A rail the ladder has narrowed to dates has no age to turn, and `App::age_clock` says so:
+        // there the day is what costs a frame.
+        if app.age_clock(Instant::now()) {
             scheduler.mark_dirty();
         }
         if arrived || flushed || app.repaint {
