@@ -83,7 +83,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/seeds"
           cp -R fuzz/corpus/. "$RUNNER_TEMP/seeds/"
       - name: Build the targets
-        run: cargo +nightly fuzz build --debug ${{ matrix.target }}
+        run: cargo +nightly fuzz build --dev ${{ matrix.target }}
       - name: One minute per target
         run: >-
           cargo +nightly fuzz run ${{ matrix.target }} "$RUNNER_TEMP/seeds/${{ matrix.target }}" --
