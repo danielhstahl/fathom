@@ -1307,7 +1307,7 @@ pub const TASKS: &[Task] = &[
                 key: "<text>",
                 action: "(typing)",
                 mode: "prompt",
-                effect: "Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `path:` `risk>` `dep:` tokens compose with text.",
+                effect: "Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `since:` `risk>` `kind:` `path:` `dep:` tokens compose with text.",
             },
             TaskStep {
                 key: "<C-n>",

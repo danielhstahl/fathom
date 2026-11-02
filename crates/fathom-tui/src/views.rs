@@ -710,7 +710,9 @@ pub const VIEWS: &[View] = &[
                 trim_rows: 0,
                 strip: false,
                 ticket: "e5.2",
-                reads: &["(input) free text plus filter tokens author: path: risk> dep:"],
+                reads: &[
+                    "(input) free text plus filter tokens author: since: risk> kind: path: dep:",
+                ],
             },
             Pane {
                 name: "results",

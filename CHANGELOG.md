@@ -17,6 +17,117 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Six workflows were red, and four of them had no log to read (`reco-yuk`)
+
+`ci`, `contracts`, `fuzz`, `perf`, `Release` and `dogfood` were all failing, and the shape of the failure is
+what took the time: nothing in the YAML could show *why*. A job's `uses:` reference is resolved over the
+network at run time, so a wrong one is not a syntax error — the job dies in *Set up job*, before its first
+step runs, which is the one failure in the whole system with no log. `ci.yml`'s `release-skeleton` job ran
+`axodotdev/cargo-dist/action@v1`, a path that repository has never contained: `cargo-dist` ships an
+installer, not an action. `fuzz.yml` read a step output as `steps.minutes.value` instead of
+`steps.minutes.outputs.value`, which GitHub answers with the empty string rather than an error, so the
+empty string travelled four steps and died in `$(( … ))`. Both jobs looked like infrastructure flakiness
+from the outside and neither had anything to say for itself in a diff.
+
+* **The workflows are now checked against this repository**, by `tools/check_workflows.py`, offline and
+    standard library only. Twelve rules in five families: every action reference is well-formed and on an
+    explicit inventory (and `--network` proves each inventoried ref resolves on GitHub); every `${{ … }}`
+    context path resolves to a step `id:`, a `needs:` job, or a declared `inputs:` name — including the
+    `steps.<id>.<prop>` shape that is missing `.outputs.`; every repository path a `run:` step names, and
+    every `working-directory:`, exists; every `cargo -p`/`--features`/`--test`/`--example` is a member,
+    feature and target of the manifests it is typed next to, and every `tools/*.py <subcommand>` is a
+    subcommand that tool's argparse offers; and job wiring adds up — a `needs:` that exists, `permissions:`
+    somewhere rather than the organisation default, and artefact names uploaded once and downloaded by a
+    pattern that matches one of those uploads. It is a step in `contracts.yml`, mirrored by
+    `tests/test_workflows_contract.py`, and `python3 tools/check_workflows.py self-test` writes nine
+    workflows designed to break one rule each and requires every rule to fire, because a gate that has
+    never said no is a gate that cannot say yes.
+* **`cargo fuzz` runs from the repository root.** `fuzz.yml` set `working-directory: fuzz`, and cargo-fuzz
+    takes its fuzz directory from the package it finds in the working directory — from inside `fuzz/` that
+    is `fuzz/fuzz/Cargo.toml` and `fuzz/fuzz/fuzz_targets/`, so it reported "no fuzz target by the
+    name(s): 'lockfile'" about a target that is committed. The `fuzz/fuzz/…` paths that step then uploaded
+    were the same mistake one level down. The corpus is now copied to `$RUNNER_TEMP/seeds` and passed
+    explicitly, because the fuzzer writes into whatever directory it is pointed at and a discovered byte
+    sequence is not something this repository reviews; `fuzz/README.md` said "run it from `fuzz/`" and now
+    says the opposite, with the reason.
+* **The release path was stopped by whitespace.** `crates/fathom-cli/wix/main.wxs` is generated, and had
+    been hand-touched; `dist plan` — the first step of `release.yml`, the job that decides what a release
+    contains — refuses to start when a generated file is not its generator's output, so the entire release
+    pipeline was red over eight lines of re-wrapped XML. Regenerated, and `dist generate --check` now runs
+    on every pull request (which is what finds the next one), with the pinned `cargo-dist` read out of
+    `dist-workspace.toml` instead of copied into a URL.
+* **A `--all-targets` build has to name the features its targets need.** Two structure jobs built
+    `fathom-analyze --features langs-all --all-targets`, and `tests/graph_index.rs` drives the graph pass
+    through `fathom-store`'s SQLite backend, which ADR-002 §6.2 gates behind a store feature: the library
+    built, the test suite did not. Those steps now say `langs-all,sqlite-bundled`.
+* **A generated file is only "the binary's own grammar" for the binary it was blessed from.** A man page's
+    VERSION section prints `fathom --version`, which carries the feature list it was compiled with; the
+    committed page carried the all-features list while `gen_shell_artifacts.py`'s contract is the default,
+    shipped build (ADR-002 §6.1) — and in the job, the binary on disk at that step was the headless
+    `minimal` one built earlier. The step now builds the default binary itself before diffing, so the
+    answer does not depend on which step last wrote the file.
+* **Two clippy lints had landed with the toolchain.** `crates/fathom-ingest/src/oid.rs` now uses
+    `as_chunks::<2>()` where it hand-rolled a `chunks_exact` length check, and two tables in test files name
+    their types instead of spelling them inline: the language-convention row in
+    `crates/fathom-analyze/tests/api_surface.rs`, and the scripted-detector body in
+    `crates/fathom-analyze/tests/plugin_api.rs`. Both are new lints firing on code that was clean under the
+    previous toolchain, in a step that runs `-D warnings`.
+* **The search box's hint line was smaller than the search box.** `crates/fathom-tui/tests/tables/mod.rs`
+    is generated from the Python tables, and had not been regenerated since `reco-6sw` widened the token
+    grammar: the pane hint — and the keymap's T3 step beside it — still advertised `author: path: risk> dep:`
+    while `search.rs` accepted and explained `since:` and `kind:`. The Rust prose caught up with the
+    normative tables, `tests/tables/mod.rs` was regenerated, and five layout goldens were re-baked, one line
+    each: the hint, now listing the grammar it has.
+* **Still red, on purpose.** Two gates fail for reasons a workflow edit must not paper over, and blessing
+    either is a decision about the product rather than about CI. Guardrail 3 (`g3-calibration`) re-measures
+    against three pinned real repositories and no longer matches its committed report: `blamed_on_score` 23
+    → 20, and 11 flags in the current corpus have no label in the hand-authored truth files
+    (`unlabelled_total` 0 → 11), which moves the published miss rate from 0.672 to 0.655 — that is
+    [docs/concepts/false-positive-calibration.md](docs/concepts/false-positive-calibration.md)'s headline
+    number and somebody has to label those flags and agree to move it. `perf_gate.py --check` is red on one
+    line: `query.metrics.ms.small` 12.831 → 14.900 ms, +16.1 % against a 15 % ratchet, with a runner factor
+    of ×1.03 and a noise floor a fifth of the change, so the regression is real by the gate's own standard
+    and small in absolute terms. `make bench-bless` is the ratchet, done loudly, and it is the budget
+    owner's call.
+* **Tests**: `tests/test_workflows_contract.py`, nine cases — every rule green on the tree as committed,
+    every action reference inventoried, no step context read without `.outputs.`, the store feature still
+    present for the target that needs it, the checker pure-Python and network-free, the checker wired into
+    `contracts.yml`, and the checker's own `self-test` proving it can fail.
+* **Three commits in this range carried a subject and no bead id**, which the coverage rule in
+    `gen_changelog.py` counts as a gap, and the honest way to close a gap is to say what they did:
+    `bf983176a` retyped the two clippy steps' `run:` folding (the shape that is what made the next person
+    read them as data), `e194a63d9` added `publish.yml`, the workflow that turns a version-bump commit into a
+    release after `ci` goes green on the default branch, and `3875f524a` put a screenshot of the TUI in the
+    README and touched two workflow step names to keep the docs honest about it.
+
+### The manual had a renderer, and the render disagreed with the markdown in four pages (`reco-x69`)
+
+`docs/` was published in two places and rendered in one: GitHub showed the markdown, and nothing at all
+turned it into a site, so the only reader able to notice a page whose markdown is legal and whose *render*
+is wrong was a person, looking at the page. Four such pages were in the tree when this landed — a table row
+whose code span holds an unescaped `|` (in `concepts/config.md` and `concepts/noncode-surfaces.md`, where
+the regex in `non_code.env.secret_name_pattern` cut the row and the header out of the table), two tables
+pasted into the middle of sentences in `concepts/rename-pairing.md`, two stray fence lines in
+`reference/cli.md` that dropped `## The verbs` and `## Global flags` out of the page, and five pages that
+wrote a code span containing backticks as backslash-backtick, which prints the backslashes because a code
+span does not unescape. `check_docs.py` and `check_docs_site.py` were structurally unable to see any of it.
+
+* **`tools/build_docs_site.py`** builds the site: one page per `docs/**.md`, a generated listing for every
+    section directory with no `README.md`, sidebar, per-page table of contents, breadcrumbs, a lazily loaded
+    search index, `404.html`, a sitemap and robots when a host is known, and every non-markdown file copied
+    verbatim so `docs/demo/*.cast` plays on Pages. `write`, `check` (builds in memory, writes nothing) and
+    `--self-test`, standard library only, so the same command runs on a laptop, in CI, and on a runner with
+    no network.
+* **The render is audited against the source.** Each page's characters are compared with the characters its
+    markdown contained, so a dropped table cell, a swallowed `<episode>` placeholder or a fence that ate the
+    rest of the file is a build failure rather than a reader's confusion. That rule is what found all four
+    defects, and all four are fixed rather than worked around in the renderer.
+* **CI builds it.** `.github/workflows/docs.yml` builds a preview artefact on a pull request and publishes
+    on the default branch; `python3 tools/check_docs_site.py` builds the same site in the contracts run; and
+    `tests/test_docs_html_contract.py` holds the promises the HTML makes. The entry is here because the
+    commit that did all of this did not add one, two days ago: the coverage rule in `gen_changelog.py`
+    noticed, which is the argument for the rule having a number on it.
+
 ### A timeline that had been open for an hour still said its newest row was brand new (`reco-5oe`)
 
 The rail's age column printed `0:00` for a commit that landed four seconds ago, and printed `0:00` an

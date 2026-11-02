@@ -47,8 +47,8 @@ tested.
 A seed is self-describing so that a crash artefact is replayable with no other context:
 
 ```bash
-cd fuzz
-cargo +nightly fuzz run lockfile corpus/lockfile/Cargo.lock__deep-array
+# from the repository root — `cargo fuzz` finds its fuzz directory as ./fuzz from wherever you stand
+cargo +nightly fuzz run lockfile fuzz/corpus/lockfile/Cargo.lock__deep-array
 ```
 
 ## The corpus
@@ -59,22 +59,24 @@ disagree. Seeds are *shapes* — nesting, repetition, one enormous token, separa
 because plausible lockfiles are already what `crates/fathom-analyze/tests/golden/deps/` holds.
 
 ### Seeding a run
+`cargo fuzz` is run from the **repository root**. Its fuzz directory is `./fuzz` relative to the package it
+finds from the working directory, so standing inside `fuzz/` sends it looking for `fuzz/fuzz/`, and the run
+fails with "no fuzz target by the name(s)" for a target that is sitting right there.
 
-`cargo fuzz` keeps *its* working corpus under `fuzz/fuzz/corpus/<target>` — a different directory from the
-committed seeds, on purpose: the fuzzer appends whatever it discovers, and a discovered byte sequence is not
-something this repository reviews. So a run has to be pointed at the seeds, either by copying them into place
-(which is what CI does, so the committed corpus is never written to):
-
-```bash
-mkdir -p fuzz/fuzz/corpus && cp -R fuzz/corpus/. fuzz/fuzz/corpus/
-cargo +nightly fuzz run lockfile
-```
-
-or by naming one seed or one directory on the command line:
+Run from the root, its working corpus is `fuzz/corpus/<target>` — **the same directory the generator
+writes**, which is the one thing about this layout worth knowing before you press enter: the fuzzer appends
+everything it discovers to the directory it is pointed at, and a discovered byte sequence is not something
+this repository reviews. So point a real run at a copy:
 
 ```bash
-cd fuzz && cargo +nightly fuzz run lockfile corpus/lockfile
+mkdir -p /tmp/fathom-seeds && cp -R fuzz/corpus/. /tmp/fathom-seeds/
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile
 ```
+
+That is what CI does (`.github/workflows/fuzz.yml`, into `$RUNNER_TEMP/seeds`), and it is why
+`gen_fuzz_corpus.py check` can keep treating an unexplained file in `corpus/` as a failure. If you do let a
+run write into `fuzz/corpus/` anyway, `git checkout fuzz/corpus` (or re-running the generator's `write`)
+is the undo.
 
 **A crash artefact is never committed here.** It becomes a regression test in the crate's `tests/`
 (`hardening.rs` / `hooks_hardening.rs`) and, if it generalises, a new shape in
