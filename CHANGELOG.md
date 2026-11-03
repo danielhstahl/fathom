@@ -17,6 +17,52 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The docs job's CI-gate check crashed instead of reporting, because nothing was built (`reco-p40`)
+
+`contracts` — the `docs + workspace contracts` job, the one that deliberately installs no Rust toolchain —
+printed a Python traceback for its `m2 CI gate` step:
+
+```text
+Traceback (most recent call last):
+  File "…/tools/check_ci_gate.py", line 359, in check_reusable
+  File "…/tools/check_ci_gate.py", line 167, in binary_verbs
+    proc = subprocess.run([str(binary), "--help"], …)
+FileNotFoundError: [Errno 2] No such file or directory: /home/runner/work/fathom/fathom/target/debug/fathom
+```
+
+The gate is run twice on purpose: on `ci.yml`, where the leg that compiles the binary re-checks the two rules
+whose source *is* a compiled program, and on `contracts.yml`, where the half that reads documents and
+workflow files catches a recipe that names a deleted script without waiting four minutes for a build. Only
+the flag rule knew about that second home — `check_flags` opened with `if not binary.is_file(): return`. The
+verb rule beside it did not, so on a runner where `target/debug/fathom` has never been built, `binary_verbs`
+handed a missing path straight to `subprocess.run` and the job died of an exception instead of printing a
+verdict. `tools/check_ci_gate.py self-test` raised the same way, for the same reason, which meant the one
+command that is supposed to prove the checker can fail needed a toolchain to do it.
+
+* **An absent binary is a state, not an exception.** `ask_binary()` is the one place that touches the
+    process: no file, a file that is not executable, a binary for another architecture and a non-zero exit
+    all come back as `None`, which `binary_verbs` and `binary_flags` turn into "nothing to read". The two
+    rules that need an answer now say so on stdout — `reusable workflow: verbs not checked (no binary at
+    …; ci.yml runs this half on the leg that builds one)` and `flag check skipped: …` — and the note is
+    printed without `--verbose`, because a skipped half that nobody mentions is a green job that lies about
+    what it looked at. The exit code is 0, which is the honest answer: nothing here disagrees with anything,
+    and two rules had no source to disagree with.
+* **`self-test` needs nothing again.** Its verb clause used `binary_verbs(…target/debug/fathom) or
+    {"flarble"}`, which was written to survive a missing binary and could not: the `or` never got to run past
+    the raise. It now ships its own `--help` — a stub in the temp directory that prints a clap-shaped
+    `Commands:` block — so the parser is exercised on every job, and separately asserts that the *real*
+    `fathom --help` parses when a binary happens to exist, since the stub is a guess at clap and the built
+    binary is the fact.
+* **The gate's own step in `contracts.yml` now runs `self-test` first**, the way `docs.yml` opens with the
+    builder's self-test: it costs nothing, it needs no toolchain, and it proves the gate underneath it is
+    capable of failing rather than merely silent.
+* **What guards it.** `tests/test_ci_gate_contract.py` gains the docs-job state as a promise: the gate run
+    against a path that is not a binary exits 0, prints neither traceback nor silence, and names the two
+    halves it could not check; a file that is not a runnable *program* is the same state; and
+    `binary_verbs()` on a missing path returns a set rather than raising. Those run on a machine with nothing
+    built, which is the state that used to raise. The pre-existing verb tests carry `@needs_binary` and so
+    never covered it.
+
 ### Every `cargo fuzz` job refused to open the fuzz workspace (`reco-com`)
 
 The three `smoke` jobs on any pull that touches the readers, and the three `nightly` ones, printed the same

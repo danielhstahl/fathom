@@ -65,8 +65,13 @@ jobs:
       - name: "m2 CI gate: the installer, the workflows and the documented paths are one story"
         # The same step `ci.yml` runs, run here too on purpose: the half of it that reads documents needs
         # no binary, and a documentation change that deletes a script it names should be caught by the
-        # job that is already running on documentation alone.
+        # job that is already running on documentation alone. The two rules whose source is a compiled
+        # program say they skipped instead of raising (`reco-p40`: on this runner there is no
+        # `target/debug/fathom`, and a `FileNotFoundError` traceback was a bug report about the checker
+        # rather than about the CI story). The self-test comes first for the reason `docs.yml` gives:
+        # it needs nothing, and it proves the gate below can fail.
         run: |
+          python3 tools/check_ci_gate.py self-test
           python3 tools/check_ci_gate.py
           python3 tools/publish_demo_repo.py check
       - name: "e7.6 demo: the answer key matches the catalogue, and the film is still honest"
