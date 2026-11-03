@@ -734,14 +734,17 @@ G3(τ,W) = |{ e ∈ F(τ,W) : labelled(e) ∧ FP(e) }| / |{ e ∈ F(τ,W) : labe
 
 τ was 70 — `e2.10`'s key-spec default, carried in until something measured it — and this section always said
 the number had to be "confirmed against three real OSS repositories". `reco-6co` did the confirming, and 70
-came out inert: across 540 real episodes the shipped score topped out at 63, six episodes reached the
-threshold and all six got in through a high-severity finding, so the `risk(e) ≥ τ` half of `F(τ,W)` fired on
-nothing and every one of the 24 mature episodes that later needed rework sat below it. The confirmed default
-is the corpus's own **top-decile floor, 40** — the highest of the three repositories' top-decile cuts, which
-is also the lowest threshold whose whole flag population (49 episodes, 9.1 % of the corpus) the
-hand-authored dispositions can answer for. It is one number, held in `risk.tau`, in
-`crates/fathom-analyze/calibration/g3/thresholds.json` and in this section, and the harness below refuses to
-run when the copies disagree.
+came out inert: across 540 real episodes the shipped score topped out at 63 then and 66 now, six episodes
+reached the threshold and all six got in through a high-severity finding, so the `risk(e) ≥ τ` half of
+`F(τ,W)` fired on nothing and every one of the 24 mature episodes that later needed rework sat below it. The
+confirmed default is the corpus's own **top-decile floor, 40** — the cut the three repositories' scores were
+at when it was set, and still the lowest threshold whose whole flag population the hand-authored
+dispositions can answer for (53 episodes, 9.8 % of the corpus; at τ 35 seven of them have nobody's reading
+on them). The per-repository cuts have since moved to 34 / 42 / 43 — `reco-0er` lifted every score by taking
+an absent axis out of the denominator — so τ is no longer the highest of the three and nothing requires it to
+be: the floor that binds it is the labelling, and `reco-0zi` re-derived it rather than asserting it. It is one
+number, held in `risk.tau`, in `crates/fathom-analyze/calibration/g3/thresholds.json` and in this section,
+and the harness below refuses to run when the copies disagree.
 
 `G3` resolves immediately from the *dismiss vocabulary*, which is why that vocabulary must stay closed and
 small: it doubles as the labelling mechanism. The slow confirmation is `rework(e)` — a flagged episode
@@ -760,7 +763,9 @@ against the `e4.4` calibration fixture and three real OSS repositories, and the 
 defer to is written here: `e4.3` and `m1` both say "under the threshold agreed in `e0.12`" — `e0.12`
 should set them from this section rather than invent new ones.
 
-**These are the numbers, and this is the thing that measures them** (`e4.9`, `reco-mkl.1`; re-measured by `reco-6co`, which is also when τ moved):
+**These are the numbers, and this is the thing that measures them** (`e4.9`, `reco-mkl.1`; re-measured by
+`reco-6co`, which is also when τ moved, and again by `reco-0zi` after `reco-0er` moved the score's
+denominator):
 
 ```text
 python3 tools/fetch_g3_corpus.py
@@ -772,8 +777,8 @@ ships, per-detector attribution, and a blessed report that `--check` re-measures
 [`benchmarks/reports/e4-3a-g3-calibration.json`](../../benchmarks/reports/e4-3a-g3-calibration.json),
 with its gates in `crates/fathom-analyze/calibration/g3/thresholds.json` and the written answer in
 [Guardrail 3, measured](false-positive-calibration.md). The measurement on those repositories — 540
-episodes, 64 flags, every one of them labelled against a diff — does **not** clear these bars: `G3` 0.672
-across everything the corpus flagged, `G3` 0.633 at the published τ 40 on the 49 episodes it flags, and a
+episodes, 63 flags, every one of them labelled against a diff — does **not** clear these bars: `G3` 0.683
+across everything the corpus flagged, `G3` 0.660 at the published τ 40 on the 53 episodes it flags, and a
 miss rate of 0.792 (19 of the 24 mature reworked episodes still scored under τ). Before `reco-6co` the same
 corpus read `G3` 0.697 and a miss rate of 1.000 at τ 70 — on real history the flag arm did not fire at all,
 which is the failure this section's own confirmation clause existed to catch, and the window tripling in

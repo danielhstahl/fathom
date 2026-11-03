@@ -17,6 +17,57 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The Guardrail 3 harness refused its own committed report, so five more diffs got read (`reco-0zi`)
+
+`ci`'s `g3-calibration` job went red on a corpus nobody had touched, with the one message that job exists to
+print:
+
+```text
+g3: the committed report is not what the pinned corpus and the shipped detectors and weights produce now.
+committed:         "blamed_on_score": 23,
+re-measured:       "blamed_on_score": 20,
+```
+
+Nothing under `crates/fathom-analyze/calibration/g3/**` had moved since `reco-6co`. What had moved is the code
+underneath it: `reco-0er` made `risk::feature::authorship` answer `Measurement::missing` wherever the
+attribution ladder had only fallen through to a guessed `human`, so in every repository whose harness stamps
+no turn evidence the weight leaves the score's denominator — eleven axes instead of twelve — and every
+measured term on those episodes is renormalised upward by a few percent. Over 540 real episodes that is 1 to
+4 points, which is enough to move a top-decile cut (33 / 40 / 40 → 34 / 42 / 43) and to lift five episodes
+over a threshold they had been under. The report is a byte-for-byte promise, so the harness was right, and
+the fix was to re-measure rather than to edit the promise.
+
+* **Five promoted episodes, five diffs read, five dispositions written.** `cli`'s `go-gh/v2` v2.16.0 →
+    v2.16.1 patch bump, `flask`'s `update dev dependencies` refresh, and in `ruff` the released-`black`
+    switch, the hyperfine 2.0.0 bump and the py-fuzzer minimisation budget. Four are `low-stakes` blamed on
+    the ranking — the score raised a flag no finding justified — and the fifth is a `false-positive` blaming
+    `untested_new_logic` (119 lines in a directory that has no test suite and never had one) and
+    `debug_leftover` (the fuzzer's own `--quiet`-guarded error line, a claim this corpus has now dismissed
+    on that file three times). 67 dispositions became 72, and `every-flagged-episode-is-labelled` came back
+    to `pass` the way it did after `reco-6co`: by being paid for, not by being relaxed.
+* **What the numbers did.** `G3` at the published τ 0.633 → **0.660** (35 false positives on 53 labelled
+    flags) and at the corpus cut 0.672 → **0.683** (43 on 63); false positives blamed on the ranking 23 →
+    **24**; six more `cli` readings now sit under a cut that moved out from beside them and are printed in
+    `labels_unflagged` instead of counted. The two miss-rate gates did not move at all — 0.792 and 0.750,
+    byte-identical — because a few percent carried the lockfile band over the line and left every reworked
+    episode under it.
+* **What did not move.** §5.4's three bars, `tau_alpha` 40, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED`
+    and the flag floor. One consequence has to be stated because it is a moving denominator and not an
+    improvement: `test_weakening` measures 0.273 on 11 answerable flags now and is under α, because two of
+    its attributed false positives were readings of `cli` episodes the raised cut stopped flagging. The
+    corpus has two default-enabled detectors over α with ≥ 8 answerable flags, not three.
+* **The written answer was dragged to the measurement, not the other way round.**
+    `docs/concepts/false-positive-calibration.md` gains a §3c for this pass, and its gate table, τ sweep and
+    per-detector table are the new report's numbers; `thresholds.json`'s `how_gates_are_set`, `tau_note` and
+    every gate `why` that quoted a moved number says the new one; the corpus README's §1.1 table gains the
+    fourth pass. `tests/test_g3_calibration_contract.py` is what proves none of that was remembered rather
+    than read.
+
+Verified: `python3 tools/fetch_g3_corpus.py` (three pins, oids checked),
+`cargo run --locked -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` (reproduces
+byte for byte, 9 gates, 0 surprises), `pytest tests/test_g3_calibration_contract.py` (26 passed),
+`tools/check_docs.py`, `tools/check_ticket_claims.py`.
+
 ### Six workflows were red, and four of them had no log to read (`reco-yuk`)
 
 `ci`, `contracts`, `fuzz`, `perf`, `Release` and `dogfood` were all failing, and the shape of the failure is

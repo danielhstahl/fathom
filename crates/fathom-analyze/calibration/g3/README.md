@@ -43,7 +43,7 @@ corpus/<name>/truth.json   the hand-authored dispositions — read-only to every
 | --- | --- | --- | --: | --: | --- | --- |
 | `cli` | Go | [`ed40e856ffec`](https://github.com/cli/cli) | 180 | 180 | bot-heavy history: Dependabot bumps, generated-and-recompiled `gh-aw` workflow locks, and the largest agent-attributed share in the corpus (71 of 180 episodes) | not agent-authored *episodes* in the ADR-003 sense; `e6.1`'s harness stream is what would make that claim, and none of these three has one |
 | `flask` | Python | [`d086db856be1`](https://github.com/pallets/flask) | 180 | 180 | the maintenance rhythm — `update dev dependencies` episodes that re-emit CI templates and a 1 000-line lockfile, plus real test deletions *and* real in-place test rewrites | not a low-activity repository, and not agent-driven at all (0 of 180 agent-attributed) |
-| `ruff` | Rust + Python | [`3e3f22dcc47a`](https://github.com/astral-sh/ruff) | 180 | 180 | release automation (a version-bump bot), generated docs and schema snapshots, workspace dependency policy | not representative of a small team: its median score (21) is the highest of the three |
+| `ruff` | Rust + Python | [`3e3f22dcc47a`](https://github.com/astral-sh/ruff) | 180 | 180 | release automation (a version-bump bot), generated docs and schema snapshots, workspace dependency policy | not representative of a small team: its median score (22) is the highest of the three |
 
 540 episodes, 525 of them mature beyond the five-successor rule or seven days of age against the pins'
 clock — see `pinned_now` in each pin: **the harness has no clock**, so the report is the same bytes the day
@@ -52,31 +52,35 @@ it is re-blessed as the day it was measured.
 Each `why` field in the pins says in one sentence what the repository buys the corpus, because a calibration
 corpus chosen for convenience measures convenience.
 
-### 1.1 The three passes this corpus is made of
+### 1.1 The four passes this corpus is made of
 
 | Pass | Windows | Labels | What it settled |
 | --- | --- | --: | --- |
 | `e4.9` (`reco-mkl.1`, 2026-10-19) | 60 per pin | 22 | the harness, the vocabulary mapping, and five failing gates — one of which, `miss-rate-denominator-is-big-enough`, failed as a statement about the corpus: 7 mature reworked episodes cannot discriminate a 0.20 rate |
 | the re-pin (`reco-dyt`, 2026-10-20) | 180 per pin, `ruff` re-pinned 11 commits forward | +44 (66) | that gate. The window tripled, the denominator went 7 → 24, and the gate now passes so that the two miss-rate gates can be read as rates instead of anecdotes |
 | the re-score (`reco-6co`, 2026-10-20) | unchanged — no re-fetch, no re-label | +1 (67) | τ, and what gets flagged. The ranking stopped charging a compiled workflow lock the CI weight and stopped letting a resolver bot's pin bump make the operator-action claim; that promoted one episode into the flag population (one new disposition, written against its diff), stranded three below the cut, and moved four gates' measurements. §5.4's τ moved with them: 70 → 40, derived from `aggregate.tau_sweep` |
+| the re-measure (`reco-0zi`, 2026-11-02) | unchanged — no re-fetch, no re-pin | +5 (72) | that the harness means what it says. `reco-0er` made `authorship` absent where the classifier had only guessed `human`, so the score's denominator went from twelve axes to eleven and every measured term was renormalised upward. Nobody re-blessed the report, and CI's `--check` refused it — the only outcome that makes a byte-for-byte promise worth having. Five episodes were promoted over a cut, five diffs were read, five rows were written, and `every-flagged-episode-is-labelled` came back to `pass` the way it did in `reco-6co` |
 
-Nothing about the *bars* moved, in any of the three passes: §5.4's `G3 ≤ 0.30 / ≤ 0.15` and
+Nothing about the *bars* moved, in any of the four passes: §5.4's `G3 ≤ 0.30 / ≤ 0.15` and
 `miss_rate ≤ 0.20`, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED` and the 20-episode floor are
-byte-identical to `e4.9`'s. What has moved is an input to the measurement and an `expected` or two:
+byte-identical to `e4.9`'s, and τ has been 40 since `reco-6co`. What has moved is an input to the
+measurement and an `expected` or two:
 `g3-alpha-at-published-tau`'s denominator left the floor (3 → 6) and came out **fail**, not pass, and τ —
 §5.4's own default, and this file's `tau_alpha` — went 70 → 40 in `reco-6co` because the corpus said 70 was
 inert. That is the one number in here the corpus is allowed to set rather than copy, and §5.4 says so.
 Widening a corpus is a labelling job, not a re-bless: 44 new flagged episodes meant 44 diffs read and 44
-dispositions written, and the fetch depth went with the window (see §6).
+dispositions written, and the fetch depth went with the window (see §6). A re-measure after a scoring change
+is the same job at a smaller scale, and `reco-0zi` paid it five times.
 
 ## 2. What a label is, and how one was written
 
 One row per flagged episode — every episode any cut flagged, and there is no sampling, because a sample of
-a flag set is a flag set with holes. 67 rows today: 22 from the `e4.9` pass, 44 from the re-pin, and 1
-written when `reco-6co`'s re-score promoted an episode into the cut. Three dispositions now sit on bot
-bumps that re-score demoted *out* of the flag set; the report prints them as `labels_unflagged` and keeps
-them out of every denominator — a reading of a diff is not retracted because a score moved, and it is not a
-flag either. Each row records:
+a flag set is a flag set with holes. 72 rows today: 22 from the `e4.9` pass, 44 from the re-pin, 1 written
+when `reco-6co`'s re-score promoted an episode into the cut, and 5 when `reco-0zi`'s re-measure promoted
+five more. Nine dispositions now sit on episodes that a moved cut left *out* of the flag set — three bot
+bumps `reco-6co` demoted, and six `cli` episodes `reco-0er`'s renormalisation left under a raised cut; the
+report prints them as `labels_unflagged` and keeps them out of every denominator — a reading of a diff is not
+retracted because a score moved, and it is not a flag either. Each row records:
 
 | Field | Rule |
 | --- | --- |
@@ -102,12 +106,13 @@ rate and blunt for "which detector cried wolf", so two rules keep the per-detect
 * **`blame` names who is answerable** when the reviewer can. `score` means the ranking raised a flag no
   finding justified and charges no detector; a detector id charges that detector. An empty `blame` charges
   every detector that spoke on the episode — §5.4's rule, and the conservative reading of a shared episode.
-* **A detector is in a denominator only when the objection was about a finding.** 26 of this corpus's
-  forty-six false positives were blamed on the ranking, not on a detector
+* **A detector is in a denominator only when the objection was about a finding.** 24 of this corpus's
+  forty-three false positives were blamed on the ranking, not on a detector
   (`aggregate.coverage.blamed_on_score`), and they are in the aggregate rate and out of every detector's —
   which is the difference between blaming the catalogue for a routing problem and reading the measurement.
-  The other 20 named their detector: `test_weakening` 4, `untested_new_logic` 4, `lint_escape` 3,
-  `shotgun_edit` 3, `generated_edit` 3, `debug_leftover` 2, `todo_debt` 1.
+  The other 19 named their detector — 20 charges, because one episode blamed two of them:
+  `untested_new_logic` 5, `lint_escape` 3, `shotgun_edit` 3, `generated_edit` 3, `debug_leftover` 3,
+  `test_weakening` 2, `todo_debt` 1.
 
 The blunt half stays on the record: when a false positive is unattributed, every detector that spoke is
 charged, so an episode where one good finding and one bad one share a diff charges both. The receipts in
@@ -142,7 +147,7 @@ about a reviewer having looked. What these labels do certify, and what they do n
 * **They do not certify that a human found these flags unhelpful.** The corpus cannot say that, and the
   report does not try to: the numbers are "the rate at which flags on three pinned real repositories
   charged a reviewer for something that did not need reading, judged against the diff by the agent that
-  wrote this ticket". A human re-labelling the same 66 episodes is the obvious next input, and nothing here
+  wrote this ticket". A human re-labelling the same 72 episodes is the obvious next input, and nothing here
   prevents it — a second `truth.json` beside the first is a disagreement in the repository rather than an
   argument in a ticket.
 * **The population is not agent-authored history.** 92 of 540 episodes attribute to a non-human author kind
