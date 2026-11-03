@@ -17,6 +17,57 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Two workspace tests were a coin flip, because both of them asked the clock a question (`reco-ecb`)
+
+`cargo test --workspace --all-features` failed on a clean tree and could not be reproduced on the next
+run, or the one after that:
+
+```text
+---- a_span_is_the_composition_of_its_parts stdout ----
+Test failed: the generated history changed nothing at all, so the composition was never exercised
+    at crates/fathom-analyze/tests/graph_diff_property.rs:321
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+
+---- answering_appends_the_note_that_closes_it stdout ----
+assertion `left == right` failed: exactly one block was appended:   left: 2  right: 1
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+Roughly one run in thirteen broke the first way and one in ten the second, same commit, same binary,
+different verdict — and proptest even helpfully saved the first failure to a
+`graph_diff_property.proptest-regressions` file, which turned a one-in-thirteen flake into a permanent
+red until somebody deleted a file nobody had meant to create. Neither test was wrong about the product.
+Each of them asked a question whose answer is not a fact about the code.
+
+* **The property test treated an input that never exercised it as a counterexample.** The delta algebra
+    is proved over random histories, and the history generator draws a *history*, so about one draw in
+    twenty-four hundred the seed lands such that every revision of a one-module history carries the same
+    exports and the same edges. Every span in such a history is empty at every cut, the composition
+    equality holds vacuously, and the guard that exists to notice — "a strategy that generated identical
+    revisions would prove the property about nothing" — was a `prop_assert!`, so *nothing was tested* was
+    reported as *the algebra is wrong*. It is now a `prop_assume!`: the case is rejected rather than
+    refuted, which is what proptest's vocabulary has for exactly this. Nothing is unguarded — a strategy
+    that stopped moving **altogether** trips `max_rejects`, which fails the run and blames the generator,
+    which is the thing to blame. Measured, not assumed: 12 × 5 000 draws after the change, no failure and
+    no regressions file; before it, the same draw at 20 000 cases failed on the 2 376th.
+* **The notes test counted blocks after two answers, and a note's id carries the second it was written
+    in.** `notes::entry::note_id` hashes kind, episode, author, text **and the instant**, truncated by
+    `ledger_clock` to the whole second the markdown can round-trip — the same reasoning `reco-2pw` applied
+    to the ledger. `fathom note answer nt-… "no — it went in the cleanup"` run twice inside one second is
+    therefore one block; run twice across a second boundary it is two, because under that identity rule
+    the second one *is* a second note. The test wrote the same answer twice — once for the human line,
+    once for `--json` — and then asserted exactly one block had been appended, so the assertion was
+    measuring where the second hand sat. The count now happens after the one answer this test's claim is
+    about, and the `--json` door is still exercised, just after the append-only claim has been checked.
+    Deliberately **not** fixed by making `answer` idempotent forever: that means taking the instant out of
+    note identity, which re-addresses every note in every committed review memory and orphans every
+    `about:` link in it. That is a product decision with a breaking change attached, not a flake fix.
+* **Both rates are measurements.** Each binary was run 40 times before and after (4 red / 40, then
+    0 red / 40 for the notes verb), the property test was run at 5 000 cases per run, and the remaining
+    170 test binaries of the workspace were each run 5 times to look for a third: nothing else moved.
+    The wall-clock lesson is the house rule, restated in the two places it was not written: a test may
+    read the clock, but a test may not *depend on where the clock was* between two of its own steps.
+
 ### The perf gate died on its first measurement, because the RSS sampler had taken a name `threading` owns (`reco-yfd`)
 
 `perf` — the perf budgets job — failed *the budgets, the baseline, and the trend* about two seconds in,
