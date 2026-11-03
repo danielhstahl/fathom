@@ -17,6 +17,47 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The perf budgets job stopped measuring the budget it was most likely to break (`reco-cwx`)
+
+Every `perf` run since the baseline was blessed printed the line and moved on:
+
+```text
+cold.queue_visible.ms.small                               —      3,000         —  blocked: the probe never saw a first frame
+```
+
+That row is ADR-004 §11's *time to first frame* — the one budget about what a reviewer waits for when they
+open the TUI — and a `blocked` verdict does not fail the build. It just means nobody looked. The gate has
+been printing this on every box that is not the one the baseline was blessed on, and the reason was the
+harness mistaking its own patience for an absence: `tools/tui_session.py`'s `drain` calls a frame *settled*
+after two quiet ticks of 50 ms, which is a fine way to find the end of a burst and a terrible way to wait
+for the beginning of one. Applied before the first byte of the answer, it is not a settle rule at all, it is
+a ~150 ms ceiling on what the probe can observe: the blessed first paint measured 138 ms, this box paints
+at 152-171 ms, and everything past the window came back `None`. A 3 000 ms budget that can only be read up
+to 150 ms is decoration, and the trend shows the censoring rather than the product — the published
+first-frame column is 25 ms on one box, 130 ms on another, and empty on a third.
+
+* **Quiet now means "the answer has stopped", never "nothing has arrived yet".** `drain` waits for the first
+    byte for the whole deadline and starts counting quiet ticks only once something has been seen, which is
+    what makes `first_paint_ms`, `visible_ms` and `until_ms` mean the same thing at 400 ms as they mean at 4.
+    A key that draws nothing still comes back as nothing; a key that draws late used to come back as nothing.
+* **A dead child no longer measures as a fast paint.** `spawn` passes `--binary` to the pty child *after* it
+    has `chdir`ed into the repository under review, so a relative `--binary target/release/fathom` — the
+    spelling the tool's own `--help` suggests — pointed at nothing, and the child's
+    `exec failed: [Errno 2] …` landed on the pty as terminal output, which the reader timed as a first frame
+    about 1 ms after spawn. The program is resolved in the parent now, and an unresolvable one is a named
+    exit instead of a number.
+* **The ratchet stopped being asked to guess.** With the probe repaired, a ~140 ms row compared at ±15 % asks
+    for 21 ms out of a spread that is that wide by itself (19 ms across nine probes of one tree, and the same
+    tree measured 109-150 ms across the blessed runs). `SPAWN_NOISE_MS` states that as the measurement's
+    floor, so the row is now listed under *ids the ±15 % ratchet cannot resolve* and guarded by its budget —
+    the honest state, said out loud, instead of a build that goes red on a slower box and green on a fast one.
+    A 400 ms injection still lands sixteen floors over it.
+* **What guards it.** `tests/test_perf_budget_contract.py` drives `tools/tui_session.py` against a fake TUI
+    that paints at a *known* delay: a first frame at 300 ms must come back at 300 ms, not `None`, and a key
+    answered at 400 ms must come back late rather than absent. A second test uses the same fake to prove a
+    relative `--binary` reaches the child, and a third asserts the gate publishes a number for
+    `cold.queue_visible.ms.small` rather than a blocked row.
+
 ### The docs job's CI-gate check crashed instead of reporting, because nothing was built (`reco-p40`)
 
 `contracts` — the `docs + workspace contracts` job, the one that deliberately installs no Rust toolchain —

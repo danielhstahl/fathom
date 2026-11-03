@@ -626,6 +626,112 @@ def test_the_rss_peak_is_sampled_while_the_child_holds_memory():
 
 
 # ---------------------------------------------------------------------------------------------
+# The probe's own clock: a frame that lands late is late, not absent (`reco-cwx`)
+# ---------------------------------------------------------------------------------------------
+def _fake_tui(tmp_path, frames):
+    """Write an executable "TUI" that paints `frames` = [(delay_ms, text), …] and then quits.
+
+    It is not the product and it does not pretend to be: it is a clock with a screen, which is the only
+    honest way to hand the probe a first frame at a *known* delay. The delays below are all outside
+    the reader's ~100 ms settle window, which is the whole shape of `reco-cwx`.
+    """
+    body = ["#!/usr/bin/env python3",
+            "import sys, time",
+            "try:",
+            "    import tty; tty.setraw(sys.stdin.fileno())",  # the TUI takes the terminal; so does this
+            "except Exception:",
+            "    pass",
+            f"frames = {frames!r}",
+            "for delay_ms, text in frames:",
+            "    time.sleep(delay_ms / 1000.0)",
+            "    sys.stdout.write('\\x1b[2J\\x1b[H' + text)",
+            "    sys.stdout.flush()",
+            "time.sleep(1.0)"]
+    fake = tmp_path / "fake-tui"
+    fake.write_text("\n".join(body) + "\n", encoding="utf-8")
+    fake.chmod(0o755)
+    return fake
+
+
+def _session(tmp_path, binary, steps_json, script_json):
+    """Drive `tools/tui_session.py` over a pty and hand back the timings it wrote."""
+    result = subprocess.run(
+        [sys.executable, "tools/tui_session.py", "--root", str(tmp_path), "--binary", str(binary),
+         "--script", str(script_json), "--steps", str(steps_json)],
+        cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(Path(steps_json).read_text())
+
+
+def test_a_first_frame_later_than_the_settle_window_is_measured_not_missed(tmp_path):
+    """The bug: two quiet ticks before anything arrived was read as "there is no frame".
+
+    `drain` settled on ~100 ms of silence, so a first paint at 300 ms came back `None` and the gate
+    reported `cold.queue_visible.ms.small` as *blocked* — a published 3 000 ms budget, unmeasured, on
+    every box slower than the one it was blessed on. Quiet must mean "the answer has stopped", never
+    "nothing has arrived yet".
+    """
+    fake = _fake_tui(tmp_path, [(300, "FRAME ONE"), (400, "FRAME TWO")])
+    script = tmp_path / "script.json"
+    script.write_text(json.dumps({"title": "late paint", "steps": [
+        {"keys": "t", "note": "answered late", "settle": 1.0},
+        {"keys": "q", "note": "nothing after this", "settle": 0.3},
+    ]}), encoding="utf-8")
+    steps = tmp_path / "steps.json"
+    out = _session(tmp_path, fake, steps, script)
+
+    assert out["first_paint_ms"] is not None, (
+        "a first frame 300 ms after spawn was reported as no frame at all: the reader is allowed to "
+        "call silence *settled* only once something has been seen")
+    assert 250.0 <= out["first_paint_ms"] <= 900.0, (
+        f"first paint measured {out['first_paint_ms']} ms against a fake that paints at 300 ms")
+    painted = {step["keys"]: step["visible_ms"] for step in out["steps"]}
+    assert painted.get("t") is not None, (
+        f"a frame 400 ms after the key was written read as 'the key drew nothing': {painted}")
+    assert painted["q"] is None, (
+        "a key that really does draw nothing must still come back as nothing — the fix is the "
+        "censoring, not a floor under every measurement")
+
+
+def test_a_relative_binary_is_resolved_before_the_pty_child_leaves_the_directory(tmp_path):
+    """A `--binary` the shell can see and the child cannot used to exec-fail *onto the pty*.
+
+    The child chdirs into the repository before it execs, so a relative path pointed at nothing; the
+    child's own "exec failed: [Errno 2]" text then arrived as terminal output and was timed as a first
+    frame about 1 ms after spawn. A dead child measured as the fastest paint in the suite is a number
+    that lies.
+    """
+    fake = _fake_tui(tmp_path, [(50, "FRAME ONE")])
+    relative = Path(os.path.relpath(fake, ROOT))
+    assert not relative.is_absolute(), "the point of the test is a path the pty child cannot resolve"
+    script = tmp_path / "script.json"
+    script.write_text(json.dumps({"title": "relative", "steps": [
+        {"keys": "", "note": "open", "hold": 0.3},
+    ]}), encoding="utf-8")
+    steps = tmp_path / "steps.json"
+    out = _session(tmp_path, relative, steps, script)
+    assert out["first_paint_ms"] is not None and out["first_paint_ms"] >= 30.0, (
+        f"the child did not exec: {out}")
+    assert "exec failed" not in json.dumps(out), "the child's exec error was recorded as the frame"
+
+
+def test_the_first_frame_budget_is_measured_rather_than_blocked(tmp_path):
+    """The gate, end to end: `cold.queue_visible.ms.small` gets a number, not a shrug."""
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(_binary()),
+         "--trend-dir", str(tmp_path)],
+        cwd=ROOT, capture_output=True, text=True, timeout=600)
+    report = json.loads((tmp_path / "latest.json").read_text())
+    rows = {verdict["id"]: verdict for verdict in report.get("verdicts", [])}
+    first = rows.get("cold.queue_visible.ms.small")
+    assert first is not None, "the gate did not report the first-frame budget at all"
+    assert first["status"] != "blocked" and first["measured"] is not None, (
+        "the first paint came back blocked, so the 3 000 ms budget guarded nothing this run: "
+        f"{first}\n{result.stdout}\n{result.stderr}")
+    assert first["measured"] < 3_000.0
+
+
+# ---------------------------------------------------------------------------------------------
 # The plumbing: exit code, make target, artefact, and where the bench code lives
 # ---------------------------------------------------------------------------------------------
 def test_the_gate_speaks_the_products_exit_code():
