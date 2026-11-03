@@ -19,15 +19,24 @@
 # stays on the pinned stable toolchain precisely so that `cargo build --workspace` remains a promise a clean
 # clone can keep (`fuzz/Cargo.toml` explains the separate workspace).
 #
-# One rule that is easy to get wrong: `cargo fuzz` runs from the **repository root**, never from inside
-# `fuzz/`. Its fuzz directory is `<the cargo package it finds from the working directory>/fuzz`, so run
-# from `fuzz/` it goes looking for `fuzz/fuzz/Cargo.toml` and `fuzz/fuzz/fuzz_targets/`, finds neither, and
-# says "no fuzz target by the name(s): 'lockfile'" — which reads like a missing target and is really a
-# missing level of the path. From the root, cargo-fuzz's default layout is exactly what this repository
-# commits: manifest `fuzz/Cargo.toml`, targets `fuzz/fuzz_targets/<target>.rs`, corpus
-# `fuzz/corpus/<target>/` and artefacts `fuzz/artifacts/<target>/`. The seeds therefore need no moving; what
-# they need is a *copy*, because the fuzzer writes into the directory it is given (see `Seeding a run` in
-# `fuzz/README.md`).
+# Two things this workflow depends on that no YAML reader can see, both of them paid for by rule `P04` and
+# rule `P03` of `tools/check_workflows.py`:
+#
+# * `fuzz/Cargo.toml` carries `[package.metadata] cargo-fuzz = true`. cargo-fuzz reads that marker first,
+#   before it builds a target, and its whole report when the marker is missing is "Error: manifest
+#   fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:" — no target,
+#   no compile error, nothing to bisect. That is what every job below printed for a nightly cycle (`reco-com`)
+#   while the marker existed nowhere in this repository, and nothing else here (not `cargo build`, not
+#   `gen_fuzz_corpus.py check`) notices its absence.
+# * `cargo fuzz` runs from the **repository root**, never from inside `fuzz/`. Its fuzz directory is
+#   `<the cargo package it finds from the working directory>/fuzz`; the marker is what lets a run started
+#   inside `fuzz/` walk back up to the root instead of looking for `fuzz/fuzz/Cargo.toml` and reporting a
+#   target that is committed as missing, but every other path a step writes — the seed copy,
+#   `fuzz/artifacts/<target>` below — is written from the root anyway. From the root, cargo-fuzz's default
+#   layout is exactly what this repository commits: manifest `fuzz/Cargo.toml`, targets
+#   `fuzz/fuzz_targets/<target>.rs`, corpus `fuzz/corpus/<target>/` and artefacts `fuzz/artifacts/<target>/`.
+#   The seeds therefore need no moving; what they need is a *copy*, because the fuzzer writes into the
+#   directory it is given (see `Seeding a run` in `fuzz/README.md`).
 #
 
 name: fuzz

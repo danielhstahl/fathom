@@ -5,13 +5,13 @@ path names. The threat model — what each target is a stand-in for, and what is
 is [docs/security/threat-model.md](../docs/security/threat-model.md).
 
 ```bash
+# from the repository root
 cargo +nightly install cargo-fuzz
-cd fuzz
-mkdir -p fuzz/corpus && cp -R corpus/. fuzz/corpus/    # seed the run (see "Seeding a run" below)
-cargo +nightly fuzz run lockfile          # fuzz until it crashes or you stop it
-cargo +nightly fuzz run lockfile -- -max_total_time=1800 -rss_limit_mb=4096 -timeout=25
-cargo +nightly fuzz run hooks
-cargo +nightly fuzz run paths
+mkdir -p /tmp/fathom-seeds && cp -R fuzz/corpus/. /tmp/fathom-seeds/   # seed the run; see "Seeding a run"
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile   # fuzz until it crashes or you stop it
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile -- -max_total_time=1800 -rss_limit_mb=4096 -timeout=25
+cargo +nightly fuzz run hooks /tmp/fathom-seeds/hooks
+cargo +nightly fuzz run paths /tmp/fathom-seeds/paths
 ```
 
 ## Why this is a separate workspace
@@ -21,6 +21,34 @@ cargo +nightly fuzz run paths
 `cargo build --workspace` stays a promise a clean clone can keep. Nothing under `fuzz/` is built by
 `cargo build --workspace`, `cargo test --workspace`, `cargo deny`, or `cargo dist`, and nothing under `fuzz/`
 links into the shipped binary.
+
+## The marker cargo-fuzz reads before it does anything
+
+`Cargo.toml` here carries:
+
+```toml
+[package.metadata]
+cargo-fuzz = true
+```
+
+That is not decoration. cargo-fuzz reads it as the first thing it does — before it compiles a target, before
+it resolves a corpus — and refuses to go on without it:
+
+```text
+Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:
+[package.metadata]
+cargo-fuzz = true
+```
+
+which is the entire report a red fuzz job leaves: no target, no crash, no compile error, three nightly jobs
+agreeing with each other (`reco-com`).
+
+The marker also drives the directory discovery in the section "Seeding a run" below: cargo-fuzz walks up
+from the working directory to the first manifest that is **not** marked, and takes `<that>/fuzz` as the fuzz
+directory. Nothing else in this repository can see the marker — `cargo build`, `cargo clippy`, `cargo deny`
+and `tools/gen_fuzz_corpus.py check` all read this manifest happily without it, so it can go missing in a
+refactor that leaves nothing else red. `python3 tools/check_workflows.py` rule `P04` reads it the way
+cargo-fuzz does, on every pull.
 
 ## The one rule: a target and a test must call the same function
 
@@ -60,8 +88,12 @@ because plausible lockfiles are already what `crates/fathom-analyze/tests/golden
 
 ### Seeding a run
 `cargo fuzz` is run from the **repository root**. Its fuzz directory is `./fuzz` relative to the package it
-finds from the working directory, so standing inside `fuzz/` sends it looking for `fuzz/fuzz/`, and the run
-fails with "no fuzz target by the name(s)" for a target that is sitting right there.
+finds from the working directory, and the marker above is what makes that land on `fuzz/` from either
+directory: from the root directly, from inside `fuzz/` by walking up past this manifest to the root — without
+it, standing in `fuzz/` sends the run looking for `fuzz/fuzz/`, and the failure reads as a missing target
+rather than a missing level of the path. The root is still where a run belongs, because everything around
+`cargo fuzz` in `.github/workflows/fuzz.yml` — the seed copy, the `fuzz/artifacts/<target>` upload — is
+written from there.
 
 Run from the root, its working corpus is `fuzz/corpus/<target>` — **the same directory the generator
 writes**, which is the one thing about this layout worth knowing before you press enter: the fuzzer appends

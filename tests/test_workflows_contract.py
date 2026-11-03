@@ -11,6 +11,9 @@ for a reason nothing that reads YAML can see:
   read a step output as `steps.minutes.value` instead of `steps.minutes.outputs.value`, which GitHub
   answers with the empty string rather than an error, so the empty string reached `$(( … ))` four steps
   later.
+* `fuzz.yml` was red for a whole nightly cycle over three lines that no tool in this repository other than
+  cargo-fuzz itself ever reads: `fuzz/Cargo.toml` had no `[package.metadata] cargo-fuzz = true`, so every
+  job stopped at "does not look like a cargo-fuzz manifest" before compiling a target (`reco-com`).
 * `ci.yml` built `--all-targets` of a crate whose integration tests need a store backend, on a feature set
   that has none.
 * the committed `main.wxs` had been whitespace-touched, and `dist plan` refuses to start when a generated
@@ -110,8 +113,26 @@ def test_nothing_builds_a_package_or_feature_that_does_not_exist():
     )
 
 
+def test_the_fuzz_manifest_is_one_cargo_fuzz_will_open():
+    """`P04`, asserted directly: cargo-fuzz refuses a fuzz workspace it cannot recognise.
+
+    `is_fuzz_manifest` in cargo-fuzz is a three-line check — `[package]` → `metadata` → `cargo-fuzz = true`
+    — and it runs before anything is compiled, so the whole of the failure is:
+
+        Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to
+        override:
+        [package.metadata]
+        cargo-fuzz = true
+
+    Every other reader of that manifest — `cargo build`, `cargo clippy`, `cargo deny`,
+    `tools/gen_fuzz_corpus.py` — is content without the marker, which is how it went missing quietly.
+    """
+    problem = check_workflows.fuzz_manifest_problem(check_workflows.FUZZ_MANIFEST)
+    assert problem == "", f"cargo-fuzz would refuse this repository's fuzz workspace: {problem}"
+
+
 def test_the_checker_can_fail():
-    """`self-test` proves the gate has a mouth: nine workflows written to break one rule each.
+    """`self-test` proves the gate has a mouth: ten workflows written to break one rule each.
 
     A gate that has never said no is a gate that cannot say yes, which is the sentence that belongs on the
     box of every "lint the config" tool ever written.

@@ -17,6 +17,44 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Every `cargo fuzz` job refused to open the fuzz workspace (`reco-com`)
+
+The three `smoke` jobs on any pull that touches the readers, and the three `nightly` ones, printed the same
+three lines and then nothing else:
+
+```text
+Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:
+[package.metadata]
+cargo-fuzz = true
+```
+
+cargo-fuzz reads `package.metadata.cargo-fuzz` before it builds a target — `is_fuzz_manifest`, five lines,
+no fallback, no warning — and it is the only reader of that key in this repository. `cargo build`,
+`cargo clippy`, `cargo deny` and `python3 tools/gen_fuzz_corpus.py check` all read the same manifest happily
+without it, so the fuzzing lane could be red for a nightly cycle at a time with no crash report, no compile
+error, and no diff that looks as though it touched fuzzing. `reco-yuk` had fixed the *working directory* of
+these steps, which is how a run got as far as reading the manifest at all; the marker is the other half of
+the same discovery rule, and the half nothing was guarding.
+
+* **The fix is two lines in `fuzz/Cargo.toml`**: `[package.metadata]` and `cargo-fuzz = true`. Measured with
+    the tool itself rather than by reading its docs — `cargo +nightly fuzz list` from the repository root now
+    prints `hooks`, `lockfile` and `paths`, and `cargo +nightly fuzz build --dev lockfile` gets as far as
+    invoking `cargo build --manifest-path fuzz/Cargo.toml --bin lockfile` with the sanitizer flags, where
+    before the marker it stopped before starting a build. (Here it then stops at a missing `c++`, which is
+    this container having no C++ compiler for libfuzzer's build script and not a claim about the manifest.)
+* **The marker is also what directory discovery keys off**, which is why the prose moved with it.
+    cargo-fuzz walks up from the working directory to the first manifest that is **not** marked and takes
+    `<that>/fuzz`, so marking this one is what lets a run started inside `fuzz/` walk back up to the root
+    instead of looking for `fuzz/fuzz/`. `fuzz/README.md` and the header of `fuzz.yml` now give the real
+    reason the root is where a run belongs — the seed copy and the `fuzz/artifacts/<target>` upload are both
+    root-relative — instead of claiming the wrong directory is unrecoverable, and rule `P03`'s message says
+    the same.
+* **`P04` is the gate.** `tools/check_workflows.py` now refuses a workflow that runs `cargo fuzz` while
+    `fuzz/Cargo.toml` is a manifest cargo-fuzz would not open, `self-test` supplies the unmarked manifest to
+    prove the rule can fire, and `tests/test_workflows_contract.py` mirrors it with the error text a
+    contributor actually sees. It runs in `contracts.yml` on every pull, which is the only place a marker
+    invisible to every other tool can be caught.
+
 ### The Guardrail 3 harness refused its own committed report, so five more diffs got read (`reco-0zi`)
 
 `ci`'s `g3-calibration` job went red on a corpus nobody had touched, with the one message that job exists to

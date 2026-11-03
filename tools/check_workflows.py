@@ -39,6 +39,7 @@ with no network and no toolchain.
 | `P01` | a repository path inside a `run:` step that does not exist |
 | `P02` | a `working-directory:` that does not exist |
 | `P03` | a `cargo fuzz` step run from inside `fuzz/` |
+| `P04` | a workflow that runs `cargo fuzz` while `fuzz/Cargo.toml` is not marked as a fuzz manifest — the marker cargo-fuzz refuses to start without |
 | `T01` | `python3 tools/<tool>.py <subcommand>` where the tool's argparse offers no such subcommand |
 | `T02` | `cargo … -p <pkg>` where `<pkg>` is not a workspace member |
 | `T03` | `--features` naming a feature that package does not declare |
@@ -89,6 +90,13 @@ ACTION_INVENTORY: dict[str, str] = {
 
 #: The properties of a `steps.<id>` object that are not under `outputs`.
 STEP_PROPERTIES = {"outputs", "conclusion", "outcome", "name", "id", "key"}
+
+#: The manifest a `cargo fuzz` invocation run from the repository root ends up reading. The self-test moves
+#: this the way it moves `WORKFLOWS`, so the rule that reads it can be shown to fire.
+FUZZ_MANIFEST = ROOT / "fuzz" / "Cargo.toml"
+
+#: `cargo fuzz`, in either spelling of the toolchain pin (`cargo fuzz` / `cargo +nightly fuzz`).
+CARGO_FUZZ = re.compile(r"\bcargo\s+(?:\+\S+\s+)?fuzz\b")
 
 #: Prefixes that make a token in a shell line a claim about this repository's tree.
 REPO_DIRS = ("tools", "ci", "docs", "schemas", "benchmarks", "crates", "plugins", "fuzz",
@@ -526,16 +534,67 @@ def rule_paths(wf: Workflow, problems: list[str]) -> None:
             problems.append(
                 f"P02 {step.where}: `working-directory: {step.working_directory}` is not a directory"
             )
-        if re.search(r"\bcargo\s+(?:\+\S+\s+)?fuzz\b", step.run) and step.working_directory:
+        if CARGO_FUZZ.search(step.run) and step.working_directory:
             problems.append(
-                f"P03 {step.where}: runs `cargo fuzz` from `{step.working_directory}`. cargo-fuzz takes "
-                f"its fuzz directory from the package it finds in the working directory, so inside "
-                f"`fuzz/` it looks for `fuzz/fuzz/` and says `no fuzz target by the name(s)` about a "
-                f"target that exists. Run it from the repository root"
+                f"P03 {step.where}: runs `cargo fuzz` from `{step.working_directory}`. cargo-fuzz derives "
+                f"its fuzz directory from the package it finds in the working directory, and only the "
+                f"`cargo-fuzz = true` marker in `fuzz/Cargo.toml` (`P04`) is what makes it walk back out "
+                f"of `fuzz/` instead of looking for `fuzz/fuzz/`. Every other path in the step — "
+                f"`fuzz/artifacts/<target>`, the seed copy — is written from the root anyway, so run it "
+                f"from the repository root"
             )
         for token in referenced_repo_paths(step.run):
             if not (ROOT / token).exists():
                 problems.append(f"P01 {step.where}: names `{token}`, which does not exist")
+
+
+def fuzz_manifest_problem(path: pathlib.Path) -> str:
+    """Empty when cargo-fuzz would accept `path` as the fuzz workspace's manifest; the reason when not.
+
+    The check copies cargo-fuzz's own `is_fuzz_manifest`: a `[package]` table whose `metadata` table says
+    `cargo-fuzz = true`. Nothing else about the manifest matters to that check — which is exactly why a
+    fuzz workspace that builds perfectly on a laptop can still be refused on the first line of a CI run.
+    """
+    if not path.is_file():
+        return f"{path} does not exist"
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        return f"{path} is not parseable TOML ({exc})"
+    package = data.get("package")
+    if not isinstance(package, dict):
+        return f"{path} has no `[package]` table, so it is a virtual manifest, not a fuzz workspace"
+    metadata = package.get("metadata")
+    if not isinstance(metadata, dict):
+        return f"{path} has no `[package.metadata]` table"
+    if metadata.get("cargo-fuzz") is not True:
+        return f"{path} does not say `cargo-fuzz = true` under `[package.metadata]`"
+    return ""
+
+
+def rule_fuzz_manifest(wf: Workflow, problems: list[str]) -> None:
+    """`P04` — a workflow that runs `cargo fuzz` needs a manifest cargo-fuzz recognises.
+
+    cargo-fuzz reads this before it compiles a single crate, and the whole of its complaint is three lines:
+
+        Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to
+        override:
+        [package.metadata]
+        cargo-fuzz = true
+
+    which is what every job of `.github/workflows/fuzz.yml` printed (`reco-com`) while the marker existed
+    nowhere in this repository. The marker is invisible to every other tool — `cargo build`, `cargo clippy`,
+    `cargo deny` and this repository's own corpus gate all read the manifest happily without it — so it can
+    go missing in a refactor that leaves nothing else red.
+    """
+    if not any(CARGO_FUZZ.search(step.run) for step in wf.run_steps()):
+        return
+    problem = fuzz_manifest_problem(FUZZ_MANIFEST)
+    if problem:
+        problems.append(
+            f"P04 {wf.name}: runs `cargo fuzz`, but {problem}, so cargo-fuzz stops with `does not look "
+            f"like a cargo-fuzz manifest` before it builds a target"
+        )
 
 
 def tool_subcommands(tool: pathlib.Path) -> set[str] | None:
@@ -720,6 +779,7 @@ def check(verbose: bool = False, network: bool = False) -> tuple[list[str], list
         rule_dist_pin(wf, problems)
         rule_expressions(wf, problems)
         rule_paths(wf, problems)
+        rule_fuzz_manifest(wf, problems)
         rule_tool_calls(wf, problems)
         rule_cargo_calls(wf, members, problems)
         rule_job_wiring(wf, problems)
@@ -845,6 +905,17 @@ jobs:
       - run: cargo +nightly fuzz build lockfile
         working-directory: fuzz
 """,
+    "p-fuzz-manifest.yml": """
+name: fuzzmanifest
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cargo +nightly fuzz run lockfile
+""",
     "t-cargo.yml": """
 name: badtargets
 on: pull_request
@@ -907,19 +978,26 @@ def self_test() -> int:
     """Require every rule to fire on a workflow written to break it."""
     import tempfile
 
-    global WORKFLOWS  # noqa: PLW0603 - the rules read the module's directory, so the test moves it
+    global WORKFLOWS, FUZZ_MANIFEST  # noqa: PLW0603 - the rules read the module's paths, so the test moves
     with tempfile.TemporaryDirectory() as work:
         temp = pathlib.Path(work)
         for name, text in BROKEN.items():
             (temp / name).write_text(text, encoding="utf-8")
-        original = WORKFLOWS
+        # `P04` reads a manifest rather than a workflow, so the self-test has to supply an unmarked one —
+        # the exact file shape `reco-com` committed, and the reason cargo-fuzz refused to start.
+        (temp / "fuzz").mkdir()
+        (temp / "fuzz" / "Cargo.toml").write_text(
+            '[workspace]\n\n[package]\nname = "fathom-fuzz"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+        workflows_dir, manifest = WORKFLOWS, FUZZ_MANIFEST
         WORKFLOWS = temp
+        FUZZ_MANIFEST = temp / "fuzz" / "Cargo.toml"
         try:
             problems, _ = check()
         finally:
-            WORKFLOWS = original
+            WORKFLOWS, FUZZ_MANIFEST = workflows_dir, manifest
     failures = [f"rule {rule} did not fire on a workflow written to break it"
-                for rule in ("A01", "A02", "E01", "E02", "E03", "E04", "P01", "P02", "P03", "T01",
+                for rule in ("A01", "A02", "E01", "E02", "E03", "E04", "P01", "P02", "P03", "P04", "T01",
                              "T02", "T03", "T04", "J01", "J02", "J03")
                 if not any(p.startswith(rule) for p in problems)]
     if failures:
@@ -931,8 +1009,9 @@ def self_test() -> int:
     print(f"check_workflows self-test OK: {len(problems)} problems read from {len(BROKEN)} files written "
           "to break one rule each — a fake action, a stale dist pin, a misread step output, an unknown "
           "step, an undeclared needs and input, a missing path and working-directory, `cargo fuzz` in the "
-          "wrong directory, an unknown crate, feature, test, example and tool subcommand, a duplicate "
-          "artefact name, an unmatchable download pattern, a stray needs and a missing permissions block")
+          "wrong directory and pointed at a manifest it will not accept, an unknown crate, feature, test, "
+          "example and tool subcommand, a duplicate artefact name, an unmatchable download pattern, a "
+          "stray needs and a missing permissions block")
     return 0
 
 
@@ -952,7 +1031,8 @@ def main() -> int:
             print(problem, file=sys.stderr)
         print(f"\n{len(problems)} problem(s)", file=sys.stderr)
         return 1
-    print("workflows OK: action inventory, expressions, paths, cargo targets, job wiring, artefact names")
+    print("workflows OK: action inventory, expressions, paths, fuzz manifest, cargo targets, job wiring, "
+          "artefact names")
     return 0
 
 
