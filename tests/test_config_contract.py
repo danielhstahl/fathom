@@ -33,6 +33,7 @@ from recommender.config import cli, explain, globs, json_schema as JS  # noqa: E
 from recommender.config import layer as L                              # noqa: E402
 from recommender.config import schema as S                             # noqa: E402
 from recommender.config import sources as SRC                          # noqa: E402
+from recommender.config.command import command                         # noqa: E402
 from recommender.config.errors import (ConfigInvalid, NotARepository,      # noqa: E402
                                        UsageError)
 from recommender.store import retention as R                            # noqa: E402
@@ -863,6 +864,7 @@ def test_probe_failure_degrades_to_small_and_says_so(repo):
 #: *using* it — and because a lint that fires on prose stops being trusted in review.
 IMPORT_WHITELIST = {
     "schema.py": {"__future__", "difflib", "re", "dataclasses"},
+    "command.py": {"__future__"},
     "globs.py": {"__future__", "re"},
     "layer.py": {"__future__", "pathlib", "dataclasses", "hashlib", "recommender"},
     "explain.py": {"__future__", "re", "dataclasses", "pathlib", "recommender"},
@@ -957,6 +959,114 @@ def test_bad_glob_is_a_warning_not_a_crash(repo):
 def test_config_document_generated_blocks_are_current():
     assert CONFIG_DOC.exists()
     assert explain.check_doc(CONFIG_DOC) == []
+
+
+#: Split a markdown table row the way GFM does: on every `|` that is not written `\|`.
+CELL_SPLIT = re.compile(r"(?<!\\)\|")
+
+
+def _cells(row: str) -> list[str]:
+    """A table row's cells, outer pipes dropped — the same split the docs renderer makes."""
+    parts = CELL_SPLIT.split(row.strip())
+    if parts and not parts[0].strip():
+        parts = parts[1:]
+    if parts and not parts[-1].strip():
+        parts = parts[:-1]
+    return parts
+
+
+@pytest.mark.parametrize("block", sorted(explain.doc_blocks()))
+def test_every_generated_table_row_has_every_column(block):
+    """A row whose code span holds a bare `|` is not a row: the renderer cuts the table there.
+
+    `non_code.env.secret_name_pattern`'s default is a regex alternation of secret-looking
+    variable names, so the generator must escape its bars (`reco-c81`). The escape had been put
+    in the checked-in document instead, which is a hand edit inside a generated block: `doc
+    --check` then failed forever while the page rendered fine, and the gate that was supposed to
+    protect the table was the thing that was wrong. This asserts the generator, not the file, so
+    the next default with a bar in it is escaped by whoever wrote it.
+    """
+    rows = [line for line in explain.doc_blocks()[block].splitlines() if line.startswith("|")]
+    header, body = _cells(rows[0]), rows[1:]
+    assert body, block
+    for row in body[1:]:                                # body[0] is the `|---|` rule
+        assert len(_cells(row)) == len(header), "%s: %r renders as %d cells, not %d" % (
+            block, row, len(_cells(row)), len(header))
+
+
+def test_a_drifted_generated_block_names_the_command_that_fixes_it(tmp_path):
+    """The remedy CI prints has to be a command the reader can run.
+
+    `fathom config doc --write` is the name ADR-002 §4.3 gives the verb, and the binary has no
+    `config` subcommand at all, so that remedy is the reason `reco-c81` was filed: the log said
+    what was wrong and then sent the reader to a command that does not type.
+    """
+    stale = tmp_path / "config.md"
+    stale.write_text(CONFIG_DOC.read_text().replace("| `flag` | 1 |", "| `flag` | 9 |", 1),
+                     encoding="utf-8")
+    problems = explain.check_doc(stale)
+    assert problems, "a mangled precedence table was not caught"
+    for problem in problems:
+        assert explain.DOC_WRITE in problem, problem
+
+
+def test_a_missing_generated_block_names_the_command_that_fixes_it(tmp_path):
+    naked = tmp_path / "config.md"
+    naked.write_text("# Configuration\n\nNothing generated here yet.\n", encoding="utf-8")
+    problems = explain.check_doc(naked)
+    assert len(problems) == len(explain.doc_blocks())
+    for problem in problems:
+        assert explain.DOC_WRITE in problem, problem
+
+
+def test_a_stale_schema_names_the_command_that_fixes_it(tmp_path):
+    path = tmp_path / "fathom.schema.json"
+    path.write_text(JS.serialize(JS.build_schema()).replace("2020-12", "2020-11"),
+                    encoding="utf-8")
+    ok, message = JS.drift(path)
+    assert not ok
+    assert JS.GENERATOR in message, message
+
+
+#: A way to make the config system refuse, and the command its hint has to name.
+#: Each of these hints used to name `fathom <verb>`, which is the design's vocabulary and not a
+#: binary: the hint is the one line of an error a reader copies, so it either types or it is
+#: decoration (`reco-c81`).
+REFUSALS = [
+    # (fathom.toml, argv, command the hint must name)
+    ("[risk\n", ["lint"], "lint"),
+    ('[risk]\ntau = "hot"\n', ["get", "risk.tau"], "schema"),
+    ("", ["--set", "zzz.nope=1", "get", "risk.tau"], "schema"),
+    ("", ["--set", "meta.config_version=0", "get", "risk.tau"], "schema"),
+]
+
+
+@pytest.mark.parametrize("content,argv,verb", REFUSALS)
+def test_a_refusal_hint_names_a_command_that_runs(repo, capsys, content, argv, verb):
+    write(repo / "fathom.toml", content)
+    assert cli.main(["--repo", str(repo), "--no-env"] + argv) != 0
+    err = capsys.readouterr().err
+    assert "hint:" in err, err
+    assert command(verb) in err, "%s was not offered for: %s" % (verb, err)
+    assert not re.search(r"`fathom [a-z]", err), "a hint said `fathom …`: %s" % err
+
+
+@pytest.mark.parametrize("remedy", [explain.DOC_WRITE, JS.GENERATOR])
+def test_a_printed_remedy_is_a_command_this_repository_answers_to(remedy):
+    """Not `fathom …`: `crates/fathom-cli/src/verbs.rs` has no `config` verb to run.
+
+    The check is the one `tools/check_docs_commands.py` runs on the manual — hand the command to
+    something and see whether it refuses — done here for the messages, which are what a red CI
+    run actually offers the reader.
+    """
+    words = remedy.split()
+    assert words[0] == "PYTHONPATH=src", "%s is not how this fixture is started" % remedy
+    assert words[1] == "python3" and words[2] == "-m", remedy
+    assert words[3].startswith("recommender."), remedy
+    key, value = words[0].split("=", 1)
+    probe = subprocess.run(["env", "%s=%s" % (key, value), "python3", "-m", words[3], words[4],
+                            "--help"], cwd=ROOT, capture_output=True, text=True)
+    assert probe.returncode == 0, "%s does not type: %s" % (remedy, probe.stderr.splitlines()[:1])
 
 
 def test_config_doc_documents_every_section_and_budget_key():

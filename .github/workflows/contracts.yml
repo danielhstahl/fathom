@@ -103,6 +103,12 @@ jobs:
         # worse than none: the editor becomes the confident party and it is wrong.
         run: PYTHONPATH=src python3 -m recommender.config schema --check
       - name: "e0.8 config: the config reference tables match the key spec"
+        # The tables are generated out of `src/recommender/config/schema.py`, and the generator escapes
+        # the `|` in a cell — `non_code.env.secret_name_pattern`'s default is a regex alternation, and an
+        # unescaped bar cuts that row out of the rendered table. `reco-c81` was this step failing forever
+        # because the escape had been typed by hand into the generated block instead of into the
+        # generator, and a hand edit inside a `BEGIN GENERATED` block is drift by definition. The remedy
+        # this step prints is the command that actually runs: `fathom` has no `config` verb.
         run: PYTHONPATH=src python3 -m recommender.config doc --check
       - name: "e0.8 config: a checked-in example repo config validates and explains"
         run: |

@@ -17,6 +17,56 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The config reference gate could never go green, because the fix had been typed into the generated file (`reco-c81`)
+
+`contracts` — the docs-and-workspace job — failed on the step *the config reference tables match the key
+spec*:
+
+```text
+fathom config: docs/concepts/config.md: generated block `keys` is stale — run `fathom config doc --write`
+```
+
+Two things were wrong with that line, and the second is why the first survived. The remedy names a command
+that does not exist: ADR-002 §4.3 designs `fathom config <subverb>`, `src/recommender/config/` is that
+design made executable, and `enum Verb` in `fathom-cli` has no `config` variant to run — so the message sent
+the reader to a command the binary refuses. And the row the gate called stale was
+`non_code.env.secret_name_pattern`, whose default is a regex alternation:
+`(?i)(^|_)(secret|token|password|…)`. A GFM table row is split on every `|` that is not written `\|`, so that
+row arrived at the reader as four cells with its header row missing — the defect `reco-x69`'s render audit
+correctly found, and which was then fixed in the wrong file: the bars were escaped *by hand*, inside the
+`BEGIN GENERATED` block of `docs/concepts/config.md`. A hand edit inside a generated block is drift by
+definition, so from that commit the generator and the document could not agree at all: fixing the render
+re-opened the gate, passing the gate broke the render, and every diff that touched a config key inherited
+the argument.
+
+* **The escape belongs to the generator.** `recommender/config/explain.py` builds every table line through
+    `_row(…)`, which passes each cell through `_md()` exactly once — `|` becomes `\|`, which is the escape
+    GFM defines here and which `tools/build_docs_site.py` renders back to `|`, so the reader still sees the
+    regex whole and the table keeps its columns. Once that was true, `doc --write` rewrote
+    `docs/concepts/config.md` to … nothing: not one byte of its generated blocks changed, which is the proof
+    that the file had been right and the generator was the party that was wrong.
+    Escaping once is a rule, not a coincidence — `_row` is the only way a table line is built, so a default
+    with a bar in it cannot be escaped twice and prints no stray backslash.
+* **A remedy is a command, or it is decoration.** `recommender/config/command.py` states the invocation once
+    — `PYTHONPATH=src python3 -m recommender.config …`, prefix included because `recommender` is read out of
+    `src/` and installed nowhere — and every message that used to say `fathom config doc --write`, `fathom
+    config schema`, `fathom config lint`, `fathom config keys` and `fathom config explain --key K` now spells
+    it that way: the stale and missing doc-block problems, the schema-drift problem (which also retypes the
+    `generator` field inside `schemas/fathom.schema.json`, so the artefact names the command that
+    reproduces it), and the hints for unparseable TOML, a value of the wrong type, a value outside its
+    declared range and a key nobody declared. `fathom config …` stays where it was always honest — prose
+    about the design, in ADR-002 and in this document — and appears in nothing a reader is told to type.
+* **The manual's own recipe list types too.** §11 of `docs/concepts/config.md` now runs its ten commands
+    through that prefix the way `docs/concepts/rename-pairing.md` and the ADRs already do, and says in one
+    sentence why there are two spellings of one surface.
+* **What guards it.** `tests/test_config_contract.py` gained six clauses — fifteen cases, counting the
+    parametrized ones: every generated table row splits into as many cells as its header, which is the
+    assertion that goes red the moment a bar stops being escaped; a stale block, a missing block and a stale
+    schema each name their remedy; each remedy is then handed to a real shell with `--help` appended and must
+    be accepted, which is `tools/check_docs_commands.py`'s argument moved from the manual to the messages;
+    and four refusals must not print a backticked `fathom …`. The new module is in the package's import
+    whitelist with nothing in it but `__future__`, so it cannot smuggle IO into the types half.
+
 ### The perf budgets job stopped measuring the budget it was most likely to break (`reco-cwx`)
 
 Every `perf` run since the baseline was blessed printed the line and moved on:
