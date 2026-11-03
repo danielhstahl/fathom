@@ -72,6 +72,11 @@ jobs:
         run: python3 tools/perf_gate.py --check
 
       - name: "the gate's contract suite (including: a deliberate regression turns it red)"
+        # `if: always()`, so that a gate which *crashed* instead of judged still says which of its
+        # contracts broke. On `reco-yfd` the gate died with a `TypeError` two seconds into its first
+        # measurement and this step — the one that names what a working gate does — was skipped, so
+        # the run had one traceback and no verdict in it.
+        if: always()
         run: |
           python -m pip install --disable-pip-version-check pytest
           python3 -m pytest -q tests/test_perf_budget_contract.py

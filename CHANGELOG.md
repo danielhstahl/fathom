@@ -17,6 +17,53 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The perf gate died on its first measurement, because the RSS sampler had taken a name `threading` owns (`reco-yfd`)
+
+`perf` — the perf budgets job — failed *the budgets, the baseline, and the trend* about two seconds in,
+before it had indexed anything, and printed a traceback instead of a table:
+
+```text
+  File "…/tools/perf_gate.py", line 783, in measure_end_to_end
+    ms, rss = harness.fathom("index", fresh_store=True)
+  File "…/tools/mvp_acceptance.py", line 142, in peak
+    self.join(timeout=2.0)
+  File "…/python3.12/threading.py", line 1171, in _wait_for_tstate_lock
+    self._stop()
+TypeError: 'Event' object is not callable
+```
+
+Every number the gate takes — wall clock and resident set together — goes through
+`mvp_acceptance.run_measured`, which samples a child's `VmHWM` from a `threading.Thread` subclass and
+tells that thread to stop by setting an `Event` on it. The Event was bound to `self._stop`, and
+`Thread._stop` is not a free name: through CPython 3.12 it is a **method** — the one
+`Thread._wait_for_tstate_lock`, the body of every `join()`, calls when the thread has finished. Binding
+an Event over it turns the join that closes every measurement into `TypeError: 'Event' object is not
+callable`, so the gate died in its very first `fathom index` and the trend, the baseline comparison and
+the artefact never got written. It reproduced nowhere a developer looked: the interpreters people run
+are 3.13 or newer, which dropped `Thread._stop`, while every workflow here pins `python-version: "3.12"`
+— so CI was the only place the bug could speak, and the contract suite that would have caught it (the
+next step in the same job) was skipped because the gate had already died.
+
+* **The flag is called `_stop_requested`, and the name is the fix.** Nothing about the sampler's
+    behaviour changes; what changes is that it no longer overwrites a member `threading.Thread` uses
+    for its own lifecycle. The class docstring says so, because `self._stop` reads as the obvious name
+    for a stop flag and will be proposed again.
+* **The same shadowing went for anything that measures a verb on 3.12**, which is `tools/perf_gate.py`,
+    `tools/perf_realrepo.py` and `tools/mvp_acceptance.py`'s own acceptance harness: all three take
+    their RSS numbers from this sampler, and all three died at the first measurement rather than
+    reporting a budget.
+* **What guards it.** `tests/test_perf_budget_contract.py` now reads the assignments
+    `_PeakSampler.__init__` makes and refuses any name from CPython's private `Thread` vocabulary.
+    The vocabulary is spelled out in the test rather than read off `dir(threading.Thread)`, because
+    the interpreter running the guard is not the interpreter that broke — a guard that can only see
+    the interpreter it is standing on guards nothing. A second test takes one real measurement through
+    `run_timed` and demands a number back; that one is the shape of the crash, and it fails on the
+    interpreter CI pins.
+
+* **The job reports a verdict even when the gate cannot produce one.** The contract suite is now
+    `if: always()`: it is the step that names what a working gate does, and skipping it turned a
+    crashed gate into a log with one traceback and nothing to compare it against.
+
 ### The config reference gate could never go green, because the fix had been typed into the generated file (`reco-c81`)
 
 `contracts` — the docs-and-workspace job — failed on the step *the config reference tables match the key

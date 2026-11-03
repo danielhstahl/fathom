@@ -626,6 +626,83 @@ def test_the_rss_peak_is_sampled_while_the_child_holds_memory():
 
 
 # ---------------------------------------------------------------------------------------------
+# The sampler is a thread, and CPython owns some of a thread's names (`reco-yfd`)
+# ---------------------------------------------------------------------------------------------
+#: `threading.Thread` members CPython binds itself and calls on your behalf, across every interpreter
+#: this repository runs. The list is written out rather than read off `dir(threading.Thread)` because
+#: the interpreter running this file is not the one that broke: through 3.12 `Thread._stop` is a
+#: *method* that `Thread._wait_for_tstate_lock` — the body of every `join()` — calls when the thread
+#: finishes, and 3.13 removed it. Bind an `Event` to `self._stop` in a subclass and every join raises
+#: `TypeError: 'Event' object is not callable`, which is the sentence that killed the perf gate two
+#: seconds into its first `fathom index` on CI's 3.12 while it stayed green on a newer interpreter.
+#: A guard that only knows the interpreter it is standing on guards nothing.
+THREAD_PRIVATES = (
+    "_start", "_stop", "_bootstrap", "_bootstrap_inner", "_wait_for_tstate_lock", "_tstate_lock",
+    "_is_stopped", "_started", "_done", "_initialized", "_daemonic", "_ident", "_native_id",
+    "_name", "_handle_interrupt", "_invoke_excepthook", "_make_invoke_excepthook", "_delete",
+)
+
+
+def _attributes_bound_by(cls, method: str) -> set[str]:
+    """The `self.<name>` bindings made inside `cls.<method>`, read off the source.
+
+    Off the source rather than off an instance, because the question is what the code binds — an
+    instance of a *fixed* subclass is a snapshot of one interpreter's answer, and this must hold on
+    interpreters that are not the one running the test.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    names: set[str] = set()
+    tree = ast.parse(textwrap.dedent(inspect.getsource(getattr(cls, method))))
+    for node in ast.walk(tree):
+        targets = list(node.targets) if isinstance(node, ast.Assign) else []
+        if isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        for target in targets:
+            if (isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"):
+                names.add(target.attr)
+    return names
+
+
+def test_the_peak_sampler_binds_no_attribute_threading_itself_owns():
+    """The name `self._stop` belongs to `threading.Thread`; the gate's sampler had taken it.
+
+    `_PeakSampler` is a `Thread` subclass and it used to bind `self._stop = threading.Event()`, which
+    overwrites CPython's own `Thread._stop` method for every interpreter up to 3.12. `join()` calls
+    that method once the thread has ended, so *every* RSS sample raised
+    `TypeError: 'Event' object is not callable` and `python3 tools/perf_gate.py --check` died before
+    it had indexed anything (`reco-yfd`). The fix is a name that is ours; this is the guard.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    shadowed = _attributes_bound_by(M._PeakSampler, "__init__") & set(THREAD_PRIVATES)
+    assert not shadowed, (
+        f"_PeakSampler rebinds {sorted(shadowed)}, which `threading.Thread` uses for its own "
+        "lifecycle; on CI's interpreter joining the sampler then raises \"TypeError: 'Event' object "
+        "is not callable\" and the perf gate dies before it has indexed anything")
+
+
+def test_joining_the_sampler_after_a_measurement_returns_a_number():
+    """The shape of the crash, from the other side: a measurement must join, not raise.
+
+    `run_timed` stops the sampler by setting its flag and joining it, so on an interpreter where that
+    flag has the same name as `Thread._stop` this call never returns a number — it raises. This test
+    is the one that fails on the interpreter CI runs (`perf.yml` pins 3.12) and is quiet about on a
+    newer one, which is exactly why it is here next to the guard rather than instead of it.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    wall_ms, peak_kib = M.run_timed([sys.executable, "-c", "pass"], ROOT)
+    assert wall_ms > 0.0, f"a child that ran at all measured {wall_ms} ms"
+    assert peak_kib >= 0, f"a resident set cannot be negative, and this one is {peak_kib}"
+
+
+# ---------------------------------------------------------------------------------------------
 # The probe's own clock: a frame that lands late is late, not absent (`reco-cwx`)
 # ---------------------------------------------------------------------------------------------
 def _fake_tui(tmp_path, frames):

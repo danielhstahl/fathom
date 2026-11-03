@@ -120,6 +120,15 @@ class _PeakSampler(threading.Thread):
     `max(parent at fork, its own peak)` and `/bin/true` reports this interpreter's own 10 MiB. So
     the sample is taken from beside the child, and the residual miss is one sample interval, which
     is what the resident-set budgets' own blessed noise floor is for.
+
+    **The stop flag is called `_stop_requested`, and that is not a style choice.** A
+    `threading.Thread` subclass owns names beginning with `_` that CPython calls for you: up to and
+    including 3.12, `Thread._stop` is a *method* that `Thread._wait_for_tstate_lock` — the body of
+    every `join()` — calls once the thread has finished. Bind an `Event` to `self._stop` here and
+    every join of every measurement raises `TypeError: 'Event' object is not callable`, which is what
+    killed `python3 tools/perf_gate.py --check` two seconds into its first `fathom index` on CI's
+    3.12 while it stayed green on any interpreter new enough to have dropped the method (`reco-yfd`).
+    `tests/test_perf_budget_contract.py` polices the shadowing so the next rename cannot walk it back.
     """
 
     def __init__(self, pid: int, interval_s: float = RSS_SAMPLE_INTERVAL_S) -> None:
@@ -127,10 +136,10 @@ class _PeakSampler(threading.Thread):
         self.pid = pid
         self.interval_s = interval_s
         self.peak_kib = 0
-        self._stop = threading.Event()
+        self._stop_requested = threading.Event()
 
     def run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop_requested.is_set():
             sample = vmhwm_kib(self.pid)
             if sample > self.peak_kib:
                 self.peak_kib = sample
@@ -138,7 +147,7 @@ class _PeakSampler(threading.Thread):
 
     def peak(self) -> int:
         """Stop the sampler and hand back the highest sample it saw."""
-        self._stop.set()
+        self._stop_requested.set()
         self.join(timeout=2.0)
         return self.peak_kib
 
