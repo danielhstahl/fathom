@@ -2,7 +2,7 @@
   "$id": "https://fathom.dev/schemas/fathom.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Configuration for Fathom, the terminal UI that keeps a human's mental model of a codebase a coding agent is writing. Values are layered: command-line flags > environment variables (FATHOM_*, segments joined by __) > repo fathom.toml > user config > built-in defaults, and every effective value is explainable with `fathom config explain`. GENERATED from src/recommender/config/schema.py by `python3 -m recommender.config schema --write`; do not edit by hand.",
+  "description": "Configuration for Fathom, the terminal UI that keeps a human's mental model of a codebase a coding agent is writing. Values are layered: command-line flags > environment variables (FATHOM_*, segments joined by __) > repo fathom.toml > user config > built-in defaults, and every effective value is explainable with `fathom config explain`. GENERATED from src/recommender/config/schema.py by `PYTHONPATH=src python3 -m recommender.config schema --write`; do not edit by hand.",
   "properties": {
     "api": {
       "additionalProperties": false,
@@ -5010,7 +5010,7 @@
     "config_version": 1,
     "env_prefix": "FATHOM_",
     "env_separator": "__",
-    "generator": "python3 -m recommender.config schema --write",
+    "generator": "PYTHONPATH=src python3 -m recommender.config schema --write",
     "layers": [
       "flag",
       "env",

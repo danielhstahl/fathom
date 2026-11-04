@@ -110,6 +110,19 @@ STORE_CLOCK_FLOOR_MS = 3.0
 #: so anything smaller than this is the harness's clock, not the product's. Floor for the gate.
 PTY_NOISE_MS = 10.0
 
+#: The floor of a *spawn*-dominated measurement, in ms. `cold.queue_visible.ms.small` is not a
+#: keystroke seen through the pty; it is fork, dyld, `Store::open` and the first frame, and what varies
+#: with it is the box, not the code. Nine probes of one tree on one box spread 152-171 ms (19 ms, 12 %
+#: of the value) and the same tree measured 109-150 ms across the blessed runs (`benchmarks/trend/
+#: trend.jsonl`), so the ±15 % ratchet on a ~140 ms row asks this probe to resolve 21 ms out of a
+#: spread of about that size. It cannot, and `reco-cwx` is the ticket that found out: the row blessed at
+#: 138.3 ms read +16 % on a box that was simply slower to start, which is a coin toss wearing a gate's
+#: badge. The budget — 3 000 ms — is what guards first paint; this floor is what stops the ratchet from
+#: pretending otherwise, and the run says so under "cannot resolve" rather than quietly passing.
+#: Wide enough to cover the observed spread, narrow enough that a real regression still bites: the 400 ms
+#: injection the acceptance criterion uses lands sixteen floors over it.
+SPAWN_NOISE_MS = 25.0
+
 #: Measured wall-clock ceiling this harness promises (`make bench`'s acceptance criterion: under five
 #: minutes). Exceeding it is reported; the CI job sets a matching `timeout-minutes`.
 PROMISED_SECONDS = 300
@@ -900,6 +913,7 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     first_paints: list[float] = []
     rss_peaks: list[float] = []
     probes = 0
+    blocked = "the pty probe produced no measurement"
     for run in range(harness.pty_runs):
         probe_file = fixture.parent / f"perf-tui-{os.getpid()}-{run}.json"
         try:
@@ -909,6 +923,13 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
             probe = json.loads(probe_file.read_text())
         except subprocess.CalledProcessError as err:
             blocked = f"the pty probe failed: {(err.stderr or b'').decode(errors='replace')[-200:]}"
+            probe_file.unlink(missing_ok=True)
+            break
+        except (OSError, json.JSONDecodeError) as err:
+            # The probe ran and left nothing readable. Named here rather than allowed to raise: a
+            # traceback out of the harness is a worse report than the sentence "the probe gave me
+            # nothing", and every number downstream of here already knows how to be blocked.
+            blocked = f"the pty probe wrote no readable timings: {err}"
             probe_file.unlink(missing_ok=True)
             break
         probe_file.unlink(missing_ok=True)
@@ -943,7 +964,11 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                                "cold.queue_visible.ms.small", first_paints,
                                how="spawn to first frame on a warm store: the queue is the first pane "
                                    f"(median of {len(first_paints)} probe(s))",
-                               noise=PTY_NOISE_MS))
+                               # Not `PTY_NOISE_MS`: this number is dominated by process start, not by
+                               # the reader's poll loop, and a first frame that lands later than the
+                               # reader's settle window used to come back `blocked` instead of late
+                               # (`reco-cwx`, `tools/tui_session.py`'s `drain`).
+                               noise=SPAWN_NOISE_MS))
         else:
             record(Measurement("cold.queue_visible.ms.small", "ms", None,
                                "cold.queue_visible.ms.small",

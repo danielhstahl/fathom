@@ -546,8 +546,10 @@ def command_build(args: argparse.Namespace) -> int:
             if archive.is_file():
                 archives[triple] = archive
         if not any(archives.values()):
-            raise SystemExit("no release archives in %s (%s). Run `dist build --artifacts=local` first, "
-                             "or pass --from-binary for a rehearsal."
+            raise SystemExit("no release archives in %s (%s). Run `dist build --artifacts=local "
+                             "--target=<the triple you are on>` first — the bare `--artifacts=local` asks "
+                             "`dist` for every target in `dist-workspace.toml`, which one machine cannot "
+                             "build — or pass --from-binary for a rehearsal."
                              % (distrib, ", ".join("fathom-cli-%s.tar.xz" % t for t in TARGETS)))
     for triple, arches in TARGETS.items():
         archive = archives.get(triple)

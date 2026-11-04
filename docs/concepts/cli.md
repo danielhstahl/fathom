@@ -204,8 +204,8 @@ worktree pointing at a git directory that is gone. `fathom stats` prints them un
 code.
 
 An index that is empty because the *repository* has no commits is not degraded. That is ADR-006 §10.3's
-empty state, printed with its fixed copy: `no index here yet — run \`fathom index\` here, then reopen
-fathom`. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
+empty state, printed with its fixed copy: ``no index here yet — run `fathom index` here, then reopen
+fathom``. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
 filed): `fathom stats` says the
 index is missing, and the TUI says it too rather than guessing.
 

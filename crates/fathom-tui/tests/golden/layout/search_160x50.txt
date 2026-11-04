@@ -1,6 +1,6 @@
 # Search at 160×50 — complete
 
-/▏  (input) free text plus filter tokens author: path: risk> dep:
+/▏  (input) free text plus filter tokens author: since: risk> kind: path: dep:
 ▸ results · e5.2                                                                           ┬· preview · e5.2
 nothing has been searched for yet                                                          │index epoch 1 ready · 500 commits · 48 eps
 `/` searches titles, paths, authors and symbols; `,` is the palette                        │`j`/`k` move the cursor, `<Tab>` walks the panes

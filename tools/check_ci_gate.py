@@ -41,6 +41,14 @@ exists for.
 file that exists and is executable where executability matters. This is the rule whose absence let the
 original bug through.
 
+**Both modes run without a binary.** Two rules — the verb rule and the flag rule — have a compiled
+program as their source, and `contracts.yml` runs this gate on the job that compiles nothing (`ci.yml`
+runs it again where a binary exists). Those two rules skip themselves with a printed note (`reco-p40`:
+a `FileNotFoundError: …/target/debug/fathom` traceback on that docs job read as "the CI story is broken"
+when the truth was "nothing is built on this runner", which is a bug report about the checker, not about
+the CI story). A gate must be able to say *I cannot see that here* distinctly from *that is wrong*; a
+toolchain-shaped traceback on a documentation-only job is neither.
+
 Exit: 0 clean, 1 with one line per problem.
 """
 from __future__ import annotations
@@ -163,13 +171,42 @@ def verbs_in(path: pathlib.Path) -> set[str]:
     return verbs
 
 
+def ask_binary(binary: pathlib.Path, args: list[str]) -> str | None:
+    """Run the built binary and hand back its stdout, or `None` when there is nothing to hear.
+
+    `None` covers every way of not answering: no file at that path, a file that is not executable, a
+    binary for the wrong architecture, and a non-zero exit. They are one state to this gate — *no verb
+    list, no flag list, say so and move on* — because the gate runs on `contracts.yml`'s docs-only job,
+    which compiles nothing, and raising there (`reco-p40`: `FileNotFoundError: …/target/debug/fathom`)
+    made an unbuilt working tree look like a broken CI story.
+    """
+    if not binary.is_file():
+        return None
+    try:
+        proc = subprocess.run([str(binary), *args], capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def unanswered_binary(binary: pathlib.Path) -> str:
+    """Why there is nothing to ask here, in the words a skip note prints."""
+    if not binary.is_file():
+        return f"no binary at {binary}"
+    return f"`{binary}` is on disk but answered `--help` with no command list"
+
+
 def binary_verbs(binary: pathlib.Path) -> set[str]:
-    proc = subprocess.run(
-        [str(binary), "--help"], capture_output=True, text=True, check=False
-    )
-    if proc.returncode != 0:
+    """The verbs `fathom --help` lists; empty when there is no answer to read.
+
+    An absent or unrunnable binary is a state, not an exception (see `ask_binary`). A caller tells "nothing
+    built here" from "the workflow invented a verb" by checking whether the binary is a file, and says
+    which one it found.
+    """
+    out = ask_binary(binary, ["--help"])
+    if out is None:
         return set()
-    block = proc.stdout.split("Commands:", 1)
+    block = out.split("Commands:", 1)
     if len(block) < 2:
         return set()
     verbs = set()
@@ -212,15 +249,17 @@ def binary_flags(binary: pathlib.Path, verbs: set[str]) -> set[str]:
     The point is a flag that does not exist: `fathom check --full` is plausible, unread, and a job that
     dies three minutes into someone else's pipeline with "unexpected argument". That is a documentation
     bug in a workflow, and a workflow is not compiled.
+
+    A verb the binary does not have is left out rather than failed here — that is the verb rule's job, and
+    the two rules must not report one mistake twice. A caller checks `binary_verbs()` first: with no verb
+    list there is no flag list either, and the flag half says it skipped.
     """
     known = {"help", "version"}
     for verb in sorted(verbs):
-        proc = subprocess.run(
-            [str(binary), verb, "--help"], capture_output=True, text=True, check=False
-        )
-        if proc.returncode != 0:
+        out = ask_binary(binary, [verb, "--help"])
+        if out is None:
             continue
-        known.update(FLAG.findall(proc.stdout))
+        known.update(FLAG.findall(out))
     return known
 
 
@@ -280,9 +319,11 @@ def check_policy_knobs(problems: list[str], notes: list[str], verbose: bool) -> 
 
 def check_flags(problems: list[str], notes: list[str], verbose: bool, binary: pathlib.Path) -> None:
     """Every flag a shipped workflow passes to `fathom` is one the binary accepts."""
-    if not binary.is_file():
-        if verbose:
-            notes.append("flag check skipped: no binary to ask")
+    if not binary_verbs(binary):
+        # Said out loud, not under `--verbose`: a half that is skipped and unmentioned is a half a green
+        # job then lies about.
+        notes.append(f"flag check skipped: {unanswered_binary(binary)} "
+                     "(`ci.yml` runs this half on the leg that builds one)")
         return
     for workflow in (REUSABLE, DOGFOOD, SELF_REVIEW):
         if not workflow.is_file():
@@ -358,7 +399,8 @@ def check_reusable(problems: list[str], notes: list[str], verbose: bool, binary:
     verbs = verbs_in(REUSABLE)
     available = binary_verbs(binary)
     if not available:
-        notes.append(f"reusable workflow: verbs not checked (no binary at {binary})")
+        notes.append(f"reusable workflow: verbs not checked ({unanswered_binary(binary)}; "
+                     "`ci.yml` runs this half on the leg that builds one)")
     else:
         for verb in sorted(verbs - available):
             problems.append(f"the workflow runs `fathom {verb}`, which this binary does not have")
@@ -485,10 +527,27 @@ def self_test() -> int:
             failures.append("the reference reader leaked across files")
 
         # A `fathom` verb that does not exist has to be caught by the same set difference the real
-        # workflow passes through.
-        invented = {"flarble"} - (binary_verbs(ROOT / "target" / "debug" / "fathom") or {"flarble"})
-        if invented != {"flarble"}:
+        # workflow passes through. The verb list is read out of `--help`, so the self-test brings its own
+        # `--help` rather than depending on a toolchain: the self-test's whole claim is that it needs
+        # nothing, and on the docs-only job (`reco-p40`) a clause that quietly did nothing is how this
+        # parser rots while the gate stays green.
+        fake_help = pathlib.Path(work) / "fathom"
+        fake_help.write_text(
+            "#!/bin/sh\n"
+            "printf 'Usage: fathom <COMMAND>\\n\\nCommands:\\n'"
+            "'  check     Run the CI gate\\n  index     Build the index\\n\\nOptions:\\n'\n"
+        )
+        fake_help.chmod(0o755)
+        read = binary_verbs(fake_help)
+        if not {"check", "index"} <= read:
+            failures.append(f"the verb reader read {sorted(read)} from a `--help` that lists `check` and `index`")
+        if {"flarble"} - read != {"flarble"}:
             failures.append("an invented verb slipped past the verb set")
+        # And the same reader against the real `--help`, when this machine has one: clap's actual layout
+        # is what the parser has to survive, and a fake that matches a guess proves nothing.
+        built = binary_verbs(ROOT / "target" / "debug" / "fathom")
+        if built and "check" not in built:
+            failures.append("the verb reader does not parse the built `fathom --help` (no `check` in it)")
 
         # …and so does a flag that does not exist, and a caller whose knobs contradict its own comment.
         liar = pathlib.Path(work) / "liar.yml"
@@ -508,6 +567,9 @@ def self_test() -> int:
         for failure in failures:
             print(f"self-test: {failure}", file=sys.stderr)
         return 1
+    if not binary_verbs(ROOT / "target" / "debug" / "fathom"):
+        print("check_ci_gate self-test note: no built binary here, so the verb rules were exercised "
+              "against a stand-in `--help` instead of the real one (that is the docs-only job's state)")
     print("check_ci_gate self-test OK: a missing path, an undeclared input, an invented verb, an invented "
           "flag and a self-contradicting job are all seen")
     return 0

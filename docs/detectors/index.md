@@ -319,7 +319,8 @@ possible reminder that the diff was written by something that was not going to c
 
 **Why tier B needs a shape (`reco-pfb`).** A report generator is a file whose entire product is the text it
 prints, and there is one in every repository: this project's own `tools/*.py`, ruff's
-`python/py-fuzzer/fuzz.py` — which the published G3 corpus hand-dismisses twice — and every `gen_*.py` and
+`python/py-fuzzer/fuzz.py` — which the published G3 corpus has now hand-dismissed three times — and every
+`gen_*.py` and
 `check_*.py` you have ever written. Firing on those is firing on the house's own style, and output that gets
 skimmed and then ignored costs the true findings more than silence would. So a print must now look like a
 leftover rather than merely be a print. What that refuses to do is worth saying out loud: the detector is not

@@ -78,12 +78,12 @@ jobs:
       # so. A test file that fails this step is a test file that forgot its own line, and the fix is that
       # line — not an `-A` here, which would silence the claim for every file at once.
       - name: clippy libs and bins unwrap_used and expect_used are errors
-        run:
+        run: >-
           cargo clippy --workspace --all-features --
           -D warnings -D clippy::unwrap_used -D clippy::expect_used
 
       - name: clippy all targets tests say for themselves that they may unwrap; none may print
-        run: |
+        run: >-
           cargo clippy --workspace --all-targets --
           -D warnings -A clippy::print_stdout
 
@@ -105,7 +105,12 @@ jobs:
           cargo run --locked -p fathom-analyze --features langs-all --example s1_spike --
           --repo . --report benchmarks/reports/s1-tree-sitter-accuracy.json --check
       - name: "spike s1: the harness itself builds with every grammar"
-        run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
+        # `sqlite-bundled` is here because `--all-targets` means *every* target, and `tests/graph_index.rs`
+        # drives the graph pass through `fathom_store`'s SQLite backend (`spine::Store`, `graph::…`,
+        # `Availability::probe`), which §6.2 gates behind a store feature. A build of the library alone has
+        # no opinion about it; a build of the test suite without one fails to compile, and the honest fix is
+        # to say which features the targets need rather than to drop the target from the claim.
+        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
 
   structure-core:
     name: structural extractor core and tail reproduce (six languages)
@@ -143,7 +148,9 @@ jobs:
           cargo test --locked -p fathom-analyze
           --features langs-all --test structure_tail
       - name: "e3.1b: the harness builds with every grammar, including the three corpora generators"
-        run: cargo build --locked -p fathom-analyze --features langs-all --all-targets
+        # Same `sqlite-bundled` as the `spike s1` leg above: `--all-targets` compiles `tests/graph_index.rs`,
+        # and that target needs a store backend to compile at all.
+        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
 
   g3-calibration:
     name: Guardrail 3 calibration reproduces (three real repositories)
@@ -193,15 +200,22 @@ jobs:
 
   # The release skeleton is generated from `dist-workspace.toml`; this job is what stops the generated
   # workflow and the config it came from from drifting apart, which is the same argument §8.4 makes about
-  # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables. The second
-  # step is the rest of the release path (`m0`/`reco-n1j`, extended by `e7.4`/`reco-3q4`): the three
+  # a hand-edited `deny.toml` and ADR-002's generated tables make about hand-copied tables. `dist generate
+  # --check` compares a workflow to its config; there is no `axodotdev/cargo-dist/action` to `uses:` for
+  # it — the action path an earlier revision of this file named has never existed in that repository, and
+  # the job died in "Set up job", before one step of its own had run, which is the least legible way for a
+  # gate to be red. `cargo-dist` ships an installer, not an action: this is the same one `release.yml`
+  # runs (that file is generated, and it bakes the pinned version into the URL) and the same one the
+  # `packaging` job below runs, and here the version is read out of `dist-workspace.toml` rather than
+  # copied, so there is one pin.
+  #
+  # The rest of the job is the release path (`m0`/`reco-n1j`, extended by `e7.4`/`reco-3q4`): the three
   # operating systems still being covered, the installers still existing (both scripts, the msi, the
   # formula), the msi's `upgrade-guid` surviving, the system packages being named for the version being
   # released, the completions and man pages being `include`d, the document still saying which steps need a
-  # maintainer-only secret, one version in one place, the changelog section that *is* the release body,
-  # README quoting the URL the installers bake, and the captured plan still describing the config. `dist
-  # generate --check` compares a workflow to its config; `check_release.py` compares the release to what
-  # its users are told, and needs neither `dist` nor a network.
+  # maintainer-only secret, one version in one place, the changelog section that *is* the release body, and
+  # README quoting the URL the installers bake. `check_release.py` compares the release to what its users
+  # are told, and needs neither `dist` nor a network.
   #
   # The third and fourth steps are the version bump's own rules (`P01`-`P08` in `tools/release.py`): the
   # seven places the one version has to arrive, checked offline, and the proof that those checks can fail.
@@ -214,13 +228,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: axodotdev/cargo-dist/action@v1
-        with:
-          command: generate
-          arguments: --check
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: install cargo-dist (pinned to dist-workspace.toml)
+        run: |
+          dist_version=$(python3 -c 'import tomllib; print(tomllib.load(open("dist-workspace.toml","rb"))["dist"]["cargo-dist-version"])')
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            "https://github.com/axodotdev/cargo-dist/releases/download/v${dist_version}/cargo-dist-installer.sh" | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: dist generate --check (the workflow and the msi template are their config's output)
+        # Both generated files, not just the workflow: `dist generate` writes `crates/fathom-cli/wix/main.wxs`
+        # too, and a hand-touched `main.wxs` fails `dist plan` in `release.yml` — the whole release pipeline
+        # refusing to start, from a whitespace difference nobody made. Checked here, on the pull request that
+        # made it, rather than at the one moment it is expensive.
+        run: dist generate --check
       - name: The release path (R01-R17)
         run: python3 tools/check_release.py
       - name: One version, seven places (P01-P08)
@@ -259,11 +281,13 @@ jobs:
         with:
           python-version: "3.12"
       # The same installer the release workflow uses, so the rehearsal exercises a `dist` of the pinned
-      # version rather than whatever is convenient. `DIST_VERSION` is the pin in `dist-workspace.toml`.
-      - name: install cargo-dist (pinned)
+      # version rather than whatever is convenient — and the pin is read from `dist-workspace.toml` rather
+      # than copied, so this step cannot drift from the file that names the version.
+      - name: install cargo-dist (pinned to dist-workspace.toml)
         run: |
+          dist_version=$(python3 -c 'import tomllib; print(tomllib.load(open("dist-workspace.toml","rb"))["dist"]["cargo-dist-version"])')
           curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.33.0/cargo-dist-installer.sh | sh
+            "https://github.com/axodotdev/cargo-dist/releases/download/v${dist_version}/cargo-dist-installer.sh" | sh
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: cargo build (release, the profile the artefacts come from)
         run: cargo build --release -p fathom-cli --locked
@@ -271,8 +295,20 @@ jobs:
       # the complete release set is six targets and one runner is not six machines, and the global phase
       # would then insist on `.deb`s for an architecture this job never built (which is right, and is why
       # the installer rehearsal below runs with that stage lifted out).
+      #
+      # `--target` is not optional here. `--artifacts=local` with no `--target` does not mean "this
+      # machine's archive" to `dist`, it means "every triple in `dist-workspace.toml`" — the same reading
+      # that makes `--artifacts=global` mean the whole release — so the job died with
+      # `Cross-compilation from x86_64-unknown-linux-gnu to aarch64-apple-darwin is not supported`
+      # (`reco-hzr`) while trying to make a Mach-O on a Linux runner. The triple is asked of the compiler
+      # rather than written down, so the step names the machine it is actually on instead of assuming
+      # `ubuntu-latest` stays x86_64; `rule D01` of `tools/check_workflows.py` is what keeps it stated.
       - name: dist build (this runner's archive)
-        run: dist build --artifacts=local
+        run: |
+          set -euo pipefail
+          triple=$(rustc -vV | sed -n 's/^host: //p')
+          echo "building this runner's own archive for ${triple}"
+          dist build --artifacts=local --target="${triple}"
       - name: the installer rehearsal, and its negative controls
         run: |
           python3 tools/rehearse_installer.py --no-extra-artifacts
@@ -601,9 +637,20 @@ jobs:
       # `--help` and not in your shell. They are generated from the same `clap::Command` the binary parses
       # with, so the only honest check is "regenerate and diff", and it runs on the leg that just built the
       # binary for the same reason (§8.4: a generated file is checked by regenerating it).
+      #
+      # The build is explicit, and named, for one line: a man page's VERSION section prints
+      # `fathom --version`, which carries the feature list the binary was compiled with, so the file is
+      # only "the binary's own grammar" for the one binary it was blessed from — the default, shipped
+      # build (ADR-002 §6.1, and `gen_shell_artifacts.py`'s own docstring). Without this line the binary
+      # on disk is the headless `minimal` one built above, and this step is red for a reason that has
+      # nothing to do with the diff under review.
       - name: "e7.4 packaging: the completions and man pages are the binary's own grammar"
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
-        run: python3 tools/gen_shell_artifacts.py check
+        run: |
+          set -euo pipefail
+          cargo build --locked -p fathom-cli
+          python3 tools/gen_shell_artifacts.py check
+          python3 tools/gen_shell_artifacts.py self-test
 
       - name: the binary answers, on every platform
         run: |

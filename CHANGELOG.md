@@ -17,6 +17,515 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### One test asked the machine it ran on who it was (`reco-6wr`)
+
+`a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition` — one test, and it was red on a clean
+clone and green on the laptop that wrote it:
+
+```text
+---- a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition stdout ----
+Author identity unknown
+*** Please tell me who you are.
+fatal: unable to auto-detect email address (got 'user@host.(none)')
+assertion failed: status.success()
+```
+
+* **The fixture scrubbed everything except the one helper that needed it.** Every commit this test's
+    repository is built from goes through `tests/common`'s `git` helper, which clears the environment,
+    pins `user.name` and `user.email`, and pins the clock to `BASE_EPOCH` — the module says why: a
+    fixture whose commit ids move between machines makes a failure impossible to reproduce. The deletion
+    half of this one test shelled out to `git rm` and `git commit` directly, with the ambient environment,
+    so it inherited the developer's own identity. On a box with a global `user.email` (every box that
+    wrote the test) it committed under that identity and dated the commit *now*, while every other commit
+    in the fixture is dated January 2025 — different commit ids on every machine, which is precisely what
+    the fixture exists to prevent. On a box without one — CI, a fresh clone, a container — the commit was
+    refused and the test could not get to its own assertions at all.
+* **The fix is the helper the fixture should have had.** `Fixture::remove(path)` stages `git rm -- path`
+    and commits it through the same scrubbed `git` as `commit`, `edit` and `rename`, so the deletion
+    commit is now the same object everywhere and the test passes with or without a configured identity.
+    Verified both ways: the target is 8/8 green with the ambient identity present and 8/8 green with
+    `HOME` pointed at an empty directory and `GIT_CONFIG_GLOBAL=/dev/null`, which is the shape that was
+    red. An audit of every `Command::new("git")` in the workspace (`grep` for a commit whose invocation
+    does not `env_clear` first) found this one and no others; the rest of the fixtures already scrub.
+
+### Two workspace tests were a coin flip, because both of them asked the clock a question (`reco-ecb`)
+
+`cargo test --workspace --all-features` failed on a clean tree and could not be reproduced on the next
+run, or the one after that:
+
+```text
+---- a_span_is_the_composition_of_its_parts stdout ----
+Test failed: the generated history changed nothing at all, so the composition was never exercised
+    at crates/fathom-analyze/tests/graph_diff_property.rs:321
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+
+---- answering_appends_the_note_that_closes_it stdout ----
+assertion `left == right` failed: exactly one block was appended:   left: 2  right: 1
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+Roughly one run in thirteen broke the first way and one in ten the second, same commit, same binary,
+different verdict — and proptest even helpfully saved the first failure to a
+`graph_diff_property.proptest-regressions` file, which turned a one-in-thirteen flake into a permanent
+red until somebody deleted a file nobody had meant to create. Neither test was wrong about the product.
+Each of them asked a question whose answer is not a fact about the code.
+
+* **The property test treated an input that never exercised it as a counterexample.** The delta algebra
+    is proved over random histories, and the history generator draws a *history*, so about one draw in
+    twenty-four hundred the seed lands such that every revision of a one-module history carries the same
+    exports and the same edges. Every span in such a history is empty at every cut, the composition
+    equality holds vacuously, and the guard that exists to notice — "a strategy that generated identical
+    revisions would prove the property about nothing" — was a `prop_assert!`, so *nothing was tested* was
+    reported as *the algebra is wrong*. It is now a `prop_assume!`: the case is rejected rather than
+    refuted, which is what proptest's vocabulary has for exactly this. Nothing is unguarded — a strategy
+    that stopped moving **altogether** trips `max_rejects`, which fails the run and blames the generator,
+    which is the thing to blame. Measured, not assumed: 12 × 5 000 draws after the change, no failure and
+    no regressions file; before it, the same draw at 20 000 cases failed on the 2 376th.
+* **The notes test counted blocks after two answers, and a note's id carries the second it was written
+    in.** `notes::entry::note_id` hashes kind, episode, author, text **and the instant**, truncated by
+    `ledger_clock` to the whole second the markdown can round-trip — the same reasoning `reco-2pw` applied
+    to the ledger. `fathom note answer nt-… "no — it went in the cleanup"` run twice inside one second is
+    therefore one block; run twice across a second boundary it is two, because under that identity rule
+    the second one *is* a second note. The test wrote the same answer twice — once for the human line,
+    once for `--json` — and then asserted exactly one block had been appended, so the assertion was
+    measuring where the second hand sat. The count now happens after the one answer this test's claim is
+    about, and the `--json` door is still exercised, just after the append-only claim has been checked.
+    Deliberately **not** fixed by making `answer` idempotent forever: that means taking the instant out of
+    note identity, which re-addresses every note in every committed review memory and orphans every
+    `about:` link in it. That is a product decision with a breaking change attached, not a flake fix.
+* **Both rates are measurements.** Each binary was run 40 times before and after (4 red / 40, then
+    0 red / 40 for the notes verb), the property test was run at 5 000 cases per run, and the remaining
+    170 test binaries of the workspace were each run 5 times to look for a third: nothing else moved.
+    The wall-clock lesson is the house rule, restated in the two places it was not written: a test may
+    read the clock, but a test may not *depend on where the clock was* between two of its own steps.
+
+### The perf gate died on its first measurement, because the RSS sampler had taken a name `threading` owns (`reco-yfd`)
+
+`perf` — the perf budgets job — failed *the budgets, the baseline, and the trend* about two seconds in,
+before it had indexed anything, and printed a traceback instead of a table:
+
+```text
+  File "…/tools/perf_gate.py", line 783, in measure_end_to_end
+    ms, rss = harness.fathom("index", fresh_store=True)
+  File "…/tools/mvp_acceptance.py", line 142, in peak
+    self.join(timeout=2.0)
+  File "…/python3.12/threading.py", line 1171, in _wait_for_tstate_lock
+    self._stop()
+TypeError: 'Event' object is not callable
+```
+
+Every number the gate takes — wall clock and resident set together — goes through
+`mvp_acceptance.run_measured`, which samples a child's `VmHWM` from a `threading.Thread` subclass and
+tells that thread to stop by setting an `Event` on it. The Event was bound to `self._stop`, and
+`Thread._stop` is not a free name: through CPython 3.12 it is a **method** — the one
+`Thread._wait_for_tstate_lock`, the body of every `join()`, calls when the thread has finished. Binding
+an Event over it turns the join that closes every measurement into `TypeError: 'Event' object is not
+callable`, so the gate died in its very first `fathom index` and the trend, the baseline comparison and
+the artefact never got written. It reproduced nowhere a developer looked: the interpreters people run
+are 3.13 or newer, which dropped `Thread._stop`, while every workflow here pins `python-version: "3.12"`
+— so CI was the only place the bug could speak, and the contract suite that would have caught it (the
+next step in the same job) was skipped because the gate had already died.
+
+* **The flag is called `_stop_requested`, and the name is the fix.** Nothing about the sampler's
+    behaviour changes; what changes is that it no longer overwrites a member `threading.Thread` uses
+    for its own lifecycle. The class docstring says so, because `self._stop` reads as the obvious name
+    for a stop flag and will be proposed again.
+* **The same shadowing went for anything that measures a verb on 3.12**, which is `tools/perf_gate.py`,
+    `tools/perf_realrepo.py` and `tools/mvp_acceptance.py`'s own acceptance harness: all three take
+    their RSS numbers from this sampler, and all three died at the first measurement rather than
+    reporting a budget.
+* **What guards it.** `tests/test_perf_budget_contract.py` now reads the assignments
+    `_PeakSampler.__init__` makes and refuses any name from CPython's private `Thread` vocabulary.
+    The vocabulary is spelled out in the test rather than read off `dir(threading.Thread)`, because
+    the interpreter running the guard is not the interpreter that broke — a guard that can only see
+    the interpreter it is standing on guards nothing. A second test takes one real measurement through
+    `run_timed` and demands a number back; that one is the shape of the crash, and it fails on the
+    interpreter CI pins.
+
+* **The job reports a verdict even when the gate cannot produce one.** The contract suite is now
+    `if: always()`: it is the step that names what a working gate does, and skipping it turned a
+    crashed gate into a log with one traceback and nothing to compare it against.
+
+### The config reference gate could never go green, because the fix had been typed into the generated file (`reco-c81`)
+
+`contracts` — the docs-and-workspace job — failed on the step *the config reference tables match the key
+spec*:
+
+```text
+fathom config: docs/concepts/config.md: generated block `keys` is stale — run `fathom config doc --write`
+```
+
+Two things were wrong with that line, and the second is why the first survived. The remedy names a command
+that does not exist: ADR-002 §4.3 designs `fathom config <subverb>`, `src/recommender/config/` is that
+design made executable, and `enum Verb` in `fathom-cli` has no `config` variant to run — so the message sent
+the reader to a command the binary refuses. And the row the gate called stale was
+`non_code.env.secret_name_pattern`, whose default is a regex alternation:
+`(?i)(^|_)(secret|token|password|…)`. A GFM table row is split on every `|` that is not written `\|`, so that
+row arrived at the reader as four cells with its header row missing — the defect `reco-x69`'s render audit
+correctly found, and which was then fixed in the wrong file: the bars were escaped *by hand*, inside the
+`BEGIN GENERATED` block of `docs/concepts/config.md`. A hand edit inside a generated block is drift by
+definition, so from that commit the generator and the document could not agree at all: fixing the render
+re-opened the gate, passing the gate broke the render, and every diff that touched a config key inherited
+the argument.
+
+* **The escape belongs to the generator.** `recommender/config/explain.py` builds every table line through
+    `_row(…)`, which passes each cell through `_md()` exactly once — `|` becomes `\|`, which is the escape
+    GFM defines here and which `tools/build_docs_site.py` renders back to `|`, so the reader still sees the
+    regex whole and the table keeps its columns. Once that was true, `doc --write` rewrote
+    `docs/concepts/config.md` to … nothing: not one byte of its generated blocks changed, which is the proof
+    that the file had been right and the generator was the party that was wrong.
+    Escaping once is a rule, not a coincidence — `_row` is the only way a table line is built, so a default
+    with a bar in it cannot be escaped twice and prints no stray backslash.
+* **A remedy is a command, or it is decoration.** `recommender/config/command.py` states the invocation once
+    — `PYTHONPATH=src python3 -m recommender.config …`, prefix included because `recommender` is read out of
+    `src/` and installed nowhere — and every message that used to say `fathom config doc --write`, `fathom
+    config schema`, `fathom config lint`, `fathom config keys` and `fathom config explain --key K` now spells
+    it that way: the stale and missing doc-block problems, the schema-drift problem (which also retypes the
+    `generator` field inside `schemas/fathom.schema.json`, so the artefact names the command that
+    reproduces it), and the hints for unparseable TOML, a value of the wrong type, a value outside its
+    declared range and a key nobody declared. `fathom config …` stays where it was always honest — prose
+    about the design, in ADR-002 and in this document — and appears in nothing a reader is told to type.
+* **The manual's own recipe list types too.** §11 of `docs/concepts/config.md` now runs its ten commands
+    through that prefix the way `docs/concepts/rename-pairing.md` and the ADRs already do, and says in one
+    sentence why there are two spellings of one surface.
+* **What guards it.** `tests/test_config_contract.py` gained six clauses — fifteen cases, counting the
+    parametrized ones: every generated table row splits into as many cells as its header, which is the
+    assertion that goes red the moment a bar stops being escaped; a stale block, a missing block and a stale
+    schema each name their remedy; each remedy is then handed to a real shell with `--help` appended and must
+    be accepted, which is `tools/check_docs_commands.py`'s argument moved from the manual to the messages;
+    and four refusals must not print a backticked `fathom …`. The new module is in the package's import
+    whitelist with nothing in it but `__future__`, so it cannot smuggle IO into the types half.
+
+### The perf budgets job stopped measuring the budget it was most likely to break (`reco-cwx`)
+
+Every `perf` run since the baseline was blessed printed the line and moved on:
+
+```text
+cold.queue_visible.ms.small                               —      3,000         —  blocked: the probe never saw a first frame
+```
+
+That row is ADR-004 §11's *time to first frame* — the one budget about what a reviewer waits for when they
+open the TUI — and a `blocked` verdict does not fail the build. It just means nobody looked. The gate has
+been printing this on every box that is not the one the baseline was blessed on, and the reason was the
+harness mistaking its own patience for an absence: `tools/tui_session.py`'s `drain` calls a frame *settled*
+after two quiet ticks of 50 ms, which is a fine way to find the end of a burst and a terrible way to wait
+for the beginning of one. Applied before the first byte of the answer, it is not a settle rule at all, it is
+a ~150 ms ceiling on what the probe can observe: the blessed first paint measured 138 ms, this box paints
+at 152-171 ms, and everything past the window came back `None`. A 3 000 ms budget that can only be read up
+to 150 ms is decoration, and the trend shows the censoring rather than the product — the published
+first-frame column is 25 ms on one box, 130 ms on another, and empty on a third.
+
+* **Quiet now means "the answer has stopped", never "nothing has arrived yet".** `drain` waits for the first
+    byte for the whole deadline and starts counting quiet ticks only once something has been seen, which is
+    what makes `first_paint_ms`, `visible_ms` and `until_ms` mean the same thing at 400 ms as they mean at 4.
+    A key that draws nothing still comes back as nothing; a key that draws late used to come back as nothing.
+* **A dead child no longer measures as a fast paint.** `spawn` passes `--binary` to the pty child *after* it
+    has `chdir`ed into the repository under review, so a relative `--binary target/release/fathom` — the
+    spelling the tool's own `--help` suggests — pointed at nothing, and the child's
+    `exec failed: [Errno 2] …` landed on the pty as terminal output, which the reader timed as a first frame
+    about 1 ms after spawn. The program is resolved in the parent now, and an unresolvable one is a named
+    exit instead of a number.
+* **The ratchet stopped being asked to guess.** With the probe repaired, a ~140 ms row compared at ±15 % asks
+    for 21 ms out of a spread that is that wide by itself (19 ms across nine probes of one tree, and the same
+    tree measured 109-150 ms across the blessed runs). `SPAWN_NOISE_MS` states that as the measurement's
+    floor, so the row is now listed under *ids the ±15 % ratchet cannot resolve* and guarded by its budget —
+    the honest state, said out loud, instead of a build that goes red on a slower box and green on a fast one.
+    A 400 ms injection still lands sixteen floors over it.
+* **What guards it.** `tests/test_perf_budget_contract.py` drives `tools/tui_session.py` against a fake TUI
+    that paints at a *known* delay: a first frame at 300 ms must come back at 300 ms, not `None`, and a key
+    answered at 400 ms must come back late rather than absent. A second test uses the same fake to prove a
+    relative `--binary` reaches the child, and a third asserts the gate publishes a number for
+    `cold.queue_visible.ms.small` rather than a blocked row.
+
+### The docs job's CI-gate check crashed instead of reporting, because nothing was built (`reco-p40`)
+
+`contracts` — the `docs + workspace contracts` job, the one that deliberately installs no Rust toolchain —
+printed a Python traceback for its `m2 CI gate` step:
+
+```text
+Traceback (most recent call last):
+  File "…/tools/check_ci_gate.py", line 359, in check_reusable
+  File "…/tools/check_ci_gate.py", line 167, in binary_verbs
+    proc = subprocess.run([str(binary), "--help"], …)
+FileNotFoundError: [Errno 2] No such file or directory: /home/runner/work/fathom/fathom/target/debug/fathom
+```
+
+The gate is run twice on purpose: on `ci.yml`, where the leg that compiles the binary re-checks the two rules
+whose source *is* a compiled program, and on `contracts.yml`, where the half that reads documents and
+workflow files catches a recipe that names a deleted script without waiting four minutes for a build. Only
+the flag rule knew about that second home — `check_flags` opened with `if not binary.is_file(): return`. The
+verb rule beside it did not, so on a runner where `target/debug/fathom` has never been built, `binary_verbs`
+handed a missing path straight to `subprocess.run` and the job died of an exception instead of printing a
+verdict. `tools/check_ci_gate.py self-test` raised the same way, for the same reason, which meant the one
+command that is supposed to prove the checker can fail needed a toolchain to do it.
+
+* **An absent binary is a state, not an exception.** `ask_binary()` is the one place that touches the
+    process: no file, a file that is not executable, a binary for another architecture and a non-zero exit
+    all come back as `None`, which `binary_verbs` and `binary_flags` turn into "nothing to read". The two
+    rules that need an answer now say so on stdout — `reusable workflow: verbs not checked (no binary at
+    …; ci.yml runs this half on the leg that builds one)` and `flag check skipped: …` — and the note is
+    printed without `--verbose`, because a skipped half that nobody mentions is a green job that lies about
+    what it looked at. The exit code is 0, which is the honest answer: nothing here disagrees with anything,
+    and two rules had no source to disagree with.
+* **`self-test` needs nothing again.** Its verb clause used `binary_verbs(…target/debug/fathom) or
+    {"flarble"}`, which was written to survive a missing binary and could not: the `or` never got to run past
+    the raise. It now ships its own `--help` — a stub in the temp directory that prints a clap-shaped
+    `Commands:` block — so the parser is exercised on every job, and separately asserts that the *real*
+    `fathom --help` parses when a binary happens to exist, since the stub is a guess at clap and the built
+    binary is the fact.
+* **The gate's own step in `contracts.yml` now runs `self-test` first**, the way `docs.yml` opens with the
+    builder's self-test: it costs nothing, it needs no toolchain, and it proves the gate underneath it is
+    capable of failing rather than merely silent.
+* **What guards it.** `tests/test_ci_gate_contract.py` gains the docs-job state as a promise: the gate run
+    against a path that is not a binary exits 0, prints neither traceback nor silence, and names the two
+    halves it could not check; a file that is not a runnable *program* is the same state; and
+    `binary_verbs()` on a missing path returns a set rather than raising. Those run on a machine with nothing
+    built, which is the state that used to raise. The pre-existing verb tests carry `@needs_binary` and so
+    never covered it.
+
+### Every `cargo fuzz` job refused to open the fuzz workspace (`reco-com`)
+
+The three `smoke` jobs on any pull that touches the readers, and the three `nightly` ones, printed the same
+three lines and then nothing else:
+
+```text
+Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:
+[package.metadata]
+cargo-fuzz = true
+```
+
+cargo-fuzz reads `package.metadata.cargo-fuzz` before it builds a target — `is_fuzz_manifest`, five lines,
+no fallback, no warning — and it is the only reader of that key in this repository. `cargo build`,
+`cargo clippy`, `cargo deny` and `python3 tools/gen_fuzz_corpus.py check` all read the same manifest happily
+without it, so the fuzzing lane could be red for a nightly cycle at a time with no crash report, no compile
+error, and no diff that looks as though it touched fuzzing. `reco-yuk` had fixed the *working directory* of
+these steps, which is how a run got as far as reading the manifest at all; the marker is the other half of
+the same discovery rule, and the half nothing was guarding.
+
+* **The fix is two lines in `fuzz/Cargo.toml`**: `[package.metadata]` and `cargo-fuzz = true`. Measured with
+    the tool itself rather than by reading its docs — `cargo +nightly fuzz list` from the repository root now
+    prints `hooks`, `lockfile` and `paths`, and `cargo +nightly fuzz build --dev lockfile` gets as far as
+    invoking `cargo build --manifest-path fuzz/Cargo.toml --bin lockfile` with the sanitizer flags, where
+    before the marker it stopped before starting a build. (Here it then stops at a missing `c++`, which is
+    this container having no C++ compiler for libfuzzer's build script and not a claim about the manifest.)
+* **The marker is also what directory discovery keys off**, which is why the prose moved with it.
+    cargo-fuzz walks up from the working directory to the first manifest that is **not** marked and takes
+    `<that>/fuzz`, so marking this one is what lets a run started inside `fuzz/` walk back up to the root
+    instead of looking for `fuzz/fuzz/`. `fuzz/README.md` and the header of `fuzz.yml` now give the real
+    reason the root is where a run belongs — the seed copy and the `fuzz/artifacts/<target>` upload are both
+    root-relative — instead of claiming the wrong directory is unrecoverable, and rule `P03`'s message says
+    the same.
+* **`P04` is the gate.** `tools/check_workflows.py` now refuses a workflow that runs `cargo fuzz` while
+    `fuzz/Cargo.toml` is a manifest cargo-fuzz would not open, `self-test` supplies the unmarked manifest to
+    prove the rule can fire, and `tests/test_workflows_contract.py` mirrors it with the error text a
+    contributor actually sees. It runs in `contracts.yml` on every pull, which is the only place a marker
+    invisible to every other tool can be caught.
+
+### The Guardrail 3 harness refused its own committed report, so five more diffs got read (`reco-0zi`)
+
+`ci`'s `g3-calibration` job went red on a corpus nobody had touched, with the one message that job exists to
+print:
+
+```text
+g3: the committed report is not what the pinned corpus and the shipped detectors and weights produce now.
+committed:         "blamed_on_score": 23,
+re-measured:       "blamed_on_score": 20,
+```
+
+Nothing under `crates/fathom-analyze/calibration/g3/**` had moved since `reco-6co`. What had moved is the code
+underneath it: `reco-0er` made `risk::feature::authorship` answer `Measurement::missing` wherever the
+attribution ladder had only fallen through to a guessed `human`, so in every repository whose harness stamps
+no turn evidence the weight leaves the score's denominator — eleven axes instead of twelve — and every
+measured term on those episodes is renormalised upward by a few percent. Over 540 real episodes that is 1 to
+4 points, which is enough to move a top-decile cut (33 / 40 / 40 → 34 / 42 / 43) and to lift five episodes
+over a threshold they had been under. The report is a byte-for-byte promise, so the harness was right, and
+the fix was to re-measure rather than to edit the promise.
+
+* **Five promoted episodes, five diffs read, five dispositions written.** `cli`'s `go-gh/v2` v2.16.0 →
+    v2.16.1 patch bump, `flask`'s `update dev dependencies` refresh, and in `ruff` the released-`black`
+    switch, the hyperfine 2.0.0 bump and the py-fuzzer minimisation budget. Four are `low-stakes` blamed on
+    the ranking — the score raised a flag no finding justified — and the fifth is a `false-positive` blaming
+    `untested_new_logic` (119 lines in a directory that has no test suite and never had one) and
+    `debug_leftover` (the fuzzer's own `--quiet`-guarded error line, a claim this corpus has now dismissed
+    on that file three times). 67 dispositions became 72, and `every-flagged-episode-is-labelled` came back
+    to `pass` the way it did after `reco-6co`: by being paid for, not by being relaxed.
+* **What the numbers did.** `G3` at the published τ 0.633 → **0.660** (35 false positives on 53 labelled
+    flags) and at the corpus cut 0.672 → **0.683** (43 on 63); false positives blamed on the ranking 23 →
+    **24**; six more `cli` readings now sit under a cut that moved out from beside them and are printed in
+    `labels_unflagged` instead of counted. The two miss-rate gates did not move at all — 0.792 and 0.750,
+    byte-identical — because a few percent carried the lockfile band over the line and left every reworked
+    episode under it.
+* **What did not move.** §5.4's three bars, `tau_alpha` 40, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED`
+    and the flag floor. One consequence has to be stated because it is a moving denominator and not an
+    improvement: `test_weakening` measures 0.273 on 11 answerable flags now and is under α, because two of
+    its attributed false positives were readings of `cli` episodes the raised cut stopped flagging. The
+    corpus has two default-enabled detectors over α with ≥ 8 answerable flags, not three.
+* **The written answer was dragged to the measurement, not the other way round.**
+    `docs/concepts/false-positive-calibration.md` gains a §3c for this pass, and its gate table, τ sweep and
+    per-detector table are the new report's numbers; `thresholds.json`'s `how_gates_are_set`, `tau_note` and
+    every gate `why` that quoted a moved number says the new one; the corpus README's §1.1 table gains the
+    fourth pass. `tests/test_g3_calibration_contract.py` is what proves none of that was remembered rather
+    than read.
+
+Verified: `python3 tools/fetch_g3_corpus.py` (three pins, oids checked),
+`cargo run --locked -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` (reproduces
+byte for byte, 9 gates, 0 surprises), `pytest tests/test_g3_calibration_contract.py` (26 passed),
+`tools/check_docs.py`, `tools/check_ticket_claims.py`.
+
+### Six workflows were red, and four of them had no log to read (`reco-yuk`)
+
+`ci`, `contracts`, `fuzz`, `perf`, `Release` and `dogfood` were all failing, and the shape of the failure is
+what took the time: nothing in the YAML could show *why*. A job's `uses:` reference is resolved over the
+network at run time, so a wrong one is not a syntax error — the job dies in *Set up job*, before its first
+step runs, which is the one failure in the whole system with no log. `ci.yml`'s `release-skeleton` job ran
+`axodotdev/cargo-dist/action@v1`, a path that repository has never contained: `cargo-dist` ships an
+installer, not an action. `fuzz.yml` read a step output as `steps.minutes.value` instead of
+`steps.minutes.outputs.value`, which GitHub answers with the empty string rather than an error, so the
+empty string travelled four steps and died in `$(( … ))`. Both jobs looked like infrastructure flakiness
+from the outside and neither had anything to say for itself in a diff.
+
+* **The workflows are now checked against this repository**, by `tools/check_workflows.py`, offline and
+    standard library only. Twelve rules in five families: every action reference is well-formed and on an
+    explicit inventory (and `--network` proves each inventoried ref resolves on GitHub); every `${{ … }}`
+    context path resolves to a step `id:`, a `needs:` job, or a declared `inputs:` name — including the
+    `steps.<id>.<prop>` shape that is missing `.outputs.`; every repository path a `run:` step names, and
+    every `working-directory:`, exists; every `cargo -p`/`--features`/`--test`/`--example` is a member,
+    feature and target of the manifests it is typed next to, and every `tools/*.py <subcommand>` is a
+    subcommand that tool's argparse offers; and job wiring adds up — a `needs:` that exists, `permissions:`
+    somewhere rather than the organisation default, and artefact names uploaded once and downloaded by a
+    pattern that matches one of those uploads. It is a step in `contracts.yml`, mirrored by
+    `tests/test_workflows_contract.py`, and `python3 tools/check_workflows.py self-test` writes nine
+    workflows designed to break one rule each and requires every rule to fire, because a gate that has
+    never said no is a gate that cannot say yes.
+* **`cargo fuzz` runs from the repository root.** `fuzz.yml` set `working-directory: fuzz`, and cargo-fuzz
+    takes its fuzz directory from the package it finds in the working directory — from inside `fuzz/` that
+    is `fuzz/fuzz/Cargo.toml` and `fuzz/fuzz/fuzz_targets/`, so it reported "no fuzz target by the
+    name(s): 'lockfile'" about a target that is committed. The `fuzz/fuzz/…` paths that step then uploaded
+    were the same mistake one level down. The corpus is now copied to `$RUNNER_TEMP/seeds` and passed
+    explicitly, because the fuzzer writes into whatever directory it is pointed at and a discovered byte
+    sequence is not something this repository reviews; `fuzz/README.md` said "run it from `fuzz/`" and now
+    says the opposite, with the reason.
+* **The release path was stopped by whitespace.** `crates/fathom-cli/wix/main.wxs` is generated, and had
+    been hand-touched; `dist plan` — the first step of `release.yml`, the job that decides what a release
+    contains — refuses to start when a generated file is not its generator's output, so the entire release
+    pipeline was red over eight lines of re-wrapped XML. Regenerated, and `dist generate --check` now runs
+    on every pull request (which is what finds the next one), with the pinned `cargo-dist` read out of
+    `dist-workspace.toml` instead of copied into a URL.
+* **A `--all-targets` build has to name the features its targets need.** Two structure jobs built
+    `fathom-analyze --features langs-all --all-targets`, and `tests/graph_index.rs` drives the graph pass
+    through `fathom-store`'s SQLite backend, which ADR-002 §6.2 gates behind a store feature: the library
+    built, the test suite did not. Those steps now say `langs-all,sqlite-bundled`.
+* **A generated file is only "the binary's own grammar" for the binary it was blessed from.** A man page's
+    VERSION section prints `fathom --version`, which carries the feature list it was compiled with; the
+    committed page carried the all-features list while `gen_shell_artifacts.py`'s contract is the default,
+    shipped build (ADR-002 §6.1) — and in the job, the binary on disk at that step was the headless
+    `minimal` one built earlier. The step now builds the default binary itself before diffing, so the
+    answer does not depend on which step last wrote the file.
+* **Two clippy lints had landed with the toolchain.** `crates/fathom-ingest/src/oid.rs` now uses
+    `as_chunks::<2>()` where it hand-rolled a `chunks_exact` length check, and two tables in test files name
+    their types instead of spelling them inline: the language-convention row in
+    `crates/fathom-analyze/tests/api_surface.rs`, and the scripted-detector body in
+    `crates/fathom-analyze/tests/plugin_api.rs`. Both are new lints firing on code that was clean under the
+    previous toolchain, in a step that runs `-D warnings`.
+* **The search box's hint line was smaller than the search box.** `crates/fathom-tui/tests/tables/mod.rs`
+    is generated from the Python tables, and had not been regenerated since `reco-6sw` widened the token
+    grammar: the pane hint — and the keymap's T3 step beside it — still advertised `author: path: risk> dep:`
+    while `search.rs` accepted and explained `since:` and `kind:`. The Rust prose caught up with the
+    normative tables, `tests/tables/mod.rs` was regenerated, and five layout goldens were re-baked, one line
+    each: the hint, now listing the grammar it has.
+* **Still red, on purpose.** Two gates fail for reasons a workflow edit must not paper over, and blessing
+    either is a decision about the product rather than about CI. Guardrail 3 (`g3-calibration`) re-measures
+    against three pinned real repositories and no longer matches its committed report: `blamed_on_score` 23
+    → 20, and 11 flags in the current corpus have no label in the hand-authored truth files
+    (`unlabelled_total` 0 → 11), which moves the published miss rate from 0.672 to 0.655 — that is
+    [docs/concepts/false-positive-calibration.md](docs/concepts/false-positive-calibration.md)'s headline
+    number and somebody has to label those flags and agree to move it. `perf_gate.py --check` is red on one
+    line: `query.metrics.ms.small` 12.831 → 14.900 ms, +16.1 % against a 15 % ratchet, with a runner factor
+    of ×1.03 and a noise floor a fifth of the change, so the regression is real by the gate's own standard
+    and small in absolute terms. `make bench-bless` is the ratchet, done loudly, and it is the budget
+    owner's call.
+* **Tests**: `tests/test_workflows_contract.py`, nine cases — every rule green on the tree as committed,
+    every action reference inventoried, no step context read without `.outputs.`, the store feature still
+    present for the target that needs it, the checker pure-Python and network-free, the checker wired into
+    `contracts.yml`, and the checker's own `self-test` proving it can fail.
+* **Three commits in this range carried a subject and no bead id**, which the coverage rule in
+    `gen_changelog.py` counts as a gap, and the honest way to close a gap is to say what they did:
+    `bf983176a` retyped the two clippy steps' `run:` folding (the shape that is what made the next person
+    read them as data), `e194a63d9` added `publish.yml`, the workflow that turns a version-bump commit into a
+    release after `ci` goes green on the default branch, and `3875f524a` put a screenshot of the TUI in the
+    README and touched two workflow step names to keep the docs honest about it.
+
+### The manual had a renderer, and the render disagreed with the markdown in four pages (`reco-x69`)
+
+`docs/` was published in two places and rendered in one: GitHub showed the markdown, and nothing at all
+turned it into a site, so the only reader able to notice a page whose markdown is legal and whose *render*
+is wrong was a person, looking at the page. Four such pages were in the tree when this landed — a table row
+whose code span holds an unescaped `|` (in `concepts/config.md` and `concepts/noncode-surfaces.md`, where
+the regex in `non_code.env.secret_name_pattern` cut the row and the header out of the table), two tables
+pasted into the middle of sentences in `concepts/rename-pairing.md`, two stray fence lines in
+`reference/cli.md` that dropped `## The verbs` and `## Global flags` out of the page, and five pages that
+wrote a code span containing backticks as backslash-backtick, which prints the backslashes because a code
+span does not unescape. `check_docs.py` and `check_docs_site.py` were structurally unable to see any of it.
+
+* **`tools/build_docs_site.py`** builds the site: one page per `docs/**.md`, a generated listing for every
+    section directory with no `README.md`, sidebar, per-page table of contents, breadcrumbs, a lazily loaded
+    search index, `404.html`, a sitemap and robots when a host is known, and every non-markdown file copied
+    verbatim so `docs/demo/*.cast` plays on Pages. `write`, `check` (builds in memory, writes nothing) and
+    `--self-test`, standard library only, so the same command runs on a laptop, in CI, and on a runner with
+    no network.
+* **The render is audited against the source.** Each page's characters are compared with the characters its
+    markdown contained, so a dropped table cell, a swallowed `<episode>` placeholder or a fence that ate the
+    rest of the file is a build failure rather than a reader's confusion. That rule is what found all four
+    defects, and all four are fixed rather than worked around in the renderer.
+* **CI builds it.** `.github/workflows/docs.yml` builds a preview artefact on a pull request and publishes
+    on the default branch; `python3 tools/check_docs_site.py` builds the same site in the contracts run; and
+    `tests/test_docs_html_contract.py` holds the promises the HTML makes. The entry is here because the
+    commit that did all of this did not add one, two days ago: the coverage rule in `gen_changelog.py`
+    noticed, which is the argument for the rule having a number on it.
+
+### A timeline that had been open for an hour still said its newest row was brand new (`reco-5oe`)
+
+The rail's age column printed `0:00` for a commit that landed four seconds ago, and printed `0:00` an
+hour later. Two defects were in that one screen and they are different shapes of it. `0:00` is what the
+`h:mm` arithmetic says at forty seconds: a spelling whose resolution is a minute, printed as though it
+measured seconds, about a row that had not had one yet. And the frame is handed exactly one wall-clock
+instant at the CLI's edge — ADR-002 §4.4, because nothing below the composition root may read a clock —
+which an interactive run then aged every row against for as long as it stayed open. An episode that
+landed *after* the frame opened was dated ahead of it, clamped to the same `0:00`, and read "this
+hour" for the rest of the session. A reviewer who believed that column was being lied to by a clock,
+not by the index.
+
+* **The bucket.** `days::relative` says `<1m` below a minute and then `0:12`, `2d4h`, `3mo` exactly as
+    before, and the card says `just now`, because `<1m ago` is not English. A row the frame has not
+    reached — clock skew, a fixture dated forward — says `ahead`, and the card says *dated ahead of
+    this frame*, instead of the clamped zero that made a future commit look like the newest thing on
+    the screen. The same call [`ambient::age_since`](docs/concepts/ambient-mode.md) already makes with
+    `unknown`: an age that cannot be computed is not an age of zero.
+* **The clock.** `App::age_clock` anchors the frame's one wall-clock read to the monotonic instant the
+    loop already wakes on — `SIGNAL_POLL`, the same clock that ages the toast and the chord timeout —
+    and derives "now" from the distance between them. Monotonic is the right instrument for an age: NTP
+    cannot step it backwards and make a row younger, and a laptop that slept cannot make an episode
+    younger than it was when the lid closed. `run_loop` asks it next to `age_toast`, so the fix costs a
+    subtraction per wake-up and no new timer.
+* **The ticklessness, kept.** A draw is for a change somebody can see (ADR-006 §0.1), so the answer is
+    "draw" only when the instant crossed a minute, and only when the rail is on a rung that prints an
+    age at all. Below `Columns::NoSparkline` the age column is a date read off the row and the only
+    `now` on the screen is the footer's day label, so there a minute turns nothing and a day does.
+    `Rail::set_now` reports the minute crossing; the caller who owns the layout decides whether it is
+    visible.
+* **What did not move.** A one-frame render — `--plain`, `--json`, every golden — is still the single
+    instant it was handed, so a piped frame stays reproducible (ADR-006 §6.7). `fathom-tui` still reads
+    no clock: the instant is derived from one the caller already had, which is what makes the minute
+    turn testable at all.
+* **Tests**: `crates/fathom-tui/tests/timeline_age.rs`, eleven cases with the monotonic instant
+    injected so none of them sleeps — every bucket edge, the ahead row, the card's sentences, a rail
+    aged forty minutes in one call, same-minute wake-ups that buy no frame, the date-only rung that
+    will not draw for a minute, a frame whose instant moved on its own, and a quiet `run_loop` that
+    asks its clock and still draws one frame and stops.
+* **Docs**: [ADR-006 §5.2](docs/adr/0006-tui.md) states the four spellings and the resolution a redraw
+    turns on; [concepts/timeline.md](docs/concepts/timeline.md) says where the instant comes from and
+    what carries it forward.
+
 ### A Cargo workspace could not answer its own layering question (`reco-842`)
 
 `use fathom_analyze::graph::model::Graph;` written in `crates/fathom-core` produced a graph node and no

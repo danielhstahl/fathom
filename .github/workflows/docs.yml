@@ -1,0 +1,114 @@
+# The documentation site: build the HTML in `docs/`, and publish it to GitHub Pages on `master`.
+#
+# Why a workflow of its own. `contracts.yml` already owns the *content* gates — glossary, plan references,
+# orphan pages, dangling anchors, undocumented shipped features — and those stay there, on a job that needs
+# no Rust toolchain. This file owns the *artefact*: the thing a reader gets at
+# `https://<owner>.github.io/<repo>/`, which is `docs/**.md` rendered by `tools/build_docs_site.py`.
+# Splitting them means a documentation change that breaks the render is called `docs`, not
+# `docs + workspace contracts`, and that the slow half (a Pages deploy) never blocks a contract failure.
+#
+# Every step here runs on markdown and Python alone. No `cargo`, no binary: the four generated pages
+# (`cli`, `cheatsheet`, `features`, `detectors`) are committed, and the step that re-derives three of them
+# from source (`gen_docs.py check`) is cheap enough to run here as well as in `contracts.yml` — a site
+# that publishes a stale CLI reference is a site that documents flags nobody shipped.
+#
+# The order is deliberate and copies `perf.yml`: the first step is the builder's own self-test, which needs
+# nothing and proves the gate below it is capable of failing. Then the content of the pages is re-derived,
+# then the site is built and asserted (`check`), then written, then published.
+#
+# **One thing a maintainer has to turn on.** GitHub refuses to deploy to Pages until the repository's
+# Pages setting exists with *GitHub Actions* as its source (`Settings → Pages → Build and deployment →
+# GitHub Actions`). Until then the `deploy` job fails with the deploy action's own message. That is on
+# purpose: a publish step that prints "skipped, Pages is not configured" in green is a publish step that
+# lies about whether the site is live. The `build` job runs on every pull request either way, and a
+# PR that cannot build the site is red before anyone merges it.
+
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# Two pushes in a row must not race to publish: the second waits rather than cancelling, so Pages never
+# serves half a merge and a deploy that is midway is never torn down under the runner.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+# `contents: read` for the build; the deploy job asks for `pages: write` on its own, which is the
+# narrowest thing that can publish, and `id-token: write` for the OIDC token the deployment needs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build the html site
+    runs-on: ubuntu-latest
+    # A Pages artifact is per-branch, so only `master`'s build is publishable; a PR still builds, so a
+    # broken page is a red check on the pull request that broke it.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: the docs builder's self-test (no build, milliseconds, proves it can fail)
+        # Escapes a hostile page, catches a dangling fragment, a missing link, an unclosed fence, raw HTML,
+        # a swallowed table cell, a directory with nothing in it, and a build that is not deterministic.
+        # Every one of those is planted in the fixture and expected by name.
+        run: python3 tools/build_docs_site.py --self-test
+
+      - name: the generated pages are still the program's own output
+        # `cli` is generated from a built binary and is not checked here; `ci.yml` re-derives it in the leg
+        # that compiles one, and `check_docs_site.py` still fails if the page loses a verb.
+        run: python3 tools/gen_docs.py check --page cheatsheet --page detectors --page features
+
+      - name: check the site (links, anchors, escaping, no lost words, determinism)
+        run: python3 tools/build_docs_site.py check --verbose
+
+      - name: write it
+        run: >
+          python3 tools/build_docs_site.py write --clean
+          --out "${{ runner.temp }}/docs-site"
+          --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+
+      - name: what got built
+        # A count on the log, because "it published" is not evidence and a page count is.
+        run: |
+          find "${{ runner.temp }}/docs-site" -type f | sort | sed "s|${{ runner.temp }}/docs-site/||" | head -40
+          echo "files: $(find "${{ runner.temp }}/docs-site" -type f | wc -l)"
+          echo "pages: $(find "${{ runner.temp }}/docs-site" -name '*.html' | wc -l)"
+
+      - name: upload the Pages artefact
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/docs-site
+
+      - name: keep a preview for the pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site-preview
+          path: ${{ runner.temp }}/docs-site
+          retention-days: 7
+
+  deploy:
+    name: publish to github pages
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: deploy the artefact the build job wrote
+        id: deployment
+        uses: actions/deploy-pages@v4

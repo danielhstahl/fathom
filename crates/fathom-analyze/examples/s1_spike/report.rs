@@ -118,10 +118,9 @@ pub fn compare(committed: &Value, fresh: &Value) -> Vec<String> {
             verdicts(fresh)
         ));
     }
-    for key in ["thresholds"] {
-        if committed[key] != fresh[key] {
-            failures.push(format!("{key} differs from the committed report"));
-        }
+    let key = "thresholds";
+    if committed[key] != fresh[key] {
+        failures.push(format!("{key} differs from the committed report"));
     }
     failures
 }
