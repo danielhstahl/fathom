@@ -113,6 +113,25 @@ def test_nothing_builds_a_package_or_feature_that_does_not_exist():
     )
 
 
+def test_no_dist_build_asks_one_runner_for_every_target():
+    """`D01`, asserted directly: `--artifacts=local` with no `--target` means *every* triple (`reco-hzr`).
+
+    `dist` reads a bare `--artifacts=local` the same way it reads `--artifacts=global` — "the whole set,
+    from `dist-workspace.toml`" — so a step that wants this runner's archive and does not say so ends up
+    trying to build `aarch64-apple-darwin` on a Linux runner, where `dist` cowardly refuses to walk the
+    road paved with sadness and the job stops. `ci.yml`'s packaging job did exactly that.
+    """
+    seen = 0
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        problems: list[str] = []
+        check_workflows.rule_dist_targets(workflow, problems)
+        assert not problems, "\n".join(problems)
+        seen += sum(1 for step in workflow.run_steps() for line in step.run.splitlines()
+                    if check_workflows.DIST_BUILD.search(line))
+    assert seen, "no `dist build` step was read — the rule is vacuous, not passing"
+
+
 def test_the_fuzz_manifest_is_one_cargo_fuzz_will_open():
     """`P04`, asserted directly: cargo-fuzz refuses a fuzz workspace it cannot recognise.
 
@@ -132,7 +151,7 @@ def test_the_fuzz_manifest_is_one_cargo_fuzz_will_open():
 
 
 def test_the_checker_can_fail():
-    """`self-test` proves the gate has a mouth: ten workflows written to break one rule each.
+    """`self-test` proves the gate has a mouth: eleven workflows written to break one rule each.
 
     A gate that has never said no is a gate that cannot say yes, which is the sentence that belongs on the
     box of every "lint the config" tool ever written.

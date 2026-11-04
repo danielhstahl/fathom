@@ -204,6 +204,22 @@ def test_ci_actually_runs_these_checks():
         assert needle in ci, "no CI step runs %r" % needle
 
 
+def test_the_archive_the_packages_come_from_is_this_runner_s_own():
+    """`dist build --artifacts=local` with no `--target` means "all six triples, on this one machine".
+
+    That is what `dist` does with a bare `--artifacts=local`: the triples come from `dist-workspace.toml`,
+    and the first macOS one stops the job with `Cross-compilation from x86_64-unknown-linux-gnu to
+    aarch64-apple-darwin is not supported` — which is how the packaging job died while asking for the
+    archive for its *own* triple (`reco-hzr`). The step asks the compiler which machine it is on, so the
+    step cannot outlive the runner label it was written against.
+    """
+    lines = [line.strip() for line in CI.read_text().splitlines()
+             if "dist build" in line and ("artifacts=local" in line or "artifacts=all" in line)]
+    assert lines, "the packaging job no longer builds a local archive; where do the .debs come from?"
+    for line in lines:
+        assert "--target" in line, f"`{line}` asks `dist` for every triple in `dist-workspace.toml`"
+
+
 def test_the_release_document_tells_the_packaging_story():
     doc = CONCEPT.read_text()
     for section in ["### 1.3 What is inside an archive", "## 8 The secrets"]:

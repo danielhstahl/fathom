@@ -295,8 +295,20 @@ jobs:
       # the complete release set is six targets and one runner is not six machines, and the global phase
       # would then insist on `.deb`s for an architecture this job never built (which is right, and is why
       # the installer rehearsal below runs with that stage lifted out).
+      #
+      # `--target` is not optional here. `--artifacts=local` with no `--target` does not mean "this
+      # machine's archive" to `dist`, it means "every triple in `dist-workspace.toml`" — the same reading
+      # that makes `--artifacts=global` mean the whole release — so the job died with
+      # `Cross-compilation from x86_64-unknown-linux-gnu to aarch64-apple-darwin is not supported`
+      # (`reco-hzr`) while trying to make a Mach-O on a Linux runner. The triple is asked of the compiler
+      # rather than written down, so the step names the machine it is actually on instead of assuming
+      # `ubuntu-latest` stays x86_64; `rule D01` of `tools/check_workflows.py` is what keeps it stated.
       - name: dist build (this runner's archive)
-        run: dist build --artifacts=local
+        run: |
+          set -euo pipefail
+          triple=$(rustc -vV | sed -n 's/^host: //p')
+          echo "building this runner's own archive for ${triple}"
+          dist build --artifacts=local --target="${triple}"
       - name: the installer rehearsal, and its negative controls
         run: |
           python3 tools/rehearse_installer.py --no-extra-artifacts

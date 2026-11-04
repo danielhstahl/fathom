@@ -32,6 +32,7 @@ with no network and no toolchain.
 |---|---|
 | `A01` | an action reference that is malformed, or not on the inventory below (`--network` proves each inventoried ref resolves) |
 | `A02` | a `cargo-dist` installer URL naming a version other than `dist-workspace.toml`'s pin |
+| `D01` | a `dist build --artifacts=local` (or `=all`) step that names no `--target` — `dist` then builds *every* triple in `dist-workspace.toml` on that one runner, and refuses to cross-compile to macOS |
 | `E01` | `steps.<id>.<prop>` where `<prop>` is neither `outputs` nor a real step property — the shape of the `fuzz.yml` bug |
 | `E02` | `steps.<id>` naming a step with no `id:` in that job |
 | `E03` | `needs.<job>` that does not exist, or `needs.<job>.outputs.<name>` that job never declares |
@@ -97,6 +98,13 @@ FUZZ_MANIFEST = ROOT / "fuzz" / "Cargo.toml"
 
 #: `cargo fuzz`, in either spelling of the toolchain pin (`cargo fuzz` / `cargo +nightly fuzz`).
 CARGO_FUZZ = re.compile(r"\bcargo\s+(?:\+\S+\s+)?fuzz\b")
+
+#: A `dist build` step and the rest of its line (`cargo dist build` reads as one too).
+DIST_BUILD = re.compile(r"(?<![\w-])dist\s+build\b(.*)")
+#: The `--artifacts=<mode>` it was given; absent means `host`, the fuzzy "this machine, roughly" mode.
+DIST_ARTIFACT_MODE = re.compile(r"--artifacts\b(?:[= ]+([a-z]+))?")
+#: The triple the step named, in any spelling (`--target=x`, `--target x`, `"--target=x"`).
+DIST_TARGET_FLAG = re.compile(r"--target\b[= ]*\"?([^\s\"]+)")
 
 #: Prefixes that make a token in a shell line a claim about this repository's tree.
 REPO_DIRS = ("tools", "ci", "docs", "schemas", "benchmarks", "crates", "plugins", "fuzz",
@@ -471,6 +479,61 @@ def rule_dist_pin(wf: Workflow, problems: list[str]) -> None:
             )
 
 
+def dist_target_count() -> int:
+    """How many triples `dist-workspace.toml` asks for; the number in the `D01` sentence."""
+    config = ROOT / "dist-workspace.toml"
+    try:
+        return len(tomllib.loads(config.read_text())["dist"]["targets"])
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError):
+        return 0
+
+
+def rule_dist_targets(wf: Workflow, problems: list[str]) -> None:
+    """`D01` — a `dist build` of the *per-target* artefacts has to say which triple it means.
+
+    `--artifacts=local` reads, to whoever writes a step that runs on one machine, as "the local archive".
+    To `dist` it means "the target-specific half of the release", and with no `--target` on the command
+    line `dist` takes its triples from `dist-workspace.toml` — the whole set — because that reading is
+    what makes `--artifacts=global` mean the whole release (`cargo-dist`'s `tasks.rs`: "Otherwise assume
+    the user wants all targets"). One runner is not six machines, and the first macOS triple it reaches
+    stops the job with
+
+        × Cross-compilation from x86_64-unknown-linux-gnu to aarch64-apple-darwin is not supported
+
+    which is `dist` being right — making Mach-O on Linux is a road paved with sadness — about a target the
+    step never asked for. `reco-hzr` is the sighting: `ci.yml`'s packaging job, which needs this runner's
+    archive and only this runner's archive, died on it.
+
+    `global` is exempt: the installers, the source tarball and the checksum file are one set for the
+    release rather than one per triple, so asking for them without a triple is the request. `host` is
+    exempt for the opposite reason — it is the mode that *is* about this machine. A line whose flags
+    arrive through `${{ … }}` is exempt too: that is `release.yml`, whose triples come from `dist plan`'s
+    own matrix.
+    """
+    for step in wf.run_steps():
+        for line in step.run.splitlines():
+            match = DIST_BUILD.search(line)
+            if match is None:
+                continue
+            rest = match.group(1)
+            mode = DIST_ARTIFACT_MODE.search(rest)
+            if mode is None or (mode.group(1) or "host") not in ("local", "all"):
+                continue
+            if "${{" in rest:
+                continue  # the triple comes from the plan's matrix, which is the other honest way
+            named = DIST_TARGET_FLAG.search(rest)
+            if named is not None and named.group(1).strip():
+                continue
+            problems.append(
+                f"D01 {step.where}: `dist build --artifacts={mode.group(1)}` names no `--target`, so "
+                f"`dist` takes its triples from `dist-workspace.toml` and builds all "
+                f"{dist_target_count()} of them on this one runner — the first macOS one stops the job "
+                f"with `Cross-compilation from … to aarch64-apple-darwin is not supported`. Name the "
+                f"triple this runner is (`--target=\"$(rustc -vV | sed -n 's/^host: //p')\"` next to "
+                f"`triple=$(rustc -vV …)`), or the matrix's triple if the step is per-target"
+            )
+
+
 def rule_expressions(wf: Workflow, problems: list[str]) -> None:
     """`E01`–`E04` — every context path in a `${{ … }}` resolves to something this file declares."""
     declared = {job.id: {s.id for s in job.steps if s.id} for job in wf.jobs.values()}
@@ -777,6 +840,7 @@ def check(verbose: bool = False, network: bool = False) -> tuple[list[str], list
     for wf in files:
         rule_actions(wf, problems)
         rule_dist_pin(wf, problems)
+        rule_dist_targets(wf, problems)
         rule_expressions(wf, problems)
         rule_paths(wf, problems)
         rule_fuzz_manifest(wf, problems)
@@ -960,6 +1024,18 @@ jobs:
         with:
           name: never-uploaded
 """,
+    "d-dist-target.yml": """
+name: disttarget
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: dist build --artifacts=local
+      - run: dist build --artifacts=all
+""",
     "a-dist.yml": """
 name: distpin
 on: pull_request
@@ -997,8 +1073,8 @@ def self_test() -> int:
         finally:
             WORKFLOWS, FUZZ_MANIFEST = workflows_dir, manifest
     failures = [f"rule {rule} did not fire on a workflow written to break it"
-                for rule in ("A01", "A02", "E01", "E02", "E03", "E04", "P01", "P02", "P03", "P04", "T01",
-                             "T02", "T03", "T04", "J01", "J02", "J03")
+                for rule in ("A01", "A02", "D01", "E01", "E02", "E03", "E04", "P01", "P02", "P03",
+                             "P04", "T01", "T02", "T03", "T04", "J01", "J02", "J03")
                 if not any(p.startswith(rule) for p in problems)]
     if failures:
         for failure in failures:
@@ -1007,8 +1083,9 @@ def self_test() -> int:
             print(f"  saw: {problem}", file=sys.stderr)
         return 1
     print(f"check_workflows self-test OK: {len(problems)} problems read from {len(BROKEN)} files written "
-          "to break one rule each — a fake action, a stale dist pin, a misread step output, an unknown "
-          "step, an undeclared needs and input, a missing path and working-directory, `cargo fuzz` in the "
+          "to break one rule each — a fake action, a stale dist pin, a `dist build` that named no triple, "
+          "a misread step output, an unknown step, an undeclared needs and input, a missing path and "
+          "working-directory, `cargo fuzz` in the "
           "wrong directory and pointed at a manifest it will not accept, an unknown crate, feature, test, "
           "example and tool subcommand, a duplicate artefact name, an unmatchable download pattern, a "
           "stray needs and a missing permissions block")
@@ -1031,8 +1108,8 @@ def main() -> int:
             print(problem, file=sys.stderr)
         print(f"\n{len(problems)} problem(s)", file=sys.stderr)
         return 1
-    print("workflows OK: action inventory, expressions, paths, fuzz manifest, cargo targets, job wiring, "
-          "artefact names")
+    print("workflows OK: action inventory, expressions, paths, fuzz manifest, dist target selection, "
+          "cargo targets, job wiring, artefact names")
     return 0
 
 

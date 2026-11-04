@@ -326,7 +326,9 @@ python3 tools/rehearse_installer.py --self-test        # negative controls: the 
 python3 tools/rehearse_installer.py --json             # the ledger row, mechanically
 ```
 
-It runs `dist build --artifacts=global` (plus `cargo build --release` for this machine's triple), copies
+It runs `dist build --artifacts=local --target=<this machine's triple>` and then `dist build
+--artifacts=global` (the triple is named because `dist` reads a bare `--artifacts=local` as "every target
+in `dist-workspace.toml`, on this one machine", and stops when it reaches macOS — `reco-hzr`), copies
 the installers and the local archives into a temporary mirror, runs
 `curl --fail --silent --show-error --proto '=https' --url <mirror>/install.sh --output - | sh` against it
 — the README's one-liner, with only the host changed — into a prefix that cannot touch `$HOME`, and then
