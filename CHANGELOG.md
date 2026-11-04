@@ -17,6 +17,37 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### One test asked the machine it ran on who it was (`reco-6wr`)
+
+`a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition` — one test, and it was red on a clean
+clone and green on the laptop that wrote it:
+
+```text
+---- a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition stdout ----
+Author identity unknown
+*** Please tell me who you are.
+fatal: unable to auto-detect email address (got 'user@host.(none)')
+assertion failed: status.success()
+```
+
+* **The fixture scrubbed everything except the one helper that needed it.** Every commit this test's
+    repository is built from goes through `tests/common`'s `git` helper, which clears the environment,
+    pins `user.name` and `user.email`, and pins the clock to `BASE_EPOCH` — the module says why: a
+    fixture whose commit ids move between machines makes a failure impossible to reproduce. The deletion
+    half of this one test shelled out to `git rm` and `git commit` directly, with the ambient environment,
+    so it inherited the developer's own identity. On a box with a global `user.email` (every box that
+    wrote the test) it committed under that identity and dated the commit *now*, while every other commit
+    in the fixture is dated January 2025 — different commit ids on every machine, which is precisely what
+    the fixture exists to prevent. On a box without one — CI, a fresh clone, a container — the commit was
+    refused and the test could not get to its own assertions at all.
+* **The fix is the helper the fixture should have had.** `Fixture::remove(path)` stages `git rm -- path`
+    and commits it through the same scrubbed `git` as `commit`, `edit` and `rename`, so the deletion
+    commit is now the same object everywhere and the test passes with or without a configured identity.
+    Verified both ways: the target is 8/8 green with the ambient identity present and 8/8 green with
+    `HOME` pointed at an empty directory and `GIT_CONFIG_GLOBAL=/dev/null`, which is the shape that was
+    red. An audit of every `Command::new("git")` in the workspace (`grep` for a commit whose invocation
+    does not `env_clear` first) found this one and no others; the rest of the fixtures already scrub.
+
 ### Two workspace tests were a coin flip, because both of them asked the clock a question (`reco-ecb`)
 
 `cargo test --workspace --all-features` failed on a clean tree and could not be reproduced on the next

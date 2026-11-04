@@ -9,7 +9,10 @@
 //!
 //! The fixture is the same one the index tests use: real `git`, scrubbed environment, pinned identity, so
 //! the commit ids are the same on every machine and a failure can be reproduced with the commands in
-//! `tests/common`.
+//! `tests/common`. Nothing in this file runs `git` itself for that reason — every fixture step goes through
+//! `common::Fixture`, including the `git rm` below; a shell-out that inherited the ambient environment
+//! would commit under whatever identity and clock the machine happens to have, which is a red test on a
+//! fresh clone and a different commit id on every one.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 // The fixture module also carries helpers this file does not need; `incremental_index` does.
@@ -217,7 +220,7 @@ fn a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition() {
         let repo = Repository::discover(fixture.path()).unwrap();
         head_oid(&repo)
     };
-    git_delete(&fixture, "services/go/go.sum");
+    fixture.remove("services/go/go.sum");
     fixture.commit(
         1,
         "add the api member, drop go.sum",
@@ -410,20 +413,4 @@ fn the_dependency_episode_of_a_source_only_commit_is_empty() {
     assert!(episode.paths.paths.is_empty());
     assert!(episode.model.changes.is_empty());
     assert_eq!(episode.model.graph.total.net, 0);
-}
-
-/// `git rm` a path and commit the removal, which the fixture does not model directly.
-fn git_delete(fixture: &Fixture, path: &str) {
-    let status = std::process::Command::new("git")
-        .current_dir(fixture.path())
-        .args(["rm", "-q", "--", path])
-        .status()
-        .expect("git rm runs");
-    assert!(status.success());
-    let status = std::process::Command::new("git")
-        .current_dir(fixture.path())
-        .args(["commit", "-q", "-m", &format!("rm {path}")])
-        .status()
-        .expect("git commit runs");
-    assert!(status.success());
 }

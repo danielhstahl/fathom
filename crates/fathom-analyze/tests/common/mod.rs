@@ -92,6 +92,22 @@ impl Fixture {
             &["commit", "-q", "-m", &format!("move {from} to {to}")],
         );
     }
+
+    /// Delete a tracked path and commit the removal — [`Fixture::rename`] with the other arrow.
+    ///
+    /// It goes through the same scrubbed `git` as every other step of the fixture, and that is not
+    /// tidiness. A helper that shelled out with the ambient environment instead was the one test in this
+    /// workspace that depended on the machine it ran on: with no global `user.email` configured the
+    /// commit was refused outright (`Author identity unknown`), and with one configured the commit was
+    /// dated from the wall clock while every other commit in the fixture is dated from `BASE_EPOCH`, so
+    /// the commit ids were not the same on every machine after all.
+    pub fn remove(&self, path: &str) {
+        git(&self.dir, &["rm", "-q", "--", path]);
+        git(
+            &self.dir,
+            &["commit", "-q", "-m", &format!("remove {path}")],
+        );
+    }
 }
 
 impl Drop for Fixture {
