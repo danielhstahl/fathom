@@ -426,23 +426,23 @@ def read_deb(path: pathlib.Path) -> dict:
         _control_fields(_tar_file(gzip.decompress(out["control.tar.gz"]), "control"))
     )
     files = []
+    dirs = []
     with tarfile.open(
         fileobj=io.BytesIO(gzip.decompress(out["data.tar.gz"]))
     ) as bundle:
         for member in bundle.getmembers():
-            files.append(
-                (
-                    member.name[2:] if member.name.startswith("./") else member.name,
-                    member.mode,
-                    member.size,
-                    member.uid,
-                    member.gid,
-                )
-            )
+            name = member.name[2:] if member.name.startswith("./") else member.name
+            name = name.rstrip("/")
+            if member.isdir():
+                if name not in ("", "."):
+                    dirs.append(name)
+            else:
+                files.append((name, member.mode, member.size, member.uid, member.gid))
     return {
         "ar": sorted(out),
         "control": control,
         "files": sorted(files),
+        "dirs": sorted(dirs),
         "md5sums": sorted(
             line.split()[1]
             for line in _tar_file(
@@ -714,10 +714,9 @@ def verify(path: pathlib.Path, meta: dict | None = None) -> list[str]:
         if read["ar"] != ["control.tar.gz", "data.tar.gz", "debian-binary"]:
             problems.append("%s: unexpected ar members %s" % (path.name, read["ar"]))
         names = [name for name, _, _, _, _ in read["files"]]
-        file_names = [n for n, mode, *_ in read["files"] if not n.endswith("/")]
-        dir_names = {n.rstrip("/") for n, *_ in read["files"] if n.endswith("/")}
-        for name in file_names:
-            parent = name.rsplit("/", 1)[0] if "/" in name else ""
+        dir_names = set(read["dirs"])
+        for name in names:
+            parent = name.rpartition("/")[0]
             while parent:
                 if parent not in dir_names:
                     problems.append(
@@ -725,7 +724,7 @@ def verify(path: pathlib.Path, meta: dict | None = None) -> list[str]:
                         % (path.name, parent)
                     )
                     break
-                parent = parent.rsplit("/", 1)[0] if "/" in parent else ""
+                parent = parent.rpartition("/")[0]
 
         for required in ("usr/bin/fathom", "usr/share/doc/fathom/copyright"):
             if required not in names:
