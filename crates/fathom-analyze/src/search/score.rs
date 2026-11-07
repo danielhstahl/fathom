@@ -566,13 +566,21 @@ fn walk_bytes(needle: &[u8], hay: &str) -> bool {
         return true;
     }
     if hay.len() <= SCANNED_FIELD {
-        let mut want = 0usize;
+        // The letter being looked for is carried in a local instead of read back out of `needle` on
+        // every byte: that indexed read is a bounds check plus a load per byte of every field of every
+        // row, and the profile the budget lives in (`-C opt-level=0`, which is what `cargo test` builds)
+        // does not remove it. Measured on the corpus `tests/search_scoring.rs` builds — one call-free
+        // pass over each of 10 000 episode bodies with each of four needles, so about 160 bytes walked
+        // per walk: 345 ns a walk read back through `needle[want]`, 305 ns read this way.
+        let mut matched = 0usize;
+        let mut wanted = needle[0];
         for &have in hay.as_bytes() {
-            if have == needle[want] {
-                want += 1;
-                if want == needle.len() {
+            if have == wanted {
+                matched += 1;
+                if matched == needle.len() {
                     return true;
                 }
+                wanted = needle[matched];
             }
         }
         return false;

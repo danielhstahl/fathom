@@ -663,6 +663,14 @@ struct Row {
     /// The union of [`Row::letters`]: the same question asked of the row as a whole, answered in one test
     /// before any field is looked at.
     anywhere: score::Letters,
+    /// The union of the [`SECONDARY`] fields' entries in [`Row::letters`].
+    ///
+    /// The same question again, one level down: a token whose letters are not anywhere in the four
+    /// secondary fields has no rung on any of them — not the exact one, not the substring one, not the
+    /// subsequence one — so the whole four-field loop of rungs 2, 4 and 5 is answered by one mask test
+    /// instead of four. A row's paths, dependencies, detail and author refuse most tokens, and the loop
+    /// to discover that was four field lookups per token per rung.
+    secondary: score::Letters,
     /// Where the words of [`Row::name`] begin, and where the words of [`Row::body`] begin.
     name_starts: score::WordStarts,
     body_starts: score::WordStarts,
@@ -745,7 +753,7 @@ impl Row {
         // miniature: deciding two `String`s equal reads both heaps, and a row's detail, paths, deps and
         // author are not the token almost everywhere in the symbol section (`reco-p6zw`, where this one
         // line was measured as a sixth of a keystroke over that corpus).
-        if worth_walking(best, score::W_SECONDARY_EXACT) {
+        if worth_walking(best, score::W_SECONDARY_EXACT) && token.could_match(self.secondary) {
             for field in SECONDARY {
                 if token.is_the_word(self.field(field).0) {
                     best = Some(score::Match {
@@ -768,7 +776,7 @@ impl Row {
         }
         // Rung 4 — a secondary field that contains the token. They all pay `W_SECONDARY_SUB`, so the first
         // one in [`SECONDARY`] settles it.
-        if worth_walking(best, score::W_SECONDARY_SUB) {
+        if worth_walking(best, score::W_SECONDARY_SUB) && token.could_match(self.secondary) {
             for field in SECONDARY {
                 if !token.could_match(self.letters_for(field)) {
                     continue;
@@ -782,7 +790,7 @@ impl Row {
         // Rung 5 — the letters in order with gaps, which is the rung a typo lands on: a secondary field
         // first (`W_SECONDARY_SUBSEQ`), then the body (`W_BODY_SUBSEQ`, the cheapest score in the system).
         // The name's subsequence was already paid for in rung 1.
-        if worth_walking(best, score::W_SECONDARY_SUBSEQ) {
+        if worth_walking(best, score::W_SECONDARY_SUBSEQ) && token.could_match(self.secondary) {
             for field in SECONDARY {
                 if !token.could_match(self.letters_for(field)) {
                     continue;
@@ -934,6 +942,7 @@ impl Index {
             let author_lc = entry.author.as_ref().map(|author| author.to_lowercase());
             let mut letters = [score::Letters::NONE; score::FIELD_COUNT];
             let mut anywhere = score::Letters::NONE;
+            let mut secondary = score::Letters::NONE;
             mark(&mut letters, &mut anywhere, Field::Name, &name);
             mark(&mut letters, &mut anywhere, Field::Body, &body);
             mark(&mut letters, &mut anywhere, Field::Detail, &detail_lc);
@@ -945,6 +954,9 @@ impl Index {
                 Field::Author,
                 author_lc.as_deref().unwrap_or(""),
             );
+            for field in SECONDARY {
+                secondary.join(letters[field.index()]);
+            }
             rows.push(Row {
                 kind: entry.kind,
                 // Replaced straight away by [`assign_ranks`]; there is no honest value to put here.
@@ -954,6 +966,7 @@ impl Index {
                 risk: entry.risk,
                 letters,
                 anywhere,
+                secondary,
                 name_starts: score::WordStarts::of(&name),
                 body_starts: score::WordStarts::of(&body),
                 id: entry.id.clone(),
