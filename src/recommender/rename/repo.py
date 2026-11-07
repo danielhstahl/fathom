@@ -27,6 +27,23 @@ from pathlib import Path
 
 EPOCH = 1_760_000_000  # one instant for every fixture; every step is an offset from it
 
+#: The environment every `git` call here runs under, before identity and dates are added. Nothing is
+#: read from the machine: no `~/.gitconfig`, no `/etc/gitconfig`, no ambient `GIT_*`. A fixture that
+#: depended on who ran it would be a fixture that measures the operator's dotfiles, and `git diff`
+#: has plenty of knobs a stray `[diff]` section could reach (`renameLimit`, `detectLimit`, ` renames`),
+#: so reads go through :func:`neutral_env` rather than inheriting the runner's own.
+BASE_ENV = {
+    "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+    "HOME": "/nonexistent",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_SYSTEM": "/dev/null",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_MERGE_AUTOEDIT": "no",
+    "GIT_TERMINAL_PROMPT": "0",
+    "LC_ALL": "C",
+    "TZ": "UTC",
+}
+
 IDENTITY = {
     "sam": ("sam@example.invalid", "Sam Human"),
     "pi-agent": ("pi-agent@example.invalid", "Pi Agent"),
@@ -163,25 +180,26 @@ def _git(repo: Path, args: list[str], env: dict[str, str], check: bool = True
     return subprocess.run(["git", *args], cwd=repo, env=env, check=check, capture_output=True)
 
 
+def neutral_env() -> dict[str, str]:
+    """The environment for a read-only `git` call: no machine config, no ambient `GIT_*`, no identity.
+
+    `detect.py` runs `git diff` against a built fixture, and that call is part of the measurement, so
+    it gets the same isolation the writer gives the commits themselves.
+    """
+    return dict(BASE_ENV)
+
+
 def _env(when: int, who: str) -> dict[str, str]:
     name, email = IDENTITY[who]
     stamp = f"{EPOCH + when * 60} +0000"
     return {
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "HOME": "/nonexistent",
-        "GIT_CONFIG_GLOBAL": "/dev/null",
-        "GIT_CONFIG_SYSTEM": "/dev/null",
-        "GIT_CONFIG_NOSYSTEM": "1",
+        **neutral_env(),
         "GIT_AUTHOR_NAME": name,
         "GIT_AUTHOR_EMAIL": email,
         "GIT_COMMITTER_NAME": name,
         "GIT_COMMITTER_EMAIL": email,
         "GIT_AUTHOR_DATE": stamp,
         "GIT_COMMITTER_DATE": stamp,
-        "GIT_MERGE_AUTOEDIT": "no",
-        "GIT_TERMINAL_PROMPT": "0",
-        "LC_ALL": "C",
-        "TZ": "UTC",
     }
 
 

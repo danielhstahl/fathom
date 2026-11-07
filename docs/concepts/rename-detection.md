@@ -329,6 +329,12 @@ python3 tools/gen_rename_tables.py check                          # CI: this doc
 PYTHONPATH=src python3 -m pytest -q tests/test_rename_spike_contract.py
 ```
 
+A re-measurement on a different computer prints one line naming the interpreter, platform, core count and
+`git` build it used and does not count them as drift: they are properties of the runner, and the CI
+runner is a different computer from the laptop that last wrote the report (`reco-v1z`). Every other field
+of `environment` — the permutation count, the shingle width, the profile — is part of the measurement and
+is compared.
+
 The gates below are re-checked by the contract test against the committed report, and the selection rule
 is re-run from the report's own rows, so this document cannot keep a recommendation the measurement does
 not support — including the parts of it that are unfavourable to the plan's existing plan.

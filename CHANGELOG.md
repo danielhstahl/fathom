@@ -17,6 +17,48 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Spike `s4` could only reproduce on one computer, which is not where CI runs (`reco-v1z`)
+
+`docs + workspace contracts` was red on every push with a claim about a measurement that had not moved:
+
+```text
+spike s4 does not reproduce: the measured report differs from the committed one
+  line 1972:
+    committed: "cpu_count": 4,
+    measured:  "cpu_count": 8,
+  line 1973:
+    committed: "git": "git version 2.50.1",
+    measured:  "git": "git version 2.47.3"
+```
+
+`s4` re-measures sixteen authored `git` histories across 23 detector configurations and diffs the result
+against `benchmarks/reports/s4-rename-detection.json`. All 51 gates passed; the four fields that
+disagreed were facts about the machine that ran it.
+
+* **The comparison included the runner.** `--check` already projects out wall clock — a busy runner is
+    not a regression — but `environment`'s interpreter, platform, core count and `git` build were
+    compared, and they can never match: the committed report was written on an aarch64 box under CPython
+    3.14, and the step runs on `ubuntu-latest` under the workflow's own `setup-python` 3.12. A gate that
+    only one computer can satisfy is a gate that is red forever, and red about nothing.
+* **Recorded, printed, not compared.** The four are now excluded by path, and a differing environment is
+    announced rather than quietly ignored — `note: measured on a different machine than the committed
+    report (not a drift): python 3.12.7 -> 3.14.5; platform Linux x86_64 -> Linux aarch64; …` — because
+    the git rows are git's and the log has to say which git produced them. Everything else in
+    `environment` (the 128 MinHash permutations, the default shingle width, the prototype's stated
+    profile) is a claim about the measurement and is still compared, and so is `corpus.scenarios`, which
+    the old key-name-only exclusion list was discarding along with `meta.scenarios`.
+* **The failure output is a list of claims now, not a line diff.** The report is about 2 600 lines of
+    JSON, so the old positional diff said `line 1972 differs` and then every line below it shifted: one
+    runner fact, printed as a catastrophe. A drift reads `corpus.true_pairs: 59 -> 60`.
+* **The git rows no longer read the runner either.** `repo.py` builds every fixture with
+    `GIT_CONFIG_GLOBAL=/dev/null`, pinned dates and pinned identities, but `detect.git_detect` — the
+    measurement of git itself — ran `git diff` with the ambient environment, where a stray
+    `[diff] renames = false` or `renameLimit` changes which pairs git even considers. It runs through
+    the same scrubbed environment now, and the committed report reproduces byte for byte afterwards.
+* **Both halves are pinned by a test,** because a loosened comparison that cannot fail is the same bug
+    wearing the fix: a moved probe, a moved `true_pairs`, a moved `corpus.scenarios`, a moved permutation
+    count and a moved gate expectation are each still a drift, and a different runner is not.
+
 ### One test asked the machine it ran on who it was (`reco-6wr`)
 
 `a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition` — one test, and it was red on a clean
