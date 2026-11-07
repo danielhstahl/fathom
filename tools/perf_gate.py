@@ -34,7 +34,10 @@ Two independent checks run on every measurement that has a number:
 2. **Against the committed baseline** (`benchmarks/baselines/perf-gate.json`) — more than
    `regression_fail_pct` worse and the build is red; more than that *better* and the build is red too,
    because `improvement_baseline_commit_required` is true and a baseline nobody re-blesses is a budget
-   nobody tightens.
+   nobody tightens. The improvement half is judged on the raw number, so a runner shared with eight
+   other jobs is never credited a speed-up — and, since `reco-axp`, a runner the calibration bench
+   measures *faster* than the blessed machine has its numbers put back into reference-machine units
+   first, because a fast runner is not a faster commit either.
 
 A percentage is only worth what the measurement can resolve, so a change has to clear an absolute floor
 as well, and that floor is **measured per measurement** — the probe's own stated resolution, two robust
@@ -671,7 +674,9 @@ def runner_factor(calibration_ms: float, reference_ms: float, bounds: list[float
 
     Clamping at 1.0 on the floor is the rule's point: a fast machine does not buy the product extra
     budget, and a slow one gets at most 4× before the gate says the runner is outside the calibrated
-    window rather than handing out a pass.
+    window rather than handing out a pass. The unclamped ratio is still what the ratchet's improvement
+    half needs (`evaluate`'s `machine_factor`): the clamp is about headroom, not about pretending a fast
+    machine is the reference machine.
     """
     low, high = bounds[0], bounds[1]
     raw = calibration_ms / reference_ms if reference_ms else 1.0
@@ -1052,7 +1057,8 @@ def load_budgets(path: Path = BUDGETS_PATH) -> tuple[dict[str, dict], dict]:
 
 
 def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str, dict],
-             gates: dict, factor: float, *, strict: bool) -> list[Verdict]:
+             gates: dict, factor: float, *, strict: bool,
+             machine_factor: float | None = None) -> list[Verdict]:
     """Judge every measurement: against its budget, and against the blessed baseline.
 
     Two clocks, two rules. The **budget** is a promise about a real machine, so a time budget gets the
@@ -1060,6 +1066,12 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
     self-deception*"). The **baseline** is a promise about the *previous blessed run*, so the current
     number is divided by the factor to bring it back to the reference machine's units before the
     comparison — otherwise a slower runner would be a regression and a faster one would hide one.
+
+    `factor` is the clamped runner factor (the published range's floor is 1.0, so a fast box buys no
+    extra headroom on a budget). `machine_factor` is the *unclamped* ratio of this runner's calibration
+    bench to the blessed reference, and it is only ever used to take a fast runner's numbers back up to
+    reference-machine units for the improvement half of the ratchet (`reco-axp`); see the comment at its
+    use site. `None` — what every caller before `reco-axp` passed — leaves that half exactly as it was.
     """
     fail_pct = float(gates.get("regression_fail_pct", 15.0))
     ratchet = bool(gates.get("improvement_baseline_commit_required", True))
@@ -1121,13 +1133,33 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                     normalised = statistic / factor
                 pct = ((base - normalised) if row.higher_is_better or
                        entry.get("higher_is_better") else (normalised - base)) / base * 100.0
-                # The ratchet is judged on the raw number, not the normalised one, and the reason is a
-                # specific lie: a *slow* runner (calibration 1.22× because eight cargo jobs were sharing
-                # it) divides every measurement down and reports the whole suite as an improvement, so
-                # the build goes red for the crime of running on a busy machine. A fast machine cannot
-                # fake it in the other direction — the factor is clamped at 1.0 and buys nothing.
+                # The improvement half of the ratchet is judged on the raw number, not the normalised
+                # one, and the reason is a specific lie: a *slow* runner (calibration 1.22× because
+                # eight cargo jobs were sharing it) divides every measurement down and reports the whole
+                # suite as an improvement, so the build goes red for the crime of running on a busy
+                # machine. The factor may make a machine look slower than it is — contention hits the
+                # calibration bench harder than it hits a 4 ms verb — so it is never used to credit a
+                # speed-up.
                 raw_pct = ((base - statistic) if row.higher_is_better or entry.get("higher_is_better")
                            else (statistic - base)) / base * 100.0
+                # …but a factor below 1.0 is a different statement, and the clamp that keeps a fast box
+                # from buying budget headroom was also silently making it *evidence of faster code*. The
+                # blessed numbers are in reference-machine units (§11.8), so a runner the calibration
+                # bench measures at 0.8× the blessed machine measures every wall clock low, and the
+                # whole suite reads as an improvement the commit did not earn: `reco-axp` is the perf
+                # job going red on a `stale_baseline` that was really the runner. So the improvement
+                # half divides by the unclamped factor when — and only when — that factor is below 1.0,
+                # which puts a fast runner's numbers back into reference-machine units. It is a floor
+                # on the credit, never a source of it: a slow runner still gets no improvement it did
+                # not do, and the worst this can say wrongly is "the baseline did not need re-blessing
+                # yet", which is the one verdict whose remedy is a re-measure rather than a hidden
+                # regression.
+                credit = min(machine_factor, 1.0) if machine_factor and row.scaled else 1.0
+                credited = statistic if credit == 1.0 else (
+                    statistic * credit if (row.higher_is_better or entry.get("higher_is_better"))
+                    else statistic / credit)
+                improve_pct = ((base - credited) if (row.higher_is_better or entry.get("higher_is_better"))
+                               else (credited - base)) / base * 100.0
                 # Two tests, not one: the percentage the ADR fixes, and an absolute floor for the
                 # change. Without the second, a 2 ms jitter on a 12 ms number is a "regression" and the
                 # gate cries wolf; the wolf is a change you could feel. The floor is measured per
@@ -1138,32 +1170,45 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                 limit_change = base * fail_pct / 100.0
                 resolvable = limit_change > floor
                 resolved = abs(normalised - base) >= floor
+                improve_resolved = abs(credited - base) >= floor
                 if pct > fail_pct and resolved:
                     issues.append((3, "regression",
                                    f"{pct:+.1f} % vs the blessed baseline ({base:,.3f} → "
                                    f"{normalised:,.3f} at ×{factor:.2f}, {basis}); the gate's limit "
                                    f"is {fail_pct:g} % ({limit_change:,.2f} {row.unit}) and the floor is "
                                    f"{floor:,.2f} {row.unit} ({floor_basis})"))
-                elif raw_pct < -fail_pct and abs(statistic - base) >= floor \
-                        and ratchet and strict:
+                elif improve_pct < -fail_pct and improve_resolved and ratchet and strict:
                     issues.append((2, "stale_baseline",
-                                   f"{raw_pct:+.1f} % better than the blessed baseline "
-                                   f"({base:,.3f}, {basis}); budgets ratchet, so re-bless it "
-                                   "(`make bench-bless`)"))
+                                   f"{improve_pct:+.1f} % better than the blessed baseline "
+                                   f"({base:,.3f}, {basis}"
+                                   + (f"; it measured {raw_pct:+.1f} % here, and this runner calibrated "
+                                      f"at ×{machine_factor:.3f} of the blessed machine, so the number "
+                                      "is put back into reference-machine units before the ratchet asks "
+                                      "about an improvement" if credit < 1.0 else "")
+                                   + "); budgets ratchet, so re-bless it (`make bench-bless`)"))
                 else:
-                    detail.append(f"{pct:+.1f} % vs baseline {base:,.3f} ({basis})")
+                    detail.append(f"{(pct if pct > 0 else improve_pct):+.1f} % vs baseline "
+                                  f"{base:,.3f} ({basis}"
+                                  + (f"; this runner calibrated at ×{machine_factor:.3f} of the blessed "
+                                     "machine, so the gap is divided back out" if credit < 1.0 else "")
+                                  + ")")
                 # A change past the ratchet's limit and inside this measurement's own floor is not a
                 # pass: it is a change the gate cannot classify. Before `reco-dkr` that case was
                 # decided by a coin toss — one run green, the next red on the same tree, on a spread
                 # wider than the ±15 % that was supposed to be judging it. Now it is said: the build
-                # does not go red on a coin toss, and the run does not pretend it looked.
-                if abs(pct) > fail_pct and not resolved:
+                # does not go red on a coin toss, and the run does not pretend it looked. Each half
+                # says so with the number that half judges, because the two halves do not agree on
+                # whether the runner factor is divided out (`reco-axp`).
+                if pct > fail_pct and not resolved:
                     resolves = False
-                    which = "slower" if (pct > 0) ^ bool(row.higher_is_better or
-                                                         entry.get("higher_is_better")) else "faster"
                     detail.append(f"cannot classify: {pct:+.1f} % is past the {fail_pct:g} % ratchet "
                                   f"and inside a {floor:,.2f} {row.unit} floor "
-                                  f"({floor_basis}) — {which}, and this run cannot tell")
+                                  f"({floor_basis}) — slower, and this run cannot tell")
+                elif improve_pct < -fail_pct and not improve_resolved:
+                    resolves = False
+                    detail.append(f"cannot classify: {improve_pct:+.1f} % is past the "
+                                  f"{fail_pct:g} % ratchet and inside a {floor:,.2f} {row.unit} floor "
+                                  f"({floor_basis}) — faster, and this run cannot tell")
         issues.sort(key=lambda issue: issue[0], reverse=True)
         # A breach already on the register is reported and bounded rather than re-litigated: the entry
         # carries the defect that owns it and the ceiling it may not grow past, so the known failure
@@ -1519,6 +1564,32 @@ def self_test() -> int:
         problems.append("a 20 % drop in the write bench did not read as a regression: its "
                         "millisecond samples were used to price a rate in rows/s")
 
+    # `reco-axp`: the clamp at 1.0 stops a fast runner buying budget headroom, which is not the same
+    # statement as "the fast runner is the machine that blessed". A blessed time is a reference-machine
+    # time, so a runner the calibration bench measures at 0.8× of it measures every clock 20 % low, and
+    # the whole suite used to read as a speed-up the commit did not earn: the perf job going red on a
+    # `stale_baseline` that was the runner.
+    one_second = {"cold.index.ms.small": {"value": 1000.0, "unit": "ms",
+                                          "budget": "cold.index.ms.small", "scaled": True}}
+    quick_runner = evaluate([Measurement("cold.index.ms.small", "ms", 800.0, "cold.index.ms.small")],
+                            {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                            machine_factor=0.8)
+    if any(verdict.failed for verdict in quick_runner):
+        problems.append("a runner measuring 0.8× the blessed machine read unchanged code as a 20 % "
+                        "improvement; a fast runner is not a faster commit (`reco-axp`)")
+    still_faster = evaluate([Measurement("cold.index.ms.small", "ms", 560.0, "cold.index.ms.small")],
+                            {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                            machine_factor=0.8)
+    if not any(verdict.status == "stale_baseline" for verdict in still_faster):
+        problems.append("a real 30 % speed-up went uncredited on a 0.8× runner; the factor may divide "
+                        "out a fast machine, it may not hide a speed-up in one")
+    no_headroom = evaluate([Measurement("cold.index.ms.small", "ms", 3000.0, "cold.index.ms.small")],
+                           {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                           machine_factor=0.8)
+    if not any(verdict.status == "over_budget" for verdict in no_headroom):
+        problems.append("a 0.8× runner was handed budget headroom it was not owed; the factor belongs to "
+                        "the ratchet, the clamp belongs to the budget")
+
     for line in problems:
         print(f"self-test FAILED: {line}")
     if problems:
@@ -1526,7 +1597,7 @@ def self_test() -> int:
     print("self-test ok: the gate is red on a 400 ms injection, green on none, does not scale RSS, "
           "does scale wall clocks, demands a re-bless on improvement, reads a throughput drop "
           "as a regression, sees a 15 % change on a 15 ms verb, says which changes it cannot classify "
-          "and which ids it cannot resolve")
+          "and which ids it cannot resolve, and does not mistake a fast runner for a fast commit")
     return 0
 
 
@@ -1633,10 +1704,15 @@ def main(argv: list[str]) -> int:
         else:
             factor, factor_note = 1.0, ("no blessed calibration reference in "
                                         f"{baseline_path.name}: factor 1.0, bless one")
+        # The same ratio before the clamp: what the *ratchet* needs, because a blessed number is a number
+        # measured on the reference machine and a runner faster than it measures every clock low
+        # (`reco-axp`; the clamped `factor` above stays the one that hands out budget headroom).
+        machine = (calibration_ms / reference) if reference else 1.0
         rows.append(Measurement(CALIBRATION_BENCH, "ms", round(calibration_ms, 2), None, passes,
                                 how="ADR-004 §11.8's runner characterisation; not a budget"))
 
-        verdicts = evaluate(rows, baseline, budgets, gates, factor, strict=args.check or args.bless)
+        verdicts = evaluate(rows, baseline, budgets, gates, factor, strict=args.check or args.bless,
+                            machine_factor=machine)
         failures = [verdict for verdict in verdicts if verdict.failed]
         blocked = [verdict for verdict in verdicts if verdict.status == "blocked"]
         registered = [verdict for verdict in verdicts if verdict.registered]
@@ -1695,7 +1771,8 @@ def main(argv: list[str]) -> int:
             },
             "calibration": {"bench": CALIBRATION_BENCH, "measured_ms": round(calibration_ms, 2),
                             "passes_ms": passes, "reference_ms": reference or None,
-                            "factor": round(factor, 3), "note": factor_note},
+                            "factor": round(factor, 3), "machine_factor": round(machine, 3),
+                            "note": factor_note},
             "injection_ms": args.inject_ms,
             "known_breaches": [asdict(verdict) for verdict in registered],
             "resolution": {
@@ -1719,7 +1796,11 @@ def main(argv: list[str]) -> int:
             render_table(rows, verdicts, budgets) + "\n", encoding="utf-8")
 
         print(render_table(rows, verdicts, budgets))
-        print(f"\nrunner factor ×{factor:.2f} — {factor_note or 'inside the calibrated range'}")
+        print(f"\nrunner factor ×{factor:.2f} — {factor_note or 'inside the calibrated range'}"
+              + ("" if machine >= 1.0 else
+                 f"; raw calibration ratio ×{machine:.3f}, and the improvement half of the ratchet "
+                 "divides by that, so a runner faster than the blessed machine is not credited a "
+                 "speed-up it did not earn"))
         print(f"calibration `{CALIBRATION_BENCH}`: {calibration_ms:,.0f} ms "
               f"(passes {passes}), reference {reference or 0:,.0f} ms")
         print(f"criterion: {note}")
@@ -1770,6 +1851,13 @@ def main(argv: list[str]) -> int:
             print(f"\nGATE RED ({len(failures)}):", file=sys.stderr)
             for verdict in failures:
                 print(f"  · {verdict.id}: {verdict.detail}", file=sys.stderr)
+            if os.environ.get("GITHUB_ACTIONS"):
+                # And as annotations, because a red perf job that says only "Process completed with exit
+                # code 11" on the check page is a job every reader opens the log of or ignores. The
+                # cannot-classify list already announces itself this way (`reco-dkr`); the verdict that
+                # actually stops the build should at least be as loud as the ones that do not.
+                for verdict in failures:
+                    print(f"::error title=Perf budget gate::{verdict.id}: {verdict.detail}")
         if args.bless:
             if args.inject_ms or args.quick:
                 print("refusing to bless a baseline from an injected or --quick run: a blessed number "

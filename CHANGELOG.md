@@ -17,6 +17,46 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The perf budgets job had been red on every run it ever had, and the check page said only "exit code 11" (`reco-axp`)
+
+The `perf` workflow fails on every pull, and its annotations explained everything except the one thing
+worth knowing — *which* measurement failed:
+
+```text
+perf budgets (small class)
+  Run the budgets, the baseline, and the trend (local spelling: make bench-check)
+    Process completed with exit code 11.
+```
+
+The gate printed its failures to stderr as prose and gave a GitHub annotation only to the *cannot
+classify* list, so the budgets that stopped the build were in a log nobody had to open. Reading them on
+the same box the baseline was blessed on was the fix:
+
+* **A red gate now names what it blew, as an annotation** (`::error title=Perf budget gate::`, one per
+  failing measurement), and `tests/test_perf_budget_contract.py` fails if a red gate annotates nothing.
+  The self-test and the injected regression already proved the gate could fail; this proves it can be read.
+* **Five blessed rows sat at the fast tail of their own distributions.** `warm.reindex.ms.small`
+  (blessed 120.1 ms) has measured 101.5-107.0 ms in every run since — 11-15 % *under*, which trips
+  `stale_baseline`, because the row was blessed before `reco-dkr` took the harness's own 2 ms poll out
+  of every timed process — and the three pty rows (`query.diff_open.ms.small` 2.9 ms,
+  `query.diff_first_hunk.ms.small` 4.3, `query.queue.ms.visible.small` 2.8) have read 4.2-12.5,
+  5.6-16.3 and 2.7-8.8 ms, so the tail of their own noise crossed the floor and was reported as a
+  regression on a pane that had not moved. Six gate runs of one tree and one binary: red, green, green,
+  red, green, green. Those five rows are re-blessed at the median of ten probes, divided by that
+  runner's calibration factor so they stay in reference-machine units, each carrying the
+  centre/scale/spread/floor `reco-dkr` asks for. Every other row is untouched.
+* **A runner faster than the blessed machine was credited a speed-up it had not earned.** The
+  improvement half of the ratchet is judged on raw numbers so that a box shared with eight jobs is never
+  read as faster code — but the runner factor is *also* clamped at 1.0, and a box the calibration bench
+  measures at 0.8× measures every wall clock two tenths low against blessed times that are
+  reference-machine times. The clamp is about budget headroom, so the improvement half now divides by
+  the unclamped ratio when, and only when, that ratio is below 1.0. A slow runner is still credited
+  nothing; a real speed-up still has to be re-blessed on any runner.
+
+ADR-004 §11.10 carries the detail, including the two rows left alone on purpose and the one a re-bless
+cannot fix: the diff pane's first paint arrives in two clumps, so it is a 120 ms budget guarding a 12 ms
+measurement, and the gate says so rather than guessing.
+
 ### The packaging action could not write an `.rpm`, because one of its paths was missing a slash (`reco-ndf`)
 
 The release job's packaging step — the one that repacks `dist`'s archives into `.deb` and `.rpm` — wrote

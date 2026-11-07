@@ -9,7 +9,10 @@ file is the check that the assertion is real:
   which is the acceptance criterion — a gate nobody has seen fail is decoration;
 * the arithmetic that cannot be tested by one run is tested directly: the threshold comes from the
   budget file, RSS budgets are never scaled by the runner factor while wall clocks are, a recorded
-  breach is bounded rather than waived, and an improvement past the threshold demands a re-bless;
+  breach is bounded rather than waived, and an improvement past the threshold demands a re-bless —
+  judged in reference-machine units, so neither a busy runner nor a fast one moves the ratchet;
+* a red gate says so where a reader looks: the failing measurements are GitHub annotations, not just
+  lines in a log nobody opened (`reco-axp`);
 * RSS is measured, not assumed: the blessed baseline carries resident-set numbers from `VmHWM`, marked
   unscaled, beside the timings they came from;
 * the plumbing is wired: `make bench` exists, the CI job publishes the trend, the trend is gitignored
@@ -194,6 +197,29 @@ def test_a_deliberate_regression_turns_the_gate_red(tmp_path):
         f"400 ms added to every process must land on cold index or warm re-index: {blown}")
 
 
+def test_a_red_gate_announces_its_failures_as_ci_annotations(tmp_path):
+    """A red perf job whose check page says only "exit code 11" is a job nobody can read.
+
+    `reco-axp` was filed from precisely that: the check carried the cannot-classify warnings and
+    `Process completed with exit code 11`, and the budget that actually stopped the build was in the
+    log and nowhere else — so the failing row had to be reconstructed by re-running the gate on a
+    different machine. The verdict that stops the build announces itself as loudly as the ones that do
+    not.
+    """
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--inject-ms", "400",
+         "--binary", str(_binary()), "--trend-dir", str(tmp_path)],
+        cwd=ROOT, capture_output=True, text=True, timeout=600,
+        env={**os.environ, "GITHUB_ACTIONS": "true"})
+    assert result.returncode == G.EXIT_BUDGET, (
+        f"expected {G.EXIT_BUDGET}; got {result.returncode}\n{result.stdout}\n{result.stderr}")
+    annotated = [line for line in result.stdout.splitlines()
+                 if line.startswith("::error title=Perf budget gate::")]
+    assert annotated, "the gate went red on a CI runner and annotated nothing: " + result.stdout
+    assert any("cold.index" in line or "warm.reindex" in line for line in annotated), (
+        f"the injected regression must name itself in the annotations: {annotated}")
+
+
 def test_the_gate_is_capable_of_failing_with_no_build_at_all():
     """The same claim, at zero cost: synthetic numbers, every rule, any runner."""
     assert G.self_test() == 0, "the gate's own self-test says it cannot fail properly"
@@ -276,9 +302,42 @@ def test_a_slow_runner_is_not_credited_an_improvement():
         "a 1.3× runner was blamed for a 28 % wall-clock increase the calibration accounts for")
 
 
+def test_a_runner_faster_than_the_blessed_machine_is_not_credited_an_improvement():
+    """The other half of `reco-axp`: the clamp is about budget headroom, not about what a runner proves.
+
+    A blessed time is a reference-machine time (§11.8), so a runner the calibration bench measures at
+    0.8× of it measures every wall clock two tenths low, and the raw-number rule read that as the whole
+    suite getting faster: a `stale_baseline` red that was the runner and nobody else, which is what
+    "this may just be a slower runner on GitHub" was reaching for. Dividing the improvement half by the
+    *unclamped* ratio says the machine's speed out loud in the one direction the clamp was never about.
+    """
+    budgets, gates = _budgets()
+    blessed = {"cold.index.ms.small": {"value": 1000.0, "unit": "ms", "budget": "cold.index.ms.small",
+                                       "scaled": True}}
+    unchanged_on_a_fast_runner = G.Measurement("cold.index.ms.small", "ms", 800.0,
+                                               "cold.index.ms.small")
+    verdicts = G.evaluate([unchanged_on_a_fast_runner], {"measurements": blessed}, budgets, gates,
+                          1.0, strict=True, machine_factor=0.8)
+    assert not any(verdict.failed for verdict in verdicts), (
+        "a 0.8× runner turned unchanged code into a 20 % improvement: "
+        f"{[(v.id, v.status, v.detail) for v in verdicts]}")
+    # …and a speed-up that is real still has to be re-blessed, on a fast runner like on any other.
+    genuinely_faster = G.Measurement("cold.index.ms.small", "ms", 560.0, "cold.index.ms.small")
+    verdicts = G.evaluate([genuinely_faster], {"measurements": blessed}, budgets, gates, 1.0,
+                          strict=True, machine_factor=0.8)
+    assert any(verdict.status == "stale_baseline" for verdict in verdicts), (
+        "a 30 % speed-up in reference-machine units went uncredited: dividing out a fast runner may "
+        "not swallow a real improvement along with the machine")
+    # And the clamp still stands where it was always about: a fast runner buys no extra budget.
+    over = G.Measurement("cold.index.ms.small", "ms", 3000.0, "cold.index.ms.small")
+    verdicts = G.evaluate([over], {"measurements": blessed}, budgets, gates, 1.0, strict=True,
+                          machine_factor=0.8)
+    assert any(verdict.status == "over_budget" for verdict in verdicts), (
+        "a 0.8× runner was handed budget headroom; the clamp belongs to the budget, not to the ratchet")
+
+
 def test_a_rate_is_normalised_the_other_way_from_a_duration():
     """rows/s is the inverse of a duration, so the runner factor applies in the opposite direction.
-
     Get this backwards and a runner shared with a `cargo build` reports the write bench as regressed:
     the same code really does push fewer rows per second on a machine that is busy, and the calibration
     exists precisely to say "that is the machine, not the commit".
@@ -545,7 +604,7 @@ def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
     """A blessed number and its noise are one measurement; half of it is a guess about the other half."""
     blessed = json.loads(BASELINE.read_text())["measurements"]
     fail_pct = _budgets()[1]["regression_fail_pct"]
-    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small"):
+    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small", "warm.reindex.ms.small"):
         row = blessed[ident]
         assert row.get("center") is not None, f"{ident}: blessed without the statistic the ratchet uses"
         assert row.get("noise") is not None, f"{ident}: blessed without the floor it was judged by"

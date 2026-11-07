@@ -1505,6 +1505,50 @@ blessed where they were. The two-run concession in
 busy for one run and quiet for the next, which is a property of the machine, and no longer a workaround for a
 metric the gate could not read.
 
+**What `reco-axp` found when the `perf` job was read instead of re-run.** That job had been red on
+every run it had ever had, and the check page said so in one line — `Process completed with exit code
+11` — because the measurements that failed went to stderr as prose while only the *cannot classify*
+list announced itself as an annotation. The first fix is therefore about the gate's own voice: every
+failing measurement is now a `::error::` annotation as well as a line in the log, and
+`tests/test_perf_budget_contract.py` fails if a red gate annotates nothing. What the annotations then
+named was two defects, and neither one was the "slower runner on GitHub" the ticket suspected.
+
+**One: five blessed rows sat at the fast tail of their own distributions.**
+`warm.reindex.ms.small` (120.1 ms, blessed by `reco-r3x`), `cold.queue_visible.ms.small` (138.3),
+`query.diff_open.ms.small` (2.9), `query.diff_first_hunk.ms.small` (4.3) and
+`query.queue.ms.visible.small` (2.8) had not moved since `36b011f`, and every gate run since has read
+past them — in the improvement direction for the warm row (101.5-107.0 ms, 11-15 % *under* its bless,
+which trips `stale_baseline`: the row was blessed before `reco-dkr` took the harness's own 2 ms poll —
+and its tail — out of every timed process, so part of that gap is the bless carrying a toll the
+measurement no longer contains), and in the regression direction for the pty rows, which have read
+4.2-12.5, 5.6-16.3 and 2.7-8.8 ms against blesses of 2.9, 4.3 and 2.8, so the tail of their own noise
+crossed the floor and was called a regression on a pane that had not moved. Six gate runs of the
+fixture on one box went red, green, green, red, green, green on one tree with one binary: that is the
+whole complaint in six runs. The five rows are re-blessed at the median of ten probes (the warm row at
+the median of its own gate run), divided by that runner's calibration factor of ×0.988 so they stay in
+reference-machine units, and each carries a centre, a scale, a spread and a floor as `reco-dkr`
+requires; the rest of the file is untouched, because a ticket is not licence to move a number nothing
+touched. Two rows were looked at and left alone: `query.timeline.ms.small` and `query.queue.ms.small`
+read 11-25 % under their blesses too, but a 10 ms floor on a 1.8 ms row makes anything they do
+unclassifiable, so moving them would change no verdict — their 8 ms budgets guard them and the run says
+so. The same is true after the bless for the three rows moved here: their floors (10 ms, and 25 ms for
+the first frame) stay wider than what the ±15 % ratchet asks for, which is the honest statement, and
+the deterministic fix is a diff pane whose first paint does not depend on which mode the scheduler is
+in — ten probes of one unchanged tree land in two clumps, 5.7-6.5 and 10.5-12.9 ms.
+
+**Two: a fast runner was credited a speed-up it had not earned.** The improvement half of the ratchet
+divides by nothing, deliberately (`test_a_slow_runner_is_not_credited_an_improvement`), because the
+calibration can over-state how slow a contended machine is and a box shared with eight jobs must not be
+read as faster code. But the runner factor is *also* clamped at 1.0, and that clamp was doing double
+duty: a runner the calibration bench measures at 0.8× the blessed machine measures every wall clock two
+tenths low, and a blessed time is a reference-machine time (§11.8), so the whole suite read as an
+improvement the commit never did. The clamp is about headroom — a fast box buys no extra budget, and
+still buys none — so the improvement half now divides by the unclamped ratio when, and only when, that
+ratio is below 1.0. A slow runner is still credited nothing; a real speed-up still has to be re-blessed
+on any runner; and the worst the new division can get wrong is "the baseline did not need re-blessing
+yet", which is a re-measure rather than a hidden regression. `evaluate` takes that ratio as
+`machine_factor`, and `--self-test` proves all four clauses of it with no build and no fixture.
+
 **The register.** Hand-written into `benchmarks/baselines/perf-gate.json`'s `known_breaches`, carried
 forward by `make bench-bless` so a bless cannot launder it, and read by `tools/epic7_acceptance.py`, which
 fails the epic if a row has stopped biting, if a breach bites with no row, if a value passes its ceiling,

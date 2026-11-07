@@ -45,11 +45,15 @@
   },
   "cold.queue_visible.ms.small": {
    "budget": "cold.queue_visible.ms.small",
+   "center": 154.8687,
    "higher_is_better": false,
-   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s))",
+   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. This row has measured 150.3-170.3 ms in every run since the bless against a bless of 138.3, and the ten probes sit at 150.6-154.7; the floor it is judged by stays the 25 ms spawn noise, so the row remains one the \u00b115 % ratchet cannot resolve and the 3 000 ms budget is what guards it",
+   "noise": 25.0,
+   "scale": 0.5254,
    "scaled": true,
+   "spread": 4.1514,
    "unit": "ms",
-   "value": 138.3
+   "value": 154.87
   },
   "query.card.ms.cli.small": {
    "budget": "query.card.ms.small",
@@ -73,19 +77,27 @@
   },
   "query.diff_first_hunk.ms.small": {
    "budget": "query.diff_first_hunk.ms.small",
+   "center": 15.4413,
    "higher_is_better": false,
-   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s))",
+   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. Ten probes give 8.9-16.8 ms around a median of 15.3 against a bless of 4.3; two of the ten never saw an `@@` at all, which is the other thing this row cannot tell you. Floor unchanged at 10 ms, budget 40 ms",
+   "noise": 10.0,
+   "scale": 1.4261,
    "scaled": true,
+   "spread": 7.9991,
    "unit": "ms",
-   "value": 4.3
+   "value": 15.44
   },
   "query.diff_open.ms.small": {
    "budget": "query.diff_open.ms.small",
+   "center": 12.2518,
    "higher_is_better": false,
-   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s))",
+   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. Ten probes land in two clumps (5.7-6.5 and 10.5-12.9 ms) around a median of 12.1 against a bless of 2.9, and gate runs of eight trees read 4.2-16.3. The floor stays `PTY_NOISE_MS` (10 ms) on a 12 ms row, so this too is an id the ratchet cannot resolve: what guards it is its 120 ms budget and the trend, and the honest fix is a diff pane whose first paint does not depend on which mode the scheduler is in",
+   "noise": 10.0,
+   "scale": 1.1259,
    "scaled": true,
+   "spread": 7.2903,
    "unit": "ms",
-   "value": 2.9
+   "value": 12.25
   },
   "query.frame_store_budget.ms/count_episodes/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
@@ -125,11 +137,15 @@
   },
   "query.queue.ms.visible.small": {
    "budget": null,
+   "center": 7.6447,
    "higher_is_better": false,
-   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s))",
+   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. Ten probes give 4.4-9.0 ms around a median of 7.6 against a bless of 2.8. Floor unchanged at 10 ms; `e1.12` still owns the budget",
+   "noise": 10.0,
+   "scale": 0.3753,
    "scaled": true,
+   "spread": 4.6577,
    "unit": "ms",
-   "value": 2.8
+   "value": 7.64
   },
   "query.timeline.ms.small": {
    "budget": "query.timeline.ms.small",
@@ -199,11 +215,15 @@
   },
   "warm.reindex.ms.small": {
    "budget": "warm.reindex.ms.small",
+   "center": 103.123,
    "higher_is_better": false,
-   "how": "one new commit with unique content, then `fathom index`",
+   "how": "one new commit with unique content, then `fathom index`. Re-blessed by `reco-axp`: the row was last blessed by `reco-r3x`, before `reco-dkr` moved the timed clock from the harness's 2 ms poll loop to the child's exit, and every wall clock in the file that predates that move carries a toll the measurement no longer contains \u2014 this one has measured 101.5-107.0 ms on this corpus since, 11-15 % under its bless, which tripped `stale_baseline` on alternate runs (a coin toss wearing a gate's badge, which is what `reco-axp` was filed about). Times are divided by this runner's calibration factor of \u00d70.988 so they stay in reference-machine units, the convention `reco-r3x` set, and the row now carries the centre and floor it was blessed with, as `reco-dkr` requires",
+   "noise": 4.6172,
+   "scale": 2.3086,
    "scaled": true,
+   "spread": 3.1977,
    "unit": "ms",
-   "value": 120.1
+   "value": 104.8
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",
