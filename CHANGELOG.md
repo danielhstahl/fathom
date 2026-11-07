@@ -17,6 +17,38 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### An open frame kept naming the branch it had opened on, long after the reviewer had left it (`reco-nup`)
+
+A `fathom` shell open in the second terminal printed `myrepo · main` in the tab bar while the first terminal
+was three branches away from `main`. The label is read once, before the first frame, by the composition root
+— which is the only party allowed to open git (ADR-002 §5.2, lint `E01`) — and nothing read it again. Every
+other fact in the frame arrives off the producer `reco-bpc` installed; the branch was the one fact it never
+re-read, so the frame's own claim about *which state of this repository I am showing you* went stale in
+silence, underneath a status line that said `live`.
+
+* **The producer re-reads what `HEAD` names, and the frame prints it.** `watch::Update` gained
+  `repo_label`: the same string the CLI composed at startup, composed again when the probe says the head ref
+  moved, and drawn in the tab bar's right-hand column. A label the shell already has is not news and
+  announces nothing.
+* **The cheap probe now carries the name as well as the commit**, because they are not the same fact. Two
+  branches sit on one commit as often as not — a fresh `git switch -c`, a switch back to a sibling nobody has
+  committed to yet — and the probe compared oids, so the one keystroke that changes the label was the one it
+  did not notice. A switch between two refs at one tip is now a `worth_reading` event, and the ask that
+  follows is the one allowed to skip the store re-read: the rows, the numbers and the working tree are all
+  what they were, and one line of chrome is not.
+* **The switch says so** on the hint row (`now on myrepo · feature/x`) when nothing else in the update has a
+  sentence to say, and stays quiet when something does — a switch that also brought new commits already has
+  the rail to announce itself with.
+* **What is not fixed, on purpose:** a frame that admits it is a snapshot (`--no-watch`, nothing indexed yet,
+  a binary built without the indexer) keeps the label it opened with. That is what a snapshot is, and the
+  status line already says which it is and what would move it.
+
+`crates/fathom-tui/tests/watch.rs` drives the loop with a scripted producer and asserts on the drawn tab
+bar; `crates/fathom-cli/src/ambient.rs`'s probe tests run `git switch` against a real temporary repository,
+because a probe that only notices oids *is* the bug. Checked end to end against the built binary in a pty:
+`fathom` open on an indexed repository, `git switch -c feature/same-tip` typed in another shell, and the
+label moves from `… · main` to `… · feature/same-tip` inside one poll — with no keystroke in the frame.
+
 ### The perf budgets job had been red on every run it ever had, and the check page said only "exit code 11" (`reco-axp`)
 
 The `perf` workflow fails on every pull, and its annotations explained everything except the one thing

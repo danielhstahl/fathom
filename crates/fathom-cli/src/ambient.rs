@@ -369,7 +369,7 @@ pub(crate) fn stamp(path: &Path) -> Stamp {
     }
 }
 
-/// The cheap probe's answer: sizes, mtimes and `HEAD`, and nothing parsed.
+/// The cheap probe's answer: sizes, mtimes, `HEAD` and what `HEAD` names, and nothing parsed.
 ///
 /// `pub(crate)` for the same reason [`stamp`] is: the shell's watcher and the glance pane's reader are one
 /// probe with two callers.
@@ -379,6 +379,13 @@ pub(crate) struct Signature {
     heartbeat: Stamp,
     git_dir: Stamp,
     head: String,
+    /// What `HEAD` names: the branch, `detached`, or empty when there was no repository to ask.
+    ///
+    /// The oid is not enough. Two branches sit on one commit as often as not — a fresh `git switch -c`, a
+    /// `git switch` back to a sibling that has not been committed to yet — and the frame prints the *name*
+    /// (`reco-nup`), so the name is one of the facts a cheap probe has to carry or the label goes stale on
+    /// the exact keystroke that changes it.
+    head_ref: String,
 }
 
 impl Signature {
@@ -394,8 +401,23 @@ impl Signature {
         self.head != before.head
     }
 
-    /// Is there anything a re-read could put on screen that was not there? `HEAD` moved, or somebody
-    /// wrote the store.
+    /// Did the *name* move while the commit stayed put — `git switch` between two refs at one commit?
+    ///
+    /// This is the only change a frame can show without a re-read: the rows, the index's numbers and the
+    /// working tree are all exactly as they were, and one line of the chrome is not (`reco-nup`).
+    #[must_use]
+    pub(crate) fn branch_moved(&self, before: &Signature) -> bool {
+        self.head_ref != before.head_ref
+    }
+
+    /// Did somebody write the store — this process's own run, or a `fathom index` in another terminal?
+    #[must_use]
+    pub(crate) fn store_moved(&self, before: &Signature) -> bool {
+        self.store != before.store
+    }
+
+    /// Is there anything a re-read could put on screen that was not there? `HEAD` moved, `HEAD`'s name
+    /// moved, or somebody wrote the store.
     ///
     /// Deliberately *not* a whole-struct compare: `.git` moves for reasons that change nothing a frame
     /// draws — `git status` refreshing the index, a stash, a fetch of a branch nobody is looking at — and
@@ -403,32 +425,43 @@ impl Signature {
     /// was never asked to be the interesting kind.
     #[must_use]
     pub(crate) fn worth_reading(&self, before: &Signature) -> bool {
-        self.head != before.head || self.store != before.store
+        self.head != before.head || self.head_ref != before.head_ref || self.store != before.store
     }
 }
 
-/// The cheap probe, run against one repository: four `stat`s and one ref read, and nothing parsed.
+/// The cheap probe, run against one repository: four `stat`s and one `HEAD` read, and nothing parsed.
 ///
 /// Shared by the glance pane and by `fathom tui`'s watcher (`reco-bpc`) because both need the same answer
 /// at the same price, and because the price is the whole reason either is allowed to ask.
 pub(crate) fn probe(root: &Path, store_path: &Path, heartbeat: &Path) -> Signature {
+    use fathom_ingest::repo::Head;
     let repository = fathom_ingest::repo::Repository::discover(root).ok();
-    let (head, git_dir) = match &repository {
-        Some(repo) => (
-            repo.head_oid()
-                .ok()
-                .flatten()
-                .map(|oid| oid.to_string())
-                .unwrap_or_default(),
-            stamp(repo.git_dir()),
-        ),
-        None => (String::new(), Stamp::default()),
+    let (head, head_ref, git_dir) = match &repository {
+        // One `HEAD` read, two facts off it: the commit, and what the commit is called. Reading them
+        // separately is how the two get to disagree about which commit the name points at.
+        Some(repo) => {
+            let head = repo.head().ok();
+            (
+                head.as_ref()
+                    .and_then(Head::oid)
+                    .map(|oid| oid.to_string())
+                    .unwrap_or_default(),
+                match head.as_ref() {
+                    Some(Head::Branch { name, .. }) | Some(Head::Unborn { name }) => name.clone(),
+                    Some(Head::Detached { .. }) => "detached".to_owned(),
+                    None => String::new(),
+                },
+                stamp(repo.git_dir()),
+            )
+        }
+        None => (String::new(), String::new(), Stamp::default()),
     };
     Signature {
         store: stamp(store_path),
         heartbeat: stamp(heartbeat),
         git_dir,
         head,
+        head_ref,
     }
 }
 
@@ -904,5 +937,145 @@ fn process_cpu() -> Option<Duration> {
     #[cfg(not(target_os = "linux"))]
     {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The probe's own claims, against a real repository made in a temporary directory.
+    //!
+    //! These are the assertions behind `reco-nup`: the frame's tab bar prints what `HEAD` *names*, so the
+    //! cheap probe has to carry the name as well as the commit — and a `git switch` between two refs that
+    //! sit on one commit is a change the probe must notice even though it changes nothing else.
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::*;
+
+    /// A temporary repository, removed on the way in rather than on the way out: a leftover directory is
+    /// noise, a half-written one is a flake.
+    fn repository(name: &str) -> PathBuf {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "fathom-cli-probe-{}-{name}-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("make the fixture directory");
+        git(&dir, &["init", "-q", "--initial-branch=main", "."]);
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        dir
+    }
+
+    /// `git`, with every part of the identity and the clock pinned, so a fixture commits the same way on a
+    /// machine with no `~/.gitconfig` as on one with a opinionated one.
+    fn git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_AUTHOR_NAME", "Fixture")
+            .env("GIT_AUTHOR_EMAIL", "fixture@example.invalid")
+            .env("GIT_COMMITTER_NAME", "Fixture")
+            .env("GIT_COMMITTER_EMAIL", "fixture@example.invalid")
+            .env("GIT_AUTHOR_DATE", "1700000000 +0000")
+            .env("GIT_COMMITTER_DATE", "1700000000 +0000")
+            .output()
+            .expect("git is on PATH, as it is for every ingest test");
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// The probe against a repository with no index and no watcher, which is all these tests need.
+    fn look(dir: &Path) -> Signature {
+        let fathom = dir.join(".fathom");
+        probe(
+            dir,
+            &fathom.join("index.sqlite3"),
+            &fathom.join("watch/status.json"),
+        )
+    }
+
+    #[test]
+    fn the_probe_reads_the_branch_the_tab_bar_prints() {
+        let dir = repository("name");
+        let seen = look(&dir);
+        assert_eq!(seen.head_ref, "main", "the name, not the oid");
+        assert!(!seen.head.is_empty(), "and the commit it names");
+    }
+
+    #[test]
+    fn a_quiet_repository_is_not_worth_reading_twice() {
+        let dir = repository("quiet");
+        assert!(
+            !look(&dir).worth_reading(&look(&dir)),
+            "nothing moved between two looks, so the frame draws nothing"
+        );
+    }
+
+    #[test]
+    fn a_branch_switch_onto_the_same_commit_is_a_move() {
+        // The defect `reco-nup` was: `HEAD`'s commit did not change, so nothing looked at the name, and the
+        // tab bar went on printing `main` after the reviewer had left it.
+        let dir = repository("switch");
+        let before = look(&dir);
+        git(&dir, &["switch", "-c", "feature/x"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "feature/x");
+        assert!(now.branch_moved(&before), "the name moved");
+        assert!(
+            !now.head_moved(&before),
+            "and the commit under it did not, which is exactly why the name is the fact to probe"
+        );
+        assert!(
+            now.worth_reading(&before),
+            "so the frame knows the picture has a line left to change"
+        );
+    }
+
+    #[test]
+    fn a_new_commit_on_one_branch_is_not_read_as_a_branch_switch() {
+        // The mirror-image case: a commit moves the commit and leaves the name alone. The re-read is
+        // wanted, but as new rows, not as a label — and a label sent every time the reviewer commits is a
+        // frame that re-opens git it already opened.
+        let dir = repository("commit");
+        let before = look(&dir);
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "main", "the same branch");
+        assert!(now.head_moved(&before), "a new commit");
+        assert!(!now.branch_moved(&before));
+        assert!(now.worth_reading(&before));
+    }
+
+    #[test]
+    fn a_detached_head_says_so_rather_than_naming_nothing() {
+        // `detached` is the tab bar's own word for this state (`crate::tui::repo_label`), and the probe has
+        // to use it: an empty name here would read as "no repository" to anything comparing signatures.
+        let dir = repository("detached");
+        let before = look(&dir);
+        git(&dir, &["checkout", "-q", "--detach"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "detached");
+        assert!(now.branch_moved(&before));
+        assert!(!now.head_moved(&before));
+    }
+
+    #[test]
+    fn a_directory_that_is_not_a_repository_names_nothing() {
+        // Unknown is a value (ADR-001 §7.7): the probe says it and the label says it, and neither invents a
+        // branch for a directory that has no `.git`.
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "fathom-cli-probe-{}-plain-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("make the fixture directory");
+        let seen = look(&dir);
+        assert!(seen.head_ref.is_empty() && seen.head.is_empty());
     }
 }

@@ -722,9 +722,9 @@ pub fn apply(app: &mut App, message: Message) {
     }
 }
 
-/// Apply one watcher's update: the rows, the index's numbers, the row saying how far a run the producer
-/// is running has got, and the sentence that says why the frame moved under the reviewer's hands
-/// (`reco-bpc`, `reco-j7t`).
+/// Apply one watcher's update: the rows, the index's numbers, the branch the tab bar names, the row saying
+/// how far a run the producer is running has got, and the sentence that says why the frame moved under the
+/// reviewer's hands (`reco-bpc`, `reco-j7t`, `reco-nup`).
 ///
 /// Separate from [`apply`] on purpose: a watcher is not on the bus, because there is no producer to send
 /// on its behalf — the loop asks it, on the wake-ups it already takes. Everything in an [`Update`][crate::watch::Update]
@@ -771,6 +771,19 @@ pub fn apply_update(app: &mut App, update: crate::watch::Update) {
             Some(line) => format!("{line} · search corpus re-read ({symbols} symbol names)"),
             None => format!("search corpus re-read ({symbols} symbol names)"),
         });
+    }
+    // The tab bar's claim about which branch this is (`reco-nup`). The producer re-reads `HEAD`; the shell
+    // is the only party that can print it and the only one that ever drew it, so this is the whole seam: a
+    // `git switch` made in another terminal arrives here or the frame goes on naming a branch nobody has
+    // checked out. Only the change is applied — re-reading the same name is not news, and a label the shell
+    // has already got draws the same pixels. Said out loud only when nothing else in the update is, because
+    // a switch that also brought new commits already has the rail to announce itself with and the tab bar is
+    // where the reviewer reads the branch from.
+    if let Some(label) = update.repo_label.filter(|label| *label != app.repo_label) {
+        if said.is_none() && update.note.is_none() {
+            said = Some(format!("now on {label}"));
+        }
+        app.repo_label = label;
     }
     if let Some(note) = update.note {
         app.toast(note);

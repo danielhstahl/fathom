@@ -566,7 +566,10 @@ pub(crate) fn hints_enabled(root: &std::path::Path) -> (bool, Vec<String>) {
 /// The branch is what `HEAD` names; a detached or unborn head says so rather than printing a sha
 /// nobody asked for, and a directory that is not a repository says that too (ADR-001 §7.7: unknown
 /// is a value).
-fn repo_label(root: &std::path::Path) -> String {
+///
+/// `pub(crate)` because the frame's own producer asks it again once the repository has moved under the
+/// shell (`reco-nup`): one spelling of the label, read twice, rather than two spellings that drift.
+pub(crate) fn repo_label(root: &std::path::Path) -> String {
     use fathom_ingest::repo::{Head, Repository};
     match Repository::discover(root) {
         Ok(repo) => {
