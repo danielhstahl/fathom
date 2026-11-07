@@ -332,7 +332,6 @@ jobs:
           version=$(python3 -c 'import tomllib;print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
           pkg="target/packaging/fathom_${version/-/\~}_amd64.deb"
           test -f "$pkg" || { echo "no $pkg"; exit 1; }
-
           dpkg-deb --show "$pkg"
           contents=$(dpkg-deb --contents "$pkg")
           grep -q 'usr/share/man/man1/fathom.1.gz' <<< "$contents"
