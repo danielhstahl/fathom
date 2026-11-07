@@ -16,6 +16,68 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The search budget went red on a two-core runner, over a letter set recomputed half a million times a keystroke (`reco-sr1q`)
+
+`build+test (linux · stable)` failed the latency test with:
+
+```text
+p95 52.98548ms is over the 50ms budget ADR-006 §5.8 sets for `query.search.ms`
+```
+
+It was both of the ticket's hypotheses at once. The runner is one of the two-vCPU ones and the box this
+was written on reproduces the failure only under `taskset -c 0,1`; but the scan was also doing work it
+did not need, and the margin it needed for a slow runner was not there. What the corpus of measurements
+said: one keystroke out of the eighteen in the budget test — `graph render cache patch`, four words,
+none of them a substring of anything in the fixture and every one of them a *subsequence* of every
+episode body — costs several times the median, because all 14 339 rows are hits and none of them can be
+refused by the letter masks. That is the worst keystroke the box can be asked for, which is what a p95 is
+for; the fixes are about what one row costs, not about which rows are looked at.
+
+* **A token's letter set was re-derived per row per field.** `Letters::holds(token)` starts by computing
+    the token's letters, and it was asked per field, per token, per row: six fields over fourteen
+    thousand rows is half a million byte tests per keystroke that all answer the same thing.
+    [`score::Token`] now compiles each typed token once per search and rows are asked through
+    `Letters::holds_set`. This was the largest single cost in a keystroke.
+* **The field walk read the long field first.** A token was scored against name, body, then the four short
+    fields — so the 230-byte episode body was walked before the hundred bytes of paths, dependencies,
+    detail and author, for every token, in every row, and the only early exit was a name prefix (500).
+    The walk now follows the weight ladder in `score::field_score`: the name whole, then a secondary field
+    that *is* the token (a compare, not a walk), then the body as a substring, then a secondary field that
+    contains it, then the subsequence rungs — and it stops as soon as the match in hand is worth at least
+    what everything unread could pay. That cannot move the ranking: the body pays `160`/`120`/`20` and no
+    secondary field pays any of those, so the only ties are between secondary fields, whose relative order
+    the walk keeps exactly as the hit explanation prints them.
+* **Two byte-at-a-time loops went to `core`.** `find` was a hand-rolled first-byte scan (the comment said
+    `str::find` was too expensive to call once per field per token) and `subsequence` was an iterator chain
+    over bytes. `core`'s searcher is compiled at the standard library's optimisation level, not the
+    caller's, so at `-C opt-level=0` — which is where this budget is measured — it is 2.3× faster to call
+    it than to write the loop here, and still 1.8× faster in release; `subsequence` is now one `memchr`
+    per letter of the needle from where the last one stopped, 1.6× faster in a debug build and the same
+    greedy leftmost walk as before.
+* **The report sorted everything to show five rows.** A broad query scores ten thousand rows and prints
+    five, and ordering the other ten thousand measured 3.5 ms of a keystroke. The best `limit` are now
+    seated with `select_nth_unstable_by` and only those are sorted — legal because the tie-break rank makes
+    the order total.
+
+Measured on the same two vCPUs, debug build, the same corpus: median **19 ms → 6.1 ms**, p95
+**56.7 ms → 30.0 ms** against the 50 ms budget (the runner that opened the ticket was about 7 % faster
+than this one, so read the CI number as ~28 ms). The same test with `--release` measures a 0.9 ms median
+and a 3.8 ms p95, which is worth saying out loud: ADR-006 §5.8 names *this test* as the measurement of
+record, and a debug build is about eight times stricter than the binary anybody ships. The budget is
+unchanged, and so is the golden ranking — this was a cost change, and `the_ranking_is_the_golden_one`
+reproduces `tests/golden/search-ranking.txt` byte for byte.
+
+Two more things came with the fix. The failure now **names the keystroke it tripped on** (median, p95 and
+worst each carry their query, in the assertion as well as the trace line) because a budget that fails
+silently is a ticket that starts with "this could be a slower runner" — the `reco-axp` lesson again. And a
+new unit test, `the_rung_walk_and_the_whole_ladder_pick_the_same_field`, checks that phase one's cheap rung
+walk and phase two's whole-ladder walk pick the same field at the same offset for the same score on every
+row of the fixture — with the fixture itself asserted to reach every rung of the ladder, so the test cannot
+quietly stop covering one.
+
+Not fixed here, and unrelated: `fathom-cli`'s `search_verb::a_saved_query_is_named_in_the_next_process`
+fails on this tree before these changes and after them.
+
 
 ### The workflow gate was red in CI and green on every laptop, over a file CI has never had (`reco-8myi`)
 

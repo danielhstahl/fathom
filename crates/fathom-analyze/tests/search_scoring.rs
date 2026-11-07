@@ -598,6 +598,27 @@ const TYPED: &[&str] = &[
     "lock to render",
 ];
 
+/// The budget, measured: 50 ms p95 over the keystrokes in [`TYPED`] on a ten-thousand-episode corpus.
+///
+/// What sets the p95 is the four-word query `graph render cache patch`, and it is worth knowing why before
+/// deciding that a failure is the runner's fault. None of those four words is a substring of anything in
+/// that corpus, but every one of them is a *subsequence* of every episode body — "g…r…a…p…h" is in the
+/// sentence the fixture repeats — so all 14 339 rows are hits, none of them can be refused by the letter
+/// masks, and the keystroke is a substring walk plus a letter walk over every body in the corpus, four
+/// times over: tens of megabytes of text read to answer one keystroke. That is the worst keystroke the box
+/// can be asked for, which is the point of asserting a p95 rather than an average.
+///
+/// Two things about the number. It is a **debug** build, because that is what `cargo test` builds, and the
+/// same two cores on the same corpus measure a 0.9 ms median and a 3.8 ms p95 with `--release` — so this
+/// assertion is about eight times stricter than the shipped binary's real latency, which is what ADR-006
+/// §5.8 signed up for by naming this test as the budget's measurement of record instead of leaving it to
+/// the release-only perf gate and its runner calibration.
+///
+/// And it has history. Those same two cores measured a 19 ms median and a 57 ms p95 — over the budget,
+/// which is the ticket this one answers — before [`score::Token`] stopped re-deriving a token's letter set
+/// six times per row, before the field walk stopped reading the 230-byte body before the hundred bytes of
+/// cheap fields, and before `core`'s `memchr` replaced the byte-at-a-time scans here. See the notes on
+/// `find` and [`score::subsequence`] for what each of those was worth on its own.
 #[test]
 fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
     const EPISODES: usize = 10_000;
@@ -615,7 +636,7 @@ fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
         let _ = index.search(&Query::parse(text, now()), DEFAULT_LIMIT);
     }
 
-    let mut samples: Vec<std::time::Duration> = Vec::new();
+    let mut samples: Vec<(std::time::Duration, &'static str)> = Vec::new();
     for round in 0..5 {
         for text in TYPED {
             // Alternating the limit is part of the measurement: the palette's preview asks for five and
@@ -624,31 +645,35 @@ fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
             let started = Instant::now();
             let report = index.search(&Query::parse(text, now()), limit);
             let took = started.elapsed();
-            samples.push(took);
+            samples.push((took, text));
             assert!(
                 report.hits.len() <= limit,
                 "`{text}` returned {} rows for a limit of {limit}",
                 report.hits.len()
             );
         }
-        let _ = round;
     }
-    samples.sort();
-    let p95 = samples[(samples.len() * 95) / 100];
-    let median = samples[samples.len() / 2];
-    let worst = samples[samples.len() - 1];
+    // Sorted by what each sample took, with the keystroke still attached to it. A budget that fails has to
+    // say which keystroke it tripped on: the four-word query in `TYPED` costs several times what a
+    // one-letter one does, so "p95 is over budget" with no name sends the next reader back here with a
+    // stopwatch. (`reco-axp` is the precedent: a gate that cannot name what it blew is a ticket that opens
+    // with "this could be a slower runner".)
+    samples.sort_by_key(|(took, _)| *took);
+    let (median, median_keystroke) = samples[samples.len() / 2];
+    let (p95, p95_keystroke) = samples[(samples.len() * 95) / 100];
+    let (worst, worst_keystroke) = samples[samples.len() - 1];
     eprintln!(
-        "search over {rows} rows ({EPISODES} episodes): index built in {:?}, median {median:?}, \
-         p95 {p95:?}, worst {worst:?}",
-        build
+        "search over {rows} rows ({EPISODES} episodes): index built in {build:?}, median {median:?} on `{median_keystroke}`, \
+         p95 {p95:?} on `{p95_keystroke}`, worst {worst:?} on `{worst_keystroke}`"
     );
     assert!(
         p95 < BUDGET,
-        "p95 {p95:?} is over the {BUDGET:?} budget ADR-006 §5.8 sets for `query.search.ms`"
+        "p95 {p95:?} is over the {BUDGET:?} budget ADR-006 §5.8 sets for `query.search.ms`; the keystroke at \
+         the 95th percentile was `{p95_keystroke}`, the worst was {worst:?} on `{worst_keystroke}`"
     );
     assert!(
         median < BUDGET,
-        "the median keystroke must also be inside the budget, and was {median:?}"
+        "the median keystroke must also be inside the budget, and was {median:?} on `{median_keystroke}`"
     );
 }
 
