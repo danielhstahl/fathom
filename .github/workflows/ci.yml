@@ -332,9 +332,14 @@ jobs:
           version=$(python3 -c 'import tomllib;print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
           pkg="target/packaging/fathom_${version/-/\~}_amd64.deb"
           test -f "$pkg" || { echo "no $pkg"; exit 1; }
+
           dpkg-deb --show "$pkg"
-          dpkg-deb --contents "$pkg" | grep -q 'usr/share/man/man1/fathom.1.gz'
-          dpkg-deb --contents "$pkg" | grep -q 'usr/share/bash-completion/completions/fathom'
+          contents=$(dpkg-deb --contents "$pkg")
+          grep -q 'usr/share/man/man1/fathom.1.gz' <<< "$contents"
+          grep -q 'usr/share/bash-completion/completions/fathom' <<< "$contents"
+          #dpkg-deb --show "$pkg"
+          #dpkg-deb --contents "$pkg" | grep -q 'usr/share/man/man1/fathom.1.gz'
+          #dpkg-deb --contents "$pkg" | grep -q 'usr/share/bash-completion/completions/fathom'
           sudo dpkg --install "$pkg"
           test "$(fathom --version | head -1 | awk '{print $2}')" = "$version"
       - name: read the .rpm with rpm's own reader
