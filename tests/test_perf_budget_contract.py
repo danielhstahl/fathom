@@ -664,19 +664,33 @@ def test_measuring_a_child_does_not_add_the_harness_s_own_sleep_to_the_clock():
 
 
 def test_the_rss_peak_is_sampled_while_the_child_holds_memory():
-    """A peak measured from a corpse is zero, and one measured 2 ms late is a tenth short."""
+    """A peak measured from a corpse is zero, and one measured 2 ms late is a tenth short.
+
+    The child reports its own peak out of `/proc/self/status` rather than out of
+    `resource.getrusage(...).ru_maxrss`, and that is the whole point of the fixture. Linux does not reset
+    an accumulated `ru_maxrss` across `fork`+`execve`, so a child reports
+    `max(whatever the forking process had reached, its own peak)` — which is exactly the trap
+    `mvp_acceptance._PeakSampler`'s docstring refuses. Run on its own the two numbers agree, and the test
+    passes; run as part of the whole suite, where the pytest process has already touched more memory than
+    the child ever will, the *truth* is the test runner's own resident set and the sampler is failed for
+    measuring the child accurately. `VmHWM` is per address space and is reset by `execve`, so it is the
+    same instrument the sampler reads from beside the child, and it is a fact about the child alone.
+    """
     import statistics
     import subprocess as sp
 
     sys.path.insert(0, str(ROOT / "tools"))
     import mvp_acceptance as M
 
-    child = ("import resource, time\n"
+    child = ("import time\n"
              "x = bytearray(60_000_000); y = bytes(x)\n"
-             "print(int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss), flush=True)\n"
+             "print(int(next(l for l in open('/proc/self/status') if l.startswith('VmHWM:')).split()[1]),"
+             " flush=True)\n"
              "time.sleep(0.02)\n")
     truth = int(sp.run([sys.executable, "-c", child], capture_output=True, text=True,
                        timeout=60).stdout.strip())
+    assert truth > 50_000, (
+        f"the fixture's own peak is {truth} KiB: it allocated nothing, so there is nothing to catch")
     sampled = statistics.median(M.run_timed([sys.executable, "-c", child], ROOT)[1]
                                 for _ in range(5))
     assert sampled >= truth * 0.95, (

@@ -16,6 +16,140 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The contracts job's pytest step was red four ways, and three of them were the job's own shape (`reco-uyiq`)
+
+`docs + workspace contracts` failed at its last step — `python3 -m pytest -q`, the ADR-002 / ADR-004 /
+ADR-005 / e0.6 / e0.8 / e0.9 / e2.1 suites — with four failures that shared nothing but the job, and the
+job is the reason for three of them. All four are fixed here; none of them changes what the product does.
+
+* **A gate that demanded a binary from a job documented as having none.**
+    `tests/test_packaging_contract.py::test_the_generator_can_go_red_four_ways` shells out to
+    `gen_shell_artifacts.py self-test`, and every one of that self-test's four controls is a mutated file
+    compared against what `render(binary)` prints — the set of verbs with man pages comes out of the
+    `clap::Command`, not out of a list. With nothing built it exits 1 (`no binary at
+    target/debug/fathom`), and the contracts job — which says in its own header comment that it
+    *deliberately* needs no Rust toolchain — was red on every push and green on every laptop that had ever
+    compiled. The file already had the rule ("the two tests that need a built binary skip without one") and
+    two of its tests obeying it; the third now calls `binary()` and skips like its siblings, and the
+    self-test keeps running where a binary exists: `ci.yml`'s `e7.4 packaging:` step builds `-p fathom-cli`
+    and runs `check` and `self-test` back to back. Same lesson as `reco-p40`, one layer up.
+* **The RSS sampler's control was measuring the test runner.**
+    `test_the_rss_peak_is_sampled_while_the_child_holds_memory` asked a child what its peak resident set
+    was and failed the sampler for reading 125 528 KiB of a "142 696 KiB peak" — but the child answered
+    with `getrusage(RUSAGE_SELF).ru_maxrss`, and Linux does not reset an accumulated `ru_maxrss` across
+    `fork`+`execve`: a child reports `max(the forking process's peak, its own)`. Standalone, pytest had
+    barely more resident than the child and the test passed; in a whole-suite run the runner has already
+    touched more than the fixture ever will, so the "truth" was pytest's own memory and the assertion was
+    a race with the harness rather than a claim about the sampler — which was reading the child exactly
+    right. The fixture now prints `/proc/self/status`'s `VmHWM`, which is per address space, reset by
+    `execve`, and the same instrument `_PeakSampler` reads from beside the child. Measured before and after
+    on this machine: sampler 125 612 KiB against a self-reported 125 344 KiB, and the assertion is now
+    independent of what else the process running it has ever allocated.
+* **Eight commits had no release notes, and the changelog audit said so.** `C03` named them; the four
+    sections below this one account for all eight, and `.plan/changelog-coverage.json` is still empty,
+    which is the state this repository keeps — an exemption is an admission, not a way to get green.
+* **The `s5` panel's seal had been broken by a name change.**
+    `test_three_reviewers_scored_every_cell_blindly` compares each scorecard's recorded blinded-corpus
+    digest with the digest of the corpus on disk, and it came back `R1/R2/R3 scored a blinded corpus whose
+    digest does not match this one`. The cause was the repository-wide author-handle sweep: it rewrote
+    `crates/fathom-analyze/spike/s5/{arms,evidence,packets,blinded}/` after the panel had scored it — and
+    re-serialised the ten packets at `indent=2` where `write_json` emits `indent=1`, which is drift from
+    the generator whether or not a name changed in the same edit. The scorecards are the sealed half: re-
+    recording their digest to match the new bytes would be the panel testifying that it was blind after
+    seeing the key, which is the one thing that test exists to refuse. So the frozen corpus goes back to the
+    bytes the panel scored (43 files, `git checkout` of the pre-sweep tree), the sweep stops at the frozen
+    corpus's edge, and `spike score --check` reproduces
+    `benchmarks/reports/s5-narrative-polish.json` again — including its `panel.integrity_problems: []`,
+    which had been lying.
+
+### The `.deb` the CI step asked for was not the `.deb` the packager wrote, and the data archive never named its own directories (`274c3e164`, `b94569091`, `09858ce79`, `da0874c6b`)
+
+The packaging leg built the archive, repacked it, and then died in the step that installs the result the way
+a user would. Four commits, one after another, because the step had two independent bugs and the second was
+only visible once the first stopped hiding it.
+
+* **`~` is a home directory to bash, even inside a substitution.** The step builds the file name from the
+    manifest version, and `0.1.0-alpha.1` is `0.1.0~alpha.1` to `dpkg` (`-` is not legal upstream), so the
+    name is `fathom_${version/-/~}_amd64.deb`. Bash performs *tilde expansion* on a replacement that begins
+    with `~` — the runner looked for `target/packaging/fathom_0.1.0/home/runneralpha.1_amd64.deb` and
+    printed `no …`, which reads exactly like "the packager wrote nothing". The replacement is `\~` now
+    (`274c3e164`). The `ls -la target/packaging/` that went in to find out (`09858ce79`) came straight back
+    out, having proved the file was there all along.
+* **`grep -q` closes the pipe, and `pipefail` remembers.** `dpkg-deb --contents "$pkg" | grep -q …` is the
+    natural way to assert a member exists, and with `set -euo pipefail` it is a coin flip: `grep -q` exits at
+    the first match, `dpkg-deb` is killed writing the rest of the listing, and the pipeline reports 141.
+    The listing is captured once into `contents` and matched with a here-string instead (`b94569091`).
+* **A `.deb` whose data archive names no directories installs only the directories it was told about.**
+    `tar_bytes` wrote one member per file, so `./usr/share/zsh/vendor-completions/_fathom` arrived with no
+    `usr/`, no `usr/share/`, and no `./` — `dpkg-deb`'s own writer emits all three, and a `dpkg` unpack of
+    an archive that omits them is a package that lays files into directories nobody declared.
+    The writer now emits an entry for every parent of every member, directories first, sorted so a parent
+    always precedes its children, with the same deterministic fields (`uid`/`gid` 0, `root/root`, zero
+    mtimes) (`da0874c6b`).
+* **And the reader refuses one.** `verify` checks the finished container for the same property — every file
+    member's every parent has a directory entry — so the shape is a rule with a red answer rather than a
+    habit, and `--verify` runs it in the step that builds the packages.
+
+### `cargo fuzz build` has no `--debug`, and two clippy steps handed cargo a backslash the YAML had folded (`2c351ae77`, `8063516de`)
+
+* **The flag never existed.** `fuzz.yml` built its targets with `cargo +nightly fuzz build --debug`.
+    `cargo-fuzz` 0.13 offers `-D`/`--dev` for the dev-release profile that comment above the step describes
+    and there is no `--debug` to accept, so *Build the targets* died on its own argument before the
+    sanitizer ran (`2c351ae77`).
+* **A plain scalar is folded, so the backslash arrived as a word.** The two clippy steps were written as a
+    bare `run:` with the invocation on two lines — YAML folds that into one line, and cargo was fine with
+    it. The first repair here (`2c351ae77`) added shell backslash continuations *inside* that plain scalar,
+    and a folded scalar keeps the backslash: cargo got a literal `\` argument and both steps went red. The
+    follow-up (`8063516de`) put the steps on the folded block scalar `run: >-` the rest of the workflows
+    already use, where the line break belongs to the YAML and the shell sees one clean line.
+
+### One spike gate read a list of one as a table of keys (`5acd99ade`)
+
+`s1_spike`'s report comparator walked `for key in ["thresholds"]` — a loop shaped like a table of compared
+keys that contains exactly one, which is a structure that promises a second and silently means nothing when
+nobody adds it. It is a named comparison now, with the same single claim: the committed report's `thresholds`
+block is the freshly measured one.
+
+### The `lockfile` fuzz target died on a `pom.xml` whose text was wider than a byte, because the XML reader walked one byte at a time (`reco-eyo`)
+
+`smoke (lockfile)` failed on *One minute per target* with nothing but `Fuzz target exited with exit status:
+86`, which is libFuzzer's `error_exitcode` for any report at all — crash, timeout and OOM alike. The report,
+recovered by building the target on the nightly and running the committed corpus with those flags, was a
+panic at `crates/fathom-analyze/src/deps/xml.rs:137` — *end byte index 131 is not a char boundary; it is
+inside* `'\ufffd'`.
+
+* **One loop stepped a byte at a time.** The scanner keeps byte indexes and every caller hands it a byte
+    count — the distance a `find` returned, the width of a `<` or a `</`, and in `children` the walk across
+    the text between two tags, one byte per step. A character wider than a byte parks the cursor *inside*
+    that character, and the next slice by index is a panic instead of an answer. No committed XML seed held
+    a single non-ASCII byte, so nothing on stable had ever stood there.
+* **It never needed a fuzzer.** `<description>Zürich</description>` in an ordinary valid-UTF-8 `pom.xml`
+    panics the same line. The artefact the fuzzer found was a `Fathom.csproj` whose element text was a run
+    of `0xbe`, which arrives as three-byte U+FFFD because the caller lossy-decodes; all four artefacts left
+    by the run were this one panic wearing different bytes.
+* **The control is one boundary snap in `Scanner::advance`,** which makes "the cursor is on a character
+    boundary" a property of the type rather than a hope about its callers, so every index slice the scanner
+    takes is one `str` allows. It is a no-op for every search the scanner performs — `>`, `"` and `</` are
+    ASCII and cannot match inside a character — and it changes only the byte-stepping text loop, from
+    walking into a character to skipping over it.
+* **Three gates hold it,** each checked red by removing the control: a named regression test in
+    `tests/hardening.rs`; two corpus seeds (`pom.xml__wide-text`, `Fathom.csproj__wide-text`), so the shape
+    is in the per-commit stable corpus run too; and two new degradations in `deps_tolerance.rs` that spread
+    a wide character *through* every golden fixture, in both spellings — the one the file really holds and
+    the one the lossy decode invents. The existing matrix could not reach a mid-file panic, because every
+    degradation that adds bad bytes adds them at one end of the file.
+* **Written into the threat model as F-18,** register row, §4.18 and the test that fails when the control is
+    removed, per §6 — "a reader panicked on somebody's manifest" is a finding about what a clone may
+    contain, not a line of release prose.
+* **Found next door and fixed:** `fuzz/artifacts/` was not gitignored, though the comment six lines above it
+    says crash artefacts do not belong in git, and this reproduction put four there; `-jobs`/`-workers` also
+    drops one `fuzz-<n>.log` per worker in the directory the run started from. Both are ignored now.
+
+Verified against the real target with `-Zsanitizer=address` on nightly: the four artefacts exit 0, the smoke
+step's own command exits 0 where it exited 86, and a 15-minute four-worker run after the fix (~350k
+executions, coverage up from 6 206 to 7 471 edges because the path that died early now keeps going) found
+nothing.
+
 ### The search budget went red on a two-core runner, over a letter set recomputed half a million times a keystroke (`reco-sr1q`)
 
 `build+test (linux · stable)` failed the latency test with:

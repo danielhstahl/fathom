@@ -20,7 +20,7 @@ page:
     a thing that can be checked rather than reworded away.
 
 Run: python3 -m pytest tests/test_packaging_contract.py -q
-(The two tests that need a built binary skip without one, like every other binary-backed contract here;
+(The three tests that need a built binary skip without one, like every other binary-backed contract here;
 the installer rehearsal additionally needs `dist` and a local build — see `docs/concepts/release.md` §4.)
 """
 
@@ -102,6 +102,21 @@ def test_the_generator_owns_two_directories_and_not_the_whole_tree():
 
 
 def test_the_generator_can_go_red_four_ways():
+    """`self-test` breaks a copy of the tree and asks the checker whether it noticed — which needs a binary.
+
+    Every case is a mutated *file*, but what it is mutated away from is the set the binary renders:
+    `self-test` compares each throwaway tree against `render(binary(args))`, because the only thing that
+    knows which verbs have man pages and which shells have completions is the `clap::Command` the shipped
+    CLI parses with. So it refuses to run without a build, and that refusal is a statement about the
+    runner, not about the diff under review.
+
+    This is the same mistake `reco-p40` made one layer down in `check_ci_gate.py`: the job that runs this
+    suite — `docs + workspace contracts` — is documented as needing no Rust toolchain, so a test that
+    demands a compiled binary there is red on every push and green on every laptop that has ever built.
+    It skips like the two siblings above it, and the self-test still runs for real where a binary exists:
+    `ci.yml`'s `e7.4 packaging:` step builds `-p fathom-cli` and runs `check` and `self-test` back to back.
+    """
+    binary()  # skip without a build; the generator's `self-test` renders from it
     result = run(str(GENERATOR), "self-test")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "self-test OK" in result.stdout
