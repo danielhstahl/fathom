@@ -250,7 +250,9 @@ jobs:
       - name: the version bump's negative controls
         run: python3 tools/release.py self-test
       # The packager needs no toolchain to prove its own rules: `--self-test` builds a throwaway tree in
-      # a temp directory and requires five corruptions of it to be refused.
+      # a temp directory and requires its own corruptions to be refused — a stale artefact name in
+      # `dist-workspace.toml`, a spec whose `%files` list has a relative entry (**reco-ndf**), and one that
+      # claims a file nothing staged.
       - name: the .deb/.rpm packager's negative controls
         run: python3 tools/package_release.py --self-test
 
@@ -313,10 +315,14 @@ jobs:
         run: |
           python3 tools/rehearse_installer.py --no-extra-artifacts
           python3 tools/rehearse_installer.py --skip-build --self-test
-      - name: the packager's own rules (five negative controls)
+      - name: the packager's own rules (its negative controls)
         run: python3 tools/package_release.py --self-test
+      # The archive dist just made, repacked — and read back in the same step: `--verify` runs `dpkg-deb
+      # --info/--contents` and `rpm -qp`/`rpm -qlp` over what was just written, so a package that builds
+      # but installs its files in the wrong place (or, as in **reco-ndf**, does not build at all) fails
+      # here instead of three steps later on somebody else's `dpkg -i`.
       - name: build the system packages from the archive dist just made
-        run: python3 tools/package_release.py
+        run: python3 tools/package_release.py --verify
       # Debian's own reader, then Debian's own installer: the file has to survive both, and the binary it
       # lays down has to be the one the manifest says. `0.1.0-alpha.1` is the version `dpkg` sees as
       # `0.1.0~alpha.1`, because `-` is not legal in an upstream version.

@@ -12,8 +12,8 @@ page:
 * the **generator cannot eat the tree**: `packaging/` also holds a hand-written release script, and an
   early version of the generator pruned it. `write` prunes only what it renders, inside two directories;
 * the **`.deb`/`.rpm` are checked by their own formats' tools** — the packager's reader and, in CI,
-  `dpkg-deb`, `dpkg --install` and `rpm -qp` — and the packager's nine self-claims include the two that
-  matter most (a control member with the wrong size, a package name that disagrees with `--version`);
+  `dpkg-deb`, `dpkg --install` and `rpm -qp` — and the packager's thirteen self-claims include the two
+  that matter most (a control member with the wrong size, a package name that disagrees with `--version`);
 * the **curl installer's promise is rehearsed locally**, mirror and all, and its four negative controls
   are part of the run: a rehearsal that cannot fail is not a test;
 * the **secrets story is a table**, not a paragraph, so "which steps need a maintainer-only secret" stays
@@ -143,6 +143,34 @@ def test_the_packagers_claims_all_hold():
     assert "self-test OK" in result.stdout
 
 
+def test_the_rpm_spec_claims_every_file_with_an_absolute_path():
+    """`rpmbuild` refuses a whole package over one relative `%files` entry (**reco-ndf**).
+
+    The release job died with `error: File must begin with "/": usr/share/zsh/site-functions/_fathom`,
+    which is not a warning about one file: it is no `.rpm` at all, refused in the one stage of the release
+    that has `rpmbuild` and gets no second chance. The installed paths are kept relative on purpose — that
+    is what a `.deb`'s data tar and a build-root copy both need — so the claim has to be made here, in the
+    spelling rpm wants, on a machine with no rpm installed.
+    """
+    meta = P.metadata()
+    spec = P.render_spec(meta, "/stage", "x86_64")
+    entries = P.spec_file_entries(spec)
+    assert entries, "the spec claims no files at all, which is not a package"
+    assert [entry for entry, _ in entries if not entry.startswith("/")] == [], \
+        "every `%files` entry has to begin with /: " + spec
+    # And one statement, not two: the completions the packager installs are the ones the spec claims.
+    for dest in P.SHELL_DIRS["rpm"].values():
+        assert ("/" + dest, False) in entries, "%s is installed but claimed by nothing" % dest
+    assert P.spec_problems(spec) == []
+
+
+def test_the_packager_refuses_its_own_bad_specs_before_asking_rpmbuild():
+    """The two refusals, as negative controls: a checker that cannot go red is a decoration."""
+    assert P.spec_problems("%files\n/usr/bin/fathom\nusr/share/zsh/site-functions/_fathom\n") != []
+    assert P.spec_problems("%files\n/usr/bin/fathom\n", staged={"usr/bin/other"}) != []
+    assert P.spec_problems("%files\n/usr/bin/fathom\n", staged={"usr/bin/fathom"}) == []
+
+
 def test_the_package_names_carry_the_package_spelling_of_the_version():
     """`0.1.0-alpha.1` is `0.1.0~alpha.1` to `dpkg`, and the file name is where it reads it."""
     up = P.package_version(version())
@@ -196,7 +224,7 @@ def test_ci_actually_runs_these_checks():
     ci = CI.read_text()
     for needle in ["tools/gen_shell_artifacts.py check",
                    "tools/package_release.py --self-test",
-                   "python3 tools/package_release.py\n",
+                   "python3 tools/package_release.py --verify\n",
                    "tools/rehearse_installer.py --no-extra-artifacts",
                    "tools/rehearse_installer.py --skip-build --self-test",
                    "dpkg --install",

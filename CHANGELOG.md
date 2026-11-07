@@ -17,6 +17,43 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The packaging action could not write an `.rpm`, because one of its paths was missing a slash (`reco-ndf`)
+
+The release job's packaging step — the one that repacks `dist`'s archives into `.deb` and `.rpm` — wrote
+the `.deb` and then refused to write the `.rpm`:
+
+```text
+Processing files: fathom-0.1.0~alpha.1-1.x86_64
+error: File must begin with "/": usr/share/zsh/site-functions/_fathom
+RPM build errors:
+    File must begin with "/": usr/share/zsh/site-functions/_fathom
+```
+
+* **One map, two spellings.** The packager relocates the archive's files with a map written in relative
+    paths — `usr/share/zsh/site-functions/_fathom` — because that is what a `.deb`'s data tar names its
+    members and what `cp -a` into `$RPM_BUILD_ROOT` lays down. `rpmbuild`'s `%files` section wants the
+    absolute spelling, and one entry in its template was the relative one pasted in. The four that were
+    literal `/usr/…` text in the template survived; the one that came from the map did not, and rpm
+    refuses the *whole package* over it: not one missing file, no `.rpm` at all.
+* **The list is generated now.** `spec_files` builds the `%files` block from `SHELL_DIRS["rpm"]` — the
+    same map the staging reads — with every entry routed through `rpm_file()`, so a completion directory
+    appears in the package and in the spec in one edit, and it cannot be a relative one. The claim is
+    therefore about the two agreeing, not about five strings having been typed the same way twice.
+* **Checked before `rpmbuild` is asked.** `spec_problems` answers rpm's two refusals — a relative entry,
+    and an entry naming nothing that was staged — in the packager, on any machine, and `build_rpm` refuses
+    to invoke `rpmbuild` until they are clear. That matters because the tool is missing from every image
+    but the one that provisions it, in the one stage of a release that gets no second chance.
+* **Read back afterwards, from rpm itself.** `--verify` now compares the finished package against
+    `rpm -qlp`, the package's own answer to "what does this install", and the CI step that builds the
+    packages runs with `--verify` rather than three steps later under `dpkg -i`.
+* **Both halves go red,** since a checker that cannot fail is a decoration: the packager's `--self-test`
+    and `tests/test_packaging_contract.py` each assert every `%files` entry is absolute *and* that a
+    relative entry, and a spec claiming an unstaged file, are refused.
+* **Found next door and fixed:** `packaging/linux-packages.sh` installed `rpmbuild` with
+    `apt-get install rpmbuild`, and no Debian or Ubuntu archive has a package by that name — `/usr/bin/rpmbuild`
+    ships in `rpm`. The message telling a human what to type said the same wrong thing. It provisions
+    `rpm` now, and the packager's own "rpmbuild is missing" error says so.
+
 ### Spike `s4` could only reproduce on one computer, which is not where CI runs (`reco-v1z`)
 
 `docs + workspace contracts` was red on every push with a claim about a measurement that had not moved:

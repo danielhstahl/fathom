@@ -36,11 +36,18 @@ Two rules keep the naming honest, because `dpkg -i` and `dnf install` read the f
     config is a failed build here (and `tools/check_release.py` R16 is the same rule offline), which is
     the loud version of a silent misnamed package.
 
-`.rpm` needs `rpmbuild`, which is not in the runner image; `packaging/linux-packages.sh` installs it.
-`.deb` is written here, byte-for-byte reproducibly (zero mtimes, sorted members, `gzip mtime=0`) because
-an artefact nobody can reproduce is an artefact nobody can verify. `--verify` reads the results back —
-with `dpkg-deb` and `rpm` when they are installed, and with this file's own reader always — so "it built"
-is never the same claim as "it parses".
+`.rpm` needs `rpmbuild`, which is not in the runner image; `packaging/linux-packages.sh` installs it
+(the Debian and Ubuntu package that carries it is called `rpm`). `.deb` is written here, byte-for-byte
+reproducibly (zero mtimes, sorted members, `gzip mtime=0`) because an artefact nobody can reproduce is an
+artefact nobody can verify. `--verify` reads the results back — with `dpkg-deb` and `rpm` when they are
+installed, and with this file's own reader always — so "it built" is never the same claim as "it parses".
+
+The spec's `%files` list is **generated from the relocation map**, not typed out beside it
+(`spec_files`): `rpmbuild` refuses any entry that does not begin with `/`, and the map is deliberately
+relative because that is what a `.deb`'s data tar needs — one relative line there is no `.rpm` at all,
+which is how the release job died with `File must begin with "/"` (**reco-ndf**). `spec_problems` is that
+rule checked before `rpmbuild` is asked, and `rpm -qlp` is what reads the finished package's own file
+list back.
 """
 from __future__ import annotations
 
@@ -408,16 +415,116 @@ cp -a "{stage}/." "$RPM_BUILD_ROOT/"
 
 %files
 %defattr(-,root,root,-)
-%attr(0755,root,root) /usr/bin/{name}
-/usr/share/bash-completion/completions/{name}
-{zsh}
-/usr/share/fish/vendor_completions.d/{name}.fish
-/usr/share/doc/{name}
-%dir /usr/share/man/man1
-/usr/share/man/man1/*.1.gz
+{files}
 
 %changelog
 """
+
+#: `%files` directives that prefix the path instead of being it (`%dir owns this directory`,
+#: `%attr(…) own this file with these modes`), and the one directive that carries no path at all. Anything
+#: else that starts with `%` ends the section: guessing further into rpm's macro syntax is how a checker
+#: starts disagreeing with the tool it is checking.
+SPEC_PATH_PREFIXES = ("%dir", "%attr", "%caps", "%verify", "%doc", "%config", "%ghost")
+SPEC_PATHLESS = ("%defattr",)
+
+
+def rpm_file(staged: str) -> str:
+    """A staged (build-root-relative) path as an rpm `%files` entry — which has to begin with `/`.
+
+    This is the one place the two spellings meet, and **reco-ndf** is what happens when they do not: the
+    staging map is relative on purpose (`usr/share/zsh/site-functions/_fathom`) because that is what a
+    `.deb`'s data tar names its members and what `cp -a` into `$RPM_BUILD_ROOT` lays down, and pasting one
+    of those names straight into `%files` made `rpmbuild` refuse to write the `.rpm` at all —
+
+        error: File must begin with "/": usr/share/zsh/site-functions/_fathom
+
+    The other entries survived only because they were literal `/usr/...` text in the spec template, which
+    is the shape of half-right this stops: the list is built here, every entry goes through this function,
+    and `spec_problems` says so out loud before `rpmbuild` is even asked.
+    """
+    return "/" + staged.strip("/")
+
+
+def spec_files(meta: dict) -> str:
+    """The spec's `%files` block: every entry absolute, derived from the map that does the staging.
+
+    `SHELL_DIRS["rpm"]` is the relocation map (archive path → installed path), so the completions the
+    package installs and the completions the spec claims are now one statement rather than two that can
+    disagree — which is the whole bug: the map said `usr/share/...` and the spec needed `/usr/share/...`.
+    The man pages stay a glob; there is one page per verb and the archive is the list of them.
+    """
+    name = meta["name"]
+    entries = ["%attr(0755,root,root) " + rpm_file("usr/bin/" + name)]
+    entries += [rpm_file(dest) for dest in SHELL_DIRS["rpm"].values()]
+    entries.append(rpm_file("usr/share/doc/" + name))
+    entries.append("%dir " + rpm_file("usr/share/man/man1"))
+    entries.append(rpm_file("usr/share/man/man1") + "/*.1.gz")
+    return "\n".join(entries)
+
+
+def render_spec(meta: dict, stage: pathlib.Path | str, arch: str) -> str:
+    """The spec text `rpmbuild` will be handed, for the tree already staged at `stage`."""
+    return SPEC.format(name=meta["name"], version=meta["version"],
+                       summary=meta["summary"].splitlines()[0], license=meta["license"],
+                       homepage=meta["homepage"], arch=arch, stage=str(stage),
+                       files=spec_files(meta))
+
+
+def spec_file_entries(spec: str) -> list[tuple[str, bool]]:
+    """The paths a `%files` section claims, each flagged `%dir`.
+
+    Reads the shape of the template above and nothing more: a directive that prefixes a path is skipped
+    and the next token is the path, `%defattr` has none, and the following section header ends the list.
+    """
+    entries: list[tuple[str, bool]] = []
+    in_files = False
+    for raw in spec.splitlines():
+        line = raw.strip()
+        if not in_files:
+            in_files = line.startswith("%files")
+            continue
+        if not line:
+            continue
+        tokens = line.split()
+        if tokens[0].startswith("%") and not tokens[0].startswith(SPEC_PATH_PREFIXES + SPEC_PATHLESS):
+            break                       # the next section (`%changelog`) ends `%files`
+        is_dir = False
+        for token in tokens:
+            if token.startswith(SPEC_PATHLESS):
+                break
+            if token.startswith(SPEC_PATH_PREFIXES):
+                is_dir = is_dir or token.startswith("%dir")
+                continue
+            entries.append((token, is_dir))
+    return entries
+
+
+def spec_problems(spec: str, staged: set[str] | None = None) -> list[str]:
+    """What `rpmbuild` will say about a spec's `%files`, said here instead of in the release log.
+
+    Both of these stop the `.rpm` being written, and both are answerable without the tool — which matters
+    because `rpmbuild` is missing on most of the machines this runs on and present exactly once, on the
+    global release job, where a failure is the release going red:
+
+      * an entry that does not begin with `/` (`File must begin with "/"`) — the **reco-ndf** one;
+      * an entry naming nothing the staged tree contains (`File not found`), when the caller passes
+        `staged`, the set of staged paths in their relative spelling. A directory entry is judged by
+        whether anything is staged under it, and a glob is left for `rpmbuild`, which is the only one
+        that can expand it.
+    """
+    problems: list[str] = []
+    for entry, is_dir in spec_file_entries(spec):
+        if not entry.startswith("/"):
+            problems.append("`%files` entry " + repr(entry) + " is not an absolute path; rpmbuild "
+                            "refuses the package with `File must begin with \"/\"`")
+            continue
+        if is_dir or staged is None or any(glob_char in entry for glob_char in "*?["):
+            continue
+        staged_entry = entry[1:]
+        if staged_entry not in staged and not any(name.startswith(staged_entry + "/")
+                                                  for name in staged):
+            problems.append("`%files` entry " + entry + " names nothing the staged tree contains")
+    return problems
 
 
 def build_rpm(stage: Stage, out: pathlib.Path, meta: dict, arch: str) -> pathlib.Path:
@@ -432,18 +539,20 @@ def build_rpm(stage: Stage, out: pathlib.Path, meta: dict, arch: str) -> pathlib
     if shutil.which("rpmbuild") is None:
         raise SystemExit(
             "rpmbuild is not installed, so no .rpm can be written. On a Debian/Ubuntu box: "
-            "`sudo apt-get install -y --no-install-recommends rpmbuild`. `--skip-rpm` is the rehearsal "
-            "escape hatch; a release build never passes it.")
+            "`sudo apt-get install -y --no-install-recommends rpm` — the package that carries rpmbuild is "
+            "called `rpm`. `--skip-rpm` is the rehearsal escape hatch; a release build never passes it.")
     out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="fathom-rpm-") as work:
         top = pathlib.Path(work)
         stage_dir = top / "stage"
         _write_stage(stage, stage_dir)
+        spec_text = render_spec(meta, stage_dir, arch)
+        problems = spec_problems(spec_text, set(stage.files))
+        if problems:
+            raise SystemExit("the generated spec is wrong, and `rpmbuild` has not been asked yet:\n  "
+                             + "\n  ".join(problems))
         spec = top / "fathom.spec"
-        spec.write_text(SPEC.format(name=meta["name"], version=meta["version"],
-                                    summary=meta["summary"].splitlines()[0], license=meta["license"],
-                                    homepage=meta["homepage"], arch=arch, stage=str(stage_dir),
-                                    zsh=ZSH_DIR["rpm"] + "/_" + meta["name"]))
+        spec.write_text(spec_text)
         rpmdir = top / "rpms"
         command = ["rpmbuild", "-bb", "--nodeps", "--noclean", "--target", arch,
                    "--define", "_topdir %s" % top, "--define", " _tmppath %s/tmp" % top,
@@ -483,7 +592,7 @@ def write_sha256(path: pathlib.Path) -> pathlib.Path:
     return side
 
 
-def verify(path: pathlib.Path) -> list[str]:
+def verify(path: pathlib.Path, meta: dict | None = None) -> list[str]:
     """Read the artefact back with whatever tool the machine has; never trust that it wrote."""
     problems: list[str] = []
     if path.suffix == ".deb":
@@ -508,9 +617,31 @@ def verify(path: pathlib.Path) -> list[str]:
     else:
         if shutil.which("rpm"):
             problems.extend(_run_tool(["rpm", "-qp", "--nosignature", str(path)], path, "rpm -qp"))
+            problems.extend(_rpm_installed_problems(path, meta or metadata()))
         else:
             print("  note  rpm not installed: the .rpm was written by rpmbuild and not read back")
     return problems
+
+
+def _rpm_installed_problems(path: pathlib.Path, meta: dict) -> list[str]:
+    """Every path the packager means to ship has to be in rpm's own file list for the package it wrote.
+
+    `rpm -qlp` is the package's own answer to "what does this install", which is the question
+    **reco-ndf** was about: a `.rpm` whose `%files` list is wrong does not merely look wrong from the
+    outside — it lays each file down somewhere else or nowhere at all — and nothing but asking rpm reads
+    that back.
+    """
+    listed = subprocess.run(["rpm", "-qlp", "--nosignature", str(path)],
+                            capture_output=True, text=True, check=False)
+    if listed.returncode != 0:
+        return ["%s: `rpm -qlp` says: %s" % (path.name, (listed.stdout + listed.stderr).strip())]
+    installed = {line.strip() for line in listed.stdout.splitlines() if line.strip()}
+    want = {rpm_file(dest) for dest in SHELL_DIRS["rpm"].values()}
+    want.add(rpm_file("usr/bin/" + meta["name"]))
+    missing = sorted(want - installed)
+    if missing:
+        return ["%s: rpm's own file list does not install %s" % (path.name, ", ".join(missing))]
+    return []
 
 
 def _run_tool(command: list[str], path: pathlib.Path, label: str) -> list[str]:
@@ -578,7 +709,7 @@ def command_build(args: argparse.Namespace) -> int:
                   % (path.name, len(stage.files), path.stat().st_size // 1024))
     if args.verify:
         problems = [problem for path in written if path.suffix in (".deb", ".rpm")
-                    for problem in verify(path)]
+                    for problem in verify(path, meta)]
         if problems:
             for problem in problems:
                 print("  P01   %s" % problem)
@@ -613,6 +744,10 @@ def command_self_test(args: argparse.Namespace) -> int:
         deb = build_deb(stage, root, meta, "amd64")
         write_sha256(deb)
         read = read_deb(deb)
+        # The rpm spec, checked without `rpmbuild`, which is installed on exactly one runner and that
+        # runner is the release: `error: File must begin with "/"` (**reco-ndf**) is a whole-package
+        # refusal, so the claim has to be answerable where the tool is absent.
+        spec = render_spec(meta, root / "stage", "amd64")
 
         cases = [
             ("the version reaches the control file", read["control"].get("Version") == meta["version"]),
@@ -629,6 +764,17 @@ def command_self_test(args: argparse.Namespace) -> int:
              cross_check_config([root / "fathom_9_amd64.deb"], OUT) != []),
             ("a rehearsal directory is not cross-checked against the release config",
              cross_check_config([root / "anything.deb"], root) == []),
+            # The rpm spec, checked without `rpmbuild`, which is installed on exactly one runner and that
+            # runner is the release: `error: File must begin with "/"` (**reco-ndf**) is a whole-package
+            # refusal, so it has to be answerable where the tool is absent.
+            ("every `%files` entry in the spec is an absolute path",
+             spec_problems(spec) == []),
+            ("the spec claims every completion the packager installs",
+             all(rpm_file(dest) in spec for dest in SHELL_DIRS["rpm"].values())),
+            ("a relative `%files` entry is refused before rpmbuild is asked",
+             spec_problems("%files\n/usr/bin/fathom\nusr/share/zsh/site-functions/_fathom\n") != []),
+            ("a `%files` entry naming nothing that was staged is refused",
+             spec_problems(spec, staged={"usr/bin/fathom"}) != []),
         ]
         for what, ok in cases:
             if ok:

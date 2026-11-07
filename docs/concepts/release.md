@@ -164,6 +164,16 @@ refuses to run if the archive has no completions in it, which is the failure mod
 script because the runner image lacks it — so it is guaranteed to be an RPM but not byte-reproducible,
 while the `.deb` is written here with zero timestamps and is.
 
+The spec's `%files` list is **generated from that table** (`spec_files`) rather than typed next to it, and
+the reason is a whole release that went red (**reco-ndf**). The table is written in the relative spelling —
+`usr/share/zsh/site-functions/_fathom` — because that is what a `.deb`'s data tar names its members and
+what `cp -a` into `$RPM_BUILD_ROOT` lays down, and `rpmbuild` refuses any `%files` entry that does not
+begin with `/`. One relative line there is not one missing file; it is no `.rpm` at all, on the one runner
+of the six that has `rpmbuild`, with the message `error: File must begin with "/": …`. `rpm_file()` is
+where the two spellings meet, `spec_problems()` is the same claim made before `rpmbuild` is asked (so it
+holds on a laptop with no rpm installed), and `rpm -qlp` under `--verify` is what reads the answer back
+out of the finished package.
+
 ## 2 The version, and what a tag means
 
 One number, in one place: `[workspace.package] version` in
@@ -368,9 +378,11 @@ The reason this rehearsal exists as a script and not as prose is the third bulle
 once — it is `ARG0`, `awk` and `tail` finding a marker line (`#{0} …`), with no external parser.
 
 The `.deb` rehearses the same way, one step earlier: `python3 tools/package_release.py --self-test`
-fails loudly on five corruptions of its own inputs, and `dpkg-deb --install --force-all` in a container
-followed by `fathom --version` is the equivalent of the `curl` line for the packager. CI runs the
-self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and does not pretend to.
+fails loudly on its own negative controls — a stale artefact name in `dist-workspace.toml`, a spec whose
+`%files` list has a relative entry, and one that claims a file nothing staged — and `dpkg-deb --install
+--force-all` in a container followed by `fathom --version` is the equivalent of the `curl` line for the
+packager. CI runs the self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and
+does not pretend to.
 
 ## 5 Adoption: counting people without watching them
 
