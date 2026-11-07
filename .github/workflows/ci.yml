@@ -329,6 +329,7 @@ jobs:
       - name: install the .deb the way a user would, and run what it put on PATH
         run: |
           set -euo pipefail
+          ls -la target/packaging/
           version=$(python3 -c 'import tomllib;print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
           pkg="target/packaging/fathom_${version/-/~}_amd64.deb"
           test -f "$pkg" || { echo "no $pkg"; exit 1; }
