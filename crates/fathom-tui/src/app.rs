@@ -4098,12 +4098,15 @@ impl App {
                 return Some(0);
             }
             let hay = label.to_lowercase();
-            let starts = score::word_starts_of(&hay);
+            let starts = score::WordStarts::of(&hay);
             let mut total = 0i64;
             for token in query.split_whitespace() {
                 // One missing token means the row does not answer the question, which is the same rule
-                // `Index::search` applies to a corpus row.
-                total += score::field_score(token, &hay, Field::Name, &starts)?.score;
+                // `Index::search` applies to a corpus row. The token is compiled once per word of the
+                // prompt for the same reason the corpus scan compiles it: the palette asks the same
+                // questions of every entry in the registry.
+                total += score::field_score(&score::Token::new(token), &hay, Field::Name, &starts)?
+                    .score;
             }
             Some(total)
         };

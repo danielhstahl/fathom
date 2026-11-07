@@ -28,9 +28,12 @@
 //! * **Cheap enough to run per keystroke.** [`field_score`] is one pass over a field with no allocation,
 //!   and a query rejects an entry as soon as one token matches nothing anywhere, which is what makes
 //!   `query.search.ms`'s 50 ms p95 on a 10 000-episode corpus a measurement rather than a hope
-//!   (`tests/search_scoring.rs`). The other half of that budget is the walk order: a token is scored
-//!   against the fields in the order the ladder above is *ranked*, not the order they print, and a match
-//!   in an early field ends the walk before the long fields are read (`search::score_row`).
+//!   (`tests/search_scoring.rs`). Three more things are in that budget, each of them a fact about the
+//!   keystroke that used to be re-derived per row: the token's letter set ([`Token`]), the shape the
+//!   subsequence rung needs ([`Token::subsequence`]), and where a field's words begin ([`WordStarts`]).
+//!   The other half is the walk order: a token is scored against the fields in the order the ladder above
+//!   is *ranked*, not the order they print, and a match in an early field ends the walk before the long
+//!   fields are read (`search::score_row`).
 //!
 //! # The weights, in one place
 //!
@@ -102,6 +105,61 @@ impl Field {
 
 /// How many scannable fields a row has, and so how wide a row's array of [`Letters`] is.
 pub const FIELD_COUNT: usize = 6;
+
+/// Where a field's words begin.
+///
+/// The scorer asks one question of this: does the match at byte `at` begin a word, which is the difference
+/// between [`W_NAME_WORD`] and [`W_NAME_SUB`] — a hundred points for the token, in every row that holds it
+/// in the middle of a name rather than at its start. The wide form is the sorted offset list
+/// [`WordStarts::of`] builds for a long field, asked with a binary search. The narrow form is one `u64`,
+/// bit per byte, and it is what almost every field in a corpus gets: an episode's subject, a path, a
+/// dependency name, a symbol's name, an author, all fit inside [`Self::BITS`]. That is not a smaller
+/// constant, it is the difference between a search that has to chase a per-row heap allocation before it
+/// can answer and one that answers from eight bytes sitting in the row already — `reco-p6zw` measured the
+/// offset list as a cache miss per field per token per row, on the way to a walk that was cheaper than the
+/// lookup.
+#[derive(Debug, Clone)]
+pub enum WordStarts {
+    /// Every offset the field can have is named by a bit: `bit i` set means byte `i` begins a word.
+    Bits(u64),
+    /// The offsets themselves, sorted, for a field too wide for one word of bits.
+    List(Vec<usize>),
+}
+
+impl WordStarts {
+    /// The longest field [`WordStarts::of`] keeps as bits; a longer one takes the list form.
+    const BITS: usize = 64;
+
+    /// An empty field: offset `0` begins its one word, which is the answer the list form would give.
+    pub const NONE: WordStarts = WordStarts::Bits(1);
+
+    /// Index a field's word starts.
+    #[must_use]
+    pub fn of(text: &str) -> WordStarts {
+        if text.len() > Self::BITS {
+            return WordStarts::List(word_starts_of(text));
+        }
+        let mut bits = 1u64; // offset 0 always begins a word
+        let bytes = text.as_bytes();
+        for (index, byte) in bytes.iter().enumerate().skip(1) {
+            if is_separator(bytes[index - 1]) && !is_separator(*byte) {
+                bits |= 1u64 << index;
+            }
+        }
+        WordStarts::Bits(bits)
+    }
+
+    /// Does byte `at` begin a word?
+    #[must_use]
+    pub fn contains(&self, at: usize) -> bool {
+        match self {
+            // The shift is masked because a field measured in bytes can name an offset the bits cannot,
+            // and a field that long is the list form's business; here it is simply not a word start.
+            WordStarts::Bits(bits) => at < usize::BITS as usize && (bits >> (at & 63)) & 1 == 1,
+            WordStarts::List(starts) => starts.binary_search(&at).is_ok(),
+        }
+    }
+}
 
 /// Which ASCII letters a piece of text contains.
 ///
@@ -176,6 +234,11 @@ impl Letters {
 pub struct Token {
     text: String,
     letters: Letters,
+    /// Whether every byte of the token is ASCII, which is what lets the subsequence rung walk bytes.
+    ascii: bool,
+    /// Whether the token is more than one character long, which is what decides whether the subsequence
+    /// rung has anything to say about it at all (see [`Token::subsequence_possible`]).
+    long: bool,
 }
 
 impl Token {
@@ -185,6 +248,8 @@ impl Token {
         Token {
             text: text.to_owned(),
             letters: Letters::of(text),
+            ascii: text.is_ascii(),
+            long: text.chars().count() > 1,
         }
     }
 
@@ -201,13 +266,58 @@ impl Token {
     pub fn could_match(&self, field: Letters) -> bool {
         field.holds_set(self.letters)
     }
-}
 
-/// Whether an offset begins a word. The starts are sorted, so this is a binary search: the body of an
-/// episode has dozens of them and this runs on every match.
-#[must_use]
-fn starts_contain(starts: &[usize], at: usize) -> bool {
-    starts.binary_search(&at).is_ok()
+    /// Does this token have anything for the subsequence rung to find?
+    ///
+    /// A one-character token that is not a substring of a field is not a subsequence of it either, so the
+    /// walk would read a whole body to prove a thing the substring test already proved — on every row, on
+    /// every keystroke that is one letter long, which is the first keystroke. Asked per row by walking the
+    /// token's characters to count them until `reco-p6zw`; the answer is a property of the token, so it is
+    /// worked out once, here.
+    #[must_use]
+    pub fn subsequence_possible(&self) -> bool {
+        self.long
+    }
+
+    /// Whether the subsequence rung may compare bytes rather than characters.
+    ///
+    /// No byte of a multi-byte character is an ASCII byte, so an ASCII needle gets the same answer from a
+    /// byte walk as from a character walk, and a needle with a non-ASCII letter in it has to take the
+    /// character walk. Decided per token rather than per row for the same reason
+    /// [`Self::subsequence_possible`] is.
+    #[must_use]
+    pub fn ascii(&self) -> bool {
+        self.ascii
+    }
+
+    /// The best this token earns in `hay` on the rungs that read it as a substring, if it earns anything.
+    #[must_use]
+    pub fn substring(&self, hay: &str, field: Field, starts: &WordStarts) -> Option<Match> {
+        field_substring(self, hay, field, starts)
+    }
+
+    /// The best this token earns in `hay` on the last rung, if it earns anything.
+    #[must_use]
+    pub fn subsequence(&self, hay: &str, field: Field) -> Option<Match> {
+        field_subsequence(self, hay, field)
+    }
+
+    /// The whole ladder for one field: the substring rungs, then the subsequence rung.
+    #[must_use]
+    pub fn ladder(&self, hay: &str, field: Field, starts: &WordStarts) -> Option<Match> {
+        self.substring(hay, field, starts)
+            .or_else(|| self.subsequence(hay, field))
+    }
+
+    /// Is this token the same word as `hay`?
+    ///
+    /// Measured first on the lengths, because a row's field lengths live in the row and its field text does
+    /// not: asking `a == b` on two `String`s reads both heaps, and the second corpus in `reco-p6zw` is
+    /// twenty thousand rows of short paths that are never the token. A length is a register compare.
+    #[must_use]
+    pub fn is_the_word(&self, hay: &str) -> bool {
+        hay.len() == self.text.len() && hay == self.text.as_str()
+    }
 }
 
 /// The best score one token earns in one field, and whether it earned it at all.
@@ -249,17 +359,21 @@ pub const W_BODY_SUBSEQ: Score = 20;
 
 /// Score `needle` against `hay` in `field`, best match only, no allocation.
 ///
-/// `word_starts` marks which offsets begin a word (see [`word_starts_of`]); passing it in rather than
-/// recomputing it per token is what keeps a five-token query over a 10 000-row corpus inside its budget.
+/// `word_starts` marks which offsets begin a word (see [`WordStarts`]); passing the row's own in rather than
+/// recomputing them per token is what keeps a five-token query over a 10 000-row corpus inside its budget.
 ///
 /// This is the whole ladder for one field. The corpus scan does not call it: it walks the fields one rung
 /// at a time so that a cheap field can end the walk before an expensive one ([`field_substring`] and
 /// [`field_subsequence`]). It stays public because a caller with one field in front of it — the command
 /// palette scoring its own labels — wants exactly this.
 #[must_use]
-pub fn field_score(needle: &str, hay: &str, field: Field, word_starts: &[usize]) -> Option<Match> {
-    field_substring(needle, hay, field, word_starts)
-        .or_else(|| field_subsequence(needle, hay, field))
+pub fn field_score(
+    token: &Token,
+    hay: &str,
+    field: Field,
+    word_starts: &WordStarts,
+) -> Option<Match> {
+    field_substring(token, hay, field, word_starts).or_else(|| field_subsequence(token, hay, field))
 }
 
 /// Every rung except the last: exact, prefix, word start, substring.
@@ -270,11 +384,12 @@ pub fn field_score(needle: &str, hay: &str, field: Field, word_starts: &[usize])
 /// field that matched as a substring has already settled the question.
 #[must_use]
 pub fn field_substring(
-    needle: &str,
+    token: &Token,
     hay: &str,
     field: Field,
-    word_starts: &[usize],
+    word_starts: &WordStarts,
 ) -> Option<Match> {
+    let needle = token.text();
     if needle.is_empty() || hay.is_empty() {
         return None;
     }
@@ -288,7 +403,7 @@ pub fn field_substring(
     let at = find(hay, needle)?;
     let score = if at == 0 {
         prefix_weight(field)
-    } else if starts_contain(word_starts, at) {
+    } else if word_starts.contains(at) {
         word_weight(field)
     } else {
         sub_weight(field)
@@ -307,11 +422,16 @@ pub fn field_substring(
 /// substring test already proved, on every row of the corpus, on every keystroke that is one letter long
 /// — which is the first keystroke.
 #[must_use]
-pub fn field_subsequence(needle: &str, hay: &str, field: Field) -> Option<Match> {
-    if needle.is_empty() || hay.is_empty() {
+pub fn field_subsequence(token: &Token, hay: &str, field: Field) -> Option<Match> {
+    if !token.subsequence_possible() || hay.is_empty() || token.text().len() > hay.len() {
         return None;
     }
-    if needle.chars().count() > 1 && subsequence(needle, hay) {
+    let found = if token.ascii() {
+        walk_bytes(token.text().as_bytes(), hay)
+    } else {
+        walked(token.text(), hay)
+    };
+    if found {
         Some(Match {
             score: subseq_weight(field),
             field,
@@ -385,15 +505,8 @@ fn find(hay: &str, needle: &str) -> Option<usize> {
 /// Case and separators are already handled by the caller's normalisation; this is a pure letter walk, and
 /// it stops at the first failure, which is why a non-match is cheap too.
 ///
-/// The ASCII path is one `memchr` per letter of the needle, each starting where the last one stopped.
-/// That is the same greedy left-to-right walk as the character path below — each letter is taken at its
-/// leftmost occurrence after the previous one, so the two accept exactly the same haystacks — and it is
-/// 1.6× faster in a debug build for the same reason [`find`] is: `core` scans a word at a time and this
-/// crate at `-C opt-level=0` scans a byte at a time. Comparing bytes rather than characters is not an
-/// optimisation-shaped lie either: no byte of a multi-byte character is ever an ASCII byte, so an ASCII
-/// needle gets the same answer from either walk, and a needle with a non-ASCII letter in it — which is
-/// every needle a search box produces other than one where the reviewer typed outside ASCII — takes the
-/// character walk.
+/// The ASCII path is [`walk_bytes`]; a needle with a non-ASCII letter in it takes the character walk, and
+/// the two agree — see [`walk_bytes`].
 #[must_use]
 pub fn subsequence(needle: &str, hay: &str) -> bool {
     if needle.is_empty() {
@@ -403,27 +516,87 @@ pub fn subsequence(needle: &str, hay: &str) -> bool {
         return false;
     }
     if needle.is_ascii() {
-        let mut rest = hay;
-        for want in needle.bytes() {
-            // Every byte of an ASCII needle is one byte wide, so `at + 1` is a character boundary.
-            match rest.find(want as char) {
-                Some(at) => rest = &rest[at + 1..],
-                None => return false,
-            }
-        }
-        return true;
+        return walk_bytes(needle.as_bytes(), hay);
     }
+    walked(needle, hay)
+}
+
+/// The subsequence walk for a needle that is not all ASCII.
+///
+/// Character by character, because a byte walk would let the bytes of a multi-byte character be picked up
+/// out of their order. [`walk_bytes`] is what an ASCII needle takes, and the two accept the same haystacks.
+#[must_use]
+fn walked(needle: &str, hay: &str) -> bool {
     let mut haystack = hay.chars();
     needle.chars().all(|want| haystack.any(|have| have == want))
+}
+
+/// The haystack length from which `core`'s scanner is worth a call per needle letter.
+///
+/// The two walks were measured against each other on the corpus `tests/search_scoring.rs` builds, in the
+/// debug profile the budget lives in, one vCPU, per row of a 20 000-row symbol section and a 2 000-row
+/// episode section:
+///
+/// | field | mean length | one `memchr` per letter | one pass, no calls |
+/// |---|---|---|---|
+/// | symbol name | 15 B | 150 ns | **79 ns** |
+/// | path | 35 B | 232 ns | **141 ns** |
+/// | episode body | 230 B | **375 ns** | 485 ns |
+///
+/// So for the fields a row is mostly made of, the call overhead of `memchr` is the whole cost, and a
+/// byte-at-a-time pass that makes no calls at all is twice as cheap; by the time the field is a body the
+/// scanner is reading sixteen bytes at a time and wins instead. `reco-p6zw` is the ticket that measured it
+/// after the mac leg went over the budget.
+const SCANNED_FIELD: usize = 64;
+
+/// Does every byte of `needle` appear in `hay`, in order? (The ASCII needle's whole story.)
+///
+/// The `memchr` form is the same greedy left-to-right walk as the character form in [`subsequence`] — each
+/// letter is taken at its leftmost occurrence after the previous one, so the two accept exactly the same
+/// haystacks — and it is 1.6× faster in a debug build for the same reason [`find`] is: `core` scans a word
+/// at a time and this crate at `-C opt-level=0` scans a byte at a time. Comparing bytes rather than
+/// characters is not an optimisation-shaped lie either: no byte of a multi-byte character is ever an ASCII
+/// byte, so an ASCII needle gets the same answer from either walk.
+///
+/// Short haystacks take the other walk, at [`SCANNED_FIELD`] and below, because there the call overhead is
+/// what is being paid; both walks stop at the first failure, so a non-match is cheap in either.
+#[must_use]
+fn walk_bytes(needle: &[u8], hay: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    if hay.len() <= SCANNED_FIELD {
+        let mut want = 0usize;
+        for &have in hay.as_bytes() {
+            if have == needle[want] {
+                want += 1;
+                if want == needle.len() {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    let mut rest = hay;
+    for &want in needle {
+        // One `memchr` from where the last letter stopped. `want` is an ASCII byte, so `at + 1` is a
+        // character boundary of the text these bytes came from.
+        match rest.find(want as char) {
+            Some(at) => rest = &rest[at + 1..],
+            None => return false,
+        }
+    }
+    true
 }
 
 /// The byte offsets that begin a word: after whitespace and after the separators a path, an identifier or
 /// a dashed name is made of.
 ///
-/// `0` is always a word start. The set is small and sorted, so [`Vec::binary_search`] is enough and a
-/// `HashSet` per field is not needed — this runs once per field at index time, not per token.
+/// `0` is always a word start. This is the wide form, for a field too long to index with a bit per byte
+/// ([`WordStarts`]); the set is small and sorted, so [`Vec::binary_search`] is enough and a `HashSet` per
+/// field is not needed — this runs once per field at index time, not per token.
 #[must_use]
-pub fn word_starts_of(text: &str) -> Vec<usize> {
+fn word_starts_of(text: &str) -> Vec<usize> {
     let mut out = vec![0usize];
     let bytes = text.as_bytes();
     for (index, byte) in bytes.iter().enumerate().skip(1) {
@@ -621,9 +794,9 @@ mod tests {
         ];
         for field in fields {
             let letters = Letters::of(field);
-            let starts = word_starts_of(field);
+            let starts = WordStarts::of(field);
             for token in tokens {
-                let found = field_score(token, field, Field::Name, &starts).is_some();
+                let found = field_score(&Token::new(token), field, Field::Name, &starts).is_some();
                 if !letters.holds(token) {
                     assert!(
                         !found,
@@ -684,26 +857,76 @@ mod tests {
 
     #[test]
     fn a_one_character_token_needs_no_subsequence_walk() {
-        // The subsequence rung skips a single-character needle: it cannot match as a subsequence unless it
+        // The subsequence rung skips a single-character needle: it cannot match as a substring unless it
         // matches as a substring, and the substring rung already ran. Same answer, one walk less per row.
-        assert_eq!(field_score("q", "epoch store", Field::Body, &[0, 6]), None);
+        let starts = WordStarts::of("epoch store");
+        let token = |text: &str| Token::new(text);
         assert_eq!(
-            field_score("s", "epoch store", Field::Body, &[0, 6]).map(|found| found.score),
+            field_score(&token("q"), "epoch store", Field::Body, &starts),
+            None
+        );
+        assert_eq!(
+            field_score(&token("s"), "epoch store", Field::Body, &starts).map(|found| found.score),
             Some(W_BODY_WORD),
             "`s` begins the word `store`, and a word start is worth more than a letter inside a word"
         );
         assert_eq!(
-            field_score("t", "epoch store", Field::Body, &[0, 6]).map(|found| found.score),
+            field_score(&token("t"), "epoch store", Field::Body, &starts).map(|found| found.score),
             Some(W_BODY_SUB),
             "`t` is inside `store` and begins nothing"
         );
         assert_eq!(
-            field_score("sto", "epoch store", Field::Body, &[0, 6]).map(|found| found.score),
+            field_score(&token("sto"), "epoch store", Field::Body, &starts)
+                .map(|found| found.score),
             Some(W_BODY_WORD)
         );
         assert_eq!(
-            field_score("fathstor", "fathom-store", Field::Name, &[0]).map(|found| found.score),
+            field_score(
+                &token("fathstor"),
+                "fathom-store",
+                Field::Name,
+                &WordStarts::of("fathom-store")
+            )
+            .map(|found| found.score),
             Some(W_NAME_SUBSEQ)
         );
+    }
+
+    #[test]
+    fn the_two_subsequence_walks_agree_across_the_length_split() {
+        // `walk_bytes` switches strategy at `SCANNED_FIELD`, and the two strategies must answer alike — a
+        // haystack just over the line is asked `memchr` per letter and one just under is walked in a pass,
+        // and a search that changed its answer with the length of a path would be a ranking bug wearing a
+        // performance costume. The character walk is the third opinion, and it is the one a non-ASCII needle
+        // gets.
+        let needles = ["abc", "parss", "src/store", "eapl", "epoch_store20"];
+        let mut haystacks: Vec<String> = Vec::new();
+        for width in [
+            SCANNED_FIELD - 2,
+            SCANNED_FIELD - 1,
+            SCANNED_FIELD,
+            SCANNED_FIELD + 1,
+            SCANNED_FIELD + 2,
+            4 * SCANNED_FIELD,
+        ] {
+            haystacks.push("z".repeat(width));
+            // A needle-rejecting haystack of each shape, and a haystack the needles can walk.
+            haystacks.push(format!("{}eabcpl", "z".repeat(width - 6)));
+            haystacks.push(format!(
+                "{}src/store{}epoch_store20",
+                "z".repeat(width / 3),
+                "-"
+            ));
+        }
+        for hay in &haystacks {
+            for needle in needles {
+                let byte = subsequence(needle, hay);
+                let chars = walked(needle, hay);
+                assert_eq!(
+                    byte, chars,
+                    "`{needle}` on `{hay}`: byte walk and character walk disagree"
+                );
+            }
+        }
     }
 }

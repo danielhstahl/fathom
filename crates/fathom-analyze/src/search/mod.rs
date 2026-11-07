@@ -634,25 +634,26 @@ impl Corpus {
 /// scorer returned is the byte offset the snippet was cut at.
 #[derive(Debug, Clone)]
 struct Row {
+    // Everything the mask test answers from is declared first, and the order is not cosmetic: Rust keeps
+    // declaration order in memory, so the rows a token's letters refuse — which is most of a corpus for
+    // most tokens — are answered from the first cache line of this struct and never touch the text below
+    // it. A keystroke walks twenty thousand of these, and `reco-p6zw` measured this reordering against the
+    // order it replaced.
+    /// What kind of thing this is, which the report groups by and a `kind:` filter answers from.
     kind: Kind,
-    id: String,
-    label: String,
-    detail: String,
-    detail_lc: String,
-    episode: Option<String>,
-    /// The file a hit deep-links into, in the corpus's own spelling. See [`Entry::file`].
-    file: Option<String>,
-    /// Lower-cased: it is matched and filtered, never printed.
-    author: Option<String>,
+    /// This row's place in the tie-break order, assigned once when the index is built.
+    ///
+    /// Two hits that score alike are separated by kind, then label, then id — a total order over the whole
+    /// corpus — and a total order can be compiled into one integer and compared as one integer. Sorting by
+    /// the keys themselves instead costs a random dive into a 700-byte row per comparison, which measured
+    /// as the larger half of a keystroke: `tests/search_scoring.rs` asserts the budget at 10 000 episodes
+    /// and the sort of the result set was what broke it.
+    rank: u32,
+    /// The caller's prior, which is the whole score of a filter-only browse.
+    prior: i64,
+    /// The date and the risk score: what `since:`, `until:` and `risk>` answer from.
     utc: Option<Timestamp>,
     risk: Option<i64>,
-    name: String,
-    body: String,
-    paths: String,
-    deps: String,
-    name_starts: Vec<usize>,
-    body_starts: Vec<usize>,
-    prior: i64,
     /// Which ASCII letters each scannable field of this row contains, indexed by [`Field::index`].
     ///
     /// A token whose letters are not in a field cannot match it as a substring or as a subsequence, so the
@@ -662,14 +663,23 @@ struct Row {
     /// The union of [`Row::letters`]: the same question asked of the row as a whole, answered in one test
     /// before any field is looked at.
     anywhere: score::Letters,
-    /// This row's place in the tie-break order, assigned once when the index is built.
-    ///
-    /// Two hits that score alike are separated by kind, then label, then id — a total order over the whole
-    /// corpus — and a total order can be compiled into one integer and compared as one integer. Sorting by
-    /// the keys themselves instead costs a random dive into a 700-byte row per comparison, which measured
-    /// as the larger half of a keystroke: `tests/search_scoring.rs` asserts the budget at 10 000 episodes
-    /// and the sort of the result set was what broke it.
-    rank: u32,
+    /// Where the words of [`Row::name`] begin, and where the words of [`Row::body`] begin.
+    name_starts: score::WordStarts,
+    body_starts: score::WordStarts,
+    // The text, which is what the walk under the mask reads.
+    id: String,
+    label: String,
+    detail: String,
+    detail_lc: String,
+    episode: Option<String>,
+    /// The file a hit deep-links into, in the corpus's own spelling. See [`Entry::file`].
+    file: Option<String>,
+    /// Lower-cased: it is matched and filtered, never printed.
+    author: Option<String>,
+    name: String,
+    body: String,
+    paths: String,
+    deps: String,
 }
 
 impl Row {
@@ -692,14 +702,14 @@ impl Row {
     /// A field the row does not have comes back as the empty string rather than an `Option`: an absent field
     /// is scored the same way in every walk, and the `Option` would be a branch in the inner loop to say
     /// "nothing" that `""` already says.
-    fn field(&self, field: Field) -> (&str, &[usize]) {
+    fn field(&self, field: Field) -> (&str, &score::WordStarts) {
         match field {
-            Field::Name => (self.name.as_str(), self.name_starts.as_slice()),
-            Field::Body => (self.body.as_str(), self.body_starts.as_slice()),
-            Field::Detail => (self.detail_lc.as_str(), NO_STARTS),
-            Field::Path => (self.paths.as_str(), NO_STARTS),
-            Field::Dep => (self.deps.as_str(), NO_STARTS),
-            Field::Author => (self.author.as_deref().unwrap_or(""), NO_STARTS),
+            Field::Name => (self.name.as_str(), &self.name_starts),
+            Field::Body => (self.body.as_str(), &self.body_starts),
+            Field::Detail => (self.detail_lc.as_str(), &NO_STARTS),
+            Field::Path => (self.paths.as_str(), &NO_STARTS),
+            Field::Dep => (self.deps.as_str(), &NO_STARTS),
+            Field::Author => (self.author.as_deref().unwrap_or(""), &NO_STARTS),
         }
     }
 
@@ -723,19 +733,21 @@ impl Row {
     /// ties with any of them, because `160`/`120`/`20` are not `450`/`90`/`40`; and the name is first in
     /// both. So the field this reports is the field the whole-ladder walk would have picked.
     fn best_match(&self, token: &score::Token) -> Option<score::Match> {
-        let needle = token.text();
         let mut best: Option<score::Match> = None;
         // Rung 1 — the name, ladder and all. It is the smallest field and the only one that can beat a
         // secondary field that *is* the token, so it is read whole and once.
         if token.could_match(self.letters_for(Field::Name)) {
-            best = score::field_score(needle, self.name.as_str(), Field::Name, &self.name_starts);
+            best = token.ladder(self.name.as_str(), Field::Name, &self.name_starts);
         }
         // Rung 2 — a secondary field that *is* the token: `W_SECONDARY_EXACT`, which is more than the body
         // can pay and more than any later rung can. A length test and a compare, which is why it runs
-        // before anything is walked at all.
+        // before anything is walked at all — and the length is compared first for the same reason in
+        // miniature: deciding two `String`s equal reads both heaps, and a row's detail, paths, deps and
+        // author are not the token almost everywhere in the symbol section (`reco-p6zw`, where this one
+        // line was measured as a sixth of a keystroke over that corpus).
         if worth_walking(best, score::W_SECONDARY_EXACT) {
             for field in SECONDARY {
-                if self.field(field).0 == needle {
+                if token.is_the_word(self.field(field).0) {
                     best = Some(score::Match {
                         score: score::W_SECONDARY_EXACT,
                         field,
@@ -750,8 +762,7 @@ impl Row {
         // the author of a row that has already answered.
         if worth_walking(best, score::W_BODY_WORD)
             && token.could_match(self.letters_for(Field::Body))
-            && let Some(found) =
-                score::field_substring(needle, self.body.as_str(), Field::Body, &self.body_starts)
+            && let Some(found) = token.substring(self.body.as_str(), Field::Body, &self.body_starts)
         {
             best = Some(found);
         }
@@ -762,9 +773,7 @@ impl Row {
                 if !token.could_match(self.letters_for(field)) {
                     continue;
                 }
-                if let Some(found) =
-                    score::field_substring(needle, self.field(field).0, field, NO_STARTS)
-                {
+                if let Some(found) = token.substring(self.field(field).0, field, &NO_STARTS) {
                     best = Some(found);
                     break;
                 }
@@ -778,7 +787,7 @@ impl Row {
                 if !token.could_match(self.letters_for(field)) {
                     continue;
                 }
-                if let Some(found) = score::field_subsequence(needle, self.field(field).0, field) {
+                if let Some(found) = token.subsequence(self.field(field).0, field) {
                     best = Some(found);
                     break;
                 }
@@ -786,7 +795,7 @@ impl Row {
         }
         if worth_walking(best, score::W_BODY_SUBSEQ)
             && token.could_match(self.letters_for(Field::Body))
-            && let Some(found) = score::field_subsequence(needle, self.body.as_str(), Field::Body)
+            && let Some(found) = token.subsequence(self.body.as_str(), Field::Body)
         {
             best = Some(found);
         }
@@ -938,6 +947,15 @@ impl Index {
             );
             rows.push(Row {
                 kind: entry.kind,
+                // Replaced straight away by [`assign_ranks`]; there is no honest value to put here.
+                rank: 0,
+                prior: entry.prior,
+                utc: entry.utc,
+                risk: entry.risk,
+                letters,
+                anywhere,
+                name_starts: score::WordStarts::of(&name),
+                body_starts: score::WordStarts::of(&body),
                 id: entry.id.clone(),
                 label: entry.name.clone(),
                 detail: entry.detail.clone(),
@@ -945,19 +963,10 @@ impl Index {
                 episode: entry.episode.clone(),
                 file: entry.file.clone(),
                 author: author_lc,
-                utc: entry.utc,
-                risk: entry.risk,
-                name_starts: score::word_starts_of(&name),
                 name,
-                body_starts: score::word_starts_of(&body),
                 body,
                 paths: paths_lc,
                 deps: deps_lc,
-                prior: entry.prior,
-                letters,
-                anywhere,
-                // Replaced straight away by [`assign_ranks`]; there is no honest value to put here.
-                rank: 0,
             });
         }
         assign_ranks(&mut rows);
@@ -1076,17 +1085,7 @@ impl Index {
             .iter()
             .map(|token| score::Token::new(token))
             .collect();
-        let matched_and_candidates = self.judge_all(query, &kinds, &tokens);
-        let mut matched: Vec<(i64, u32, u32)> = Vec::with_capacity(matched_and_candidates.len());
-        let mut candidates = 0usize;
-        for (candidate, scored) in matched_and_candidates {
-            if candidate {
-                candidates += 1;
-            }
-            if let Some(hit) = scored {
-                matched.push(hit);
-            }
-        }
+        let (candidates, mut matched) = self.judge_all(query, &kinds, &tokens);
         let scored = matched.len();
         // The order, bought at the cheapest price that still gets it. The report shows `limit` rows, and a
         // full sort of every scored row pays for ordering thousands of rows nobody will see: a broad query
@@ -1159,38 +1158,66 @@ impl Index {
         }
     }
 
-    /// Phase one, over every row: is it a candidate, and what is its score.
+    /// Phase one, over every row: the rows that are hits, each as `(score, row, rank)`, and how many rows
+    /// the query's kind and filters let through (which is what the report prints as the width of the
+    /// question the score then answers).
     ///
     /// The scan is data-parallel above [`PARALLEL_SCAN`] rows, because the latency budget is a wall-clock
     /// statement and a 10 000-episode corpus is a memory-bound walk of several hundred kilobytes of text.
     /// Parallelism is available here and nowhere else in a keystroke only because a row's score depends on
     /// the row and the query and on nothing else: the order the results come back in is not part of the
     /// answer, since [`score::compare_hits`] is a total order.
-    fn judge_all(&self, query: &Query, kinds: &[Kind], tokens: &[score::Token]) -> Vec<Judgement> {
-        let judge = |(index, row): (usize, &Row)| {
+    ///
+    /// A row that is not a hit contributes *nothing* to the returned set. The intermediate collection used
+    /// to carry one `(bool, Option<…>)` per row of the corpus — half a megabyte of scratch per keystroke
+    /// over twenty thousand rows, allocated, faulted in, and thrown away again sixty times a minute by a
+    /// reviewer who is typing — so the no's are dropped here instead, and the candidate count is tallied
+    /// into the same walk rather than asked for by a second one.
+    fn judge_all(
+        &self,
+        query: &Query,
+        kinds: &[Kind],
+        tokens: &[score::Token],
+    ) -> (usize, Vec<Judgement>) {
+        // With no kind and no filter in play every row is a candidate, which the answer already knows; the
+        // counter is only paid for on the queries that need one.
+        let counting = !kinds.is_empty() || !query.filters.is_empty();
+        let candidates = std::sync::atomic::AtomicUsize::new(0);
+        let judge = |(index, row): (usize, &Row)| -> Option<Judgement> {
             if !kinds.is_empty() && !kinds.contains(&row.kind) {
-                return (false, None);
+                return None;
             }
             if !self.passes_filters(query, row) {
-                return (false, None);
+                return None;
+            }
+            if counting {
+                candidates.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
             let Ok(number) = u32::try_from(index) else {
-                return (true, None);
+                return None;
             };
-            (
-                true,
-                score_row(tokens, row).map(|total| (total, number, row.rank)),
-            )
+            score_row(tokens, row).map(|total| (total, number, row.rank))
         };
-        if self.rows.len() < PARALLEL_SCAN {
-            return self.rows.iter().enumerate().map(judge).collect::<Vec<_>>();
-        }
-        use rayon::prelude::*;
-        self.rows
-            .par_iter()
-            .enumerate()
-            .map(judge)
-            .collect::<Vec<_>>()
+        let matched = if self.rows.len() < PARALLEL_SCAN {
+            self.rows
+                .iter()
+                .enumerate()
+                .filter_map(judge)
+                .collect::<Vec<_>>()
+        } else {
+            use rayon::prelude::*;
+            self.rows
+                .par_iter()
+                .enumerate()
+                .filter_map(judge)
+                .collect::<Vec<_>>()
+        };
+        let candidates = if counting {
+            candidates.load(std::sync::atomic::Ordering::Relaxed)
+        } else {
+            self.rows.len()
+        };
+        (candidates, matched)
     }
 
     fn passes_filters(&self, query: &Query, row: &Row) -> bool {
@@ -1235,7 +1262,7 @@ impl Index {
             let mut best: Option<(score::Match, &str)> = None;
             for field in WALK {
                 let (hay, starts) = row.field(field);
-                if let Some(found) = score::field_score(typed, hay, field, starts)
+                if let Some(found) = token.ladder(hay, field, starts)
                     && best.is_none_or(|(current, _)| found.score > current.score)
                 {
                     best = Some((found, hay));
@@ -1277,11 +1304,11 @@ impl Index {
     }
 }
 
-/// What one row answers to: was it a candidate at all, and if it was, what did it score.
+/// What one row answers to: its score, its place in the corpus, and its place in the tie-break order.
 ///
-/// Named because the tuple inside is four decisions wide and a function signature is not where a reader
+/// Named because the tuple inside is three decisions wide and a function signature is not where a reader
 /// should be asked to hold them.
-type Judgement = (bool, Option<(i64, u32, u32)>);
+type Judgement = (i64, u32, u32);
 
 /// The row count at which the corpus scan is handed to `rayon`.
 ///
@@ -1291,8 +1318,8 @@ type Judgement = (bool, Option<(i64, u32, u32)>);
 /// 10 000-episode corpus the budget is stated against, and it is the reason the number exists.
 const PARALLEL_SCAN: usize = 2_000;
 
-/// The word starts of a field too short to need them (see [`Index::score_row`]).
-const NO_STARTS: &[usize] = &[];
+/// The word starts of a field with no words but the first one (see [`score::WordStarts::NONE`]).
+const NO_STARTS: score::WordStarts = score::WordStarts::NONE;
 
 /// Lower-case a field for matching, keeping it a single searchable run.
 fn lower_with(text: &str) -> String {
@@ -1635,7 +1662,7 @@ mod tests {
                 let mut whole: Option<score::Match> = None;
                 for field in WALK {
                     let (hay, starts) = row.field(field);
-                    if let Some(found) = score::field_score(text, hay, field, starts)
+                    if let Some(found) = token.ladder(hay, field, starts)
                         && whole.is_none_or(|current| found.score > current.score)
                     {
                         whole = Some(found);

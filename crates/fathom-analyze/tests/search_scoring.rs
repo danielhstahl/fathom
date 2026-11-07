@@ -619,8 +619,22 @@ const TYPED: &[&str] = &[
 /// six times per row, before the field walk stopped reading the 230-byte body before the hundred bytes of
 /// cheap fields, and before `core`'s `memchr` replaced the byte-at-a-time scans here. See the notes on
 /// `find` and [`score::subsequence`] for what each of those was worth on its own.
+///
+/// A second runner-shape bug was found by the sibling budget below (`reco-p6zw`, on the mac leg): the two
+/// timed tests in this file were timed *concurrently with each other*, which is worth a factor of two on a
+/// four-core runner all by itself. Both are now timed one at a time ([`LATENCY_BUDGET`]), and both print
+/// how many cores the runner actually offered. With that, this corpus measures a 4.0 ms median and a
+/// 13.8 ms p95 on four cores, a 25.8 ms p95 on two, and a 49 ms p95 on one — the one-core number is within
+/// 1 ms of the budget, and it is a genuinely one-core box being asked for four typo'd words that are each a
+/// subsequence of every body in the corpus, which is the worst keystroke the scorer has. If this goes red
+/// on a runner that prints `1 cores offered to this process`, the honest question is whether the runner is a
+/// one-core box, because the budget was never signed up for that; on two cores and up there is room to
+/// spare.
 #[test]
 fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
+    // Timed alone: see [`LATENCY_BUDGET`]. The two budget tests in this file are the two longest things in
+    // it, and each of them wants every core the runner has.
+    let _budget = latency_budget();
     const EPISODES: usize = 10_000;
     const BUDGET: std::time::Duration = std::time::Duration::from_millis(50);
 
@@ -662,14 +676,17 @@ fn typing_stays_inside_the_budget_on_a_ten_thousand_episode_corpus() {
     let (median, median_keystroke) = samples[samples.len() / 2];
     let (p95, p95_keystroke) = samples[(samples.len() * 95) / 100];
     let (worst, worst_keystroke) = samples[samples.len() - 1];
+    let cores = runner_cores();
     eprintln!(
         "search over {rows} rows ({EPISODES} episodes): index built in {build:?}, median {median:?} on `{median_keystroke}`, \
-         p95 {p95:?} on `{p95_keystroke}`, worst {worst:?} on `{worst_keystroke}`"
+         p95 {p95:?} on `{p95_keystroke}`, worst {worst:?} on `{worst_keystroke}` ({} cores offered to this process)",
+        cores
     );
     assert!(
         p95 < BUDGET,
         "p95 {p95:?} is over the {BUDGET:?} budget ADR-006 §5.8 sets for `query.search.ms`; the keystroke at \
-         the 95th percentile was `{p95_keystroke}`, the worst was {worst:?} on `{worst_keystroke}`"
+         the 95th percentile was `{p95_keystroke}`, the worst was {worst:?} on `{worst_keystroke}`, and the \
+         runner offered {cores} cores to this process"
     );
     assert!(
         median < BUDGET,
@@ -788,8 +805,73 @@ fn episode_subject(n: usize) -> String {
     )
 }
 
+/// The latency budgets in this file are timed one at a time, against a lock neither of them owns.
+///
+/// libtest runs the tests of a binary concurrently, one per core, and both of this file's budget tests are
+/// the kind of work that wants every core it can get — the ten-thousand-episode corpus is a parallel scan
+/// and the symbol corpus is a bigger one. Measured on a four-core runner (`-- --nocapture`, `reco-p6zw`):
+/// `a_two_thousand_episode_corpus_with_its_symbols_builds_inside_the_budget` prints a 9.8 ms p95 when it
+/// runs alone and a 20-22 ms p95 when the rest of this file runs alongside it. That is more than a factor
+/// of two of inflation, bought from the harness and not from the code under test — and on a four-core CI
+/// runner it is the difference between a passing leg and a red one.
+///
+/// A reviewer types one keystroke at a time on a box that is not also running three other searches, and
+/// the release gate (`tools/perf_gate.py`) measures the same budget in a quiet process, so a number
+/// inflated by this file's own thread churn is not the thing ADR-006 §5.8 signed up to guard. The lock
+/// changes the measurement, not the budget: the number compared against 50 ms is still the debug build's
+/// own, over the same corpus, with the same keystrokes, and a regression that makes a keystroke genuinely
+/// slower still trips it.
+static LATENCY_BUDGET: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Take the latency budget: hold this guard for the whole of a timed test.
+///
+/// Poison-tolerant on purpose: a budget test that panicked while holding the lock has already reported
+/// itself, and making the *next* budget test fail with "mutex is poisoned" would bury the first failure
+/// under an artifact of the harness.
+fn latency_budget() -> std::sync::MutexGuard<'static, ()> {
+    LATENCY_BUDGET
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// How many cores the runner offered this process, which the budget lines print.
+///
+/// A wall-clock budget whose failure message does not say what it was measured on is a ticket that opens
+/// with "this could be a slower runner" — which is `reco-axp`'s rule, and the exact sentence this file has
+/// had to write more than once. `available_parallelism` is the honest number: it is what the parallel scan
+/// will actually get, cgroup limits included, rather than what the machine claims to have.
+fn runner_cores() -> usize {
+    std::thread::available_parallelism().map_or(1, |n| n.get())
+}
+
+/// The symbol section at the size the product expects — 2 000 episodes and 20 000 declarations — and what
+/// it costs to build and to search (`reco-6sw`, and then `reco-p6zw`).
+///
+/// The mac leg went red here with a p95 over 50 ms, and both of the ticket's hypotheses turned out to be
+/// true, which is worth spelling out because the two fixes are different:
+///
+/// * **The scorer was paying for work it did not need.** Over this corpus the keystroke is dominated by the
+///   twenty thousand symbol rows, whose names a typo'd token walks as a *subsequence* in nearly every row.
+///   Measured one-instrument-at-a-time: the name rung's letter walk was about three quarters of a keystroke,
+///   the `== needle` test in the exact-match rung (which reads four `String` heaps per row to answer "no")
+///   a sixth of it, and the per-row re-derivations of the token's own shape a slice of the rest. The fixes
+///   are in [`score`]: walk short fields in one pass with no calls ([`score::subsequence`]), carry the
+///   token's facts on the token, compare word lengths before comparing words, keep a row's mask data in the
+///   first cache line of the row, and stop allocating half a megabyte of per-keystroke scratch to hold the
+///   rows that did not match. The budget went from a 20-26 ms p95 to a 6-7 ms one on four cores.
+/// * **The measurement was inflated by the harness.** libtest runs this file's tests on one thread per
+///   core, so the two budget tests were timing each other; see [`LATENCY_BUDGET`]. That alone was worth
+///   better than a factor of two on the number below, and it is the whole reason a runner that is not
+///   underpowered can still print a p95 over the budget.
+///
+/// What is left is the honest cost of the corpus: a 6-7 ms p95 on four cores, 11.6 ms on two, and 21.8 ms
+/// on one. The worst keystroke is `src/store` — a path fragment no row contains, which every row's paths
+/// and body are read to rule out — and the runner's own shape moves it by less than a factor of three
+/// between one core and four, which is what makes the one-core number the useful floor to quote.
 #[test]
 fn a_two_thousand_episode_corpus_with_its_symbols_builds_inside_the_budget() {
+    // Timed alone: see [`LATENCY_BUDGET`].
+    let _budget = latency_budget();
     const EPISODES: usize = 2_000;
     // `fathom_analyze::search::SYMBOL_MAX`, spelled as a number here so that the test measures the size the
     // builder is allowed to reach rather than tracking a constant that could be lowered to make it pass.
@@ -905,17 +987,21 @@ fn a_two_thousand_episode_corpus_with_its_symbols_builds_inside_the_budget() {
 
     // The budget that actually has a number attached to it is the keystroke, and it is unchanged by the
     // section's size only because the scan is parallel and the letter-set test rejects most rows early.
+    // What it costs, and which keystroke pays it, is the same question `reco-p6zw` had to ask of the mac
+    // leg, so the samples keep the text they came from: `src/store` — a path fragment that no row contains
+    // and every row's paths and body are therefore walked to prove it — is several times what `lockfil`
+    // costs, and "p95 over budget" with no name attached is a ticket that starts with a stopwatch.
     for text in TYPED_WITH_SYMBOLS {
         let _ = index.search(&Query::parse(text, now()), DEFAULT_LIMIT);
     }
-    let mut samples: Vec<std::time::Duration> = Vec::new();
+    let mut samples: Vec<(std::time::Duration, &'static str)> = Vec::new();
     for round in 0..3 {
         for text in TYPED_WITH_SYMBOLS {
             let limit = if round % 2 == 0 { 5 } else { DEFAULT_LIMIT };
             let started = Instant::now();
             let report = index.search(&Query::parse(text, now()), limit);
             let took = started.elapsed();
-            samples.push(took);
+            samples.push((took, text));
             assert!(
                 report.hits.len() <= limit,
                 "`{text}` returned {} rows for a limit of {limit}",
@@ -923,14 +1009,20 @@ fn a_two_thousand_episode_corpus_with_its_symbols_builds_inside_the_budget() {
             );
         }
     }
-    samples.sort();
-    let p95 = samples[(samples.len() * 95) / 100];
+    samples.sort_by_key(|(took, _)| *took);
+    let (median, median_keystroke) = samples[samples.len() / 2];
+    let (p95, p95_keystroke) = samples[(samples.len() * 95) / 100];
+    let (worst, worst_keystroke) = samples[samples.len() - 1];
+    let cores = runner_cores();
     eprintln!(
-        "search over {rows} rows: median {:?}, p95 {p95:?}",
-        samples[samples.len() / 2]
+        "search over {rows} rows: median {median:?} on `{median_keystroke}`, p95 {p95:?} on \
+         `{p95_keystroke}`, worst {worst:?} on `{worst_keystroke}` ({} cores offered to this process)",
+        cores
     );
     assert!(
         p95 < std::time::Duration::from_millis(50),
-        "with the symbol section in the corpus, p95 {p95:?} is over the 50 ms `query.search.ms` budget"
+        "with the symbol section in the corpus, p95 {p95:?} on `{p95_keystroke}` is over the 50 ms \
+         `query.search.ms` budget; the worst keystroke was {worst:?} on `{worst_keystroke}`, the median \
+         {median:?} on `{median_keystroke}`, and the runner offered {cores} cores to this process"
     );
 }
