@@ -17,6 +17,40 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The binary stopped building on Windows, over a signal that platform does not have (`reco-wgcj`)
+
+`cargo build --workspace --all-features` is a CI step on `windows-latest`, and it died in the daemon's signal
+setup, before anything of the product was compiled:
+
+```text
+error[E0425]: cannot find value `SIGHUP` in module `signal_hook::consts`
+   --> crates/fathom-cli/src/daemon.rs:620:35
+```
+
+* **`SIGHUP` is the controlling terminal going away, and a Windows console is not a controlling terminal.**
+  `signal-hook` exports, on Windows, only the signals the C runtime can actually be told about — `SIGINT`,
+  `SIGTERM`, `SIGABRT`, `SIGFPE`, `SIGILL`, `SIGSEGV`, plus `SIGBREAK` — so `SIGHUP` is not a handler that
+  never fires there, it is a name that does not exist. Closing a console is a `CTRL_CLOSE_EVENT`, which the
+  C runtime does not turn into a signal at all.
+* **The stop table is built per platform now (`Signals`/`stop_signals`), not filtered at run time.** `SIGINT`
+  and `SIGTERM` set the stop flag everywhere; `SIGINT` and `SIGTERM` are hooked on Windows too, so Ctrl-C and
+  a supervisor's stop still land in the same settle `fathom daemon stop` uses. `SIGHUP` is added on Unix, for
+  both the stop flag and the hang-up flag. The one thing Windows gives up is an exit-code claim: a daemon whose
+  console is closed leaves with it instead of exiting `Cancelled`, which is the platform's own answer and the
+  closer truth — there is no `SIGHUP` to name as the reason.
+* **The same build failure was waiting one layer down, in the tests.** `cargo test --workspace --all-features`
+  compiles every test target on every OS in the matrix, and `crates/fathom-ingest/tests/daemon.rs` and
+  `crates/fathom-cli/tests/daemon.rs` both drive a daemon *over its socket*, which is the transport
+  `fathom-ingest` already says it cannot bind off Unix (a named pipe needs the FFI `#![forbid(unsafe_code)]`
+  rules out). They are `cfg(unix)` now, with the reason next to the gate rather than in a ticket nobody
+  re-reads; the one `fathom-tui` terminal test that asserts "`SIGINT`/`SIGTERM`/`SIGHUP` are hookable here"
+  went the same way, and its import with it.
+* **What is *not* claimed:** that the Windows test suite passes. This ticket is the build. What was verified is
+  `cargo check --workspace --all-features --all-targets --target x86_64-pc-windows-msvc` clean, the same
+  invocation on the host clean, and the three affected test binaries green here (`fathom-tui --test terminal`,
+  `fathom-ingest --test daemon`, `fathom-cli --test daemon`) — so the Unix behaviour the gates moved is known
+  not to have moved.
+
 ### An open frame kept naming the branch it had opened on, long after the reviewer had left it (`reco-nup`)
 
 A `fathom` shell open in the second terminal printed `myrepo · main` in the tab bar while the first terminal

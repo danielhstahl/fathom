@@ -611,15 +611,13 @@ struct Signals {
 }
 
 impl Signals {
+    /// Install every handler this platform has, or fail naming the one that refused to install.
     fn install() -> Result<Signals, eyre::Report> {
         let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let hangup = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        for (signal, flag) in [
-            (signal_hook::consts::SIGINT, std::sync::Arc::clone(&stop)),
-            (signal_hook::consts::SIGTERM, std::sync::Arc::clone(&stop)),
-            (signal_hook::consts::SIGHUP, std::sync::Arc::clone(&stop)),
-            (signal_hook::consts::SIGHUP, std::sync::Arc::clone(&hangup)),
-        ] {
+        for (signal, flag) in
+            stop_signals(std::sync::Arc::clone(&stop), std::sync::Arc::clone(&hangup))
+        {
             signal_hook::flag::register(signal, flag).map_err(|err| {
                 Pending::new(
                     ExitCode::Error,
@@ -637,9 +635,47 @@ impl Signals {
 
     /// Whether the reason was `SIGHUP` — ADR-004 §7.1's "the controlling terminal closed", which leaves with
     /// the cancellation code rather than looking like a crash.
+    ///
+    /// Always `false` where there is no `SIGHUP` to hang the flag on ([`stop_signals`]), which is the same
+    /// "not a crash" answer with less evidence behind it: nothing set the flag because nothing could.
     fn hangup(&self) -> bool {
         self.hangup.load(std::sync::atomic::Ordering::Relaxed)
     }
+}
+
+/// The signals that mean "stop", each with the flag it sets.
+///
+/// `SIGINT` and `SIGTERM` exist on every platform this ships on and both set `stop`. `SIGHUP` is the odd one
+/// out: it is the *controlling terminal* going away, and a Windows console has no such object — closing one
+/// is a `CTRL_CLOSE_EVENT` that the C runtime does not translate into a signal, so `signal_hook::consts`
+/// has no `SIGHUP` there and naming one is a build failure rather than a no-op (`reco-wgcj`). The table is
+/// therefore built per platform instead of filtered at run time.
+///
+/// What that costs on Windows is one line of the exit-code story: a daemon whose console is closed closes
+/// with it instead of leaving through [`ExitCode::Cancelled`], which is the platform's own answer rather
+/// than ours, and the closer truth — there is no `SIGHUP` to be the reason. `fathom daemon stop` and
+/// Ctrl-C both still land in the settle ADR-004 §7.1 asks for, because `SIGTERM` and `SIGINT` are hooked
+/// wherever `signal-hook` can hook them.
+fn stop_signals(
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    hangup: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> Vec<(i32, std::sync::Arc<std::sync::atomic::AtomicBool>)> {
+    // Grown below, and only on the platform with a third signal to add.
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut signals = vec![
+        (signal_hook::consts::SIGINT, std::sync::Arc::clone(&stop)),
+        (signal_hook::consts::SIGTERM, std::sync::Arc::clone(&stop)),
+    ];
+    #[cfg(unix)]
+    signals.extend([
+        (signal_hook::consts::SIGHUP, std::sync::Arc::clone(&stop)),
+        (signal_hook::consts::SIGHUP, std::sync::Arc::clone(&hangup)),
+    ]);
+    // The flag still exists on a platform with no `SIGHUP` — `Signals` still reads it, and still finds
+    // `false`, which is what "nothing hung up" means there — it just has nothing written to it.
+    #[cfg(not(unix))]
+    let _ = hangup;
+    signals
 }
 
 // ── `fathom daemon stop` ────────────────────────────────────────────────────────────────────────
