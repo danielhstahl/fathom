@@ -19,6 +19,10 @@ for a reason nothing that reads YAML can see:
 * the committed `main.wxs` had been whitespace-touched, and `dist plan` refuses to start when a generated
   file is not its generator's output, which stopped the whole release pipeline over eight lines of
   whitespace.
+* and the gate itself was red in CI and green on every laptop (`reco-8myi`): `perf.yml` reads
+  `benchmarks/trend/trend.md`, which the perf gate writes in that same job and `.gitignore` excludes, so
+  "does this path exist" was a question about the working tree of whoever last built — and a checkout is
+  not a working tree. `P01` and `P02` now ask whether the path will be in the *checkout*: here, or ignored.
 
 Each of those is a claim about *this repository* — a path, a package name, a feature, a step `id:`, a job
 that `needs:` a job. So the gate reads the workflows against the tree and refuses the class, not the
@@ -32,6 +36,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -148,6 +153,130 @@ def test_the_fuzz_manifest_is_one_cargo_fuzz_will_open():
     """
     problem = check_workflows.fuzz_manifest_problem(check_workflows.FUZZ_MANIFEST)
     assert problem == "", f"cargo-fuzz would refuse this repository's fuzz workspace: {problem}"
+
+
+def test_no_step_names_a_path_the_checkout_does_not_have():
+    """`P01`/`P02`, asked of the checkout rather than of this working tree (`reco-8myi`).
+
+    The step in `contracts.yml` was red in CI and green on every laptop, over one line of `perf.yml`:
+
+        if [ -f benchmarks/trend/trend.md ]; then … tail -n +2 benchmarks/trend/trend.md …; fi
+
+    That file is the perf gate's own output, and `.gitignore` says so (`# The trend is a CI job artefact,
+    not a committed file`), so no `actions/checkout` has ever contained it. "Does this path exist" was
+    being asked of whatever was lying around in the tree of whoever last ran the gate — the one machine
+    where it is true, and the only place the check was ever run.
+    """
+    rules = check_workflows.gitignore_rules(check_workflows.GITIGNORE)
+    assert rules, f"{check_workflows.GITIGNORE} gave no rules; `P01` is silently missing every exemption"
+    offenders: list[str] = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        for step in workflow.run_steps():
+            if step.working_directory and not (ROOT / step.working_directory).is_dir() \
+                    and not check_workflows.path_is_ignored(step.working_directory, rules):
+                offenders.append(f"{workflow.filename}: working-directory {step.working_directory}")
+            for token in check_workflows.referenced_repo_paths(step.run):
+                if not (ROOT / token).exists() and not check_workflows.path_is_ignored(token, rules):
+                    offenders.append(f"{workflow.filename}: {token}")
+    assert not offenders, (
+        "a fresh clone does not have " + "; ".join(sorted(set(offenders)))
+        + " — commit it, or have the step make it, or ignore it"
+    )
+
+
+def test_the_trend_file_is_the_runs_own_and_not_the_checkouts():
+    """The one line that had been lying, asserted from both sides.
+
+    `perf.yml` reads the trend file and uploads it as a job artefact; the gate that writes it runs twelve
+    steps earlier in the same job. If it ever becomes a committed file the `if [ -f … ]` guard in that
+    step is theatre, and if it stops being ignored the two facts below are the ones that say so.
+    """
+    trend = "benchmarks/trend/trend.md"
+    assert check_workflows.path_is_ignored(trend), (
+        f"`{trend}` is no longer ignored by `.gitignore`, so a fresh checkout has to contain it — and "
+        "`perf.yml`'s step that reads it behind an `if [ -f ]` guard is the only thing that writes it"
+    )
+    assert check_workflows.will_be_in_checkout(trend)
+
+
+def test_the_ignore_file_is_read_the_way_git_reads_it():
+    """The exemption is only safe while it means what `.gitignore` means.
+
+    A matcher that ignored too much would turn `P01` back into a comment: a deleted `tools/thing.py` has
+    to stay red. These are git's own four shapes, checked against a rule list written out here rather
+    than read from the repository, so a rewrite of `.gitignore` cannot quietly make them vacuous.
+    """
+    def rules(*lines: str):
+        import tempfile
+        with tempfile.TemporaryDirectory() as work:
+            path = pathlib.Path(work) / ".gitignore"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return check_workflows.gitignore_rules(path)
+
+    directory = rules("benchmarks/trend/")
+    assert check_workflows.path_is_ignored("benchmarks/trend/trend.md", directory)
+    assert not check_workflows.path_is_ignored("benchmarks/budgets.json", directory)
+    assert not check_workflows.path_is_ignored("other/trend/x.md", directory)
+
+    basename = rules("*.pyc", "fuzz-*.log")
+    assert check_workflows.path_is_ignored("crates/fathom-cli/src/__pycache__/x.pyc", basename)
+    assert check_workflows.path_is_ignored("fuzz-3.log", basename)
+    assert not check_workflows.path_is_ignored("benchmarks/budgets.json", basename)
+
+    globstar = rules(".fathom/**/*.tmp")
+    assert check_workflows.path_is_ignored(".fathom/a/b/c.tmp", globstar)
+
+    negated = rules(".fathom/*", "!.fathom/reviews/")
+    assert check_workflows.path_is_ignored(".fathom/store.sqlite3", negated)
+    assert not check_workflows.path_is_ignored(".fathom/reviews", negated)
+
+    # The case the whole rule turns on: a typo is not run output, and must not be waved through.
+    assert not check_workflows.path_is_ignored("tools/no_such_tool.py", rules("tools/generated/"))
+
+
+@pytest.mark.skipif(
+    shutil.which("git") is None or not (ROOT / ".git").exists(),
+    reason="asks git what it thinks, and git is not available here",
+)
+def test_the_ignore_matcher_agrees_with_git():
+    """Where git can be asked, it is the oracle.
+
+    The gate does not shell out to git — that is the point of the matcher — but a matcher that drifts from
+    the real thing is a rule nobody can predict, so this compares the two over a list that covers every
+    shape `.gitignore` in this repository actually uses, plus the shapes it does not.
+    """
+    probes = [
+        # Every probe is a path *under* an excluded directory, never one of the directories themselves:
+        # `git check-ignore benchmarks/trend` answers "not ignored" in a fresh clone and "ignored" in a
+        # working tree where somebody ran the perf gate, because a `dir/` pattern has to see the directory
+        # to know it is one. The matcher answers syntactically — the whole point is that it answers about
+        # a path that is not here — so the probes git is compared against must be ones where git is not
+        # consulting the filesystem either.
+        "benchmarks/trend/trend.md", "benchmarks/trend/latest.json", "benchmarks/budgets.json",
+        "target/debug/fathom", "dist/fathom-x.tar.gz", "crates/fathom-cli/target/x",
+        "fuzz/artifacts/lockfile/crash", "fuzz/corpus/lockfile/seed", "fuzz/fuzz_targets/lockfile.rs",
+        "plugins/acme-detectors/target/x", "plugins/acme-detectors/Cargo.toml",
+        "tools/check_workflows.py", "tools/__pycache__/check_workflows.cpython-312.pyc",
+        "docs/index.md", "__pycache__/x.pyc", "sub/fuzz-3.log", ".fathom/reviews/a.json",
+        ".fathom/store.sqlite3", ".fathom/a/b/c.tmp", "tmp.txt", ".docs-site/index.html",
+    ]
+    rules = check_workflows.gitignore_rules(check_workflows.GITIGNORE)
+    disagreements = []
+    for probe in probes:
+        mine = check_workflows.path_is_ignored(probe, rules)
+        theirs = subprocess.run(
+            ["git", "check-ignore", "-q", probe], cwd=ROOT, capture_output=True, check=False
+        ).returncode == 0
+        if mine != theirs:
+            disagreements.append(f"{probe}: matcher={mine} git={theirs}")
+    assert not disagreements, "`.gitignore` read two ways: " + "; ".join(disagreements)
+
+
+def test_the_self_tests_exempted_paths_are_really_absent():
+    """The self-test's exemption has to be load-bearing, not a file left over from a build."""
+    for token in check_workflows.GENERATED_PATHS:
+        assert not (ROOT / token).exists(), f"{token} exists; the self-test's `P01` exemption proves nothing"
 
 
 def test_the_checker_can_fail():

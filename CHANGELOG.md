@@ -17,6 +17,47 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The workflow gate was red in CI and green on every laptop, over a file CI has never had (`reco-8myi`)
+
+`docs + workspace contracts` was red at the step that runs the workflow gate, with a complaint about a
+path in a workflow that is not wrong:
+
+```text
+P01 perf: job `budgets` step 9 (the trend, for the run summary): names `benchmarks/trend/trend.md`, which does not exist
+```
+
+Both commands the step runs — `check_workflows.py --verbose` and its `self-test` — pass on any machine that
+has ever run the perf gate, and fail on a fresh clone (`git clone` the repository and try it: the whole
+gate has one problem, and it is this one). The gate was asking *"does this path exist"* of the working
+tree, and the tree of whoever last ran `make bench-check` is not the tree `actions/checkout` produces.
+
+* **`benchmarks/trend/trend.md` is the run's own output.** `perf.yml` writes it twelve steps earlier in
+    the same job, guards the step that reads it with `if [ -f … ]`, uploads it as a job artefact, and
+    `.gitignore` excludes `benchmarks/trend/` on purpose — *"the trend is a CI job artefact, not a
+    committed file"*. So `P01`'s one question had exactly one wrong answer in the file set, and it was the
+    answer that only a laptop could give.
+* **`P01` and `P02` now ask about the checkout, not the working tree.** A named path is fine when it is
+    here, and also when `.gitignore` says it is not part of the repository: an ignored path is build or run
+    output, and requiring one to be committed is a rule that flips with the weather — green where somebody
+    built, red where nobody did. A typo is still red, because `tools/no_such_tool.py` is not ignored by
+    anything.
+* **`.gitignore` is read by the gate itself, not by `git`.** The gate's whole argument is that it runs
+    offline with no toolchain, so it parses the ignore file with the standard library: anchored versus
+    basename patterns, `*`/`?` that stop at `/` and `**` that does not, negation, and git's rule that an
+    excluded directory settles everything beneath it. `tests/test_workflows_contract.py` checks those five
+    shapes against rule lists written inline, and against git where git is available, so a rewrite of
+    `.gitignore` cannot make the exemption mean something else.
+* **The exemption is falsified, not assumed.** The self-test now writes a workflow whose steps name two
+    paths under an ignored directory in a stand-in `.gitignore`, requires that `P01` stay quiet about both
+    — and fails if the stand-in ignore file yields no rules at all, because an exemption that was never
+    consulted reads exactly like a passing one. The contract suite asserts the exempted paths are absent
+    from this repository, so the check cannot be satisfied by a stray build file.
+* **Found next door and fixed:** four `read_text()` calls in the gate (the root `Cargo.toml`, the three
+    workspace manifests and `dist-workspace.toml`, all of which contain non-ASCII) inherited the process
+    locale, so a runner without a UTF-8 `LC_CTYPE` — `PYTHONCOERCECLOCALE=0 LC_ALL=C`, the shape a bare
+    cron or container gives you — stopped the gate with `UnicodeDecodeError: 'ascii' codec can't decode
+    byte 0xc2` before it read a single workflow. They say `encoding="utf-8"` now.
+
 ### `e2.4`'s own re-measure could only reproduce on the computer that wrote the report (`reco-2ezf`)
 
 `docs + workspace contracts` was red on every push at the `e2.4 rename pairing … re-measures to the

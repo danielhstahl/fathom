@@ -14,7 +14,10 @@ red for a reason a compiler would have caught and a reviewer cannot see in a dif
 * `ci.yml` built `--all-targets` of a crate whose test suite needs a store backend, on a feature set
   without one;
 * the committed `main.wxs` had been whitespace-touched, and `dist plan` refuses to start on an
-  out-of-date generated file, so the whole release pipeline was stopped by eight lines of whitespace.
+  out-of-date generated file, so the whole release pipeline was stopped by eight lines of whitespace;
+* and the gate went red in CI while passing on every laptop: `perf.yml` reads `benchmarks/trend/trend.md`,
+  which the perf gate *writes* and `.gitignore` excludes, so "does this path exist" was a question about
+  the developer's working tree — and a checkout is not a working tree (`reco-8myi`).
 
 None of that is visible in the YAML. All of it is visible by *reading the rest of the repository*: the
 action does not exist, the directory does not hold what the tool expects, the target needs a feature the
@@ -37,8 +40,8 @@ with no network and no toolchain.
 | `E02` | `steps.<id>` naming a step with no `id:` in that job |
 | `E03` | `needs.<job>` that does not exist, or `needs.<job>.outputs.<name>` that job never declares |
 | `E04` | `inputs.<name>` read without being declared by either trigger |
-| `P01` | a repository path inside a `run:` step that does not exist |
-| `P02` | a `working-directory:` that does not exist |
+| `P01` | a repository path inside a `run:` step that the runner will not have: absent from the tree *and* not ignored by `.gitignore` — an ignored path is the run's own output, not a claim about the checkout |
+| `P02` | a `working-directory:` the runner will not have, on the same test |
 | `P03` | a `cargo fuzz` step run from inside `fuzz/` |
 | `P04` | a workflow that runs `cargo fuzz` while `fuzz/Cargo.toml` is not marked as a fuzz manifest — the marker cargo-fuzz refuses to start without |
 | `T01` | `python3 tools/<tool>.py <subcommand>` where the tool's argparse offers no such subcommand |
@@ -95,6 +98,11 @@ STEP_PROPERTIES = {"outputs", "conclusion", "outcome", "name", "id", "key"}
 #: The manifest a `cargo fuzz` invocation run from the repository root ends up reading. The self-test moves
 #: this the way it moves `WORKFLOWS`, so the rule that reads it can be shown to fire.
 FUZZ_MANIFEST = ROOT / "fuzz" / "Cargo.toml"
+
+#: The ignore file that says which paths this repository does *not* ship. `P01`/`P02` read it to tell a
+#: path that was deleted from a path the runner is never given in the first place; the self-test moves it
+#: the way it moves `WORKFLOWS`, so the exemption can be shown to be live rather than assumed.
+GITIGNORE = ROOT / ".gitignore"
 
 #: `cargo fuzz`, in either spelling of the toolchain pin (`cargo fuzz` / `cargo +nightly fuzz`).
 CARGO_FUZZ = re.compile(r"\bcargo\s+(?:\+\S+\s+)?fuzz\b")
@@ -457,7 +465,7 @@ def dist_pin() -> str:
     if not config.is_file():
         return ""
     try:
-        return str(tomllib.loads(config.read_text())["dist"]["cargo-dist-version"])
+        return str(tomllib.loads(config.read_text(encoding="utf-8"))["dist"]["cargo-dist-version"])
     except (KeyError, TypeError, tomllib.TOMLDecodeError):
         return ""
 
@@ -483,7 +491,7 @@ def dist_target_count() -> int:
     """How many triples `dist-workspace.toml` asks for; the number in the `D01` sentence."""
     config = ROOT / "dist-workspace.toml"
     try:
-        return len(tomllib.loads(config.read_text())["dist"]["targets"])
+        return len(tomllib.loads(config.read_text(encoding="utf-8"))["dist"]["targets"])
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError):
         return 0
 
@@ -576,6 +584,120 @@ def rule_expressions(wf: Workflow, problems: list[str]) -> None:
             )
 
 
+# ---------------------------------------------------------------------------
+# .gitignore: the paths the checkout is allowed not to contain
+# ---------------------------------------------------------------------------
+
+
+def _gitignore_regex(pattern: str) -> str:
+    """One `.gitignore` pattern body as a regex for a whole repository-relative path.
+
+    `*` and `?` stop at `/`, `**` does not (`**/` eats whole leading directories), `[…]` is a class, and a
+    backslash escapes — which is the whole of the syntax these files use, and enough for any `.gitignore`
+    a normal repository writes.
+    """
+    out: list[str] = []
+    i, n = 0, len(pattern)
+    while i < n:
+        char = pattern[i]
+        if char == "*" and pattern.startswith("**", i):
+            if pattern.startswith("**/", i):
+                out.append("(?:.*/)?")
+                i += 3
+                continue
+            out.append(".*")
+            i += 2
+            continue
+        if char == "*":
+            out.append("[^/]*")
+        elif char == "?":
+            out.append("[^/]")
+        elif char == "[":
+            close = pattern.find("]", i + 1)
+            if close < 0:
+                out.append(re.escape(char))
+                i += 1
+                continue
+            body = pattern[i + 1 : close].replace("^", r"\^")
+            out.append("[" + ("^" + body[1:] if body.startswith("!") else body) + "]")
+            i = close + 1
+            continue
+        elif char == "\\" and i + 1 < n:
+            out.append(re.escape(pattern[i + 1]))
+            i += 2
+            continue
+        else:
+            out.append(re.escape(char))
+        i += 1
+    return "".join(out)
+
+
+def gitignore_rules(path: pathlib.Path) -> list[tuple[bool, bool, bool, re.Pattern]]:
+    """The rules in a `.gitignore`, in file order, as `(negated, anchored, directory, pattern)`.
+
+    A pattern with a `/` in it is anchored to the directory the file sits in (here: the repository root);
+    one without matches a name at any depth. A trailing `/` means "directory, and everything under it".
+    """
+    rules: list[tuple[bool, bool, bool, re.Pattern]] = []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return rules  # no ignore file to read (a tarball, the self-test's temp directory): nothing is ignored
+    for line in lines:
+        line = line.rstrip()
+        if not line.startswith("#") and line.strip():
+            negated = line.startswith("!")
+            body = line[1:] if negated else line
+            directory = body.endswith("/")
+            # A leading `/` anchors the pattern to this file's directory, exactly as a `/` anywhere else in
+            # it does; git's `/target/` is the root's `target/`, not every crate's.
+            anchored = body.startswith("/") or "/" in body.lstrip("/").rstrip("/")
+            body = body.lstrip("/").rstrip("/")
+            if body:
+                rules.append((negated, anchored, directory, re.compile(_gitignore_regex(body))))
+    return rules
+
+
+def path_is_ignored(rel: str, rules: list[tuple[bool, bool, bool, re.Pattern]] | None = None) -> bool:
+    """Whether `.gitignore` says `rel` (repository-relative) is not part of this repository.
+
+    Two rules from git's own semantics carry the weight here: the *last* matching line decides, and an
+    excluded directory excludes everything beneath it with no way back — so an ancestor that matches a
+    plain directory rule settles the answer (`benchmarks/trend/` under `.gitignore` is what makes the
+    trend file not a claim about the tree).
+    """
+    if rules is None:
+        rules = gitignore_rules(GITIGNORE)
+    parts = rel.strip("/").split("/")
+    for index, part in enumerate(parts[:-1]):
+        prefix = "/".join(parts[: index + 1])
+        for negated, anchored, directory, pattern in rules:
+            if not negated and directory and pattern.fullmatch(prefix if anchored else part):
+                return True
+    ignored = False
+    for negated, anchored, directory, pattern in rules:
+        # A directory rule is allowed to answer for a name that is not here: "not here" is the case being asked
+        # about, and `benchmarks/trend/` has to count whether or not somebody ran the perf gate locally.
+        if pattern.fullmatch(rel.strip("/") if anchored else parts[-1]):
+            ignored = not negated
+    return ignored
+
+
+def will_be_in_checkout(token: str, rules: list[tuple[bool, bool, bool, re.Pattern]] | None = None) -> bool:
+    """Whether the path a step names is something the runner will have.
+
+    The question `P01` and `P02` actually ask is about the checkout `actions/checkout` produces, not about
+    whatever happens to be on the machine that last ran a build. So a token is fine when it is here, and
+    also when `.gitignore` says it is not part of the repository: such a path is build or run output —
+    `benchmarks/trend/trend.md`, written by the perf gate and uploaded as a job artefact — which is
+    exactly the path a step has to guard for, and exactly the path a gate that only looks at the working
+    tree flags on the one machine out of eleven runs where it exists.
+    """
+    if (ROOT / token).exists():
+        return True
+    return path_is_ignored(token, rules)
+
+
 def referenced_repo_paths(shell: str) -> list[str]:
     """Tokens in a step's shell that are shaped like paths into this repository."""
     out: list[str] = []
@@ -591,12 +713,14 @@ def referenced_repo_paths(shell: str) -> list[str]:
 
 
 def rule_paths(wf: Workflow, problems: list[str]) -> None:
-    """`P01`, `P02`, `P03` — the tree the steps name is the tree that is here."""
+    """`P01`, `P02`, `P03` — the tree the steps name is the tree the runner gets."""
+    rules = gitignore_rules(GITIGNORE)
     for step in wf.run_steps():
         if step.working_directory and not (ROOT / step.working_directory).is_dir():
-            problems.append(
-                f"P02 {step.where}: `working-directory: {step.working_directory}` is not a directory"
-            )
+            if not path_is_ignored(step.working_directory, rules):
+                problems.append(
+                    f"P02 {step.where}: `working-directory: {step.working_directory}` is not a directory"
+                )
         if CARGO_FUZZ.search(step.run) and step.working_directory:
             problems.append(
                 f"P03 {step.where}: runs `cargo fuzz` from `{step.working_directory}`. cargo-fuzz derives "
@@ -607,7 +731,7 @@ def rule_paths(wf: Workflow, problems: list[str]) -> None:
                 f"from the repository root"
             )
         for token in referenced_repo_paths(step.run):
-            if not (ROOT / token).exists():
+            if not will_be_in_checkout(token, rules):
                 problems.append(f"P01 {step.where}: names `{token}`, which does not exist")
 
 
@@ -697,14 +821,14 @@ def rule_tool_calls(wf: Workflow, problems: list[str]) -> None:
 
 def workspace_members() -> dict[str, dict]:
     """Each workspace member's directory, features and target names, read out of the manifests."""
-    root = tomllib.loads((ROOT / "Cargo.toml").read_text())
+    root = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
     members: dict[str, dict] = {}
     for entry in root.get("workspace", {}).get("members", []):
         for path in sorted(ROOT.glob(entry)):
             manifest = path / "Cargo.toml"
             if not manifest.is_file():
                 continue
-            data = tomllib.loads(manifest.read_text())
+            data = tomllib.loads(manifest.read_text(encoding="utf-8"))
             name = data.get("package", {}).get("name")
             if not name:
                 continue
@@ -854,6 +978,8 @@ def check(verbose: bool = False, network: bool = False) -> tuple[list[str], list
         notes.append(f"{len(files)} workflow files · {len(members)} crates · "
                      f"{sum(len(w.jobs) for w in files)} jobs · "
                      f"{sum(len(s) for w in files for s in [w.every_step()])} steps read")
+        notes.append(f"{len(gitignore_rules(GITIGNORE))} `.gitignore` rule(s) read — a path a step names "
+                     "that one of them excludes is the run's own output, not a missing file (`P01`)")
     return problems, notes
 
 
@@ -1049,33 +1175,77 @@ jobs:
 """,
 }
 
+#: What the self-test's stand-in `.gitignore` claims is the run's own output, and the paths the workflow
+#: below names from it. It is a directory rule because the real one is (`benchmarks/trend/`), and a
+#: directory rule is the gitignore shape that decides everything under it. None of these exist in this
+#: repository, which is the point: the exemption has to be what keeps them quiet, not a file left over
+#: from somebody's build.
+GENERATED_IGNORE_RULE = "tools/generated/"
+GENERATED_PATHS = ("tools/generated/tables.py", "tools/generated/summary.md")
+
+#: Workflows that must produce *no* problem, for the rule named in the key. `P01` fired on `perf.yml` in
+#: CI and nowhere on a laptop (`reco-8myi`) because the only version of "does this path exist" a working
+#: tree can answer is the wrong one; this is the case that keeps the fixed rule from being loosened into
+#: silence.
+EXEMPT: dict[str, str] = {
+    "p-generated.yml": f"""
+name: generated
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: if [ -f {GENERATED_PATHS[0]} ]; then cat {GENERATED_PATHS[0]}; fi
+      - run: ls {GENERATED_PATHS[1]}
+""",
+}
+
 
 def self_test() -> int:
-    """Require every rule to fire on a workflow written to break it."""
+    """Require every rule to fire on a workflow written to break it, and the exemptions to hold."""
     import tempfile
 
-    global WORKFLOWS, FUZZ_MANIFEST  # noqa: PLW0603 - the rules read the module's paths, so the test moves
+    global WORKFLOWS, FUZZ_MANIFEST, GITIGNORE  # noqa: PLW0603 - the rules read the module's paths, so the test moves
     with tempfile.TemporaryDirectory() as work:
         temp = pathlib.Path(work)
         for name, text in BROKEN.items():
             (temp / name).write_text(text, encoding="utf-8")
+        for name, text in EXEMPT.items():
+            (temp / name).write_text(text, encoding="utf-8")
+        # The ignore file the `P01` exemption reads. Without it nothing is ignored, and the exempt workflow
+        # above would report two problems of its own — which is how this line proves it is being read.
+        (temp / ".gitignore").write_text(GENERATED_IGNORE_RULE + "\n", encoding="utf-8")
         # `P04` reads a manifest rather than a workflow, so the self-test has to supply an unmarked one —
         # the exact file shape `reco-com` committed, and the reason cargo-fuzz refused to start.
         (temp / "fuzz").mkdir()
         (temp / "fuzz" / "Cargo.toml").write_text(
             '[workspace]\n\n[package]\nname = "fathom-fuzz"\nversion = "0.0.0"\n', encoding="utf-8"
         )
-        workflows_dir, manifest = WORKFLOWS, FUZZ_MANIFEST
-        WORKFLOWS = temp
-        FUZZ_MANIFEST = temp / "fuzz" / "Cargo.toml"
+        workflows_dir, manifest, ignore = WORKFLOWS, FUZZ_MANIFEST, GITIGNORE
+        WORKFLOWS, FUZZ_MANIFEST, GITIGNORE = temp, temp / "fuzz" / "Cargo.toml", temp / ".gitignore"
         try:
             problems, _ = check()
+            rules = gitignore_rules(GITIGNORE)
         finally:
-            WORKFLOWS, FUZZ_MANIFEST = workflows_dir, manifest
+            WORKFLOWS, FUZZ_MANIFEST, GITIGNORE = workflows_dir, manifest, ignore
     failures = [f"rule {rule} did not fire on a workflow written to break it"
                 for rule in ("A01", "A02", "D01", "E01", "E02", "E03", "E04", "P01", "P02", "P03",
                              "P04", "T01", "T02", "T03", "T04", "J01", "J02", "J03")
                 if not any(p.startswith(rule) for p in problems)]
+    if not rules:
+        failures.append(
+            f"the self-test's `.gitignore` ({GENERATED_IGNORE_RULE}) gave no rules, so the `P01`/`P02` "
+            "exemption was never asked and passing means nothing"
+        )
+    for path in EXEMPT:
+        for token in GENERATED_PATHS:
+            if any(p.startswith(("P01", "P02")) and token in p for p in problems):
+                failures.append(
+                    f"`{token}` is ignored by `.gitignore`, so it is the run's own output and not a claim "
+                    f"about the checkout ({path}); `P01` fired on it anyway"
+                )
     if failures:
         for failure in failures:
             print(f"self-test: {failure}", file=sys.stderr)
@@ -1088,7 +1258,8 @@ def self_test() -> int:
           "working-directory, `cargo fuzz` in the "
           "wrong directory and pointed at a manifest it will not accept, an unknown crate, feature, test, "
           "example and tool subcommand, a duplicate artefact name, an unmatchable download pattern, a "
-          "stray needs and a missing permissions block")
+          "stray needs and a missing permissions block — and a step that reads an ignored, generated path "
+          "was left alone")
     return 0
 
 
