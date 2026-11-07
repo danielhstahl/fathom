@@ -1,0 +1,58 @@
+# Line endings are bytes, and in this repository bytes are what the fixtures and the goldens are made of.
+#
+# With no file like this one, git asks each platform's `core.autocrlf` — and the Git for Windows installer
+# defaults that to `true`, so a Windows clone of a commit is a *different tree* than a Linux clone of the
+# same commit: every LF in the checkout arrives as CRLF. That is why two dependency-delta tests were red on
+# the Windows runner and green on the other two (`reco-d3p9`): one compares a rendered table against a
+# reviewed `expected.txt`, and the golden arrived with a `\r` on every line; the other looks for a lockfile
+# whose bytes end `}\n` so it can truncate it, and found none, so it asserted a corruption it had never
+# made. The product was never wrong — `deps/text.rs`, `deps/hunk.rs` and `deps/yaml.rs` all tolerate CRLF,
+# which is the promise under review here.
+#
+# The policy: text is stored LF and checked out LF on every platform; a file whose exact bytes are the point
+# is declared `-text`, which converts in neither direction (an attribute that *normalises* such a file would
+# make a clean clone look dirty, because its stored blob is already what the checkout must contain).
+#
+# --- text is LF everywhere -----------------------------------------------------------------------------
+* text=auto eol=lf
+
+# --- bytes that are the point: no conversion, in either direction --------------------------------------
+*.gz      -text
+*.zst     -text
+*.tar     -text
+*.zip     -text
+*.pack    -text
+*.png     -text
+*.jpg     -text
+*.jpeg    -text
+*.gif     -text
+*.ico     -text
+*.pdf     -text
+*.woff    -text
+*.woff2   -text
+*.sqlite  -text
+*.sqlite3 -text
+*.db      -text
+*.bin     -text
+*.dll     -text
+*.exe     -text
+*.lib     -text
+*.a       -text
+*.so      -text
+*.dylib   -text
+
+# Fuzz seeds are inputs, not documents: a seed whose newlines were rewritten is a different input, and the
+# corpus is supposed to mean the same coverage on Windows that it means here.
+fuzz/corpus/** -text
+
+# --- the committed CR that is load-bearing -------------------------------------------------------------
+# The CRLF-churn fixture the diff viewer's "every line changed, and the marker says why" golden is drawn
+# from: the carriage returns are the fixture (and deliberately mixed with lines that have none), so the
+# bytes are pinned rather than restyled. See `crates/fathom-tui/tests/diff_golden.rs`.
+crates/fathom-tui/tests/fixtures/crlf.diff -text
+crates/fathom-tui/tests/fixtures/empty.diff -text
+
+# cargo-dist's WiX source, committed as its generator wrote it (CRLF). `dist plan` refuses to run against a
+# generated file that is not its generator's byte-for-byte output — a whitespace touch once stopped the
+# whole release pipeline — so these bytes are left exactly as stored.
+crates/fathom-cli/wix/main.wxs -text

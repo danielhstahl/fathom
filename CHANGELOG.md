@@ -16,6 +16,46 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Two dependency tests were red on Windows and green on the other two legs, over what a checkout contains (`reco-d3p9`)
+
+`build+test (windows-latest · stable)` failed two of `crates/fathom-analyze/tests/deps_delta.rs`'s tests
+while the Linux and macOS legs of the same matrix run passed them. Nothing in the product was different on
+Windows; the *tree* was. The Git for Windows installer leaves `core.autocrlf=true` behind, and a repository
+with no `.gitattributes` lets that decide what a checkout contains — so one commit arrived on Windows as a
+different set of bytes, every LF in it rewritten to CRLF, and both tests read those bytes:
+
+```text
+assertion `left == right` failed: the rendered table for `cargo-lock-refresh` changed
+  left:  "dependency delta — 12 transitive packages refreshed…\npattern         transitive_refresh…\n…"
+  right: "dependency delta — 12 transitive packages refreshed…\r\npattern         transitive_refresh…\r\n…"
+```
+
+* **The repository now says what a checkout contains.** `.gitattributes`, first rule `* text=auto eol=lf`:
+    text is stored LF and checked out LF on every platform, so a clone's bytes are the blob's bytes. The
+    paths whose bytes *are* the point are declared `-text`, which converts in neither direction — the fuzz
+    corpus, the diff viewer's CRLF fixture, `main.wxs`, every committed binary. `-text` rather than
+    `text eol=crlf` deliberately: `main.wxs` and `crlf.diff` carry carriage returns in the stored blob, and
+    `crlf.diff` mixes lines that have one with lines that do not, which no `eol=` value can express; an
+    attribute that normalised them would clean a worktree to bytes the blob is not and make a clean clone
+    read as dirty.
+* **The gate is `tests/test_line_endings_contract.py`.** It pins the `*` rule, requires every tracked path
+    whose stored content carries a CR to be `-text`, and makes the claim the bug violated: clone this
+    repository the way a Windows runner does (`core.autocrlf=true`) and the dependency goldens arrive with
+    LF while the byte-exact paths arrive byte for byte. Take `.gitattributes` away and all six of its rules
+    go red, which is the check that they are load-bearing.
+* **One of the two tests was quietly conditional, and that is the worse half.**
+    `an_unreadable_side_is_reported_rather_than_invented` chose the file to corrupt by sniffing its bytes
+    (starts with `{`, ends with `}\n`, longer than 200 bytes). A CRLF checkout has no file ending `}\n`, so it
+    corrupted nothing and went on to assert a corruption it had never made. It now names `package-lock.json`
+    and asserts it corrupted exactly one file; the golden comparison folds CRLF to LF before comparing,
+    because the reviewed text is the contract and however somebody's clone stored it is not.
+* **The product's half had never been tested.** `a_checkout_with_windows_line_endings_reads_the_same_as_a_unix_one`
+    reads every golden case both ways and requires the same projection and the same rendered table. That is
+    the promise `deps/text.rs` ("the lines of a document, `\r\n` tolerated") had been making unchecked, and
+    the one that matters in the product: a repository under review is allowed to keep its lockfiles with
+    CRLF, because it was written on Windows. Verified three ways — an LF tree 22/22, the same tree converted
+    to CRLF 22/22, and a `core.autocrlf=true` clone of the repository 22/22.
+
 ### The contracts job's pytest step was red four ways, and three of them were the job's own shape (`reco-uyiq`)
 
 `docs + workspace contracts` failed at its last step — `python3 -m pytest -q`, the ADR-002 / ADR-004 /
