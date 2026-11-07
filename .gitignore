@@ -30,6 +30,10 @@ benchmarks/trend/
 # discovered inputs and crash artefacts, none of which belongs in git.
 fuzz/target/
 fuzz/fuzz/
+fuzz/artifacts/
+# `-jobs=N -workers=N` drops one `fuzz-<n>.log` per worker into the directory the run started from, which
+# is the repository root (fuzz/README.md, "Seeding a run") — the same kind of noise as the artefacts above.
+fuzz-*.log
 # The out-of-tree example plugin (`e6.7`, reco-raw) is a second workspace, and its build output is the
 # same kind of noise: `plugins/*/Cargo.lock` is committed (a lock for a path dependency is a reproducible
 # example), its `target/` is not.

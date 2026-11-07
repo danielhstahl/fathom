@@ -132,8 +132,23 @@ impl<'a> Scanner<'a> {
         self.rest().starts_with(needle)
     }
 
+    /// Move forward `bytes` bytes, counting the newlines crossed.
+    ///
+    /// Every index this scanner keeps is a *byte* index, and every caller counts bytes: the distance a
+    /// `find` returned, the width of a `<` or a `</`, and — in the text loop of `children` below — a step
+    /// of one byte at a time across the text between two tags. None of those is a character boundary in a
+    /// file that holds a character wider than one byte, which is every `pom.xml` with an accented author
+    /// name and every manifest whose bytes were not valid UTF-8 in the first place (the caller hands this
+    /// reader a lossy `String`, so the bad bytes arrived as three-byte U+FFFD). Slicing at such an `end` is
+    /// a panic, and a panic in a reader is a review tool that died on somebody's clone (ADR-004 §7.7). So
+    /// `end` is snapped up to the next boundary instead: an ASCII needle — `>`, `"`, `</` — never matches
+    /// *inside* a character, so the searchers land where they always did, and the byte-stepping text loop
+    /// now skips a whole character rather than walking into one.
     fn advance(&mut self, bytes: usize) {
-        let end = (self.at + bytes).min(self.text.len());
+        let mut end = self.at.saturating_add(bytes).min(self.text.len());
+        while !self.text.is_char_boundary(end) {
+            end += 1;
+        }
         self.line += self.text[self.at..end].matches('\n').count();
         self.at = end;
     }
