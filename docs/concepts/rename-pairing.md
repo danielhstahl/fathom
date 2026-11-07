@@ -229,22 +229,22 @@ Repository size, with the change set held at 6 moved files (mean of 3 runs, mill
 
 | paths in the tree | shipped mode | widened mode | blobs read, shipped | blobs read, widened |
 |---|---|---|---|---|
-| 200 | 5.72 ms | 23.24 ms | 6 | 200 |
-| 1000 | 7.61 ms | 105.26 ms | 6 | 1000 |
-| 4000 | 15.39 ms | 361.71 ms | 6 | 4000 |
+| 200 | 6.42 ms | 22.22 ms | 6 | 200 |
+| 1000 | 7.75 ms | 89.84 ms | 6 | 1000 |
+| 4000 | 14.75 ms | 416.14 ms | 6 | 4000 |
 
-From the smallest repository to 20× it: **2.69× shipped, 15.56× widened**. The shipped mode's curve is flat against the tree because it never looks at the tree; the widened mode's is not, which is the whole reason it is opt-in. Gate `A4a` bars the shipped ratio at 3.0.
+From the smallest repository to 20× it: **2.3× shipped, 18.73× widened**. The shipped mode's curve is flat against the tree because it never looks at the tree; the widened mode's is not, which is the whole reason it is opt-in. Gate `A4a` bars the shipped ratio at 3.0.
 
 Change-set size, with the repository held at 400 paths:
 
 | changed file pairs | candidate pairs | pairs scored | blobs read | pair (ms) | total (ms) |
 |---|---|---|---|---|---|
-| 1 | 1 | 1 | 1 | 0.27 | 5.46 |
-| 4 | 16 | 4 | 4 | 0.7 | 6.03 |
-| 16 | 256 | 16 | 16 | 2.47 | 8.01 |
-| 48 | 2304 | 48 | 48 | 7.38 | 15.14 |
+| 1 | 1 | 1 | 1 | 0.26 | 5.39 |
+| 4 | 16 | 4 | 4 | 0.7 | 5.88 |
+| 16 | 256 | 16 | 16 | 2.4 | 7.54 |
+| 48 | 2304 | 48 | 48 | 6.91 | 14.55 |
 
-×48 the change set costs **2.77× the time**: the candidate set is a cross product of the window's own deletions and additions, so it is quadratic *in what changed* and that is the honest statement of the bound — `O(changed files)`, with the square in it, pruned by `rename.candidates.top_k` and `rename.candidates.budget` rather than hidden.
+×48 the change set costs **2.7× the time**: the candidate set is a cross product of the window's own deletions and additions, so it is quadratic *in what changed* and that is the honest statement of the bound — `O(changed files)`, with the square in it, pruned by `rename.candidates.top_k` and `rename.candidates.budget` rather than hidden.
 <!-- END GENERATED: rename_pairing_cost -->
 
 The widened mode is the honest counterexample, and it is kept, measured, and off by default. It is the
@@ -263,6 +263,13 @@ Two things are refused, and both are in the code as gates rather than as opinion
   a printed similarity that a reviewer cannot reproduce is worse than a lower one they can. Gate `P3`
   recomputes every content edge's score exactly and fails on any mismatch; `--explain` prints the shared
   and total shingle counts behind each number.
+
+A re-measurement on a different computer is not a drift. The pooled counts, the per-class recalls and
+every gate result are claims about the fixtures and `--check` compares them exactly; wall clock is a
+claim about the machine that ran it, so the millisecond figures are recorded and printed but never
+compared, and no gate's *expectation* is filled in from the run it is checked against — both halves of
+that rule are what `reco-v1z` established for spike `s4` and `reco-2ezf` applied here, after this step
+spent its life red on `totals differs` over 17.3 ms against 16.6 ms.
 
 ## Verbs
 
@@ -345,8 +352,8 @@ download. CI runs the corpus re-measure, this document's generated blocks, and t
 | `A3b` | is True | True | pass | accepting makes it asserted, and says who accepted it |
 | `A3c` | is True | True | pass | a decision about different bytes is re-opened, not inherited |
 | `A3d` | is True | True | pass | and a decision about one pairing does not touch its neighbours |
-| `A4a` | <= 3.0 | 2.69 | pass | AC 4: 20x the repository with the change set fixed costs under 3.0x as much |
-| `A4b` | >= 2.69 | 15.56 | pass | and the refused O(repo) mode is the one that actually scales with the tree |
+| `A4a` | <= 3.0 | 2.3 | pass | AC 4: 20x the repository with the change set fixed costs under 3.0x as much |
+| `A4b` | >= 2.0 | 18.73 | pass | and the refused O(repo) mode is the one that actually scales with the tree |
 | `A4c` | >= 2874 | 4217 | pass | widening reads more blobs, so the cost claim is about blobs and not about luck |
 | `S1` | 0 | 0 | pass | a window in which nothing moved emits nothing at all |
 | `S2` | 2 | 2 | pass | the copies the shipped candidate set cannot see are named as a blindness, not counted as misses nobody mentions |

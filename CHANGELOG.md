@@ -17,6 +17,35 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### `e2.4`'s own re-measure could only reproduce on the computer that wrote the report (`reco-2ezf`)
+
+`docs + workspace contracts` was red on every push at the `e2.4 rename pairing … re-measures to the
+committed report` step:
+
+```text
+CHECK FAILED — the committed report disagrees with this run:
+  ! totals differs from the committed report
+```
+
+Every one of the 30 gates passed, and every count in `totals` was identical. Two fields moved, and both
+were wall clock: `ms_total` 17.3 against 16.6, `ms_mean` 0.468 against 0.447.
+
+* **The pooled totals carried the clock.** `pool()` sums the per-window pairing time into the same block
+  it pools the counts into, and `check_report` compares that block whole — so a measurement that
+  reproduced exactly was "drift" on any computer but the one that last wrote the report. Spike `s4` had
+  been given this rule hours earlier (`reco-v1z`): runner facts are recorded, printed, and not compared.
+  `pool()` no longer writes milliseconds into a compared block; the timing is still measured and still
+  reported, one row under `rows[]` and `per_scenario[]`, which is where a millisecond belongs — next to
+  the window it was taken on.
+* **A gate's expectation is a claim made before the run, and `A4b`'s was filled in from the run.** The
+  refused O(repo) mode's cost ratio was asserted `>= ` *the shipped mode's own measured ratio*: the
+  committed report said `>= 2.69`, the next run said `>= 2.3`, and it was true on every machine by
+  construction because widening always reads more. It is now a number written in advance
+  (`rename.eval.DECISIVE_COST_RATIO`, 2.0), which the widened mode clears at 18.73.
+* **The failure output still names the claim, not the machine.** A doctored `totals.found` fails the
+  check; a `ms_total` of 900 000 does not. Both halves are pinned by a test, because a loosened
+  comparison that cannot fail is the same bug wearing the fix.
+
 ### The binary stopped building on Windows, over a signal that platform does not have (`reco-wgcj`)
 
 `cargo build --workspace --all-features` is a CI step on `windows-latest`, and it died in the daemon's signal

@@ -54,6 +54,13 @@ FACT_MIN_PAIRINGS = 25
 GROUP_RECALL = 1.0
 #: AC 4: 20× the repository with the change set fixed must cost under this multiple of the small one.
 COST_RATIO = 3.0
+#: The refused O(repo) mode has to cost *at least* this multiple of the shipped one, as a number written
+#: before the run. It used to be filled in with the shipped mode's own measured ratio, which made the
+#: claim true by construction and made the committed report say `>= 2.75` one run and `>= 2.73` the next
+#: (`reco-2ezf`): an expectation copied from the run that is supposed to be checked against it. The
+#: widened mode measures 15-19x on this corpus, so 2 is a bar the claim clears by a wide margin without
+#: being a number the measurement quietly writes for itself.
+DECISIVE_COST_RATIO = 2.0
 #: How far a displayed confidence may sit from the rate it implies is *reported*, not gated: these are
 #: similarity indices, not probabilities, and `s4`'s finding was that no score here behaves like a
 #: probability at all. `MAX_CALIBRATION_ERROR` is kept as the number a reader should treat as "stop
@@ -157,7 +164,15 @@ def grade_window(truth: CP.TruthWindow, result: M.Result, *, tier: str | None = 
 
 
 def pool(rows: list[Row]) -> dict:
-    """Micro-averaged totals with their counts attached; never a bare rate."""
+    """Micro-averaged totals with their counts attached; never a bare rate.
+
+    No wall clock here. A pooled block that carries `ms_total` is a block whose numbers move when the
+    runner does, and `check_report` compares this block whole — so the timing used to make CI red on
+    every computer but the one that last wrote the report (`reco-2ezf`, the same rule `reco-v1z` set
+    for spike `s4`). The millisecond figures are still measured, still written to the report and still
+    printed, one row at a time under `rows[]` and `per_scenario[]`; they are just not pooled into a
+    block that a reproducibility check reads line by line.
+    """
     emitted = sum(r.emitted for r in rows)
     found = sum(r.found for r in rows)
     claimable = sum(r.claimable for r in rows)
@@ -174,9 +189,7 @@ def pool(rows: list[Row]) -> dict:
             "wrong_unsupported": sum(r.wrong_unsupported for r in rows),
             "precision": round(found / emitted, 4) if emitted else None,
             "recall_claimable": round(found / claimable, 4) if claimable else None,
-            "wrong_per_100_windows": round(100 * wrong / len(rows), 2) if rows else None,
-            "ms_total": round(sum(r.ms for r in rows), 1),
-            "ms_mean": round(sum(r.ms for r in rows) / len(rows), 3) if rows else 0.0}
+            "wrong_per_100_windows": round(100 * wrong / len(rows), 2) if rows else None}
 
 
 def by_kind(run: list[tuple[CP.TruthWindow, M.Result]]) -> dict:
@@ -391,7 +404,7 @@ def display_budget(built: dict, windows: list[CP.TruthWindow]) -> dict:
                                "true_pairings_per_wrong": round(
                                    totals["found"] / totals["wrong"], 2)
                                if totals["wrong"] else None,
-                               "ms_total": totals["ms_total"]}
+                               "ms_total": round(sum(r.ms for r in rows), 1)}
     return out
 
 
@@ -648,7 +661,7 @@ def gates(report: dict) -> list[dict]:
          % COST_RATIO, "cost.ratio_small_to_20x_shipped", COST_RATIO,
          report["cost"]["ratio_small_to_20x_shipped"], "<=")
     gate(out, "A4b", "and the refused O(repo) mode is the one that actually scales with the tree",
-         "cost.ratio_small_to_20x_widened", report["cost"]["ratio_small_to_20x_shipped"],
+         "cost.ratio_small_to_20x_widened", DECISIVE_COST_RATIO,
          report["cost"]["ratio_small_to_20x_widened"], ">=")
     gate(out, "A4c", "widening reads more blobs, so the cost claim is about blobs and not about "
          "luck", "copies_harder.blobs_read", report["content"]["blobs_read"],
@@ -773,6 +786,23 @@ def check_report(report: dict, path: Path) -> list[str]:
                             % (gid, now[gid]["observed"], before[gid]["observed"],
                                before[gid]["claim"]))
     for key in ("totals", "by_representation"):
-        if old.get(key) != report.get(key):
+        if _without_clock(old.get(key)) != _without_clock(report.get(key)):
             problems.append("%s differs from the committed report" % key)
     return problems
+
+
+#: Keys that describe the computer a measurement ran on. `check_report` compares the pooled blocks
+#: whole, so a wall-clock key anywhere inside them turns a reproducibility check into a claim about the
+#: runner (`reco-2ezf`); `pool()` no longer writes any of these, and this is the belt to that braces.
+RUNNER_FACT_KEYS = ("ms", "ms_total", "ms_mean", "ms_p95", "ms_max", "total_ms", "pair_ms",
+                    "read_ms", "build_s", "seconds", "measured_in_seconds")
+
+
+def _without_clock(node):
+    """Project a compared block down to its claims: every wall-clock leaf goes, wherever it sits."""
+    if isinstance(node, dict):
+        return {key: _without_clock(value) for key, value in node.items()
+                if key not in RUNNER_FACT_KEYS}
+    if isinstance(node, list):
+        return [_without_clock(value) for value in node]
+    return node
