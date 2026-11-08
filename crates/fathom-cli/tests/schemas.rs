@@ -13,6 +13,8 @@
 //! than the subset is worth, and a test that skips when its dependency is missing is a test that does not
 //! run (`tests/conftest.py`'s argument, applied to Rust).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// One gate, one reason: `fathom export` reads the index, so its payload only exists on a build that has one
+// (ADR-002 §6.1). Every other schema in this directory is printed by a verb the headless build can run.
 
 use std::process::Output;
 
@@ -379,6 +381,7 @@ fn status_json_conforms_to_its_schema() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn export_json_conforms_to_its_schema() {
     // `e5.7`: the verb writes an artefact and reports the run. The payload is the machine line about the

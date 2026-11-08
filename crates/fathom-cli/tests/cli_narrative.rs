@@ -12,6 +12,10 @@
 //! * **the LLM answer is a fact about the build** — `--attribution` needs no index, prints the decision,
 //!   and refuses the polish path by name.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// The five tests that ask what the narrative *says about a repository* index it first, and a build with no
+// store cannot index (ADR-002 §6.1) — so those five, and the fixture they share, are `sqlite-bundled`-gated,
+// while the two that ask only how the verb is advertised and how it refuses an LLM with no key stay ungated:
+// the headless binary answers both.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -19,6 +23,7 @@ use std::process::{Command, Output};
 /// The agent trailer that lets the intent ladder record something without a harness. It goes in the *same*
 /// trailer block as `Agent-Intent:` — git reads the last paragraph as the trailer block, and a blank line
 /// between the two is the difference between a recorded intent and a silent miss.
+#[cfg(feature = "sqlite-bundled")]
 const AGENT_TRAILER: &str = "Co-authored-by: looprs <looprs@example.invalid>";
 
 fn fathom(dir: &Path, args: &[&str]) -> Output {
@@ -44,10 +49,12 @@ fn code(out: &Output) -> i32 {
 }
 
 /// A repository with one agent turn of three commits and one human commit, indexed.
+#[cfg(feature = "sqlite-bundled")]
 struct Repo {
     dir: PathBuf,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Repo {
     fn new(label: &str) -> Self {
         static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -123,6 +130,7 @@ impl Repo {
     }
 }
 
+#[cfg(feature = "sqlite-bundled")]
 fn git(dir: &Path, args: &[&str], extra_env: &[(&str, &str)]) {
     let minute: i64 = extra_env
         .iter()
@@ -147,6 +155,7 @@ fn git(dir: &Path, args: &[&str], extra_env: &[(&str, &str)]) {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_narrative_prints_and_verifies_itself() {
     let repo = Repo::new("print");
@@ -170,6 +179,7 @@ fn the_narrative_prints_and_verifies_itself() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn every_claim_in_the_json_cites_something_that_exists() {
     let repo = Repo::new("json");
@@ -210,6 +220,7 @@ fn every_claim_in_the_json_cites_something_that_exists() {
     }
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_markdown_is_the_artefact_body_and_names_its_evidence() {
     let repo = Repo::new("markdown");
@@ -235,6 +246,7 @@ fn the_markdown_is_the_artefact_body_and_names_its_evidence() {
     }
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn explain_prints_the_ranking_beside_the_prose_not_inside_it() {
     let repo = Repo::new("explain");
@@ -254,6 +266,7 @@ fn explain_prints_the_ranking_beside_the_prose_not_inside_it() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn an_unknown_handle_and_a_missing_index_are_different_refusals() {
     let repo = Repo::new("refuse");

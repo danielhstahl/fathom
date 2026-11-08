@@ -22,6 +22,11 @@
 //! Windows.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(unix)]
+// And gated on the feature that builds the subject: `fathom-ingest`'s `daemon` module — the socket the tests
+// speak and the loop they watch — is compiled only with `watch` (ADR-002 §6.2), and a binary built without it
+// answers every verb in this file with `FEATURE_ABSENT` (9), including the one whose whole point is that the
+// verbs exist. Same spelling as the store-gated suites in this directory.
+#![cfg(feature = "watch")]
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};

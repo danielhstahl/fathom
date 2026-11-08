@@ -16,11 +16,15 @@
 //! The fixture is four commits: one human, one agent turn (three commits, one episode, per ADR-003 §4). It is
 //! deliberately small; the relink fixtures live where the relink logic does.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// The ledger is in the store, so eleven of these twelve tests index first and are `sqlite-bundled`-gated
+// (ADR-002 §6.1) along with the fixture that indexes for them. `the_help_names_every_subverb` is the
+// twelfth, and it is the headless build's own claim: the verb surface exists and says what it means.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// The reviewer this file signs as, in the spelling a git identity takes.
+#[cfg(feature = "sqlite-bundled")]
 const DANA: &str = "Dana Ruiz <dana@example.invalid>";
 
 /// `fathom …` inside `dir`, with the environment the reviewer's own shell would have — minus the one variable
@@ -41,6 +45,7 @@ fn stdout(out: &Output) -> String {
 /// `fathom …` with no inherited environment beyond `PATH`: the state of a machine that knows nothing about
 /// the reviewer. A CI runner's `~/.gitconfig` has a `user.name` in it, and a test that inherits it never
 /// actually asks the question it claims to ask.
+#[cfg(feature = "sqlite-bundled")]
 fn naked(dir: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_fathom"))
         .current_dir(dir)
@@ -66,10 +71,12 @@ fn code(out: &Output) -> i32 {
 }
 
 /// A git repository with an index, the way `fathom index` leaves it.
+#[cfg(feature = "sqlite-bundled")]
 struct Repo {
     dir: PathBuf,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Repo {
     fn new(label: &str) -> Self {
         static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -208,6 +215,7 @@ impl Repo {
     }
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Drop for Repo {
     fn drop(&mut self) {
         if std::env::var_os("FATHOM_KEEP_FIXTURES").is_none() {
@@ -217,6 +225,7 @@ impl Drop for Repo {
 }
 
 /// `git` with a scrubbed environment; `MINUTE` is this file's name for "commit at base + n minutes".
+#[cfg(feature = "sqlite-bundled")]
 fn git(cwd: &Path, args: &[&str], extra: &[(&str, &str)]) {
     let minute: i64 = extra
         .iter()
@@ -249,6 +258,7 @@ fn git(cwd: &Path, args: &[&str], extra: &[(&str, &str)]) {
 }
 
 /// AC: an unsigned repository is not "all reviewed", and it exits the code CI reads.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn an_unsigned_repository_exits_seven_and_says_which_episodes() {
     let repo = Repo::new("unsigned");
@@ -284,6 +294,7 @@ fn an_unsigned_repository_exits_seven_and_says_which_episodes() {
 }
 
 /// Bare `fathom review` is `review status`, because the thing a reviewer wants by default is the verdict.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn bare_review_is_status() {
     let repo = Repo::new("bare");
@@ -295,6 +306,7 @@ fn bare_review_is_status() {
 
 /// AC: every episode signed off, the ledger committed, and the verdict closes — and the commit that records
 /// the reviews does not reopen them.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_signed_off_and_committed_ledger_closes_the_verdict() {
     let repo = Repo::new("clean");
@@ -338,6 +350,7 @@ fn a_signed_off_and_committed_ledger_closes_the_verdict() {
 }
 
 /// A sign-off without an identity is not a sign-off, and a refusal leaves no file behind.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_sign_off_without_an_identity_is_refused_and_writes_nothing() {
     let repo = Repo::new("noidentity");
@@ -398,6 +411,7 @@ fn a_sign_off_without_an_identity_is_refused_and_writes_nothing() {
 }
 
 /// `$FATHOM_REVIEWER` is the knob for a shell that already knows who you are.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_environment_can_supply_the_identity() {
     let repo = Repo::new("env");
@@ -418,6 +432,7 @@ fn the_environment_can_supply_the_identity() {
 }
 
 /// An unknown episode is refused with the list that would have helped, not a stack of nothing.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn an_episode_nothing_names_is_refused_with_a_reminder() {
     let repo = Repo::new("unknown");
@@ -434,6 +449,7 @@ fn an_episode_nothing_names_is_refused_with_a_reminder() {
 }
 
 /// AC: tampering is detectable from the file alone — and `verify`, unlike `status`, never needed the index.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn an_edited_entry_fails_verify_and_the_verdict() {
     let repo = Repo::new("tamper");
@@ -482,6 +498,7 @@ fn an_edited_entry_fails_verify_and_the_verdict() {
 }
 
 /// Content that moved after the sign-off is stale, and `list --state stale` is the actionable view.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn content_changed_after_sign_off_shows_as_stale_in_list() {
     let repo = Repo::new("stale");
@@ -513,6 +530,7 @@ fn content_changed_after_sign_off_shows_as_stale_in_list() {
 }
 
 /// `review sync` is the bridge from the queue's act log; with no acts it says so and writes nothing.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn sync_with_no_acts_renders_nothing_and_says_so() {
     let repo = Repo::new("sync");
@@ -536,6 +554,7 @@ fn sync_with_no_acts_renders_nothing_and_says_so() {
 ///
 /// The stamp has a sub-second part on purpose: a keystroke lands when it lands, and the ledger file can only
 /// hold whole seconds. That gap is what made `sync` re-render the same act forever (`reco-2pw`).
+#[cfg(feature = "sqlite-bundled")]
 fn record_act(repo: &Repo, minute: i64) -> String {
     use fathom_store::episode::{EpisodeQuery, ReviewState, TriageEvent};
 
@@ -572,6 +591,7 @@ fn record_act(repo: &Repo, minute: i64) -> String {
 /// could not recognise the entry the first had written, appended a second copy of a sign-off nobody made
 /// twice, and then the mirror's primary key rejected the duplicate id. Exit 4, `STORE_CORRUPT`, from the
 /// one verb whose whole job is to be safe to run again.
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn sync_twice_renders_the_act_once_and_says_so_both_times() {
     let repo = Repo::new("sync-twice");
@@ -626,6 +646,7 @@ fn sync_twice_renders_the_act_once_and_says_so_both_times() {
 
 /// A ledger git is *ignoring* is a different failure from a ledger git has not been asked to hold, and the
 /// two need different remedies (ADR-004 §12.1: the required stanza is `.fathom/*` plus `!.fathom/reviews/`).
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn an_ignored_ledger_says_so_rather_than_telling_you_to_commit_it() {
     let repo = Repo::new("ignored");

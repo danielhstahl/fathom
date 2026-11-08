@@ -578,6 +578,14 @@ jobs:
         run: cargo build -p fathom-cli --no-default-features --features minimal
 
       - name: test the headless configuration
+        # What this configuration may assert is stated test by test and file by file, not here: most of the
+        # CLI suite indexes a fixture and drives a verb that reads that index back, and a binary with no
+        # store, no shell and no watcher refuses every one of them with `FEATURE_ABSENT` (9) — so the suites
+        # name the feature they need (`#![cfg(feature = "sqlite-bundled")]` on a whole store-backed file,
+        # `#[cfg(feature = "tui")]` on a shell one, `#[cfg(...)]` per test where a file has both headless and
+        # store-backed claims). `reco-37te` started that on `tests/check_verb.rs`; `reco-kltg` finished it on
+        # the twenty files this leg was still red on. Run this command before adding a CLI test file: a new
+        # store-backed suite with no gate goes red here, which is the whole point of the leg.
         run: cargo test -p fathom-cli --no-default-features --features minimal
 
       # The MSRV floor, on the floor (§2): "a dependency that needs newer Rust is discovered locally, not

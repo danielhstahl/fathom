@@ -20,6 +20,10 @@
 //! before the refusal.
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// The tests that index — including the containment ones, whose whole assertion is what `fathom index`
+// refuses to follow — are `sqlite-bundled`-gated, with the fixture's `index` call and the symlink helpers
+// they alone use: a build with no store refuses to index for a different reason, and the refusal under test
+// is not the one it prints (ADR-002 §6.1). The two that never index stay ungated.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -113,6 +117,7 @@ impl Hostile {
         out
     }
 
+    #[cfg(feature = "sqlite-bundled")]
     fn index(&self) -> Output {
         self.fathom(&["index", "."])
     }
@@ -187,7 +192,7 @@ fn code(out: &Output) -> i32 {
         .expect("fathom leaves a code, not a signal")
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "sqlite-bundled"))]
 fn symlink(target: &Path, link: &Path) {
     if let Some(parent) = link.parent() {
         std::fs::create_dir_all(parent).ok();
@@ -195,7 +200,7 @@ fn symlink(target: &Path, link: &Path) {
     std::os::unix::fs::symlink(target, link).expect("create the symlink");
 }
 
-#[cfg(not(unix))]
+#[cfg(all(not(unix), feature = "sqlite-bundled"))]
 fn symlink(target: &Path, link: &Path) {
     if let Some(parent) = link.parent() {
         std::fs::create_dir_all(parent).ok();
@@ -204,6 +209,7 @@ fn symlink(target: &Path, link: &Path) {
 }
 
 /// The every-run assertion: a refusal must be a refusal, not a crash and not a usage error.
+#[cfg(feature = "sqlite-bundled")]
 fn assert_refused(out: &Output, what: &str) {
     let printed = text(out);
     assert_ne!(code(out), 0, "{what} should have been refused:\n{printed}");
@@ -223,6 +229,7 @@ fn assert_refused(out: &Output, what: &str) {
 // 1. Write containment: a clone's symlink is refused, not written through
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_fathom_directory_that_points_outside_the_repository_is_refused() {
     let hostile = Hostile::new("state-escape");
@@ -253,6 +260,7 @@ fn a_fathom_directory_that_points_outside_the_repository_is_refused() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_ledger_that_points_outside_the_repository_is_never_appended_to() {
     // The case with teeth: the ledger write is an *append* of attacker-shaped text (episode id, actor,
@@ -302,6 +310,7 @@ fn a_ledger_that_points_outside_the_repository_is_never_appended_to() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_link_that_stays_inside_the_repository_is_allowed() {
     // The rule is containment, not "no symlinks": a store moved to a bigger disk *inside* the working tree
@@ -386,6 +395,7 @@ store = "/etc/needswrite"
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_hostile_repository_leaves_the_reviewer_with_a_real_answer() {
     // Containment that turns a usable repository into an unusable one is not a control, it is an outage.
@@ -453,6 +463,7 @@ fn a_clone_owns_no_git_hook_that_fathom_runs() {
     assert!(!marker.exists(), "a git hook from the clone was executed");
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_commit_message_carrying_a_command_is_still_just_text() {
     // The other classic: a commit subject that *is* a shell command. Fathom renders subjects into a

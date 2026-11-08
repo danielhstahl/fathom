@@ -20,6 +20,15 @@
 //! wrote, keyed by the repository's own tree oids — the same shape `e3.2`'s writer produces and the shape
 //! this verb reads.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed, in three places at once: `Repo::new` indexes the fixture with
+// `fathom index`, which a binary built without a store refuses with `FEATURE_ABSENT` (9); every fixture then
+// seeds its graphs through `fathom_analyze::graph::Lane`, which ADR-002 §6.2 compiles only with a SQLite
+// backend; and `fathom architecture` is itself one of the verbs that refuses without one. So on the headless
+// `minimal` build there is nothing left to assert, and the file does not compile either — it cannot name the
+// lane. Gated for the first reason, which is the one a reader can check: the same spelling `tests/check_verb.rs`
+// and `tests/show_trailers.rs` use, and it retires the two `#[cfg(feature = "sqlite-bundled")]` gates that
+// used to sit on single items here, because the file now says it once.
+#![cfg(feature = "sqlite-bundled")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -847,7 +856,6 @@ fn copy_dir(from: &Path, to: &Path) {
 /// bytes, and a payload that validates only before it goes through a string is a different promise than the
 /// one the test checked. Two payloads are checked, because the flags change which sections are populated —
 /// a bare head run, and a backfilled one with a trend, a previous revision and a review to anchor on.
-#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_json_payload_validates_against_the_checked_in_schema() {
     #[path = "validator.rs"]
@@ -959,7 +967,6 @@ fn explain_answers_before_there_is_an_index() {
 /// The first run of this fixture scored its revisions before anyone had reviewed, and none of those rows may
 /// carry a companion: "no anchor yet" has to stay an absence in the stored state, not a `{"revisions":0}`
 /// that a later reader would take for a delta of zero.
-#[cfg(feature = "sqlite-bundled")]
 fn text_has_no_companion_before_a_review(dir: &Path) -> bool {
     let store = fathom_store::spine::Store::open(&dir.join(".fathom").join("index.sqlite3"))
         .expect("open the store");

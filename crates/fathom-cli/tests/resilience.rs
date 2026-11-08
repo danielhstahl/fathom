@@ -21,6 +21,13 @@
 //! device is the closest a test can get; the test asserts the notice appears exactly when the two paths are
 //! genuinely on different devices, which is the condition the notice claims).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every scenario here is "index this repository, then read what the index said", so the file needs a store
+// twice over: `fathom index` refuses with `FEATURE_ABSENT` (9) in a binary built without one, and the ledger
+// assertions open the store themselves through `fathom_analyze::index::default_store_path`, a module ADR-002
+// §6.2 compiles only with a SQLite backend. Gated on that, in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use — the scenarios themselves are unaffected: each one is still run, on every
+// store-backed build.
+#![cfg(feature = "sqlite-bundled")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

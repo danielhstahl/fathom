@@ -14,6 +14,12 @@
 //! Graphs are seeded through `fathom_analyze::graph::Lane::record` against the store the indexer just wrote,
 //! keyed by the repository's own tree oids — the shape `e3.2`'s writer produces and the shape this verb reads.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed, in the same three ways `tests/architecture_verb.rs` is: the
+// fixture indexes with `fathom index`, records its graphs through `fathom_analyze::graph::Lane` (ADR-002
+// §6.2 compiles the lane only with a SQLite backend), and drives `fathom ratchet`, which a binary built
+// without a store refuses with `FEATURE_ABSENT` (9). Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use.
+#![cfg(feature = "sqlite-bundled")]
 
 /// The checked-in schema validator, shared with the other verb contracts (`e1.10`).
 #[path = "validator.rs"]

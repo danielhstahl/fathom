@@ -47,3 +47,4 @@ plugins/*/target/
 # `check` (what CI runs) builds in memory and writes nothing, so this path is only here when someone
 # asks for it.
 .docs-site/
+logs

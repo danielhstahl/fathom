@@ -11,6 +11,11 @@
 //! is a hint line that stays on for anyone who guesses wrong, which is why the refusal is a notice and
 //! the line stays up.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file drives `fathom tui`, which ADR-002 §6.1 compiles only with the `tui` feature, so
+// the headless `minimal` binary answers `FEATURE_ABSENT` (9) and there is no frame, no notice and no exit
+// code left for these assertions to read. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every build with the shell the whole suite still runs.
+#![cfg(feature = "tui")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
