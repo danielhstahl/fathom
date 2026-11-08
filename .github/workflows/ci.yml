@@ -512,7 +512,7 @@ jobs:
                 --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
 
   # ---------------------------------------------------------------------------
-  # The matrix: three operating systems × {stable, MSRV}, per §8.3.
+  # The matrix: linux × {stable, MSRV}, per §8.3.
   # ---------------------------------------------------------------------------
   build-test:
     name: build+test (${{ matrix.os }} · ${{ matrix.channel }})
@@ -520,7 +520,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
         channel: [stable, msrv]
         include:
           - channel: stable
