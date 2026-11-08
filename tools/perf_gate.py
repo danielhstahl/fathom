@@ -185,7 +185,9 @@ COVERAGE: dict[str, tuple[str, str]] = {
                              "`e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule"),
     # --- memory -----------------------------------------------------------------------
     "rss.cold_index.peak_mib": ("this harness", "`VmHWM` of the `fathom index` child, sampled while it runs"),
-    "rss.tui.mib": ("this harness", "`VmHWM` of the TUI child, sampled after every keystroke"),
+    "rss.tui.mib": ("this harness", "`VmHWM` of the TUI child, sampled after every keystroke; over "
+                                      "half of it is the release binary's own resident pages, so the "
+                                      "row is blessed with a 4 MiB machine-spread floor (reco-0zot)"),
     "rss.daemon.mib": ("not measured yet", "no daemon before `e6.3`"),
     "rss.sqlite_page_cache.mib": ("not measured yet",
                                   "`fathom-store`'s connection factory applies `PRAGMA cache_size` "
@@ -805,7 +807,28 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     split = M.store_split(harness.store)
     spine, graph, total = split["spine"], split["graph"], split["total"]
     lane = M.graph_lane_basis(harness.store)
-    if spine is None:
+    revisions = int(lane.get("revisions") or 0)
+    # A store that is not there is a third case, and it is not the `dbstat` one: `store_split` reports
+    # zeros for a file it cannot open, zeros are not `None`, and every number downstream of here would
+    # be a byte count divided by a denominator that does not exist (`revisions` is simply absent from
+    # `graph_lane_basis`'s answer for a missing file, which is how the gate died with a `KeyError`
+    # instead of a verdict — `reco-axp`'s complaint about a gate that crashed rather than judged, in
+    # the one branch that had already learned to say `blocked`). The cause is a cold index that wrote
+    # nothing: a binary built without `sqlite-bundled` says so and exits 9, and the wall clock of the
+    # failed process is still a measurement, so only these byte rows can say they were blocked.
+    absent = not harness.store.exists()
+    if absent:
+        for ident, why in (("store.bytes_per_commit_spine.small",
+                            "the cold index wrote no store, so there are no spine pages to count "
+                            "(`fathom index` failed: `fathom doctor` says what the binary was built "
+                            "without)"),
+                           ("store.bytes_per_commit_graph.small",
+                            "the same: no store, so no lane and no revision to divide its bytes by"),
+                           ("store.size.mib.small",
+                            "the same: there is no `.fathom/index.sqlite3` to measure")):
+            record(Measurement(ident, "bytes" if ident.startswith("store.bytes") else "MiB", None,
+                               ident, blocked_by=why))
+    elif spine is None:
         record(Measurement("store.bytes_per_commit_spine.small", "bytes", None,
                            "store.bytes_per_commit_spine.small",
                            blocked_by="this SQLite build has no `dbstat`, so the store cannot be split "
@@ -824,24 +847,26 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                                "charged here (`reco-7yq`)",
                            scaled=False))
         record(Measurement("store.bytes_per_commit_graph.small", "bytes",
-                           graph // lane["revisions"] if lane.get("revisions") else None,
+                           graph // revisions if revisions else None,
                            "store.bytes_per_commit_graph.small",
-                           blocked_by=None if lane.get("revisions") else
+                           blocked_by=None if revisions else
                            "the lane holds no snapshots (`graph.enabled`? a `--no-graph` run?), so there "
                            "is no revision to divide its bytes by",
-                           how=f"{graph:,} `dbstat` bytes of `graph_*` over the {lane['revisions']} "
-                               f"revisions the lane holds after one cold index ({lane['anchors']} full "
-                               f"snapshots, {lane['deltas']} delta rows). The denominator is a revision, "
+                           how=f"{graph:,} `dbstat` bytes of `graph_*` over the {revisions} "
+                               f"revisions the lane holds after one cold index "
+                               f"({lane.get('anchors', 0)} full "
+                               f"snapshots, {lane.get('deltas', 0)} delta rows). The denominator is a revision, "
                                "as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in §13.7 — not "
                                f"a commit of history: over the {commits} commits in the fixture this is "
                                f"{graph // max(1, commits):,} B/commit, and that quotient falls as a "
                                "repository ages, because the lane is a window and not a ledger "
                                "(`reco-7yq`)",
                            scaled=False))
-    record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
-                       "store.size.mib.small",
-                       how="the whole `.fathom/index.sqlite3`, as the cold index left it",
-                       scaled=False))
+    if not absent:
+        record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
+                           "store.size.mib.small",
+                           how="the whole `.fathom/index.sqlite3`, as the cold index left it",
+                           scaled=False))
 
     # --- warm: one new commit, then the same verb again -------------------------------------
     warm, warm_rss = [], 0

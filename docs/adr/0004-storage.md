@@ -1549,6 +1549,48 @@ on any runner; and the worst the new division can get wrong is "the baseline did
 yet", which is a re-measure rather than a hidden regression. `evaluate` takes that ratio as
 `machine_factor`, and `--self-test` proves all four clauses of it with no build and no fixture.
 
+**What `reco-0zot` found when the runner's `rss.tui.mib.small` was read instead of re-blessed.** The
+job came in red on `+17.5 % vs the blessed baseline (30.820 → 36.200 …)` and named no change, because
+the number it named was fifteen days and ninety commits old and the row carried neither a centre nor a
+floor to say how wide that metric already is. It is wide, and not because of the TUI: **`VmHWM` is not
+the program's memory.** At the peak the TUI child reports `RssAnon` — heap, stacks, what the process
+dirtied — of **15.0-15.2 MiB inside a 33-34 MiB resident set**, so over half of the budgeted number is
+`RssFile`: how much of a 36 MB statically-linked release binary the kernel had paged in by the time the
+first frame was up. Measured on one tree on one box: the same program rebuilt with
+`-C codegen-units=1` (binary 36.4 MB → 29.6 MB, `RssAnon` unmoved at 15.0 MiB, `VmData` identical) reads
+**30.3 MiB** where the default build reads **33.4** — a 9 % move on a memory budget, out of a compiler
+flag, against a ±15 % ratchet. The same tree reads **35.6-36.9** on the `ubuntu-latest` runner and
+**33-34** in the container class `blessed_environment` describes. That is why the row was red
+everywhere and the TUI was unchanged anywhere.
+
+What was done, and what was not: the row was **re-blessed at 34.16 MiB** — the median of eighteen probes
+(three gate harnesses of six) on the bless box's own class of container, undivided by any factor,
+because §11.8's rule for a memory row is unchanged — and blessed **with a 4 MiB floor**, which is the
+measured build-and-machine spread of the statistic (3.0 MiB between two codegens of one tree, 2.4-3.5
+MiB between a container and the runner) and not a tolerance chosen to make a red go quiet. A floor
+needs a reason, and the reason now travels in the row's own `how`, which is the place the gate reads it
+from. What the row can still catch is a change bigger than ~5 MiB — a leak, not a linker. What it cannot
+catch is a machine, and `test_a_machine_swap_on_the_tui_rss_row_is_not_reported_as_a_regression` holds
+both halves of that sentence, including the stale floor-less bless of 30.82 as the record of the red
+that was. Three things were deliberately *not* done: `NOISE_FLOOR["MiB"]` was not raised (the fallback
+constant is still 1 MiB, and every other floor-less row keeps the guard it has), the calibration factor
+was not applied to a memory row (§11.8: "a *scaled RSS budget would be self-deception*"), and the
+instrument was not swapped for `RssAnon` — that is the machine-independent number, and the row's `how`
+names it now, but the published budgets are *resident* sets across four size classes and quietly
+re-defining all of them is a ticket with its own rationale. What stays true and unpleasant: a bless is
+one machine's number, so the row has ~2.7 MiB of headroom before a runner further out than the GitHub
+one trips it again; the change that removes the fragility is to bless the memory rows from the runner
+that runs the gate, or to ratchet the anonymous peak and leave the footprint to the budget.
+
+The same row's harness had a second defect on the way in. A binary that writes no store — the usual
+cause is one built without `sqlite-bundled`, which says so and exits 9 — leaves `store_split` reporting
+zeros, and zeros are not `None`, so the byte rows took the "we have a store" branch and raised a
+`KeyError` out of their own explanation of the graph lane. The gate died two seconds in with no verdict
+and no annotation, which is `reco-axp`'s complaint about a gate that crashes instead of judging, in the
+one branch that had already learned to answer `blocked_by`. Those rows are `blocked` now, and
+`test_a_binary_that_writes_no_store_is_reported_blocked_not_as_a_traceback` runs the gate against a
+binary that only exits 9 to keep it that way.
+
 **The register.** Hand-written into `benchmarks/baselines/perf-gate.json`'s `known_breaches`, carried
 forward by `make bench-bless` so a bless cannot launder it, and read by `tools/epic7_acceptance.py`, which
 fails the epic if a row has stopped biting, if a breach bites with no row, if a value passes its ceiling,

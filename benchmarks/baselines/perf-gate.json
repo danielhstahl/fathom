@@ -173,11 +173,15 @@
   },
   "rss.tui.mib.small": {
    "budget": "rss.tui.mib.small",
+   "center": 34.16,
    "higher_is_better": false,
-   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe. Re-blessed by `reco-0zot` at the median of eighteen probes (three gate harnesses of six) on the class of Linux container `blessed_environment` describes, undivided by any factor because \u00a711.8 forbids scaling a memory row. The number it replaces (30.82, blessed at `36b011f`) was fifteen days and ninety commits old: every runner since has read +15 % past it while the bless box itself had already moved to 33, so the row was a stale number wearing a regression. A floor needs a reason, and this instrument's is not what its name says: at the peak `RssAnon` \u2014 the program's own memory \u2014 is 15.0-15.2 MiB while `RssFile` is 15.4-18.3 MiB, so over half of `VmHWM` is how much of the 36 MB release binary the kernel had paged in. Measured on one tree on one box: rebuilding it with `-C codegen-units=1` (binary 36.4 \u2192 29.6 MB, `RssAnon` unmoved at 15.0) reads 30.3 MiB against the default build's 33.4, and the GitHub runner reads 35.6-36.9 for a tree this container reads at 33-34. The floor blessed here is 4 MiB for exactly that reason: it is the measured build-and-machine spread of this statistic, not a tolerance chosen to make a red go quiet. What the row can still resolve is a change bigger than ~5 MiB \u2014 a leak, not a linker \u2014 and a machine inside \u00b110 % of this bless is inside its own noise.",
+   "noise": 4.0,
+   "scale": 0.1038,
    "scaled": false,
+   "spread": 0.59,
    "unit": "MiB",
-   "value": 30.82
+   "value": 34.16
   },
   "rss.warm_reindex.peak_mib.small": {
    "budget": null,

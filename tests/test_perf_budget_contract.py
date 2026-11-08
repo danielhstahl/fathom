@@ -15,6 +15,9 @@ file is the check that the assertion is real:
   lines in a log nobody opened (`reco-axp`);
 * RSS is measured, not assumed: the blessed baseline carries resident-set numbers from `VmHWM`, marked
   unscaled, beside the timings they came from;
+* and a resident set is not a machine-independent number either: `rss.tui.mib.small` is blessed with a
+  floor as wide as the build-and-machine spread of a peak that is over half the executable's own
+  resident pages, so a runner moving is not a commit regressing (`reco-0zot`);
 * the plumbing is wired: `make bench` exists, the CI job publishes the trend, the trend is gitignored
   because it is an artefact, and the gate speaks `fathom-core`'s exit code 11.
 
@@ -604,7 +607,8 @@ def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
     """A blessed number and its noise are one measurement; half of it is a guess about the other half."""
     blessed = json.loads(BASELINE.read_text())["measurements"]
     fail_pct = _budgets()[1]["regression_fail_pct"]
-    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small", "warm.reindex.ms.small"):
+    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small", "warm.reindex.ms.small",
+                  "rss.tui.mib.small"):
         row = blessed[ident]
         assert row.get("center") is not None, f"{ident}: blessed without the statistic the ratchet uses"
         assert row.get("noise") is not None, f"{ident}: blessed without the floor it was judged by"
@@ -612,6 +616,115 @@ def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
         assert float(row["noise"]) < limit, (
             f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
             f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve it")
+
+
+def test_the_tui_rss_bless_carries_the_machine_spread_of_the_metric():
+    """`rss.tui.mib.small` is blessed with a floor because the *machine* moves it (`reco-0zot`).
+
+    The row is a resident set, and a resident set is not the program's memory: at the TUI's peak, the
+    child's `RssAnon` — its own dirty memory, which is what a "steady-state TUI with a warm store"
+    budget is about — is 15.0-15.2 MiB of a 33-34 MiB peak, and the rest is `RssFile`: how much of the
+    36 MB release binary the kernel had paged in. That half is code layout and demand paging. Measured
+    on one tree on one box, rebuilding it with `-C codegen-units=1` (binary 36.4 → 29.6 MB, `RssAnon`
+    unmoved at 15.0 MiB) reads 30.3 MiB where the default build reads 33.4 — a 9 % move out of a
+    compiler flag, on a row whose whole ratchet is ±15 %. The GitHub runner reads 35.6-36.9 for the same
+    tree a container reads at 33-34, which is the +17.5 % "regression" that made the `perf` job red and
+    named no change, because the blessed number was fifteen days and ninety commits old.
+
+    So the row must now carry a floor that says what the instrument cannot resolve, and the baseline is
+    the only place that sentence can live where the gate reads it.
+    """
+    blessed = json.loads(BASELINE.read_text())["measurements"]["rss.tui.mib.small"]
+    assert blessed.get("center") is not None, (
+        "the TUI's RSS row is blessed on its tail statistic again; a worst-of-N probe cannot resolve "
+        "the ratchet and `reco-dkr` is the reason the middle is what gets compared")
+    assert blessed.get("noise") is not None, "the row is blessed without a floor again"
+    base = float(blessed["center"])
+    row = G.Measurement("rss.tui.mib.small", "MiB", base, "rss.tui.mib.small", [base] * 3,
+                        scaled=False, noise=2.0)
+    floor, basis = G.noise_floor(row, base, blessed)
+    assert "blessed" in basis, f"the row fell back to the per-unit constant: {basis}"
+    assert floor >= 3.0, (
+        f"a {floor:g} MiB floor does not cover this metric: one tree, one box, two builds read "
+        "3.0 MiB apart, and a container and a runner read 2.4-3.5 MiB apart (`reco-0zot`)")
+    assert floor < base * _budgets()[1]["regression_fail_pct"] / 100.0, (
+        "the floor is now wider than the ±15 % the row is supposed to resolve, which makes the row "
+        "a blind spot rather than a gate: widen the budget's guard or narrow the floor, and say so")
+    for token in ("RssAnon", "codegen-units"):
+        assert token in blessed["how"], (
+            f"the bless must carry the reason its floor is that wide; `{token}` is missing, and a "
+            "floor nobody can trace is a knob")
+
+
+def test_a_machine_swap_on_the_tui_rss_row_is_not_reported_as_a_regression():
+    """The false positive, and the fix, as arithmetic the gate can be shown.
+
+    Two halves on purpose: the first is the run CI actually saw — a runner reading 36.2 MiB against a
+    bless of 30.82 that carried neither centre nor floor — and it must still look like the red it was,
+    or this test has stopped describing the defect. The second is the same runner reading +9 % against
+    the bless that row has now, and it must not be a red: that gap is the machine's, not the change's.
+    """
+    budgets, gates = _budgets()
+
+    def verdict(value: float, blessed_rows: dict) -> "G.Verdict":
+        row = G.Measurement("rss.tui.mib.small", "MiB", value, "rss.tui.mib.small", [value] * 6,
+                            scaled=False, noise=2.0)
+        return G.evaluate([row], {"measurements": blessed_rows}, budgets, gates,
+                          1.0, strict=True)[0]
+
+    stale = {"rss.tui.mib.small": {"value": 30.82, "unit": "MiB", "budget": "rss.tui.mib.small",
+                                   "scaled": False, "higher_is_better": False}}
+    ci_saw = verdict(36.2, stale)
+    assert ci_saw.status == "regression", (
+        f"the run that filed this ticket read {ci_saw.status}: a floor-less bless of 30.82 against a "
+        "runner reading 36.2 MiB is the false positive, and this test is its record")
+
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    base = float(blessed["rss.tui.mib.small"]["center"])
+    for away, why in ((1.09, "a runner this box reads 9 % above"),
+                      (0.90, "a leaner codegen of the same tree, 10 % below")):
+        verdict_row = verdict(base * away, blessed)
+        assert not verdict_row.failed, (
+            f"{why} is inside the machine spread this row was blessed with, and the gate said "
+            f"`{verdict_row.status}`: {verdict_row.detail}")
+    leak = verdict(base * 1.25, blessed)
+    assert leak.status == "regression", (
+        f"a 25 % growth on a memory row must still be red; the floor blessed here swallowed it "
+        f"({leak.detail})")
+    assert leak.resolves, "a real memory regression has to be classifiable, not another blind spot"
+
+
+def test_a_binary_that_writes_no_store_is_reported_blocked_not_as_a_traceback(tmp_path):
+    """A cold index that wrote nothing is a `blocked` row, not a `KeyError` in the harness.
+
+    `store_split` reports zeros — not `None` — for a file that is not there, and `None` is the signal
+    that means "no `dbstat`", so a missing store fell through to the branch that had a store to divide
+    and took the graph row's *own explanation* with it: `graph_lane_basis` answers nothing about a
+    file it cannot open, and the `how` raised on the missing key. The gate died two seconds in with no
+    verdict and no annotation — `reco-axp`'s complaint about a gate that crashed instead of judged, in
+    the one branch that had already learned to answer `blocked_by`. The usual cause is a binary built
+    without `sqlite-bundled`, which says so and exits 9.
+    """
+    deaf = tmp_path / "fathom-without-sqlite"
+    deaf.write_text("#!/bin/sh\necho 'error: needs the sqlite-bundled feature' >&2\nexit 9\n",
+                    encoding="utf-8")
+    deaf.chmod(0o755)
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(deaf),
+         "--commits", "20", "--trend-dir", str(tmp_path / "trend")],
+        cwd=ROOT, capture_output=True, text=True, timeout=600)
+    output = result.stdout + result.stderr
+    assert "Traceback" not in output, f"the gate crashed instead of reporting:\n{output}"
+    assert result.returncode in (G.EXIT_BUDGET, G.EXIT_ERROR), (
+        f"a run with nothing measured in it is not a pass: exit {result.returncode}\n{output}")
+    for ident in ("store.bytes_per_commit_spine.small", "store.bytes_per_commit_graph.small",
+                  "store.size.mib.small"):
+        written = {row["id"]: row for row in json.loads((tmp_path / "trend" / "latest.json")
+                                                        .read_text())["verdicts"]}
+        row = written.get(ident)
+        assert row and row["status"] == "blocked", (
+            f"`{ident}` reported {row and row['status']} for a store that does not exist; a zero-byte "
+            f"store would read as a 100 % improvement:\n{output}")
 
 
 def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
