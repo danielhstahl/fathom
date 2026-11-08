@@ -550,10 +550,25 @@ def probe(libc_hint: Optional[str] = None, extra_hints: Iterable[str] = (),
     return res
 
 
-#: Directories a distribution keeps its loader in, in preference order. The multiarch
-#: directory (added in :func:`_loader_candidates`) comes first because it names the
-#: architecture in its own pathname.
-_LOADER_DIRS = ("/lib64", "/lib", "/usr/lib64", "/usr/lib")
+#: The multiarch directories of *this* host, most-preferred first: a Debian/Ubuntu loader lives in
+#: ``/lib/x86_64-linux-gnu``, which says in its own pathname what ``/lib`` leaves unstated.
+_MULTIARCH_DIRS = tuple("%s/%s-linux-gnu" % (lib, platform.machine())
+                        for lib in ("/lib", "/usr/lib"))
+
+#: Every directory a loader search may look in, in preference order, and the *only* one: the
+#: multiarch directories, then the FHS ones. :func:`_loader_candidates` reads nothing but this
+#: constant and the libc's own directory, which is what makes it replaceable — a contract test that
+#: rebuilds the multilib layout under ``tmp_path`` patches this and means to be believed. When the
+#: multiarch directories were a literal inside the function instead, the patch did not stop the
+#: search from walking onto the host, and the test that asserts "the x86-64 loader wins over the
+#: i386 one" answered with the runner's ``/lib/x86_64-linux-gnu`` loader: green on a laptop with no
+#: such directory, red on the Debian runner that has one (**reco-d2bo**). One list, patched as a
+#: unit, so the fixture is the whole world the search sees.
+_LOADER_DIRS = _MULTIARCH_DIRS + ("/lib64", "/lib", "/usr/lib64", "/usr/lib")
+
+#: What a loader is called when nobody wrote its name down: musl's ``ld.so``, the compat symlink,
+#: and every ``ld-*so*`` twin that lives in a directory the search was pointed at.
+_LOADER_GLOB = "ld-*so*"
 
 #: The loader name each architecture's C library is actually run by, keyed by ELF
 #: ``e_machine``. There is no such thing as *the* ``ld.so``: on a multilib Debian/Ubuntu
@@ -596,19 +611,33 @@ def _loader_is_for(path: str, want_machine: Optional[int],
     return not (want_class and have_class and have_class != want_class)
 
 
-def _loader_candidates(libc: str, want_machine: Optional[int] = None) -> List[str]:
-    """Ordered loader candidates, the ones that name this architecture first."""
-    triple = "%s-linux-gnu" % platform.machine()
+def _loader_dirs(libc: str) -> List[str]:
+    """The directories the search may read, the libc's own first, deduplicated.
+
+    Built from :data:`_LOADER_DIRS` and nothing else, so replacing that constant replaces the world
+    the search sees — which is the whole reason the multiarch directories live in it rather than in
+    here.
+    """
     dirs: List[str] = []
-    parent = os.path.dirname(libc)
-    for directory in (parent, "/lib/%s" % triple, "/usr/lib/%s" % triple) + _LOADER_DIRS:
+    for directory in (os.path.dirname(libc),) + tuple(_LOADER_DIRS):
         if directory and directory not in dirs:
             dirs.append(directory)
+    return dirs
+
+
+def _loader_candidates(libc: str, want_machine: Optional[int] = None) -> List[str]:
+    """Ordered loader candidates, the ones that name this architecture first.
+
+    Three passes over :func:`_loader_dirs`, cheapest-and-most-specific first: the ``ld.so`` every
+    distribution keeps somewhere, then the loader this architecture is actually run by, then
+    whatever else in those directories answers to ``ld-*so*``.
+    """
+    dirs = _loader_dirs(libc)
     out: List[str] = [os.path.join(d, "ld.so") for d in dirs]   # musl, and the compat symlink
     for name in _LOADER_NAMES.get(want_machine, ()):
         out.extend(os.path.join(d, name) for d in dirs)
-    for pat in ("/lib/ld-*so*", "/lib64/ld-*so*", "/usr/lib/*/ld-*so*", "/usr/lib/ld-*so*"):
-        out.extend(sorted(glob.glob(pat)))
+    for directory in dirs:
+        out.extend(sorted(glob.glob(os.path.join(directory, _LOADER_GLOB))))
     seen, uniq = set(), []
     for item in out:
         if item in seen:

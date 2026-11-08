@@ -132,6 +132,30 @@ def test_the_loader_search_never_hands_a_64_bit_libc_to_the_32_bit_loader(tmp_pa
     assert elf_probe._find_ld_so(str(libc)) == str(right)
 
 
+def test_a_loader_search_pointed_at_a_tree_stays_inside_that_tree(tmp_path, monkeypatch):
+    """Patching the loader directories has to be the whole search, not a preference list.
+
+    The test above was red on the runner and green on every laptop because the multiarch directory
+    (`/lib/x86_64-linux-gnu` on the Debian runner, nowhere on a macOS laptop) was a literal inside
+    the candidate builder rather than part of `_LOADER_DIRS`: the patch redirected the preference
+    order while the search still walked onto the host and answered with the runner's own loader — a
+    fixture that passed by not having a `/lib` to trip over (**reco-d2bo**). One list now, and the
+    search reads nothing else, which is what this test pins down on every machine.
+    """
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    libc = lib / "libc.so.6"
+    _fake_elf(libc, elf_probe.X86_64_E_MACHINE)
+    _fake_elf(lib / "ld-linux-x86-64.so.2", elf_probe.X86_64_E_MACHINE)
+    monkeypatch.setattr(elf_probe, "_LOADER_DIRS", (str(lib),))
+    candidates = elf_probe._loader_candidates(str(libc), elf_probe.X86_64_E_MACHINE)
+    assert candidates, "the fixture's own loader must be a candidate"
+    for path in candidates:
+        assert os.path.dirname(path) == str(lib), \
+            "%s is outside the tree the search was pointed at" % path
+    assert elf_probe._find_ld_so(str(libc)) == str(lib / "ld-linux-x86-64.so.2")
+
+
 def test_a_loader_of_the_other_word_size_is_refused(tmp_path):
     """riscv32 and riscv64 share one `e_machine`, so ELF class is the check that separates them."""
     libc = tmp_path / "libc.so.6"

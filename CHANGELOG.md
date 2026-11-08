@@ -16,6 +16,47 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### `docs + workspace contracts` came back red again, over a clone CI has that no laptop has, a fixture that leaked, and a cold number that was not cold (`reco-d2bo`)
+
+Three failures, none of them reproducible here, and all three were one mistake made three times: a check
+that reads whichever box it landed on and reports the answer as a fact about the code. (`reco-ghao` is
+the same story with eight chapters; this is the sequel nobody wanted.)
+
+* **`C03` refused a release because of a merge commit.** The gap was `Merge d6a9aa5… into e194a63…` — not
+    a commit anybody wrote, but the host's merge commit that a pull request's checkout is standing on, with
+    no bead ref, no conventional header and no `Changelog:` trailer anybody could have written. A merge is
+    a join rather than a change: its own content is the conflict resolution, and every commit it joins is
+    audited in its own right, so it is not a commit the notes forgot. `Commit` now carries its parents —
+    the one field that says "join", where matching the subject would only match one phrasing of it — and a
+    merge is exempt from coverage the way a `chore:` commit is: exempt, not invisible. `lint` still reads
+    it, `--include-internal` still prints it, and a merge that carries a `Changelog:` trailer is taken at
+    its word like anything else. The audit stays green on every laptop because no laptop's history has a
+    merge in it; the runner's clone *is* one.
+* **The multilib loader fixture was not a fixture.** `test_the_loader_search_never_hands_a_64_bit_libc_to_the_32_bit_loader`
+    builds `/lib` and `/lib64` under `tmp_path`, patches `_LOADER_DIRS`, and expects the fake tree to be the
+    world the search sees. It was not: the multiarch directories (`/lib/<triple>`) were a literal inside
+    `_loader_candidates`, so the patch re-ordered the search without closing it. On the Debian runner the
+    search stepped onto `/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2` and reported the host's own loader —
+    the right answer to a question the test had not asked — and on a macOS laptop, where no such directory
+    exists, it reported the fixture and passed. The multiarch directories are part of `_LOADER_DIRS` now
+    and the candidate builder reads nothing else, so pointing the search at a tree *is* the whole search;
+    "a loader search pointed at a tree stays inside that tree" is a test now rather than an accident of the
+    operating system.
+* **The cold card number was a race, and the runner won it.** `cold_p95 > warm_p95` was asserted across
+    two differently-shaped samples: one cold measurement per fixture (compose only, no render) against
+    `repeats` warm ones (compose *and* render), and `p95` of sixteen items drops its largest — which was
+    precisely the one fixture whose analysis was worth measuring — while the first sample of the run was
+    paying for lazily-imported modules. On the runner that came out 8.30 ms cold against 8.44 ms warm.
+    Cold is now the warm path's work *plus* the analysis it starts from: same repeats, same render, taken
+    after one untimed pass over the corpus so neither number is the price of the interpreter waking up.
+    The ordering is arithmetic about what the two paths compute now — 3.7× here, and still 2.6× with six
+    busy loops competing for eight cores.
+
+Asserted by three new tests — a throwaway repository whose head is a `Merge <sha> into <sha>`, the
+loader search held to the tree it was handed, and the cold/warm ordering above — and read by
+`tools/gen_changelog.py audit`, `tests/test_harness_contract.py` and
+`tests/test_summary_card_contract.py`.
+
 ### Eight contract tests were red on the runner and green on every laptop, over four claims the suite was making about somebody else's machine (`reco-ghao`)
 
 `docs + workspace contracts` came back with eight failures, none of which reproduced here. That is the
