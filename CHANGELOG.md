@@ -16,6 +16,75 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Every agent turn on Windows lost its intent, over the separator a harness path was rejoined with (`reco-raz3`)
+
+`build+test (windows-latest · stable)` failed nine of the twenty-one tests in the two `tests/intent.rs` files
+— four of `crates/fathom-analyze`'s eleven, five of `crates/fathom-cli`'s ten — while the Linux and macOS
+legs passed them all. Every one of them said the same impossible thing about a repository whose event stream
+was full of agent turns:
+
+```text
+assertion `left == right` failed: one episode, and its intent came from the stream:
+  left: (0, 0)
+ right: (1, 1)
+
+intent    no recorded intent · no harness events for this repository, and no `Intent:` or `Task:` trailer
+```
+
+No event was missing, and no rung of the ladder was consulted and refused: the turns were never linked to any
+commit, and the ladder then told the reviewer — loudly, and wrongly — that nothing had been recorded, which
+is the one answer this feature exists to withhold. Measured under a Windows-emulating probe (below), the same
+cause reddened sixteen tests that already existed, across four binaries — the nine in the two
+`tests/intent.rs` files, and seven more in `crates/fathom-ingest/tests/hooks_v1.rs` and
+`crates/fathom-cli/tests/hooks_verb.rs`, which is where the rule is now pinned — and it goes red over the
+guard this ticket adds, which is what a guard is for.
+
+* **`contain_path` was answering in the host's spelling instead of the store's.** The reader normalises the
+    path a `file_edit` event names — drop `./`, drop `.` segments, drop a trailing slash — and the rebuild
+    joined the components with `std::path::MAIN_SEPARATOR`. On Linux and macOS that is `/`, and the answer
+    was the path. On Windows it is `\`, so an event naming `src/rail.rs` came back as `src\rail.rs`, and
+    that is what the turn recorded.
+* **Which is the wrong answer exactly once: at the match.** `hooks::attribute` decides which turn a commit
+    belongs to by asking whether one of the commit's paths is one of the turn's paths, and a commit's paths
+    are git's — `/`-separated on every platform, including this one. So on Windows no path ever met, the
+    time-only rung could not cover for it (it fires only for turns that recorded *no* paths, and these turns
+    had one), and every agent commit arrived with no turn at all. The ladder's normal case — nothing stated
+    anywhere — is a state with a reason sentence, and the reason it printed blamed a harness that had been
+    talking the whole time. Absence is a claim here, and Windows was making it falsely.
+* **The fold is the platform's, so the fix is to stop translating.** `Path::components` already treats `\`
+    and `/` as the same separator on Windows and as *not* the same separator everywhere else, which is
+    exactly the rule wanted here: split with `Path::components`, join with `/`, and each platform folds no
+    more than it says a path's name contains. No `cfg!(windows)` branch, and no rewriting of a Linux file
+    whose name really does contain a backslash. The join is `/` because that is how the store spells every
+    path (`scope.rs` has said so all along: "a Windows capture and a Linux one compare equal") and because a
+    `/`-spelled path opens its file on Windows too — the reverse is not true.
+* **The reader owns this, not the three writers.** A Windows harness has no way to spell a relative path
+    except with `\`: `os.path.relpath` in `adapters/fathom-hook.py`, `path.relative` in
+    `adapters/fathom-pi-hooks.ts`, and `Path::components` in this crate all emit that spelling there. Fixing
+    one of them would fix one adapter; the reader is where a path from any of them becomes a store path, so
+    that is where the two spellings become one — which also means a stream written on Windows *before* this
+    change is still readable after it.
+* **How it was reproduced without a Windows box.** Two probes, one line each, both making the Linux build
+    split a path the way `Path::components` does on Windows; they differ only in the join, which is the half
+    that was wrong. With the join left as the host's — exactly what Windows did — the probe reddens the leg's
+    nine intent tests plus five in `hooks_v1.rs` and two in `hooks_verb.rs`. With the join `/`, which is what
+    this change makes it on every platform, every one of them is green; the only two assertions a Linux build
+    cannot judge are named in the tests themselves (a drive prefix is not a prefix here, and a trailing `\` is
+    not a separator here). So the diagnosis is measured, not assumed; the honest limit is that no Windows
+    machine ran any of this, and the leg itself is the check that the fix lands.
+* **What is *not* claimed:** that Windows is now known-good. This is the separator that broke the intent
+    ladder, found because the intent tests were red; the platform's other ways of disagreeing — line endings
+    (`reco-d3p9`), the signals it does not have (`reco-wgcj`) — each arrived as its own ticket, and the next
+    will too.
+
+*Asserted by*: `crates/fathom-ingest/tests/hooks_v1.rs`
+(`a_contained_path_comes_back_in_the_spellings_git_uses`, which is the red-on-Windows guard on every leg;
+`a_backslash_is_an_ordinary_character_where_it_is_one`, which pins that the fold is Windows' and not a
+translation; and — compiled only by the Windows leg — `a_stream_written_on_windows_is_read_like_every_other_stream`
+and `a_turn_written_with_windows_separators_still_owns_its_commit`), by `path_containment_refuses_every_shape_that_escapes`
+and the attribution tests of the same file, and by the twenty-one tests of
+`crates/fathom-analyze/tests/intent.rs` and `crates/fathom-cli/tests/intent.rs` that this ticket is named for.
+
 ### Two dependency tests were red on Windows and green on the other two legs, over what a checkout contains (`reco-d3p9`)
 
 `build+test (windows-latest · stable)` failed two of `crates/fathom-analyze/tests/deps_delta.rs`'s tests

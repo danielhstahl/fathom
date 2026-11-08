@@ -1200,6 +1200,106 @@ fn path_containment_refuses_every_shape_that_escapes() {
 }
 
 #[test]
+fn a_contained_path_comes_back_in_the_spellings_git_uses() {
+    // `attribute` matches the answer against a commit's git paths, and git paths are `/`-separated on
+    // every platform. The old normalisation joined with the host separator instead, so on Windows this
+    // returned `src\app.rs`, nothing ever matched, and every agent turn on that platform lost its intent
+    // while the tally blamed the harness (`reco-raz3`). These three lines are the promise, and on
+    // Windows they are the red-before-green guard.
+    assert_eq!(
+        hooks::contain_path("/srv/app", "./src/./app.rs/").ok(),
+        Some("src/app.rs".to_owned()),
+        "`./` goes, `.` goes, the trailing slash goes"
+    );
+    assert_eq!(
+        hooks::contain_path("/srv/app", "src/deep/nested/app.rs").ok(),
+        Some("src/deep/nested/app.rs".to_owned()),
+        "a nested path keeps every separator as `/`"
+    );
+    assert_eq!(
+        hooks::contain_path("/srv/app", "/srv/app/src/app.rs").ok(),
+        Some("/srv/app/src/app.rs".to_owned()),
+        "the root of an absolute answer is `/`, not the host's rendering of a root"
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_backslash_is_an_ordinary_character_where_it_is_one() {
+    // The fold the next two tests assert is a property of Windows, not a translation this reader
+    // performs. On a POSIX platform `a\b` is one file with a backslash in its name, and renaming it to
+    // `a/b` would be a lie about the file an edit touched.
+    assert_eq!(
+        hooks::contain_path("/srv/app", "src\\app.rs").ok(),
+        Some("src\\app.rs".to_owned()),
+        "the name survives untouched"
+    );
+    assert_eq!(
+        hooks::contain_path("/srv/app", "notes\\").ok(),
+        Some("notes\\".to_owned()),
+        "and a name that ends in one is a name, not a trailing separator"
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn a_stream_written_on_windows_is_read_like_every_other_stream() {
+    // Windows is where a writer and a git path can disagree about nothing but the separator:
+    // `os.path.relpath`, `path.relative` and `Path::components` all spell a relative path with `\` there,
+    // while git's are always `/`. `\` and `/` are one separator on this platform, so one spelling arrives
+    // at the store — and a drive root still contains what is under it (`reco-raz3`). The last assertion is
+    // the one only this platform can make: elsewhere `C:\repo2` is not an absolute path at all, so there is
+    // no containment to refuse.
+    assert_eq!(
+        hooks::contain_path(r"C:\repo", r"src\app.rs").ok(),
+        Some("src/app.rs".to_owned()),
+        "the writer's separator is not the store's"
+    );
+    assert_eq!(
+        hooks::contain_path(r"C:\repo", r"C:\repo\src\app.rs").ok(),
+        Some("C:/repo/src/app.rs".to_owned()),
+        "an absolute path inside the session directory is the same path spelled differently"
+    );
+    assert!(
+        hooks::contain_path(r"C:\repo", r"C:\repo2\x.rs").is_err(),
+        "a prefix is not a directory, on any platform"
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn a_turn_written_with_windows_separators_still_owns_its_commit() {
+    // The same claim one level up, at the matching itself: a stream that spells its paths with `\` must
+    // attribute the commit that touched `src/card.rs`, because on this platform those are one path.
+    let temp = Temp::new("win-separators");
+    temp.append(&[
+        line(1, "SessionStart", "s1", &ts(0), "{}"),
+        line(
+            2,
+            "UserPromptSubmit",
+            "s1",
+            &ts(10),
+            r#"{"prompt":"the card scrolls"}"#,
+        ),
+        // `\\` in the JSON, so the value the reader parses is one backslash: what `os.path.relpath`
+        // writes on this platform.
+        edit(3, "s1", &ts(12), r"src\\card.rs"),
+        line(4, "Stop", "s1", &ts(20), "{}"),
+    ]);
+    temp.terminate();
+
+    let reader = temp.reader();
+    let mut cursor = Cursor::fresh("events.jsonl");
+    drain(&reader, &mut cursor);
+    let linkage = hooks::attribute(&[commit("c1", 13, &["src/card.rs"])], &cursor.ledger);
+    assert_eq!(
+        linkage.by_event, 1,
+        "the path the turn recorded is the path the commit touched: {:?}",
+        linkage.links
+    );
+}
+
+#[test]
 fn the_timestamp_parser_accepts_what_vendors_send() {
     assert_eq!(
         hooks::parse_timestamp_millis("2026-02-11T10:00:00.000Z"),
