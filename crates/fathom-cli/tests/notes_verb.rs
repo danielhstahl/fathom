@@ -18,6 +18,12 @@
 //! person actually uses: the recorded decision comes back from `fathom search kind:note`, which is the same
 //! corpus `/` reads.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed: the fixture builds its index with `fathom index`, and `fathom notes`
+// reads that index back — both halves of that are compiled only when a SQLite backend is on (ADR-002
+// §6.1, §6.2), so on the headless `minimal` build the fixture cannot be built at all and the verb answers
+// `FEATURE_ABSENT` (9) instead of answering. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every store-backed build the whole suite still runs.
+#![cfg(feature = "sqlite-bundled")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -447,22 +453,19 @@ fn answering_appends_the_note_that_closes_it() {
         &["note", "answer", &question, "no — it went in the cleanup"],
     );
     assert_eq!(code(&out), 0, "{}\n{}", stdout(&out), stderr(&out));
-    let payload = json(&fathom(
-        repo.path(),
-        &[
-            "note",
-            "answer",
-            &question,
-            "no — it went in the cleanup",
-            "--json",
-        ],
-    ));
-    assert_eq!(payload["answers"], question.as_str());
 
     let after = repo.notes_text();
     let added = after.strip_prefix(&before).unwrap_or_else(|| {
         panic!("answering rewrote the file instead of appending to it:\n{after}")
     });
+    // Read here, before anything else touches the file. A note's id is its content *including the second
+    // it was written in* (`fathom_analyze::notes::entry::note_id`, truncated by `ledger_clock`), so a
+    // second copy of the same answer is the same block only inside that one second and a second note
+    // once the hand has moved. Counting the appended blocks after two answers therefore counted the
+    // clock, and it did: this assertion used to sit after both calls and went red on whatever run the
+    // second boundary landed in. "One answer, one appended block" is the claim this test owns, and one
+    // answer is what it is measured on; the `--json` door is checked below, on a memory that has already
+    // been proved append-only.
     assert_eq!(
         added.matches("## nt-").count(),
         1,
@@ -479,6 +482,19 @@ fn answering_appends_the_note_that_closes_it() {
         added.contains(&format!("about: {question}")),
         "the appended block names what it answers:\n{added}"
     );
+
+    // The machine-readable door on the same verb: one parseable value, and it names what was answered.
+    let payload = json(&fathom(
+        repo.path(),
+        &[
+            "note",
+            "answer",
+            &question,
+            "no — it went in the cleanup",
+            "--json",
+        ],
+    ));
+    assert_eq!(payload["answers"], question.as_str());
 
     // The status is a fact about the set, so it moves without the block being edited.
     let rows = repo.listed();

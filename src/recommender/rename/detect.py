@@ -141,7 +141,12 @@ def git_detect(window: Window, *, threshold: int = 50, copies: bool = False,
     if ignore_whitespace:
         args.append("--ignore-all-space")
     args += [window.base, window.head]
-    raw = subprocess.run(args, cwd=window.repo, capture_output=True, text=True, check=True).stdout
+    # Pinned environment, exactly as the fixture writer pins its own: this call *is* the measurement, so
+    # it may not read the runner's `~/.gitconfig` (a stray `[diff] renameLimit` or `renames = false`
+    # would change which pairs git even considers) and it may not decode git's output by whatever locale
+    # the runner happens to have.
+    raw = subprocess.run(args, cwd=window.repo, env=R.neutral_env(),
+                         capture_output=True, check=True).stdout.decode("utf-8")
     out: list[Prediction] = []
     for line in raw.splitlines():
         if not line:

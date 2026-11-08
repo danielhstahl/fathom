@@ -82,6 +82,14 @@ The editor's exit code is the verb's. `vim :cq` is a reviewer who cancelled, and
 reported success after that would be reporting a review that did not happen. A signal is said out loud
 too (`killed by SIGKILL`, usually an OOM), because "it exited 1" would blame the editor.
 
+**The hand-off is the terminal, so a run with no terminal has nothing to hand.** What the editor is given
+is this process's own stdin, stdout and stderr — which is how `vim` gets to draw, and the reason a
+`fathom open` whose streams are pipes (`| tee`, a CI step, a command substitution) can sit there forever:
+the editor polls a stream that is not a terminal for input that will never arrive, and the verb waits for
+the editor. That is what `--print` is for. It prints the identical command, runs nothing, and works with
+nothing installed and no terminal at all; the line it prints is then yours to run where the terminal is.
+An editor that needs none — `code`, `zed`, anything that starts a GUI and returns — is unaffected.
+
 Nothing in the working tree is written, ever (§1 of the diff viewer's rules applies here too: ADR-001 §7.5). The path handed to the editor is the file as checked out, absolute, so a relative `$PWD` never
 makes the jump land somewhere else.
 

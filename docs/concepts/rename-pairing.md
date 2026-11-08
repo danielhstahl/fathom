@@ -73,17 +73,7 @@ nothing moved, nothing emitted.
 
 ## Splits, folds and copies are one pairing with a shape
 
-A 1→3 split is not three renames, and the reason is not tidiness: three rows would | class | claimable pairs | found, shipped | recall, shipped | found, widened | recall, widened |
-|---|---|---|---|---|---|
-| rename (1→1) | 48 | 48 | 1.0000 | 48 | 1.0000 |
-| split (1→many) | 9 | 9 | 1.0000 | 9 | 1.0000 |
-| fold (many→1) | 3 | 3 | 1.0000 | 3 | 1.0000 |
-| copy (source survives) | 2 | 0 | 0.0000 | 2 | 1.0000 |
-
-Found under the *wrong* shape anywhere in the corpus: **0** — a split reported as a rename is a representation failure, not a hit with a different label, and the gate (`A2c`) says so.
-
-Shapes emitted: merge ×1, rename ×49, split ×3. Shapes reaching the fact tier: rename ×40 — which is the spike's finding reproduced by the shipped engine: a group is never a fact, so a split, a fold or a copy is on the card as a guess or not at all.
-let a reviewer accept
+A 1→3 split is not three renames, and the reason is not tidiness: three rows would let a reviewer accept
 two of them, and "the reviewer accepted two thirds of a split" is a meaningless state. So a pairing is a
 connected component over the edges that survived scoring, with `sources`, `destinations`, a `kind`
 (`rename`, `split`, `merge`, `copy`, `tangle`) and a printed shape (`1->3`, `3->1`, `2->2`). Its
@@ -239,22 +229,22 @@ Repository size, with the change set held at 6 moved files (mean of 3 runs, mill
 
 | paths in the tree | shipped mode | widened mode | blobs read, shipped | blobs read, widened |
 |---|---|---|---|---|
-| 200 | 5.72 ms | 23.24 ms | 6 | 200 |
-| 1000 | 7.61 ms | 105.26 ms | 6 | 1000 |
-| 4000 | 15.39 ms | 361.71 ms | 6 | 4000 |
+| 200 | 6.42 ms | 22.22 ms | 6 | 200 |
+| 1000 | 7.75 ms | 89.84 ms | 6 | 1000 |
+| 4000 | 14.75 ms | 416.14 ms | 6 | 4000 |
 
-From the smallest repository to 20× it: **2.69× shipped, 15.56× widened**. The shipped mode's curve is flat against the tree because it never looks at the tree; the widened mode's is not, which is the whole reason it is opt-in. Gate `A4a` bars the shipped ratio at 3.0.
+From the smallest repository to 20× it: **2.3× shipped, 18.73× widened**. The shipped mode's curve is flat against the tree because it never looks at the tree; the widened mode's is not, which is the whole reason it is opt-in. Gate `A4a` bars the shipped ratio at 3.0.
 
 Change-set size, with the repository held at 400 paths:
 
 | changed file pairs | candidate pairs | pairs scored | blobs read | pair (ms) | total (ms) |
 |---|---|---|---|---|---|
-| 1 | 1 | 1 | 1 | 0.27 | 5.46 |
-| 4 | 16 | 4 | 4 | 0.7 | 6.03 |
-| 16 | 256 | 16 | 16 | 2.47 | 8.01 |
-| 48 | 2304 | 48 | 48 | 7.38 | 15.14 |
+| 1 | 1 | 1 | 1 | 0.26 | 5.39 |
+| 4 | 16 | 4 | 4 | 0.7 | 5.88 |
+| 16 | 256 | 16 | 16 | 2.4 | 7.54 |
+| 48 | 2304 | 48 | 48 | 6.91 | 14.55 |
 
-×48 the change set costs **2.77× the time**: the candidate set is a cross product of the window's own deletions and additions, so it is quadratic *in what changed* and that is the honest statement of the bound — `O(changed files)`, with the square in it, pruned by `rename.candidates.top_k` and `rename.candidates.budget` rather than hidden.
+×48 the change set costs **2.7× the time**: the candidate set is a cross product of the window's own deletions and additions, so it is quadratic *in what changed* and that is the honest statement of the bound — `O(changed files)`, with the square in it, pruned by `rename.candidates.top_k` and `rename.candidates.budget` rather than hidden.
 <!-- END GENERATED: rename_pairing_cost -->
 
 The widened mode is the honest counterexample, and it is kept, measured, and off by default. It is the
@@ -274,6 +264,13 @@ Two things are refused, and both are in the code as gates rather than as opinion
   recomputes every content edge's score exactly and fails on any mismatch; `--explain` prints the shared
   and total shingle counts behind each number.
 
+A re-measurement on a different computer is not a drift. The pooled counts, the per-class recalls and
+every gate result are claims about the fixtures and `--check` compares them exactly; wall clock is a
+claim about the machine that ran it, so the millisecond figures are recorded and printed but never
+compared, and no gate's *expectation* is filled in from the run it is checked against — both halves of
+that rule are what `reco-v1z` established for spike `s4` and `reco-2ezf` applied here, after this step
+spent its life red on `totals differs` over 17.3 ms against 16.6 ms.
+
 ## Verbs
 
 | verb | what it is for |
@@ -281,41 +278,7 @@ Two things are refused, and both are in the code as gates rather than as opinion
 | `fathom rename pairs` | the card: asserted tier, guess tier, cost line, stated blind spots; `--audit`, `--all`, `--json` |
 | `fathom rename explain --path P` | why this pairing is a fact or a guess, the evidence line by line, and the command that checks it |
 | `fathom rename accept` / `reject` / `undo` | record a decision against a row or a path, with a note and a reviewer; `--dry-run` first if you like |
-| `fathom rename ledger` | every recorded decis| gate | expected | observed | result | claim |
-|---|---|---|---|---|
-| `F1` | 0 | 0 | pass | the fact tier asserts nothing untrue on this corpus |
-| `F2` | >= 0.95 | 1.0 | pass | and its precision is at or above the bar s4 set for it |
-| `F3` | >= 25 | 40 | pass | the fact tier is not precise because it is nearly silent |
-| `F4` | 0 | 0 | pass | no pair the truth names as not-a-move is ever asserted as a fact |
-| `F5` | >= 1 | 1 | pass | git's own decoy still reaches the reviewer — as a labelled guess |
-| `A1` | >= 0.9 | 1.0 | pass | AC 1, restated from s4: every claimable pair in the two named fixtures is shown, as a fact or as a guess |
-| `A1b` | 0 | 0 | pass | and none of the pairings shown in those fixtures is untrue |
-| `A2a` | 1.0 | 1.0 | pass | AC 2: every claimable split pair is emitted as a split |
-| `A2b` | 1.0 | 1.0 | pass | every claimable fold pair is emitted as a merge |
-| `A2c` | 0 | 0 | pass | and no pair is ever found under the wrong shape — a split inside a rename row is a representation failure, not a hit |
-| `A2d` | >= 2 | 3 | pass | a 1-to-3 split is ONE pairing with three destinations, not three renames |
-| `A2e` | >= 1 | 1 | pass | a fold of three files is ONE pairing with three sources |
-| `A2f` | 1.0 | 1.0 | pass | copies are represented, not skipped: under the widened candidate set every claimable copy pair is emitted as a copy — the shipped default refuses that mode on cost, not on ability |
-| `A3a` | is True | True | pass | AC 3: rejecting removes the pairing and keeps it counted |
-| `A3b` | is True | True | pass | accepting makes it asserted, and says who accepted it |
-| `A3c` | is True | True | pass | a decision about different bytes is re-opened, not inherited |
-| `A3d` | is True | True | pass | and a decision about one pairing does not touch its neighbours |
-| `A4a` | <= 3.0 | 2.69 | pass | AC 4: 20x the repository with the change set fixed costs under 3.0x as much |
-| `A4b` | >= 2.69 | 15.56 | pass | and the refused O(repo) mode is the one that actually scales with the tree |
-| `A4c` | >= 2874 | 4217 | pass | widening reads more blobs, so the cost claim is about blobs and not about luck |
-| `S1` | 0 | 0 | pass | a window in which nothing moved emits nothing at all |
-| `S2` | 2 | 2 | pass | the copies the shipped candidate set cannot see are named as a blindness, not counted as misses nobody mentions |
-| `P1` | 0.75 | 0.75 | pass | the fact bar that ships is the one s4 measured |
-| `P2` | is True | True | pass | git is asked below the fact bar, so a guess can carry git's own number |
-| `P3` | 0 | 0 | pass | no content score is an approximation: every content edge equals the exact Jaccard of its two shingle sets |
-| `P4` | is True | True | pass | path similarity is display-only: same basename, disjoint content, no pairing |
-| `P5` | is True | True | pass | an over-budget window says how much it dropped |
-| `P6` | is True | True | pass | the two tiers are ordered by trust: nothing in the guess tier is as reliable as a fact, which is the whole reason the split exists |
-| `P7` | >= 40 | 61 | pass | and the calibration table is measured on enough pairs to mean anything |
-| `X1` | 0 | 0 | pass | the fact tier's residual is structural, not tuning: no split, fold or copy is ever emitted at the fact tier |
-
-30 gates, 0 failed.
-ion, and `--audit`, which names the ones that no longer match the window |
+| `fathom rename ledger` | every recorded decision, and `--audit`, which names the ones that no longer match the window |
 | `fathom rename policy` | the bars, their sources, and the standing limits on what this engine can see |
 | `fathom rename score` | re-measure the corpus: `--write` refreshes the report, `--check` fails on drift in a gate |
 | `fathom rename bench` | the cost measurement, shipped mode beside the widened one |
@@ -389,8 +352,8 @@ download. CI runs the corpus re-measure, this document's generated blocks, and t
 | `A3b` | is True | True | pass | accepting makes it asserted, and says who accepted it |
 | `A3c` | is True | True | pass | a decision about different bytes is re-opened, not inherited |
 | `A3d` | is True | True | pass | and a decision about one pairing does not touch its neighbours |
-| `A4a` | <= 3.0 | 2.69 | pass | AC 4: 20x the repository with the change set fixed costs under 3.0x as much |
-| `A4b` | >= 2.69 | 15.56 | pass | and the refused O(repo) mode is the one that actually scales with the tree |
+| `A4a` | <= 3.0 | 2.3 | pass | AC 4: 20x the repository with the change set fixed costs under 3.0x as much |
+| `A4b` | >= 2.0 | 18.73 | pass | and the refused O(repo) mode is the one that actually scales with the tree |
 | `A4c` | >= 2874 | 4217 | pass | widening reads more blobs, so the cost claim is about blobs and not about luck |
 | `S1` | 0 | 0 | pass | a window in which nothing moved emits nothing at all |
 | `S2` | 2 | 2 | pass | the copies the shipped candidate set cannot see are named as a blindness, not counted as misses nobody mentions |

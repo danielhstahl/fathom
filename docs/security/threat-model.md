@@ -67,6 +67,7 @@ does not exist, and a test keeps it from appearing quietly).
 | F-15 | Decompression bomb | n/a | `ingest-git` | see §4.15 |
 | F-16 | Ledger contents as an injection into a terminal | accepted | `analyze-agents`, `tui-views` | see §4.16 |
 | F-17 | The gated write tools' defaults | fixed earlier | `tui-shell` | see §4.17 |
+| F-18 | A character wider than one byte panics the hand-written XML reader | fixed | `analyze-change` | the boundary snap in `Scanner::advance`, [`deps/xml.rs`](../../crates/fathom-analyze/src/deps/xml.rs), `text_wider_than_one_byte_between_two_tags_is_text_not_a_crash` |
 
 ## 3. The attacker's five questions
 
@@ -75,7 +76,7 @@ Every row above answers one of five questions, and a new finding has to answer o
 1. **Where do you write?** F-1, F-12. Only inside the canonicalised repository root, under `.fathom/`.
 2. **What do you run?** F-3, F-8, F-11. Nothing that the repository named, ever; one program at all, and it
    is named by a flag, the environment, or the *user's* config.
-3. **What do you read, and how much?** F-4, F-5, F-6, F-7, F-9, F-13, F-15. Bounded by a published budget in
+3. **What do you read, and how much?** F-4, F-5, F-6, F-7, F-9, F-13, F-15, F-18. Bounded by a published budget in
    every case, with the refusal recorded rather than the input silently discarded.
 4. **What do you send, and to whom?** F-2. One endpoint, parsed not prefix-matched, no redirects, capped response.
 5. **What do you print?** F-10, F-16. Anything attachable to a bug report goes through the redactor.
@@ -266,6 +267,30 @@ layer, the repository's `fathom.toml`, and says so out loud when a repository tr
 (`fathom.toml's [ui] editor = … was ignored: a clone does not get to name a program this process runs`).
 Writes the tools make are inside `.fathom/` or are the reviewer's own edit in their own editor. The
 verification is `handoff.rs`'s own tests plus `a_run_creates_nothing_outside_the_state_directory`.
+
+### 4.18 F-18 — a character wider than one byte, in a reader that counts bytes
+
+The XML scanner in `deps/xml.rs` keeps byte indexes, and one loop in it — the text between two tags — steps
+*one byte at a time*. In a file holding a character wider than a byte, that step parks the cursor *inside* the
+character, and the next slice by index is a panic (`end byte index 131 is not a char boundary`) rather than an
+answer. The attacker controls exactly one thing here: the text of a manifest. **Found by the fuzz smoke job**
+(**reco-eyo**), where the `lockfile` target exited 86 on an ordinary pull; the artefact was a `Fathom.csproj`
+whose element text was a run of `0xbe` bytes, and those arrive at the reader as three-byte U+FFFD, because the
+caller lossy-decodes before any parser sees a byte. No fuzzer is needed to hit it: `<description>Zürich</description>`
+in a `pom.xml` that is valid UTF-8 end to end panicked the same line.
+
+**Control.** `Scanner::advance` snaps its end forward to the next character boundary, so the cursor is on a
+boundary by construction and every index slice the scanner takes is one `str` allows. The snap changes nothing
+for the scanner's searches — an ASCII needle (`>`, `"`, `</`) cannot match *inside* a character — and changes
+the byte-stepping text loop from walking into a character to skipping over it, which is what it always meant.
+Which tests fail when the snap is removed (and did, before this landed): `hardening.rs`'s
+`text_wider_than_one_byte_between_two_tags_is_text_not_a_crash` and
+`every_seed_in_the_fuzz_corpus_still_runs`, and `deps_tolerance.rs`'s
+`no_degradation_of_a_known_fixture_can_panic_or_vanish`, which now spreads a wide character *through* every
+golden fixture instead of appending bad bytes at one end of it.
+
+Why the corpus needed a seed too (`pom.xml__wide-text`, `Fathom.csproj__wide-text`): every XML shape committed
+before this was pure ASCII, and nobody writing a nesting torture test thinks to add a character set.
 
 ## 5. Fuzzing
 

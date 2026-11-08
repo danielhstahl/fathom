@@ -19,10 +19,16 @@ cd "$root"
 # nothing provisions the global job, so the packager's one external dependency is provisioned here. Every
 # package manager that might own this image is tried, in the order their images are the common ones; a
 # runner with none of them is a runner where the message below is the whole answer.
+#
+# The Debian and Ubuntu package is `rpm`, not `rpmbuild` — the two archives have no `rpmbuild` binary
+# package, and `/usr/bin/rpmbuild` ships inside `rpm` (checked against both pools, because the obvious
+# name is the one everyone types). `rpmbuild` is tried second for the distributions that *do* split it
+# out, and both are `|| true` because a runner that already has the tool needs neither.
 if ! command -v rpmbuild >/dev/null 2>&1; then
     echo "rpmbuild is missing; installing it (the global runner image does not carry it)"
     if command -v apt-get >/dev/null 2>&1; then
         sudo apt-get update -qq || true
+        sudo apt-get install -y --no-install-recommends rpm || true
         sudo apt-get install -y --no-install-recommends rpmbuild || true
     elif command -v dnf >/dev/null 2>&1; then
         sudo dnf install -y rpm-build || true
@@ -47,7 +53,7 @@ if ! command -v rpmbuild >/dev/null 2>&1; then
         skip_rpm="--skip-rpm"
     else
         echo "error: rpmbuild is not installed and the release needs it to write the .rpm files."
-        echo "       On Debian/Ubuntu: apt-get install -y --no-install-recommends rpmbuild"
+        echo "       On Debian/Ubuntu: apt-get install -y --no-install-recommends rpm"
         echo "       To rehearse without them: FATHOM_PACKAGES_ALLOW_NO_RPM=1 packaging/linux-packages.sh (the release will not)"
         exit 1
     fi

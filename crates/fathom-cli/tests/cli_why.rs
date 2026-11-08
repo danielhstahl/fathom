@@ -9,6 +9,12 @@
 //! CI permission change, a turn that deleted its own test file, an untested public API) and four of them
 //! ordinary filler. The distinction that has to survive all the way to the printed page is the one
 //! `reco-c05` drew for the queue: a 400-line documentation edit is not the riskiest thing in the room.
+// Every test in this file is store-backed: the fixture builds its index with `fathom index`, and `fathom why`
+// reads that index back — both halves of that are compiled only when a SQLite backend is on (ADR-002
+// §6.1, §6.2), so on the headless `minimal` build the fixture cannot be built at all and the verb answers
+// `FEATURE_ABSENT` (9) instead of answering. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every store-backed build the whole suite still runs.
+#![cfg(feature = "sqlite-bundled")]
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
 use std::collections::BTreeMap;

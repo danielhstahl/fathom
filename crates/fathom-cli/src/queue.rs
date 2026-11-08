@@ -301,6 +301,9 @@ mod tests {
         );
     }
 
+    // `tui`-gated with the import it exercises: `ReasonVocabulary` is the picker's vocabulary, and it is
+    // imported above behind `feature = "tui"` — the headless build has no picker to add a reason to.
+    #[cfg(feature = "tui")]
     #[test]
     fn the_shipped_vocabulary_is_the_one_the_picker_shows_unless_config_adds_to_it() {
         let vocabulary = ReasonVocabulary::shipped();

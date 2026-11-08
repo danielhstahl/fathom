@@ -160,8 +160,9 @@ things sit outside it structurally:
 * **`blast` is often absent.** It needs the module graph of `e3.1`/`e3.2`; until a caller supplies it, the
   axis drops out of the denominator rather than posing as a zero. Scores from such a build are
   comparable with each other and not with scores from one that had it.
-* **Guardrail 3 is not met on the shipped defaults.** The calibration corpus measured `G3` at **0.682**
-  against a bar of `0.30`, with a miss rate of `1.000` at τ 70 — which is why no shipped default was flipped
+* **Guardrail 3 is not met on the shipped defaults.** The calibration corpus measured `G3` at **0.683**
+  against a bar of `0.30`, with a miss rate of `0.792` at the published τ 40 (it read `1.000` when τ was 70
+  and the flag arm fired on nothing) — which is why no shipped default was flipped
   in either direction and four detectors remain disabled
   ([the measurement, and what it refused to change](false-positive-calibration.md)). A tool whose first
   version had quietly loosened its threshold after failing its own guardrail would be a tool nobody

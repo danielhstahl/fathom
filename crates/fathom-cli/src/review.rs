@@ -751,6 +751,10 @@ fn display(path: &Path, root: &Path) -> String {
 mod tests {
     use super::*;
 
+    // `sqlite-bundled`-gated with the function it calls: `must_survive_blockers` reads the store's blockers,
+    // and §6.2 does not compile it into a binary with no store, so the headless build has no ledger to call
+    // "not blocked" about.
+    #[cfg(feature = "sqlite-bundled")]
     #[test]
     fn an_unbuilt_directory_is_not_a_blocked_ledger() {
         // No `.fathom/reviews/` at all is "nobody has reviewed anything yet", not "the ledger is missing".

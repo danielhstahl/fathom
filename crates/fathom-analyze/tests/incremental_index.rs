@@ -14,6 +14,10 @@
 //! only warm when driven by a test harness is not warm.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+// The fixture module carries helpers for every test binary that includes it, and no one binary uses them
+// all (`Fixture::remove` is `deps_repository`'s); each target compiles its own copy, so "unused here" is
+// not "dead".
+#[allow(dead_code)]
 mod common;
 
 use common::{Fixture, repository};

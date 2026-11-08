@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, head re-pinned and the window widened to 180 episodes)",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, head re-pinned and the window widened to 180 episodes); reco-0zi added the three dispositions the re-measured cut promoted, 2026-11-02",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -190,6 +190,33 @@
    "note": "Rust 1.99 and MSRV 1.97, explicitly `following our N-2 support policy`, plus the Clippy fixes that come with it and Hawk moved to 0.1.15. MSRV is a promise to downstream builds, so `rust-toolchain.toml` and the workspace `rust-version` are operator-visible even though the diff is 8 files; `shotgun_edit`'s five clusters are the Clippy fallout. Same answer e4.9 gave to `bfedc614b7`, which was the smaller version of this.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 41d30df6 --stat`: 8 files +87 −86 — `rust-toolchain.toml` 2, workspace `Cargo.toml` `rust-version`, Clippy fixes under `crates/ty_python_semantic/src/types/infer/builder/`, Hawk bump in `.github/workflows`."
+  },
+  {
+   "commit": "ef1dfb18ac4fa4b3c1aa3e4ec4f3db8c65155727",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Crossed the published τ 40 for the first time when `reco-0er` took the guessed-`human` authorship axis out of the score's denominator — one of five `ruff` episodes now sitting between τ and `ruff`'s own cut of 43. `black` moves from a Git source to the released 26.10.0 wheel for typeshed formatting, so the `[tool.uv.sources]` git entry, the `no-binary-package` exception and eleven `build-constraint-dependencies` pins that existed to make the from-Git build work all go away, and `uv.lock` follows. Dev toolchain plumbing with no finding on it: the flag is the lockfile and dependency axes, accurate about the files and wrong that a reader was owed one.",
+   "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
+   "evidence": "`git show ef1dfb18ac --stat`: pyproject.toml +1 −16 (`black` → `black>=26.10.0` in `typeshed-formatting`; `black` out of `no-binary-package`; `hatch-fancy-pypi-readme`, `hatch-vcs`, `hatchling`, `pathspec`, `pluggy`, `setuptools-scm`, `tomli`, `tomlkit`, `trove-classifiers`, `typing-extensions`, `vcs-versioning` out of `build-constraint-dependencies`), uv.lock +46 −18; PR #29115."
+  },
+  {
+   "commit": "d1d6a5d4ae2845e40f33c9f4af4706dba314a359",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "Benchmark harness, 26 lines: `astral-dev-toolchain-hyperfine` 2.0.0a2 → 2.0.0 with its `exclude-newer-package` stamp moved with it, and the single-threaded formatter benchmark drops its `env RAYON_NUM_THREADS=1` prefix for hyperfine's own `--env` so the run stops timing `env` (~5 ms) as well as the thing under test. Nothing shipped, no finding, and the flag is the lockfile axis again — the same class `reco-0er`'s renormalisation lifted over τ.",
+   "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
+   "evidence": "`git show d1d6a5d4ae --stat`: pyproject.toml +2 −2, `scripts/benchmarks/run_formatter.sh` +2 −2 (`hyperfine --ignore-failure --env RAYON_NUM_THREADS=1` over the two single-threaded cases), uv.lock +18 −18; PR #29219."
+  },
+  {
+   "commit": "0a7f89cdd87955e7ea53f3b201f91cf6f262b50e",
+   "decision": "dismissed",
+   "reason": "false-positive",
+   "blame": ["debug_leftover", "untested_new_logic"],
+   "note": "Third time on this file, so it is a rule and not a coincidence: `untested_new_logic` charged `python/py-fuzzer/fuzz.py` 119 new logic lines with `0 test paths`, and `debug_leftover` charged `print(f\"Could not minimize seed {seed}: {e}\", file=sys.stderr, flush=True)`. The directory has no test suite and never had one — `git ls-tree` at this commit lists README, a `.jinja` template, `fuzz.py`, `pyproject.toml` and `uv.lock` — and what exercises it is the `fuzz-ty` job this same commit doubles the timeout of. The print is guarded by `if not args.quiet`, like the three reporting lines beside it; `e4.9` dismissed the same claim on `2e34f5ba22` and `reco-dyt` on `c79d77331`. What the episode actually does — a 60-second minimisation budget, and a `run_executable` that kills the child's whole process group on timeout so a hung `ty` cannot leave `uv` behind — is not what either finding described, and nothing in it needed a reader the PR did not already have.",
+   "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
+   "evidence": "`git show 0a7f89cdd8 --stat`: `python/py-fuzzer/fuzz.py` +119 −41 (`MINIMIZATION_BUDGET_SECONDS: Final = 60`, `class MinimizationTimedOut(Exception)`, `run_executable` with `start_new_session=os.name == \"posix\"` and `os.killpg(process.pid, signal.SIGKILL)`, `bounded_callback`), `.github/workflows/ci.yaml` +3 −3 (`fuzz-ty` `timeout-minutes` 10 → 20, `git checkout --detach \"$GITHUB_SHA\"`); `git ls-tree -r --name-only ef1dfb18ac python/py-fuzzer` — five files, none of them a test."
   }
  ]
 }

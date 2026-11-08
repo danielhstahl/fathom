@@ -71,7 +71,10 @@ def validate(scorecards: list[dict[str, Any]], key: dict[str, Any],
         digest = card.get("reviewer", {}).get("blinded_digest", "")
         joined = _digest("".join(blinded_digests[k] for k in sorted(blinded_digests)))
         if digest and digest != joined:
-            problems.append(f"{who} scored a blinded corpus whose digest does not match this one")
+            problems.append(
+                f"{who} scored a blinded corpus whose digest does not match this one — the corpus is "
+                f"sealed, so the fix is to restore the bytes the panel read (under `blinded/`, and the "
+                f"`arms/` and `packets/` they are built from), never to re-record a scorecard's digest")
         rows = card.get("scores", [])
         want = {(ep, lab) for ep in key["key"] for lab in LABELS if lab in key["key"][ep]}
         got = {(r["episode"], r["label"]) for r in rows}

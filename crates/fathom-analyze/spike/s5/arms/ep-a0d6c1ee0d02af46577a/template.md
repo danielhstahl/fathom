@@ -1,6 +1,6 @@
 reco-v6t: the TUI shell — tickless loop, focus model, chord keymap, generated help (e1.5) [c1].
 
-Authorship: danielhstahl (human author, identity at 0.5 confidence) [m1].
+Authorship: danielstahl (human author, identity at 0.5 confidence) [m1].
 
 Grouping: boundary rule message-shape at 0.7 confidence [m2].
 

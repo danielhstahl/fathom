@@ -9,9 +9,15 @@ file is the check that the assertion is real:
   which is the acceptance criterion — a gate nobody has seen fail is decoration;
 * the arithmetic that cannot be tested by one run is tested directly: the threshold comes from the
   budget file, RSS budgets are never scaled by the runner factor while wall clocks are, a recorded
-  breach is bounded rather than waived, and an improvement past the threshold demands a re-bless;
+  breach is bounded rather than waived, and an improvement past the threshold demands a re-bless —
+  judged in reference-machine units, so neither a busy runner nor a fast one moves the ratchet;
+* a red gate says so where a reader looks: the failing measurements are GitHub annotations, not just
+  lines in a log nobody opened (`reco-axp`);
 * RSS is measured, not assumed: the blessed baseline carries resident-set numbers from `VmHWM`, marked
   unscaled, beside the timings they came from;
+* and a resident set is not a machine-independent number either: `rss.tui.mib.small` is blessed with a
+  floor as wide as the build-and-machine spread of a peak that is over half the executable's own
+  resident pages, so a runner moving is not a commit regressing (`reco-0zot`);
 * the plumbing is wired: `make bench` exists, the CI job publishes the trend, the trend is gitignored
   because it is an artefact, and the gate speaks `fathom-core`'s exit code 11.
 
@@ -194,6 +200,29 @@ def test_a_deliberate_regression_turns_the_gate_red(tmp_path):
         f"400 ms added to every process must land on cold index or warm re-index: {blown}")
 
 
+def test_a_red_gate_announces_its_failures_as_ci_annotations(tmp_path):
+    """A red perf job whose check page says only "exit code 11" is a job nobody can read.
+
+    `reco-axp` was filed from precisely that: the check carried the cannot-classify warnings and
+    `Process completed with exit code 11`, and the budget that actually stopped the build was in the
+    log and nowhere else — so the failing row had to be reconstructed by re-running the gate on a
+    different machine. The verdict that stops the build announces itself as loudly as the ones that do
+    not.
+    """
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--inject-ms", "400",
+         "--binary", str(_binary()), "--trend-dir", str(tmp_path)],
+        cwd=ROOT, capture_output=True, text=True, timeout=600,
+        env={**os.environ, "GITHUB_ACTIONS": "true"})
+    assert result.returncode == G.EXIT_BUDGET, (
+        f"expected {G.EXIT_BUDGET}; got {result.returncode}\n{result.stdout}\n{result.stderr}")
+    annotated = [line for line in result.stdout.splitlines()
+                 if line.startswith("::error title=Perf budget gate::")]
+    assert annotated, "the gate went red on a CI runner and annotated nothing: " + result.stdout
+    assert any("cold.index" in line or "warm.reindex" in line for line in annotated), (
+        f"the injected regression must name itself in the annotations: {annotated}")
+
+
 def test_the_gate_is_capable_of_failing_with_no_build_at_all():
     """The same claim, at zero cost: synthetic numbers, every rule, any runner."""
     assert G.self_test() == 0, "the gate's own self-test says it cannot fail properly"
@@ -276,9 +305,42 @@ def test_a_slow_runner_is_not_credited_an_improvement():
         "a 1.3× runner was blamed for a 28 % wall-clock increase the calibration accounts for")
 
 
+def test_a_runner_faster_than_the_blessed_machine_is_not_credited_an_improvement():
+    """The other half of `reco-axp`: the clamp is about budget headroom, not about what a runner proves.
+
+    A blessed time is a reference-machine time (§11.8), so a runner the calibration bench measures at
+    0.8× of it measures every wall clock two tenths low, and the raw-number rule read that as the whole
+    suite getting faster: a `stale_baseline` red that was the runner and nobody else, which is what
+    "this may just be a slower runner on GitHub" was reaching for. Dividing the improvement half by the
+    *unclamped* ratio says the machine's speed out loud in the one direction the clamp was never about.
+    """
+    budgets, gates = _budgets()
+    blessed = {"cold.index.ms.small": {"value": 1000.0, "unit": "ms", "budget": "cold.index.ms.small",
+                                       "scaled": True}}
+    unchanged_on_a_fast_runner = G.Measurement("cold.index.ms.small", "ms", 800.0,
+                                               "cold.index.ms.small")
+    verdicts = G.evaluate([unchanged_on_a_fast_runner], {"measurements": blessed}, budgets, gates,
+                          1.0, strict=True, machine_factor=0.8)
+    assert not any(verdict.failed for verdict in verdicts), (
+        "a 0.8× runner turned unchanged code into a 20 % improvement: "
+        f"{[(v.id, v.status, v.detail) for v in verdicts]}")
+    # …and a speed-up that is real still has to be re-blessed, on a fast runner like on any other.
+    genuinely_faster = G.Measurement("cold.index.ms.small", "ms", 560.0, "cold.index.ms.small")
+    verdicts = G.evaluate([genuinely_faster], {"measurements": blessed}, budgets, gates, 1.0,
+                          strict=True, machine_factor=0.8)
+    assert any(verdict.status == "stale_baseline" for verdict in verdicts), (
+        "a 30 % speed-up in reference-machine units went uncredited: dividing out a fast runner may "
+        "not swallow a real improvement along with the machine")
+    # And the clamp still stands where it was always about: a fast runner buys no extra budget.
+    over = G.Measurement("cold.index.ms.small", "ms", 3000.0, "cold.index.ms.small")
+    verdicts = G.evaluate([over], {"measurements": blessed}, budgets, gates, 1.0, strict=True,
+                          machine_factor=0.8)
+    assert any(verdict.status == "over_budget" for verdict in verdicts), (
+        "a 0.8× runner was handed budget headroom; the clamp belongs to the budget, not to the ratchet")
+
+
 def test_a_rate_is_normalised_the_other_way_from_a_duration():
     """rows/s is the inverse of a duration, so the runner factor applies in the opposite direction.
-
     Get this backwards and a runner shared with a `cargo build` reports the write bench as regressed:
     the same code really does push fewer rows per second on a machine that is busy, and the calibration
     exists precisely to say "that is the machine, not the commit".
@@ -542,17 +604,240 @@ def test_the_graph_lane_is_measured_now_that_it_has_a_budget_of_its_own():
 
 
 def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
-    """A blessed number and its noise are one measurement; half of it is a guess about the other half."""
+    """A blessed number and its noise are one measurement; half of it is a guess about the other half.
+
+    The floor may be narrower or wider than the ±15 % — that is an empirical claim about the probe and
+    the fleet, and `reco-3h82` moved six of them from "narrower" to "wider" because two boxes that run
+    this gate read the same 8 ms verb 1.47× apart. What is not allowed is a wide floor nobody signed:
+    a row the ratchet cannot resolve must name, in the `how` the gate prints, the budget that guards it
+    instead, or it is a blind spot with no witness.
+    """
     blessed = json.loads(BASELINE.read_text())["measurements"]
     fail_pct = _budgets()[1]["regression_fail_pct"]
-    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small"):
+    for ident in ("query.metrics.ms.small", "query.card.ms.cli.small", "warm.reindex.ms.small",
+                  "rss.tui.mib.small", "cold.index.ms.small", "query.diff_first_hunk.ms.small"):
         row = blessed[ident]
-        assert row.get("center") is not None, f"{ident}: blessed without the statistic the ratchet uses"
+        assert row.get("center") is not None or ident == "cold.index.ms.small", (
+            f"{ident}: blessed without the statistic the ratchet uses")
         assert row.get("noise") is not None, f"{ident}: blessed without the floor it was judged by"
-        limit = float(row["center"]) * fail_pct / 100.0
-        assert float(row["noise"]) < limit, (
-            f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
-            f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve it")
+        limit = float(row.get("center") or row["value"]) * fail_pct / 100.0
+        if float(row["noise"]) >= limit:
+            assert "budget" in row["how"], (
+                f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
+                f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve "
+                f"it — and its `how` names no budget as the guard, which makes it a blind spot nobody "
+                f"signed for")
+        else:
+            assert "reco-" in row["how"], (
+                f"{ident}: a floor this narrow is a claim about a probe, and the row does not say who "
+                f"measured it")
+
+
+def test_a_re_bless_widens_a_floor_and_never_narrows_it(tmp_path):
+    """A floor is a claim about the instrument, so a quiet run may not sharpen it (`reco-3h82`).
+
+    The values have been laundered by a bless before — `reco-axp` found five rows blessed at the fast
+    tail of their own distribution — and a floor narrowed by one still afternoon is the same defect:
+    the next run inherits a claim that the probe can see finer than it can, and reds on a machine. The
+    gate's own writer must therefore carry the blessed floor forward; narrowing one stays possible,
+    but only as a hand edit with a measurement attached.
+    """
+    budgets, _gates = _budgets()
+    quiet = G.Measurement("query.metrics.ms.small", "ms", 6.0, "query.metrics.ms.small",
+                          [6.0, 6.0, 6.0, 6.0, 6.0], how="a probe that says nothing about its noise")
+    prior = json.loads(BASELINE.read_text())
+    blessed_before = float(prior["measurements"]["query.metrics.ms.small"]["noise"])
+    out = tmp_path / "perf-gate.json"
+    G.write_baseline(out, [quiet], 438.29, [438.29, 438.29, 438.29], {}, {}, prior)
+    written = json.loads(out.read_text())["measurements"]["query.metrics.ms.small"]
+    assert written["noise"] >= blessed_before, (
+        f"a bless narrowed the floor from {blessed_before} to {written['noise']} ms on the strength of "
+        "five samples that happened to agree with each other")
+
+
+# The two machines this gate actually runs on, as recorded. Both ends of every range are the *credited*
+# number the ratchet judges: the container's own measurement divided by its calibration factor (a fast
+# box is put back into reference-machine units, `reco-axp`'s rule), and the runner's raw number, which
+# is what a slow box is judged on because a slow runner is never credited a speed-up it did not earn.
+# Sources, all of them 2026-11-07/08, all of them the same tree per box:
+#
+#   container — five `make bench-check` runs here, whose calibration factor measured ×0.85–×0.95;
+#   runner    — the perf job's own annotations: check-runs 128726035173 (`d6a9aa5`, --check and the
+#               --quick run the contract suite drives) and 128525911209 (`fa2e99f5`), and the `perf`
+#               workflow runs 42375794647, 42377454175, 42382956006, 42395823245, which drew a mix of
+#               runner generations (6.6 ms on a fast one, 10.80 on a slow one, for one verb).
+# Where a runner reading was never reported it is because it sat inside ±15 % of the bless then; the
+# end of the range is that ceiling, and it is marked as such.
+FLEET = [
+    ("query.metrics.ms.small", (6.24, 7.07), (6.6, 10.80), "`fathom stats --json`"),
+    ("query.card.ms.cli.small", (7.52, 8.49), (7.78, 12.11), "`fathom show --json …`"),
+    ("cold.index.ms.small", (904.0, 1034.0), (952.0, 1341.0), "cold index (1 341 = the ±15 % ceiling)"),
+    ("warm.reindex.ms.small", (80.9, 93.1), (62.9, 118.6), "warm re-index (118.6 = the ±15 % ceiling)"),
+    ("query.diff_first_hunk.ms.small", (9.37, 14.47), (4.89, 5.10), "diff pane, first `@@`"),
+    ("query.diff_open.ms.small", (6.74, 9.18), (2.24, 3.35), "diff pane, tree painted"),
+]
+
+
+def test_the_recorded_fleet_readings_clear_the_ratchet():
+    """Every reading both boxes are known to produce must clear the committed baseline.
+
+    This is the ticket, as arithmetic: the perf job was red because `query.metrics.ms.small` read
+    −24.4 % against a bless neither box agrees with now, and the remedy the gate names — "budgets
+    ratchet, so re-bless it" — is only worth doing if the bless ends the argument instead of moving it
+    to the other machine. So the recorded readings of both machines are fed to `evaluate` exactly as
+    the gate would feed them, and none of them may fail. The floor is allowed to swallow a reading —
+    "cannot classify" is a verdict, a red is not.
+    """
+    budgets, gates = _budgets()
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    for ident, container, runner, what in FLEET:
+        entry = blessed[ident]
+        assert entry.get("noise") is not None, f"{ident}: blessed with no floor to cover the fleet"
+        for box, (low, high) in (("container", container), ("runner", runner)):
+            for reading in (low, high):
+                row = G.Measurement(ident, entry["unit"], reading, entry.get("budget"),
+                                    [reading] * 5, scaled=entry["scaled"])
+                verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+                                     1.0, strict=True, machine_factor=1.0)[0]
+                assert not verdict.failed, (
+                    f"{ident} ({what}): the {box} is recorded reading {reading} {entry['unit']} and "
+                    f"the blessed baseline calls that {verdict.status}: {verdict.detail}")
+
+
+def test_the_re_blessed_rows_still_see_a_real_move():
+    """A floor wide enough to cover the fleet must not have swallowed the regression too.
+
+    Each row moved to a fleet-wide floor is checked at one floor and a quarter outside its bless, in
+    both directions where the arithmetic can go both ways (a 9 ms pty row blessed against a 10 ms floor
+    can only report a slow-down, and says so). Anything that stops reding here has stopped gating.
+    """
+    budgets, gates = _budgets()
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    for ident, _container, _runner, _what in FLEET:
+        entry = blessed[ident]
+        base = float(entry.get("center") or entry["value"])
+        floor = float(entry["noise"])
+        moves = [("slower", base + 1.25 * floor)]
+        if base - 1.25 * floor > 0:
+            moves.append(("faster", base - 1.25 * floor))
+        for direction, value in moves:
+            row = G.Measurement(ident, entry["unit"], round(value, 4), entry.get("budget"),
+                                [round(value, 4)] * 5, scaled=entry["scaled"])
+            verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+                                 1.0, strict=True, machine_factor=1.0)[0]
+            assert verdict.failed, (
+                f"{ident}: {direction} to {value:,.3f} {entry['unit']} (bless {base:,.3f}, floor "
+                f"{floor:,.3f}) is not red, so this row no longer gates anything: {verdict.detail}")
+            assert verdict.status in ("regression", "stale_baseline", "over_budget"), verdict.status
+
+
+def test_the_tui_rss_bless_carries_the_machine_spread_of_the_metric():
+    """`rss.tui.mib.small` is blessed with a floor because the *machine* moves it (`reco-0zot`).
+
+    The row is a resident set, and a resident set is not the program's memory: at the TUI's peak, the
+    child's `RssAnon` — its own dirty memory, which is what a "steady-state TUI with a warm store"
+    budget is about — is 15.0-15.2 MiB of a 33-34 MiB peak, and the rest is `RssFile`: how much of the
+    36 MB release binary the kernel had paged in. That half is code layout and demand paging. Measured
+    on one tree on one box, rebuilding it with `-C codegen-units=1` (binary 36.4 → 29.6 MB, `RssAnon`
+    unmoved at 15.0 MiB) reads 30.3 MiB where the default build reads 33.4 — a 9 % move out of a
+    compiler flag, on a row whose whole ratchet is ±15 %. The GitHub runner reads 35.6-36.9 for the same
+    tree a container reads at 33-34, which is the +17.5 % "regression" that made the `perf` job red and
+    named no change, because the blessed number was fifteen days and ninety commits old.
+
+    So the row must now carry a floor that says what the instrument cannot resolve, and the baseline is
+    the only place that sentence can live where the gate reads it.
+    """
+    blessed = json.loads(BASELINE.read_text())["measurements"]["rss.tui.mib.small"]
+    assert blessed.get("center") is not None, (
+        "the TUI's RSS row is blessed on its tail statistic again; a worst-of-N probe cannot resolve "
+        "the ratchet and `reco-dkr` is the reason the middle is what gets compared")
+    assert blessed.get("noise") is not None, "the row is blessed without a floor again"
+    base = float(blessed["center"])
+    row = G.Measurement("rss.tui.mib.small", "MiB", base, "rss.tui.mib.small", [base] * 3,
+                        scaled=False, noise=2.0)
+    floor, basis = G.noise_floor(row, base, blessed)
+    assert "blessed" in basis, f"the row fell back to the per-unit constant: {basis}"
+    assert floor >= 3.0, (
+        f"a {floor:g} MiB floor does not cover this metric: one tree, one box, two builds read "
+        "3.0 MiB apart, and a container and a runner read 2.4-3.5 MiB apart (`reco-0zot`)")
+    assert floor < base * _budgets()[1]["regression_fail_pct"] / 100.0, (
+        "the floor is now wider than the ±15 % the row is supposed to resolve, which makes the row "
+        "a blind spot rather than a gate: widen the budget's guard or narrow the floor, and say so")
+    for token in ("RssAnon", "codegen-units"):
+        assert token in blessed["how"], (
+            f"the bless must carry the reason its floor is that wide; `{token}` is missing, and a "
+            "floor nobody can trace is a knob")
+
+
+def test_a_machine_swap_on_the_tui_rss_row_is_not_reported_as_a_regression():
+    """The false positive, and the fix, as arithmetic the gate can be shown.
+
+    Two halves on purpose: the first is the run CI actually saw — a runner reading 36.2 MiB against a
+    bless of 30.82 that carried neither centre nor floor — and it must still look like the red it was,
+    or this test has stopped describing the defect. The second is the same runner reading +9 % against
+    the bless that row has now, and it must not be a red: that gap is the machine's, not the change's.
+    """
+    budgets, gates = _budgets()
+
+    def verdict(value: float, blessed_rows: dict) -> "G.Verdict":
+        row = G.Measurement("rss.tui.mib.small", "MiB", value, "rss.tui.mib.small", [value] * 6,
+                            scaled=False, noise=2.0)
+        return G.evaluate([row], {"measurements": blessed_rows}, budgets, gates,
+                          1.0, strict=True)[0]
+
+    stale = {"rss.tui.mib.small": {"value": 30.82, "unit": "MiB", "budget": "rss.tui.mib.small",
+                                   "scaled": False, "higher_is_better": False}}
+    ci_saw = verdict(36.2, stale)
+    assert ci_saw.status == "regression", (
+        f"the run that filed this ticket read {ci_saw.status}: a floor-less bless of 30.82 against a "
+        "runner reading 36.2 MiB is the false positive, and this test is its record")
+
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    base = float(blessed["rss.tui.mib.small"]["center"])
+    for away, why in ((1.09, "a runner this box reads 9 % above"),
+                      (0.90, "a leaner codegen of the same tree, 10 % below")):
+        verdict_row = verdict(base * away, blessed)
+        assert not verdict_row.failed, (
+            f"{why} is inside the machine spread this row was blessed with, and the gate said "
+            f"`{verdict_row.status}`: {verdict_row.detail}")
+    leak = verdict(base * 1.25, blessed)
+    assert leak.status == "regression", (
+        f"a 25 % growth on a memory row must still be red; the floor blessed here swallowed it "
+        f"({leak.detail})")
+    assert leak.resolves, "a real memory regression has to be classifiable, not another blind spot"
+
+
+def test_a_binary_that_writes_no_store_is_reported_blocked_not_as_a_traceback(tmp_path):
+    """A cold index that wrote nothing is a `blocked` row, not a `KeyError` in the harness.
+
+    `store_split` reports zeros — not `None` — for a file that is not there, and `None` is the signal
+    that means "no `dbstat`", so a missing store fell through to the branch that had a store to divide
+    and took the graph row's *own explanation* with it: `graph_lane_basis` answers nothing about a
+    file it cannot open, and the `how` raised on the missing key. The gate died two seconds in with no
+    verdict and no annotation — `reco-axp`'s complaint about a gate that crashed instead of judged, in
+    the one branch that had already learned to answer `blocked_by`. The usual cause is a binary built
+    without `sqlite-bundled`, which says so and exits 9.
+    """
+    deaf = tmp_path / "fathom-without-sqlite"
+    deaf.write_text("#!/bin/sh\necho 'error: needs the sqlite-bundled feature' >&2\nexit 9\n",
+                    encoding="utf-8")
+    deaf.chmod(0o755)
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(deaf),
+         "--commits", "20", "--trend-dir", str(tmp_path / "trend")],
+        cwd=ROOT, capture_output=True, text=True, timeout=600)
+    output = result.stdout + result.stderr
+    assert "Traceback" not in output, f"the gate crashed instead of reporting:\n{output}"
+    assert result.returncode in (G.EXIT_BUDGET, G.EXIT_ERROR), (
+        f"a run with nothing measured in it is not a pass: exit {result.returncode}\n{output}")
+    for ident in ("store.bytes_per_commit_spine.small", "store.bytes_per_commit_graph.small",
+                  "store.size.mib.small"):
+        written = {row["id"]: row for row in json.loads((tmp_path / "trend" / "latest.json")
+                                                        .read_text())["verdicts"]}
+        row = written.get(ident)
+        assert row and row["status"] == "blocked", (
+            f"`{ident}` reported {row and row['status']} for a store that does not exist; a zero-byte "
+            f"store would read as a 100 % improvement:\n{output}")
 
 
 def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
@@ -574,9 +859,14 @@ def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
         assert ident in blind, f"{ident} is measured through the pty and is not listed as unresolvable"
         assert blind[ident]["floor_as_pct_of_baseline"] > 100.0
         assert "resolution" in blind[ident]["noise_basis"].lower()
-    assert "query.metrics.ms.small" not in blind, (
-        "the verb the ticket was filed about is back to being unresolvable: its blessed floor is "
-        "wider than the ±15 % again")
+    assert "query.metrics.ms.small" in blind, (
+        "the row `reco-3h82` blessed to the middle of the fleet is no longer on the list of ids the "
+        "ratchet cannot resolve: either the two boxes have stopped disagreeing about `fathom stats "
+        "--json` — in which case narrow the blessed floor by hand and write into the row what measured "
+        "it — or the floor moved on its own")
+    assert blind["query.metrics.ms.small"]["floor_as_pct_of_baseline"] > 15.0, (
+        "the blessed floor on the verb the ticket was filed about is no longer wider than the ±15 % "
+        "the two boxes differ by, which is the whole reason it was blessed that way")
 
 
 def test_measuring_a_child_does_not_add_the_harness_s_own_sleep_to_the_clock():
@@ -605,24 +895,221 @@ def test_measuring_a_child_does_not_add_the_harness_s_own_sleep_to_the_clock():
 
 
 def test_the_rss_peak_is_sampled_while_the_child_holds_memory():
-    """A peak measured from a corpse is zero, and one measured 2 ms late is a tenth short."""
+    """A peak measured from a corpse is zero, and one measured 2 ms late is a tenth short.
+
+    The child reports its own peak out of `/proc/self/status` rather than out of
+    `resource.getrusage(...).ru_maxrss`, and that is the whole point of the fixture. Linux does not reset
+    an accumulated `ru_maxrss` across `fork`+`execve`, so a child reports
+    `max(whatever the forking process had reached, its own peak)` — which is exactly the trap
+    `mvp_acceptance._PeakSampler`'s docstring refuses. Run on its own the two numbers agree, and the test
+    passes; run as part of the whole suite, where the pytest process has already touched more memory than
+    the child ever will, the *truth* is the test runner's own resident set and the sampler is failed for
+    measuring the child accurately. `VmHWM` is per address space and is reset by `execve`, so it is the
+    same instrument the sampler reads from beside the child, and it is a fact about the child alone.
+    """
     import statistics
     import subprocess as sp
 
     sys.path.insert(0, str(ROOT / "tools"))
     import mvp_acceptance as M
 
-    child = ("import resource, time\n"
+    child = ("import time\n"
              "x = bytearray(60_000_000); y = bytes(x)\n"
-             "print(int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss), flush=True)\n"
+             "print(int(next(l for l in open('/proc/self/status') if l.startswith('VmHWM:')).split()[1]),"
+             " flush=True)\n"
              "time.sleep(0.02)\n")
     truth = int(sp.run([sys.executable, "-c", child], capture_output=True, text=True,
                        timeout=60).stdout.strip())
+    assert truth > 50_000, (
+        f"the fixture's own peak is {truth} KiB: it allocated nothing, so there is nothing to catch")
     sampled = statistics.median(M.run_timed([sys.executable, "-c", child], ROOT)[1]
                                 for _ in range(5))
     assert sampled >= truth * 0.95, (
         f"the sampler read {sampled:.0f} KiB of a {truth} KiB peak: a peak reached on the way out "
         "of a verb is the peak the RSS budgets are about")
+
+
+# ---------------------------------------------------------------------------------------------
+# The sampler is a thread, and CPython owns some of a thread's names (`reco-yfd`)
+# ---------------------------------------------------------------------------------------------
+#: `threading.Thread` members CPython binds itself and calls on your behalf, across every interpreter
+#: this repository runs. The list is written out rather than read off `dir(threading.Thread)` because
+#: the interpreter running this file is not the one that broke: through 3.12 `Thread._stop` is a
+#: *method* that `Thread._wait_for_tstate_lock` — the body of every `join()` — calls when the thread
+#: finishes, and 3.13 removed it. Bind an `Event` to `self._stop` in a subclass and every join raises
+#: `TypeError: 'Event' object is not callable`, which is the sentence that killed the perf gate two
+#: seconds into its first `fathom index` on CI's 3.12 while it stayed green on a newer interpreter.
+#: A guard that only knows the interpreter it is standing on guards nothing.
+THREAD_PRIVATES = (
+    "_start", "_stop", "_bootstrap", "_bootstrap_inner", "_wait_for_tstate_lock", "_tstate_lock",
+    "_is_stopped", "_started", "_done", "_initialized", "_daemonic", "_ident", "_native_id",
+    "_name", "_handle_interrupt", "_invoke_excepthook", "_make_invoke_excepthook", "_delete",
+)
+
+
+def _attributes_bound_by(cls, method: str) -> set[str]:
+    """The `self.<name>` bindings made inside `cls.<method>`, read off the source.
+
+    Off the source rather than off an instance, because the question is what the code binds — an
+    instance of a *fixed* subclass is a snapshot of one interpreter's answer, and this must hold on
+    interpreters that are not the one running the test.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    names: set[str] = set()
+    tree = ast.parse(textwrap.dedent(inspect.getsource(getattr(cls, method))))
+    for node in ast.walk(tree):
+        targets = list(node.targets) if isinstance(node, ast.Assign) else []
+        if isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        for target in targets:
+            if (isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"):
+                names.add(target.attr)
+    return names
+
+
+def test_the_peak_sampler_binds_no_attribute_threading_itself_owns():
+    """The name `self._stop` belongs to `threading.Thread`; the gate's sampler had taken it.
+
+    `_PeakSampler` is a `Thread` subclass and it used to bind `self._stop = threading.Event()`, which
+    overwrites CPython's own `Thread._stop` method for every interpreter up to 3.12. `join()` calls
+    that method once the thread has ended, so *every* RSS sample raised
+    `TypeError: 'Event' object is not callable` and `python3 tools/perf_gate.py --check` died before
+    it had indexed anything (`reco-yfd`). The fix is a name that is ours; this is the guard.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    shadowed = _attributes_bound_by(M._PeakSampler, "__init__") & set(THREAD_PRIVATES)
+    assert not shadowed, (
+        f"_PeakSampler rebinds {sorted(shadowed)}, which `threading.Thread` uses for its own "
+        "lifecycle; on CI's interpreter joining the sampler then raises \"TypeError: 'Event' object "
+        "is not callable\" and the perf gate dies before it has indexed anything")
+
+
+def test_joining_the_sampler_after_a_measurement_returns_a_number():
+    """The shape of the crash, from the other side: a measurement must join, not raise.
+
+    `run_timed` stops the sampler by setting its flag and joining it, so on an interpreter where that
+    flag has the same name as `Thread._stop` this call never returns a number — it raises. This test
+    is the one that fails on the interpreter CI runs (`perf.yml` pins 3.12) and is quiet about on a
+    newer one, which is exactly why it is here next to the guard rather than instead of it.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import mvp_acceptance as M
+
+    wall_ms, peak_kib = M.run_timed([sys.executable, "-c", "pass"], ROOT)
+    assert wall_ms > 0.0, f"a child that ran at all measured {wall_ms} ms"
+    assert peak_kib >= 0, f"a resident set cannot be negative, and this one is {peak_kib}"
+
+
+# ---------------------------------------------------------------------------------------------
+# The probe's own clock: a frame that lands late is late, not absent (`reco-cwx`)
+# ---------------------------------------------------------------------------------------------
+def _fake_tui(tmp_path, frames):
+    """Write an executable "TUI" that paints `frames` = [(delay_ms, text), …] and then quits.
+
+    It is not the product and it does not pretend to be: it is a clock with a screen, which is the only
+    honest way to hand the probe a first frame at a *known* delay. The delays below are all outside
+    the reader's ~100 ms settle window, which is the whole shape of `reco-cwx`.
+    """
+    body = ["#!/usr/bin/env python3",
+            "import sys, time",
+            "try:",
+            "    import tty; tty.setraw(sys.stdin.fileno())",  # the TUI takes the terminal; so does this
+            "except Exception:",
+            "    pass",
+            f"frames = {frames!r}",
+            "for delay_ms, text in frames:",
+            "    time.sleep(delay_ms / 1000.0)",
+            "    sys.stdout.write('\\x1b[2J\\x1b[H' + text)",
+            "    sys.stdout.flush()",
+            "time.sleep(1.0)"]
+    fake = tmp_path / "fake-tui"
+    fake.write_text("\n".join(body) + "\n", encoding="utf-8")
+    fake.chmod(0o755)
+    return fake
+
+
+def _session(tmp_path, binary, steps_json, script_json):
+    """Drive `tools/tui_session.py` over a pty and hand back the timings it wrote."""
+    result = subprocess.run(
+        [sys.executable, "tools/tui_session.py", "--root", str(tmp_path), "--binary", str(binary),
+         "--script", str(script_json), "--steps", str(steps_json)],
+        cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(Path(steps_json).read_text())
+
+
+def test_a_first_frame_later_than_the_settle_window_is_measured_not_missed(tmp_path):
+    """The bug: two quiet ticks before anything arrived was read as "there is no frame".
+
+    `drain` settled on ~100 ms of silence, so a first paint at 300 ms came back `None` and the gate
+    reported `cold.queue_visible.ms.small` as *blocked* — a published 3 000 ms budget, unmeasured, on
+    every box slower than the one it was blessed on. Quiet must mean "the answer has stopped", never
+    "nothing has arrived yet".
+    """
+    fake = _fake_tui(tmp_path, [(300, "FRAME ONE"), (400, "FRAME TWO")])
+    script = tmp_path / "script.json"
+    script.write_text(json.dumps({"title": "late paint", "steps": [
+        {"keys": "t", "note": "answered late", "settle": 1.0},
+        {"keys": "q", "note": "nothing after this", "settle": 0.3},
+    ]}), encoding="utf-8")
+    steps = tmp_path / "steps.json"
+    out = _session(tmp_path, fake, steps, script)
+
+    assert out["first_paint_ms"] is not None, (
+        "a first frame 300 ms after spawn was reported as no frame at all: the reader is allowed to "
+        "call silence *settled* only once something has been seen")
+    assert 250.0 <= out["first_paint_ms"] <= 900.0, (
+        f"first paint measured {out['first_paint_ms']} ms against a fake that paints at 300 ms")
+    painted = {step["keys"]: step["visible_ms"] for step in out["steps"]}
+    assert painted.get("t") is not None, (
+        f"a frame 400 ms after the key was written read as 'the key drew nothing': {painted}")
+    assert painted["q"] is None, (
+        "a key that really does draw nothing must still come back as nothing — the fix is the "
+        "censoring, not a floor under every measurement")
+
+
+def test_a_relative_binary_is_resolved_before_the_pty_child_leaves_the_directory(tmp_path):
+    """A `--binary` the shell can see and the child cannot used to exec-fail *onto the pty*.
+
+    The child chdirs into the repository before it execs, so a relative path pointed at nothing; the
+    child's own "exec failed: [Errno 2]" text then arrived as terminal output and was timed as a first
+    frame about 1 ms after spawn. A dead child measured as the fastest paint in the suite is a number
+    that lies.
+    """
+    fake = _fake_tui(tmp_path, [(50, "FRAME ONE")])
+    relative = Path(os.path.relpath(fake, ROOT))
+    assert not relative.is_absolute(), "the point of the test is a path the pty child cannot resolve"
+    script = tmp_path / "script.json"
+    script.write_text(json.dumps({"title": "relative", "steps": [
+        {"keys": "", "note": "open", "hold": 0.3},
+    ]}), encoding="utf-8")
+    steps = tmp_path / "steps.json"
+    out = _session(tmp_path, relative, steps, script)
+    assert out["first_paint_ms"] is not None and out["first_paint_ms"] >= 30.0, (
+        f"the child did not exec: {out}")
+    assert "exec failed" not in json.dumps(out), "the child's exec error was recorded as the frame"
+
+
+def test_the_first_frame_budget_is_measured_rather_than_blocked(tmp_path):
+    """The gate, end to end: `cold.queue_visible.ms.small` gets a number, not a shrug."""
+    result = subprocess.run(
+        [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(_binary()),
+         "--trend-dir", str(tmp_path)],
+        cwd=ROOT, capture_output=True, text=True, timeout=600)
+    report = json.loads((tmp_path / "latest.json").read_text())
+    rows = {verdict["id"]: verdict for verdict in report.get("verdicts", [])}
+    first = rows.get("cold.queue_visible.ms.small")
+    assert first is not None, "the gate did not report the first-frame budget at all"
+    assert first["status"] != "blocked" and first["measured"] is not None, (
+        "the first paint came back blocked, so the 3 000 ms budget guarded nothing this run: "
+        f"{first}\n{result.stdout}\n{result.stderr}")
+    assert first["measured"] < 3_000.0
 
 
 # ---------------------------------------------------------------------------------------------

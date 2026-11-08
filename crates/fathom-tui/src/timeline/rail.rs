@@ -326,8 +326,16 @@ impl Rail {
     }
 
     /// Tell the rail what instant to age itself against.
-    pub fn set_now(&mut self, now: Timestamp) {
+    ///
+    /// Returns whether the instant crossed a minute mark, which is the frame loop's whole question
+    /// when it decides to draw (`reco-5oe`): every age in [`days::relative`] turns on a minute and on
+    /// nothing finer, so an instant inside the same minute is a fact nobody can see and a draw nobody
+    /// can notice. Whether an age is what this rail is *printing* is a rung question, and the caller
+    /// who owns the layout answers it ([`crate::app::App::age_clock`]).
+    pub fn set_now(&mut self, now: Timestamp) -> bool {
+        let seen = days::minute_of(self.now);
         self.now = now;
+        days::minute_of(now) != seen
     }
 
     /// The instant the rail is drawn for.

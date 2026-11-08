@@ -31,6 +31,7 @@ Run: python3 -m pytest tests/test_beta_loop_contract.py -q
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -178,6 +179,69 @@ def test_the_changelog_accounts_for_every_commit_since_the_last_release():
     assert data["commits"] > 50, notes
     baseline = gen_changelog.load_baseline()
     assert isinstance(baseline["entries"], list), "the exemption list is data, and it is shrink-only (C07)"
+
+
+def _scratch_repo(tmp_path):
+    """A throwaway repository with a changelog in the shape the real one has, plus its `git`."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t.invalid",
+               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t.invalid")
+
+    def git(*args: str) -> str:
+        proc = subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True, env=env)
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout.strip()
+
+    repo.joinpath("CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n")
+    git("init", "-q", "-b", "main")
+    return repo, git
+
+
+def test_a_merge_commit_is_the_join_and_never_a_coverage_gap(tmp_path):
+    """The clone CI audits is frequently a merge commit; no laptop's is (**reco-d2bo**).
+
+    A pull request is checked out at the host's merge commit, whose subject is a machine's
+    `Merge <sha> into <sha>`: no bead ref, no conventional header, and no `Changelog:` trailer anybody
+    could have written. `C03` read that as a commit the release notes had forgotten, so the audit was
+    green on every laptop — whose histories are linear — and red on the runner standing on one. A merge
+    is recognised by its parents, which is the only field that says "join", and it is exempt the way a
+    `chore:` commit is: exempt from coverage, not invisible.
+    """
+    repo, git = _scratch_repo(tmp_path)
+    repo.joinpath("CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- The queue ranks episodes (`reco-aaa`)\n\n"
+        "### Fixed\n\n- The index opens read-only (`reco-bbb`)\n")
+    git("add", "-A")
+    git("commit", "-qm", "feat(cli): the review queue ranks episodes (reco-aaa)")
+    first = git("rev-parse", "HEAD")
+    git("checkout", "-q", "-b", "topic")
+    git("commit", "-q", "--allow-empty", "-m", "fix(store): the index opens read-only (reco-bbb)")
+    topic = git("rev-parse", "HEAD")
+    git("checkout", "-q", "main")
+    git("commit", "-q", "--allow-empty", "-m", "chore: the runner's own bookkeeping")
+    head = git("rev-parse", "HEAD")
+    # The shape the host leaves behind: `git merge <sha>`, whose default subject is that sentence.
+    git("merge", "--no-ff", "-q", topic, "-m", "Merge %s into %s" % (topic, head))
+
+    problems, notes, data = gen_changelog.audit(repo, None, baseline_path=tmp_path / "none.json",
+                                                section_path=repo / "CHANGELOG.md")
+    assert not problems, "a merge commit is not a commit the notes forgot:\n" \
+                         + "\n".join(p.line() for p in problems)
+    assert data["merges"] == 1, notes
+    assert any("merge commit" in note for note in notes), notes
+    # Exempt is not invisible: the merge is still read, and still gets no bullet of its own.
+    merges = [c for c in gen_changelog.read_commits(repo, "", "HEAD") if c.is_merge()]
+    assert len(merges) == 1 and merges[0].lint() == "", [c.lint() for c in merges]
+    assert merges[0].entries() == [], "a merge contributes no release-notes bullet"
+    assert merges[0].entries(include_internal=True) != [], "and --include-internal still prints it"
+
+    # ...and the exemption is for joins, not a blanket: an undocumented commit is still a gap.
+    git("commit", "-q", "--allow-empty", "-m", "A change nobody described anywhere at all")
+    problems, _, data = gen_changelog.audit(repo, None, baseline_path=tmp_path / "none.json",
+                                            section_path=repo / "CHANGELOG.md")
+    assert [p.rule for p in problems] == ["C03"], [p.line() for p in problems]
+    assert data["merges"] == 1, "the merge is still there, and still not what C03 is on about"
 
 
 def test_the_generator_says_which_rung_of_the_fallback_ladder_each_bullet_came_from():

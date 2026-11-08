@@ -2,6 +2,8 @@
 
 **A terminal UI that keeps a human's mental model of a codebase a coding agent is writing.**
 
+![Fathom screenshot](./docs/screenshots/fathom.png)
+
 The bottleneck in agentic software delivery is no longer writing code. It is the human rebuilding a
 correct mental model of what the agent did. Fathom is the tool for that: it turns agent turns into
 reviewable **episodes**, describes each with an evidence-backed **delta**, ranks what deserves attention
@@ -19,7 +21,9 @@ recipes, the [detector catalogue](docs/detectors/index.md), the [CLI reference](
 [troubleshooting](docs/troubleshooting.md). Parts of it are generated from the code — `fathom --help`, the
 keymap, `features.rs` and the blessed detector catalogue — by `python3 tools/gen_docs.py write`, and CI
 fails if the committed pages disagree with the program (`python3 tools/gen_docs.py check`,
-`python3 tools/check_docs_site.py`).
+`python3 tools/check_docs_site.py`). The same tree is published as HTML on GitHub Pages by
+`.github/workflows/docs.yml`, built by `python3 tools/build_docs_site.py`, whose output directory is a build
+artefact and never committed ([publishing the docs as HTML](docs/reference/site.md)).
 
 ## Quickstart
 

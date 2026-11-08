@@ -13,10 +13,19 @@
 //! tested through `--print --keep`, which is the door that leaves the two staged files behind: their
 //! bytes come out of the git objects the index names, so reading them back is the assertion that the
 //! pair is the right pair.
+//!
+//! Two things the harness itself has to get right, both of them learned the hard way (`reco-67ml`). Every
+//! run is captured to a file and watched against a deadline ([`drive`]), because `Command::output()`
+//! cannot be interrupted and a hand-off that never comes back would take the whole CI job with it. And a
+//! run whose claim is "nothing is installed" is handed a `PATH` with nothing on it ([`empty_path`]): the
+//! platform default editor is not a setting but a name — `vi`, `notepad` — and that name is on the
+//! `PATH` of every machine that has ever run these tests, so a test that only empties the variables
+//! finds an editor, plans it, and starts it for real.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
+use std::time::{Duration, Instant};
 
 /// Lines in the fixture's main file. The change is planted at `PLANT`, three context lines down from a
 /// hunk header, so the line `fathom open` must ask the editor for is `PLANT - 3`.
@@ -25,30 +34,17 @@ const LINES: usize = 40;
 #[cfg(feature = "sqlite-bundled")]
 const PLANT: usize = 30;
 
+/// The command every run here starts from: the built binary, the fixture as its working directory,
+/// and an environment in which the reviewer has configured nothing.
+///
+/// An empty `HOME` means no user config, so a reviewer's real `~/.config/fathom/config.toml` cannot
+/// decide what this test asserts. The same for `XDG_CONFIG_HOME`, which wins when set.
+///
+/// `PATH` is deliberately *not* emptied here: `fathom index` and the diff staging are libraries and
+/// need nothing off it. The runs whose claim really is "nothing is installed" scrub it themselves with
+/// [`empty_path`] — see that function for why leaving it was the hang.
 #[cfg(feature = "sqlite-bundled")]
-fn fathom(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_fathom"))
-        .args(args)
-        .current_dir(dir)
-        // An empty `HOME` means no user config, so a reviewer's real `~/.config/fathom/config.toml`
-        // cannot decide what this test asserts. The same for `XDG_CONFIG_HOME`, which wins when set.
-        .env("HOME", "")
-        .env("XDG_CONFIG_HOME", "")
-        .env("FATHOM_EDITOR", "")
-        .env("VISUAL", "")
-        .env("EDITOR", "")
-        .env("FATHOM_DIFFTOOL", "")
-        .env("FATHOM_HYPERLINKS", "")
-        .env("TERM_PROGRAM", "")
-        .env("VTE_VERSION", "")
-        .output()
-        .expect("the built fathom binary is runnable")
-}
-
-/// As [`fathom`], with extra variables — which is how `$EDITOR`, `$FATHOM_HYPERLINKS` and a tmux-style
-/// advertisement are put in front of a run that has to believe them.
-#[cfg(feature = "sqlite-bundled")]
-fn fathom_env(dir: &Path, args: &[&str], extra: &[(&str, &str)]) -> Output {
+fn bare(dir: &Path, args: &[&str]) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_fathom"));
     command
         .args(args)
@@ -62,12 +58,120 @@ fn fathom_env(dir: &Path, args: &[&str], extra: &[(&str, &str)]) -> Output {
         .env("FATHOM_HYPERLINKS", "")
         .env("TERM_PROGRAM", "")
         .env("VTE_VERSION", "");
+    command
+}
+
+#[cfg(feature = "sqlite-bundled")]
+fn fathom(dir: &Path, args: &[&str]) -> Output {
+    drive(args, bare(dir, args))
+}
+
+/// As [`fathom`], with extra variables — which is how `$EDITOR`, `$FATHOM_HYPERLINKS`, a tmux-style
+/// advertisement and a scrubbed `PATH` are put in front of a run that has to believe them.
+#[cfg(feature = "sqlite-bundled")]
+fn fathom_env(dir: &Path, args: &[&str], extra: &[(&str, &str)]) -> Output {
+    let mut command = bare(dir, args);
     for (key, value) in extra {
         command.env(key, value);
     }
-    command
-        .output()
-        .expect("the built fathom binary is runnable")
+    drive(args, command)
+}
+
+/// How long one `fathom` run may take before it is called a hang and stopped (`reco-67ml`).
+///
+/// Every verb driven here works on a three-commit fixture and is done in well under a second, so a run
+/// still alive a minute later is not slow, it is stuck.
+#[cfg(feature = "sqlite-bundled")]
+const RUN_LIMIT: Duration = Duration::from_secs(60);
+
+/// Run one `fathom`, capture it, and refuse to wait forever for it.
+///
+/// `Command::output()` cannot be used: it reads each captured pipe to EOF, so a run is only as bounded
+/// as the process tree behind it. A verb that hands off — `fathom open` starting `$EDITOR`, `fathom
+/// difftool` starting a diff tool — leaves the grandchild holding the pipe's write end, and a pipe with
+/// a live writer never reaches EOF, so the *test* blocks in `read` whatever the process it spawned did.
+/// That is exactly how `reco-67ml`'s hang arrived: an editor with no terminal, on a runner that had one
+/// on `PATH`.
+///
+/// So the capture goes to two files rather than two pipes — a file never blocks a writer, and the bytes
+/// are still there to print after the kill — and the wait is a `try_wait` loop with a deadline that
+/// kills the run and reports what it had managed to say.
+#[cfg(feature = "sqlite-bundled")]
+fn drive(args: &[&str], mut command: Command) -> Output {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let tag = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let stamp = std::process::id();
+    let paths = (
+        std::env::temp_dir().join(format!("fathom-cli-handoff-{stamp}-{tag}-out")),
+        std::env::temp_dir().join(format!("fathom-cli-handoff-{stamp}-{tag}-err")),
+    );
+    let files = (
+        std::fs::File::create(&paths.0).expect("the stdout capture is writable"),
+        std::fs::File::create(&paths.1).expect("the stderr capture is writable"),
+    );
+    let mut child = command
+        // Closed, not inherited: a grandchild must never be able to read the test runner's own stdin.
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(files.0))
+        .stderr(Stdio::from(files.1))
+        .spawn()
+        .expect("the built fathom binary is runnable");
+    let deadline = Instant::now() + RUN_LIMIT;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let said = std::fs::read_to_string(&paths.0).unwrap_or_default()
+                    + &std::fs::read_to_string(&paths.1).unwrap_or_default();
+                let _ = std::fs::remove_file(&paths.0);
+                let _ = std::fs::remove_file(&paths.1);
+                panic!(
+                    "`fathom {}` was still running after {}s and was killed. A verb that never \
+                     returns has usually handed the terminal to a program that needs one — an editor \
+                     or a difftool found on a `PATH` this test did not scrub, drawing on a stream \
+                     that is not a terminal. It had said:\n{said}",
+                    args.join(" "),
+                    RUN_LIMIT.as_secs()
+                );
+            }
+            Err(err) => panic!("`fathom {}` could not be waited for: {err}", args.join(" ")),
+        }
+    };
+    let output = Output {
+        status,
+        stdout: std::fs::read(&paths.0).expect("the stdout capture is readable"),
+        stderr: std::fs::read(&paths.1).expect("the stderr capture is readable"),
+    };
+    let _ = std::fs::remove_file(&paths.0);
+    let _ = std::fs::remove_file(&paths.1);
+    output
+}
+
+/// A directory that exists and holds nothing, to hand a run as the whole of its `PATH`.
+///
+/// A test whose claim is "nothing that could be run is installed" has to say so about `PATH` as well as
+/// about the variables, or it is asserting a fact about whichever machine it happens to run on: `vi` is
+/// on `PATH` on every Linux and macOS box there is and `notepad` is on it on every Windows one, so
+/// `fathom open`, given no `$EDITOR`, found a default, planned it, and — with no `--print` in the way —
+/// started it. See [`drive`] for the hang that followed.
+///
+/// A directory rather than an empty `PATH` because it is the same claim spelled in the way every
+/// platform reads: no directories to search, and no DLL-search weirdness on Windows for a value that is
+/// the empty string.
+#[cfg(feature = "sqlite-bundled")]
+fn empty_path() -> PathBuf {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "fathom-cli-handoff-{}-nothing-on-path-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("the empty PATH directory is creatable");
+    dir
 }
 
 /// This very binary, spelled as an absolute path so it is on `PATH` by definition.
@@ -294,7 +398,17 @@ fn an_editor_that_cancelled_leaves_the_verb_cancelled_too() {
 fn no_editor_at_all_is_a_normal_path_that_names_what_to_set() {
     let dir = repository();
     index(&dir);
-    let out = fathom(&dir, &["open", "HEAD~1"]);
+    // "At all" has to be arranged, not assumed. The variables are already empty (see [`bare`]), but the
+    // platform default is a name, not a setting, and the name is `vi` on Linux and macOS and `notepad`
+    // on Windows — all of which are on the `PATH` of the machine that runs this test. Left alone, the
+    // verb would find one, plan it, and run it for real: a full-screen editor with no terminal to draw
+    // on, and a test waiting on a capture the editor is holding open. That is `reco-67ml`.
+    let path = empty_path();
+    let out = fathom_env(
+        &dir,
+        &["open", "HEAD~1"],
+        &[("PATH", &path.to_string_lossy())],
+    );
     assert_eq!(code(&out), Some(1), "{}{}", stdout(&out), stderr(&out));
     let text = format!("{}{}", stdout(&out), stderr(&out));
     assert!(text.contains("no editor"), "{text}");
@@ -508,7 +622,11 @@ fn difftool_stages_the_two_real_sides_of_the_file() {
 fn a_missing_difftool_lists_what_was_tried_and_leaves_the_pair_behind() {
     let dir = repository();
     index(&dir);
-    let out = fathom(
+    // The same scrubbing as `no_editor_at_all_…`: the refusal being asserted is a statement about what
+    // is *not* installed, and a developer machine with `nvim` or `code` on it has difftools, so the
+    // stated substitution would win here and the run would be over a tool nobody named.
+    let path = empty_path();
+    let out = fathom_env(
         &dir,
         &[
             "difftool",
@@ -518,6 +636,7 @@ fn a_missing_difftool_lists_what_was_tried_and_leaves_the_pair_behind() {
             "--tool",
             "definitely-not-a-difftool",
         ],
+        &[("PATH", &path.to_string_lossy())],
     );
     assert_eq!(code(&out), Some(1), "{}{}", stdout(&out), stderr(&out));
     let text = format!("{}{}", stdout(&out), stderr(&out));
@@ -551,21 +670,23 @@ fn a_configured_difftool_is_asked_in_its_own_shape_and_says_so() {
     let text = stdout(&out);
     assert!(text.contains("tool from $FATHOM_DIFFTOOL"), "{text}");
 
-    // A configured tool that is not installed is a stated substitution, never a silent one.
+    // A configured tool that is not installed is a stated substitution, never a silent one — and here
+    // it is a refusal, because the PATH is scrubbed and there is nothing on it to substitute.
+    let path = empty_path();
     let out = fathom_env(
         &dir,
         &["difftool", "HEAD~1", "--path", "src/core.py", "--print"],
-        &[("FATHOM_DIFFTOOL", "definitely-not-a-difftool")],
+        &[
+            ("FATHOM_DIFFTOOL", "definitely-not-a-difftool"),
+            ("PATH", &path.to_string_lossy()),
+        ],
     );
     let text = format!("{}{}", stdout(&out), stderr(&out));
-    if code(&out) == Some(0) {
-        assert!(
-            text.contains("instead"),
-            "{text} announces the substitution"
-        );
-    } else {
-        assert!(text.contains("no difftool"), "{text}");
-    }
+    assert_eq!(code(&out), Some(1), "{text}");
+    assert!(
+        text.contains("definitely-not-a-difftool") && text.contains("no difftool"),
+        "{text} names the tool that was asked for and says nothing could be run"
+    );
 }
 
 #[cfg(feature = "sqlite-bundled")]
@@ -601,9 +722,9 @@ fn difftool_runs_the_tool_it_planned() {
 fn a_pipe_gets_no_escape_sequences_and_is_told_why_in_the_plan() {
     let dir = repository();
     index(&dir);
-    // Captured output is a pipe, so nothing may be emitted here whatever the terminal claims — and the
-    // `--print` plan says which verdict it reached, because a silent difference is the one failure mode
-    // this feature cannot have.
+    // Captured output is no more a terminal for being a file than for being a pipe, so nothing may be
+    // emitted here whatever the terminal claims — and the `--print` plan says which verdict it reached,
+    // because a silent difference is the one failure mode this feature cannot have.
     let out = fathom(
         &dir,
         &["open", "HEAD~1", "--print", "--editor", &ourselves()],

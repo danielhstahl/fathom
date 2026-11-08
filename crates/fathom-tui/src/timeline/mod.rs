@@ -89,8 +89,12 @@ impl Timeline {
 
     /// Reset it (the frame's instant, on every draw, because a long-lived shell must not age against a
     /// timestamp it started with an hour ago).
-    pub fn set_now(&mut self, now: Timestamp) {
-        self.rail.set_now(now);
+    ///
+    /// Returns whether the instant crossed a minute mark — the resolution at which the rail's ages
+    /// change — so a caller that re-ages from a clock can tell a redraw apart from a bookkeeping write
+    /// (`reco-5oe`, [`crate::app::App::age_clock`]).
+    pub fn set_now(&mut self, now: Timestamp) -> bool {
+        self.rail.set_now(now)
     }
 
     /// Hand the rail a batch of episodes. Returns the sentence for the toast line.

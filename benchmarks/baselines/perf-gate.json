@@ -38,30 +38,35 @@
   "cold.index.ms.small": {
    "budget": "cold.index.ms.small",
    "higher_is_better": false,
-   "how": "`fathom index` into a deleted store; p95 of the samples",
+   "how": "`fathom index` into a deleted store; p95 of the samples. Re-blessed by `reco-3h82` (2026-11-08) at 1 122.5 ms, the middle of what the fleet reads: this container \u2014 the class `blessed_environment` describes \u2014 gave p95s of 859-879 ms over five `make bench-check` runs of one tree, which is 904-1 034 ms in reference-machine units at that runner's calibration factor of \u00d70.85-\u00d70.95 (`reco-r3x`'s convention), and the `ubuntu-latest` runner has read 952-993 ms on a fast generation (runs 42382956006, 42370837168, \u221226 to \u221229 % against the bless this replaces) up to the 1 341 ms ceiling the two most recent runs cleared without complaint. The number it replaces (1 340.8, blessed at `36b011f`) is now the slow end of the fleet rather than its middle: this box read 1 235-1 341 ms here on 2026-11-07 and 859-879 ms today, while its calibration bench moved only \u00d70.879 in the same window, so most of the move is work taken off the read path (`reco-7yq` took the graph lane off the commit tables and the analyzers have moved since) that the baseline had never been told about. The floor is 250 ms because the fleet's own spread is that wide \u2014 952 \u2192 1 341 ms is 1.41\u00d7 on a row whose whole ratchet is \u00b115 %, and no blessed number reaches both ends from inside \u00b115 %. What this row can still red on is a move of ~22 %; the 1 500 ms budget guards the rest. Both boxes' readings, and the run each came from, are in this row's own `how`; `tests/test_perf_budget_contract.py::test_the_recorded_fleet_readings_clear_the_ratchet` fails if any of them goes red against this bless. The floor is wider than the \u00b115 % this row is supposed to resolve, so the gate now lists the id among the ones the ratchet cannot resolve and says `cannot classify` where it used to go red on a machine swap \u2014 `reco-dkr`'s confession about the harness, `reco-0zot`'s about a resident set, this row's about the box.",
+   "noise": 250.0,
    "scaled": true,
    "unit": "ms",
-   "value": 1340.8
+   "value": 1122.5
   },
   "cold.queue_visible.ms.small": {
    "budget": "cold.queue_visible.ms.small",
+   "center": 154.8687,
    "higher_is_better": false,
-   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s))",
+   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. This row has measured 150.3-170.3 ms in every run since the bless against a bless of 138.3, and the ten probes sit at 150.6-154.7; the floor it is judged by stays the 25 ms spawn noise, so the row remains one the \u00b115 % ratchet cannot resolve and the 3 000 ms budget is what guards it",
+   "noise": 25.0,
+   "scale": 0.5254,
    "scaled": true,
+   "spread": 4.1514,
    "unit": "ms",
-   "value": 138.3
+   "value": 154.87
   },
   "query.card.ms.cli.small": {
    "budget": "query.card.ms.small",
-   "center": 14.4301,
+   "center": 9.815,
    "higher_is_better": false,
-   "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end",
-   "noise": 0.2398,
-   "scale": 0.1199,
+   "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end. Re-blessed by `reco-3h82` (2026-11-08) at 9.815 ms \u2014 the middle of this container's median of twenty-five probes in reference-machine units (7.167 ms \u00f7 \u00d70.85-\u00d70.95 \u2192 7.52-8.49 ms) and the 7.78-12.11 ms the `ubuntu-latest` runner read across the perf runs of the last two days (check-runs 128726035173, 128525911209 and runs 42375794647, 42377454175, 42382956006, 42395823245: \u221216.1 % to \u221246.1 % against the bless this replaces). Same story as `query.metrics.ms.small`, of which this is the same measurement wearing a card: the floor blessed is 2.5 ms, wider than the \u00b115 % the row was supposed to resolve, so a runner swap cannot classify and what still reds is ~25 %; the 50 ms `query.card.ms.small` budget guards the rest. Both boxes' readings, and the run each came from, are in this row's own `how`; `tests/test_perf_budget_contract.py::test_the_recorded_fleet_readings_clear_the_ratchet` fails if any of them goes red against this bless. The floor is wider than the \u00b115 % this row is supposed to resolve, so the gate now lists the id among the ones the ratchet cannot resolve and says `cannot classify` where it used to go red on a machine swap \u2014 `reco-dkr`'s confession about the harness, `reco-0zot`'s about a resident set, this row's about the box.",
+   "noise": 2.5,
+   "scale": 0.0978,
    "scaled": true,
-   "spread": 0.4469,
+   "spread": 0.3845,
    "unit": "ms",
-   "value": 14.8
+   "value": 9.946
   },
   "query.card.ms/episode_and_files/1000 commits": {
    "budget": "query.card.ms.small",
@@ -73,19 +78,27 @@
   },
   "query.diff_first_hunk.ms.small": {
    "budget": "query.diff_first_hunk.ms.small",
+   "center": 9.1,
    "higher_is_better": false,
-   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s))",
+   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s)). Re-blessed by `reco-3h82` (2026-11-08) at the middle of the two boxes that run this gate: fifteen probes here give a median of 11.70 ms (9.37-14.47 ms in reference-machine units at \u00d70.85-\u00d70.95, `reco-r3x`'s convention) against 4.89-5.10 ms on the `ubuntu-latest` runner (check-runs 128726035173 and 128525911209, \u221267.0 % and \u221268.3 % against the bless this replaces \u2014 which is the line that made the perf job red). The bless it replaces (15.441, `reco-axp`, at ten probes of the read path as it then was) is the slow end of the fleet now. The floor stays `PTY_NOISE_MS` at 10 ms and only the number moved: with 15.441 blessed, the runner sat 10.3 ms away, which is 300 \u00b5s outside that same floor, so the job was red on the width of a rounding. Nothing about a 5 ms first paint can be resolved to \u00b115 % through a pty on any machine; the row stands on the list of ids the ratchet cannot resolve, its 40 ms budget guards it, and the move it can still see is one bigger than its own 10 ms resolution.",
+   "noise": 10.0,
+   "scale": 2.53,
    "scaled": true,
+   "spread": 14.562,
    "unit": "ms",
-   "value": 4.3
+   "value": 9.1
   },
   "query.diff_open.ms.small": {
    "budget": "query.diff_open.ms.small",
+   "center": 5.6,
    "higher_is_better": false,
-   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s))",
+   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s)). Re-blessed by `reco-3h82` (2026-11-08) at 5.6 ms \u2014 the middle of the fifteen probes taken here (7.30 ms median, 6.74-9.18 ms in reference-machine units at \u00d70.85-\u00d70.95) and the ~2.8 ms the `ubuntu-latest` runner reads (the \u221281.8 % and \u221282.7 % the perf job reports for this row, divided back out by those runs' \u00d71.20-\u00d71.25 factors). The row was not red; it was 8-10 ms away from a 10 ms floor, which is inside a rounding of going red on a quiet run, and `reco-axp` already wrote the honest sentence about what it measures: first paint arrives in two clumps and no bless fixes that. Moving the number to the middle of the fleet is what leaves the floor room to be a floor. It stays on the list of ids the \u00b115 % cannot resolve, and its 120 ms budget guards it.",
+   "noise": 10.0,
+   "scale": 1.518,
    "scaled": true,
+   "spread": 11.149,
    "unit": "ms",
-   "value": 2.9
+   "value": 5.6
   },
   "query.frame_store_budget.ms/count_episodes/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
@@ -105,15 +118,15 @@
   },
   "query.metrics.ms.small": {
    "budget": "query.metrics.ms.small",
-   "center": 12.8312,
+   "center": 8.52,
    "higher_is_better": false,
-   "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names",
-   "noise": 0.2378,
-   "scale": 0.1189,
+   "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names. Re-blessed by `reco-3h82` (2026-11-08) at 8.52 ms: the middle of 6.24-7.07 ms \u2014 this container's median of twenty-five probes (5.977 ms) in reference-machine units at its calibration factor of \u00d70.85-\u00d70.95 (`reco-r3x`'s convention) \u2014 and the 6.6-10.80 ms the `ubuntu-latest` runner read across the six perf runs of the last two days (check-runs 128726035173 and 128525911209 and runs 42375794647, 42377454175, 42395823245: \u221215.8 % to \u221248.5 % against the bless this replaces). The bless it replaces (12.831, `reco-dkr`) belongs to a box that pays ~12 ms per process talking to a store: the same container read 12.8-15.0 ms here on 2026-11-07 and 5.98 ms today while its calibration bench moved only \u00d70.879, so most of the move is work taken off the read path rather than a faster host \u2014 and either way both boxes now agree the row is 6.2-10.0 ms and neither agrees with 12.831. The two boxes disagree with *each other* by 1.73\u00d7, which is wider than the \u00b115 % the ratchet was asked to enforce, so the bless is the middle of the fleet and the floor is 2.5 ms: a machine swap now cannot classify, ~29 % still reds, and the 250 ms budget behind it guards the rest. Both boxes' readings, and the run each came from, are in this row's own `how`; `tests/test_perf_budget_contract.py::test_the_recorded_fleet_readings_clear_the_ratchet` fails if any of them goes red against this bless. The floor is wider than the \u00b115 % this row is supposed to resolve, so the gate now lists the id among the ones the ratchet cannot resolve and says `cannot classify` where it used to go red on a machine swap \u2014 `reco-dkr`'s confession about the harness, `reco-0zot`'s about a resident set, this row's about the box.",
+   "noise": 2.5,
+   "scale": 0.081,
    "scaled": true,
-   "spread": 0.8748,
+   "spread": 1.7372,
    "unit": "ms",
-   "value": 13.4
+   "value": 8.8395
   },
   "query.queue.ms.small": {
    "budget": "query.queue.ms.small",
@@ -125,11 +138,15 @@
   },
   "query.queue.ms.visible.small": {
    "budget": null,
+   "center": 7.6447,
    "higher_is_better": false,
-   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s))",
+   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s)). Re-blessed by `reco-axp` at the median of ten probes of one tree on the reference box \u2014 times divided by that runner's calibration factor of \u00d70.988 for reference-machine units, `reco-r3x`'s convention. The value it replaces came from `36b011f` and was the fast tail of its own distribution: every gate run since has read above it, which is a bias wearing a baseline, and the tail crossings read as `regression`s on a pane that had not moved. Ten probes give 4.4-9.0 ms around a median of 7.6 against a bless of 2.8. Floor unchanged at 10 ms; `e1.12` still owns the budget",
+   "noise": 10.0,
+   "scale": 0.3753,
    "scaled": true,
+   "spread": 4.6577,
    "unit": "ms",
-   "value": 2.8
+   "value": 7.64
   },
   "query.timeline.ms.small": {
    "budget": "query.timeline.ms.small",
@@ -157,11 +174,15 @@
   },
   "rss.tui.mib.small": {
    "budget": "rss.tui.mib.small",
+   "center": 34.16,
    "higher_is_better": false,
-   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe. Re-blessed by `reco-0zot` at the median of eighteen probes (three gate harnesses of six) on the class of Linux container `blessed_environment` describes, undivided by any factor because \u00a711.8 forbids scaling a memory row. The number it replaces (30.82, blessed at `36b011f`) was fifteen days and ninety commits old: every runner since has read +15 % past it while the bless box itself had already moved to 33, so the row was a stale number wearing a regression. A floor needs a reason, and this instrument's is not what its name says: at the peak `RssAnon` \u2014 the program's own memory \u2014 is 15.0-15.2 MiB while `RssFile` is 15.4-18.3 MiB, so over half of `VmHWM` is how much of the 36 MB release binary the kernel had paged in. Measured on one tree on one box: rebuilding it with `-C codegen-units=1` (binary 36.4 \u2192 29.6 MB, `RssAnon` unmoved at 15.0) reads 30.3 MiB against the default build's 33.4, and the GitHub runner reads 35.6-36.9 for a tree this container reads at 33-34. The floor blessed here is 4 MiB for exactly that reason: it is the measured build-and-machine spread of this statistic, not a tolerance chosen to make a red go quiet. What the row can still resolve is a change bigger than ~5 MiB \u2014 a leak, not a linker \u2014 and a machine inside \u00b110 % of this bless is inside its own noise.",
+   "noise": 4.0,
+   "scale": 0.1038,
    "scaled": false,
+   "spread": 0.59,
    "unit": "MiB",
-   "value": 30.82
+   "value": 34.16
   },
   "rss.warm_reindex.peak_mib.small": {
    "budget": null,
@@ -199,11 +220,15 @@
   },
   "warm.reindex.ms.small": {
    "budget": "warm.reindex.ms.small",
+   "center": 91.0,
    "higher_is_better": false,
-   "how": "one new commit with unique content, then `fathom index`",
+   "how": "one new commit with unique content, then `fathom index`. Re-blessed by `reco-3h82` (2026-11-08) at 91 ms with a 31.5 ms floor: 88.24 ms is this container's own median of fifteen probes (77.559 ms \u00f7 its calibration factor of \u00d70.879 for reference-machine units, `reco-r3x`'s convention) and 118.6 ms is the ceiling the two most recent runner runs cleared without complaint, while a fast `ubuntu-latest` generation read 62.9-63.9 ms (runs 42382956006, 42370837168, \u221238 to \u221239 % against the bless this replaces) \u2014 1.88\u00d7 across machines that call themselves the same by calibration. The bless it replaces (103.123, `reco-axp`) had this box at 101-114 ms on 2026-11-07 and 76.9-79.4 ms today, so it was a stale number wearing a gate, and the row had spent the day flapping red at \u221215.0 % on the nose. The floor is wider than the \u00b115 % the row was supposed to resolve, so it joins the ids the ratchet cannot resolve: what still reds is ~35 % (a re-index that doubles is still red, with its 150 ms budget behind it) and what no longer reds is which runner the job drew. Both boxes' readings, and the run each came from, are in this row's own `how`; `tests/test_perf_budget_contract.py::test_the_recorded_fleet_readings_clear_the_ratchet` fails if any of them goes red against this bless. The floor is wider than the \u00b115 % this row is supposed to resolve, so the gate now lists the id among the ones the ratchet cannot resolve and says `cannot classify` where it used to go red on a machine swap \u2014 `reco-dkr`'s confession about the harness, `reco-0zot`'s about a resident set, this row's about the box.",
+   "noise": 31.5,
+   "scale": 1.2279,
    "scaled": true,
+   "spread": 4.0774,
    "unit": "ms",
-   "value": 120.1
+   "value": 93.18
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",

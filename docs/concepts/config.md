@@ -11,7 +11,7 @@
   `python3 -m recommender.config …`
 
 Normative tables in this document are **generated** from `src/recommender/config/schema.py` by
-`python3 -m recommender.config doc --write`; `doc --check` fails CI on drift, and
+`PYTHONPATH=src python3 -m recommender.config doc --write`; `doc --check` fails CI on drift, and
 `schema --check` fails CI if `schemas/fathom.schema.json` is not byte-identical to what the current
 key spec generates. A contract restated by hand is a contract that drifts — which is why the key
 reference is never typed by hand twice.
@@ -477,7 +477,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `non_code.env.declaration_globs` | `glob_list` | `.env.example, .env.sample, .env.template, .env.default, .env.dist, **/.env.example, **/.env.sample, **/.env.template, **/*.env.example, **/*.env.sample, config/env.example, docs/env.example` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.committed_globs` | `glob_list` | `.env, .env.local, .env.production, **/.env, **/.env.production, **/.env.staging, config/env.ini, **/secrets.yaml, **/secrets.yml` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.placeholder_values` | `string_list` | `, changeme, change-me, change_me, your-value-here, your_value_here, your-secret-here, xxx, xxxx, xxxxx, <value>, <secret>, placeholder, sample, example, examples, test, dummy, todo, none, null, true, false, 0, 1, secret, password, admin, foo, bar, undefined, REPLACE_ME, insert-here, redacted` | `extend` | `any` | — | non_code.surface | `e2.8` |
-| `non_code.env.secret_name_pattern` | `string` | `(?i)(^|_)(secret|token|password|passwd|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth[_-]?key|dsn|_key|_cert|_certificate)($|_)|(^|_)(aws|gcp|azure|oidc)(_|-)?(key|secret|token|credential)` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.secret_name_pattern` | `string` | `(?i)(^\|_)(secret\|token\|password\|passwd\|pwd\|api[_-]?key\|access[_-]?key\|private[_-]?key\|credential\|auth[_-]?key\|dsn\|_key\|_cert\|_certificate)($\|_)\|(^\|_)(aws\|gcp\|azure\|oidc)(_\|-)?(key\|secret\|token\|credential)` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.reference_scope` | `string` | `episode` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.rename_similarity` | `number` | `0.6` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.flags.globs` | `glob_list` | `flags.yaml, flags.yml, flags.json, feature-flags.yaml, feature-flags.json, **/flags.yaml, **/flags.yml, **/flags.json, **/features.yaml, **/features.json, **/featureflags.json, **/flip-flop.json, **/unleash-toggles.json, config/flags/**, **/config/flags/**, **/feature_flags.py, **/flags.php` | `extend` | `any` | — | non_code.surface | `e2.8` |
@@ -773,17 +773,23 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 ## 11. The executable half
 
 ```bash
-python3 -m recommender.config explain --repo .            # what won, and what it beat
-python3 -m recommender.config explain --path src/foo.rs   # the per-file decision chain
-python3 -m recommender.config explain --key risk --json   # machine-readable, for a bug report
-python3 -m recommender.config get noise.globs
-python3 -m recommender.config schema --check              # CI: generated schema is not stale
-python3 -m recommender.config schema --validate fathom.toml
-python3 -m recommender.config lint --strict
-python3 -m recommender.config privacy
-python3 -m recommender.config doc --check                 # CI: this document is not stale
-python3 -m recommender.config init > fathom.toml          # commented, from the key spec
+PYTHONPATH=src python3 -m recommender.config explain --repo .            # what won, and what it beat
+PYTHONPATH=src python3 -m recommender.config explain --path src/foo.rs   # the per-file decision chain
+PYTHONPATH=src python3 -m recommender.config explain --key risk --json   # machine-readable, for a bug report
+PYTHONPATH=src python3 -m recommender.config get noise.globs
+PYTHONPATH=src python3 -m recommender.config schema --check              # CI: generated schema is not stale
+PYTHONPATH=src python3 -m recommender.config schema --validate fathom.toml
+PYTHONPATH=src python3 -m recommender.config lint --strict
+PYTHONPATH=src python3 -m recommender.config privacy
+PYTHONPATH=src python3 -m recommender.config doc --check                 # CI: this document is not stale
+PYTHONPATH=src python3 -m recommender.config init > fathom.toml          # commented, from the key spec
 ```
+
+Every line above runs from the repository root and needs nothing installed: `PYTHONPATH=src` is how
+the contract fixture is started, because `recommender` is read out of `src/` rather than installed.
+The `fathom config …` spelling this document and ADR-002 §4.3 use for the same surface is the
+product's verb, and `fathom-cli` does not ship it yet — which is why a message printed by one of these
+commands names the fixture form and not the design's, so what CI tells you to run is what you can run.
 
 `tests/test_config_contract.py` is the acceptance criteria as tests: precedence for all five layers,
 merge strategies including negation ordering and `--set` overriding a strategy, the hostile-repo

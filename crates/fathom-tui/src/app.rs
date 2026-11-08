@@ -584,6 +584,14 @@ pub struct App {
     pub toast_lifetime: Duration,
     /// One line per startup problem worth keeping (keymap conflicts, signal hooks).
     pub notices: Vec<String>,
+    /// The frame's instant and the monotonic instant it was taken at, for re-aging the rail
+    /// (`reco-5oe`): `(the instant the rail is aged against, the monotonic read it was anchored to)`.
+    ///
+    /// `Options::now` is one wall-clock read at the CLI's edge (ADR-002 §4.4) and the frame used to age
+    /// every row against it for as long as the reviewer left it open. The anchor is what turns that one
+    /// read into a running age without a second clock read: the frame's instant plus the time since it
+    /// was taken *is* now, and a monotonic clock cannot step backwards and make an episode younger.
+    pub clock: Option<(fathom_core::time::Timestamp, Instant)>,
     /// The size the layout was last computed for.
     pub size: (u16, u16),
     /// What the ladder said about that size.
@@ -752,6 +760,7 @@ impl App {
             toast_until: None,
             toast_lifetime: TOAST_LIFETIME,
             notices: Vec::new(),
+            clock: None,
             size,
             fit: fit_chosen(ViewId::Queue, size.0, size.1, &[]),
             mouse: false,
@@ -2857,6 +2866,65 @@ impl App {
         true
     }
 
+    /// Move the frame's instant on with the monotonic clock the loop already holds, and report whether
+    /// the frame has to be drawn (`reco-5oe`).
+    ///
+    /// The frame is handed one wall-clock instant — `Options::now`, read at the CLI's edge, because
+    /// nothing below may look at a clock (ADR-002 §4.4). Held at that one instant, a rail ages badly in
+    /// silence: an episode that landed four seconds ago reads `<1m` when it is four seconds old and
+    /// still reads `<1m` an hour later, and a reviewer who believes the column is a second episode that
+    /// has been worked on all morning is being lied to by a clock, not by the index.
+    ///
+    /// So the frame keeps the one wall-clock read and anchors it to a monotonic one — the same clock
+    /// that ages the toast and the chord timeout — and derives "now" from the distance between them. A
+    /// monotonic clock is the right instrument for an age: it cannot be stepped backwards by NTP and
+    /// make a row younger, and a machine that sleeps cannot make an episode four hours younger than it
+    /// was when the lid closed.
+    ///
+    /// It reports "nothing to draw" whenever the derived instant is in the same minute as the one the
+    /// rail is already drawn for: every age the rail can print is constant between minute marks (the
+    /// rail's dialect is `timeline::days::relative`), so a finer question buys a frame nobody can see
+    /// and a tickless loop stops being one (ADR-006 §0.1). And on the rungs where §5.2's ladder has
+    /// already traded the age for a date, a minute is not a change at all — the only `now` that rail
+    /// prints is the footer's day label — so there the day is what has to turn.
+    pub fn age_clock(&mut self, at: Instant) -> bool {
+        let frame = self.timeline.now();
+        let since = match self.clock {
+            // The frame's instant moved on its own — `prime`, a scripted test, a caller that handed the
+            // rail a timestamp of its own. The anchor follows it; it does not argue with it.
+            Some((base, taken)) if base == frame => at.saturating_duration_since(taken),
+            _ => {
+                self.clock = Some((frame, at));
+                return false;
+            }
+        };
+        let micros = i64::try_from(since.as_micros()).unwrap_or(i64::MAX);
+        let later = fathom_core::time::Timestamp::from_unix_micros(
+            frame.as_unix_micros().saturating_add(micros),
+        );
+        self.clock = Some((later, at));
+        if !self.timeline.set_now(later) {
+            return false;
+        }
+        if self.rail_prints_age() {
+            return true;
+        }
+        timeline::day_start(frame) != timeline::day_start(later)
+    }
+
+    /// Whether the rail is wide enough to be printing an age rather than a date (`reco-5oe`).
+    ///
+    /// The same rung question `render::episode_line` answers when it picks between
+    /// [`timeline::relative`] and [`timeline::date_only`], asked of the layout the app owns: below
+    /// `Columns::NoSparkline` the instant is not on the screen, and an hour of it is worth no frames.
+    #[must_use]
+    fn rail_prints_age(&self) -> bool {
+        matches!(
+            timeline::Columns::for_width(self.pane_cols("rail").max(12)),
+            timeline::Columns::Full | timeline::Columns::NoSparkline
+        )
+    }
+
     /// Take the hint row back now, whatever the toast was saying.
     pub fn clear_toast(&mut self) {
         self.toast = None;
@@ -4030,12 +4098,15 @@ impl App {
                 return Some(0);
             }
             let hay = label.to_lowercase();
-            let starts = score::word_starts_of(&hay);
+            let starts = score::WordStarts::of(&hay);
             let mut total = 0i64;
             for token in query.split_whitespace() {
                 // One missing token means the row does not answer the question, which is the same rule
-                // `Index::search` applies to a corpus row.
-                total += score::field_score(token, &hay, Field::Name, &starts)?.score;
+                // `Index::search` applies to a corpus row. The token is compiled once per word of the
+                // prompt for the same reason the corpus scan compiles it: the palette asks the same
+                // questions of every entry in the registry.
+                total += score::field_score(&score::Token::new(token), &hay, Field::Name, &starts)?
+                    .score;
             }
             Some(total)
         };

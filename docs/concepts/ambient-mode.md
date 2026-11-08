@@ -118,7 +118,10 @@ The **full view keeps itself current the same way** (`reco-bpc`). A `fathom` she
 watches its repository on the same 400 ms probe the glance pane uses, and a commit made in the other
 terminal appears by itself — the strip gains the episode, `+N new` says what just arrived, and the status
 line carries `live` to say the picture is moving. It obeys the same one-writer rule: with a watcher alive or
-a daemon serving, the shell only reads, and says whose work it is reading. When nothing can watch — nothing
+a daemon serving, the shell only reads, and says whose work it is reading. The tab bar's right-hand label
+moves with it (`reco-nup`): the producer re-reads what `HEAD` names — including a `git switch` between two
+refs at the same tip, which changes nothing but the name — so the frame never goes on printing a branch that
+is not checked out. When nothing can watch — nothing
 indexed yet, `--no-watch`, a binary built without the indexer — the status line says
 `snapshot · <why>` and `?` carries the remedy, because a still rail in a repository that is not still is the
 one reading of this view you must never be able to trust by accident.

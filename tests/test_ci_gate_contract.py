@@ -18,6 +18,11 @@ The same rules run in CI as `python3 tools/check_ci_gate.py`, `tools/five_minute
 `tools/publish_demo_repo.py check` (`.github/workflows/ci.yml`, `contracts.yml`); this file is their
 pytest mirror, with the failure messages a contributor sees.
 
+The gate is also run on `contracts.yml`'s docs-only job, which has no toolchain at all. On that runner
+the two binary-sourced rules say they skipped and the rest still runs; on a machine that has built the
+binary every promise here is measured (`reco-p40`: the docs job used to raise
+`FileNotFoundError: …/target/debug/fathom`, which is a crash where a verdict belongs).
+
 Run: python3 -m pytest tests/test_ci_gate_contract.py -q
 """
 
@@ -132,6 +137,52 @@ def test_the_reusable_workflow_handles_the_three_exit_codes():
     text = REUSABLE.read_text(encoding="utf-8")
     for code, meaning in (("0", "clean"), ("7", "a human has work"), ("did not", "the gate broke")):
         assert code in text, f"the verdict step has no sentence for {meaning}"
+
+
+# ---------------------------------------------------------------------------
+# the gate on a job that compiles nothing (**reco-p40**)
+# ---------------------------------------------------------------------------
+#: The state `contracts.yml` runs this gate in: a runner with Python, a checked-out tree, and no
+#: compiled `fathom`. Two of the gate's rules have a binary as their source, and they have to say they
+#: could not run rather than raise — a `FileNotFoundError` traceback on that job is a bug report about
+#: the checker that buries whatever the CI story was actually doing.
+NO_BINARY = ROOT / "target" / "reco-p40-not-built"
+
+
+def test_the_verb_reader_returns_nothing_rather_than_raising_when_there_is_no_binary(tmp_path):
+    assert check_ci_gate.binary_verbs(tmp_path / "no-fathom-here") == set()
+
+
+@needs_binary
+def test_the_verb_reader_parses_the_real_help_and_a_verb_that_is_not_in_it():
+    """The fake `--help` the self-test uses is a guess at clap; the built binary is the fact."""
+    verbs = check_ci_gate.binary_verbs(BINARY)
+    assert "check" in verbs, f"the parser read {sorted(verbs)} out of the real `fathom --help`"
+    assert "flarble" not in verbs
+
+
+def test_the_gate_reports_on_a_docs_only_job_instead_of_tracebacking():
+    run = sh(sys.executable, str(ROOT / "tools" / "check_ci_gate.py"), "--bin", str(NO_BINARY))
+    assert "Traceback" not in run.stderr, f"the gate crashed where it should have skipped:\n{run.stderr}"
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert "verbs not checked" in run.stdout, "the verb half was skipped silently, which is a green that saw nothing"
+    assert "flag check skipped" in run.stdout, "and so was the flag half"
+
+
+def test_a_file_that_is_not_a_runnable_program_is_a_skip_not_a_crash(tmp_path):
+    """Present-but-unrunnable is the same state as absent, as far as this gate can tell."""
+    not_a_program = tmp_path / "fathom"
+    not_a_program.write_text("print('I am not a binary')\n", encoding="utf-8")
+    problems, notes = check_ci_gate.check(verbose=False, binary=not_a_program)
+    assert not problems, "\n".join(problems)
+    assert any("verbs not checked" in n for n in notes), notes
+
+
+def test_the_gate_self_test_needs_no_toolchain():
+    run = sh(sys.executable, str(ROOT / "tools" / "check_ci_gate.py"), "self-test")
+    assert "Traceback" not in run.stderr, run.stderr
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert "self-test OK" in run.stdout
 
 
 def test_the_dogfood_job_gates_the_pinned_corpus():

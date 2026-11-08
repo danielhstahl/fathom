@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window)",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window); reco-0zi added the one disposition the re-measured cut promoted, 2026-11-02",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -195,6 +195,15 @@
    "note": "One line added to `.readthedocs.yaml` to fix the docs build, bundled with the usual refresh: four workflows, five `requirements/*.txt` bumps and two source files at 6 lines each. 88 of 123 churn lines sit on lockfile paths, no finding spoke, and the docs-build line is a fix stated in its own subject.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 235c52fa`: `.readthedocs.yaml` +1; member `165af0a0` — four workflows, `.pre-commit-config.yaml`, five `requirements/*.txt`, `src/flask/app.py` 6, `src/flask/testing.py` 6."
+  },
+  {
+   "commit": "11c45eeba3b5bcf06b84f4e864862f1019a3faa3",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": ["score"],
+   "note": "The flask maintenance rhythm, pulled over `flask`'s cut by `reco-0er` taking the guessed-`human` authorship axis out of the score's denominator (42, the cut itself) rather than by anything it does. 48 of its 68 churn lines are the `requirements/*.txt` locks; the rest is action-pin bumps re-emitted across three workflow templates (`setup-python` 5.5.0 → 5.6.0, `download-artifact` 4.2.1 → 4.3.0 twice), `.pre-commit-config.yaml`, `tox.ini`'s pypy and `-dev` matrix entries, and one `# pyright: ignore` on an existing argument in `src/flask/app.py`. No finding spoke, so the flag is the CI-workflow claim on files the shared-workflow repo writes — the same reading this file already gives seven other refreshes in this window.",
+   "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
+   "evidence": "`git show 11c45eeba3 --stat`: 11 files, 34 insertions / 34 deletions; `.github/workflows/publish.yaml` 6 (`setup-python@a26af69`, `download-artifact@d3f86a1` ×2), `.github/workflows/tests.yaml` 4, `.github/workflows/pre-commit.yaml` 2, five `requirements/*.txt` 26, `.pre-commit-config.yaml` 2, `tox.ini` 4 (`pypy310`→`pypy311`, `py39-dev`→`py310-dev`), `src/flask/app.py` 1 (`rv,  # pyright: ignore`)."
   }
  ]
 }

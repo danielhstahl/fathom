@@ -114,8 +114,10 @@ class Report:
         return self.p95(self.card_ms)
 
     def cold_p95_ms(self) -> float:
-        """Cold path, reported and not gated: this is `analyse` + compose, i.e. what an index
-        run pays per episode, not what a keystroke pays."""
+        """Cold path, reported and not gated: analyse + compose + render, i.e. what an index
+        run pays per episode, not what a keystroke pays. Sampled the same way as the warm path
+        (:func:`score`), so that it is the bigger number by construction rather than by luck.
+        """
         return self.p95(self.cold_ms)
 
     def as_dict(self) -> dict:
@@ -144,7 +146,7 @@ class Report:
         out.append("  %-26s %.3f ms  (budget %.0f ms, %s)  %s"
                    % ("card p95 (warm)", self.p95_ms(), self.budget_ms, BUDGET_ID,
                       "PASS" if self.p95_ms() <= self.budget_ms else "FAIL"))
-        out.append("  %-26s %.3f ms  (reported, not gated: analyse + compose, what an index "
+        out.append("  %-26s %.3f ms  (reported, not gated: analyse + compose + render, what an index "
                    "run pays)" % ("card p95 (cold)", self.cold_p95_ms()))
         out.append("  %-26s %d (%s)"
                    % ("forbidden claims", len(self.forbidden),
@@ -254,14 +256,33 @@ def score(*, policy: Policy | None = None, budget_ms: float | None = None,
     """Run every fixture through the card and measure the ticket's claims."""
     active = policy or Policy.built_in()
     report = Report(budget_ms=budget_ms if budget_ms is not None else load_budget())
+    runs = max(1, repeats)
+    # One untimed pass before anything is measured. The first card a process composes pays for
+    # lazily-imported analysis modules and first-touch caches — here it is 98 ms against the 3 ms the
+    # same fixture costs afterwards — and that is the price of the interpreter waking up, not a claim
+    # about a cold index. Charging it once, to whichever number happens to be timed first, is half of
+    # what made the cold/warm ordering a coin flip (**reco-d2bo**); the rest is below.
     for case in CORPUS.CASES:
-        started = time.perf_counter()
-        cold = case.card(active)
-        report.cold_ms.append((time.perf_counter() - started) * 1000.0)
-        # The warm path ADR-004 §11 budgets: the analyses are already computed (the index has
-        # them), and the card composes and renders from them.
+        RENDER.render(case.card(active), cols=RENDER.DEFAULT_COLS)
+        RENDER.render(compose(case.episode, warm_analyses(case), active), cols=RENDER.DEFAULT_COLS)
+    for case in CORPUS.CASES:
+        # The analyses a warm index already holds for this episode, built once and outside the clock.
         warm = warm_analyses(case)
-        for _ in range(max(1, repeats)):
+        for _ in range(runs):
+            # The cold path: the analyses are computed inside the compose, which is what an index run
+            # pays per episode. It is timed as the warm path is timed — same samples, same render,
+            # plus the analysis it starts from — so the claim "the cold number is the bigger one" is
+            # arithmetic about what each path computes rather than a race between two differently
+            # shaped distributions. It used to be a race: one cold sample per fixture against four
+            # warm ones, the cold one without the render the warm one pays for, and the p95 of
+            # sixteen samples quietly dropping its largest — which was the one fixture whose analysis
+            # was worth measuring. On the runner the race went the wrong way by 1.6 %.
+            started = time.perf_counter()
+            cold_card = case.card(active)
+            RENDER.render(cold_card, cols=RENDER.DEFAULT_COLS)
+            report.cold_ms.append((time.perf_counter() - started) * 1000.0)
+            # The warm path ADR-004 §11 budgets: the analyses are already computed (the index has
+            # them), and the card composes and renders from them.
             started = time.perf_counter()
             card = compose(case.episode, warm, active)
             lines = RENDER.render(card, cols=RENDER.DEFAULT_COLS)

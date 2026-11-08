@@ -290,6 +290,16 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
     watch an act happen and still hold a screenshot in which it did not:
     `tests/test_review_state_contract.py` needs the toast's own words, and this is the one honest way
     to hand them over — the frame as it was at the moment it said them.
+
+    **Quiet means "the answer has arrived and has stopped", never "nothing has arrived yet."** The
+    settle test is two quiet ticks, which is ~100 ms; applied before the first byte of the answer it
+    is a 100 ms ceiling on what this probe can see at all, and a frame that lands at 150 ms is then
+    reported as *no frame* — `None`, not late. That censoring is what made
+    `cold.queue_visible.ms.small` unreadable off the machine it was blessed on (reco-cwx): the TUI's
+    first paint was measured at 138 ms on the blessed box, 150-170 ms one box over, and everything
+    past the window came back `blocked`, against a 3 000 ms budget the probe could not have breached
+    however slow the product got. So: with `quiet`, wait for the first byte for the whole deadline,
+    and start counting quiet ticks only once something has been seen.
     """
     first: float | None = None
     last: float | None = None
@@ -312,7 +322,9 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
         if remaining <= 0:
             return first, last, changed, found
         ready, _, _ = select.select([master], [], [], min(0.05, remaining))
-        if not ready and not quiet:
+        if not ready and (not quiet or first is None):
+            # Nothing has arrived yet: that is an answer still coming, not a settled frame, so keep
+            # reading until the deadline. Only a *gap after* the first byte is evidence of settle.
             continue
         if not ready:
             # Two quiet ticks in a row means the frame settled.
@@ -388,8 +400,23 @@ def main() -> int:
     args = parser.parse_args()
 
     binary = args.binary or str(Path(__file__).resolve().parents[1] / "target/release/fathom")
-    if not Path(binary).exists():
+    # Resolve the program *here*, in the directory the shell called from. The pty child changes into
+    # the repository under review before it execs, so a relative `--binary target/release/fathom`
+    # names a file from a directory the child is no longer in, `exec` fails, and the child's
+    # "exec failed: [Errno 2] …" lands on the pty as terminal output — which this script then times
+    # as a first frame about 1 ms after spawn. A dead child measured as the fastest paint in the
+    # suite is the worst kind of wrong number: it is a number (`reco-cwx`).
+    exec_file = ""
+    for candidate in (shutil.which(binary) or "", binary):
+        # `shutil.which` hands back a relative path when it was given one, which is the case that
+        # bites here, so absoluteness is checked rather than assumed.
+        found = Path(candidate)
+        if candidate and found.is_file() and os.access(candidate, os.X_OK):
+            exec_file = str(found if found.is_absolute() else found.resolve())
+            break
+    if not exec_file:
         raise SystemExit(f"no fathom binary at {binary}; build it first")
+    binary = exec_file
     # A `shell` step is another terminal, and a real reviewer's shell knows where the binary it ran
     # lives. Export it so a scripted walkthrough never hard-codes a path.
     os.environ["FATHOM"] = str(Path(binary).resolve())
@@ -423,8 +450,7 @@ def main() -> int:
                 env = dict(os.environ)
                 env["TERM"] = os.environ.get("TERM", "xterm-256color")
                 env.setdefault("NO_COLOR", "")
-                exec_file = shutil.which(binary) or binary
-                os.execve(exec_file, command, env)
+                os.execve(binary, command, env)
             except Exception as exc:  # pragma: no cover - the child cannot report more
                 print(f"exec failed: {exc}", file=sys.stderr)
                 os._exit(127)

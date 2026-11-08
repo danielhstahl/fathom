@@ -43,6 +43,7 @@ import difflib
 import re
 from dataclasses import dataclass
 
+from .command import command
 from .errors import ConfigInvalid
 
 #: Version of *this key layout*. A file may declare it (`meta.config_version`); a newer
@@ -2572,13 +2573,19 @@ def _check_range(key: Key, value, source: str, where: str) -> None:
         _one_range(key, value, where, source)
 
 
+#: The hint printed with a rejected value: the command that lists the range, spelled so it runs
+#: (see :mod:`.command` — `fathom config schema` is the design's name for the verb, and no
+#: binary answers to it yet).
+_SEE_SCHEMA = "see `%s`" % command("schema")
+
+
 def _one_range(key: Key, value, where: str, source: str) -> None:
     if key.minimum is not None and value < key.minimum:
         raise ConfigInvalid("%s=%s is below the minimum %s" % (where, value, key.minimum),
-                            source=source, hint="see `fathom config schema`")
+                            source=source, hint=_SEE_SCHEMA)
     if key.maximum is not None and value > key.maximum:
         raise ConfigInvalid("%s=%s is above the maximum %s" % (where, value, key.maximum),
-                            source=source, hint="see `fathom config schema`")
+                            source=source, hint=_SEE_SCHEMA)
 
 
 def _example(key: Key) -> str:

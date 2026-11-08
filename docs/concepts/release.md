@@ -164,6 +164,16 @@ refuses to run if the archive has no completions in it, which is the failure mod
 script because the runner image lacks it — so it is guaranteed to be an RPM but not byte-reproducible,
 while the `.deb` is written here with zero timestamps and is.
 
+The spec's `%files` list is **generated from that table** (`spec_files`) rather than typed next to it, and
+the reason is a whole release that went red (**reco-ndf**). The table is written in the relative spelling —
+`usr/share/zsh/site-functions/_fathom` — because that is what a `.deb`'s data tar names its members and
+what `cp -a` into `$RPM_BUILD_ROOT` lays down, and `rpmbuild` refuses any `%files` entry that does not
+begin with `/`. One relative line there is not one missing file; it is no `.rpm` at all, on the one runner
+of the six that has `rpmbuild`, with the message `error: File must begin with "/": …`. `rpm_file()` is
+where the two spellings meet, `spec_problems()` is the same claim made before `rpmbuild` is asked (so it
+holds on a laptop with no rpm installed), and `rpm -qlp` under `--verify` is what reads the answer back
+out of the finished package.
+
 ## 2 The version, and what a tag means
 
 One number, in one place: `[workspace.package] version` in
@@ -326,7 +336,9 @@ python3 tools/rehearse_installer.py --self-test        # negative controls: the 
 python3 tools/rehearse_installer.py --json             # the ledger row, mechanically
 ```
 
-It runs `dist build --artifacts=global` (plus `cargo build --release` for this machine's triple), copies
+It runs `dist build --artifacts=local --target=<this machine's triple>` and then `dist build
+--artifacts=global` (the triple is named because `dist` reads a bare `--artifacts=local` as "every target
+in `dist-workspace.toml`, on this one machine", and stops when it reaches macOS — `reco-hzr`), copies
 the installers and the local archives into a temporary mirror, runs
 `curl --fail --silent --show-error --proto '=https' --url <mirror>/install.sh --output - | sh` against it
 — the README's one-liner, with only the host changed — into a prefix that cannot touch `$HOME`, and then
@@ -366,9 +378,11 @@ The reason this rehearsal exists as a script and not as prose is the third bulle
 once — it is `ARG0`, `awk` and `tail` finding a marker line (`#{0} …`), with no external parser.
 
 The `.deb` rehearses the same way, one step earlier: `python3 tools/package_release.py --self-test`
-fails loudly on five corruptions of its own inputs, and `dpkg-deb --install --force-all` in a container
-followed by `fathom --version` is the equivalent of the `curl` line for the packager. CI runs the
-self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and does not pretend to.
+fails loudly on its own negative controls — a stale artefact name in `dist-workspace.toml`, a spec whose
+`%files` list has a relative entry, and one that claims a file nothing staged — and `dpkg-deb --install
+--force-all` in a container followed by `fathom --version` is the equivalent of the `curl` line for the
+packager. CI runs the self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and
+does not pretend to.
 
 ## 5 Adoption: counting people without watching them
 
@@ -523,6 +537,19 @@ python3 tools/gen_changelog.py lint             # which commits are conventional
 python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the heading, date it, open a new one
 python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
 ```
+
+`audit` reads commits, so it needs them: the CI job that runs it — and the pytest suite that mirrors it —
+checks out with `fetch-depth: 0`, the same sentence [the CI-gate page](ci-gate.md) makes about `fathom
+check`. At actions/checkout's default depth of one the audit cannot see the release it is measuring from,
+and says so as a `C06` naming `fetch-depth: 0` rather than dying inside `git log` (`reco-ghao`).
+
+**An entry lands in the commit that is the work, and `audit` is the command that says whether it did.** The
+audit counts commits, not diffs, so a branch that carries the code and postpones the prose is a red build
+wherever the gate runs — and the doorbell is the `docs + workspace contracts` job, not the release cut. That
+is what a leg's worth of CLI feature gates left behind (`reco-kltg`): the change was right, the note was never
+written, and `C03` named the commit on a job that had nothing else to complain about (`reco-0qq9`). So run
+`audit` in the branch, before the pull request: it needs nothing but the history, and a reminder you see
+locally is worth more than the same finding waiting on somebody else's runner.
 
 **Conventional commits, and the house style they have to share a file with.** The header grammar is the usual
 one — `feat(scope)!:` / `fix:` / `perf:` / `refactor:` / `docs:` / `deprecated:` / `removed:` / `security:`,

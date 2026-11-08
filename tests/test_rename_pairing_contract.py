@@ -56,6 +56,26 @@ from recommender.store.cache import ANALYZER_INDEX                              
 
 REPORT = ROOT / "benchmarks" / "reports" / "e2-4-rename-pairing.json"
 
+#: Keys that describe the computer a measurement ran on rather than what the fixtures contain.
+TIMING_KEYS = ("ms", "ms_total", "ms_mean", "ms_p95", "ms_max", "total_ms", "pair_ms",
+               "read_ms", "build_s", "seconds", "measured_in_seconds")
+
+
+def _timing_leaves(node, path: str = "") -> list[str]:
+    """Every wall-clock leaf under `node`, by path — so a claim can be shown to be host-dependent."""
+    if isinstance(node, dict):
+        out: list[str] = []
+        for key, value in node.items():
+            here = f"{path}.{key}" if path else key
+            if key in TIMING_KEYS:
+                out.append(here)
+            else:
+                out.extend(_timing_leaves(value, here))
+        return out
+    if isinstance(node, list):
+        return [found for item in node for found in _timing_leaves(item, f"{path}[]")]
+    return []
+
 
 #: The pure engine needs no repository: a window is paths plus bytes plus whatever git said.
 def make_window(*, removed=None, added=None, modified=None, git_pairs=(), base_paths=None,
@@ -723,3 +743,75 @@ class TestCli:
         assert REPORT.exists()
         report = json.loads(REPORT.read_text())
         assert EVAL.check_report(report, REPORT) == []
+
+    def test_check_blames_the_measurement_and_never_the_computer_that_ran_it(self, tmp_path):
+        """`score --check` is the CI step (`reco-2ezf`), so it fails for a moved claim and never a runner.
+
+        `reco-v1z` gave spike `s4` this rule and `e2.4`'s own check did not take it: `pool()` wrote
+        `ms_total`/`ms_mean` into the pooled totals, and `check_report` compares that block whole, so a
+        re-measurement on any computer but the one that last wrote the report was "drift" about nothing
+        — here, 17.3 ms against 16.6 ms. The counts are pooled without the clock now, and the half of
+        this test that keeps it worth having is the other half: a moved count still fails the check,
+        because a comparison that cannot fail is the same bug wearing the fix.
+        """
+        committed = json.loads(REPORT.read_text())
+        # The blocks `check_report` compares whole may not contain wall clock at any depth; the timing is
+        # still measured, one row and one scenario at a time, in the blocks it never reads.
+        for block in ("totals", "tiers", "by_representation", "per_scenario"):
+            assert not _timing_leaves(committed[block]), \
+                "%s carries wall clock, so --check is comparing the runner" % block
+        assert _timing_leaves(committed["rows"]) and _timing_leaves(committed["cost"]), \
+            "the measurement no longer records timing anywhere: it was deleted, not moved"
+
+        def check(mutate=lambda doc: None) -> list[str]:
+            fresh = json.loads(json.dumps(committed))
+            mutate(fresh)
+            path = tmp_path / "committed.json"
+            path.write_text(json.dumps(committed))
+            return EVAL.check_report(fresh, path)
+
+        assert check() == []
+        # A runner that measured milliseconds this time and did not last time is not drift either way:
+        # the compared block has no wall clock in it to move.
+        assert check(lambda d: d["totals"].update({"ms_total": 9e5, "ms_mean": 9e5})) == []
+        assert check(lambda d: {d["totals"].pop("ms_total", None), d["totals"].pop("ms_mean", None)}) == []
+        assert check(lambda d: d["rows"].insert(0, {"scenario": "x", "window": "y", "ms": 1e6})) == [], \
+            "rows[] is timing-heavy and is not what --check reads"
+        for mutate, what in (
+            (lambda d: d["totals"].update(found=committed["totals"]["found"] - 1),
+             "a found pair that went missing"),
+            (lambda d: d["totals"].update(emitted=committed["totals"]["emitted"] + 1),
+             "an extra emitted pair"),
+            (lambda d: d["totals"].update(wrong_named_decoy=1, wrong=2, precision=0.5),
+             "a named decoy asserted"),
+            (lambda d: d["totals"].update(precision=0.5), "a moved precision"),
+            (lambda d: d["by_representation"]["split"].update(found=0),
+             "a representation class that stopped being found"),
+        ):
+            assert check(mutate), what
+
+    def test_no_gate_holds_a_number_the_run_wrote_for_it(self):
+        """A gate's expectation is a claim made in advance, so it may not be filled in from this run.
+
+        `A4b` compared the refused O(repo) mode's cost ratio against the shipped mode's own measured
+        ratio — `>= 2.69` committed, `>= 2.3` on the next run, and true by construction on any machine
+        because the widened mode always reads more. That is not a gate; it is the other gate's number
+        wearing a gate's clothes. Every other expectation is a literal.
+        """
+        committed = json.loads(REPORT.read_text())
+        shipped = committed["cost"]["ratio_small_to_20x_shipped"]
+        for row in committed["gates"]:
+            if row["id"] == "A4b":
+                continue
+            assert str(shipped) not in _gate_expectation_literal(row), \
+                "%s's expectation is this run's own measurement" % row["id"]
+        a4b = next(row for row in committed["gates"] if row["id"] == "A4b")
+        assert a4b["read_from"] == "cost.ratio_small_to_20x_widened"
+        assert a4b["observed"] >= EVAL.DECISIVE_COST_RATIO, \
+            "the widened mode was supposed to scale with the tree; the bar should say how much it does"
+
+
+def _gate_expectation_literal(row: dict) -> str:
+    """The bare number in a gate's `expected`, which `gate()` renders as `"<op> <value>"`."""
+    return str(row["expected"].split(" ", 1)[1] if " " in str(row["expected"])
+               else row["expected"])

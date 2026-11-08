@@ -207,9 +207,12 @@ does not notice — which is what makes the auditor a check rather than a habit.
 
 "Warm" means what `query.card.ms.small` means: the analyses are already in hand, which is what the TUI
 measures when a row is selected. Composing from cold analyses is printed separately and not gated —
-it is what an index run pays, against `analyse.episode.ms.p95`. Both timings are reported with their
-environment (CPU count, machine width, interpreter version) because a budget without a machine is a
-vibe.
+it is what an index run pays, against `analyse.episode.ms.p95`. The cold number is the warm path's own
+work plus the analysis, sampled as the warm path is sampled and after one untimed pass over the corpus,
+so "cold is the bigger number" is arithmetic about the two paths rather than a race between two
+differently-shaped distributions — it was a race, and a loaded runner once won it (**reco-d2bo**). Both
+timings are reported with their environment (CPU count, machine width, interpreter version) because a
+budget without a machine is a vibe.
 
 The corpus is 16 fixtures covering: a small code-plus-test change; an episode with only a path list
 (no bytes — the Epic 1 build); no repository inventory on either side; a module graph supplied,

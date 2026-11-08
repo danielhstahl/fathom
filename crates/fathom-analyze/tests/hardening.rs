@@ -9,11 +9,13 @@
 //! `Unparsed`, which is the difference between a repository that failed to analyse and a review tool that
 //! died on somebody's clone.
 //!
-//! Three groups, all driving [`fathom_analyze::hardening`], which is the same entry point the cargo-fuzz
+//! Four groups, all driving [`fathom_analyze::hardening`], which is the same entry point the cargo-fuzz
 //! targets in [`fuzz/`](../../../../fuzz) call:
 //!
 //! * **adversarial shapes** — the structures that break recursive-descent readers (nesting, one giant line,
 //!   one giant token, separator storms), each with the bound it is now held to;
+//! * **named regressions** — a shape that has already crashed the fuzzer, kept here so it cannot come back
+//!   on a rainy day (`reco-eyo`);
 //! * **the seed corpus** — every file under `fuzz/corpus/`, so a seed that has ever crashed the fuzzer is a
 //!   regression test here too, on stable, with no nightly toolchain and no `-Z` flags;
 //! * **proptest** — random bytes through the same driver, which is what finds the shape nobody named.
@@ -147,6 +149,41 @@ fn nesting_beyond_the_depth_cap_is_refused_rather_than_overflowing_the_stack() {
         deps::parse_recognized("pom.xml", &shallow).is_some(),
         "60 levels of nesting is a build file, not an attack"
     );
+}
+
+#[cfg(feature = "deps-all")]
+#[test]
+fn text_wider_than_one_byte_between_two_tags_is_text_not_a_crash() {
+    // The `lockfile` smoke job's crash (**reco-eyo**), found in the first minutes of a 60-second run and
+    // reproducible with no fuzzer at all. The XML scanner indexes by byte, and the text between two tags is
+    // the one place it steps *one byte at a time* — so the first character wider than a byte left the cursor
+    // inside that character, and the next slice by index panicked.
+    //
+    // Nothing in the corpus had a shape like it, because every committed XML seed is ASCII, which is the
+    // lesson to keep: the corpus holds shapes a person named, and a character set is not a shape anyone
+    // writing a nesting torture test thinks to add. These three are the two ways a real clone reaches the
+    // same line and the way the fuzzer did:
+    //
+    //   * `café` is an artifact named by a person, in a file that is valid UTF-8 end to end;
+    //   * `\u{ff}` and `\u{fffd}` are what a file whose bytes were never valid UTF-8 looks like by the time a
+    //     reader sees it — the caller lossy-decodes, and every bad byte becomes a three-byte character.
+    for (name, content) in [
+        ("pom.xml", "<project><name>caf\u{e9}</name></project>"),
+        (
+            "pom.xml",
+            "<project><description>Z\u{fc}rich \u{ff}</description></project>",
+        ),
+        (
+            "Fathom.csproj",
+            "<Project><ItemGroup>\u{fffd}\u{fffd}\u{fffd}</ItemGroup></Project>",
+        ),
+    ] {
+        hardening::lockfile(&seed(name, content.as_bytes()));
+        assert!(
+            deps::parse_recognized(name, content).is_some(),
+            "`{content}` was refused under the name `{name}`; the reader had to keep the text, not give up"
+        );
+    }
 }
 
 #[test]

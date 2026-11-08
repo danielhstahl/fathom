@@ -34,10 +34,11 @@ because "a refactor" and "a perf fix" are different things to a reviewer), `depr
 what the release should claim: `Changelog: <one line>` and `Changelog-Section: Fixed` trailers, which is
 how a commit whose subject is an essay contributes one accurate bullet instead of a truncated one.
 
-Seven of this repository's last 74 commits carry no bead ref and none of them uses the header grammar,
-because the house style here is a sentence — *"Cold-index cost was quadratic in the cache, because a
-diagnostic query missed its index"* — and a tool that demanded `fix(cache):` before it could describe that
-would be a tool that gets bypassed. So the fallback is documented and mechanical: a commit is classified
+Six of this repository's last 74 commits use that grammar. Sixty-seven are a prose sentence with a bead ref
+in them — *"Cold-index cost was quadratic in the cache, because a diagnostic query missed its index"* —
+because that is the house style here, and a tool that demanded `fix(cache):` before it could describe such a
+commit would be a tool that gets bypassed. Four carry no bead ref at all, three of them under a `chore:` or
+a `plan:` header; the fourth is what the last rung of the ladder, and `C03`, are for. So the fallback is documented and mechanical: a commit is classified
 from its trailers if it has them, otherwise from its bead refs, otherwise from a keyword ladder (§"the
 fallback ladder" below) into Fixed or Changed, and `lint` says out loud which commits took the ladder.
 The subjects stay prose; the classification stays auditable.
@@ -49,7 +50,11 @@ exists) — and then asks, for every commit in it, whether the release's section
 ref, by plan key (`e6.6`, `s4`, `m2`), by short sha, or by the `Changelog:` text. A commit nobody described
 is `C03`. Known gaps are allowed to be listed in `.plan/changelog-coverage.json` with a reason and an
 owner, and `C07` makes that list only ever shrink: a baseline entry that *is* now covered fails until it
-is pruned, so the exemption file cannot quietly become the design.
+is pruned, so the exemption file cannot quietly become the design. A **merge commit** is not a candidate
+for `C03` at all — recognised by its parents, not by its subject — because a merge is the join rather than
+the change and every commit it joins is audited on its own. That is not a theoretical case: the clone CI
+audits is often the host's merge commit for the pull request, sitting on a `Merge <sha> into <sha>` no
+human wrote and no `Changelog:` trailer will ever arrive for (**reco-d2bo**).
 
 **The rung distribution, and what this file is allowed to quote about it.** `audit` prints which rung of the
 fallback ladder produced each commit's bullet — trailer, header, bead, key, bare subject — because a
@@ -120,7 +125,15 @@ MARKED_TYPES = {"perf", "docs", "revert", "refactor"}
 
 HEADER = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()]*)\))?(?P<bang>!)?:\s*(?P<subject>\S.*)$")
 TRAILER = re.compile(r"^(?P<key>[A-Za-z][A-Za-z0-9-]*)\s*:\s*(?P<value>.+)$")
-BEAD_REF = re.compile(r"(?<![\w-])(reco-[a-z0-9]{3})(?![\w-])")
+#: A bead reference. The width is a range and not a constant because the board's ids grew from
+#: three characters to four (`reco-ghao`, `reco-cqwz`, `reco-p6zw`) when the three-character
+#: space started colliding, and a fixed `{3}` followed by a "no more word characters" lookahead
+#: refuses to match *any* four-character id — so every commit of the last fortnight looked like
+#: a commit with no bead in it. That is what put 17 commits on the prose rung of the ladder and
+#: failed the 10%-guess bar (`reco-ghao`); the ladder was not guessing, the pattern was blind.
+#: Sub-issues (`reco-mkl.1`) need nothing here: the ref ends at the dot, which the lookahead
+#: already allows, and names the parent bead.
+BEAD_REF = re.compile(r"(?<![\w-])(reco-[a-z0-9]{3,4})(?![\w-])")
 PLAN_KEY = re.compile(r"(?<![\w.-])([esdm]\d+(?:\.\d+)?|s\d{1,2})(?![\w.])")
 SECTION_HEADING = re.compile(r"^##\s+\[([^\]]+)\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?\s*$", re.M)
 #: The fallback ladder. Order matters: a subject that says both "perf" and "fix" is a fix that mattered.
@@ -212,6 +225,7 @@ class Commit:
     subject: str
     body: str
     date: str
+    parents: list[str] = field(default_factory=list)
 
     def changelog_notes(self) -> list[str]:
         return self.trailers().get("changelog", [])
@@ -251,17 +265,36 @@ class Commit:
                 found["breaking change"] = [match.group("value").strip()]
         return found
 
+    def is_merge(self) -> bool:
+        """A commit with two or more parents: `git merge`, a host's PR merge, a bot's sync.
+
+        A merge is a join, not a change. Its own content is conflict resolution, and the change it
+        carries is the commits it joins — every one of which is audited on its own, so a merge can never
+        be the commit the notes forgot. It matters because of where the gate runs: a CI clone of a pull
+        request is checked out at the host's merge commit, whose subject is a machine's
+        `Merge <sha> into <sha>` — no bead ref, no conventional header, no `Changelog:` trailer anyone
+        could write, and no human in sight to write one (**reco-d2bo**: the audit was green on every
+        laptop, whose clones have no merge commits, and red on the runner, whose clone is one).
+
+        A merge that carries a `Changelog:` trailer has something to say about itself and is taken at its
+        word, exactly as a `chore:` commit with one is.
+        """
+        return len(self.parents) > 1
+
     def is_internal(self) -> bool:
         """A `ci:`/`chore:`/`test:` commit that says nothing about the release: exempt from coverage.
 
         Exempt is not invisible: `lint` still reads it, `--include-internal` still prints it, and a commit
         that carries a `Changelog:` trailer or a `BREAKING CHANGE:` has opted back in whatever its type.
+        A merge commit is exempt the same way, for the same reason — see :meth:`is_merge`.
         """
-        header = HEADER.match(self.subject)
-        if not header or header.group("type") not in INTERNAL_TYPES:
-            return False
         trailers = self.trailers()
-        return not trailers.get("changelog") and not trailers.get("breaking change")
+        if trailers.get("changelog") or trailers.get("breaking change"):
+            return False
+        if self.is_merge():
+            return True
+        header = HEADER.match(self.subject)
+        return bool(header) and header.group("type") in INTERNAL_TYPES
 
     def entries(self, include_internal: bool = False) -> list[Entry]:
         """The release notes this commit contributes; possibly none, possibly more than one."""
@@ -295,7 +328,10 @@ class Commit:
             # The fallback ladder, in the order the docstring states it.
             section = override if override in SECTIONS else ""
             if not section:
-                if self.refs and BEAD_REF.search(" ".join(self.refs)):
+                if self.is_merge() and not notes and not breaking:
+                    # No bullet for a join; `--include-internal` still prints it. See :meth:`is_merge`.
+                    section = "Internal"
+                elif self.refs and BEAD_REF.search(" ".join(self.refs)):
                     section = "Fixed" if FIX_WORDS.search(self.subject) else "Added"
                 elif FIX_WORDS.search(self.subject):
                     section = "Fixed"
@@ -326,6 +362,8 @@ class Commit:
         """
         if self.changelog_notes():
             return "trailer"
+        if self.is_merge():
+            return "none"
         header = HEADER.match(self.subject)
         if header:
             return "none" if self.is_internal() else "header"
@@ -337,6 +375,8 @@ class Commit:
 
     def lint(self) -> str:
         """Why this commit is not conventional-shaped; empty when it is."""
+        if self.is_merge() and not self.trailers().get("changelog"):
+            return ""            # a machine wrote this subject; there is nothing here for a human to fix
         header = HEADER.match(self.subject)
         if header:
             if header.group("type") not in TYPE_SECTION:
@@ -356,23 +396,53 @@ def _scoped(scope: str, text: str) -> str:
     return "**%s**: %s" % (scope, text) if scope else text
 
 
+def is_shallow(root: pathlib.Path) -> bool:
+    """Whether this clone was fetched with its history cut short."""
+    return _run(["rev-parse", "--is-shallow-repository"], root).stdout.strip() == "true"
+
+
+def has_commit(root: pathlib.Path, ref: str) -> bool:
+    """Whether this clone actually holds the commit `ref` names.
+
+    `rev-parse --verify` is not the test: handed a full 40-character SHA it answers success for
+    an object the clone has never seen, which is how a depth-1 checkout walked past every
+    resolver this file has and then died inside `git log` with an "Invalid revision range"
+    traceback (`reco-ghao`). `cat-file -e` asks the object store instead.
+    """
+    if not ref:
+        return True
+    return _run(["cat-file", "-e", "%s^{commit}" % ref], root).returncode == 0
+
+
+#: What to say when a range cannot be read, because the reason is almost never the range.
+SHALLOW_HINT = ("this clone does not hold the commits that range names — a checkout that audits "
+                "history has to fetch it, so a CI job needs `actions/checkout` with "
+                "`fetch-depth: 0`")
+
+
 def read_commits(root: pathlib.Path, since: str, until: str = "HEAD") -> list[Commit]:
-    """`git log` over `since..until`, oldest first, with bodies kept intact."""
-    args = ["log", "--reverse", "--date=short", "--format=%H\x1f%ad\x1f%s\x1f%b\x1e"]
+    """`git log` over `since..until`, oldest first, with bodies kept intact.
+
+    The parents come along because a merge is only recognisable by them: `%p` is the one field that
+    says "this commit joins", and a subject like `Merge <sha> into <sha>` — the one a CI clone of a
+    pull request is sitting on — says it only to a pattern written for that one phrasing.
+    """
+    args = ["log", "--reverse", "--date=short", "--format=%H\x1f%p\x1f%ad\x1f%s\x1f%b\x1e"]
     args.append("%s..%s" % (since, until) if since else until)
     result = _run(args, root)
     if result.returncode != 0:
-        raise SystemExit("git log failed: %s" % result.stderr.strip())
+        hint = " — %s" % SHALLOW_HINT if is_shallow(root) else ""
+        raise SystemExit("git log failed: %s%s" % (result.stderr.strip(), hint))
     commits = []
     for record in result.stdout.split("\x1e"):
         if not record.strip():
             continue
         parts = record.strip("\n").split("\x1f")
-        if len(parts) < 4:
+        if len(parts) < 5:
             continue
-        sha, date, subject, body = parts[:4]
+        sha, parents, date, subject, body = parts[:5]
         commits.append(Commit(sha=sha.strip(), date=date.strip(), subject=subject.strip(),
-                              body=body.rstrip()))
+                              body=body.rstrip(), parents=[p for p in parents.split() if p]))
     return commits
 
 
@@ -529,8 +599,11 @@ def audit(root: pathlib.Path, version: str | None, from_ref: str = "", to_ref: s
 
     gaps: list[dict] = []
     internal = 0
+    merges = 0
     rungs = count_rungs(commits)
     for commit in commits:
+        if commit.is_merge():
+            merges += 1
         if commit.is_internal():
             internal += 1
             continue
@@ -570,8 +643,14 @@ def audit(root: pathlib.Path, version: str | None, from_ref: str = "", to_ref: s
         if ref in text:
             problems.append(Problem("C07", ref, "is now described in `## [%s]` — delete the exemption, "
                                     "which is the only direction this list is allowed to move" % target))
-    notes.append("%s: %d commits read, %d not release notes, %d gaps, %d exemptions on file"
-                 % (target, len(commits), internal, len(gaps), len(baseline["entries"])))
+    notes.append("%s: %d commits read, %d not release notes (%d of them merge commits), %d gaps, "
+                 "%d exemptions on file"
+                 % (target, len(commits), internal, merges, len(gaps), len(baseline["entries"])))
+    if merges:
+        notes.append("%d merge commit(s) in the range: a merge is the join, not the change, and every "
+                     "commit it joins is audited on its own — which is why a merge is never a coverage "
+                     "gap, and why the runner (checked out at the host's merge commit) is not red for it"
+                     % merges)
     # The honest half of the fallback ladder, printed every time: which rung each commit's bullet came from.
     # A generator whose notes are mostly guesses is a generator that will be replaced by a human who is worse
     # at reading `git log`, so the guess rate is a number the gate states rather than a detail of the code.
@@ -581,7 +660,7 @@ def audit(root: pathlib.Path, version: str | None, from_ref: str = "", to_ref: s
     problems.extend(claim_problems)
     notes.extend(claim_notes)
     return problems, notes, {"range": "%s..%s" % (since, to_ref), "commits": len(commits),
-                             "internal": internal, "gaps": gaps, "rungs": rungs,
+                             "internal": internal, "merges": merges, "gaps": gaps, "rungs": rungs,
                              "rung_line": rung_line(rungs),
                              "exemptions": len(baseline["entries"]), "section": target}
 
@@ -661,12 +740,13 @@ def check_rung_claims(root: pathlib.Path = ROOT, path: pathlib.Path = CHANGELOG)
         where = "%s%s" % (("`[%s]` " % claim["section"]) if claim["section"] else "", claim["to"][:12])
         start = "" if claim["from"] == RUNG_WHOLE else claim["from"]
         unresolved = [ref for ref in (start, claim["to"])
-                      if ref and _run(["rev-parse", "--verify", "--quiet", ref], root).returncode != 0]
+                      if ref and not has_commit(root, ref)]
         if unresolved:
             problems.append(Problem("C06", where,
                                     "names %s, which this clone cannot resolve: a claim outlives the branch "
-                                    "it was written on, but not the objects it counts"
-                                    % ", ".join(r[:12] for r in unresolved)))
+                                    "it was written on, but not the objects it counts%s"
+                                    % (", ".join(r[:12] for r in unresolved),
+                                       "; " + SHALLOW_HINT if is_shallow(root) else "")))
             continue
         commits = read_commits(root, start, claim["to"])
         expected = rung_line(count_rungs(commits)) if commits else RUNG_EMPTY

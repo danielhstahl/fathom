@@ -29,8 +29,14 @@ from . import json_schema as JS
 from . import layer as L
 from . import schema as S
 from . import sources as SRC
+from .command import command
 
 _LABEL_WIDTH = max(len(S.Layer.label(name)) for name in S.Layer.ORDER)
+
+#: The remedy every stale/missing-block message prints, spelled as a command that runs
+#: (see :mod:`.command`): `fathom config doc --write` is the design's name for it, and the
+#: binary has no `config` verb to answer to.
+DOC_WRITE = command("doc", "--write")
 
 MARK = re.compile(r"<!-- BEGIN GENERATED: (\w+) -->\n(.*?)<!-- END GENERATED: \1 -->", re.S)
 
@@ -455,33 +461,37 @@ def privacy_text(config: L.Config) -> str:
 # generated documentation blocks
 # ---------------------------------------------------------------------------
 def doc_blocks() -> dict[str, str]:
-    """Markdown blocks for docs/concepts/config.md, generated from the key spec."""
-    layers = ["| Layer | Rank | Source | What it is |", "|---|---|---|---|"]
-    for index, name in enumerate(S.Layer.ORDER):
-        layers.append("| `%s` | %d | %s | %s |" % (name, index + 1, _layer_source(name),
-                                                   _layer_doc(name)))
-    sections = ["| Section | Owner | What it owns |", "|---|---|---|"]
-    for name, meta in S.SECTIONS.items():
-        sections.append("| `%s` | %s | %s |" % (name, meta["owner"], meta["doc"]))
+    """Markdown blocks for docs/concepts/config.md, generated from the key spec.
 
-    keys = ["| Key | Type | Default | Merge | Scope | Units | Declared by | Ticket |",
+    Every table line is built by :func:`_row`, so every cell goes through :func:`_md` exactly
+    once and no cell can be escaped twice.
+    """
+    layers = [_row("Layer", "Rank", "Source", "What it is"), "|---|---|---|---|"]
+    for index, name in enumerate(S.Layer.ORDER):
+        layers.append(_row("`%s`" % name, index + 1, _layer_source(name), _layer_doc(name)))
+    sections = [_row("Section", "Owner", "What it owns"), "|---|---|---|"]
+    for name, meta in S.SECTIONS.items():
+        sections.append(_row("`%s`" % name, meta["owner"], meta["doc"]))
+
+    keys = [_row("Key", "Type", "Default", "Merge", "Scope", "Units", "Declared by", "Ticket"),
             "|---|---|---|---|---|---|---|---|"]
     for key in S.KEY_LIST:
         default = key.fallback if key.is_budget() else key.default
-        keys.append("| `%s` | `%s` | %s | `%s` | `%s` | %s | %s | `%s` |"
-                    % (key.path, key.kind, _cell(default), key.merge, key.scope,
-                       key.units or "—", key.analyzer or "—", key.ticket))
+        keys.append(_row("`%s`" % key.path, "`%s`" % key.kind, _cell(default),
+                         "`%s`" % key.merge, "`%s`" % key.scope, key.units or "—",
+                         key.analyzer or "—", "`%s`" % key.ticket))
 
-    budgets = ["| Config key | Budget family (`benchmarks/budgets.json`) | Fallback |",
+    budgets = [_row("Config key", "Budget family (`benchmarks/budgets.json`)", "Fallback"),
                "|---|---|---|"]
     for key in S.KEY_LIST:
         if key.budget:
-            budgets.append("| `%s` | `%s` | %s |" % (key.path, key.budget, key.fallback))
+            budgets.append(_row("`%s`" % key.path, "`%s`" % key.budget, key.fallback))
 
-    aliases = ["| Config key | Budget id | Why two names |", "|---|---|---|"]
+    aliases = [_row("Config key", "Budget id", "Why two names"), "|---|---|---|"]
     for path, family in sorted(S.BUDGET_ALIASES.items()):
-        aliases.append("| `%s` | `%s` | ADR-004 §5.1 declares the key, §11 publishes the "
-                       "budget; one value |" % (path, family))
+        aliases.append(_row("`%s`" % path, "`%s`" % family,
+                            "ADR-004 §5.1 declares the key, §11 publishes the budget; "
+                            "one value"))
 
     return {
         "precedence": "\n".join(layers) + "\n",
@@ -492,7 +502,13 @@ def doc_blocks() -> dict[str, str]:
     }
 
 
+def _row(*cells) -> str:
+    """One markdown table line; every cell passes through :func:`_md` exactly once."""
+    return "| %s |" % " | ".join(_md(cell) for cell in cells)
+
+
 def _cell(value) -> str:
+    """A default as it reads in the reference table: a code span, or `—` when there is none."""
     if isinstance(value, list):
         return "`%s`" % (", ".join(str(v) for v in value) or "—")
     if isinstance(value, dict):
@@ -500,6 +516,25 @@ def _cell(value) -> str:
     if value is None:
         return "—"
     return "`%s`" % value
+
+
+def _md(text) -> str:
+    """Text made safe to sit in one cell of a GFM pipe table.
+
+    A table row is split on every `|` that is not written `\\|`, so one bare bar in a cell cuts
+    that cell — and on GitHub, often the header row too — out of the table. The live case is
+    `non_code.env.secret_name_pattern`, whose default is an alternation of secret-looking
+    environment variable names: `(?i)(^|_)(secret|token|…)`. Before this function existed the
+    generated row rendered wrong, somebody escaped the bars by hand in the generated file, and
+    `doc --check` then failed forever — a hand edit inside a generated block is drift by
+    definition. Escaping here is what makes the checked-in file and the generator agree, and is
+    why hand-editing the output is never the fix (`reco-c81`).
+
+    `\\|` is the escape GFM defines for exactly this, and it is honoured inside a code span, so
+    the reader still sees the regex with plain bars; `tools/build_docs_site.py` renders it back
+    and its render audit is what proves that.
+    """
+    return str(text).replace("|", "\\|")
 
 
 def _layer_source(name: str) -> str:
@@ -543,17 +578,23 @@ def render_doc_blocks(text: str) -> str:
 
 
 def check_doc(path) -> list[str]:
-    """`fathom config doc --check`: names of blocks that have drifted from the model."""
+    """`doc --check`: one problem per block that has drifted from the model.
+
+    The remedy names the command that fixes it, spelled the way it runs (`reco-c81`): the
+    design's `fathom config doc --write` has no `config` verb behind it in the shipped binary,
+    so printing it sent the reader to a command that does not type.
+    """
     text = Path(path).read_text(encoding="utf-8")
     blocks = doc_blocks()
     present = {m.group(1): m.group(2) for m in MARK.finditer(text)}
     problems = []
     for name, body in blocks.items():
         if name not in present:
-            problems.append("%s: generated block `%s` is missing" % (path, name))
+            problems.append("%s: generated block `%s` is missing — run `%s`"
+                            % (path, name, DOC_WRITE))
         elif present[name].strip() != body.strip():
-            problems.append("%s: generated block `%s` is stale — run `fathom config doc "
-                            "--write`" % (path, name))
+            problems.append("%s: generated block `%s` is stale — run `%s`"
+                            % (path, name, DOC_WRITE))
     return problems
 
 

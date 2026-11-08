@@ -2,6 +2,11 @@
 //! "`fathom --version` and `fathom --help` work from the built binary", plus the exit-code contract the
 //! scripts in `e6.6` will depend on (ADR-002 §7.3).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Which tests need which feature is stated test by test here, because this file is the one that has both
+// halves: the headless refusals that `--no-default-features --features minimal` really answers, and the
+// verbs that read an index the same build cannot write. A store-backed test is `sqlite-bundled`-gated (ADR-002
+// §6.1); a watcher's, `watch`'s. The two files where every test is store-backed — `tests/check_verb.rs`,
+// `tests/show_trailers.rs` — say so once, at the top, instead.
 
 use std::io::BufRead;
 use std::process::{Command, Output, Stdio};
@@ -88,6 +93,7 @@ fn check_is_implemented_and_answers_with_an_exit_code() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn export_uses_the_facades_format_list_and_reaches_the_facades_code() {
     // The format list is the facade's (`fathom_analyze::export::Format`), so `--format` here, the TUI's

@@ -34,13 +34,21 @@ Two independent checks run on every measurement that has a number:
 2. **Against the committed baseline** (`benchmarks/baselines/perf-gate.json`) — more than
    `regression_fail_pct` worse and the build is red; more than that *better* and the build is red too,
    because `improvement_baseline_commit_required` is true and a baseline nobody re-blesses is a budget
-   nobody tightens.
+   nobody tightens. The improvement half is judged on the raw number, so a runner shared with eight
+   other jobs is never credited a speed-up — and, since `reco-axp`, a runner the calibration bench
+   measures *faster* than the blessed machine has its numbers put back into reference-machine units
+   first, because a fast runner is not a faster commit either.
 
 A percentage is only worth what the measurement can resolve, so a change has to clear an absolute floor
 as well, and that floor is **measured per measurement** — the probe's own stated resolution, two robust
 standard deviations of the run's own samples, or the floor blessed beside the value, whichever is
 widest. A constant per unit (`NOISE_FLOOR`) is the fallback for a measurement that says nothing about its
 own noise, and it is far too blunt where it can be avoided: a 5 ms floor on a 15 ms verb is a 33 % gate.
+A bless may widen a floor and may not narrow one: a floor is a claim about the instrument, and one quiet
+afternoon on one box does not sharpen it (`reco-3h82`). And a floor blessed beside a number is blessed
+against the fleet, not the box that blessed it: the containers and the `ubuntu-latest` runners that run
+this job differ by more than ±15 % on the small read verbs, so the rows they disagree about carry a
+floor that says so and name the readings it covers (`reco-3h82`).
 Where a change is past the percentage and inside the floor the gate does not decide by coin toss; it
 reports the id under "cannot classify", and lists the ids whose floor is wider than the ratchet itself
 under "cannot resolve", because the honest answer to a spread wider than the ratchet is "I cannot tell",
@@ -110,6 +118,19 @@ STORE_CLOCK_FLOOR_MS = 3.0
 #: so anything smaller than this is the harness's clock, not the product's. Floor for the gate.
 PTY_NOISE_MS = 10.0
 
+#: The floor of a *spawn*-dominated measurement, in ms. `cold.queue_visible.ms.small` is not a
+#: keystroke seen through the pty; it is fork, dyld, `Store::open` and the first frame, and what varies
+#: with it is the box, not the code. Nine probes of one tree on one box spread 152-171 ms (19 ms, 12 %
+#: of the value) and the same tree measured 109-150 ms across the blessed runs (`benchmarks/trend/
+#: trend.jsonl`), so the ±15 % ratchet on a ~140 ms row asks this probe to resolve 21 ms out of a
+#: spread of about that size. It cannot, and `reco-cwx` is the ticket that found out: the row blessed at
+#: 138.3 ms read +16 % on a box that was simply slower to start, which is a coin toss wearing a gate's
+#: badge. The budget — 3 000 ms — is what guards first paint; this floor is what stops the ratchet from
+#: pretending otherwise, and the run says so under "cannot resolve" rather than quietly passing.
+#: Wide enough to cover the observed spread, narrow enough that a real regression still bites: the 400 ms
+#: injection the acceptance criterion uses lands sixteen floors over it.
+SPAWN_NOISE_MS = 25.0
+
 #: Measured wall-clock ceiling this harness promises (`make bench`'s acceptance criterion: under five
 #: minutes). Exceeding it is reported; the CI job sets a matching `timeout-minutes`.
 PROMISED_SECONDS = 300
@@ -169,7 +190,9 @@ COVERAGE: dict[str, tuple[str, str]] = {
                              "`e1.9` owns the watcher's own CPU budget and its stretch-when-hot rule"),
     # --- memory -----------------------------------------------------------------------
     "rss.cold_index.peak_mib": ("this harness", "`VmHWM` of the `fathom index` child, sampled while it runs"),
-    "rss.tui.mib": ("this harness", "`VmHWM` of the TUI child, sampled after every keystroke"),
+    "rss.tui.mib": ("this harness", "`VmHWM` of the TUI child, sampled after every keystroke; over "
+                                      "half of it is the release binary's own resident pages, so the "
+                                      "row is blessed with a 4 MiB machine-spread floor (reco-0zot)"),
     "rss.daemon.mib": ("not measured yet", "no daemon before `e6.3`"),
     "rss.sqlite_page_cache.mib": ("not measured yet",
                                   "`fathom-store`'s connection factory applies `PRAGMA cache_size` "
@@ -658,7 +681,9 @@ def runner_factor(calibration_ms: float, reference_ms: float, bounds: list[float
 
     Clamping at 1.0 on the floor is the rule's point: a fast machine does not buy the product extra
     budget, and a slow one gets at most 4× before the gate says the runner is outside the calibrated
-    window rather than handing out a pass.
+    window rather than handing out a pass. The unclamped ratio is still what the ratchet's improvement
+    half needs (`evaluate`'s `machine_factor`): the clamp is about headroom, not about pretending a fast
+    machine is the reference machine.
     """
     low, high = bounds[0], bounds[1]
     raw = calibration_ms / reference_ms if reference_ms else 1.0
@@ -787,7 +812,28 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     split = M.store_split(harness.store)
     spine, graph, total = split["spine"], split["graph"], split["total"]
     lane = M.graph_lane_basis(harness.store)
-    if spine is None:
+    revisions = int(lane.get("revisions") or 0)
+    # A store that is not there is a third case, and it is not the `dbstat` one: `store_split` reports
+    # zeros for a file it cannot open, zeros are not `None`, and every number downstream of here would
+    # be a byte count divided by a denominator that does not exist (`revisions` is simply absent from
+    # `graph_lane_basis`'s answer for a missing file, which is how the gate died with a `KeyError`
+    # instead of a verdict — `reco-axp`'s complaint about a gate that crashed rather than judged, in
+    # the one branch that had already learned to say `blocked`). The cause is a cold index that wrote
+    # nothing: a binary built without `sqlite-bundled` says so and exits 9, and the wall clock of the
+    # failed process is still a measurement, so only these byte rows can say they were blocked.
+    absent = not harness.store.exists()
+    if absent:
+        for ident, why in (("store.bytes_per_commit_spine.small",
+                            "the cold index wrote no store, so there are no spine pages to count "
+                            "(`fathom index` failed: `fathom doctor` says what the binary was built "
+                            "without)"),
+                           ("store.bytes_per_commit_graph.small",
+                            "the same: no store, so no lane and no revision to divide its bytes by"),
+                           ("store.size.mib.small",
+                            "the same: there is no `.fathom/index.sqlite3` to measure")):
+            record(Measurement(ident, "bytes" if ident.startswith("store.bytes") else "MiB", None,
+                               ident, blocked_by=why))
+    elif spine is None:
         record(Measurement("store.bytes_per_commit_spine.small", "bytes", None,
                            "store.bytes_per_commit_spine.small",
                            blocked_by="this SQLite build has no `dbstat`, so the store cannot be split "
@@ -806,24 +852,26 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                                "charged here (`reco-7yq`)",
                            scaled=False))
         record(Measurement("store.bytes_per_commit_graph.small", "bytes",
-                           graph // lane["revisions"] if lane.get("revisions") else None,
+                           graph // revisions if revisions else None,
                            "store.bytes_per_commit_graph.small",
-                           blocked_by=None if lane.get("revisions") else
+                           blocked_by=None if revisions else
                            "the lane holds no snapshots (`graph.enabled`? a `--no-graph` run?), so there "
                            "is no revision to divide its bytes by",
-                           how=f"{graph:,} `dbstat` bytes of `graph_*` over the {lane['revisions']} "
-                               f"revisions the lane holds after one cold index ({lane['anchors']} full "
-                               f"snapshots, {lane['deltas']} delta rows). The denominator is a revision, "
+                           how=f"{graph:,} `dbstat` bytes of `graph_*` over the {revisions} "
+                               f"revisions the lane holds after one cold index "
+                               f"({lane.get('anchors', 0)} full "
+                               f"snapshots, {lane.get('deltas', 0)} delta rows). The denominator is a revision, "
                                "as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in §13.7 — not "
                                f"a commit of history: over the {commits} commits in the fixture this is "
                                f"{graph // max(1, commits):,} B/commit, and that quotient falls as a "
                                "repository ages, because the lane is a window and not a ledger "
                                "(`reco-7yq`)",
                            scaled=False))
-    record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
-                       "store.size.mib.small",
-                       how="the whole `.fathom/index.sqlite3`, as the cold index left it",
-                       scaled=False))
+    if not absent:
+        record(Measurement("store.size.mib.small", "MiB", round(total / (1024 * 1024), 3),
+                           "store.size.mib.small",
+                           how="the whole `.fathom/index.sqlite3`, as the cold index left it",
+                           scaled=False))
 
     # --- warm: one new commit, then the same verb again -------------------------------------
     warm, warm_rss = [], 0
@@ -900,6 +948,7 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
     first_paints: list[float] = []
     rss_peaks: list[float] = []
     probes = 0
+    blocked = "the pty probe produced no measurement"
     for run in range(harness.pty_runs):
         probe_file = fixture.parent / f"perf-tui-{os.getpid()}-{run}.json"
         try:
@@ -909,6 +958,13 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
             probe = json.loads(probe_file.read_text())
         except subprocess.CalledProcessError as err:
             blocked = f"the pty probe failed: {(err.stderr or b'').decode(errors='replace')[-200:]}"
+            probe_file.unlink(missing_ok=True)
+            break
+        except (OSError, json.JSONDecodeError) as err:
+            # The probe ran and left nothing readable. Named here rather than allowed to raise: a
+            # traceback out of the harness is a worse report than the sentence "the probe gave me
+            # nothing", and every number downstream of here already knows how to be blocked.
+            blocked = f"the pty probe wrote no readable timings: {err}"
             probe_file.unlink(missing_ok=True)
             break
         probe_file.unlink(missing_ok=True)
@@ -943,7 +999,11 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                                "cold.queue_visible.ms.small", first_paints,
                                how="spawn to first frame on a warm store: the queue is the first pane "
                                    f"(median of {len(first_paints)} probe(s))",
-                               noise=PTY_NOISE_MS))
+                               # Not `PTY_NOISE_MS`: this number is dominated by process start, not by
+                               # the reader's poll loop, and a first frame that lands later than the
+                               # reader's settle window used to come back `blocked` instead of late
+                               # (`reco-cwx`, `tools/tui_session.py`'s `drain`).
+                               noise=SPAWN_NOISE_MS))
         else:
             record(Measurement("cold.queue_visible.ms.small", "ms", None,
                                "cold.queue_visible.ms.small",
@@ -1027,7 +1087,8 @@ def load_budgets(path: Path = BUDGETS_PATH) -> tuple[dict[str, dict], dict]:
 
 
 def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str, dict],
-             gates: dict, factor: float, *, strict: bool) -> list[Verdict]:
+             gates: dict, factor: float, *, strict: bool,
+             machine_factor: float | None = None) -> list[Verdict]:
     """Judge every measurement: against its budget, and against the blessed baseline.
 
     Two clocks, two rules. The **budget** is a promise about a real machine, so a time budget gets the
@@ -1035,6 +1096,12 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
     self-deception*"). The **baseline** is a promise about the *previous blessed run*, so the current
     number is divided by the factor to bring it back to the reference machine's units before the
     comparison — otherwise a slower runner would be a regression and a faster one would hide one.
+
+    `factor` is the clamped runner factor (the published range's floor is 1.0, so a fast box buys no
+    extra headroom on a budget). `machine_factor` is the *unclamped* ratio of this runner's calibration
+    bench to the blessed reference, and it is only ever used to take a fast runner's numbers back up to
+    reference-machine units for the improvement half of the ratchet (`reco-axp`); see the comment at its
+    use site. `None` — what every caller before `reco-axp` passed — leaves that half exactly as it was.
     """
     fail_pct = float(gates.get("regression_fail_pct", 15.0))
     ratchet = bool(gates.get("improvement_baseline_commit_required", True))
@@ -1096,13 +1163,33 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                     normalised = statistic / factor
                 pct = ((base - normalised) if row.higher_is_better or
                        entry.get("higher_is_better") else (normalised - base)) / base * 100.0
-                # The ratchet is judged on the raw number, not the normalised one, and the reason is a
-                # specific lie: a *slow* runner (calibration 1.22× because eight cargo jobs were sharing
-                # it) divides every measurement down and reports the whole suite as an improvement, so
-                # the build goes red for the crime of running on a busy machine. A fast machine cannot
-                # fake it in the other direction — the factor is clamped at 1.0 and buys nothing.
+                # The improvement half of the ratchet is judged on the raw number, not the normalised
+                # one, and the reason is a specific lie: a *slow* runner (calibration 1.22× because
+                # eight cargo jobs were sharing it) divides every measurement down and reports the whole
+                # suite as an improvement, so the build goes red for the crime of running on a busy
+                # machine. The factor may make a machine look slower than it is — contention hits the
+                # calibration bench harder than it hits a 4 ms verb — so it is never used to credit a
+                # speed-up.
                 raw_pct = ((base - statistic) if row.higher_is_better or entry.get("higher_is_better")
                            else (statistic - base)) / base * 100.0
+                # …but a factor below 1.0 is a different statement, and the clamp that keeps a fast box
+                # from buying budget headroom was also silently making it *evidence of faster code*. The
+                # blessed numbers are in reference-machine units (§11.8), so a runner the calibration
+                # bench measures at 0.8× the blessed machine measures every wall clock low, and the
+                # whole suite reads as an improvement the commit did not earn: `reco-axp` is the perf
+                # job going red on a `stale_baseline` that was really the runner. So the improvement
+                # half divides by the unclamped factor when — and only when — that factor is below 1.0,
+                # which puts a fast runner's numbers back into reference-machine units. It is a floor
+                # on the credit, never a source of it: a slow runner still gets no improvement it did
+                # not do, and the worst this can say wrongly is "the baseline did not need re-blessing
+                # yet", which is the one verdict whose remedy is a re-measure rather than a hidden
+                # regression.
+                credit = min(machine_factor, 1.0) if machine_factor and row.scaled else 1.0
+                credited = statistic if credit == 1.0 else (
+                    statistic * credit if (row.higher_is_better or entry.get("higher_is_better"))
+                    else statistic / credit)
+                improve_pct = ((base - credited) if (row.higher_is_better or entry.get("higher_is_better"))
+                               else (credited - base)) / base * 100.0
                 # Two tests, not one: the percentage the ADR fixes, and an absolute floor for the
                 # change. Without the second, a 2 ms jitter on a 12 ms number is a "regression" and the
                 # gate cries wolf; the wolf is a change you could feel. The floor is measured per
@@ -1113,32 +1200,45 @@ def evaluate(measurements: list[Measurement], baseline: dict, budgets: dict[str,
                 limit_change = base * fail_pct / 100.0
                 resolvable = limit_change > floor
                 resolved = abs(normalised - base) >= floor
+                improve_resolved = abs(credited - base) >= floor
                 if pct > fail_pct and resolved:
                     issues.append((3, "regression",
                                    f"{pct:+.1f} % vs the blessed baseline ({base:,.3f} → "
                                    f"{normalised:,.3f} at ×{factor:.2f}, {basis}); the gate's limit "
                                    f"is {fail_pct:g} % ({limit_change:,.2f} {row.unit}) and the floor is "
                                    f"{floor:,.2f} {row.unit} ({floor_basis})"))
-                elif raw_pct < -fail_pct and abs(statistic - base) >= floor \
-                        and ratchet and strict:
+                elif improve_pct < -fail_pct and improve_resolved and ratchet and strict:
                     issues.append((2, "stale_baseline",
-                                   f"{raw_pct:+.1f} % better than the blessed baseline "
-                                   f"({base:,.3f}, {basis}); budgets ratchet, so re-bless it "
-                                   "(`make bench-bless`)"))
+                                   f"{improve_pct:+.1f} % better than the blessed baseline "
+                                   f"({base:,.3f}, {basis}"
+                                   + (f"; it measured {raw_pct:+.1f} % here, and this runner calibrated "
+                                      f"at ×{machine_factor:.3f} of the blessed machine, so the number "
+                                      "is put back into reference-machine units before the ratchet asks "
+                                      "about an improvement" if credit < 1.0 else "")
+                                   + "); budgets ratchet, so re-bless it (`make bench-bless`)"))
                 else:
-                    detail.append(f"{pct:+.1f} % vs baseline {base:,.3f} ({basis})")
+                    detail.append(f"{(pct if pct > 0 else improve_pct):+.1f} % vs baseline "
+                                  f"{base:,.3f} ({basis}"
+                                  + (f"; this runner calibrated at ×{machine_factor:.3f} of the blessed "
+                                     "machine, so the gap is divided back out" if credit < 1.0 else "")
+                                  + ")")
                 # A change past the ratchet's limit and inside this measurement's own floor is not a
                 # pass: it is a change the gate cannot classify. Before `reco-dkr` that case was
                 # decided by a coin toss — one run green, the next red on the same tree, on a spread
                 # wider than the ±15 % that was supposed to be judging it. Now it is said: the build
-                # does not go red on a coin toss, and the run does not pretend it looked.
-                if abs(pct) > fail_pct and not resolved:
+                # does not go red on a coin toss, and the run does not pretend it looked. Each half
+                # says so with the number that half judges, because the two halves do not agree on
+                # whether the runner factor is divided out (`reco-axp`).
+                if pct > fail_pct and not resolved:
                     resolves = False
-                    which = "slower" if (pct > 0) ^ bool(row.higher_is_better or
-                                                         entry.get("higher_is_better")) else "faster"
                     detail.append(f"cannot classify: {pct:+.1f} % is past the {fail_pct:g} % ratchet "
                                   f"and inside a {floor:,.2f} {row.unit} floor "
-                                  f"({floor_basis}) — {which}, and this run cannot tell")
+                                  f"({floor_basis}) — slower, and this run cannot tell")
+                elif improve_pct < -fail_pct and not improve_resolved:
+                    resolves = False
+                    detail.append(f"cannot classify: {improve_pct:+.1f} % is past the "
+                                  f"{fail_pct:g} % ratchet and inside a {floor:,.2f} {row.unit} floor "
+                                  f"({floor_basis}) — faster, and this run cannot tell")
         issues.sort(key=lambda issue: issue[0], reverse=True)
         # A breach already on the register is reported and bounded rather than re-litigated: the entry
         # carries the defect that owns it and the ceiling it may not grow past, so the known failure
@@ -1276,6 +1376,7 @@ def render_table(measurements: list[Measurement], verdicts: list[Verdict], budge
 def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: float,
                    passes: list[float], corpus: dict, env: dict, prior: dict) -> None:
     blessed = {}
+    prior_rows = prior.get("measurements") or {}
     for row in measurements:
         if row.value is None:
             continue
@@ -1293,7 +1394,20 @@ def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: 
             entry["spread"] = round(row.spread, 4)
         if row.scale is not None:
             entry["scale"] = row.scale
-        entry["noise"] = round(noise_floor(row, row.center or row.value, None, blessing=True)[0], 4)
+        floor = noise_floor(row, row.center or row.value, None, blessing=True)[0]
+        # A floor is a claim about the instrument, not about the run, so blessing may widen one but
+        # never narrow it. The values have been laundered this way before — `reco-axp` found five rows
+        # blessed at the fast tail of their own distribution, because a bless records whatever the
+        # blessing run happened to be when it looked — and a floor narrowed by one quiet afternoon is
+        # the same defect wearing a different hat: the next run inherits a claim that the probe can see
+        # finer than it can, and goes red on a machine (`reco-0zot` for a resident set, `reco-3h82` for
+        # the read verbs, whose blessed 0.24 ms floor was a fifth of what the two boxes differ by).
+        # Narrowing a floor stays possible; it is a hand edit, with the measurement that justifies it
+        # written into the row's own `how` where the gate can be asked what the floor is for.
+        blessed_floor = (prior_rows.get(row.id) or {}).get("noise")
+        if blessed_floor is not None:
+            floor = max(floor, float(blessed_floor))
+        entry["noise"] = round(floor, 4)
         blessed[row.id] = entry
     # The register of known breaches is written by a human, with a rationale and the defect that owns
     # it, so blessing must carry it forward rather than launder it away. An entry is removed by hand,
@@ -1494,6 +1608,32 @@ def self_test() -> int:
         problems.append("a 20 % drop in the write bench did not read as a regression: its "
                         "millisecond samples were used to price a rate in rows/s")
 
+    # `reco-axp`: the clamp at 1.0 stops a fast runner buying budget headroom, which is not the same
+    # statement as "the fast runner is the machine that blessed". A blessed time is a reference-machine
+    # time, so a runner the calibration bench measures at 0.8× of it measures every clock 20 % low, and
+    # the whole suite used to read as a speed-up the commit did not earn: the perf job going red on a
+    # `stale_baseline` that was the runner.
+    one_second = {"cold.index.ms.small": {"value": 1000.0, "unit": "ms",
+                                          "budget": "cold.index.ms.small", "scaled": True}}
+    quick_runner = evaluate([Measurement("cold.index.ms.small", "ms", 800.0, "cold.index.ms.small")],
+                            {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                            machine_factor=0.8)
+    if any(verdict.failed for verdict in quick_runner):
+        problems.append("a runner measuring 0.8× the blessed machine read unchanged code as a 20 % "
+                        "improvement; a fast runner is not a faster commit (`reco-axp`)")
+    still_faster = evaluate([Measurement("cold.index.ms.small", "ms", 560.0, "cold.index.ms.small")],
+                            {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                            machine_factor=0.8)
+    if not any(verdict.status == "stale_baseline" for verdict in still_faster):
+        problems.append("a real 30 % speed-up went uncredited on a 0.8× runner; the factor may divide "
+                        "out a fast machine, it may not hide a speed-up in one")
+    no_headroom = evaluate([Measurement("cold.index.ms.small", "ms", 3000.0, "cold.index.ms.small")],
+                           {"measurements": one_second}, budgets, gates, 1.0, strict=True,
+                           machine_factor=0.8)
+    if not any(verdict.status == "over_budget" for verdict in no_headroom):
+        problems.append("a 0.8× runner was handed budget headroom it was not owed; the factor belongs to "
+                        "the ratchet, the clamp belongs to the budget")
+
     for line in problems:
         print(f"self-test FAILED: {line}")
     if problems:
@@ -1501,7 +1641,7 @@ def self_test() -> int:
     print("self-test ok: the gate is red on a 400 ms injection, green on none, does not scale RSS, "
           "does scale wall clocks, demands a re-bless on improvement, reads a throughput drop "
           "as a regression, sees a 15 % change on a 15 ms verb, says which changes it cannot classify "
-          "and which ids it cannot resolve")
+          "and which ids it cannot resolve, and does not mistake a fast runner for a fast commit")
     return 0
 
 
@@ -1608,10 +1748,15 @@ def main(argv: list[str]) -> int:
         else:
             factor, factor_note = 1.0, ("no blessed calibration reference in "
                                         f"{baseline_path.name}: factor 1.0, bless one")
+        # The same ratio before the clamp: what the *ratchet* needs, because a blessed number is a number
+        # measured on the reference machine and a runner faster than it measures every clock low
+        # (`reco-axp`; the clamped `factor` above stays the one that hands out budget headroom).
+        machine = (calibration_ms / reference) if reference else 1.0
         rows.append(Measurement(CALIBRATION_BENCH, "ms", round(calibration_ms, 2), None, passes,
                                 how="ADR-004 §11.8's runner characterisation; not a budget"))
 
-        verdicts = evaluate(rows, baseline, budgets, gates, factor, strict=args.check or args.bless)
+        verdicts = evaluate(rows, baseline, budgets, gates, factor, strict=args.check or args.bless,
+                            machine_factor=machine)
         failures = [verdict for verdict in verdicts if verdict.failed]
         blocked = [verdict for verdict in verdicts if verdict.status == "blocked"]
         registered = [verdict for verdict in verdicts if verdict.registered]
@@ -1670,7 +1815,8 @@ def main(argv: list[str]) -> int:
             },
             "calibration": {"bench": CALIBRATION_BENCH, "measured_ms": round(calibration_ms, 2),
                             "passes_ms": passes, "reference_ms": reference or None,
-                            "factor": round(factor, 3), "note": factor_note},
+                            "factor": round(factor, 3), "machine_factor": round(machine, 3),
+                            "note": factor_note},
             "injection_ms": args.inject_ms,
             "known_breaches": [asdict(verdict) for verdict in registered],
             "resolution": {
@@ -1694,7 +1840,11 @@ def main(argv: list[str]) -> int:
             render_table(rows, verdicts, budgets) + "\n", encoding="utf-8")
 
         print(render_table(rows, verdicts, budgets))
-        print(f"\nrunner factor ×{factor:.2f} — {factor_note or 'inside the calibrated range'}")
+        print(f"\nrunner factor ×{factor:.2f} — {factor_note or 'inside the calibrated range'}"
+              + ("" if machine >= 1.0 else
+                 f"; raw calibration ratio ×{machine:.3f}, and the improvement half of the ratchet "
+                 "divides by that, so a runner faster than the blessed machine is not credited a "
+                 "speed-up it did not earn"))
         print(f"calibration `{CALIBRATION_BENCH}`: {calibration_ms:,.0f} ms "
               f"(passes {passes}), reference {reference or 0:,.0f} ms")
         print(f"criterion: {note}")
@@ -1745,6 +1895,13 @@ def main(argv: list[str]) -> int:
             print(f"\nGATE RED ({len(failures)}):", file=sys.stderr)
             for verdict in failures:
                 print(f"  · {verdict.id}: {verdict.detail}", file=sys.stderr)
+            if os.environ.get("GITHUB_ACTIONS"):
+                # And as annotations, because a red perf job that says only "Process completed with exit
+                # code 11" on the check page is a job every reader opens the log of or ignores. The
+                # cannot-classify list already announces itself this way (`reco-dkr`); the verdict that
+                # actually stops the build should at least be as loud as the ones that do not.
+                for verdict in failures:
+                    print(f"::error title=Perf budget gate::{verdict.id}: {verdict.detail}")
         if args.bless:
             if args.inject_ms or args.quick:
                 print("refusing to bless a baseline from an injected or --quick run: a blessed number "

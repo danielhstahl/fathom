@@ -36,12 +36,20 @@ Two rules keep the naming honest, because `dpkg -i` and `dnf install` read the f
     config is a failed build here (and `tools/check_release.py` R16 is the same rule offline), which is
     the loud version of a silent misnamed package.
 
-`.rpm` needs `rpmbuild`, which is not in the runner image; `packaging/linux-packages.sh` installs it.
-`.deb` is written here, byte-for-byte reproducibly (zero mtimes, sorted members, `gzip mtime=0`) because
-an artefact nobody can reproduce is an artefact nobody can verify. `--verify` reads the results back —
-with `dpkg-deb` and `rpm` when they are installed, and with this file's own reader always — so "it built"
-is never the same claim as "it parses".
+`.rpm` needs `rpmbuild`, which is not in the runner image; `packaging/linux-packages.sh` installs it
+(the Debian and Ubuntu package that carries it is called `rpm`). `.deb` is written here, byte-for-byte
+reproducibly (zero mtimes, sorted members, `gzip mtime=0`) because an artefact nobody can reproduce is an
+artefact nobody can verify. `--verify` reads the results back — with `dpkg-deb` and `rpm` when they are
+installed, and with this file's own reader always — so "it built" is never the same claim as "it parses".
+
+The spec's `%files` list is **generated from the relocation map**, not typed out beside it
+(`spec_files`): `rpmbuild` refuses any entry that does not begin with `/`, and the map is deliberately
+relative because that is what a `.deb`'s data tar needs — one relative line there is no `.rpm` at all,
+which is how the release job died with `File must begin with "/"` (**reco-ndf**). `spec_problems` is that
+rule checked before `rpmbuild` is asked, and `rpm -qlp` is what reads the finished package's own file
+list back.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,6 +64,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -74,7 +83,10 @@ TARGETS = {
 
 #: Where a shell looks for a completion file, per distro family. zsh is the only one that differs: Debian
 #: invented `vendor-completions`, Fedora kept `site-functions`, and both are correct on their own system.
-ZSH_DIR = {"deb": "usr/share/zsh/vendor-completions", "rpm": "usr/share/zsh/site-functions"}
+ZSH_DIR = {
+    "deb": "usr/share/zsh/vendor-completions",
+    "rpm": "usr/share/zsh/site-functions",
+}
 SHELL_DIRS = {
     "deb": {
         "completions/bash/fathom": "usr/share/bash-completion/completions/fathom",
@@ -113,7 +125,9 @@ def package_version(version: str) -> str:
 
 def metadata() -> dict:
     """The package metadata, read from the manifest that ships — never retyped here."""
-    cli = tomllib.loads((ROOT / "crates" / "fathom-cli" / "Cargo.toml").read_text())["package"]
+    cli = tomllib.loads((ROOT / "crates" / "fathom-cli" / "Cargo.toml").read_text())[
+        "package"
+    ]
     return {
         "name": "fathom",
         "version": package_version(workspace_version()),
@@ -134,7 +148,9 @@ def configured_artifacts() -> list[str]:
     return paths
 
 
-def cross_check_config(written: list[pathlib.Path], out: pathlib.Path, partial: bool = False) -> list[str]:
+def cross_check_config(
+    written: list[pathlib.Path], out: pathlib.Path, partial: bool = False
+) -> list[str]:
     """Every file written must be the file `dist` was told to upload, and nothing more.
 
     `dist` treats a missing listed path as a build failure and an unlisted file as nothing at all — so a
@@ -149,8 +165,10 @@ def cross_check_config(written: list[pathlib.Path], out: pathlib.Path, partial: 
             continue  # another extra-artifact entry, not one of ours
         problems.append("dist-workspace.toml lists %s, which was not written" % name)
     for name in sorted(got - want):
-        problems.append("%s was written, but dist-workspace.toml does not list it (it would never ship)"
-                        % name)
+        problems.append(
+            "%s was written, but dist-workspace.toml does not list it (it would never ship)"
+            % name
+        )
     if out != OUT or partial:
         # A rehearsal directory, or a build that could not stage every target (one archive missing, or
         # `--skip-rpm`): the config describes the *complete* release set, so comparing a partial one
@@ -188,7 +206,9 @@ def _archive_root(archive: pathlib.Path) -> str:
     with tarfile.open(archive, "r:xz") as bundle:
         tops = {member.name.split("/")[0] for member in bundle.getmembers()}
     if len(tops) != 1:
-        raise SystemExit("%s is not a dist archive (no single root directory: %s)" % (archive, tops))
+        raise SystemExit(
+            "%s is not a dist archive (no single root directory: %s)" % (archive, tops)
+        )
     return tops.pop()
 
 
@@ -201,8 +221,11 @@ def stage_from_archive(archive: pathlib.Path, flavour: str) -> Stage:
     stage = Stage()
     prefix = _archive_root(archive) + "/"
     with tarfile.open(archive, "r:xz") as bundle:
-        members = {member.name[len(prefix):]: member for member in bundle.getmembers()
-                   if member.isfile() and member.name.startswith(prefix)}
+        members = {
+            member.name[len(prefix) :]: member
+            for member in bundle.getmembers()
+            if member.isfile() and member.name.startswith(prefix)
+        }
         binary = members.get("fathom")
         if binary is None:
             raise SystemExit("%s has no `fathom` in it" % archive)
@@ -212,20 +235,31 @@ def stage_from_archive(archive: pathlib.Path, flavour: str) -> Stage:
         if missing:
             raise SystemExit(
                 "%s has no %s — the archive is older than `include` in dist-workspace.toml, or "
-                "tools/gen_shell_artifacts.py never ran" % (archive, ", ".join(missing)))
+                "tools/gen_shell_artifacts.py never ran" % (archive, ", ".join(missing))
+            )
         for rel, dest in SHELL_DIRS[flavour].items():
             stage.add(dest, bundle.extractfile(members[rel]).read(), 0o644)
 
-        pages = {name: member for name, member in members.items() if name.startswith("man/man1/")
-                 and name.endswith(".1")}
+        pages = {
+            name: member
+            for name, member in members.items()
+            if name.startswith("man/man1/") and name.endswith(".1")
+        }
         if not pages:
             raise SystemExit("%s has no man pages in it" % archive)
         for name, member in sorted(pages.items()):
-            stage.add("usr/share/" + name + ".gz", gzip.compress(bundle.extractfile(member).read(),
-                                                                 mtime=0), 0o644)
+            stage.add(
+                "usr/share/" + name + ".gz",
+                gzip.compress(bundle.extractfile(member).read(), mtime=0),
+                0o644,
+            )
         for doc in DOCS:
             if doc in members:
-                stage.add("usr/share/doc/fathom/" + doc, bundle.extractfile(members[doc]).read(), 0o644)
+                stage.add(
+                    "usr/share/doc/fathom/" + doc,
+                    bundle.extractfile(members[doc]).read(),
+                    0o644,
+                )
     return stage
 
 
@@ -237,8 +271,11 @@ def stage_from_binary(binary: pathlib.Path, flavour: str) -> Stage:
     for rel, dest in SHELL_DIRS[flavour].items():
         stage.add(dest, (source / rel).read_bytes(), 0o644)
     for page in sorted((source / "man/man1").glob("*.1")):
-        stage.add("usr/share/man/man1/" + page.name + ".gz", gzip.compress(page.read_bytes(), mtime=0),
-                  0o644)
+        stage.add(
+            "usr/share/man/man1/" + page.name + ".gz",
+            gzip.compress(page.read_bytes(), mtime=0),
+            0o644,
+        )
     for doc in DOCS:
         if (ROOT / doc).exists():
             stage.add("usr/share/doc/fathom/" + doc, (ROOT / doc).read_bytes(), 0o644)
@@ -259,7 +296,7 @@ def add_copyright(stage: Stage, meta: dict) -> None:
         "Copyright: (c) %s\n"
         "\n"
         "The licence texts are not vendored in the source tree yet (the workspace declares\n"
-        "`license = \"%s\"` and nothing more). Until they are, this is the licence statement this\n"
+        '`license = "%s"` and nothing more). Until they are, this is the licence statement this\n'
         "package makes, and `fathom --version` names the version it was built from.\n"
         % (meta["homepage"], meta["license"], meta["maintainer"], meta["license"])
     )
@@ -279,51 +316,86 @@ def ar_member(name: str, body: bytes) -> bytes:
 
 
 def tar_bytes(members: list[tuple[str, int, bytes]]) -> bytes:
-    """A deterministic tar: uid/gid 0, root/root, zero mtimes, and the order handed in."""
+    """A deterministic tar: uid/gid 0, root/root, zero mtimes, directories first, then files in order.
+
+    dpkg creates only directories the archive names, so every parent of every file gets an entry
+    (plus `./` itself, as dpkg-deb writes it). Sorted order puts a parent before its children.
+    """
+    dirs = {"."}
+    for name, _, _ in members:
+        parts = name.split("/")[:-1]
+        for i in range(1, len(parts) + 1):
+            dirs.add("/".join(parts[:i]))
+
+    def root_owned(info: tarfile.TarInfo) -> tarfile.TarInfo:
+        info.mtime = 0
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        return info
+
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w", format=tarfile.GNU_FORMAT) as bundle:
+        for d in sorted(dirs):
+            info = tarfile.TarInfo(
+                name="./" if d == "." else "./" + d
+            )  # a `DIRTYPE` entry carries the name as written: `tarfile` does not append a
+               # trailing "/", and a reader that asked the *name* whether it was a directory
+               # read every one of these back as a file (`5033bbf41`)
+            info.type = tarfile.DIRTYPE
+            info.mode = 0o755
+            bundle.addfile(root_owned(info))
         for name, mode, body in members:
             info = tarfile.TarInfo(name="./" + name)
             info.size = len(body)
             info.mode = mode
-            info.mtime = 0
             info.type = tarfile.REGTYPE
-            info.uid = 0
-            info.gid = 0
-            info.uname = "root"
-            info.gname = "root"
-            bundle.addfile(info, io.BytesIO(body))
+            bundle.addfile(root_owned(info), io.BytesIO(body))
     return buffer.getvalue()
 
 
 def control_file(meta: dict, arch: str, stage: Stage) -> bytes:
     description = meta["summary"].strip() or "fathom"
-    lines = ["%s: %s" % (field, value) for field, value in [
-        ("Package", meta["name"]),
-        ("Version", meta["version"]),
-        ("Architecture", arch),
-        ("Maintainer", meta["maintainer"]),
-        ("Priority", "optional"),
-        ("Section", "utils"),
-        ("Homepage", meta["homepage"]),
-        ("Installed-Size", str(max(1, stage.size() // 1024))),
-    ]]
+    lines = [
+        "%s: %s" % (field, value)
+        for field, value in [
+            ("Package", meta["name"]),
+            ("Version", meta["version"]),
+            ("Architecture", arch),
+            ("Maintainer", meta["maintainer"]),
+            ("Priority", "optional"),
+            ("Section", "utils"),
+            ("Homepage", meta["homepage"]),
+            ("Installed-Size", str(max(1, stage.size() // 1024))),
+        ]
+    ]
     lines.append("Description: %s" % description.splitlines()[0])
-    for extra in description.splitlines()[1:] or ["Architecture-aware review of an agent-written repository."]:
+    for extra in description.splitlines()[1:] or [
+        "Architecture-aware review of an agent-written repository."
+    ]:
         lines.append(" " + extra)
     return ("\n".join(lines) + "\n").encode()
 
 
 def build_deb(stage: Stage, out: pathlib.Path, meta: dict, arch: str) -> pathlib.Path:
-    members = [(name, stage.files[name][0], stage.files[name][1]) for name in stage.names()]
-    md5s = "\n".join("%s  %s" % (hashlib.md5(body).hexdigest(), name) for name, _, body in members)
-    control = tar_bytes([("control", 0o644, control_file(meta, arch, stage)),
-                         ("md5sums", 0o644, (md5s + "\n").encode())])
+    members = [
+        (name, stage.files[name][0], stage.files[name][1]) for name in stage.names()
+    ]
+    md5s = "\n".join(
+        "%s  %s" % (hashlib.md5(body).hexdigest(), name) for name, _, body in members
+    )
+    control = tar_bytes(
+        [
+            ("control", 0o644, control_file(meta, arch, stage)),
+            ("md5sums", 0o644, (md5s + "\n").encode()),
+        ]
+    )
     data = tar_bytes(members)
-    payload = (b"!<arch>\n"
-               + ar_member("debian-binary", b"2.0\n")
-               + ar_member("control.tar.gz", gzip.compress(control, mtime=0))
-               + ar_member("data.tar.gz", gzip.compress(data, mtime=0)))
+    payload = (
+        b"!<arch>\n"
+        + ar_member("debian-binary", b"2.0\n")
+        + ar_member("control.tar.gz", gzip.compress(control, mtime=0))
+        + ar_member("data.tar.gz", gzip.compress(data, mtime=0))
+    )
     path = out / ("%s_%s_%s.deb" % (meta["name"], meta["version"], arch))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(payload)
@@ -343,25 +415,44 @@ def read_deb(path: pathlib.Path) -> dict:
     out: dict[str, bytes] = {}
     offset = len(b"!<arch>\n")
     while offset < len(blob):
-        header = blob[offset:offset + 60]
+        header = blob[offset : offset + 60]
         if len(header) < 60:
             break
         fields = header.decode("ascii")
         name = fields[0:16].strip().rstrip("/")
         size = int(fields[48:58].strip())
-        body = blob[offset + 60:offset + 60 + size]
+        body = blob[offset + 60 : offset + 60 + size]
         out[name] = body
         offset += 60 + size + (size % 2)
-    control = dict(_control_fields(_tar_file(gzip.decompress(out["control.tar.gz"]), "control")))
+    control = dict(
+        _control_fields(_tar_file(gzip.decompress(out["control.tar.gz"]), "control"))
+    )
     files = []
-    with tarfile.open(fileobj=io.BytesIO(gzip.decompress(out["data.tar.gz"]))) as bundle:
+    dirs = []
+    with tarfile.open(
+        fileobj=io.BytesIO(gzip.decompress(out["data.tar.gz"]))
+    ) as bundle:
         for member in bundle.getmembers():
-            files.append((member.name[2:] if member.name.startswith("./") else member.name,
-                          member.mode, member.size, member.uid, member.gid))
-    return {"ar": sorted(out), "control": control, "files": sorted(files),
-            "md5sums": sorted(line.split()[1] for line in
-                              _tar_file(gzip.decompress(out["control.tar.gz"]), "md5sums").splitlines()
-                              if line.strip())}
+            name = member.name[2:] if member.name.startswith("./") else member.name
+            name = name.rstrip("/")
+            if member.isdir():
+                if name not in ("", "."):
+                    dirs.append(name)
+            else:
+                files.append((name, member.mode, member.size, member.uid, member.gid))
+    return {
+        "ar": sorted(out),
+        "control": control,
+        "files": sorted(files),
+        "dirs": sorted(dirs),
+        "md5sums": sorted(
+            line.split()[1]
+            for line in _tar_file(
+                gzip.decompress(out["control.tar.gz"]), "md5sums"
+            ).splitlines()
+            if line.strip()
+        ),
+    }
 
 
 def _tar_file(blob: bytes, name: str) -> bytes:
@@ -408,16 +499,129 @@ cp -a "{stage}/." "$RPM_BUILD_ROOT/"
 
 %files
 %defattr(-,root,root,-)
-%attr(0755,root,root) /usr/bin/{name}
-/usr/share/bash-completion/completions/{name}
-{zsh}
-/usr/share/fish/vendor_completions.d/{name}.fish
-/usr/share/doc/{name}
-%dir /usr/share/man/man1
-/usr/share/man/man1/*.1.gz
+{files}
 
 %changelog
 """
+
+#: `%files` directives that prefix the path instead of being it (`%dir owns this directory`,
+#: `%attr(…) own this file with these modes`), and the one directive that carries no path at all. Anything
+#: else that starts with `%` ends the section: guessing further into rpm's macro syntax is how a checker
+#: starts disagreeing with the tool it is checking.
+SPEC_PATH_PREFIXES = ("%dir", "%attr", "%caps", "%verify", "%doc", "%config", "%ghost")
+SPEC_PATHLESS = ("%defattr",)
+
+
+def rpm_file(staged: str) -> str:
+    """A staged (build-root-relative) path as an rpm `%files` entry — which has to begin with `/`.
+
+    This is the one place the two spellings meet, and **reco-ndf** is what happens when they do not: the
+    staging map is relative on purpose (`usr/share/zsh/site-functions/_fathom`) because that is what a
+    `.deb`'s data tar names its members and what `cp -a` into `$RPM_BUILD_ROOT` lays down, and pasting one
+    of those names straight into `%files` made `rpmbuild` refuse to write the `.rpm` at all —
+
+        error: File must begin with "/": usr/share/zsh/site-functions/_fathom
+
+    The other entries survived only because they were literal `/usr/...` text in the spec template, which
+    is the shape of half-right this stops: the list is built here, every entry goes through this function,
+    and `spec_problems` says so out loud before `rpmbuild` is even asked.
+    """
+    return "/" + staged.strip("/")
+
+
+def spec_files(meta: dict) -> str:
+    """The spec's `%files` block: every entry absolute, derived from the map that does the staging.
+
+    `SHELL_DIRS["rpm"]` is the relocation map (archive path → installed path), so the completions the
+    package installs and the completions the spec claims are now one statement rather than two that can
+    disagree — which is the whole bug: the map said `usr/share/...` and the spec needed `/usr/share/...`.
+    The man pages stay a glob; there is one page per verb and the archive is the list of them.
+    """
+    name = meta["name"]
+    entries = ["%attr(0755,root,root) " + rpm_file("usr/bin/" + name)]
+    entries += [rpm_file(dest) for dest in SHELL_DIRS["rpm"].values()]
+    entries.append(rpm_file("usr/share/doc/" + name))
+    entries.append("%dir " + rpm_file("usr/share/man/man1"))
+    entries.append(rpm_file("usr/share/man/man1") + "/*.1.gz")
+    return "\n".join(entries)
+
+
+def render_spec(meta: dict, stage: pathlib.Path | str, arch: str) -> str:
+    """The spec text `rpmbuild` will be handed, for the tree already staged at `stage`."""
+    return SPEC.format(
+        name=meta["name"],
+        version=meta["version"],
+        summary=meta["summary"].splitlines()[0],
+        license=meta["license"],
+        homepage=meta["homepage"],
+        arch=arch,
+        stage=str(stage),
+        files=spec_files(meta),
+    )
+
+
+def spec_file_entries(spec: str) -> list[tuple[str, bool]]:
+    """The paths a `%files` section claims, each flagged `%dir`.
+
+    Reads the shape of the template above and nothing more: a directive that prefixes a path is skipped
+    and the next token is the path, `%defattr` has none, and the following section header ends the list.
+    """
+    entries: list[tuple[str, bool]] = []
+    in_files = False
+    for raw in spec.splitlines():
+        line = raw.strip()
+        if not in_files:
+            in_files = line.startswith("%files")
+            continue
+        if not line:
+            continue
+        tokens = line.split()
+        if tokens[0].startswith("%") and not tokens[0].startswith(
+            SPEC_PATH_PREFIXES + SPEC_PATHLESS
+        ):
+            break  # the next section (`%changelog`) ends `%files`
+        is_dir = False
+        for token in tokens:
+            if token.startswith(SPEC_PATHLESS):
+                break
+            if token.startswith(SPEC_PATH_PREFIXES):
+                is_dir = is_dir or token.startswith("%dir")
+                continue
+            entries.append((token, is_dir))
+    return entries
+
+
+def spec_problems(spec: str, staged: set[str] | None = None) -> list[str]:
+    """What `rpmbuild` will say about a spec's `%files`, said here instead of in the release log.
+
+    Both of these stop the `.rpm` being written, and both are answerable without the tool — which matters
+    because `rpmbuild` is missing on most of the machines this runs on and present exactly once, on the
+    global release job, where a failure is the release going red:
+
+      * an entry that does not begin with `/` (`File must begin with "/"`) — the **reco-ndf** one;
+      * an entry naming nothing the staged tree contains (`File not found`), when the caller passes
+        `staged`, the set of staged paths in their relative spelling. A directory entry is judged by
+        whether anything is staged under it, and a glob is left for `rpmbuild`, which is the only one
+        that can expand it.
+    """
+    problems: list[str] = []
+    for entry, is_dir in spec_file_entries(spec):
+        if not entry.startswith("/"):
+            problems.append(
+                "`%files` entry " + repr(entry) + " is not an absolute path; rpmbuild "
+                'refuses the package with `File must begin with "/"`'
+            )
+            continue
+        if is_dir or staged is None or any(glob_char in entry for glob_char in "*?["):
+            continue
+        staged_entry = entry[1:]
+        if staged_entry not in staged and not any(
+            name.startswith(staged_entry + "/") for name in staged
+        ):
+            problems.append(
+                "`%files` entry " + entry + " names nothing the staged tree contains"
+            )
+    return problems
 
 
 def build_rpm(stage: Stage, out: pathlib.Path, meta: dict, arch: str) -> pathlib.Path:
@@ -432,27 +636,46 @@ def build_rpm(stage: Stage, out: pathlib.Path, meta: dict, arch: str) -> pathlib
     if shutil.which("rpmbuild") is None:
         raise SystemExit(
             "rpmbuild is not installed, so no .rpm can be written. On a Debian/Ubuntu box: "
-            "`sudo apt-get install -y --no-install-recommends rpmbuild`. `--skip-rpm` is the rehearsal "
-            "escape hatch; a release build never passes it.")
+            "`sudo apt-get install -y --no-install-recommends rpm` — the package that carries rpmbuild is "
+            "called `rpm`. `--skip-rpm` is the rehearsal escape hatch; a release build never passes it."
+        )
     out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="fathom-rpm-") as work:
         top = pathlib.Path(work)
         stage_dir = top / "stage"
         _write_stage(stage, stage_dir)
+        spec_text = render_spec(meta, stage_dir, arch)
+        problems = spec_problems(spec_text, set(stage.files))
+        if problems:
+            raise SystemExit(
+                "the generated spec is wrong, and `rpmbuild` has not been asked yet:\n  "
+                + "\n  ".join(problems)
+            )
         spec = top / "fathom.spec"
-        spec.write_text(SPEC.format(name=meta["name"], version=meta["version"],
-                                    summary=meta["summary"].splitlines()[0], license=meta["license"],
-                                    homepage=meta["homepage"], arch=arch, stage=str(stage_dir),
-                                    zsh=ZSH_DIR["rpm"] + "/_" + meta["name"]))
+        spec.write_text(spec_text)
         rpmdir = top / "rpms"
-        command = ["rpmbuild", "-bb", "--nodeps", "--noclean", "--target", arch,
-                   "--define", "_topdir %s" % top, "--define", " _tmppath %s/tmp" % top,
-                   "--define", "_rpmdir %s" % rpmdir, str(spec)]
+        command = [
+            "rpmbuild",
+            "-bb",
+            "--nodeps",
+            "--noclean",
+            "--target",
+            arch,
+            "--define",
+            "_topdir %s" % top,
+            "--define",
+            " _tmppath %s/tmp" % top,
+            "--define",
+            "_rpmdir %s" % rpmdir,
+            str(spec),
+        ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
         built = sorted(rpmdir.glob("**/*.rpm")) if rpmdir.exists() else []
         if result.returncode != 0 or not built:
-            raise SystemExit("rpmbuild failed (exit %d):\n%s\n%s"
-                             % (result.returncode, result.stdout, result.stderr))
+            raise SystemExit(
+                "rpmbuild failed (exit %d):\n%s\n%s"
+                % (result.returncode, result.stdout, result.stderr)
+            )
         target = out / ("%s-%s-1.%s.rpm" % (meta["name"], meta["version"], arch))
         shutil.copyfile(built[0], target)
         return target
@@ -479,11 +702,13 @@ def write_sha256(path: pathlib.Path) -> pathlib.Path:
     release page with nothing to check them against.
     """
     side = path.with_name(path.name + ".sha256")
-    side.write_text("%s  %s\n" % (hashlib.sha256(path.read_bytes()).hexdigest(), path.name))
+    side.write_text(
+        "%s  %s\n" % (hashlib.sha256(path.read_bytes()).hexdigest(), path.name)
+    )
     return side
 
 
-def verify(path: pathlib.Path) -> list[str]:
+def verify(path: pathlib.Path, meta: dict | None = None) -> list[str]:
     """Read the artefact back with whatever tool the machine has; never trust that it wrote."""
     problems: list[str] = []
     if path.suffix == ".deb":
@@ -491,32 +716,98 @@ def verify(path: pathlib.Path) -> list[str]:
         if read["ar"] != ["control.tar.gz", "data.tar.gz", "debian-binary"]:
             problems.append("%s: unexpected ar members %s" % (path.name, read["ar"]))
         names = [name for name, _, _, _, _ in read["files"]]
+        dir_names = set(read["dirs"])
+        for name in names:
+            parent = name.rpartition("/")[0]
+            while parent:
+                if parent not in dir_names:
+                    problems.append(
+                        "%s: %s has no directory entry in the data archive"
+                        % (path.name, parent)
+                    )
+                    break
+                parent = parent.rpartition("/")[0]
+
         for required in ("usr/bin/fathom", "usr/share/doc/fathom/copyright"):
             if required not in names:
-                problems.append("%s: %s is not in the data archive" % (path.name, required))
+                problems.append(
+                    "%s: %s is not in the data archive" % (path.name, required)
+                )
         if not any(name.startswith("usr/share/man/man1/") for name in names):
             problems.append("%s: no man pages" % path.name)
         if read["control"].get("Package") != "fathom":
-            problems.append("%s: control's Package is %r" % (path.name, read["control"].get("Package")))
+            problems.append(
+                "%s: control's Package is %r"
+                % (path.name, read["control"].get("Package"))
+            )
         if not read["md5sums"]:
-            problems.append("%s: no md5sums, so dpkg cannot verify its own install" % path.name)
+            problems.append(
+                "%s: no md5sums, so dpkg cannot verify its own install" % path.name
+            )
         if shutil.which("dpkg-deb"):
-            problems.extend(_run_tool(["dpkg-deb", "--info", str(path)], path, "dpkg-deb --info"))
-            problems.extend(_run_tool(["dpkg-deb", "--contents", str(path)], path, "dpkg-deb --contents"))
+            problems.extend(
+                _run_tool(["dpkg-deb", "--info", str(path)], path, "dpkg-deb --info")
+            )
+            problems.extend(
+                _run_tool(
+                    ["dpkg-deb", "--contents", str(path)], path, "dpkg-deb --contents"
+                )
+            )
         else:
-            print("  note  dpkg-deb not installed: checked the container, not dpkg's opinion of it")
+            print(
+                "  note  dpkg-deb not installed: checked the container, not dpkg's opinion of it"
+            )
     else:
         if shutil.which("rpm"):
-            problems.extend(_run_tool(["rpm", "-qp", "--nosignature", str(path)], path, "rpm -qp"))
+            problems.extend(
+                _run_tool(["rpm", "-qp", "--nosignature", str(path)], path, "rpm -qp")
+            )
+            problems.extend(_rpm_installed_problems(path, meta or metadata()))
         else:
-            print("  note  rpm not installed: the .rpm was written by rpmbuild and not read back")
+            print(
+                "  note  rpm not installed: the .rpm was written by rpmbuild and not read back"
+            )
     return problems
+
+
+def _rpm_installed_problems(path: pathlib.Path, meta: dict) -> list[str]:
+    """Every path the packager means to ship has to be in rpm's own file list for the package it wrote.
+
+    `rpm -qlp` is the package's own answer to "what does this install", which is the question
+    **reco-ndf** was about: a `.rpm` whose `%files` list is wrong does not merely look wrong from the
+    outside — it lays each file down somewhere else or nowhere at all — and nothing but asking rpm reads
+    that back.
+    """
+    listed = subprocess.run(
+        ["rpm", "-qlp", "--nosignature", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if listed.returncode != 0:
+        return [
+            "%s: `rpm -qlp` says: %s"
+            % (path.name, (listed.stdout + listed.stderr).strip())
+        ]
+    installed = {line.strip() for line in listed.stdout.splitlines() if line.strip()}
+    want = {rpm_file(dest) for dest in SHELL_DIRS["rpm"].values()}
+    want.add(rpm_file("usr/bin/" + meta["name"]))
+    missing = sorted(want - installed)
+    if missing:
+        return [
+            "%s: rpm's own file list does not install %s"
+            % (path.name, ", ".join(missing))
+        ]
+    return []
 
 
 def _run_tool(command: list[str], path: pathlib.Path, label: str) -> list[str]:
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0:
-        return ["%s: `%s` says: %s" % (path.name, label, (result.stdout + result.stderr).strip())]
+        return [
+            "%s: `%s` says: %s"
+            % (path.name, label, (result.stdout + result.stderr).strip())
+        ]
     return []
 
 
@@ -536,8 +827,10 @@ def command_build(args: argparse.Namespace) -> int:
         source = pathlib.Path(args.from_binary)
         if not source.is_file():
             raise SystemExit("no binary at %s" % source)
-        print("REHEARSAL: packaging %s, which is not a release archive. The output names the release "
-              "version and must not be published." % source)
+        print(
+            "REHEARSAL: packaging %s, which is not a release archive. The output names the release "
+            "version and must not be published." % source
+        )
         archives = {triple: None for triple in TARGETS}
     else:
         archives = {}
@@ -546,43 +839,67 @@ def command_build(args: argparse.Namespace) -> int:
             if archive.is_file():
                 archives[triple] = archive
         if not any(archives.values()):
-            raise SystemExit("no release archives in %s (%s). Run `dist build --artifacts=local` first, "
-                             "or pass --from-binary for a rehearsal."
-                             % (distrib, ", ".join("fathom-cli-%s.tar.xz" % t for t in TARGETS)))
+            raise SystemExit(
+                "no release archives in %s (%s). Run `dist build --artifacts=local "
+                "--target=<the triple you are on>` first — the bare `--artifacts=local` asks "
+                "`dist` for every target in `dist-workspace.toml`, which one machine cannot "
+                "build — or pass --from-binary for a rehearsal."
+                % (distrib, ", ".join("fathom-cli-%s.tar.xz" % t for t in TARGETS))
+            )
     for triple, arches in TARGETS.items():
         archive = archives.get(triple)
         if archive is None and not args.from_binary:
-            print("  note  no archive for %s in %s, so no %s package (that target did not build)"
-                  % (triple, distrib, arches["deb"]))
+            print(
+                "  note  no archive for %s in %s, so no %s package (that target did not build)"
+                % (triple, distrib, arches["deb"])
+            )
             partial = True
             continue
         for flavour in ("deb", "rpm"):
             if flavour == "rpm" and args.skip_rpm:
                 continue
-            stage = (stage_from_archive(archive, flavour) if archive is not None
-                     else stage_from_binary(pathlib.Path(args.from_binary), flavour))
+            stage = (
+                stage_from_archive(archive, flavour)
+                if archive is not None
+                else stage_from_binary(pathlib.Path(args.from_binary), flavour)
+            )
             add_copyright(stage, meta)
-            where = pathlib.Path(tempfile.mkdtemp(prefix="fathom-pkg-")) if archive is None else out
+            where = (
+                pathlib.Path(tempfile.mkdtemp(prefix="fathom-pkg-"))
+                if archive is None
+                else out
+            )
             if archive is None:
-                print("  note  %s: no archive for %s; staged from the binary instead, into %s"
-                      % (flavour, triple, where))
+                print(
+                    "  note  %s: no archive for %s; staged from the binary instead, into %s"
+                    % (flavour, triple, where)
+                )
             if flavour == "deb":
                 path = build_deb(stage, where, meta, arches["deb"])
             else:
                 path = build_rpm(stage, where, meta, arches["rpm"])
             written.append(path)
             written.append(write_sha256(path))
-            print("  wrote %s (%d files staged, %d KB)"
-                  % (path.name, len(stage.files), path.stat().st_size // 1024))
+            print(
+                "  wrote %s (%d files staged, %d KB)"
+                % (path.name, len(stage.files), path.stat().st_size // 1024)
+            )
     if args.verify:
-        problems = [problem for path in written if path.suffix in (".deb", ".rpm")
-                    for problem in verify(path)]
+        problems = [
+            problem
+            for path in written
+            if path.suffix in (".deb", ".rpm")
+            for problem in verify(path, meta)
+        ]
         if problems:
             for problem in problems:
                 print("  P01   %s" % problem)
             print("\n%d problem(s)" % len(problems))
             return 1
-        print("  verified %d package(s)" % len([p for p in written if p.suffix in (".deb", ".rpm")]))
+        print(
+            "  verified %d package(s)"
+            % len([p for p in written if p.suffix in (".deb", ".rpm")])
+        )
     problems = cross_check_config(written, out, partial)
     if problems:
         for problem in problems:
@@ -590,8 +907,10 @@ def command_build(args: argparse.Namespace) -> int:
         print("\n%d problem(s)" % len(problems))
         return 1
     if partial:
-        print("  note  a partial run (missing archive or --skip-rpm): not cross-checked against "
-              "dist-workspace.toml")
+        print(
+            "  note  a partial run (missing archive or --skip-rpm): not cross-checked against "
+            "dist-workspace.toml"
+        )
     print("packaged: %s" % ", ".join(sorted(path.name for path in written)))
     return 0
 
@@ -606,27 +925,86 @@ def command_self_test(args: argparse.Namespace) -> int:
         stage.add("usr/bin/fathom", b"#!/bin/sh\necho fathom\n", 0o755)
         for dest in SHELL_DIRS["deb"].values():
             stage.add(dest, b"# completion\n", 0o644)
-        stage.add("usr/share/man/man1/fathom.1.gz", gzip.compress(b".TH FATHOM 1\n", mtime=0))
+        stage.add(
+            "usr/share/man/man1/fathom.1.gz", gzip.compress(b".TH FATHOM 1\n", mtime=0)
+        )
         add_copyright(stage, meta)
         deb = build_deb(stage, root, meta, "amd64")
         write_sha256(deb)
         read = read_deb(deb)
+        # The rpm spec, checked without `rpmbuild`, which is installed on exactly one runner and that
+        # runner is the release: `error: File must begin with "/"` (**reco-ndf**) is a whole-package
+        # refusal, so the claim has to be answerable where the tool is absent.
+        spec = render_spec(meta, root / "stage", "amd64")
 
         cases = [
-            ("the version reaches the control file", read["control"].get("Version") == meta["version"]),
+            (
+                "the version reaches the control file",
+                read["control"].get("Version") == meta["version"],
+            ),
             ("the version has no `-` in it", "-" not in meta["version"]),
-            ("the binary is in the package",
-             any(name == "usr/bin/fathom" for name, _, _, _, _ in read["files"])),
-            ("every file is owned by root",
-             all(uid == 0 and gid == 0 for _, _, _, uid, gid in read["files"])),
-            ("the man page is compressed and installed",
-             any(name == "usr/share/man/man1/fathom.1.gz" for name, _, _, _, _ in read["files"])),
-            ("the .sha256 names the file it checksums",
-             (root / (deb.name + ".sha256")).read_text().endswith(deb.name + "\n")),
-            ("a stale name in the config is caught",
-             cross_check_config([root / "fathom_9_amd64.deb"], OUT) != []),
-            ("a rehearsal directory is not cross-checked against the release config",
-             cross_check_config([root / "anything.deb"], root) == []),
+            (
+                "the binary is in the package",
+                any(name == "usr/bin/fathom" for name, _, _, _, _ in read["files"]),
+            ),
+            (
+                "every file is owned by root",
+                all(uid == 0 and gid == 0 for _, _, _, uid, gid in read["files"]),
+            ),
+            (
+                "the man page is compressed and installed",
+                any(
+                    name == "usr/share/man/man1/fathom.1.gz"
+                    for name, _, _, _, _ in read["files"]
+                ),
+            ),
+            # The reader asks the member its type, not the name: `tarfile` writes a `DIRTYPE`
+            # entry whose name has no trailing "/", so a reader that looked for the slash
+            # classified every directory as a file and refused the package it had just written
+            # for having no directory entries at all (`5033bbf41`).
+            (
+                "the data archive's directories are read as directories",
+                "usr/bin" in read["dirs"]
+                and not any(name.endswith("/") for name, *_ in read["files"]),
+            ),
+            (
+                "the .deb it wrote passes the reader the packaging leg runs",
+                verify(deb, meta) == [],
+            ),
+            (
+                "the .sha256 names the file it checksums",
+                (root / (deb.name + ".sha256")).read_text().endswith(deb.name + "\n"),
+            ),
+            (
+                "a stale name in the config is caught",
+                cross_check_config([root / "fathom_9_amd64.deb"], OUT) != [],
+            ),
+            (
+                "a rehearsal directory is not cross-checked against the release config",
+                cross_check_config([root / "anything.deb"], root) == [],
+            ),
+            # The rpm spec, checked without `rpmbuild`, which is installed on exactly one runner and that
+            # runner is the release: `error: File must begin with "/"` (**reco-ndf**) is a whole-package
+            # refusal, so it has to be answerable where the tool is absent.
+            (
+                "every `%files` entry in the spec is an absolute path",
+                spec_problems(spec) == [],
+            ),
+            (
+                "the spec claims every completion the packager installs",
+                all(rpm_file(dest) in spec for dest in SHELL_DIRS["rpm"].values()),
+            ),
+            (
+                "a relative `%files` entry is refused before rpmbuild is asked",
+                spec_problems(
+                    "%files\n/usr/bin/fathom\nusr/share/zsh/site-functions/_fathom\n"
+                )
+                != [],
+            ),
+            (
+                "a `%files` entry naming nothing that was staged is refused",
+                spec_problems(spec, staged={"usr/bin/fathom"}) != [],
+            ),
         ]
         for what, ok in cases:
             if ok:
@@ -651,22 +1029,44 @@ def command_self_test(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="package_release.py", description=__doc__.splitlines()[0])
-    parser.add_argument("--out", default=str(OUT), help="where the artefacts go (default target/packaging)")
-    parser.add_argument("--distrib", default=str(DISTRIB),
-                        help="where `dist` left the release archives (default target/distrib)")
-    parser.add_argument("--from-binary",
-                        help="rehearsal: package this binary instead of the release archives")
-    parser.add_argument("--skip-rpm", action="store_true",
-                        help="write only the .debs (a rehearsal on a machine with no rpmbuild)")
-    parser.add_argument("--verify", action="store_true", help="read every artefact back before exiting")
-    parser.add_argument("--self-test", action="store_true", help="prove the packager can go red")
-    parser.add_argument("--json", action="store_true", help="print the artefact list as JSON")
+    parser = argparse.ArgumentParser(
+        prog="package_release.py", description=__doc__.splitlines()[0]
+    )
+    parser.add_argument(
+        "--out",
+        default=str(OUT),
+        help="where the artefacts go (default target/packaging)",
+    )
+    parser.add_argument(
+        "--distrib",
+        default=str(DISTRIB),
+        help="where `dist` left the release archives (default target/distrib)",
+    )
+    parser.add_argument(
+        "--from-binary",
+        help="rehearsal: package this binary instead of the release archives",
+    )
+    parser.add_argument(
+        "--skip-rpm",
+        action="store_true",
+        help="write only the .debs (a rehearsal on a machine with no rpmbuild)",
+    )
+    parser.add_argument(
+        "--verify", action="store_true", help="read every artefact back before exiting"
+    )
+    parser.add_argument(
+        "--self-test", action="store_true", help="prove the packager can go red"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="print the artefact list as JSON"
+    )
     args = parser.parse_args(argv)
     if args.self_test:
         return command_self_test(args)
     if args.json:
-        print(json.dumps([os.path.basename(p) for p in configured_artifacts()], indent=2))
+        print(
+            json.dumps([os.path.basename(p) for p in configured_artifacts()], indent=2)
+        )
         return 0
     return command_build(args)
 

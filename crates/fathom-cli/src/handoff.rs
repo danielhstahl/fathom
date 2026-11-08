@@ -264,6 +264,10 @@ mod tests {
 
     use super::*;
 
+    // `tui`-gated with the function it calls: `environment()` is the shell's, gated above for the same
+    // reason, and the headless build hands nothing off — `fathom open` builds its plan with
+    // `environment_with(&settings)` instead, which every test below uses.
+    #[cfg(feature = "tui")]
     #[test]
     fn the_environment_answers_for_the_machine_it_was_read_on() {
         let env = environment();
