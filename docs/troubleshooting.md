@@ -57,6 +57,7 @@ The codes you will actually meet, and the sentence each one is trying to tell yo
 | the frame will not draw, and says `LAYOUT REFUSED` | the terminal is below the view's floor | widen it, or use `--plain`; ambient needs 40×3 ([ambient](concepts/ambient-mode.md)) |
 | no progress row during `fathom index` | stderr is not a terminal — a pipe, a CI step, a `tee` | `fathom index --progress` asks for the row anyway |
 | `--json` refuses to run with `--progress` | deliberate: one document on stdout, no decoration | drop `--progress`; the row is for humans |
+| `fathom open` prints its plan and then sits there | the editor it planned needs a terminal to draw on and this run has none — a pipe, a CI step, a `tee` | `Ctrl-C` and use `fathom open … --print`, then run the printed line in a terminal; `$EDITOR` naming a GUI editor (`code`, `zed`) needs nothing |
 | a key does nothing | you are in `prompt`/`pick` mode, where letters are text; or an override took it | `?` for the merged table; `fathom tui --show-keys` |
 | your key override did nothing | unknown mode, unknown action, a collision, or a shadowed reserved key | it is a **startup report**, not a silent fallback — read it; then `fathom tui --show-keys` |
 | colours are wrong, or absent | `NO_COLOR`, a theme that failed a floor, or a terminal without colour | `fathom tui --show-theme`, `--list-themes`, `--show-theme --audit` ([theming](concepts/theming.md)) |

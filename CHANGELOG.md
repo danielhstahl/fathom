@@ -16,6 +16,59 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The ubuntu leg hung instead of failing, over a `vi` a test had not installed (`reco-67ml`)
+
+`build+test (ubuntu-latest · stable)` reported no failure at all: it stopped. The last thing
+`crates/fathom-cli/tests/handoff_verb.rs` printed was the `fathom open HEAD~1` inside
+`no_editor_at_all_is_a_normal_path_that_names_what_to_set`, and it stayed the last thing it printed until
+the runner took the job away at its own timeout. No assertion, no panic, no exit code — a hung test is the
+one failure mode a CI log cannot quote.
+
+The claim the test makes is a good one: a machine with no editor should get a sentence and the three keys
+that change it, not a stack trace. What it did not do was *arrange* that claim.
+
+* **The variables were emptied and `PATH` was not.** An editor is looked for in `$FATHOM_EDITOR`, then
+    `$VISUAL`, then `$EDITOR`, then the platform default — and the default is not a setting, it is a
+    name. `vi` is on the `PATH` of every Linux and macOS box in existence and `notepad` is on every
+    Windows one, so the refusal branch this test asserts was never the branch taken on any of the three
+    legs. On ubuntu — the leg the ticket saw — what happened next was the hang below.
+* **And the verb runs what it plans.** Nothing in that test passes `--print`. Every other test here that
+    starts a program passes `--editor` an absolute path to this very binary, which prints, exits, and
+    needs no terminal; with the platform default found instead, `fathom open` did the thing it exists to
+    do and handed the terminal over.
+* **Which is where the hang is, and it is a deadlock.** `handoff::run` gives the editor this process's own
+    stdin, stdout and stderr — and in a test, those are the pipes the test is reading. `vi`, given no
+    terminal to draw on, makes a console of its stderr and polls it for input; the harness is blocked
+    reading that same stderr to the EOF that only `vi` leaving would produce. Neither can proceed. The
+    condition was reproduced here by putting a real `vim.tiny` on `PATH`: the run never returns, its
+    `wchan` says `poll_schedule_timeout`, and its swap file stays open.
+
+Three changes, one of them the bug and two of them the reason it was silent rather than merely red:
+
+* **A test that says "nothing is installed" now installs nothing.** `empty_path()` is a real directory,
+    empty, handed to a run as the whole of its `PATH`, so "no editor at all" is a statement about the
+    environment the test built rather than about whichever machine ran it. The same scrubbing goes to the
+    two difftool assertions that refuse a tool for the same reason — `nvim` and `code` are on some
+    developer's `PATH`, and a refusal that only happens on the runner is not a test.
+* **A hand-off that cannot finish is now a failure rather than a silence.** Every run goes through `drive`,
+    which captures to two files instead of two pipes — a file never blocks a writer, and its bytes are
+    still there after the kill — and waits in a `try_wait` loop with a 60-second deadline before killing
+    and reporting what the run had managed to say. `Command::output()` is why this could only ever have
+    hung: it cannot be interrupted, and it is the *reader* that blocks, so no deadline existed to fail.
+    The whole file runs in well under a second, so a minute is not a budget anyone has to measure
+    against.
+* **What is *not* changed is the product.** `fathom open` still starts the editor it planned with the
+    terminal handed over, because that is the feature; `--print` stays the door for a run that has no
+    terminal, and [the hand-off page](docs/concepts/handoff.md) and
+    [the troubleshooting table](docs/troubleshooting.md) now say so where someone staring at the hang
+    will look.
+
+*Asserted by*: `crates/fathom-cli/tests/handoff_verb.rs`, in the test this ticket is named for — green on
+a box with `vi` on `PATH`, which is the condition that hung the leg — plus
+`a_missing_difftool_lists_what_was_tried_and_leaves_the_pair_behind` and
+`a_configured_difftool_is_asked_in_its_own_shape_and_says_so`, whose substituted-tool branch is no longer a
+coin toss on whose laptop ran the suite, and `drive`, which every run in the file now goes through.
+
 ### Every agent turn on Windows lost its intent, over the separator a harness path was rejoined with (`reco-raz3`)
 
 `build+test (windows-latest · stable)` failed nine of the twenty-one tests in the two `tests/intent.rs` files
