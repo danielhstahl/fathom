@@ -16,6 +16,37 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### `build+test (ubuntu-latest · stable)` was still red on the same `C03` the contracts job was red on, because one red commit files two tickets (`reco-s6ge`)
+
+The beta-loop step of the ubuntu stable leg came back with `C03 a3ac95637: reco-37te, reco-kltg is not
+accounted for in ## [Unreleased]` — and the ticket said *still*, which was fair: that is the same finding
+`docs + workspace contracts` had just been closed for. It was, and it was not. Same rule, same commit, same
+CI run; two jobs run `tools/gen_changelog.py audit` (the pytest mirror in `tests/test_beta_loop_contract.py`
+and this step in `ci.yml`), so one commit that shipped without a note of its own bought two tickets, and the
+second one arrived holding a log written before the fix landed.
+
+Which is worth writing down, because the honest answer to the second ticket is *there is nothing left to
+fix* — and "nothing left to fix" has to be shown rather than said:
+
+* **The log is dated by its own numbers.** It reports 150 commits in `0f7495f3b5f3..HEAD`, one of them a
+    merge, and a rung distribution of `bead 130 … none 1`. `reco-kltg` is 149 commits deep at that anchor
+    with no merge and `bead 130`; HEAD is 150 with no merge and `bead 131`. The log is therefore `reco-kltg`
+    plus the host's merge commit for it — the run from before `reco-0qq9`, one commit behind the tree that
+    fixed it. Nothing about the range disagrees between the runner and a laptop; the runner was just earlier.
+* **The step is green here, run as the job runs it** — all five commands under `bash -e -o pipefail`, as
+    `ci.yml` writes them, exit 0, with `every one of 150 commits … is accounted for`. Checked rather than
+    inferred from the missing line in the log.
+* **What did change is the one thing this ticket could still change**: the rule was written down in
+    [the release runbook](docs/concepts/release.md), which is a document nobody reads before a commit, so it
+    has now been copied into `AGENTS.md` — the file an agent is handed before it touches the tree. One
+    sentence: your commit adds its own `[Unreleased]` entry naming its bead, and
+    `python3 tools/gen_changelog.py audit` run in the branch is how you know it did. The gate counts commits,
+    not diffs, so the prose cannot be postponed; all this changes when it is where the committer already looks.
+
+This entry is also the entry for its own commit, which is the trap the last two tickets fell into twice: a
+fix commit that names its bead in the message and nowhere else is the next `C03`. The audit is the only judge
+of that, and it is cheap, and it runs on the history alone.
+
 ### The ubuntu msrv leg could not test the headless build, over twenty CLI suites that never said which features they needed (`reco-kltg`)
 
 `build+test (ubuntu-latest · msrv)` died at `cargo test -p fathom-cli --no-default-features --features
