@@ -20,6 +20,13 @@
 //! just wrote, keyed by the repository's own tree oids — the same shape `crates/fathom-cli/tests/ratchet_verb.rs`
 //! builds, and the shape `e3.2`'s writer will produce.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed: each one builds its repository with `Repo::new`, which runs
+// `fathom index` and then seeds a graph snapshot through `fathom_analyze::graph::Lane` — and the lane
+// exists only with a SQLite backend (ADR-002 §6.1), so on the headless `minimal` build there is nothing
+// here to assert even if the file could compile: `fathom check` blocks four of its six checks with
+// "this binary was built without the `sqlite-bundled` feature". Gated for the same reason, and in the
+// same spelling as `tests/show_trailers.rs` and `fathom-analyze`'s lane-backed test targets.
+#![cfg(feature = "sqlite-bundled")]
 
 /// The checked-in schema validator, shared with the other verb contracts (`e1.10`).
 #[path = "validator.rs"]
