@@ -25,7 +25,15 @@ jobs:
     name: docs + workspace contracts
     runs-on: ubuntu-latest
     steps:
+      # Full history, not a depth-1 clone. This job ends in `python3 -m pytest -q`, and the suite contains
+      # gates that read the *history* rather than the tree — `tests/test_beta_loop_contract.py` asks
+      # `tools/gen_changelog.py audit` whether every commit since the last release is accounted for in
+      # `CHANGELOG.md`, and a claim about a range of commits cannot be checked against a clone that was cut
+      # short. On a default checkout the audit died inside `git log` with `Invalid revision range`, which
+      # reached pytest as a `SystemExit` and hid every real finding behind it (**reco-ghao**).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

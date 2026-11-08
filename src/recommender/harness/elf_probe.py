@@ -38,7 +38,9 @@ Six things, each of which was measured rather than remembered:
    works is ``ld.so --verify``, which is what the platform uses for exactly
    this.  It is used only if ``ld.so`` is present, and the verdict keys off the
    return code (0 = compatible, 4 = "wrong architecture" is the informative
-   answer).
+   answer).  "The platform loader" is picked by reading the ELF machine and class of
+   both sides (``_LOADER_NAMES``, ``_loader_is_for``): a multilib host has more than
+   one ``ld.so``, and the wrong one answers "mismatch" about a healthy machine.
 
 The FFI call is wired into ``harness.py``'s normal startup (``verify_ffi()``,
 called from ``main()`` before any engine or plugin operation) so it cannot be
@@ -536,7 +538,7 @@ def probe(libc_hint: Optional[str] = None, extra_hints: Iterable[str] = (),
 
     # --- ABI mismatch detection (uses the platform loader; only if it exists)
     if check_abi:
-        ld = _find_ld_so(libc)
+        ld = _find_ld_so(libc, res.libc_e_machine)
         if ld:
             res.abi_verdict, res.abi_verdict_detail = _abi_check(ld, libc)
         else:
@@ -548,15 +550,88 @@ def probe(libc_hint: Optional[str] = None, extra_hints: Iterable[str] = (),
     return res
 
 
-def _find_ld_so(libc: str) -> Optional[str]:
-    """The platform loader, discovered — not hardcoded to one architecture."""
-    for cand in (os.path.join(os.path.dirname(libc), "ld.so"),):
-        if os.path.exists(cand):
-            return cand
+#: Directories a distribution keeps its loader in, in preference order. The multiarch
+#: directory (added in :func:`_loader_candidates`) comes first because it names the
+#: architecture in its own pathname.
+_LOADER_DIRS = ("/lib64", "/lib", "/usr/lib64", "/usr/lib")
+
+#: The loader name each architecture's C library is actually run by, keyed by ELF
+#: ``e_machine``. There is no such thing as *the* ``ld.so``: on a multilib Debian/Ubuntu
+#: host ``/lib/ld-linux.so.2`` is the **i386** loader and the x86-64 one is
+#: ``/lib64/ld-linux-x86-64.so.2``, and ``--verify`` run through the wrong twin answers
+#: "that object cannot run here" about the host's own libc. That is the false ABI
+#: mismatch **reco-ghao** hit on an x86-64 runner that had ``libc6-i386`` installed: four
+#: ``e0.5`` contract tests went red on a machine with nothing wrong with it.
+_LOADER_NAMES: Dict[int, tuple] = {
+    3: ("ld-linux.so.2", "ld-linux.so.1"),                       # i386
+    8: ("ld.so.1",),                                             # MIPS
+    20: ("ld.so.1", "ld.so.6"),                                  # powerpc
+    21: ("ld64.so.1", "ld64.so.2"),                              # powerpc64
+    22: ("ld64.so.1", "ld64.so.2"),                              # s390, s390x
+    40: ("ld-linux.so.3", "ld-linux.so.2"),                      # ARM (armhf, then OABI)
+    62: ("ld-linux-x86-64.so.2",),                               # x86-64
+    103: ("ld-linux-aarch64.so.1", "ld-linux-aarch64.so"),        # aarch64 (HP assignment)
+    183: ("ld-linux-aarch64.so.1", "ld-linux-aarch64.so"),        # aarch64 (Linux's)
+    243: ("ld-linux-riscv64gc.so.1", "ld-linux-riscv32ilp32d.so.1"),
+    258: ("ld-linux-loongarch-lp64d.so.1",),
+}
+
+
+def _loader_is_for(path: str, want_machine: Optional[int],
+                   want_class: Optional[str] = None) -> bool:
+    """Whether this loader speaks for the architecture of the object it would verify.
+
+    Both ``e_machine`` *and* ELF class are checked, because ``e_machine`` alone cannot tell
+    riscv32 from riscv64 (both are 243) and a 32-bit loader is exactly the wrong tool for a
+    64-bit libc whatever its machine code. An unreadable loader is believed only by its
+    name — which is the one piece of evidence left in that case.
+    """
+    info = elf_info(path)
+    have_machine, have_class = info.get("e_machine"), info.get("ei_class")
+    if have_machine is None:
+        return (want_machine is None or
+                os.path.basename(path) in _LOADER_NAMES.get(want_machine, ()))
+    if want_machine is not None and have_machine != want_machine:
+        return False
+    return not (want_class and have_class and have_class != want_class)
+
+
+def _loader_candidates(libc: str, want_machine: Optional[int] = None) -> List[str]:
+    """Ordered loader candidates, the ones that name this architecture first."""
+    triple = "%s-linux-gnu" % platform.machine()
+    dirs: List[str] = []
+    parent = os.path.dirname(libc)
+    for directory in (parent, "/lib/%s" % triple, "/usr/lib/%s" % triple) + _LOADER_DIRS:
+        if directory and directory not in dirs:
+            dirs.append(directory)
+    out: List[str] = [os.path.join(d, "ld.so") for d in dirs]   # musl, and the compat symlink
+    for name in _LOADER_NAMES.get(want_machine, ()):
+        out.extend(os.path.join(d, name) for d in dirs)
     for pat in ("/lib/ld-*so*", "/lib64/ld-*so*", "/usr/lib/*/ld-*so*", "/usr/lib/ld-*so*"):
-        hits = sorted(glob.glob(pat))
-        if hits:
-            return hits[0]
+        out.extend(sorted(glob.glob(pat)))
+    seen, uniq = set(), []
+    for item in out:
+        if item in seen:
+            continue
+        seen.add(item)
+        if os.path.isfile(item):
+            uniq.append(item)
+    return uniq
+
+
+def _find_ld_so(libc: str, want_machine: Optional[int] = None) -> Optional[str]:
+    """The loader for *this* libc, discovered — never assumed from one architecture's name.
+
+    Returning ``None`` is a legitimate answer and the probe says so out loud
+    (``abi=not-run``): a verdict of "mismatch" from a loader belonging to a different
+    architecture would be a claim about which ``ld.so`` was found first, not about the host.
+    """
+    if want_machine is None:
+        want_machine = elf_info(libc).get("e_machine")
+    want_class = elf_info(libc).get("ei_class")
+    for cand in _loader_candidates(libc, want_machine):
+        if _loader_is_for(cand, want_machine, want_class):
+            return cand
     return None
 
 
@@ -582,9 +657,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     res = probe(libc_hint=args.libc)
     if args.abi_check_target:
-        ld = "/lib64/ld-linux-x86-64.so.2"
+        # The loader is chosen for the machine of the *target*, not for whichever
+        # architecture this file happened to be written on.
+        ld = _find_ld_so(res.libc_path or "", elf_info(args.abi_check_target).get("e_machine"))
         verdict, detail = (_abi_check(ld, args.abi_check_target)
-                          if os.path.exists(ld) else ("not-run", "no ld.so"))
+                           if ld else ("not-run", "no ld.so"))
         res.abi_verdict, res.abi_verdict_detail = verdict, detail
     if args.json:
         print(json.dumps(res.to_dict(), indent=2, sort_keys=True))

@@ -8,6 +8,7 @@ the field quietly becoming a lie.
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 
@@ -62,6 +63,82 @@ def test_probe_abi_mismatch_is_detected(tmp_path):
     assert res.ok
     info = elf_probe.elf_info(str(fake))
     assert "error" in info or info.get("e_machine") is not None
+
+
+def _fake_elf(path, machine: int, bits: int = 64) -> None:
+    """A file whose header reads as an ELF object of one architecture — all `elf_info` reads."""
+    header = bytearray(64)
+    header[0:4] = b"\x7fELF"
+    header[4] = 2 if bits == 64 else 1
+    header[5] = 1                                    # little-endian
+    header[18:20] = struct.pack("<H", machine)
+    path.write_bytes(bytes(header))
+
+
+def test_the_probe_verifies_with_a_loader_of_the_libcs_own_machine():
+    """`ld.so --verify` only means something when the loader speaks for the object.
+
+    A multilib host has more than one `ld.so`, and the one that sorts first is not the one
+    that answers for this libc: an x86-64 runner with `libc6-i386` installed was verified
+    through the i386 loader, which replied "mismatch" about the host's own libc (**reco-ghao**).
+    """
+    res = elf_probe.probe()
+    assert res.ok, res.errors
+    assert res.abi_verdict in ("compatible", "not-run"), res.abi_verdict_detail
+    if res.ld_so != "not-found":
+        assert elf_probe.elf_info(res.ld_so).get("e_machine") == res.libc_e_machine
+        assert elf_probe.elf_info(res.ld_so).get("ei_class") == elf_probe.elf_info(
+            res.libc_path).get("ei_class")
+
+
+def test_the_loader_chosen_for_a_libc_is_its_own_architecture(tmp_path):
+    """The multilib trap, built from both sides: the wrong loader is present and named first.
+
+    `/lib/ld-linux.so.2` is what a glob for `ld-*so*` finds on an x86-64 Debian host that
+    can also run i386 binaries, and it is the wrong loader for `/lib64/libc.so.6`.
+    """
+    libc = tmp_path / "libc.so.6"
+    _fake_elf(libc, elf_probe.X86_64_E_MACHINE)
+    _fake_elf(tmp_path / "ld-linux.so.2", 3)                       # i386, sorts first
+    right = tmp_path / "ld-linux-x86-64.so.2"
+    _fake_elf(right, elf_probe.X86_64_E_MACHINE)
+    assert elf_probe._find_ld_so(str(libc)) == str(right)
+
+
+def test_a_loader_from_the_other_architecture_is_refused_even_when_it_is_the_only_neighbour(tmp_path):
+    """No loader at all beats the wrong one: `abi=not-run` is honest, a false mismatch is not."""
+    libc = tmp_path / "libc.so.6"
+    _fake_elf(libc, elf_probe.X86_64_E_MACHINE)
+    decoy = tmp_path / "ld-linux.so.2"
+    _fake_elf(decoy, 3)
+    assert elf_probe._find_ld_so(str(libc)) != str(decoy)
+
+
+def test_the_loader_search_never_hands_a_64_bit_libc_to_the_32_bit_loader(tmp_path, monkeypatch):
+    """The multilib runner rebuilt as a tree: the i386 loader is in `/lib`, the x86-64 one in `/lib64`.
+
+    That is the layout that red-painted four `e0.5` tests on an x86-64 runner with `libc6-i386` installed:
+    a glob for `/lib/ld-*so*` finds the i386 loader — in `/lib`, which a loader search reaches before
+    `/lib64` — and `--verify` then says the host's own libc cannot run on the host (**reco-ghao**).
+    """
+    lib, lib64 = tmp_path / "lib", tmp_path / "lib64"
+    lib.mkdir(), lib64.mkdir()
+    _fake_elf(lib / "ld-linux.so.2", 3)                                  # and it sorts first
+    right = lib64 / "ld-linux-x86-64.so.2"
+    _fake_elf(right, elf_probe.X86_64_E_MACHINE)
+    libc = lib / "libc.so.6"
+    _fake_elf(libc, elf_probe.X86_64_E_MACHINE)
+    monkeypatch.setattr(elf_probe, "_LOADER_DIRS", (str(lib64), str(lib)))
+    assert elf_probe._find_ld_so(str(libc)) == str(right)
+
+
+def test_a_loader_of_the_other_word_size_is_refused(tmp_path):
+    """riscv32 and riscv64 share one `e_machine`, so ELF class is the check that separates them."""
+    libc = tmp_path / "libc.so.6"
+    _fake_elf(libc, 243, bits=64)
+    decoy = tmp_path / "ld-linux-riscv64gc.so.1"
+    _fake_elf(decoy, 243, bits=32)
+    assert elf_probe._loader_is_for(str(decoy), 243, "ELFCLASS64") is False
 
 
 def test_probe_libc_not_found_is_a_value_not_an_exception():

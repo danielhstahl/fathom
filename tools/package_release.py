@@ -338,7 +338,9 @@ def tar_bytes(members: list[tuple[str, int, bytes]]) -> bytes:
         for d in sorted(dirs):
             info = tarfile.TarInfo(
                 name="./" if d == "." else "./" + d
-            )  # tarfile appends the trailing "/"
+            )  # a `DIRTYPE` entry carries the name as written: `tarfile` does not append a
+               # trailing "/", and a reader that asked the *name* whether it was a directory
+               # read every one of these back as a file (`5033bbf41`)
             info.type = tarfile.DIRTYPE
             info.mode = 0o755
             bundle.addfile(root_owned(info))
@@ -955,6 +957,19 @@ def command_self_test(args: argparse.Namespace) -> int:
                     name == "usr/share/man/man1/fathom.1.gz"
                     for name, _, _, _, _ in read["files"]
                 ),
+            ),
+            # The reader asks the member its type, not the name: `tarfile` writes a `DIRTYPE`
+            # entry whose name has no trailing "/", so a reader that looked for the slash
+            # classified every directory as a file and refused the package it had just written
+            # for having no directory entries at all (`5033bbf41`).
+            (
+                "the data archive's directories are read as directories",
+                "usr/bin" in read["dirs"]
+                and not any(name.endswith("/") for name, *_ in read["files"]),
+            ),
+            (
+                "the .deb it wrote passes the reader the packaging leg runs",
+                verify(deb, meta) == [],
             ),
             (
                 "the .sha256 names the file it checksums",

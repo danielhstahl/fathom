@@ -534,7 +534,13 @@ jobs:
       run:
         shell: bash
     steps:
+      # Full history, because of the `e7.7 beta loop` step below: `tools/gen_changelog.py audit` asks what
+      # every commit since the last release did for the release notes, and a depth-1 clone cannot answer —
+      # the audit died in `git log` with "Invalid revision range" (`reco-ghao`). The history here is a few
+      # hundred commits; this job's time goes on cargo, not on the clone.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
       - name: install the pinned toolchain
         run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component clippy,rustfmt

@@ -287,7 +287,7 @@ hot path, and no path pays for the whole table:
 
 | Measure | Value (`bench`, this repo, `--repeat 4`) |
 |---|---|
-| cold lookup (memo defeated) | ≈16 µs → 1 000 changed files in ~16 ms |
+| cold lookup (memo defeated) | ≈19 µs → 1 000 changed files in ~19 ms |
 | memo hit | ≈0.17 µs |
 | index probes per lookup | ≈12.6, of 533 patterns in the table |
 | buckets | exact 0 · prefix 5 · dirseg 66 · suffix 448 · **broad 11** |
@@ -298,6 +298,15 @@ file" is the acceptance criterion and a table that grows to 200 broad patterns i
 matches per file, which is exactly the blowup the criterion names. The memo is per-path and
 bounded (`MEMO_LIMIT = 8192`), because a long-lived daemon's RSS must not track repository size
 (ADR-004 §11.5).
+
+One more bound, because the broad bucket is paid by every path: a `Glob` reads the literal runs its
+pattern insists on (`**/*.egg-info/**` insists on `.egg-info/`) and refuses a path missing one before
+any engine runs. That matters most for the pattern too wildcard-dense for `re` — the state machine
+that stands in for it was four fifths of a cold lookup on this corpus, answering "no" over and over,
+and the per-file budget went red on a CI runner that is slower than the one that wrote this table
+(`reco-ghao`). `Glob.required` is that list of literals, and
+`tests/test_config_contract.py` checks both that it says something for every pattern the broad bucket
+carries and that it never refuses a path either engine accepts.
 
 **Ownership.** ADR-002 §9 puts `src/taxonomy/` and `src/noise/` with team 5 (analyze-change). The
 `noise` axis lives in `taxonomy/noise.py` rather than a separate module for one reason: a level and

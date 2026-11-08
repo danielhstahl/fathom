@@ -1323,6 +1323,49 @@ def test_both_glob_engines_accept_the_same_language():
     assert disagreements == [], "regex vs machine: %s" % (disagreements[:6],)
 
 
+def test_a_glob_refuses_a_path_that_lacks_a_literal_it_insists_on():
+    """`**/*.egg-info/**` cannot match a path with no `.egg-info/` in it, and says so before it runs.
+
+    One pattern in the shipped table is too wildcard-dense for the regex engine, and the taxonomy's
+    broad bucket tries it against *every* changed path, so the Python state machine used to run twice
+    per file to answer "no" — 45 % of a cold lookup spent refusing paths that could not match. A
+    `Glob` now reads the literal runs out of its own tokens and refuses on the first substring test
+    that fails, which is what put the per-file budget back under its bar (**reco-ghao**). `required`
+    is that prefilter, so it is a printed claim rather than an internal.
+    """
+    egg = globs.compile_glob("**/*.egg-info/**")
+    assert egg.engine == "machine", "this is about the pattern `re` may not run"
+    assert egg.required == (".egg-info/",)
+    assert globs.matches("**/*.egg-info/**", "pkg.egg-info/PKG-INFO") is True
+    assert globs.matches("**/*.egg-info/**", "setup.py") is False
+    assert globs.compile_glob("**").required == (), "a pattern of pure wildcard demands nothing"
+    assert globs.compile_glob("src/**/*_test.py").required == ("_test.py", "src/")
+
+
+def test_the_literal_prefilter_never_eats_a_match():
+    """With the prefilter and without it, one language: no path any engine accepts is refused early.
+
+    The claim is about `Glob.match`, so the test empties the prefilter on the same object and compares
+    the two answers over the whole conformance table — the hostile patterns included, because a
+    prefilter that lies about a dense pattern is a rule that silently stops matching.
+    """
+    disagreements = []
+    for pattern in GLOB_CONFORMANCE_PATTERNS:
+        body = pattern[1:] if pattern.startswith("!") else pattern
+        compiled = globs.compile_glob(body)
+        saved = compiled._needs                       # noqa: SLF001 - the prefilter *is* the subject
+        for path in GLOB_CONFORMANCE_PATHS:
+            with_filter = compiled.match(path)
+            compiled._needs = ()                      # noqa: SLF001 - deliberately, restored below
+            try:
+                without = compiled.match(path)
+            finally:
+                compiled._needs = saved               # noqa: SLF001
+            if with_filter != without:
+                disagreements.append((pattern, path, without))
+    assert disagreements == [], "the prefilter refused a match its engine accepts: %s" % (disagreements[:6],)
+
+
 def test_negated_character_class_is_the_glob_complement():
     """`[!a].txt` is 'any character except a', which is what the syntax summary promises."""
     assert globs.matches("[!a].txt", "q.txt") is True

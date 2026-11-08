@@ -34,10 +34,11 @@ because "a refactor" and "a perf fix" are different things to a reviewer), `depr
 what the release should claim: `Changelog: <one line>` and `Changelog-Section: Fixed` trailers, which is
 how a commit whose subject is an essay contributes one accurate bullet instead of a truncated one.
 
-Seven of this repository's last 74 commits carry no bead ref and none of them uses the header grammar,
-because the house style here is a sentence — *"Cold-index cost was quadratic in the cache, because a
-diagnostic query missed its index"* — and a tool that demanded `fix(cache):` before it could describe that
-would be a tool that gets bypassed. So the fallback is documented and mechanical: a commit is classified
+Six of this repository's last 74 commits use that grammar. Sixty-seven are a prose sentence with a bead ref
+in them — *"Cold-index cost was quadratic in the cache, because a diagnostic query missed its index"* —
+because that is the house style here, and a tool that demanded `fix(cache):` before it could describe such a
+commit would be a tool that gets bypassed. Four carry no bead ref at all, three of them under a `chore:` or
+a `plan:` header; the fourth is what the last rung of the ladder, and `C03`, are for. So the fallback is documented and mechanical: a commit is classified
 from its trailers if it has them, otherwise from its bead refs, otherwise from a keyword ladder (§"the
 fallback ladder" below) into Fixed or Changed, and `lint` says out loud which commits took the ladder.
 The subjects stay prose; the classification stays auditable.
@@ -120,7 +121,15 @@ MARKED_TYPES = {"perf", "docs", "revert", "refactor"}
 
 HEADER = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()]*)\))?(?P<bang>!)?:\s*(?P<subject>\S.*)$")
 TRAILER = re.compile(r"^(?P<key>[A-Za-z][A-Za-z0-9-]*)\s*:\s*(?P<value>.+)$")
-BEAD_REF = re.compile(r"(?<![\w-])(reco-[a-z0-9]{3})(?![\w-])")
+#: A bead reference. The width is a range and not a constant because the board's ids grew from
+#: three characters to four (`reco-ghao`, `reco-cqwz`, `reco-p6zw`) when the three-character
+#: space started colliding, and a fixed `{3}` followed by a "no more word characters" lookahead
+#: refuses to match *any* four-character id — so every commit of the last fortnight looked like
+#: a commit with no bead in it. That is what put 17 commits on the prose rung of the ladder and
+#: failed the 10%-guess bar (`reco-ghao`); the ladder was not guessing, the pattern was blind.
+#: Sub-issues (`reco-mkl.1`) need nothing here: the ref ends at the dot, which the lookahead
+#: already allows, and names the parent bead.
+BEAD_REF = re.compile(r"(?<![\w-])(reco-[a-z0-9]{3,4})(?![\w-])")
 PLAN_KEY = re.compile(r"(?<![\w.-])([esdm]\d+(?:\.\d+)?|s\d{1,2})(?![\w.])")
 SECTION_HEADING = re.compile(r"^##\s+\[([^\]]+)\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?\s*$", re.M)
 #: The fallback ladder. Order matters: a subject that says both "perf" and "fix" is a fix that mattered.
@@ -356,13 +365,38 @@ def _scoped(scope: str, text: str) -> str:
     return "**%s**: %s" % (scope, text) if scope else text
 
 
+def is_shallow(root: pathlib.Path) -> bool:
+    """Whether this clone was fetched with its history cut short."""
+    return _run(["rev-parse", "--is-shallow-repository"], root).stdout.strip() == "true"
+
+
+def has_commit(root: pathlib.Path, ref: str) -> bool:
+    """Whether this clone actually holds the commit `ref` names.
+
+    `rev-parse --verify` is not the test: handed a full 40-character SHA it answers success for
+    an object the clone has never seen, which is how a depth-1 checkout walked past every
+    resolver this file has and then died inside `git log` with an "Invalid revision range"
+    traceback (`reco-ghao`). `cat-file -e` asks the object store instead.
+    """
+    if not ref:
+        return True
+    return _run(["cat-file", "-e", "%s^{commit}" % ref], root).returncode == 0
+
+
+#: What to say when a range cannot be read, because the reason is almost never the range.
+SHALLOW_HINT = ("this clone does not hold the commits that range names — a checkout that audits "
+                "history has to fetch it, so a CI job needs `actions/checkout` with "
+                "`fetch-depth: 0`")
+
+
 def read_commits(root: pathlib.Path, since: str, until: str = "HEAD") -> list[Commit]:
     """`git log` over `since..until`, oldest first, with bodies kept intact."""
     args = ["log", "--reverse", "--date=short", "--format=%H\x1f%ad\x1f%s\x1f%b\x1e"]
     args.append("%s..%s" % (since, until) if since else until)
     result = _run(args, root)
     if result.returncode != 0:
-        raise SystemExit("git log failed: %s" % result.stderr.strip())
+        hint = " — %s" % SHALLOW_HINT if is_shallow(root) else ""
+        raise SystemExit("git log failed: %s%s" % (result.stderr.strip(), hint))
     commits = []
     for record in result.stdout.split("\x1e"):
         if not record.strip():
@@ -661,12 +695,13 @@ def check_rung_claims(root: pathlib.Path = ROOT, path: pathlib.Path = CHANGELOG)
         where = "%s%s" % (("`[%s]` " % claim["section"]) if claim["section"] else "", claim["to"][:12])
         start = "" if claim["from"] == RUNG_WHOLE else claim["from"]
         unresolved = [ref for ref in (start, claim["to"])
-                      if ref and _run(["rev-parse", "--verify", "--quiet", ref], root).returncode != 0]
+                      if ref and not has_commit(root, ref)]
         if unresolved:
             problems.append(Problem("C06", where,
                                     "names %s, which this clone cannot resolve: a claim outlives the branch "
-                                    "it was written on, but not the objects it counts"
-                                    % ", ".join(r[:12] for r in unresolved)))
+                                    "it was written on, but not the objects it counts%s"
+                                    % (", ".join(r[:12] for r in unresolved),
+                                       "; " + SHALLOW_HINT if is_shallow(root) else "")))
             continue
         commits = read_commits(root, start, claim["to"])
         expected = rung_line(count_rungs(commits)) if commits else RUNG_EMPTY

@@ -16,6 +16,65 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Eight contract tests were red on the runner and green on every laptop, over four claims the suite was making about somebody else's machine (`reco-ghao`)
+
+`docs + workspace contracts` came back with eight failures, none of which reproduced here. That is the
+shape this job fails in: it reads the checkout, the loader and the clock of whichever box GitHub gave it,
+and every one of the eight was a claim about that box rather than about the code. Four claims, four fixes,
+one of them a real defect the shallow clone was hiding.
+
+* **The changelog gate had no history to read, and said it in git's words rather than its own.** Three of
+    the eight were `tests/test_beta_loop_contract.py`, and all three were the same line:
+    `SystemExit: git log failed: fatal: Invalid revision range 0f7495f…..c05860b…`. The job checked out at
+    actions/checkout's default depth of one, so the commits the audit counts — and the endpoints the rung
+    claim in `[Unreleased]` names — were not in the clone. The audit's own resolver did not catch it
+    because `git rev-parse --verify --quiet` reports *success* for a 40-character SHA the repository has
+    never seen; the guard passed and `git log` died further in. The job now fetches `fetch-depth: 0`, and
+    the tool asks the object store (`cat-file -e`) instead of believing `rev-parse`, so a short clone is a
+    `C06` that names `fetch-depth: 0` as its remedy instead of a traceback.
+* **The FFI probe verified the host's own libc through a loader from another architecture.** Four more of
+    the eight were `e0.5`, and all four were `ABI mismatch: /lib/ld-linux.so.2 --verify
+    /usr/lib/x86_64-linux-gnu/libc.so.6: rc=1` on a healthy x86-64 runner. There is no such thing as *the*
+    `ld.so`: on a multilib Debian host that path is the **i386** loader — installed by `libc6-i386`, and
+    found first by a glob for `/lib/ld-*so*` — and the x86-64 one is in `/lib64`. So the probe asked the
+    wrong loader whether the host's libc could run on the host, and it answered "no". `_find_ld_so` now
+    takes the machine and ELF class of the object being verified and looks for a loader that speaks for it
+    (riscv32 and riscv64 share an `e_machine`, so the class is not decoration), and a host with no matching
+    loader gets `abi=not-run` — an honest absence — instead of a mismatch nobody can act on.
+* **A bead reference was three characters wide, and the board had grown four-character ids.** The ladder
+    said `subject 17` out of 144 commits, which failed the bar that no more than one release note in ten
+    may be guessed from a prose subject. They were not guesses: `BEAD_REF` was `reco-[a-z0-9]{3}` followed
+    by a "no more word characters" lookahead, so it matched *no* four-character id at all, and fourteen had
+    landed (`reco-cqwz`, `reco-p6zw`, this ticket among them). Every commit of the last fortnight looked
+    like a commit with no bead in it, which put them on the prose rung and — for one of them — made it a
+    `C03` gap as well. The pattern is `{3,4}` now; a fifth character, if the board ever grows again, is one
+    character wide and will be loud rather than silent, because the lookahead refuses a partial match.
+* **The cold per-file lookup was 87.3 µs against an 80 µs bar, and most of it was saying "no".**
+    The taxonomy's `broad` bucket is tried for every changed path, and one pattern in it — `**/*.egg-info/**`
+    — is wildcard-dense enough that it cannot be handed to `re`, so the Python state machine ran it, twice
+    per file counting the directory re-test, against a corpus with no `.egg-info` in it. Measured here with
+    that one pattern deleted from the table: 60.1 µs becomes 15.8 µs, so four fifths of a cold lookup was
+    that pattern refusing paths that could not possibly match. A `Glob` now reads the literal runs its own
+    pattern insists on out of its own tokens and refuses any path missing one before an engine runs at all:
+    `.egg-info/` settles the pattern in a substring test, the same cold lookup goes from 60.1 µs to 13.0 µs,
+    and the language is unchanged — cross-checked with and without the prefilter over the whole conformance
+    table.
+
+And one of the eight was a real gap, hiding behind the shallow clone: the audit's `C03` had been trying to
+say that `5033bbf41` ("fixed deb") is described nowhere in `[Unreleased]`. It is now, in the `.deb` entry
+where it belongs — which is also the entry for that commit's own bug, a reader that asked a tar member's
+*name* whether it was a directory when `tarfile` had written no trailing slash to ask.
+
+*Asserted by*: `tests/test_beta_loop_contract.py`, all three, on a clone with its history — and
+`tools/gen_changelog.py audit`, whose `C06` now prints `fetch-depth: 0` at whoever runs it on a short one;
+`tests/test_harness_contract.py::test_the_probe_verifies_with_a_loader_of_the_libcs_own_machine`,
+`test_the_loader_chosen_for_a_libc_is_its_own_architecture`,
+`test_a_loader_from_the_other_architecture_is_refused_even_when_it_is_the_only_neighbour` and
+`test_a_loader_of_the_other_word_size_is_refused`, which build both loaders as fakes so the multilib host
+is a fixture instead of a runner; `tests/test_config_contract.py::test_a_glob_refuses_a_path_that_lacks_a_literal_it_insists_on`
+and `test_the_literal_prefilter_never_eats_a_match`; `tests/test_taxonomy_contract.py`'s
+`test_every_broad_pattern_names_a_literal_it_can_refuse_with` alongside the cold budget it was failing;
+and `tools/package_release.py --self-test`, which now carries the `.deb` reader's own two claims.
 ### The ubuntu leg hung instead of failing, over a `vi` a test had not installed (`reco-67ml`)
 
 `build+test (ubuntu-latest · stable)` reported no failure at all: it stopped. The last thing
@@ -224,11 +283,12 @@ job is the reason for three of them. All four are fixed here; none of them chang
     `benchmarks/reports/s5-narrative-polish.json` again — including its `panel.integrity_problems: []`,
     which had been lying.
 
-### The `.deb` the CI step asked for was not the `.deb` the packager wrote, and the data archive never named its own directories (`274c3e164`, `b94569091`, `09858ce79`, `da0874c6b`)
+### The `.deb` the CI step asked for was not the `.deb` the packager wrote, and the data archive never named its own directories (`274c3e164`, `b94569091`, `09858ce79`, `da0874c6b`, `5033bbf41`)
 
 The packaging leg built the archive, repacked it, and then died in the step that installs the result the way
 a user would. Four commits, one after another, because the step had two independent bugs and the second was
-only visible once the first stopped hiding it.
+only visible once the first stopped hiding it — and a fifth, once the leg finally got far enough to run the
+reader this section ends on.
 
 * **`~` is a home directory to bash, even inside a substitution.** The step builds the file name from the
     manifest version, and `0.1.0-alpha.1` is `0.1.0~alpha.1` to `dpkg` (`-` is not legal upstream), so the
@@ -248,9 +308,16 @@ only visible once the first stopped hiding it.
     The writer now emits an entry for every parent of every member, directories first, sorted so a parent
     always precedes its children, with the same deterministic fields (`uid`/`gid` 0, `root/root`, zero
     mtimes) (`da0874c6b`).
-* **And the reader refuses one.** `verify` checks the finished container for the same property — every file
-    member's every parent has a directory entry — so the shape is a rule with a red answer rather than a
-    habit, and `--verify` runs it in the step that builds the packages.
+* **And the reader refused a `.deb` that was fine.** `verify` checks the finished container for the same
+    property — every file member's every parent has a directory entry — so the shape is a rule with a red
+    answer rather than a habit, and `--verify` runs it in the step that builds the packages. What it read
+    was wrong: the reader decided which members were directories by looking for a trailing `/` in the member
+    name, and `tarfile` does not append one to a `DIRTYPE` entry — so every directory the writer had just
+    emitted came back a file, the declared set of directories came back empty, and the package the leg had
+    just built was refused for naming no directories. The member's own type decides now (`isdir()`), the
+    directories are read under their own key, and the packager's own `--self-test` carries both halves of
+    it: the archive's directories are read as directories, and the `.deb` this tool writes passes the
+    reader the packaging leg runs (`5033bbf41`).
 
 ### `cargo fuzz build` has no `--debug`, and two clippy steps handed cargo a backslash the YAML had folded (`2c351ae77`, `8063516de`)
 

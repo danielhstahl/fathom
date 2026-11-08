@@ -538,6 +538,11 @@ python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the headin
 python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
 ```
 
+`audit` reads commits, so it needs them: the CI job that runs it — and the pytest suite that mirrors it —
+checks out with `fetch-depth: 0`, the same sentence [the CI-gate page](ci-gate.md) makes about `fathom
+check`. At actions/checkout's default depth of one the audit cannot see the release it is measuring from,
+and says so as a `C06` naming `fetch-depth: 0` rather than dying inside `git log` (`reco-ghao`).
+
 **Conventional commits, and the house style they have to share a file with.** The header grammar is the usual
 one — `feat(scope)!:` / `fix:` / `perf:` / `refactor:` / `docs:` / `deprecated:` / `removed:` / `security:`,
 with `build`/`ci`/`test`/`chore`/`style` kept out of the release notes, `BREAKING CHANGE:` or `!` promoting an
