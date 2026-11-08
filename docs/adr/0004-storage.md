@@ -1591,6 +1591,61 @@ one branch that had already learned to answer `blocked_by`. Those rows are `bloc
 `test_a_binary_that_writes_no_store_is_reported_blocked_not_as_a_traceback` runs the gate against a
 binary that only exits 9 to keep it that way.
 
+**What `reco-3h82` found when the read verbs were re-blessed instead of re-litigated.** The job came
+in red again, one row this time: `query.metrics.ms.small: −24.4 % better than the blessed baseline
+(12.831, …); budgets ratchet, so re-bless it`. Not a false positive — `reco-0zot` had already said
+so: this container read `fathom stats --json` at **12.8-15.0 ms on 2026-11-07 and 5.98 ms on
+2026-11-08**, while that box's own calibration bench moved only ×0.879 across the same window, so
+the read path really had got faster (the lane `reco-7yq` took off the commit tables, and the
+analyzers moved after it) and the baseline, blessed at `36b011f` under `reco-dkr`, had never been
+told. The trap in the named remedy is that **a bless is one machine's number**: the runner read the
+same verb anywhere between **6.6 and 10.80 ms** across the six perf runs of the last two days
+(check-runs 128726035173, 128525911209, workflow runs 42375794647, 42377454175, 42382956006,
+42395823245) while this container — after dividing its own calibration factor out, as `reco-r3x`'s
+convention requires — reads **6.24-7.07 ms**, so the two boxes are **1.73× apart on a row whose
+whole ratchet is ±15 %**. The calibration bench cannot bridge it: the bench is 100 k rows of SQLite
+and the verb is a process start and a store open, and §11.8's one ratio cannot be both. Six rows are
+that wide (`cold.index.ms.small` 1.48×, `warm.reindex.ms.small` 1.89×, `query.card.ms.cli.small`
+1.61×, `query.diff_first_hunk.ms.small` ~3×, `query.diff_open.ms.small` 4.1×), so **no blessed
+number sits inside ±15 % of both boxes**: blessing from either one moves the red to the other, which
+is what `reco-axp`'s and `reco-0zot`'s blesses did to whichever machine did not bless.
+
+So the six were re-blessed **at the middle of the fleet's readings** rather than at one box's — 8.52
+ms, 9.815 ms, 1 122.5 ms, 91 ms, 9.1 ms, 5.6 ms, in the order the rows are listed — and **blessed
+with the fleet's spread as their floor**: 2.5 ms on each of the two read verbs, 250 ms on the cold
+index, 31.5 ms on the warm re-index, and the two pty rows left on the 10 ms `PTY_NOISE_MS` floor
+they already carried, which they now have room to use. Each row's `how` carries the readings, the
+check-run or harness each came from, the factor it was divided by, and the budget that guards it
+now; `test_the_recorded_fleet_readings_clear_the_ratchet` fails if any recorded reading of either
+box goes red against the committed file, and `test_the_re_blessed_rows_still_see_a_real_move` fails
+if a floor has swallowed the regression along with the machine. What those rows can still red on,
+from the narrowest: ~22 % on the cold index, ~25 % and ~29 % on the two verbs, ~35 % on the warm
+re-index, and anything bigger than its own 10 ms resolution on the two pty rows. That is what a
+shared fleet can resolve, and the alternative is a gate that is red on whichever runner it drew.
+Four of the six now stand on the list of ids the ±15 % cannot resolve, beside
+`cold.queue_visible.ms.small` and the pty rows `reco-dkr` and `reco-axp` already put there: **the
+budget is the guard and the ratchet is the early warning**, and a ratchet narrower than the fleet is
+the coin toss `reco-dkr` was filed about — arriving a second time from the machines instead of from
+the harness.
+
+Two things travel with that. A bless may now **widen a floor and may not narrow one**:
+`write_baseline` carries the prior row's `noise` forward, because a floor is a claim about the
+instrument and five samples that happened to agree on a quiet afternoon are not evidence that the
+instrument got sharper — values have been laundered that way before (`reco-axp` found five rows
+blessed at the fast tail of their own distribution) and a floor narrowed by luck reds the next run
+on a machine. Narrowing one stays possible by hand, with the measurement that justifies it written
+into the row. And the file's `blessed_environment`/`calibration` header still describes the box that
+last ran `make bench-bless`, not these six rows: as with `reco-axp` and `reco-0zot`, the provenance
+of a hand-blessed row lives in that row's own `how`, dated, with the factor it was divided by.
+
+What this does not fix, and where the next ticket is: §11.8's single calibration ratio does not
+transfer. It said this box was 0.88× of the reference while its read verbs ran 0.47× of their bless,
+and it said the runner was 1.0-1.25× while the same verbs ran 0.65-0.78× of it. A **second
+calibration that times a process rather than a bulk store** is the change that would let these rows
+keep a ±15 % ratchet instead of a floor; `reco-axp`'s unclamped credit and this ticket's floors are
+both patches over one ratio being asked to describe a machine that is fast at one and slow at the
+other.
+
 **The register.** Hand-written into `benchmarks/baselines/perf-gate.json`'s `known_breaches`, carried
 forward by `make bench-bless` so a bless cannot launder it, and read by `tools/epic7_acceptance.py`, which
 fails the epic if a row has stopped biting, if a breach bites with no row, if a value passes its ceiling,

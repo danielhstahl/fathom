@@ -44,6 +44,11 @@ as well, and that floor is **measured per measurement** — the probe's own stat
 standard deviations of the run's own samples, or the floor blessed beside the value, whichever is
 widest. A constant per unit (`NOISE_FLOOR`) is the fallback for a measurement that says nothing about its
 own noise, and it is far too blunt where it can be avoided: a 5 ms floor on a 15 ms verb is a 33 % gate.
+A bless may widen a floor and may not narrow one: a floor is a claim about the instrument, and one quiet
+afternoon on one box does not sharpen it (`reco-3h82`). And a floor blessed beside a number is blessed
+against the fleet, not the box that blessed it: the containers and the `ubuntu-latest` runners that run
+this job differ by more than ±15 % on the small read verbs, so the rows they disagree about carry a
+floor that says so and name the readings it covers (`reco-3h82`).
 Where a change is past the percentage and inside the floor the gate does not decide by coin toss; it
 reports the id under "cannot classify", and lists the ids whose floor is wider than the ratchet itself
 under "cannot resolve", because the honest answer to a spread wider than the ratchet is "I cannot tell",
@@ -1371,6 +1376,7 @@ def render_table(measurements: list[Measurement], verdicts: list[Verdict], budge
 def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: float,
                    passes: list[float], corpus: dict, env: dict, prior: dict) -> None:
     blessed = {}
+    prior_rows = prior.get("measurements") or {}
     for row in measurements:
         if row.value is None:
             continue
@@ -1388,7 +1394,20 @@ def write_baseline(path: Path, measurements: list[Measurement], calibration_ms: 
             entry["spread"] = round(row.spread, 4)
         if row.scale is not None:
             entry["scale"] = row.scale
-        entry["noise"] = round(noise_floor(row, row.center or row.value, None, blessing=True)[0], 4)
+        floor = noise_floor(row, row.center or row.value, None, blessing=True)[0]
+        # A floor is a claim about the instrument, not about the run, so blessing may widen one but
+        # never narrow it. The values have been laundered this way before — `reco-axp` found five rows
+        # blessed at the fast tail of their own distribution, because a bless records whatever the
+        # blessing run happened to be when it looked — and a floor narrowed by one quiet afternoon is
+        # the same defect wearing a different hat: the next run inherits a claim that the probe can see
+        # finer than it can, and goes red on a machine (`reco-0zot` for a resident set, `reco-3h82` for
+        # the read verbs, whose blessed 0.24 ms floor was a fifth of what the two boxes differ by).
+        # Narrowing a floor stays possible; it is a hand edit, with the measurement that justifies it
+        # written into the row's own `how` where the gate can be asked what the floor is for.
+        blessed_floor = (prior_rows.get(row.id) or {}).get("noise")
+        if blessed_floor is not None:
+            floor = max(floor, float(blessed_floor))
+        entry["noise"] = round(floor, 4)
         blessed[row.id] = entry
     # The register of known breaches is written by a human, with a rationale and the defect that owns
     # it, so blessing must carry it forward rather than launder it away. An entry is removed by hand,

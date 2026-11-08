@@ -604,18 +604,131 @@ def test_the_graph_lane_is_measured_now_that_it_has_a_budget_of_its_own():
 
 
 def test_the_blessed_baseline_carries_the_noise_each_value_was_blessed_with():
-    """A blessed number and its noise are one measurement; half of it is a guess about the other half."""
+    """A blessed number and its noise are one measurement; half of it is a guess about the other half.
+
+    The floor may be narrower or wider than the ±15 % — that is an empirical claim about the probe and
+    the fleet, and `reco-3h82` moved six of them from "narrower" to "wider" because two boxes that run
+    this gate read the same 8 ms verb 1.47× apart. What is not allowed is a wide floor nobody signed:
+    a row the ratchet cannot resolve must name, in the `how` the gate prints, the budget that guards it
+    instead, or it is a blind spot with no witness.
+    """
     blessed = json.loads(BASELINE.read_text())["measurements"]
     fail_pct = _budgets()[1]["regression_fail_pct"]
     for ident in ("query.metrics.ms.small", "query.card.ms.cli.small", "warm.reindex.ms.small",
-                  "rss.tui.mib.small"):
+                  "rss.tui.mib.small", "cold.index.ms.small", "query.diff_first_hunk.ms.small"):
         row = blessed[ident]
-        assert row.get("center") is not None, f"{ident}: blessed without the statistic the ratchet uses"
+        assert row.get("center") is not None or ident == "cold.index.ms.small", (
+            f"{ident}: blessed without the statistic the ratchet uses")
         assert row.get("noise") is not None, f"{ident}: blessed without the floor it was judged by"
-        limit = float(row["center"]) * fail_pct / 100.0
-        assert float(row["noise"]) < limit, (
-            f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
-            f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve it")
+        limit = float(row.get("center") or row["value"]) * fail_pct / 100.0
+        if float(row["noise"]) >= limit:
+            assert "budget" in row["how"], (
+                f"{ident}: its blessed floor ({row['noise']} {row['unit']}) is wider than the ±{fail_pct:g} % "
+                f"({limit:.2f} {row['unit']}) that is supposed to gate it, so the ratchet cannot resolve "
+                f"it — and its `how` names no budget as the guard, which makes it a blind spot nobody "
+                f"signed for")
+        else:
+            assert "reco-" in row["how"], (
+                f"{ident}: a floor this narrow is a claim about a probe, and the row does not say who "
+                f"measured it")
+
+
+def test_a_re_bless_widens_a_floor_and_never_narrows_it(tmp_path):
+    """A floor is a claim about the instrument, so a quiet run may not sharpen it (`reco-3h82`).
+
+    The values have been laundered by a bless before — `reco-axp` found five rows blessed at the fast
+    tail of their own distribution — and a floor narrowed by one still afternoon is the same defect:
+    the next run inherits a claim that the probe can see finer than it can, and reds on a machine. The
+    gate's own writer must therefore carry the blessed floor forward; narrowing one stays possible,
+    but only as a hand edit with a measurement attached.
+    """
+    budgets, _gates = _budgets()
+    quiet = G.Measurement("query.metrics.ms.small", "ms", 6.0, "query.metrics.ms.small",
+                          [6.0, 6.0, 6.0, 6.0, 6.0], how="a probe that says nothing about its noise")
+    prior = json.loads(BASELINE.read_text())
+    blessed_before = float(prior["measurements"]["query.metrics.ms.small"]["noise"])
+    out = tmp_path / "perf-gate.json"
+    G.write_baseline(out, [quiet], 438.29, [438.29, 438.29, 438.29], {}, {}, prior)
+    written = json.loads(out.read_text())["measurements"]["query.metrics.ms.small"]
+    assert written["noise"] >= blessed_before, (
+        f"a bless narrowed the floor from {blessed_before} to {written['noise']} ms on the strength of "
+        "five samples that happened to agree with each other")
+
+
+# The two machines this gate actually runs on, as recorded. Both ends of every range are the *credited*
+# number the ratchet judges: the container's own measurement divided by its calibration factor (a fast
+# box is put back into reference-machine units, `reco-axp`'s rule), and the runner's raw number, which
+# is what a slow box is judged on because a slow runner is never credited a speed-up it did not earn.
+# Sources, all of them 2026-11-07/08, all of them the same tree per box:
+#
+#   container — five `make bench-check` runs here, whose calibration factor measured ×0.85–×0.95;
+#   runner    — the perf job's own annotations: check-runs 128726035173 (`d6a9aa5`, --check and the
+#               --quick run the contract suite drives) and 128525911209 (`fa2e99f5`), and the `perf`
+#               workflow runs 42375794647, 42377454175, 42382956006, 42395823245, which drew a mix of
+#               runner generations (6.6 ms on a fast one, 10.80 on a slow one, for one verb).
+# Where a runner reading was never reported it is because it sat inside ±15 % of the bless then; the
+# end of the range is that ceiling, and it is marked as such.
+FLEET = [
+    ("query.metrics.ms.small", (6.24, 7.07), (6.6, 10.80), "`fathom stats --json`"),
+    ("query.card.ms.cli.small", (7.52, 8.49), (7.78, 12.11), "`fathom show --json …`"),
+    ("cold.index.ms.small", (904.0, 1034.0), (952.0, 1341.0), "cold index (1 341 = the ±15 % ceiling)"),
+    ("warm.reindex.ms.small", (80.9, 93.1), (62.9, 118.6), "warm re-index (118.6 = the ±15 % ceiling)"),
+    ("query.diff_first_hunk.ms.small", (9.37, 14.47), (4.89, 5.10), "diff pane, first `@@`"),
+    ("query.diff_open.ms.small", (6.74, 9.18), (2.24, 3.35), "diff pane, tree painted"),
+]
+
+
+def test_the_recorded_fleet_readings_clear_the_ratchet():
+    """Every reading both boxes are known to produce must clear the committed baseline.
+
+    This is the ticket, as arithmetic: the perf job was red because `query.metrics.ms.small` read
+    −24.4 % against a bless neither box agrees with now, and the remedy the gate names — "budgets
+    ratchet, so re-bless it" — is only worth doing if the bless ends the argument instead of moving it
+    to the other machine. So the recorded readings of both machines are fed to `evaluate` exactly as
+    the gate would feed them, and none of them may fail. The floor is allowed to swallow a reading —
+    "cannot classify" is a verdict, a red is not.
+    """
+    budgets, gates = _budgets()
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    for ident, container, runner, what in FLEET:
+        entry = blessed[ident]
+        assert entry.get("noise") is not None, f"{ident}: blessed with no floor to cover the fleet"
+        for box, (low, high) in (("container", container), ("runner", runner)):
+            for reading in (low, high):
+                row = G.Measurement(ident, entry["unit"], reading, entry.get("budget"),
+                                    [reading] * 5, scaled=entry["scaled"])
+                verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+                                     1.0, strict=True, machine_factor=1.0)[0]
+                assert not verdict.failed, (
+                    f"{ident} ({what}): the {box} is recorded reading {reading} {entry['unit']} and "
+                    f"the blessed baseline calls that {verdict.status}: {verdict.detail}")
+
+
+def test_the_re_blessed_rows_still_see_a_real_move():
+    """A floor wide enough to cover the fleet must not have swallowed the regression too.
+
+    Each row moved to a fleet-wide floor is checked at one floor and a quarter outside its bless, in
+    both directions where the arithmetic can go both ways (a 9 ms pty row blessed against a 10 ms floor
+    can only report a slow-down, and says so). Anything that stops reding here has stopped gating.
+    """
+    budgets, gates = _budgets()
+    blessed = json.loads(BASELINE.read_text())["measurements"]
+    for ident, _container, _runner, _what in FLEET:
+        entry = blessed[ident]
+        base = float(entry.get("center") or entry["value"])
+        floor = float(entry["noise"])
+        moves = [("slower", base + 1.25 * floor)]
+        if base - 1.25 * floor > 0:
+            moves.append(("faster", base - 1.25 * floor))
+        for direction, value in moves:
+            row = G.Measurement(ident, entry["unit"], round(value, 4), entry.get("budget"),
+                                [round(value, 4)] * 5, scaled=entry["scaled"])
+            verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+                                 1.0, strict=True, machine_factor=1.0)[0]
+            assert verdict.failed, (
+                f"{ident}: {direction} to {value:,.3f} {entry['unit']} (bless {base:,.3f}, floor "
+                f"{floor:,.3f}) is not red, so this row no longer gates anything: {verdict.detail}")
+            assert verdict.status in ("regression", "stale_baseline", "over_budget"), verdict.status
 
 
 def test_the_tui_rss_bless_carries_the_machine_spread_of_the_metric():
@@ -746,9 +859,14 @@ def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
         assert ident in blind, f"{ident} is measured through the pty and is not listed as unresolvable"
         assert blind[ident]["floor_as_pct_of_baseline"] > 100.0
         assert "resolution" in blind[ident]["noise_basis"].lower()
-    assert "query.metrics.ms.small" not in blind, (
-        "the verb the ticket was filed about is back to being unresolvable: its blessed floor is "
-        "wider than the ±15 % again")
+    assert "query.metrics.ms.small" in blind, (
+        "the row `reco-3h82` blessed to the middle of the fleet is no longer on the list of ids the "
+        "ratchet cannot resolve: either the two boxes have stopped disagreeing about `fathom stats "
+        "--json` — in which case narrow the blessed floor by hand and write into the row what measured "
+        "it — or the floor moved on its own")
+    assert blind["query.metrics.ms.small"]["floor_as_pct_of_baseline"] > 15.0, (
+        "the blessed floor on the verb the ticket was filed about is no longer wider than the ±15 % "
+        "the two boxes differ by, which is the whole reason it was blessed that way")
 
 
 def test_measuring_a_child_does_not_add_the_harness_s_own_sleep_to_the_clock():
