@@ -35,9 +35,10 @@
 //! from the corpus instead — and when it cannot be, the imports come back `unresolved`, which is a
 //! named state rather than a guess.
 
+use crate::structure::complexity;
 use crate::structure::engine::{CorpusView, Draft, Index, Lang, RawImport};
 use crate::structure::model::{
-    Complexity, Edge, EdgeKind, Granularity, Language, Supertype, SupertypeKind, Symbol,
+    Edge, EdgeKind, Granularity, Language, StructureProxies, Supertype, SupertypeKind, Symbol,
     SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
@@ -309,7 +310,7 @@ fn receiver_is_pointer(node: Node, src: &[u8]) -> bool {
     field(&node, "receiver").is_some_and(|receiver| text(&receiver, src).contains('*'))
 }
 
-fn complexity(node: Node, policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: Node, policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(&node);
     let (branches, _) = util::count_kinds(&node, BRANCH_KINDS, policy.max_complexity_nodes);
     let (loops, _) = util::count_kinds(&node, LOOP_KINDS, policy.max_complexity_nodes);
@@ -322,7 +323,7 @@ fn complexity(node: Node, policy: &ExtractPolicy) -> Complexity {
     let members = field(&node, "type_parameters")
         .map(|ty| kids(&ty).len())
         .unwrap_or(0);
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -566,3 +567,33 @@ pub fn export_names(file: &str, view: &CorpusView) -> BTreeSet<String> {
         .map(|symbol| symbol.name.clone())
         .collect()
 }
+
+/// ADR-007 §4.4 — **Go's decision-point list.** Basis `mccabe-1`.
+///
+/// The arms are the branches: an `expression_switch_statement`, a `type_switch_statement` and a
+/// `select_statement` add nothing of their own, and `for_clause` / `range_clause` add nothing to the
+/// one loop `for` is. A Go declaration with no body (`func Sqrt(x float64) float64`, the assembly or
+/// external implementation) is a unit with no figure, not a unit with none to make: `body_not_visible`.
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::Go,
+    units: &["function_declaration", "method_declaration"],
+    bodyless: &[],
+    no_body: |node| field(node, "body").is_none(),
+    kinds: &[
+        (
+            "if_statement",
+            "if / else if, `if v, ok := m[k]; ok` included",
+        ),
+        ("expression_case", "each case of an expression switch"),
+        ("type_case", "each case of a type switch"),
+        ("communication_case", "each comm clause of a select"),
+        ("default_case", "a written default"),
+        ("for_statement", "the one loop, in every shape it takes"),
+    ],
+    conditions: &[],
+    operators: &[(
+        "binary_expression",
+        &[("&&", "short-circuit &&"), ("||", "short-circuit ||")],
+    )],
+    tokens: &[],
+};

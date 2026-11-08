@@ -16,6 +16,89 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+## [Unreleased]
+### The counting pass landed with a hand-counted corpus under it, and the corpus immediately proved it could count (`reco-l9bz.2`)
+
+`e8.1` wrote ADR-007; this is `e8.2`, the pass it describes: a per-function decision-point count beside
+the structural extraction in `crates/fathom-analyze/src/structure/`, over the six grammars that already
+ship, with no new grammar dependency and no new feature gate. Each unit carries its dotted name, span,
+figure and **the decision points that earned it** (kind, rule, line), so a figure is defensible line by
+line instead of being a number a reviewer takes on faith; each file rolls up `sum` and `max`, prints a
+state (`measured` / `partial` / `unavailable`) and a plain-text dump of every function in it. The basis
+token is `mccabe-1`, and nothing in this build has altered what that means.
+
+The deliverable that decided the shape of the rest is the corpus: **`crates/fathom-analyze/complexity/<language>/`,
+six languages, 18 files, hand-authored**, each with a `truth.json` naming every function's figure or its
+reason code, plus the expected file state, marks and roll-up. It is weighted toward the awkward cases
+§4's verdict table lists — trait signatures and `.d.ts` declares, `let … else`, a `match` arm written
+`1 | 2`, Python comprehension filters and a `def` inside a `def`, Java's two switch spellings, Go's one
+loop written four ways, Ruby's four modifier forms — and it is checked by a harness that refuses a report
+differing **byte for byte** from the committed one:
+
+```sh
+cargo run -p fathom-analyze --features langs-all --example complexity_harness -- \
+    --repo . --report benchmarks/reports/e8-2-complexity-core.json
+cargo run -p fathom-analyze --features langs-all --example complexity_harness -- \
+    --repo . --report benchmarks/reports/e8-2-complexity-core.json --check
+```
+
+That command prints, today: **6 languages, 18 corpus files, 69 units, accuracy 69/69 (100.00 %), C-KIND
+clean, every unknown carries a reason code.** Accuracy is 100 % because every disagreement was adjudicated
+rather than blessed — `--suggest-truth` exists to *diff* a human's arithmetic against the machine's and is
+never called by `--check`, because a checker that generates its own expectations only proves the pass
+agrees with itself. And the corpus found four bugs in the pass in its first hour, which is the argument for
+authoring it by hand:
+
+* **Ruby counted half its tests twice.** A rule matching on the kind string `if` also matches the anonymous
+    `if` *keyword token* inside `if_modifier`, and `elsif`, `while`, `until` and `for` each arrive in a Ruby
+    file as a named node **and** an anonymous keyword of the same spelling. Every Ruby figure in the corpus
+    was double-counted until that was fixed; the fix is that named-kind rules apply to named nodes only, and
+    anonymous spellings are counted by the token half of each table (`&.`, `&&`, `or`).
+* **A `Shape.name=` setter was the most complex function in a Ruby file.** Region assignment tested whether
+    a node *started* inside a unit, and a class body starts at the same byte as the `attr_accessor :name`
+    eight bytes above it — so the entire class body inherited the accessor's unit and its `V(G)` came out
+    35. Containment is now decided per node by the whole span. The accessor is 1, as an accessor should be.
+* **Unknown printed bare.** A `.d.ts` in which every declaration lives in another file has no file figure
+    and had no file reason, so it printed `?` with nothing beside it — what §7.1 forbids. No new code was
+    invented for it: when nothing in a file was countable and every unit names the same reason, the file's
+    `?` carries that reason (`? (body_not_visible)`), because the units already said why.
+* **The node budget had never actually run out.** The report re-measures the corpus at a bound of 24 nodes
+    and lists which units then refuse with `node_budget` (§7.2), so "a spent bound sets the state and the
+    code" is a demonstrated outcome in the committed report rather than a sentence in a comment.
+
+**C-KIND is executable, not advisory.** Every node kind a grammar's decision-point list names is checked
+twice — present in the `node-types.json` of the crate `Cargo.lock` pins, and produced by at least one file
+in that language's corpus — which is the rule `e8.1`'s §11.1 built to catch the fourteen kinds `e3.1`'s
+proxy counted and the pinned grammars never emit. It was not decoration: the first corpus run named
+**eleven declared kinds nothing produced** (`while_modifier`, `until_modifier`, `unless_modifier`,
+`unless_guard`, `&&`, `||`, `and`, `or` and `&.` in Ruby, `while_statement` in Python, `&&` in TypeScript),
+and the corpus now exercises each one in a file written to hold exactly that construct. Two spelling
+differences between the ADR's tables and the grammars are recorded in the report rather than quietly
+absorbed: Java has no `else_clause` (an `else` is an anonymous token, worth nothing wherever it is spelled),
+and a pattern-switch guard is a `guard` node whose `when` keyword is the same test spelled twice — counted
+once, so `mccabe-1` still names what the figures are.
+
+Two places where the ADR's unit list and the shipped extractor's symbol list disagree are named instead of
+smoothed over, because ADR-007 D1 makes the extractor's list the identity a figure is keyed by: **a Java
+constructor is not a unit** (`e3.1` normalises constructors away as declarations, so a `record`'s compact
+constructor with validation branches in it contributes nothing — the gap is written in the report's
+`unit_list` row, beside the mechanical fact that the corpus *does* parse both constructor node kinds and
+names no unit after either), and **a `const` bound to an arrow function is a unit** where `e3.1` names it,
+which is what `e8.2` counts. Each language row now carries its §4 unit list, which of those kinds the
+corpus's own parses produced, what got counted, and the named place the two lists part company.
+
+Unknowns arrive as `unknown` with an ADR-007 code and never as `0`, and that is asserted twice over: in the
+corpus, where every unknown names its reason, and in `crates/fathom-analyze/tests/complexity.rs`, which
+owns what a corpus cannot — that the seventeen codes in §7.1's table, `structure::UnavailableReason` and
+the *wording a surface prints* are one vocabulary rather than three that drifted, that exactly two codes
+mean a zero that is a fact (`absent_revision`, `no_bodies`) and fifteen mean no figure, that a body with no
+branches is 1 and not 0, that `sum`/`max` are the arithmetic they claim, and that starving the node budget
+changes the state and names the code instead of shortening a figure. The CI step is a scheduled
+reproduction (`.github/workflows/complexity.yml`, plus a path filter so the pull request that changes the
+counting rules is the one that has to reproduce them), not a per-PR gate — placed where `e11`'s cut list
+(`reco-374v`) is going to put report reproductions anyway, so that folding it into one scheduled workflow
+later is a file deleted rather than `ci.yml` rewritten.
+
 ### Six tickets were about to invent six complexity metrics, so the definition went down before the code that has to obey it (`reco-l9bz.1`)
 
 Epic 8 makes cyclomatic complexity a primitive: a counting pass over six grammars, store columns, an

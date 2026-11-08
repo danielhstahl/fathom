@@ -278,7 +278,7 @@ fn structure_of(f: &File) -> FileStructure {
         span,
         visibility: fathom_analyze::structure::Visibility::Public,
         exported: true,
-        complexity: fathom_analyze::structure::Complexity {
+        complexity: fathom_analyze::structure::StructureProxies {
             body_lines: 1,
             branches: 0,
             loops: 0,

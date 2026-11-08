@@ -46,8 +46,8 @@ use fathom_analyze::graph::{
     path as path_query,
 };
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Language, Resolution, Span, Structure,
-    Symbol, SymbolKind, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Language, Resolution, Span, Structure,
+    StructureProxies, Symbol, SymbolKind, Visibility,
 };
 use fathom_store::spine::Store;
 use serde_json::{Value, json};
@@ -235,7 +235,7 @@ fn file_of(module: &Module) -> FileStructure {
                     span,
                     visibility: Visibility::Public,
                     exported: true,
-                    complexity: Complexity {
+                    complexity: StructureProxies {
                         body_lines: 4,
                         branches: 0,
                         loops: 0,

@@ -16,9 +16,10 @@
 //! * **A star import is a whole-file dependency**, never a set of symbols, because no parser can
 //!   enumerate what `from models import *` binds.
 
+use crate::structure::complexity;
 use crate::structure::engine::{self, CorpusView, Draft, Index, Lang, RawImport};
 use crate::structure::model::{
-    Complexity, Language, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility, synthetic,
+    Language, StructureProxies, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
 use crate::structure::util::{self, dir_of, field, join_dir, kids, qualify, span_of, text};
@@ -277,7 +278,7 @@ fn python_visibility(name: &str) -> Visibility {
     }
 }
 
-fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: &Node, policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(node);
     let (branches, _) = util::count_kinds(node, BRANCH_KINDS, policy.max_complexity_nodes);
     let (loops, _) = util::count_kinds(node, LOOP_KINDS, policy.max_complexity_nodes);
@@ -304,7 +305,7 @@ fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
                     .count()
         })
         .unwrap_or(0);
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -481,7 +482,7 @@ fn module_symbol(kind: &str, name: &str, node: &Node, modifiers: Vec<String>) ->
         span: span_of(node),
         visibility: python_visibility(name),
         exported: false,
-        complexity: Complexity::default(),
+        complexity: StructureProxies::default(),
         modifiers,
     }
 }
@@ -525,7 +526,7 @@ fn monkeypatch(left: Node, src: &[u8], right: &str, out: &mut Draft) {
             span: span_of(&left),
             visibility: Visibility::Public,
             exported: false,
-            complexity: Complexity::default(),
+            complexity: StructureProxies::default(),
             modifiers: vec!["monkeypatch".to_string()],
         });
         out.note("monkeypatch", &name);
@@ -728,3 +729,41 @@ fn export_names(file: &str, view: &CorpusView) -> BTreeSet<String> {
     }
     names
 }
+
+/// ADR-007 §4.2 — **Python's decision-point list.** Basis `mccabe-1`.
+///
+/// C-KIND applies exactly as it does for Rust: each kind is in the pinned `tree-sitter-python`
+/// 0.25.0's `node-types.json` and is produced by a file in `crates/fathom-analyze/complexity/python/`.
+///
+/// Units are `function_definition`, **unwrapped from `decorated_definition`** — the unwrap is the
+/// extractor's own (`s1` measured that matching on `function_definition` alone loses every
+/// `@property` and `@dataclass` method), and this pass reads the extractor's symbol list, so it
+/// inherits the fix rather than repeating it. A comprehension's `for` and its filters count, because
+/// a comprehension is the loop it replaces; `not`, a comparison and a walrus do not.
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::Python,
+    units: &["function_definition"],
+    bodyless: &[],
+    // A Python `def` always has a body; there is no signature-only declaration in the language.
+    no_body: |_| false,
+    kinds: &[
+        ("if_statement", "if"),
+        ("elif_clause", "elif — one per test, none for the `else`"),
+        ("except_clause", "each except"),
+        ("case_clause", "each `match` / `case` arm"),
+        ("conditional_expression", "ternary `a if c else b`"),
+        ("for_statement", "for"),
+        ("while_statement", "while"),
+        ("for_in_clause", "comprehension / generator `for`"),
+        ("if_clause", "comprehension / generator filter"),
+    ],
+    conditions: &[],
+    operators: &[(
+        "boolean_operator",
+        &[
+            ("and", "`and` short-circuits"),
+            ("or", "`or` short-circuits"),
+        ],
+    )],
+    tokens: &[],
+};

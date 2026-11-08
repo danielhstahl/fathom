@@ -1,0 +1,33 @@
+{
+  "language": "java",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.6. Java's two branch spellings are the two a by-eye count gets wrong, and the corpus has both: `Base.classic` writes `case 1: case 2:` as fall-through labels, which `tree-sitter-java` 0.23.5 models as one group per label — two labels a reader counts by eye, so two points, and one body does not make them one arm; `Base.kind` writes arrow rules, where `case Integer when radius > 0 ->` is a rule *and* a guard, so two points, and the `when` keyword is the anonymous spelling of the same guard rather than a third thing to count. `Shape.area` (an interface method with no `default`) and `Base.scaled` (`abstract`) are units whose bodies are elsewhere, which makes the file's figure a floor with a count beside it. `Circle` is a `record`: its accessors are the compiler's, its scope carries `synthesised_accessors`, and everything measured beside it is a floor — and its **compact constructor, like every Java constructor in this repository, is not a unit**, because `e3.1`'s normalisation rule says constructors are not symbols and ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by. That is a named gap, not a silent one: it is recorded in the `unit_list` row of the report, beside the mechanical fact that the corpus parses both constructor node kinds and names no unit after either and it is the reason the ADR's §4.6 unit list and the shipped symbol list disagree. A lambda's ternary belongs to the method that contains it (`Base.lambda` is 2), a method reference is nothing, and `instanceof` inside the `if` that tests it is the same test counted once.",
+  "files": {
+    "Worked.java": {
+      "state": "partial",
+      "sum": 27,
+      "max": 11,
+      "reason": "",
+      "marks": ["synthesised_accessors"],
+      "functions": [
+        { "n": "Shape.area", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Shape.name", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Base.scaled", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Base.kind", "kind": "method", "v": 5, "points": 4 },
+        { "n": "Base.classic", "kind": "method", "v": 4, "points": 3 },
+        { "n": "Base.total", "kind": "method", "v": 11, "points": 10 },
+        { "n": "Base.viaValue", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Base.lambda", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Circle.area", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Circle.scaled", "kind": "method", "v": 1, "points": 0 }
+      ]
+    },
+    "notes.txt": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "language_unknown",
+      "functions": []
+    }
+  }
+}

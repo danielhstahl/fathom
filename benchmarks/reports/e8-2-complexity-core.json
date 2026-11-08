@@ -1,0 +1,2841 @@
+{
+  "accuracy_bars": {
+    "ckind": {
+      "required": 0,
+      "sentence": "every node kind a grammar's decision-point list names is in the pinned grammar's node-types.json and is produced by at least one corpus file",
+      "violations": 0
+    },
+    "definitions_the_extractor_can_see": {
+      "measured": 1.0,
+      "required": 1.0,
+      "sentence": "every unit named in a truth.json is met exactly, where the extractor can see the declaration"
+    },
+    "every_miss_a_named_blind_spot": {
+      "required": true,
+      "sentence": "a figure may differ only on a scope ADR-007 §7.3 already marks — a macro, a decorator, a computed method name, a synthesised accessor, a build constraint — and never silently",
+      "violations": 0
+    },
+    "unknown_is_never_zero": {
+      "required": true,
+      "sentence": "a unit or file with no figure carries an ADR-007 §7.1 reason code; the only zeros allowed are `absent_revision` and `no_bodies`, and both are facts rather than refusals",
+      "violations": 0
+    }
+  },
+  "adr": "docs/adr/0007-complexity.md",
+  "basis": "mccabe-1",
+  "ci": {
+    "kind": "scheduled reproduction, plus a path filter so the pull request that changes the counting rules, the corpus or this report is the one that has to reproduce it",
+    "not": "a per-pull-request gate: no figure here moves on a commit that touches no complexity code, and a busy runner is not a regression",
+    "steps": [
+      "cargo run --locked -p fathom-analyze --features langs-all --example complexity_harness -- --repo . --report benchmarks/reports/e8-2-complexity-core.json --check",
+      "cargo test --locked -p fathom-analyze --features langs-all --test complexity"
+    ],
+    "tests": "crates/fathom-analyze/tests/complexity.rs",
+    "waits_for": "e11.2 (`reco-374v.2`), which folds the long tail of report reproductions into one scheduled workflow; this job moves with them by deleting a file",
+    "workflow": ".github/workflows/complexity.yml"
+  },
+  "command": "cargo run -p fathom-analyze --features langs-all --example complexity_harness -- --repo . --report benchmarks/reports/e8-2-complexity-core.json",
+  "corpus": "crates/fathom-analyze/complexity",
+  "grammar_spelling": [
+    {
+      "adr": "ADR-007 §4.1",
+      "basis_effect": "none: both rules count what §4.1 says they count, so mccabe-1 still names it",
+      "note": "ADR-007 §4.1 names an arm guard as `the anonymous if child of a match_arm` and `let … else` as `let_condition belonging to a let_declaration`. tree-sitter-rust 0.24.2 emits neither: the guard is `match_pattern`'s `condition` field and a `let … else` is a `let_declaration` with an `alternative`. Both rules are counted on those real nodes, so every figure is what §4.1 says it is, and `mccabe-1` still names it."
+    },
+    {
+      "adr": "ADR-007 §4.6",
+      "basis_effect": "none",
+      "note": "Java's `else` is an anonymous token (there is no `else_clause` kind in tree-sitter-java 0.23.5) and a pattern-switch guard is a `guard` node whose `when` keyword is anonymous; `guard` is counted and `when` is the same point spelled twice, so it is not counted again. Same counts, same basis."
+    },
+    {
+      "adr": "ADR-007 §4.4",
+      "basis_effect": "none",
+      "note": "Go has no `else_clause` kind either; an `else` is the anonymous token and is worth nothing under §3.4 wherever it is spelled."
+    }
+  ],
+  "languages": [
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 8,
+        "expected": 8,
+        "matched": 8,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 8,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "awkward.rs",
+            "name": "Named.named",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "awkward.rs",
+            "name": "Named.label",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.rs",
+            "name": "fmt",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.rs",
+            "name": "awkward",
+            "reason": "node_budget"
+          },
+          {
+            "file": "traits.rs",
+            "name": "Shape.area",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "traits.rs",
+            "name": "Shape.name",
+            "reason": "node_budget"
+          },
+          {
+            "file": "traits.rs",
+            "name": "f64.area",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rs",
+            "name": "classify",
+            "reason": "node_budget"
+          }
+        ],
+        "refused_count": 8
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 13,
+        "produced_kinds": 126,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 3809,
+        "files": 6
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 14,
+        "states": {
+          "measured": 2,
+          "partial": 2,
+          "unavailable": 2
+        },
+        "sum": 27
+      },
+      "files": [
+        {
+          "floors": 0,
+          "language": "rust",
+          "marks": [],
+          "max": 14,
+          "measured": 3,
+          "path": "awkward.rs",
+          "printed": "~16 (1 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 16,
+          "units": [
+            {
+              "end_line": 12,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Named.named",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 12
+            },
+            {
+              "end_line": 16,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Named.label",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 14
+            },
+            {
+              "end_line": 22,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "fmt",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 20
+            },
+            {
+              "end_line": 61,
+              "figure": 14,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "awkward",
+              "points": [
+                {
+                  "kind": "let_declaration",
+                  "line": 29,
+                  "rule": "`let … else` — a failed pattern is an exit on a test"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 34,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 35,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 36,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "match_pattern",
+                  "line": 36,
+                  "rule": "arm guard — a guarded arm is two tests"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 37,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "for_expression",
+                  "line": 39,
+                  "rule": "for loop"
+                },
+                {
+                  "kind": "while_expression",
+                  "line": 40,
+                  "rule": "while loop"
+                },
+                {
+                  "kind": "loop_expression",
+                  "line": 43,
+                  "rule": "loop"
+                },
+                {
+                  "kind": "if_expression",
+                  "line": 47,
+                  "rule": "if / else if / if let — one per test"
+                },
+                {
+                  "kind": "if_expression",
+                  "line": 50,
+                  "rule": "if / else if / if let — one per test"
+                },
+                {
+                  "kind": "if_expression",
+                  "line": 54,
+                  "rule": "if / else if / if let — one per test"
+                },
+                {
+                  "kind": "if_expression",
+                  "line": 57,
+                  "rule": "if / else if / if let — one per test"
+                }
+              ],
+              "printed": "14",
+              "reason": null,
+              "start_line": 28
+            }
+          ],
+          "unmeasured": 1
+        },
+        {
+          "floors": 0,
+          "language": "rust",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "broken.rs",
+          "printed": "? complexity unavailable: the parse reported 3 errors and returned no structure",
+          "reason": "parse_failed",
+          "state": "unavailable",
+          "sum": null,
+          "units": [],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "rust",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "constants.rs",
+          "printed": "0",
+          "reason": "no_bodies",
+          "state": "measured",
+          "sum": 0,
+          "units": [],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "unknown",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "notes.txt",
+          "printed": "? complexity unavailable: not one of the grammars fathom reads",
+          "reason": "language_unknown",
+          "state": "unavailable",
+          "sum": null,
+          "units": [],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "rust",
+          "marks": [],
+          "max": 2,
+          "measured": 2,
+          "path": "traits.rs",
+          "printed": "~3 (1 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 3,
+          "units": [
+            {
+              "end_line": 8,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.area",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 8
+            },
+            {
+              "end_line": 13,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.name",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 11
+            },
+            {
+              "end_line": 23,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "f64.area",
+              "points": [
+                {
+                  "kind": "if_expression",
+                  "line": 18,
+                  "rule": "if / else if / if let — one per test"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 17
+            }
+          ],
+          "unmeasured": 1
+        },
+        {
+          "floors": 0,
+          "language": "rust",
+          "marks": [],
+          "max": 8,
+          "measured": 1,
+          "path": "worked.rs",
+          "printed": "8",
+          "reason": null,
+          "state": "measured",
+          "sum": 8,
+          "units": [
+            {
+              "end_line": 19,
+              "figure": 8,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "classify",
+              "points": [
+                {
+                  "kind": "if_expression",
+                  "line": 7,
+                  "rule": "if / else if / if let — one per test"
+                },
+                {
+                  "kind": "&&",
+                  "line": 7,
+                  "rule": "short-circuit &&"
+                },
+                {
+                  "kind": "if_expression",
+                  "line": 9,
+                  "rule": "if / else if / if let — one per test"
+                },
+                {
+                  "kind": "||",
+                  "line": 9,
+                  "rule": "short-circuit ||"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 13,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 14,
+                  "rule": "each match arm, the wildcard arm included"
+                },
+                {
+                  "kind": "match_arm",
+                  "line": 15,
+                  "rule": "each match arm, the wildcard arm included"
+                }
+              ],
+              "printed": "8",
+              "reason": null,
+              "start_line": 6
+            }
+          ],
+          "unmeasured": 0
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-rust",
+        "kinds_produced_by_corpus": 126,
+        "node_types": 278,
+        "version": "0.24.2"
+      },
+      "language": "rust",
+      "reason_codes_exercised": [
+        "body_not_visible",
+        "language_unknown",
+        "no_bodies",
+        "parse_failed"
+      ],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "rust",
+        "notes": "Hand-authored against ADR-007 §4.1 by counting the constructs in each file the way the ADR says to count them, then adjudicating every disagreement with the harness dump line by line. A figure of `null` is an *expected unknown*, with the §7.1 reason code beside it; `0` is never a unit's figure, and the two zeros this file does use are file-level (`constants.rs` declares nothing callable) and named as facts. Points are the decision points counted, so a base of 1 that silently moved to 2 could not hide behind a matching total. `worked.rs` is §4.7's example verbatim: two ifs, two short-circuits, three arms, plus one. `awkward.rs` carries the tested exits and the folded scopes: a closure's `if` and a nested `fn`'s `if` are the enclosing function's problem (§3.3), a `match` arm written `1 | 2` is one arm not two (§3.4), a guarded arm is two tests, a `let … else` is one, and `unsafe`, `async`, `.await`, a `panic!` and a `return` are none. `traits.rs` is the body-not-visible case: one third of the file's units has its branches in another file, so the file's figure is a floor with a count, not a clean number and not that unit counted as a zero. `broken.rs` is what a refusal must look like — a `?` with a reason, never a `0` that reads as 'simple'."
+      },
+      "unit_list": {
+        "adr_units": [
+          "function_item",
+          "function_signature_item"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "",
+            "note": "none found: both §4.1 unit kinds arrive as units — `function_item` as `awkward` and `function_signature_item` as `Named.named`, the second with `body_not_visible` — and a `closure_expression` arrives as no unit anywhere, which is what §3.3 asks for (its `if` is counted in the function that lexically encloses it, visible on `awkward`'s point list)."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "function_item",
+            "produced": true
+          },
+          {
+            "kind": "function_signature_item",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "fn": 2,
+          "method": 6
+        }
+      },
+      "unknown_never_zero": true
+    },
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 8,
+        "expected": 8,
+        "matched": 8,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 8,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "awkward.py",
+            "name": "Box.scale",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.py",
+            "name": "outer",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.py",
+            "name": "Registry.lookup",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.py",
+            "name": "Registry.matched",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.py",
+            "name": "Registry.each",
+            "reason": "node_budget"
+          },
+          {
+            "file": "awkward.py",
+            "name": "spooled",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.py",
+            "name": "f",
+            "reason": "node_budget"
+          }
+        ],
+        "refused_count": 7
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 13,
+        "produced_kinds": 101,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 2852,
+        "files": 3
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 9,
+        "states": {
+          "measured": 1,
+          "partial": 1,
+          "unavailable": 1
+        },
+        "sum": 34
+      },
+      "files": [
+        {
+          "floors": 2,
+          "language": "python",
+          "marks": [
+            "decorated",
+            "synthesised_accessors"
+          ],
+          "max": 6,
+          "measured": 7,
+          "path": "awkward.py",
+          "printed": "~25 (0 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 25,
+          "units": [
+            {
+              "end_line": 19,
+              "figure": 1,
+              "floor": true,
+              "kind": "method",
+              "marks": [
+                "decorated",
+                "synthesised_accessors"
+              ],
+              "name": "Box.area",
+              "points": [],
+              "printed": "~1",
+              "reason": null,
+              "start_line": 18
+            },
+            {
+              "end_line": 26,
+              "figure": 5,
+              "floor": true,
+              "kind": "method",
+              "marks": [
+                "decorated",
+                "synthesised_accessors"
+              ],
+              "name": "Box.scale",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 22,
+                  "rule": "if"
+                },
+                {
+                  "kind": "or",
+                  "line": 22,
+                  "rule": "`or` short-circuits"
+                },
+                {
+                  "kind": "elif_clause",
+                  "line": 24,
+                  "rule": "elif — one per test, none for the `else`"
+                },
+                {
+                  "kind": "and",
+                  "line": 24,
+                  "rule": "`and` short-circuits"
+                }
+              ],
+              "printed": "~5",
+              "reason": null,
+              "start_line": 21
+            },
+            {
+              "end_line": 35,
+              "figure": 6,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "outer",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 31,
+                  "rule": "if"
+                },
+                {
+                  "kind": "for_in_clause",
+                  "line": 32,
+                  "rule": "comprehension / generator `for`"
+                },
+                {
+                  "kind": "if_clause",
+                  "line": 32,
+                  "rule": "comprehension / generator filter"
+                },
+                {
+                  "kind": "for_in_clause",
+                  "line": 35,
+                  "rule": "comprehension / generator `for`"
+                },
+                {
+                  "kind": "if_clause",
+                  "line": 35,
+                  "rule": "comprehension / generator filter"
+                }
+              ],
+              "printed": "6",
+              "reason": null,
+              "start_line": 29
+            },
+            {
+              "end_line": 55,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Registry.lookup",
+              "points": [
+                {
+                  "kind": "except_clause",
+                  "line": 50,
+                  "rule": "each except"
+                },
+                {
+                  "kind": "except_clause",
+                  "line": 52,
+                  "rule": "each except"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 47
+            },
+            {
+              "end_line": 64,
+              "figure": 5,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Registry.matched",
+              "points": [
+                {
+                  "kind": "case_clause",
+                  "line": 59,
+                  "rule": "each `match` / `case` arm"
+                },
+                {
+                  "kind": "case_clause",
+                  "line": 61,
+                  "rule": "each `match` / `case` arm"
+                },
+                {
+                  "kind": "if_clause",
+                  "line": 61,
+                  "rule": "comprehension / generator filter"
+                },
+                {
+                  "kind": "case_clause",
+                  "line": 63,
+                  "rule": "each `match` / `case` arm"
+                }
+              ],
+              "printed": "5",
+              "reason": null,
+              "start_line": 57
+            },
+            {
+              "end_line": 70,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Registry.each",
+              "points": [
+                {
+                  "kind": "for_statement",
+                  "line": 67,
+                  "rule": "for"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 66
+            },
+            {
+              "end_line": 85,
+              "figure": 3,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "spooled",
+              "points": [
+                {
+                  "kind": "while_statement",
+                  "line": 80,
+                  "rule": "while"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 81,
+                  "rule": "if"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 73
+            }
+          ],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "unknown",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "notes.txt",
+          "printed": "? complexity unavailable: not one of the grammars fathom reads",
+          "reason": "language_unknown",
+          "state": "unavailable",
+          "sum": null,
+          "units": [],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "python",
+          "marks": [],
+          "max": 9,
+          "measured": 1,
+          "path": "worked.py",
+          "printed": "9",
+          "reason": null,
+          "state": "measured",
+          "sum": 9,
+          "units": [
+            {
+              "end_line": 16,
+              "figure": 9,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "f",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 9,
+                  "rule": "if"
+                },
+                {
+                  "kind": "and",
+                  "line": 9,
+                  "rule": "`and` short-circuits"
+                },
+                {
+                  "kind": "for_in_clause",
+                  "line": 10,
+                  "rule": "comprehension / generator `for`"
+                },
+                {
+                  "kind": "if_clause",
+                  "line": 10,
+                  "rule": "comprehension / generator filter"
+                },
+                {
+                  "kind": "elif_clause",
+                  "line": 11,
+                  "rule": "elif — one per test, none for the `else`"
+                },
+                {
+                  "kind": "or",
+                  "line": 11,
+                  "rule": "`or` short-circuits"
+                },
+                {
+                  "kind": "except_clause",
+                  "line": 14,
+                  "rule": "each except"
+                },
+                {
+                  "kind": "conditional_expression",
+                  "line": 16,
+                  "rule": "ternary `a if c else b`"
+                }
+              ],
+              "printed": "9",
+              "reason": null,
+              "start_line": 8
+            }
+          ],
+          "unmeasured": 0
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-python",
+        "kinds_produced_by_corpus": 101,
+        "node_types": 213,
+        "version": "0.25.0"
+      },
+      "language": "python",
+      "reason_codes_exercised": [
+        "language_unknown"
+      ],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "python",
+        "notes": "Hand-authored against ADR-007 §4.2. `worked.py` is §4.7's example verbatim: `if`, `and`, a comprehension's `for` and its filter, `elif`, `or`, one `except`, a ternary, plus one — 9, the number the ADR argues for in prose. `awkward.py` carries the four things Python gets wrong in a naive counter: a `@dataclass` class body (the extractor unwraps `decorated_definition`, so `Box.area` and `Box.scale` are units, and the mark makes their figures floors), a `def` inside a `def` (not a unit — its `if` and its comprehension belong to `outer`, which is why `outer` is 6 and there is no `outer.inner` row), a `lambda` at module scope (a ternary inside it is no unit's business: it is not nameable, not keyable, not diffable), and a `class` body with a `for` and a ternary in it (a container, not a body of control flow, §3.1). Comprehension filters count as the loop they replace; `try`, `finally`, `with`, `assert` and `yield` count 0; `case [a, b] if guard` is two tests, and the grammar spells that guard with the same `if_clause` node it uses for a comprehension filter — one node kind, one point, whichever role it is playing. `spooled` exists for C-KIND's sake as much as Python's: `while_statement` was declared and nothing in the corpus produced one, and a `while … else` is the pair worth having anyway, because the `else` of a loop that ran to exhaustion is worth nothing and a counter that counts it is wrong by one on every Python file that uses the spelling."
+      },
+      "unit_list": {
+        "adr_units": [
+          "function_definition"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "",
+            "note": "none found: `decorated_definition` is unwrapped before this pass sees a symbol, so a `@dataclass` method is a unit (`Box.scale`) with its scope marked `decorated`; neither a nested `def` nor a `lambda` reaches the symbol list, which is §4.2's rule and not a limitation — `outer` carries the nested `def`'s `if` and the comprehension's filter."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "function_definition",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "fn": 3,
+          "method": 5
+        }
+      },
+      "unknown_never_zero": true
+    },
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 15,
+        "expected": 15,
+        "matched": 15,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 15,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "decls.d.ts",
+            "name": "read",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "decls.d.ts",
+            "name": "write",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "worked.ts",
+            "name": "Shape.area",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "worked.ts",
+            "name": "Shape.describe",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "worked.ts",
+            "name": "Figure.area",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "worked.ts",
+            "name": "Figure.describe",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "classify",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "loops",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "guarded",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "counted",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "asExpression",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "arrowed",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.ts",
+            "name": "overlapped",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "worked.ts",
+            "name": "overlapped",
+            "reason": "body_not_visible"
+          }
+        ],
+        "refused_count": 14
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 21,
+        "produced_kinds": 119,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 2743,
+        "files": 3
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 9,
+        "states": {
+          "partial": 1,
+          "unavailable": 2
+        },
+        "sum": 33
+      },
+      "files": [
+        {
+          "floors": 0,
+          "language": "typescript",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "decls.d.ts",
+          "printed": "? complexity unavailable: this function is declared without a body here — the body, and therefore its branches, live in another file",
+          "reason": "body_not_visible",
+          "state": "unavailable",
+          "sum": null,
+          "units": [
+            {
+              "end_line": 4,
+              "figure": null,
+              "floor": false,
+              "kind": "fn",
+              "marks": [
+                "ambient_merge"
+              ],
+              "name": "read",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 4
+            },
+            {
+              "end_line": 6,
+              "figure": null,
+              "floor": false,
+              "kind": "fn",
+              "marks": [
+                "ambient_merge"
+              ],
+              "name": "write",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 6
+            }
+          ],
+          "unmeasured": 2
+        },
+        {
+          "floors": 0,
+          "language": "unknown",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "notes.txt",
+          "printed": "? complexity unavailable: not one of the grammars fathom reads",
+          "reason": "language_unknown",
+          "state": "unavailable",
+          "sum": null,
+          "units": [],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "typescript",
+          "marks": [],
+          "max": 9,
+          "measured": 8,
+          "path": "worked.ts",
+          "printed": "~33 (5 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 33,
+          "units": [
+            {
+              "end_line": 7,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.area",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 7
+            },
+            {
+              "end_line": 8,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.describe",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 8
+            },
+            {
+              "end_line": 14,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Figure.area",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 14
+            },
+            {
+              "end_line": 21,
+              "figure": 4,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Figure.describe",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 17,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "||",
+                  "line": 17,
+                  "rule": "short-circuit ||"
+                },
+                {
+                  "kind": "ternary_expression",
+                  "line": 20,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "4",
+              "reason": null,
+              "start_line": 16
+            },
+            {
+              "end_line": 40,
+              "figure": 9,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "classify",
+              "points": [
+                {
+                  "kind": "switch_case",
+                  "line": 26,
+                  "rule": "each case"
+                },
+                {
+                  "kind": "switch_case",
+                  "line": 27,
+                  "rule": "each case"
+                },
+                {
+                  "kind": "switch_case",
+                  "line": 29,
+                  "rule": "each case"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 33,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "&&",
+                  "line": 33,
+                  "rule": "short-circuit &&"
+                },
+                {
+                  "kind": "switch_default",
+                  "line": 37,
+                  "rule": "a written default"
+                },
+                {
+                  "kind": "??",
+                  "line": 38,
+                  "rule": "nullish coalescing ??"
+                },
+                {
+                  "kind": "optional_chain",
+                  "line": 38,
+                  "rule": "optional chaining `?.`"
+                }
+              ],
+              "printed": "9",
+              "reason": null,
+              "start_line": 24
+            },
+            {
+              "end_line": 67,
+              "figure": 9,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "loops",
+              "points": [
+                {
+                  "kind": "for_in_statement",
+                  "line": 44,
+                  "rule": "for…in / for…of"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 45,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "for_in_statement",
+                  "line": 49,
+                  "rule": "for…in / for…of"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 50,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "for_statement",
+                  "line": 54,
+                  "rule": "for"
+                },
+                {
+                  "kind": "for_in_statement",
+                  "line": 57,
+                  "rule": "for…in / for…of"
+                },
+                {
+                  "kind": "while_statement",
+                  "line": 60,
+                  "rule": "while"
+                },
+                {
+                  "kind": "do_statement",
+                  "line": 63,
+                  "rule": "do"
+                }
+              ],
+              "printed": "9",
+              "reason": null,
+              "start_line": 42
+            },
+            {
+              "end_line": 80,
+              "figure": 3,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "guarded",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 71,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "catch_clause",
+                  "line": 75,
+                  "rule": "each catch"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 69
+            },
+            {
+              "end_line": 88,
+              "figure": 3,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "counted",
+              "points": [
+                {
+                  "kind": "for_in_statement",
+                  "line": 83,
+                  "rule": "for…in / for…of"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 84,
+                  "rule": "if / else if"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 82
+            },
+            {
+              "end_line": 92,
+              "figure": 2,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "asExpression",
+              "points": [
+                {
+                  "kind": "ternary_expression",
+                  "line": 91,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 90
+            },
+            {
+              "end_line": 94,
+              "figure": 2,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "arrowed",
+              "points": [
+                {
+                  "kind": "ternary_expression",
+                  "line": 94,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 94
+            },
+            {
+              "end_line": 96,
+              "figure": null,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "overlapped",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 96
+            },
+            {
+              "end_line": 97,
+              "figure": null,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "overlapped",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 97
+            },
+            {
+              "end_line": 100,
+              "figure": 1,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "overlapped",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 98
+            }
+          ],
+          "unmeasured": 5
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-typescript",
+        "kinds_produced_by_corpus": 119,
+        "node_types": 316,
+        "version": "0.23.2"
+      },
+      "language": "typescript",
+      "reason_codes_exercised": [
+        "body_not_visible",
+        "language_unknown"
+      ],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "typescript",
+        "notes": "Hand-authored against ADR-007 §4.3. The awkward half of TypeScript is not its branches, it is its signatures: an interface method, an `abstract` method, an overload signature and a `.d.ts` `declare function` are units whose bodies are not in the file, so they are `?` with `body_not_visible` and the file prints a floor with a count. Five of `worked.ts`'s thirteen units are like that, which is a real property of a `.ts` file with a public interface and nothing to apologise for; `decls.d.ts` goes further and prints `?` for the whole file, because *nothing* in it is countable and every unit names the same reason, so the file's `?` is that reason rather than a bare glyph (§7.1). `for…of` and `for…in` are the same node kind in this grammar (`for_in_statement`) and the same point. `?.` is a node here (`optional_chain`) and `??` and `&&` are operators — all three are tests, and a counter that counted `binary_expression` instead of the operator's spelling would have counted every `<` in the file. Two `case` labels stacked on one body (`case 0: case 1:`) are two arms, which is what a reader counting arms by eye writes down. `arrowed` is a `const` bound to an arrow function, and `e3.1`'s export rule names it, so it is a unit (see the `unit_list` row in the report): the ADR's 'an arrow is not a unit' is about the anonymous ones, whose branches belong to the function that lexically encloses them. The three `overlapped` rows are two signatures and one implementation sharing a dotted name, which the harness matches in source order, position by position."
+      },
+      "unit_list": {
+        "adr_units": [
+          "function_declaration",
+          "function_expression",
+          "method_definition",
+          "generator_function_declaration",
+          "method_signature",
+          "abstract_method_signature",
+          "function_signature"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "arrow_function",
+            "note": "§4.3 folds an arrow function into its enclosing scope, and this pass does too when the arrow is anonymous — but `const arrowed = (value) => …` is a unit, because `e3.1`'s export-naming rule names the binding and D1 makes the extractor's list the identity. So `worked.ts` prints one more unit than §4.3 read literally would, at V(G)=2, and the difference is `arrowed`, not a missing branch anywhere."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "function_declaration",
+            "produced": true
+          },
+          {
+            "kind": "function_expression",
+            "produced": true
+          },
+          {
+            "kind": "method_definition",
+            "produced": true
+          },
+          {
+            "kind": "generator_function_declaration",
+            "produced": true
+          },
+          {
+            "kind": "method_signature",
+            "produced": true
+          },
+          {
+            "kind": "abstract_method_signature",
+            "produced": true
+          },
+          {
+            "kind": "function_signature",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "fn": 11,
+          "method": 4
+        }
+      },
+      "unknown_never_zero": true
+    },
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 5,
+        "expected": 5,
+        "matched": 5,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 5,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "limited.go",
+            "name": "Init",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.go",
+            "name": "Shape.Area",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.go",
+            "name": "Route",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.go",
+            "name": "Loops",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.go",
+            "name": "Extern",
+            "reason": "body_not_visible"
+          }
+        ],
+        "refused_count": 5
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 11,
+        "produced_kinds": 95,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 2228,
+        "files": 2
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 10,
+        "states": {
+          "partial": 2
+        },
+        "sum": 29
+      },
+      "files": [
+        {
+          "floors": 1,
+          "language": "go",
+          "marks": [
+            "build_constraint"
+          ],
+          "max": 3,
+          "measured": 1,
+          "path": "limited.go",
+          "printed": "~3 (0 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 3,
+          "units": [
+            {
+              "end_line": 14,
+              "figure": 3,
+              "floor": true,
+              "kind": "fn",
+              "marks": [
+                "build_constraint"
+              ],
+              "name": "Init",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 10,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "||",
+                  "line": 10,
+                  "rule": "short-circuit ||"
+                }
+              ],
+              "printed": "~3",
+              "reason": null,
+              "start_line": 9
+            }
+          ],
+          "unmeasured": 0
+        },
+        {
+          "floors": 0,
+          "language": "go",
+          "marks": [],
+          "max": 10,
+          "measured": 3,
+          "path": "worked.go",
+          "printed": "~26 (1 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 26,
+          "units": [
+            {
+              "end_line": 31,
+              "figure": 8,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.Area",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 18,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "&&",
+                  "line": 18,
+                  "rule": "short-circuit &&"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 20,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "||",
+                  "line": 20,
+                  "rule": "short-circuit ||"
+                },
+                {
+                  "kind": "expression_case",
+                  "line": 24,
+                  "rule": "each case of an expression switch"
+                },
+                {
+                  "kind": "expression_case",
+                  "line": 26,
+                  "rule": "each case of an expression switch"
+                },
+                {
+                  "kind": "default_case",
+                  "line": 28,
+                  "rule": "a written default"
+                }
+              ],
+              "printed": "8",
+              "reason": null,
+              "start_line": 17
+            },
+            {
+              "end_line": 57,
+              "figure": 10,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "Route",
+              "points": [
+                {
+                  "kind": "type_case",
+                  "line": 36,
+                  "rule": "each case of a type switch"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 37,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "type_case",
+                  "line": 40,
+                  "rule": "each case of a type switch"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 41,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "default_case",
+                  "line": 44,
+                  "rule": "a written default"
+                },
+                {
+                  "kind": "communication_case",
+                  "line": 48,
+                  "rule": "each comm clause of a select"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 49,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "communication_case",
+                  "line": 52,
+                  "rule": "each comm clause of a select"
+                },
+                {
+                  "kind": "default_case",
+                  "line": 54,
+                  "rule": "a written default"
+                }
+              ],
+              "printed": "10",
+              "reason": null,
+              "start_line": 34
+            },
+            {
+              "end_line": 84,
+              "figure": 8,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "Loops",
+              "points": [
+                {
+                  "kind": "for_statement",
+                  "line": 62,
+                  "rule": "the one loop, in every shape it takes"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 63,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 66,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                },
+                {
+                  "kind": "for_statement",
+                  "line": 71,
+                  "rule": "the one loop, in every shape it takes"
+                },
+                {
+                  "kind": "for_statement",
+                  "line": 74,
+                  "rule": "the one loop, in every shape it takes"
+                },
+                {
+                  "kind": "for_statement",
+                  "line": 77,
+                  "rule": "the one loop, in every shape it takes"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 79,
+                  "rule": "if / else if, `if v, ok := m[k]; ok` included"
+                }
+              ],
+              "printed": "8",
+              "reason": null,
+              "start_line": 60
+            },
+            {
+              "end_line": 88,
+              "figure": null,
+              "floor": false,
+              "kind": "fn",
+              "marks": [],
+              "name": "Extern",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 88
+            }
+          ],
+          "unmeasured": 1
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-go",
+        "kinds_produced_by_corpus": 95,
+        "node_types": 188,
+        "version": "0.25.0"
+      },
+      "language": "go",
+      "reason_codes_exercised": [
+        "body_not_visible"
+      ],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "go",
+        "notes": "Hand-authored against ADR-007 §4.4. Go is the language where the ADR's refusals do the most work: the `switch`, `switch type` and `select` *headers* count nothing and their arms count one each, so `Route` is 10 because it has nine arms and tests, not because it has three statements; and Go has one loop, so `Loops` is 8 from four `for`s and three `if`s no matter which of the four spellings each one uses. The `defer`, `go`, `return`, `break`, `continue` and `fallthrough` in `Loops` are exits and count 0 — the branches that reach them are already in the figure. `Extern` is a Go declaration with no body at all (an assembly or external implementation), which is `body_not_visible` rather than a unit with one path: the paths are in another file, and a `1` there would be a claim about code this file does not contain. `limited.go` carries a `//go:build` line, so the extractor's `build_constraint` mark makes its figure a floor — both files of a constrained pair are measured and neither may claim to be the whole story (ADR-007 §4.4)."
+      },
+      "unit_list": {
+        "adr_units": [
+          "function_declaration",
+          "method_declaration"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "",
+            "note": "none found: both §4.4 unit kinds arrive, and a `func` literal is no unit — `Loops`'s defer-literal increments its `total` and no branch, and the `extern`-style bodyless declaration is `Extern`, unknown with `body_not_visible` rather than a function of one path."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "function_declaration",
+            "produced": true
+          },
+          {
+            "kind": "method_declaration",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "fn": 4,
+          "method": 1
+        }
+      },
+      "unknown_never_zero": true
+    },
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 23,
+        "expected": 23,
+        "matched": 23,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 23,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "branches.rb",
+            "name": "Modifiers.drain",
+            "reason": "node_budget"
+          },
+          {
+            "file": "branches.rb",
+            "name": "Modifiers.loose",
+            "reason": "node_budget"
+          },
+          {
+            "file": "branches.rb",
+            "name": "Modifiers.anyway",
+            "reason": "node_budget"
+          },
+          {
+            "file": "branches.rb",
+            "name": "Modifiers.only",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rb",
+            "name": "Shape.describe",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rb",
+            "name": "Shape.kind",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rb",
+            "name": "Shape.matched",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rb",
+            "name": "Shape.each",
+            "reason": "node_budget"
+          },
+          {
+            "file": "worked.rb",
+            "name": "Shape.build",
+            "reason": "node_budget"
+          }
+        ],
+        "refused_count": 9
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 25,
+        "produced_kinds": 88,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 4667,
+        "files": 2
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 6,
+        "states": {
+          "measured": 1,
+          "partial": 1
+        },
+        "sum": 58
+      },
+      "files": [
+        {
+          "floors": 0,
+          "language": "ruby",
+          "marks": [],
+          "max": 3,
+          "measured": 10,
+          "path": "branches.rb",
+          "printed": "25",
+          "reason": null,
+          "state": "measured",
+          "sum": 25,
+          "units": [
+            {
+              "end_line": 18,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.trim",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 17,
+                  "rule": "`x if y` — a modifier is still a test"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 16
+            },
+            {
+              "end_line": 23,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.skip",
+              "points": [
+                {
+                  "kind": "unless_modifier",
+                  "line": 21,
+                  "rule": "`x unless y`"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 20
+            },
+            {
+              "end_line": 28,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.consume",
+              "points": [
+                {
+                  "kind": "while_modifier",
+                  "line": 26,
+                  "rule": "`x while y`"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 25
+            },
+            {
+              "end_line": 33,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.drain",
+              "points": [
+                {
+                  "kind": "until_modifier",
+                  "line": 31,
+                  "rule": "`x unless y` form of the same test"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 30
+            },
+            {
+              "end_line": 42,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.either",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 39,
+                  "rule": "`x if y` — a modifier is still a test"
+                },
+                {
+                  "kind": "&&",
+                  "line": 39,
+                  "rule": "short-circuit &&"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 38
+            },
+            {
+              "end_line": 48,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.neither",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 45,
+                  "rule": "`x if y` — a modifier is still a test"
+                },
+                {
+                  "kind": "||",
+                  "line": 45,
+                  "rule": "short-circuit ||"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 44
+            },
+            {
+              "end_line": 58,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.loose",
+              "points": [
+                {
+                  "kind": "if",
+                  "line": 53,
+                  "rule": "if"
+                },
+                {
+                  "kind": "and",
+                  "line": 53,
+                  "rule": "low-precedence and"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 52
+            },
+            {
+              "end_line": 66,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.anyway",
+              "points": [
+                {
+                  "kind": "if",
+                  "line": 61,
+                  "rule": "if"
+                },
+                {
+                  "kind": "or",
+                  "line": 61,
+                  "rule": "low-precedence or"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 60
+            },
+            {
+              "end_line": 72,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.length_of",
+              "points": [
+                {
+                  "kind": "&.",
+                  "line": 71,
+                  "rule": "safe navigation `&.` — a test wearing a call"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 70
+            },
+            {
+              "end_line": 83,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Modifiers.only",
+              "points": [
+                {
+                  "kind": "in_clause",
+                  "line": 78,
+                  "rule": "each `case`/`in` arm"
+                },
+                {
+                  "kind": "unless_guard",
+                  "line": 78,
+                  "rule": "an `unless` guard on an `in`"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 76
+            }
+          ],
+          "unmeasured": 0
+        },
+        {
+          "floors": 1,
+          "language": "ruby",
+          "marks": [
+            "dynamic_method",
+            "monkeypatch"
+          ],
+          "max": 6,
+          "measured": 13,
+          "path": "worked.rb",
+          "printed": "~33 (0 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 33,
+          "units": [
+            {
+              "end_line": 5,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.name",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 5
+            },
+            {
+              "end_line": 5,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.name=",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 5
+            },
+            {
+              "end_line": 13,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.perimeter",
+              "points": [
+                {
+                  "kind": "if",
+                  "line": 8,
+                  "rule": "if"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 7
+            },
+            {
+              "end_line": 18,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.initialize",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 15
+            },
+            {
+              "end_line": 31,
+              "figure": 4,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.describe",
+              "points": [
+                {
+                  "kind": "if",
+                  "line": 21,
+                  "rule": "if"
+                },
+                {
+                  "kind": "elsif",
+                  "line": 23,
+                  "rule": "elsif"
+                },
+                {
+                  "kind": "unless",
+                  "line": 26,
+                  "rule": "unless"
+                }
+              ],
+              "printed": "4",
+              "reason": null,
+              "start_line": 20
+            },
+            {
+              "end_line": 35,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.short?",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 33
+            },
+            {
+              "end_line": 39,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.label",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 38,
+                  "rule": "`x if y` — a modifier is still a test"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 37
+            },
+            {
+              "end_line": 44,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.risky",
+              "points": [
+                {
+                  "kind": "rescue_modifier",
+                  "line": 42,
+                  "rule": "`x rescue y`"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 41
+            },
+            {
+              "end_line": 55,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.kind",
+              "points": [
+                {
+                  "kind": "when",
+                  "line": 48,
+                  "rule": "each `when`, one per clause, not per value"
+                },
+                {
+                  "kind": "when",
+                  "line": 50,
+                  "rule": "each `when`, one per clause, not per value"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 46
+            },
+            {
+              "end_line": 66,
+              "figure": 5,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.matched",
+              "points": [
+                {
+                  "kind": "in_clause",
+                  "line": 59,
+                  "rule": "each `case`/`in` arm"
+                },
+                {
+                  "kind": "in_clause",
+                  "line": 61,
+                  "rule": "each `case`/`in` arm"
+                },
+                {
+                  "kind": "if_guard",
+                  "line": 61,
+                  "rule": "an `in` guard"
+                },
+                {
+                  "kind": "in_clause",
+                  "line": 63,
+                  "rule": "each `case`/`in` arm"
+                }
+              ],
+              "printed": "5",
+              "reason": null,
+              "start_line": 57
+            },
+            {
+              "end_line": 82,
+              "figure": 6,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.each",
+              "points": [
+                {
+                  "kind": "for",
+                  "line": 69,
+                  "rule": "for"
+                },
+                {
+                  "kind": "if_modifier",
+                  "line": 70,
+                  "rule": "`x if y` — a modifier is still a test"
+                },
+                {
+                  "kind": "while",
+                  "line": 75,
+                  "rule": "while"
+                },
+                {
+                  "kind": "until",
+                  "line": 78,
+                  "rule": "until"
+                },
+                {
+                  "kind": "if_modifier",
+                  "line": 81,
+                  "rule": "`x if y` — a modifier is still a test"
+                }
+              ],
+              "printed": "6",
+              "reason": null,
+              "start_line": 68
+            },
+            {
+              "end_line": 89,
+              "figure": 3,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.build",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 85,
+                  "rule": "`x if y` — a modifier is still a test"
+                },
+                {
+                  "kind": "conditional",
+                  "line": 88,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "3",
+              "reason": null,
+              "start_line": 84
+            },
+            {
+              "end_line": 102,
+              "figure": 2,
+              "floor": true,
+              "kind": "method",
+              "marks": [
+                "monkeypatch"
+              ],
+              "name": "Extras.extra",
+              "points": [
+                {
+                  "kind": "if_modifier",
+                  "line": 99,
+                  "rule": "`x if y` — a modifier is still a test"
+                }
+              ],
+              "printed": "~2",
+              "reason": null,
+              "start_line": 98
+            }
+          ],
+          "unmeasured": 0
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-ruby",
+        "kinds_produced_by_corpus": 88,
+        "node_types": 227,
+        "version": "0.23.1"
+      },
+      "language": "ruby",
+      "reason_codes_exercised": [],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "ruby",
+        "notes": "Hand-authored against ADR-007 §4.5. Ruby spells a test in more shapes than the other five grammars put together, and the modifier forms are the ones a by-eye count misses, so `Shape.label` (`x if y`), `Shape.risky` (`x rescue y`) and the `if`/`unless`/`while` modifiers on `Shape.each` each earn a point even though they are one line long and read as an afterthought. `case`/`when` counts one point per `when` clause, so `when 0, 1` is one arm and not two (§3.4), and the trailing `else` is none. `case`/`in` counts each `in` clause, plus one for the guard on it — `in Integer => count if count.positive?` is two tests. Safe navigation is a test wearing a call, so it is a token rule (`&.`) rather than a node kind: that is how this grammar spells it. The three scope facts are the ones `s1` measured as irreducible and ADR-007 §7.3 turned into marks: `Extras.class_eval` writes a method into a class this file does not declare (`monkeypatch`), `Computed` computes method names from an array at run time (`dynamic_method`), and `attr_accessor :name` yields two named members over one node — those two *are* in the file, so they are units with figures of their own, and each scores 1 because an accessor has one path. Two units therefore share a span, and the points in it are counted once, for the first of them. `branches.rb` is a file that C-KIND wrote: the first pass of this corpus declared `while_modifier`, `until_modifier`, `unless_modifier`, `unless_guard`, `&&`, `||`, `and`, `or` and `&.` and produced none of them from any file, which is the §4 failure the ADR spells out: a kind nobody exercises is a kind whose counting code has never run. Each method in it earns exactly one of those spellings and nothing else, so a figure of 2 or 3 beside it is a claim about one construct, not about a method that happens to have four things in it."
+      },
+      "unit_list": {
+        "adr_units": [
+          "method",
+          "singleton_method"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "",
+            "note": "one, and it runs the other way: `attr_accessor :name` makes the extractor emit *two* symbols (`name`, `name=`) over a single `call` node, so two units share one span and §4.5's list — `method`, `singleton_method` — names neither. Both are kept, because both are names a reader can grep for, and the points inside a shared span are counted once, for the first of them: an accessor is one path, twice named."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "method",
+            "produced": true
+          },
+          {
+            "kind": "singleton_method",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "method": 23
+        }
+      },
+      "unknown_never_zero": true
+    },
+    {
+      "accuracy": {
+        "bar": "100 % of the definitions the extractor can see; a miss must be a scope ADR-007 §7.3 marks, named",
+        "blind_spot_misses": [],
+        "definitions_the_extractor_can_see": 10,
+        "expected": 10,
+        "matched": 10,
+        "misses": [],
+        "score": 1.0,
+        "truth_files": 10,
+        "unlisted": []
+      },
+      "budget_demo": {
+        "bound": 24,
+        "key": "extract.complexity.max_nodes",
+        "meaning": "the same corpus, counted again with a node budget of 24 instead of the default. A body that runs out of budget comes back unknown with `node_budget` and its file prints `~`; no figure is shortened silently, which is what ADR-007 §7.2 requires and what this section exists to prove rather than assert.",
+        "refused": [
+          {
+            "file": "Worked.java",
+            "name": "Shape.area",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.scaled",
+            "reason": "body_not_visible"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.kind",
+            "reason": "node_budget"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.classic",
+            "reason": "node_budget"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.total",
+            "reason": "node_budget"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.viaValue",
+            "reason": "node_budget"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Base.lambda",
+            "reason": "node_budget"
+          },
+          {
+            "file": "Worked.java",
+            "name": "Circle.area",
+            "reason": "node_budget"
+          }
+        ],
+        "refused_count": 8
+      },
+      "ckind": {
+        "absent_from_grammar": [],
+        "declared_kinds": 16,
+        "produced_kinds": 128,
+        "rule": "ADR-007 §4 C-KIND",
+        "sentence": "a decision-point list is not evidence that the grammar emits what the list says; this section is the evidence, and it is re-derived from the pinned crate and from real parses on every run",
+        "unproduced_in_corpus": [],
+        "verdict": "clean"
+      },
+      "corpus": {
+        "bytes": 2830,
+        "files": 2
+      },
+      "figure": {
+        "basis": "mccabe-1",
+        "max": 11,
+        "states": {
+          "partial": 1,
+          "unavailable": 1
+        },
+        "sum": 27
+      },
+      "files": [
+        {
+          "floors": 2,
+          "language": "java",
+          "marks": [
+            "synthesised_accessors"
+          ],
+          "max": 11,
+          "measured": 8,
+          "path": "Worked.java",
+          "printed": "~27 (2 unmeasured)",
+          "reason": null,
+          "state": "partial",
+          "sum": 27,
+          "units": [
+            {
+              "end_line": 11,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.area",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 11
+            },
+            {
+              "end_line": 15,
+              "figure": 1,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Shape.name",
+              "points": [],
+              "printed": "1",
+              "reason": null,
+              "start_line": 13
+            },
+            {
+              "end_line": 25,
+              "figure": null,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.scaled",
+              "points": [],
+              "printed": "?",
+              "reason": "body_not_visible",
+              "start_line": 25
+            },
+            {
+              "end_line": 43,
+              "figure": 5,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.kind",
+              "points": [
+                {
+                  "kind": "switch_rule",
+                  "line": 33,
+                  "rule": "each arrow `case … ->` rule, `default ->` included"
+                },
+                {
+                  "kind": "guard",
+                  "line": 33,
+                  "rule": "a `when` guard on a pattern case"
+                },
+                {
+                  "kind": "switch_rule",
+                  "line": 36,
+                  "rule": "each arrow `case … ->` rule, `default ->` included"
+                },
+                {
+                  "kind": "switch_rule",
+                  "line": 39,
+                  "rule": "each arrow `case … ->` rule, `default ->` included"
+                }
+              ],
+              "printed": "5",
+              "reason": null,
+              "start_line": 31
+            },
+            {
+              "end_line": 53,
+              "figure": 4,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.classic",
+              "points": [
+                {
+                  "kind": "switch_block_statement_group",
+                  "line": 47,
+                  "rule": "each classic `case` group, `default:` included"
+                },
+                {
+                  "kind": "switch_block_statement_group",
+                  "line": 48,
+                  "rule": "each classic `case` group, `default:` included"
+                },
+                {
+                  "kind": "switch_block_statement_group",
+                  "line": 50,
+                  "rule": "each classic `case` group, `default:` included"
+                }
+              ],
+              "printed": "4",
+              "reason": null,
+              "start_line": 45
+            },
+            {
+              "end_line": 82,
+              "figure": 11,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.total",
+              "points": [
+                {
+                  "kind": "enhanced_for_statement",
+                  "line": 57,
+                  "rule": "enhanced for"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 58,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "||",
+                  "line": 58,
+                  "rule": "short-circuit ||"
+                },
+                {
+                  "kind": "for_statement",
+                  "line": 63,
+                  "rule": "for"
+                },
+                {
+                  "kind": "while_statement",
+                  "line": 66,
+                  "rule": "while"
+                },
+                {
+                  "kind": "do_statement",
+                  "line": 69,
+                  "rule": "do"
+                },
+                {
+                  "kind": "if_statement",
+                  "line": 73,
+                  "rule": "if / else if"
+                },
+                {
+                  "kind": "&&",
+                  "line": 73,
+                  "rule": "short-circuit &&"
+                },
+                {
+                  "kind": "catch_clause",
+                  "line": 76,
+                  "rule": "each catch"
+                },
+                {
+                  "kind": "ternary_expression",
+                  "line": 81,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "11",
+              "reason": null,
+              "start_line": 55
+            },
+            {
+              "end_line": 89,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.viaValue",
+              "points": [
+                {
+                  "kind": "if_statement",
+                  "line": 85,
+                  "rule": "if / else if"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 84
+            },
+            {
+              "end_line": 93,
+              "figure": 2,
+              "floor": false,
+              "kind": "method",
+              "marks": [],
+              "name": "Base.lambda",
+              "points": [
+                {
+                  "kind": "ternary_expression",
+                  "line": 92,
+                  "rule": "ternary"
+                }
+              ],
+              "printed": "2",
+              "reason": null,
+              "start_line": 91
+            },
+            {
+              "end_line": 107,
+              "figure": 1,
+              "floor": true,
+              "kind": "method",
+              "marks": [
+                "synthesised_accessors"
+              ],
+              "name": "Circle.area",
+              "points": [],
+              "printed": "~1",
+              "reason": null,
+              "start_line": 105
+            },
+            {
+              "end_line": 111,
+              "figure": 1,
+              "floor": true,
+              "kind": "method",
+              "marks": [
+                "synthesised_accessors"
+              ],
+              "name": "Circle.scaled",
+              "points": [],
+              "printed": "~1",
+              "reason": null,
+              "start_line": 109
+            }
+          ],
+          "unmeasured": 2
+        },
+        {
+          "floors": 0,
+          "language": "unknown",
+          "marks": [],
+          "max": null,
+          "measured": 0,
+          "path": "notes.txt",
+          "printed": "? complexity unavailable: not one of the grammars fathom reads",
+          "reason": "language_unknown",
+          "state": "unavailable",
+          "sum": null,
+          "units": [],
+          "unmeasured": 0
+        }
+      ],
+      "grammar": {
+        "crate": "tree-sitter-java",
+        "kinds_produced_by_corpus": 128,
+        "node_types": 263,
+        "version": "0.23.5"
+      },
+      "language": "java",
+      "reason_codes_exercised": [
+        "body_not_visible",
+        "language_unknown"
+      ],
+      "truth": {
+        "basis": "mccabe-1",
+        "language": "java",
+        "notes": "Hand-authored against ADR-007 §4.6. Java's two branch spellings are the two a by-eye count gets wrong, and the corpus has both: `Base.classic` writes `case 1: case 2:` as fall-through labels, which `tree-sitter-java` 0.23.5 models as one group per label — two labels a reader counts by eye, so two points, and one body does not make them one arm; `Base.kind` writes arrow rules, where `case Integer when radius > 0 ->` is a rule *and* a guard, so two points, and the `when` keyword is the anonymous spelling of the same guard rather than a third thing to count. `Shape.area` (an interface method with no `default`) and `Base.scaled` (`abstract`) are units whose bodies are elsewhere, which makes the file's figure a floor with a count beside it. `Circle` is a `record`: its accessors are the compiler's, its scope carries `synthesised_accessors`, and everything measured beside it is a floor — and its **compact constructor, like every Java constructor in this repository, is not a unit**, because `e3.1`'s normalisation rule says constructors are not symbols and ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by. That is a named gap, not a silent one: it is recorded in the `unit_list` row of the report, beside the mechanical fact that the corpus parses both constructor node kinds and names no unit after either and it is the reason the ADR's §4.6 unit list and the shipped symbol list disagree. A lambda's ternary belongs to the method that contains it (`Base.lambda` is 2), a method reference is nothing, and `instanceof` inside the `if` that tests it is the same test counted once."
+      },
+      "unit_list": {
+        "adr_units": [
+          "method_declaration",
+          "constructor_declaration",
+          "compact_constructor_declaration"
+        ],
+        "declared_but_unproduced": [],
+        "divergences": [
+          {
+            "kind": "constructor_declaration",
+            "note": "§4.6 counts a constructor as a unit; `e3.1`'s normalisation treats a constructor as a declaration and emits no symbol for it, so **no constructor in this corpus has a figure** and the ones that do have branches — `Circle`'s compact constructor, with its validation `if` — contribute nothing. The pass follows the extractor, because a figure keyed on a name the graph does not have is a figure no card can render and no delta can pair, and it records the gap here rather than in a footnote nobody reads."
+          },
+          {
+            "kind": "compact_constructor_declaration",
+            "note": "the same gap, in the form a `record` writes: the grammar has the node kind, the corpus contains one, and no unit names it."
+          }
+        ],
+        "produced_in_corpus": [
+          {
+            "kind": "method_declaration",
+            "produced": true
+          },
+          {
+            "kind": "constructor_declaration",
+            "produced": true
+          },
+          {
+            "kind": "compact_constructor_declaration",
+            "produced": true
+          }
+        ],
+        "sentence": "ADR-007 D1 makes the extractor's symbol list the identity a figure is keyed by, so where it and §4's unit list differ the extractor wins and the difference is written down here — named in the report, not discovered by a reader of a figure",
+        "units_counted": {
+          "method": 10
+        }
+      },
+      "unknown_never_zero": true
+    }
+  ],
+  "plan_key": "e8.2",
+  "policy": {
+    "max_complexity_nodes": 20000,
+    "max_file_bytes": 2000000
+  },
+  "reason_vocabulary": {
+    "adr": "ADR-007 §7.1",
+    "codes": [
+      "language_unknown",
+      "grammar_not_compiled",
+      "extractor_not_shipped",
+      "too_large",
+      "not_utf8",
+      "parse_failed",
+      "parser",
+      "scan_budget",
+      "body_not_visible",
+      "node_budget",
+      "column_not_filled",
+      "rename_unpaired",
+      "mixed_basis",
+      "absent_revision",
+      "no_bodies",
+      "binary",
+      "contents_not_kept"
+    ],
+    "note": "one vocabulary for 'no figure', shared with the structural extractor by construction: `structure::UnavailableReason` is the enum, this list is its contents, and `tests/complexity.rs` fails if the three ever disagree. Codes produced by a later child of the epic (`column_not_filled`, `binary`, `contents_not_kept`, `rename_unpaired`, `mixed_basis`, `absent_revision`) are declared now so no child starts a parallel spelling."
+  },
+  "schema": "e8-2-complexity-core/1",
+  "ticket": "reco-l9bz.2",
+  "totals": {
+    "corpus_files": 18,
+    "expected": 69,
+    "languages": 6,
+    "matched": 69,
+    "units": 69
+  },
+  "verdict": {
+    "max_nodes_demo": 24,
+    "pass": true,
+    "repo": ".",
+    "sentence": "complexity counted over the six shipped grammars against a hand-authored corpus; the figures in this file are re-measured byte for byte by `--check`, which is where this line came from."
+  }
+}

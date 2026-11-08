@@ -29,8 +29,8 @@ use fathom_analyze::graph::{
     self, ArchitectureDelta, Builder, GraphPolicy, Interner, ModuleInput, Naming, ops_between,
 };
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
-    Structure, Symbol, SymbolKind, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span, Structure,
+    StructureProxies, Symbol, SymbolKind, Visibility,
 };
 use proptest::prelude::*;
 
@@ -90,7 +90,7 @@ fn structure_of(entry: &(String, Vec<String>, Vec<(String, String)>)) -> FileStr
                     span,
                     visibility: Visibility::Public,
                     exported: true,
-                    complexity: Complexity {
+                    complexity: StructureProxies {
                         body_lines: 1,
                         branches: 0,
                         loops: 0,

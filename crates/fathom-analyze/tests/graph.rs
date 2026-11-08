@@ -12,8 +12,8 @@
 use std::path::Path;
 
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
-    Structure, Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span, Structure,
+    StructureProxies, Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, Visibility,
 };
 use fathom_analyze::{graph, structure};
 
@@ -71,7 +71,7 @@ fn file(
                 span,
                 visibility: Visibility::Public,
                 exported: true,
-                complexity: Complexity {
+                complexity: StructureProxies {
                     body_lines: 1,
                     branches: 0,
                     loops: 0,

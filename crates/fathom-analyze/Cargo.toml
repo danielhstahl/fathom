@@ -154,6 +154,15 @@ required-features = ["langs-all"]
 name = "structure_harness"
 required-features = ["langs-all"]
 
+# The complexity corpus harness (`e8.2`, `reco-l9bz.2`): six decision-point tables, six grammars, one
+# hand-authored corpus. Gated exactly like `structure_harness` and for the same reason — it links the
+# grammars, and a `--no-default-features` build must not pay for six C builds it was never asked to
+# exercise. The CI step that runs it names `--features langs-all` in the invocation, which is the other
+# half of the claim: the gate says out loud what the harness needs.
+[[example]]
+name = "complexity_harness"
+required-features = ["langs-all"]
+
 # The relink spike (`s6`, `reco-f5a`) pins its own copy of §6.2's relink pass against `fathom-store`'s
 # real one, on every event of the rewrite corpus, so it names a SQLite backend the same way `episodes`
 # and `ledger` do. Without this line a `--no-default-features` build must still compile every *other*

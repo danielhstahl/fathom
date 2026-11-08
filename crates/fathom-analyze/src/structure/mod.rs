@@ -54,6 +54,18 @@ mod model;
 mod policy;
 mod query;
 
+/// The cyclomatic figure of ADR-007: its own file, its own vocabulary of *mechanisms*, and six
+/// decision-point lists that live in the six language modules below.
+#[cfg(any(
+    feature = "lang-rust",
+    feature = "lang-python",
+    feature = "lang-typescript",
+    feature = "lang-go",
+    feature = "lang-ruby",
+    feature = "lang-java"
+))]
+pub mod complexity;
+
 #[cfg(feature = "lang-go")]
 mod golang;
 #[cfg(feature = "lang-java")]
@@ -95,9 +107,10 @@ pub(crate) mod util;
 
 pub use crate::structure::model::synthetic;
 pub use crate::structure::model::{
-    Complexity, CorpusStructure, Dependents, Edge, EdgeKind, FileLevel, FileStructure, Granularity,
-    Import, Language, LanguageSummary, Note, Resolution, SourceFile, Span, Structure, Summary,
-    Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, UnavailableReason, Visibility,
+    CorpusStructure, Dependents, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Import,
+    Language, LanguageSummary, Note, Resolution, SourceFile, Span, Structure, StructureProxies,
+    Summary, Supertype, SupertypeKind, Symbol, SymbolKind, SyntheticScope, UnavailableReason,
+    Visibility,
 };
 pub use crate::structure::policy::{
     DEFAULT_JAVA_SAME_PACKAGE_SCAN, DEFAULT_MAX_COMPLEXITY_NODES, DEFAULT_MAX_FILE_BYTES,

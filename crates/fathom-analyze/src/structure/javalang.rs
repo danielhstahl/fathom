@@ -33,9 +33,10 @@
 //! fans out per file of the package with symbol `*` and is exactly the case `EdgeKind::Wildcard`
 //! exists for.
 
+use crate::structure::complexity;
 use crate::structure::engine::{CorpusView, Draft, Index, Lang, RawImport};
 use crate::structure::model::{
-    Complexity, Edge, EdgeKind, Granularity, Language, Supertype, SupertypeKind, Symbol,
+    Edge, EdgeKind, Granularity, Language, StructureProxies, Supertype, SupertypeKind, Symbol,
     SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::{ExtractPolicy, ScanScope};
@@ -500,7 +501,7 @@ fn name_is_type_shaped(name: &str) -> bool {
     name.chars().next().is_some_and(char::is_uppercase)
 }
 
-fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: &Node, policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(node);
     let (branches, _) = util::count_kinds(
         node,
@@ -559,7 +560,7 @@ fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
             )
         })
         .count();
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -778,3 +779,50 @@ pub fn export_names(file: &str, view: &CorpusView) -> BTreeSet<String> {
     }
     out
 }
+
+/// ADR-007 §4.6 — **Java's decision-point list.** Basis `mccabe-1`.
+///
+/// Two spelling notes, both of them C-KIND doing its job against the pinned `tree-sitter-java`
+/// 0.23.5: the ADR's "`else` / `else_clause`" pair does not exist here (an `else` is the anonymous
+/// token, and its `else_block` is worth nothing anyway), and a pattern-switch guard is a `guard` node
+/// whose `when` keyword is an anonymous token — so `guard` is counted and `when` is the same point
+/// spelled twice, and is not counted again.
+///
+/// A `method_declaration` with no `body` field is an `abstract` or interface method without a
+/// `default`: a unit with no figure (ADR-007 §3.1), not a unit with figure `0`. A `record`'s
+/// synthesised accessors are not units at all and the record's scope carries
+/// `synthesised_accessors`, which makes every figure beside it a floor (§7.3).
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::Java,
+    units: &[
+        "method_declaration",
+        "constructor_declaration",
+        "compact_constructor_declaration",
+    ],
+    bodyless: &[],
+    no_body: |node| field(node, "body").is_none(),
+    kinds: &[
+        ("if_statement", "if / else if"),
+        (
+            "switch_block_statement_group",
+            "each classic `case` group, `default:` included",
+        ),
+        (
+            "switch_rule",
+            "each arrow `case … ->` rule, `default ->` included",
+        ),
+        ("for_statement", "for"),
+        ("enhanced_for_statement", "enhanced for"),
+        ("while_statement", "while"),
+        ("do_statement", "do"),
+        ("ternary_expression", "ternary"),
+        ("catch_clause", "each catch"),
+        ("guard", "a `when` guard on a pattern case"),
+    ],
+    conditions: &[],
+    operators: &[(
+        "binary_expression",
+        &[("&&", "short-circuit &&"), ("||", "short-circuit ||")],
+    )],
+    tokens: &[],
+};

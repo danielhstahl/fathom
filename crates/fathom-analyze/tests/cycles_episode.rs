@@ -12,8 +12,8 @@
 use fathom_analyze::cycles::{self, Options, Ratchet, View};
 use fathom_analyze::graph::{self, GraphPolicy, Lane, ModuleInput};
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
-    Structure, Symbol, SymbolKind, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span, Structure,
+    StructureProxies, Symbol, SymbolKind, Visibility,
 };
 use fathom_store::spine::Store;
 
@@ -50,7 +50,7 @@ fn structure_of(fixture: &Fixture) -> FileStructure {
         span,
         visibility: Visibility::Public,
         exported: true,
-        complexity: Complexity {
+        complexity: StructureProxies {
             body_lines: 1,
             branches: 0,
             loops: 0,

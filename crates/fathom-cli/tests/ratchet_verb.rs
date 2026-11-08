@@ -94,8 +94,8 @@ fn git(root: &Path, args: &[&str], date: &str) -> String {
 /// One module's structural record: exports and dependency edges, nothing else.
 fn module(path: &str, exports: &[&str], deps: &[&str]) -> fathom_analyze::structure::FileStructure {
     use fathom_analyze::structure::{
-        Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution,
-        Span, Structure, Symbol, SymbolKind, Visibility,
+        Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
+        Structure, StructureProxies, Symbol, SymbolKind, Visibility,
     };
     let span = Span {
         start_byte: 0,
@@ -113,7 +113,7 @@ fn module(path: &str, exports: &[&str], deps: &[&str]) -> fathom_analyze::struct
                 span,
                 visibility: Visibility::Public,
                 exported: true,
-                complexity: Complexity {
+                complexity: StructureProxies {
                     body_lines: 1,
                     branches: 0,
                     loops: 0,

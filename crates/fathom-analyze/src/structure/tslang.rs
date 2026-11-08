@@ -11,11 +11,12 @@
 //! only once the middle hop is known, which is s1 finding 3 and the reason
 //! [`crate::structure::ExtractPolicy::max_resolution_passes`] is a config key.
 
+use crate::structure::complexity;
 use crate::structure::engine::{
     self, CorpusView, Draft, Index, Lang, RawImport, SEP, follow, publish_origin,
 };
 use crate::structure::model::{
-    Complexity, EdgeKind, Language, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility,
+    EdgeKind, Language, StructureProxies, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility,
     synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
@@ -105,7 +106,7 @@ fn has_token(node: &Node, kind: &str) -> bool {
     all_kids(node).iter().any(|k| k.kind() == kind)
 }
 
-fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: &Node, policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(node);
     let (branches, _) = util::count_kinds(node, BRANCH_KINDS, policy.max_complexity_nodes);
     let (loops, _) = util::count_kinds(node, LOOP_KINDS, policy.max_complexity_nodes);
@@ -122,7 +123,7 @@ fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
                 .count()
         })
         .unwrap_or(0);
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -840,3 +841,51 @@ fn export_names(file: &str, view: &CorpusView) -> BTreeSet<String> {
         .map(str::to_string)
         .collect()
 }
+
+/// ADR-007 §4.3 — **TypeScript's decision-point list.** Basis `mccabe-1`.
+///
+/// C-KIND applies as elsewhere. The signature kinds are units with no body — an interface method, an
+/// overload signature, a `.d.ts` `declare function` — and they come back `unknown` with
+/// `body_not_visible`, never `0`: `s1`'s corpus annotated an ambient declaration as *the* declaration
+/// of that symbol and this ADR keeps that reading (§4.3). `optional_chain` is a node in this grammar,
+/// which is why `?.` earns its point here and in no other way.
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::TypeScript,
+    units: &[
+        "function_declaration",
+        "function_expression",
+        "method_definition",
+        "generator_function_declaration",
+        "method_signature",
+        "abstract_method_signature",
+        "function_signature",
+    ],
+    bodyless: &[
+        "method_signature",
+        "abstract_method_signature",
+        "function_signature",
+    ],
+    no_body: |_| false,
+    kinds: &[
+        ("if_statement", "if / else if"),
+        ("switch_case", "each case"),
+        ("switch_default", "a written default"),
+        ("ternary_expression", "ternary"),
+        ("optional_chain", "optional chaining `?.`"),
+        ("for_statement", "for"),
+        ("for_in_statement", "for…in / for…of"),
+        ("while_statement", "while"),
+        ("do_statement", "do"),
+        ("catch_clause", "each catch"),
+    ],
+    conditions: &[],
+    operators: &[(
+        "binary_expression",
+        &[
+            ("&&", "short-circuit &&"),
+            ("||", "short-circuit ||"),
+            ("??", "nullish coalescing ??"),
+        ],
+    )],
+    tokens: &[],
+};
