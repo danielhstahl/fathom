@@ -24,7 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 KEYMAP = ROOT / ".plan" / "keymap.json"
 THESIS = ROOT / "docs" / "concepts" / "thesis.md"
 DOC_GLOBS = ["README.md", "docs/**/*.md"]
-ADR_NUMBERS = {"001", "002", "003", "004", "005", "006"}
+ADR_NUMBERS = {"001", "002", "003", "004", "005", "006", "007"}
 
 GLOSSARY_ENTRY = re.compile(r"^\*\*(.+?)\*\* —", re.M)
 PLAN_KEY = re.compile(r"(?<![\w.-])([esdm]\d+(?:\.\d+)?)(?![\w-])")

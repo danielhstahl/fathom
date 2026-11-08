@@ -12,6 +12,7 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 | 004 | Storage, indexing and cache strategy | Accepted (graph-snapshot policy open pending `s3`) | `reco-79b` (`e0.4`) | [0004-storage.md](0004-storage.md) |
 | 005 | Harness integration contract: hook wire formats, canonical events, MCP surface, versioning | Accepted | `reco-3pu` (`e0.5`) | [0005-harness-contract.md](0005-harness-contract.md) |
 | 006 | TUI information architecture, view inventory and keymap | Accepted | `reco-e0e` (`e0.6`) | [0006-tui.md](0006-tui.md) |
+| 007 | Cyclomatic complexity: what it means per language, and what it may not know | Accepted | `reco-l9bz.1` (`e8.1`) | [0007-complexity.md](0007-complexity.md) |
 
 **ADR-001 is the root document.** It owns the vocabulary (including the five core nouns *episode*,
 *delta*, *attention queue*, *review ledger*, *ambient mode*), the north-star metric
@@ -19,8 +20,15 @@ ticket that implements it. Conventions: `NNNN-slug.md`, status is one of *Propos
 non-goals. A later ADR that needs a different meaning for one of those words must amend ADR-001 in the
 same change rather than redefine it locally.
 
-**002–006 are filled** — by `reco-a54` (`e0.2`), `reco-ubw` (`e0.3`), `reco-79b` (`e0.4`), `reco-3pu`
-(`e0.5`) and `reco-e0e` (`e0.6`).
+**002–007 are filled** — by `reco-a54` (`e0.2`), `reco-ubw` (`e0.3`), `reco-79b` (`e0.4`), `reco-3pu`
+(`e0.5`), `reco-e0e` (`e0.6`) and `reco-l9bz.1` (`e8.1`).
+
+ADR-007 is the one written to be read before the code that obeys it: epic 8's six tickets all cite it and
+none of them may define the metric, aggregate it or name it independently, so it fixes the per-language
+decision-point lists against the *pinned* grammars (audited, not recalled: §11.1 finds fourteen node kinds
+the shipped proxy counts and the grammars never emit), the aggregation and which figure is the glance
+number, rename handling by reuse of `e2.4`'s measured pairing tiers, the closed reason-code list behind
+every `?`, and the single word every surface prints for it.
 
 ADR-003 is the ADR written *after* part of its own code, and it says so: §14 lists the six places the code
 moved rather than the prose approving it, and its identity rule is implemented twice on purpose —

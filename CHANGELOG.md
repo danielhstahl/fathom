@@ -16,6 +16,51 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Six tickets were about to invent six complexity metrics, so the definition went down before the code that has to obey it (`reco-l9bz.1`)
+
+Epic 8 makes cyclomatic complexity a primitive: a counting pass over six grammars, store columns, an
+index-time budget, a figure in `EpisodeDelta`, a rail column and a risk axis. Every one of them cites a
+definition nobody had written, and ADR-007 (`docs/adr/0007-complexity.md`) is that definition — written
+before the extractor, the way ADR-002 … ADR-006 were, because the extractor, the store schema and the risk
+vector all cite it and none of the three may invent its own.
+
+It decides, and the children implement: **the unit** (one named callable, identity `(file, kind, dotted
+name)` — `e3.1`'s normalisation rule, so no second vocabulary for "which function"); **`V(G)` per
+language**, with six decision-point lists naming node kinds and ruling the arguments a reviewer would
+otherwise have to re-litigate — an arm is one decision point whatever its pattern list holds, a
+short-circuit is one, an early `return` is none; **aggregation** (sum and max per file; per episode the
+delta against ADR-003 **X3**'s base, and *the delta* is the glance number on a rail row, with the reasons
+the absolute is not); **renames**, by reuse of `e2.4`'s measured pairing tiers rather than a second
+similarity score — a fact pairs, an accepted guess pairs on the reviewer's authority, an untouched guess
+pairs nothing and prints `~ rename_unpaired`; **the fifteen reason codes behind every `?`**, extending
+`e3.1`'s shipped `UnavailableReason` instead of starting a rival vocabulary; **the refusals** (no
+repository-wide absolute score, no per-author leaderboard, no threshold inside the metric, no
+cross-language normalisation); **the store's inheritance** — six columns, two `CHECK`s that make
+unknown-without-a-reason unrepresentable, and the claim that **zero derived rows are evicted**, because
+key field 9 is `cache::ROW_SCHEMA_VERSION` after `reco-3sa` and a spine column is not a derived-row
+schema change; and **one word**, `complexity`, with `cx` refused and the three shipped sites that already
+print the word assigned owners instead of being quietly renamed by a child of this epic.
+
+Two things were measured rather than recalled, which is why the page is allowed to be this specific:
+
+* **Every node kind in the six lists was checked twice** — against the `node-types.json` of the exact
+    crates `Cargo.lock` pins, and against real parses through the shipped bindings (`s1_spike --sexp`).
+    That audit found **fourteen node kinds `e3.1`'s complexity proxy counts and the pinned grammars never
+    emit** (`if_expr`, `while_loop`, `let_else` for Rust; `if_expression`, `for_clause` for Python;
+    `when_clause`, `rescue_clause`, `ternary`, `call_block` for Ruby; `conditional_expression` for
+    TypeScript), so today a Rust `if`, a Python ternary and a Ruby `when` each contribute exactly nothing
+    to a printed score. The rule that stops it recurring — C-KIND: a listed kind must exist in the pinned
+    grammar *and* be produced by a corpus file — is `e8.2`'s acceptance criterion, and the proxy's own
+    axis is named with its owner (`e3.8`) rather than fixed here.
+* **The spike `s1` verdict table and `e2.4`'s pairing report are quoted as the evidence**, so the blind
+    spots the ticket insisted on carrying forward (macro-generated Rust items, decorated Python class
+    bodies, Ruby's computed method names, Java's synthesised accessors) arrive as named unknowns in the
+    reason-code table with `may have more` as their only permitted sentence, and not as four surprises
+    `e8.2` discovers at corpus time.
+
+`docs/adr/README.md`, `docs/index.md` and `README.md` now list ADR-007, and `tools/check_docs.py` knows the
+number, so a later page may cite it.
+
 ### `build+test (ubuntu-latest · stable)` was still red on the same `C03` the contracts job was red on, because one red commit files two tickets (`reco-s6ge`)
 
 The beta-loop step of the ubuntu stable leg came back with `C03 a3ac95637: reco-37te, reco-kltg is not

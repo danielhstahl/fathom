@@ -101,7 +101,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 
 | Where | What |
 |---|---|
-| [docs/adr/](adr/) | six accepted ADRs: [product thesis](adr/0001-product-thesis.md), [workspace](adr/0002-workspace.md), [episodes](adr/0003-episodes.md), [storage](adr/0004-storage.md), [harness contract](adr/0005-harness-contract.md), [TUI, views and keymap](adr/0006-tui.md) |
+| [docs/adr/](adr/) | seven accepted ADRs: [product thesis](adr/0001-product-thesis.md), [workspace](adr/0002-workspace.md), [episodes](adr/0003-episodes.md), [storage](adr/0004-storage.md), [harness contract](adr/0005-harness-contract.md), [TUI, views and keymap](adr/0006-tui.md), [complexity, per language](adr/0007-complexity.md) |
 | [docs/harness/](harness/) | the adapter contract, and the three shipped adapters: [pi](harness/pi.md), [generic stdin hooks](harness/generic-hooks.md), [the git post-commit fallback](harness/git-hook.md), with [what was actually verified](harness/verification.md) |
 | [docs/security/](security/threat-model.md) | the [threat model](security/threat-model.md): what a clone is allowed to try against this binary, the control that answers each finding, and which ones are accepted with a written rationale |
 | [docs/demo/](demo/) | the miniature repository that ships in the binary: how it is generated, and what it is for; and [the scripted five-minute demo](demo/five-minute.md) — the tour, the [published demo repository](demo/five-minute.md#the-demo-repository) with its five seeded pathologies, the [recording](demo/five-minute.md#the-recording), and a budget it fails if it misses |
