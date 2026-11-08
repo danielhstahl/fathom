@@ -16,6 +16,53 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The ubuntu msrv leg could not test the headless build, over twenty CLI suites that never said which features they needed (`reco-kltg`)
+
+`build+test (ubuntu-latest · msrv)` died at `cargo test -p fathom-cli --no-default-features --features
+minimal`: first on a compile error — `crates/fathom-cli/tests/architecture_verb.rs:201`, `cannot find Lane
+in graph` — and past that on 136 test failures across 20 targets. `reco-37te` had fixed the first file of
+this kind and the leg went red again on the next one, because it was never one file: it was the whole CLI
+suite.
+
+Why the msrv leg is the one that showed it: `minimal` (ADR-002 §6.1) turns on no store, no `tui` and no
+`watch`, so the binary under test refuses every verb that needs one with `FEATURE_ABSENT` (9) — `fathom
+index` among them, which is how nearly every fixture in `crates/fathom-cli/tests/` builds its repository in
+the first place. Some files had already been curated test by test (`cli.rs`, `analyze_deps.rs`,
+`risk_rank.rs`); twenty had not. Every other leg runs `--all-features`, where all of them pass, so a missing
+gate was invisible until a job ran the headless configuration on its own.
+
+* **Whole-suite gates**, in the spelling `tests/check_verb.rs` and `tests/show_trailers.rs` already used —
+    `#![cfg(feature = "…")]` at the top of the file, with the reason beside it: `sqlite-bundled` for the
+    store-backed suites (`architecture_verb`, `ratchet_verb`, `resilience`, `cli_why`, `compare_verb`,
+    `episodes_verb`, `export_verb`, `extensibility_verb`, `index_graph`, `intent`, `notes_verb`,
+    `search_verb`, `session_arc`), `tui` for the shell's (`theme_cli`, `tui_text`, `keymap_conflicts`,
+    `hint_line`), both for `ambient_verb`, and `watch` for `daemon` beside its existing `cfg(unix)`. Every
+    test in each of those files failed in the headless build, so there was no subset worth keeping: `fathom
+    architecture`, `ratchet`, `search` and `notes` answer 9 rather than answer.
+* **Per-test gates** wherever a file has both halves — `cli_drift`, `cli_narrative`, `review_verb`,
+    `hostile_repo`, `cli.rs`, `schemas.rs` — so the headless build keeps the claims that are its own: the
+    store-backed tests, and the fixtures and helpers only they use, are gated, while the `--help` and
+    no-index refusal tests keep running headless. Gating the tests alone left their fixtures dead code in
+    the headless build, so `Repo`, its `impl` and `Drop`, `git` and the symlink helpers are gated with them.
+* **Four unit tests in `src/`** called items §6.2 does not compile without a feature —
+    `review::must_survive_blockers` and `open::best` (store), `handoff::environment` and
+    `queue::ReasonVocabulary` (shell) — and each is gated to match the item it calls.
+* **The convention now sits where the step is**, in a comment on `ci.yml`'s own headless-test step: that
+    command is the one to run before opening the pull request, so the next store-backed CLI suite is gated
+    in the change that adds it instead of in the next red leg.
+
+Nothing was dropped from the claim. On a store-backed build every one of those files still compiles and
+runs, exactly as before; `minimal` now runs the 89 tests it can actually answer — 51 unit plus the headless
+CLI suite — and passes them, on the pinned MSRV toolchain.
+
+And this paragraph is the second half of the story, which is `reco-0qq9`: the commit above shipped without a
+release note for itself, and `docs + workspace contracts` came back with the one thing the audit is for —
+`C03 a3ac95637: reco-37te, reco-kltg is not accounted for in [Unreleased]`. The gate was right and there
+was nothing in the tool to fix, so the fix is this entry, in the section where it belongs. The rule it
+restates is the one at the top of this file — work lands under `[Unreleased]`, in the change that is the
+work — and [the release runbook](docs/concepts/release.md) now names `tools/gen_changelog.py audit` as the
+command that says whether it did, to be run before the pull request rather than by the job after it.
+
 ### `docs + workspace contracts` came back red again, over a clone CI has that no laptop has, a fixture that leaked, and a cold number that was not cold (`reco-d2bo`)
 
 Three failures, none of them reproducible here, and all three were one mistake made three times: a check

@@ -543,6 +543,14 @@ checks out with `fetch-depth: 0`, the same sentence [the CI-gate page](ci-gate.m
 check`. At actions/checkout's default depth of one the audit cannot see the release it is measuring from,
 and says so as a `C06` naming `fetch-depth: 0` rather than dying inside `git log` (`reco-ghao`).
 
+**An entry lands in the commit that is the work, and `audit` is the command that says whether it did.** The
+audit counts commits, not diffs, so a branch that carries the code and postpones the prose is a red build
+wherever the gate runs — and the doorbell is the `docs + workspace contracts` job, not the release cut. That
+is what a leg's worth of CLI feature gates left behind (`reco-kltg`): the change was right, the note was never
+written, and `C03` named the commit on a job that had nothing else to complain about (`reco-0qq9`). So run
+`audit` in the branch, before the pull request: it needs nothing but the history, and a reminder you see
+locally is worth more than the same finding waiting on somebody else's runner.
+
 **Conventional commits, and the house style they have to share a file with.** The header grammar is the usual
 one — `feat(scope)!:` / `fix:` / `perf:` / `refactor:` / `docs:` / `deprecated:` / `removed:` / `security:`,
 with `build`/`ci`/`test`/`chore`/`style` kept out of the release notes, `BREAKING CHANGE:` or `!` promoting an
