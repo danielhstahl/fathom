@@ -17,6 +17,53 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 ## [Unreleased]
+### One episode surface: the card gets the ranking, the intent goes to one line, and `i` is retired (`reco-5js3.1`)
+
+Epic 9's first ticket was a decision with a diff of documentation, because the thing it had to stop was
+a decision nobody had made: the summary card and the `w` pane were answering the same question from
+different ends, the `i` pane was answering a third, and nothing on paper said where either stopped. The
+overlap was worse than the ticket described — the duplication was *inside* the card, which printed four
+figures nine times in one pane and eleven times in one frame: the churn as `size` and again as the delta
+document's `what` row; the ranking as `risk`, as `vector` and as the `attention` row (the same
+`RiskView::headline()` string, twice); the ceiling as two rows both labelled `blind`; and "where it
+landed" as a pane-local prefix count beside the document's churn-ranked directory rollup — two answers,
+two rows apart, computed by two pieces of code.
+
+ADR-006 §5.1.1 decides it, and `e9.2`/`e9.3` are the execution:
+
+* **The one question.** *What did this episode do, and what should I open first?* Five bands answer it,
+  in the delta document's own reading order — what changed (code delta first), where it landed, what it
+  touches and could break (the four rows: `dependencies`, `surface`, `tests`, `blast`), why it ranks
+  here, and what the agent said it was doing, one line, last. Every band names the function that renders
+  its strings, so a row cannot be added without saying who owns its bytes.
+* **One figure, one string, one surface** — ADR-001 §7.10 applied by name to this pane. The pane places,
+  wraps and truncates with a counted remainder; it authors nothing. The one pane-authored line in the
+  ranking moves into `fathom-analyze` beside the ceiling note, and `card::top_paths` — a rollup a pane
+  wrote for itself — is deleted.
+* **Two depths, neither a duplicate.** The pane keeps the vector, the badge, the counted ceiling, and the
+  one fact the CLI cannot have (`rank N of M` for the set on screen, which is the caller's to know);
+  `fathom why` keeps the per-feature table, the weight denominator, the `τ` comparison, `--weight` and
+  `--calibrate`, and none of that is ever drawn in the shell.
+* **`w` survives as an expander, `i` does not survive at all.** `w` grows band four in place instead of
+  swapping the pane — which is also why it keeps its key: `RiskView::blind_spot_note()` ships the sentence
+  "`w` lists them all", and a model-owned string is not edited to fit a key. `intent.show` is deleted:
+  everything the intent pane printed but the card had already printed, in the same words from the same
+  `intent_block()`, left one row to draw, and what was left (the plan items, the declared scope) is
+  evidence for the scope-creep finding the card already prints, whose home is the delta document, printed
+  whole by `fathom show`. `i` becomes a reserved-for-user letter (§7.6, new: retirement is a keyed rule,
+  not a deletion), and §11 records that buying it back needs an amendment naming a question one line
+  cannot answer. The card focus, meanwhile, becomes a document you can move inside: the pane windows on
+  the shared motion instead of truncating its own tail, which is what makes a mode unnecessary.
+* **The rule, with its checks named.** `crates/fathom-tui/tests/episode_card.rs` reads the band table out
+  of the ADR the way `tests/layout.rs` reads the ladder tables and fails on drift, on a second spelling
+  of one figure, on a swapped pane; `crates/fathom-cli/tests/risk_rank.rs` asserts the card's vector row
+  and `fathom why`'s line are the same bytes; `tools/check_docs.py` gains a retired-surface rule so no page
+  advertises a dead pane. The review gate is two questions: *which band, and who renders it?*
+
+`docs/concepts/summary-card.md` §2.1 and `docs/concepts/risk-ranking.md` §13 now describe that split —
+seven questions in the model, five bands in the pane, two depths of a ranking and one verb for the deep
+one — and `docs/harness/verification.md` stops advertising the intent pane.
+
 ### Complexity became a column, and the bill for it came due as zero (`reco-l9bz.3`)
 
 ADR-007 §9.1 told `e8.3` to make the primitive a column rather than a computation, and §9.3 told it to say

@@ -18,6 +18,11 @@
   figure, whose Rust home is planned at `crates/fathom-analyze/src/card/` and whose Python package
   is the contract surface. Measured by `tests/test_summary_card_contract.py` and by
   `python3 -m recommender.card score`.
+- **Surface split, decided separately**: `reco-5js3.1` (`e9.1`) settled which question each episode
+  surface answers, in [ADR-006 §5.1.1](../adr/0006-tui.md). The seven questions below belong to the
+  card *model* and are unchanged; what one episode pane may print, in what order and in whose words
+  is that section's, and this page points at it instead of restating it — for the reason this
+  document gives every figure: two copies of a list is two chances for the copies to disagree.
 
 ---
 
@@ -65,6 +70,41 @@ The row carries a mark and a state (`measured`, `partial`, `unavailable`, or `sw
 <key>`); the block carries the figures. A card printed from an episode with only a path list — an
 indexed spine with no bytes, which is the common case in Epic 1 — has all seven rows and says of six
 of them that bytes are what is missing ([§6](#6-the-degradation-contract)).
+
+### 2.1 Seven questions, one surface, and the one line that ends a pane
+
+Seven questions is the model's answer, and it is the answer `fathom card` prints with every pointer
+and every block. The shell has less room than that: at 80×24 the episode pane is twenty-nine columns
+wide in the queue and thirty-five in the timeline, and nineteen content rows deep in both, and a pane
+that spends its rows is a pane a reviewer reads half of. `reco-5js3.1` (`e9.1`) decided what that
+pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that owns the decision, and
+`e9.2`/`e9.3` are the commits that carry it. The short form, from here:
+
+* **One episode surface.** The card pane of `q` and `t` is the only place in the shell that
+  summarises an episode. The ranking pane `w` swapped the card out for is retired — `w` expands one
+  band of the card instead — and the intent pane does not survive; what did survive of its rule is in
+  the ADR.
+* **Five bands, in the delta document's order.** *What changed* (the code delta first), *where it
+  landed*, *what it touches and could break* (four rows: `dependencies`, `surface`, `tests`,
+  `blast`), *why it ranks here*, and *what the agent said it was doing* — one line, last. That is
+  `SectionId::ALL`'s order with intent appended, so the pane, `fathom analyze`, the export and an
+  agent's tool result read a reviewer's question in one sequence, and no second vocabulary is
+  needed for "where did it land".
+* **The pane renders; it does not author.** Every figure on it is one of these seven sections'
+  first figure, a `RiskView` accessor's line, or the intent document's own first line — which is
+  the same rule as §3's, seen from the other side: §3 forbids a figure with no evidence, §5.1.1
+  forbids a figure with two phrasings. The two rows the pane wrote for itself — its own count of
+  path prefixes, and the churn it re-spelled out of the spine's columns — are deleted with it,
+  because a pane rolling up its own version of a section this model already renders is
+  [ADR-001 §7.10](../adr/0001-product-thesis.md)'s bug with a screenshot.
+* **Intent is one line.** Three states, one line, no keystroke: the recorded text with its source
+  and confidence, the digest-only state that is what this project's own streams carry, and the named
+  absence. The plan items and the declared scope are evidence, and evidence lives in the delta
+  document — printed whole by `fathom show <episode>`, from the same document this card summarizes.
+  A row that says *what the agent claimed* is a summary; the whole brief is not a row.
+
+The mapping is a projection, not a new model: seven sections in, five bands out, nothing added and
+nothing invented, and every band names the function that renders its strings.
 
 ## 3. The one rule about where a figure comes from
 

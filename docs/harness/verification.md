@@ -137,8 +137,10 @@ Intent, said precisely: hooks v1 carries the turn's *digest*, and a digest is wh
 own stream carries — `fathom show` prints that state as `no text captured · prompt <sha> · via
 prompt-digest · 0.30` rather than inventing a sentence. Where a harness sends the prompt text, or where
 the commit carries an `Intent:`/`Task:` trailer, intent capture (`e4.2`, `reco-c54`) attaches it to every
-episode of the turn it belongs to; the `i` key now opens the pane that shows it, with the plan and the
-declared scope beside it. §4 names what is still not proven about that capture.
+episode of the turn it belongs to, and `fathom show` prints the whole document — the plan and the
+declared scope beside the text they qualify. The shell carries the one-line form of the same document;
+where its deep form lives is decided in [ADR-006 §5.1.1](../adr/0006-tui.md). §4 names what is still not
+proven about that capture.
 
 ---
 

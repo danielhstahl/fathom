@@ -21,7 +21,8 @@
   claim to be.
 - **Executes as**: `fathom-analyze::risk` (`Surface`, `classify`, `Signals`, `rank`, `COMPONENTS`,
   `BLIND_SPOTS`), read through `fathom-store::episode::Store::episode_files`, composed in
-  `fathom-cli::episodes`, and drawn by `fathom-tui::worklist` plus the card pane's `w`. Measured by
+  `fathom-cli::episodes`, and drawn by `fathom-tui::worklist` plus the episode card's ranking band,
+  which `w` expands in place (§13, and [ADR-006](../adr/0006-tui.md) §5.1.1). Measured by
   `crates/fathom-analyze/tests/risk_spine.rs`, `crates/fathom-tui/tests/risk_rank.rs` and
   `crates/fathom-cli/tests/risk_rank.rs`.
 
@@ -184,8 +185,8 @@ statement about the tool, and it prints as `risk ?` with a line saying which tic
 
 ## 8. What a spine cannot see
 
-Printed with the score, on the card and under `w`, because a list that looks complete is the
-dangerous failure mode:
+Printed with the score — the counted ceiling on the card, the whole list when `w` expands the
+ranking band (§13) — because a list that looks complete is the dangerous failure mode:
 
 1. whether a migration can be rolled back;
 2. an environment variable declared and never read;
@@ -273,6 +274,49 @@ Three things about it are the contract, not the arithmetic:
 
 `w` prints the ordering in full, in `fathom why`'s shape: `queue-1 90 = risk 60 (spine-1) × staleness
 1.50 (10d unread) × blast 1.00 (not measured · no caller handed over a dependent count · displayed by
-fathom-tui)`. The strip keeps
-only the name and the open count, because a strip is forty columns wide and the name is the part that may
-not be truncated away.
+fathom-tui)`. The strip keeps only the name and the open count, because a strip is forty columns wide
+and the name is the part that may not be truncated away.
+
+## 13. One surface, two depths: what the card prints, and what `fathom why` keeps
+
+`reco-5js3.1` (`e9.1`) decided the shell's episode surfaces, and the ranking is where the decision
+lands hardest: one number with two surfaces and three spellings inside a single pane.
+[ADR-006 §5.1.1](../adr/0006-tui.md) is the rule — one episode surface, five bands, one string per
+figure — and this is what it means for a number and its reasons.
+
+**One surface.** The episode card is the only place the shell talks about an episode, so the ranking
+is a *band* of the card, not a pane a key swaps in. `w` keeps its key and loses its pane: it expands
+band four in place — every reason line, then the whole ceiling — with every other band still on the
+screen, and `w` again collapses it. `reco-5js3.3` (`e9.3`) is the commit that deletes the mode and
+re-labels the action in the registry the palette, the help overlay and the cheatsheet are generated
+from.
+
+| the print | where it appears | the bytes it is |
+|---|---|---|
+| the glance | the worklist / rail row | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
+| the ordering's name | the worklist strip | `order: …` — the model name, with (`w`) as the key that explains it |
+| the argument, brief | card band 4 | the delta document's own `attention` row — `RiskView::headline()` with the place appended when there is one — plus `badge()` and `blind_spot_note()` |
+| the argument, expanded | card band 4 under `w` | every line of `reasons()`, then every line of `BLIND_SPOTS`, then the model's own *reading order, not an all-clear* line |
+| the announcement | the toast, and the `--plain` frame | the same explain sentence, in the channel a screen reader hears: a toast is not a second surface, it is this one's voice |
+| the arithmetic, whole | `fathom why` | `risk::score::render()` — the number, the vector, the per-feature table with weights and contributions, `9 of 12 features measured · weight denominator 0.76`, the `τ` comparison, the caveats, the config notices, the ceiling |
+
+**Why that is not a duplicate in either direction.** The CLI keeps what a twenty-nine-column band has
+no columns for: the feature-by-feature arithmetic, the denominator, the `τ` comparison, the weight
+overrides and `--calibrate`, and the JSON. None of it is drawn in the shell, and no band grows to
+hold any of it — a feature table is a document, and documents have verbs.
+
+The pane keeps the one fact the verb cannot have. `RiskView::rank` and `ranked` are the caller's,
+because a place in a set is not a fact about one episode: `fathom why` scores one episode and is
+silent about the queue, while the pane knows exactly which set is on screen and says `rank 4 of 7`
+about it. The `--plain` frame, the strip and the `w` sentence all carry the same queue-1 line, which
+is repetition with one owner and is allowed; what is not allowed is two surfaces owning two
+sentences.
+
+**No second narrative.** Every line above comes from the model: `risk::score::render()` for the
+whole form, `RiskView::{headline, badge, reasons, blind_spot_note}` and `BLIND_SPOTS` for the band,
+and `insight::brief()` for the row the band begins with. The pane places, wraps, and truncates with
+a counted remainder; it never re-words, and the one pane-authored line that used to sit in the
+expanded ranking — *"read those by hand…"* — moves into `fathom-analyze` beside the ceiling note so
+that the ceiling has one voice. §5.1's binding note ("`w` must print the same feature vector `fathom
+why` prints") survives this unchanged and is now asserted byte-for-byte between the card and the CLI:
+`crates/fathom-cli/tests/risk_rank.rs`'s `the_cli_and_the_pane_print_one_vector`.
