@@ -54,6 +54,14 @@ provenance row**.
   rows off the bottom now prints the whole card inside the 80×24 pane, and why the overflow note went from
   `… 10 more rows` to nothing at all in the no-document case — and where it does not fit, the provenance is
   what falls.
+* **ADR-006 §5.1.1 now says what the pane does.** `e9.1` wrote that a card which does not fit
+  "windows, reading `App::scroll_of`", and named that as `e9.2`'s work. The budget is the better answer
+  to the same problem, and the budget is what shipped: a wrapped card that scrolls still shows one band
+  and hides four, while one row per figure shows all five and counts what fell. The page now describes
+  the budget and moves the window to `e9.3` — the ticket that gives the card sections worth walking,
+  since a scroll offset a pane cannot show is a key that lies. The card-focus row of §5.1.1's key table
+  splits the work the same way, and `docs/concepts/summary-card.md` states the reachability rule beside
+  the budget.
 * **Figures kept their evidence.** Every string on the card is `brief()`'s, a `RiskView` accessor's,
   `intent_block()`'s, or a cited spine column, and the rows that name the owner of a missing analysis are
   rendered by the same `fathom-analyze` function the CLI prints (`e2.10`'s *the card names who owns it*, now

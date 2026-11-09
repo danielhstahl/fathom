@@ -111,6 +111,10 @@ pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that
   directories, and a reserved row in band 1 labelled `complexity`, which is where `e8.6` draws the figure
   [ADR-007 §5](../adr/0007-complexity.md) gives it — no row until the figure exists, because a row that
   reads "not measured" under every episode is a row that prints nothing.
+  What the budget cannot fit is cut in the same order and never silently: every figure takes exactly
+  one row (cut at the row's end, keeping the document's own `· +3 more` as the tail), and the row that
+  says how many fell off names the key that brings them back. The card takes no scroll offset until
+  `e9.3` gives it sections to walk — see [ADR-006 §5.1.1](../adr/0006-tui.md), which owns the split.
 
 The mapping is a projection, not a new model: seven sections in, five bands out, nothing added and
 nothing invented, and every band names the function that renders its strings.
