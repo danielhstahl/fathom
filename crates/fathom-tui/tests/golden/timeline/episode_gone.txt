@@ -19,19 +19,19 @@ filter: area=any state=any group=day (F edits) · 9 of 9
 
 ## card (35 columns × 14 rows)
 9c4d10 — cache the epoch probe     
-2 commits · agent 0.94 · 0:41 ago  
-⚑ unread · UTC · fixture index     
-                                   
+2 commits · 0:41 ago · ⚑ unread · …
 size     +58 −12 · 4 files         
 where    src/store (4) · tests (1) 
-boundary author 0.75 — a rule, not 
-         a fact (ADR-003 §4.7)     
-session  session 4 · turn 11       
-intent   not handed to this card — 
-         no delta document         
+delta    no document was handed to…
+risk     unknown — nothing has ran…
+intent   not handed to this card —…
 members  9c4d:0 9c4d:1             
+boundary author 0.75 — a rule, not…
+session  session 4 · turn 11       
+read     fixture index · times UTC 
                                    
-… 9 more rows — `<C-w>o` gives thi…
+                                   
+                                   
 
 ## card strip
 

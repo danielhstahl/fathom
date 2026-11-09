@@ -42,7 +42,7 @@ use fathom_tui::views::{self, ViewId};
 #[path = "timeline_corpus/mod.rs"]
 mod corpus;
 
-use corpus::{NOW, generated, mock, without};
+use corpus::{NOW, generated, mock, with_delta, without};
 
 /// The rail's golden width: the view registry's `ideal_cols` for the rail pane.
 const RAIL_COLS: usize = 42;
@@ -81,6 +81,9 @@ enum Rows {
     MinusOne,
     /// The 10 000-row index, so the ladder is checked against numbers with four digits in them.
     Big,
+    /// The mock rows with a delta document attached to the selected one — the card with figures in it,
+    /// which is the shape no other case in this file has ever drawn (`e9.2`).
+    Delta,
     /// Nothing at all.
     None,
 }
@@ -136,6 +139,23 @@ fn cases() -> Vec<Case> {
             note: "the view's documented minimum (61×16): the ladder has fired and the frame is still \
                    complete, not clipped",
             frame: Some((61, 16)),
+            ..Case::default()
+        },
+        Case {
+            golden: "card_delta_80x24",
+            note: "the selected row with a delta document on it, at the size §5.2 is quoted at: every \
+                   band gets its row - the code delta and its noise fold first, then where it landed, the \
+                   four reach rows, the ranking with its ceiling, and one line of intent",
+            frame: Some((80, 24)),
+            rows: Rows::Delta,
+            ..Case::default()
+        },
+        Case {
+            golden: "card_delta_floor",
+            note: "the same episode at the timeline's ladder floor (41x9): the header, the code delta \
+                   and the first reach row are what survives; the provenance is what gets cut",
+            frame: Some((41, 9)),
+            rows: Rows::Delta,
             ..Case::default()
         },
         Case {
@@ -255,6 +275,7 @@ fn build(case: &Case, size: (u16, u16)) -> App {
             without(&rows, "e8f1a2")
         }
         Rows::Big => generated(),
+        Rows::Delta => with_delta(mock()),
         Rows::None => {
             app.timeline.set_filter(case.filter.clone());
             return app;

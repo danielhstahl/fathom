@@ -19,19 +19,19 @@ filter: area=any state=any group=session (F edits) · 10 of 10
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 
-4 commits · agent 0.94 · 0:12 ago  
-⚑ unread · UTC · fixture index     
-                                   
+4 commits · 0:12 ago · ⚑ unread · …
 size     +412 −90 · 12 files       
 where    src/store (9) · tests (1) 
-boundary author 0.75 — a rule, not 
-         a fact (ADR-003 §4.7)     
+delta    no document was handed to…
+risk     unknown — nothing has ran…
+intent   not handed to this card —…
+members  e8f1:0 e8f1:1 e8f1:2 +1 m…
+boundary author 0.75 — a rule, not…
 session  session 4 · turn 12       
-intent   not handed to this card — 
-         no delta document         
-members  e8f1:0 e8f1:1 e8f1:2 +1   
-         more                      
-… 10 more rows — `<C-w>o` gives th…
+read     fixture index · times UTC 
+                                   
+                                   
+                                   
 
 ## card strip
 

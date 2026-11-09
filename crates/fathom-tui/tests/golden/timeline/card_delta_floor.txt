@@ -1,0 +1,52 @@
+# card_delta_floor
+# the same episode at the timeline's ladder floor (41x9): the header, the code delta and the first reach row are what survives; the provenance is what gets cut
+
+## frame 41×9
+▸ rail · e1.6               ┬· card · e2…
+▸ e8f1a2 14 Oct +412 −90 ⚑  │e8f1a2 — ma…
+  9c4d10 14 Oct +58 −12 ? ⚑ │4 commits ·…
+  2be77f 14 Oct +8 −3 ? ✓   │~ what   +4…
+ Mon 13 Oct ── 3 episodes   │noise    1 …
+  77aa0c 13 Oct +1 204 −90 ✔│~ where  sr…
+  40c9b3 13 Oct +96 −0 ? ⚑  │x dependenc…
+  c1f5e2 13 Oct +22 −22 ? ⚑ │… 12 more r…
+LAYOUT degraded · 7 dropped · <C-w>o, ? …
+
+## rail (42 columns × 12 rows)
+▸ e8f1a2 0:12 agent +412 −90 ●●●●●● 62 ⚑  
+  9c4d10 0:41 agent +58 −12 ●●●●○○ ? ⚑    
+  2be77f 1:07 human +8 −3 ●●●○○○ ? ✓      
+ Mon 13 Oct ── 3 episodes                 
+  77aa0c 1d1h agent +1 204 −90 ●●●●●● ? ✔ 
+  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑     
+  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑    
+ Thu 18 Sep · session 2 (pi) ── 1 episode 
+  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     
+ Sun 14 Sep · session 1 (pi) ── 1 episode 
+  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   
+ Sat 13 Sep ── 1 episode                  
+
+## rail strip
+filter: area=any state=any group=day (F edits) · 10 of 10
+
+## card (35 columns × 14 rows)
+e8f1a2 — make the store epoch-safe 
+4 commits · 0:12 ago · ⚑ unread · …
+~ what   +412 −90 · +6 more        
+noise    1 of 11 file(s) discounte…
+~ where  src/store 9f +3… · +3 more
+x dependencies 1 added (… · +1 more
+~ surface source 9f +338… · +1 more
+x tests  1 file(s)… · +3 more      
+x blast  2 direct, 1 one… · +1 more
+~ attention spine-1 62 =… · +2 more
+surfaces ci-config                 
+blind    a spine cannot see 7 thin…
+intent   make the store epoch-safe…
+… 5 more rows — `<C-w>o` gives thi…
+
+## card strip
+
+
+## cursor
+e8f1a2

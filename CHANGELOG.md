@@ -16,7 +16,57 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
-## [Unreleased]
+### The episode card gets its rows back: intent to one line, the code delta into the space (`reco-5js3.2`)
+
+`e9.1` wrote the rule and left the card unchanged, so the card was a rule waiting on twenty rows. Intent was
+three rows of the nineteen the pane had — the request, then *for the plan and scope press i* pointing at a
+pane `e9.3` is about to delete — and the rows it bought with them were the ones a reviewer was scrolling
+past: the noise fold was a figure inside a `+N more`, the top-paths list was cut to four directories, and
+the complexity figure `e8.6` is going to draw had no row to land in. ADR-006 §5.1.1's rule 4 — written in
+`e9.1`, paid for here — says where the nineteen go: header, then every warning that says a row cannot be
+trusted, then the five bands in order, then the provenance — and **no band is cut to make room for a
+provenance row**.
+
+* **Intent is one row, in every state, at every width the pane documents.** The recorded line carries the
+  first line of the request, its source, its confidence, and — when there is a plan or a declared scope
+  behind it — the name of the verb that prints them, so the row says what it is and where the rest lives at
+  the same time. A long request is cut at the row's end with a visible `…` and keeps its source, because a
+  quotation nobody can attribute is a guess. Digest-only prints *no text captured · prompt `<sha256>` · via
+  `<source>`*; nothing prints *no recorded intent* with the reason; a row whose document never arrived says
+  so, in words nobody else on the card says. The `i` pane is untouched here — `e9.3` retires it — and
+  `crates/fathom-tui/tests/intent_card.rs` now asserts the three states on the row as well as the pane.
+* **The code delta band spends the reclaimed rows.** The churn is the delta document's own `what` row
+  (`brief()`'s first figure and its counted remainder), and what is left is no longer a counter a reviewer
+  cannot weigh: `noise 5 of 9 files were discounted (generated 4f · 1 204 lines)` is its own row, because a
+  412-line change and a 412-line change that is mostly a lockfile are different reviews. `where`'s
+  pane-local rollup takes six path prefixes instead of four, and every figure on the card keeps its counted
+  remainder when the row is cut — `src/store 9f +338 −74…` is not a figure, so the cut falls at the last
+  whole figure and the row says how much it did not show.
+* **The complexity row is reserved, wired, and empty.** The slot is band 1's, after the noise fold, labelled
+  with the one word ADR-007 §10.1 binds every surface to, drawn from `delta.structure.complexity`'s figure
+  and nothing else. It is not a placeholder that prints `?` under every episode in the language: with no
+  figure there is no row, and with a figure that says *unknown* the row prints the unknown with its reason —
+  ADR-007 §7's rule, in the place §7's children will land. ADR-007 §10.4 now says the row exists so that
+  `e8.6` fills a defined row instead of choosing a home for it.
+* **The layout became a budget instead of a scroll.** The card builds its rows, then lays them out: values
+  wrap under the label column until the card does not fit, and then every figure takes exactly one row and
+  the counted remainders are what survive the cut. That is why the same card that used to spill nineteen
+  rows off the bottom now prints the whole card inside the 80×24 pane, and why the overflow note went from
+  `… 10 more rows` to nothing at all in the no-document case — and where it does not fit, the provenance is
+  what falls.
+* **Figures kept their evidence.** Every string on the card is `brief()`'s, a `RiskView` accessor's,
+  `intent_block()`'s, or a cited spine column, and the rows that name the owner of a missing analysis are
+  rendered by the same `fathom-analyze` function the CLI prints (`e2.10`'s *the card names who owns it*, now
+  one function instead of two phrasings). The two rows the pane had written for itself are gone.
+
+`crates/fathom-tui/tests/episode_card.rs` is new and reads the band table out of ADR-006 §5.1.1 the way
+`tests/layout.rs` reads the ladder tables: it fails on drift, on a second spelling of one figure, on an
+intent row that is two rows, and on a code-delta row that did not reach the screen at 80×24, at the 61×16
+floor, or at the pane's documented minimum. The timeline goldens gained `card_delta_80x24` and
+`card_delta_floor` — the corpus now carries a delta document, so the goldens show a card answering all
+seven questions rather than a card whose analysis never arrived — and `docs/concepts/summary-card.md` §2.1
+and ADR-006 §5.1.1 carry the budget.
+
 ### One episode surface: the card gets the ranking, the intent goes to one line, and `i` is retired (`reco-5js3.1`)
 
 Epic 9's first ticket was a decision with a diff of documentation, because the thing it had to stop was

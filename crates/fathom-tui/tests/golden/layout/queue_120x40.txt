@@ -3,24 +3,24 @@
 1 ▣ Queue · (T pins this view)                                                                      fathom/pilot · main
 ┌▸ worklist · e4.5                                                        ┬· card · e2.10                              ┐
 │6 of 10 open · 6 unranked · blast unmeasured · holding this list at 1.00…│a77bb0 — flagged: the migration             │
-│▸  · a77bb0 human +140 −12 queue ? risk ? ⚐                              │2 commits · human 0.94 · 1mo ago            │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │⚐ flagged · UTC · fixture index             │
-│   · 40c9b3 agent +96 −0 queue ? risk ?                                  │                                            │
+│▸  · a77bb0 human +140 −12 queue ? risk ? ⚐                              │2 commits · 1mo ago · ⚐ flagged · human 0.94│
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │size     +140 −12 · 5 files                 │
-│   · c1f5e2 ? +22 −22 queue ? risk ?                                     │where    src/store (5) · tests (1)          │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │boundary author 0.75 — a rule, not a fact   │
-│   · 2be77f human +8 −3 queue ? risk ?                                   │         (ADR-003 §4.7)                     │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │session  no harness session on this episode │
-│   · 9c4d10 agent +58 −12 queue ? risk ?                                 │intent   not handed to this card — no delta │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │         document                           │
+│   · 40c9b3 agent +96 −0 queue ? risk ?                                  │where    src/store (5) · tests (1)          │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │delta    no document was handed to this card│
+│   · c1f5e2 ? +22 −22 queue ? risk ?                                     │         — fathom analyze <episode> --json  │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │         is the one source                  │
+│   · 2be77f human +8 −3 queue ? risk ?                                   │risk     unknown — nothing has ranked this  │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │         episode (`reco-c05` ranks the      │
+│   · 9c4d10 agent +58 −12 queue ? risk ?                                 │         spine; e4.4 ranks findings)        │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │intent   not handed to this card — no delta…│
 │   · e8f1a2 agent +412 −90 queue ? risk ?                                │members  a77b:0 a77b:1                      │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │                                            │
-│                                                                         │delta    no document was handed to this card│
-│                                                                         │         — fathom analyze <episode> --json  │
-│                                                                         │         is the one source                  │
-│                                                                         │risk     unknown — nothing has ranked this  │
-│                                                                         │         episode (`reco-c05` ranks the      │
-│                                                                         │         spine; e4.4 ranks findings)        │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings            │boundary author 0.75 — a rule, not a fact   │
+│                                                                         │         (ADR-003 §4.7)                     │
+│                                                                         │session  no harness session on this episode │
+│                                                                         │read     fixture index · times UTC          │
+│                                                                         │                                            │
+│                                                                         │                                            │
+│                                                                         │                                            │
 │                                                                         │                                            │
 │                                                                         │                                            │
 │                                                                         │                                            │

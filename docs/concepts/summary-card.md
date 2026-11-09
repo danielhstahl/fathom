@@ -102,6 +102,15 @@ pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that
   absence. The plan items and the declared scope are evidence, and evidence lives in the delta
   document — printed whole by `fathom show <episode>`, from the same document this card summarizes.
   A row that says *what the agent claimed* is a summary; the whole brief is not a row.
+* **The row budget spends the bands first.** Two rows of header (identity, then attribution with the
+  review state folded into it), one row for every warning that says this row cannot be trusted at all,
+  then the five bands in order, and only after them the provenance — `members`, `boundary`, `session`,
+  the model stamp, the read line — cut first when the card does not fit. Intent's share of that budget
+  is the one row above, and what it gave back went to the code delta: the noise fold on a row of its own
+  instead of inside a `+N more`, the top-paths list long enough to answer "where" instead of naming four
+  directories, and a reserved row in band 1 labelled `complexity`, which is where `e8.6` draws the figure
+  [ADR-007 §5](../adr/0007-complexity.md) gives it — no row until the figure exists, because a row that
+  reads "not measured" under every episode is a row that prints nothing.
 
 The mapping is a projection, not a new model: seven sections in, five bands out, nothing added and
 nothing invented, and every band names the function that renders its strings.

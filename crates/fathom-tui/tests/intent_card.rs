@@ -1,4 +1,4 @@
-//! The `i` pane and the card's intent line (`e4.2`, `reco-c54`).
+//! The `i` pane and the card's intent line (`e4.2`, `reco-c54`, `reco-5js3.2`).
 //!
 //! `fathom-analyze/tests/intent.rs` proves the store column and the delta document agree; `fathom-cli`'s
 //! `intent.rs` proves `fathom show` prints them. What only the TUI can prove is the third surface — the one
@@ -6,6 +6,12 @@
 //! drawn**. A card that shows nothing when there is no intent is indistinguishable from a card whose intent
 //! was never read, and those are the difference between "this agent worked unbriefed" and "this build is
 //! old".
+//!
+//! `e9.1` spent that rule on a row instead of a mode: the card carries intent as **one line**, in three
+//! states, and `e9.2` moved the assertions here onto the row — same three states, same frame. The `i` pane
+//! still exists (the mode goes away in `e9.3`, together with the rows it was duplicating), so the pane's
+//! own assertions stay, and `crates/fathom-tui/tests/episode_card.rs` is where the row is measured at every
+//! documented width.
 //!
 //! Every assertion goes through the real renderer and the real keystroke, as in `timeline_behaviour.rs`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -19,7 +25,6 @@ use fathom_tui::keymap::Keymap;
 use fathom_tui::style::StyledLine;
 use fathom_tui::timeline::{self, AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
-
 /// The instant the rail measures "now" from, as in the timeline corpus. Fixed, not `now`.
 const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
 /// One minute in microseconds.
@@ -217,23 +222,83 @@ fn the_card_carries_the_intent_line_and_the_session_it_arrived_on() {
     // while the pane is the plan and the scope. Both have to be right, and they are filled from the same row
     // (`episodes::to_row`'s fallback to the stream's session id).
     let app = app_with(Some(recorded()));
-    let body = text(&timeline::card_lines(
-        app.timeline.selected(),
-        NOW,
-        "fixture index",
-        72,
-        40,
-    ))
-    .iter()
-    .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
-    .collect::<Vec<_>>()
-    .join(" ");
+    let lines = card(&app, 72);
+    let body = lines
+        .iter()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
         body.contains("make the card pane scroll"),
         "the card prints the intent without anyone pressing `i`:\n{body}"
     );
     assert!(body.contains("s1"), "and the session:\n{body}");
     assert!(body.contains("s1:1"), "and the turn:\n{body}");
+    assert!(
+        body.contains("via hook-prompt"),
+        "and who said it, because a quotation without a source is a guess:\n{body}"
+    );
+    assert!(
+        !body.contains("for the plan and scope"),
+        "and the row no longer points at a keystroke for what the pane prints:\n{body}"
+    );
+    let drawn = lines
+        .iter()
+        .filter(|line| line.starts_with("intent"))
+        .count();
+    assert_eq!(
+        drawn,
+        1,
+        "intent is one row of the card, not the three it used to be:\n{}",
+        lines.join("\n")
+    );
+}
+
+/// The three states, on the row, in the frame the shell draws — the assertions that used to belong to the
+/// `i` pane's mode (`e9.1`, `e9.2`).
+#[test]
+fn the_card_row_draws_every_intent_state_as_itself() {
+    let states: Vec<(&str, Option<serde_json::Value>, &str)> = vec![
+        ("recorded", Some(recorded()), "make the card pane scroll"),
+        ("digest-only", Some(digest_only()), "no text captured"),
+        ("none", Some(none_recorded()), "no recorded intent"),
+        ("no document", None, "not on this row"),
+    ];
+    let mut seen: Vec<String> = Vec::new();
+    for (name, intent, expect) in states {
+        let app = app_with(intent);
+        for width in [35usize, 72] {
+            let lines = card(&app, width);
+            let drawn: Vec<&String> = lines
+                .iter()
+                .filter(|line| line.starts_with("intent"))
+                .collect();
+            assert_eq!(
+                drawn.len(),
+                1,
+                "`{name}` at {width} columns prints exactly one intent row:\n{}",
+                lines.join("\n")
+            );
+            let row = drawn[0].trim_end();
+            assert!(
+                row.contains(expect),
+                "`{name}` at {width} columns is drawn as what it is, not as a blank: {row:?}"
+            );
+            assert!(
+                !seen.contains(&row.to_owned()),
+                "and no two states share a row: {seen:?} vs {row:?}"
+            );
+            seen.push(row.to_owned());
+        }
+    }
+}
+
+/// The card at a width, padded to the pane's own width and trimmed of that padding.
+fn card(app: &App, width: usize) -> Vec<String> {
+    timeline::card_lines(app.timeline.selected(), NOW, "fixture index", width, 40)
+        .iter()
+        .map(|line| line.text().trim_end().to_owned())
+        .collect()
 }
 
 #[test]
