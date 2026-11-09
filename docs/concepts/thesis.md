@@ -95,7 +95,7 @@ worse, because it teaches them to ignore the window.
 |---|---|
 | Trust | Every number, label and sentence links to the evidence that produced it. No claim without a citation (§7.1). |
 | Speed | Answers in seconds, not builds. "Did that turn make the architecture worse?" must be a glance, not a research project. |
-| Rank | An ordered list of what deserves attention beats a complete list. The queue, not the diff, is the home screen. |
+| Rank | A figure that says how much to stop for beats a list that has to be complete. Was "the queue, not the diff, is the home screen"; **amended by `e10.1`** — the home screen is the timeline, and the ranking survives as a figure beside every row, not as a view (ADR-006 [§5.1.2](../adr/0006-tui.md)). |
 | Durability | Sign-off must survive `rebase -i`, amend, squash and force-push, or the reviewer must re-review — and re-review is what they bought the tool to avoid. |
 | Honesty about ignorance | "Unknown, because no hook events" is a correct and shippable answer. A confident guess is a defect. |
 | No new dependency | Works offline, on their machine, on their repo, with no account and no network. If Fathom needs a server, it has failed the persona it serves. |
@@ -143,7 +143,8 @@ say where they live.
 ```
 
 Reading it: the harness produces turns; Fathom turns turns into **episodes**, describes each episode with
-a **delta**, ranks unreviewed episodes into an **attention queue**, and sits in **ambient mode** while
+a **delta**, scores how much attention each unreviewed episode deserves — a figure per episode, not a
+separate queue since `e10.1` — and sits in **ambient mode** while
 the human does something else. The human's dispositions land in the **review ledger**, which is both the
 output people trust and the input to every metric in §5. The rework arrow is the one that matters: work
 that comes back is proof the mental model was wrong.
@@ -172,11 +173,16 @@ evidence ids that support it and a confidence. The machine-readable form is `Epi
 *Diff vs delta:* a diff is byte-level text between two blobs and explains nothing; a delta is a
 state-level claim and cites its sources. — `e2.11`, schema `schemas/episode-delta.schema.json`.
 
-**Attention queue** — the ranked, keyboard-driven worklist of episodes a human has not yet
-dispositioned, ordered by risk weighted by staleness and blast radius. This is the product's main
-workflow and its home screen; the timeline is a view, the queue is the job. Every entry leaves the queue
-by exactly one of four dispositions: *accepted*, *flagged*, *dismissed with a reason*, *snoozed*. The
-queue must explain its own ordering. — `e4.5`, ranking formula `e4.4`.
+**Attention queue** — *retired as a surface by `e10.1` (`reco-ydek.1`); kept listed so a reader of an
+old artefact, changelog or ADR finds the answer here rather than in a missing entry.* It was the ranked,
+keyboard-driven worklist of episodes a human had not yet dispositioned, ordered by risk weighted by
+staleness and blast radius, and this document's claim about the home screen: "the timeline is a view,
+the queue is the job." The half of that sentence that was true is the second half — **the job is
+dispositioning**, and dispositioning is the four acts and the ledger, not the ranking. Home is now the
+timeline; the four dispositions, their keys, the closed dismiss vocabulary and the retrospective
+survive on it; the risk ranking survives as a per-episode figure printed on a row and explained in the
+card, and is no longer the ordering principle of any view. — was `e4.5`/`e4.4`; retired by `e10.1`,
+contract [ADR-006 §5.1.2](../adr/0006-tui.md), consequence Amendment 3.
 
 **Review ledger** — the durable, human-readable, committable record of human dispositions: sign-offs,
 notes, decisions and dismissals, keyed to episode identity plus a content fingerprint, stored as
@@ -206,8 +212,15 @@ designed to be its review half, not its part. — ADR-005 (`e0.5`).
 **Auditor / downstream reader** — a secondary user who sees only the exported artefact: a staff
 engineer, lead, compliance function, or the reviewer's future self.
 
-**Author kind** — the attribution label on a commit or episode: `agent`, `human` or `unknown`, plus
+**Author kind** — the attribution *datum* on a commit or episode: `agent`, `human` or `unknown`, plus
 confidence and evidence. `unknown` is a legitimate terminal value, never silently bucketed. — `e4.1`.
+**Amended by `e10.1`:** the datum is no longer a *label*. The word is printed nowhere a human reads it —
+not the rail row, the card, the ambient glance, `fathom show` or `fathom episodes` — because the
+ladder's verdict for "a real identity and no agent evidence" is `human` at confidence 0.50, which is
+confidently wrong in exactly the cases a reviewer cares about. It stays stored, correctable, read by
+segmentation and re-link, and shipped in `--json` with its confidence and evidence, where a consumer can
+weigh it; it stops being allowed to steer a human's screen, which retires it from the risk vector too
+(`e10.5`). Decision ADR-006 §5.1.2, principle §7.7.
 
 **Identity** — the reviewer's name as recorded on a ledger entry, taken from git config or explicit
 config. A sign-off without an identity is not a sign-off. — `e4.6`.
@@ -357,7 +370,10 @@ hand-edited generated files, secret-shaped strings, disabled lint or type checks
 **Risk score** — the explainable 0–100 per-episode score: a documented feature vector (findings and
 severities, size and blast radius, dependency and migration exposure, test ratio, attribution confidence,
 noise share) times transparent, clamped, per-repo-tunable weights. No opaque model in v1: if we cannot
-say why an episode is 82, it must not be 82. — `e4.4`, calibration `e4.4`.
+say why an episode is 82, it must not be 82. *The attribution input retires in `e10.5` (`e10.1` records
+it here): a component for a label no human is shown may not stay in the arithmetic, and may not be struck
+from the printed vector before the points go — the explanation is where a reviewer can check the claim.*
+— `e4.4`, calibration `e4.4`.
 
 **`fathom why`** — the command that prints an episode's risk feature vector, weights and each
 contribution. The user-facing form of "explainable". — `e4.4`.
@@ -371,7 +387,9 @@ conflated in UI or code.
 
 **Disposition** — the terminal outcome a reviewer assigns to an episode: `accepted`, `flagged`,
 `dismissed` (with a reason code from a fixed, learnable vocabulary), `snoozed` (until a condition). Every
-disposition records who, when, why. — `e4.5`, persisted by `e4.6`.
+disposition records who, when, why. — `e4.5`, persisted by `e4.6`. The four *acts* that assign them are
+bound in `global` and taken from the timeline's rail as of `e10.1` (ADR-006 §5.1.2); the write-before-
+state-change rule is theirs and does not move.
 
 **Sign-off** — the disposition that says "I understand this and I accept it", with reviewer identity,
 timestamp and scope, stored in the *review ledger*. Sign-off is the event the north-star metric clocks
@@ -383,12 +401,15 @@ to. A sign-off whose content later changed is *stale*. — `e4.6`.
 
 **Dismiss vocabulary** — the closed, learnable set of reasons a reviewer may dismiss with, e.g.
 `expected`, `not-applicable`, `low-stakes`, `false-positive`, `handled-elsewhere`, `pre-existing`.
-Dismissing systematically must be visible: dismissals roll up in a retrospective view, and the set
-doubles as the false-positive labelling source (§5.4). — `e4.5`.
+Dismissing systematically must be visible: dismissals roll up in the retrospective — `r`, which since
+`e10.1` is a state of the timeline's rail listing acts, with `fathom review list --state dismissed` as
+the deep form — and the set doubles as the false-positive labelling source (§5.4). — `e4.5`, ADR-006
+§5.1.2.
 
-**Caught up** — the unambiguous state in which the queue is empty and no episode is `unread` or `stale`.
-Ambient mode goes quiet and dim here on purpose; "all clear" must be a state, not a mood. — `e5.1`,
-`e4.5`.
+**Caught up** — the unambiguous state in which no live episode is `unread`, `stale` or snoozed-and-due —
+a state of the *episodes*, never of a pane, which is why it outlived the queue (`e10.1`). Ambient mode
+goes quiet and dim here on purpose; "all clear" must be a state, not a mood, and it stays falsifiable
+because the rail's strip prints the count it was decided from. — `e5.1`, `e4.5`.
 
 **Snooze** — deferring an episode until a stated condition (a later episode, a date, a re-index) rather
 than dismissing it. Snoozed work is still open work and appears in the backlog count. — `e4.5`.
@@ -466,9 +487,11 @@ a `writer_epoch` and a heartbeat; a CLI that cannot take the lease sends its mut
 socket instead of writing. Who writes is a fact about a lock, not about which binary ran. — ADR-004
 §7.1, `e6.3`.
 
-**Timeline / episode rail** — the chronologically ordered list of episodes (the home *view*; distinct
-from the *attention queue*, which is ordered by risk). Grouped by day or agent session, filterable, with
-the unread marker. — `e1.6`, layout ADR-006.
+**Timeline / episode rail** — the chronologically ordered list of episodes, and **the home view** since
+`e10.1` (`reco-ydek.1`): what opens on start, rail focused, no filter applied, and the surface the four
+disposition acts are taken from. Grouped by day or agent session, filterable, with the unread marker and
+with the risk figure printed per row — the ranking survives here as a figure and an explanation, not as
+this list's order. — `e1.6`, layout ADR-006 §5.2, retirement ADR-006 §5.1.2.
 
 **Delta overlay** — the per-episode rendering layer on top of the structure and module maps: added edges
 solid, removed edges ghosted, changed nodes outlined, filtered to what this episode touched, with counts
@@ -511,8 +534,9 @@ ad-hoc strings. — `e0.10`.
 pane, and "what is on screen" is fully described by (view, scope, focus) — which is what `e1.11`
 persists between sessions and what `e5.7` writes into an artefact's header. — ADR-006 (`e0.6`).
 
-**View** — one of the nine frames a reviewer can put on the screen (Queue, Timeline, Diff, Structure,
-Graph, Deps, Ambient, Artefact, Search), each answering exactly one question and each reachable by one
+**View** — one of the frames a reviewer can put on the screen — nine today (Queue, Timeline, Diff,
+Structure, Graph, Deps, Ambient, Artefact, Search), **eight once `e10.3` deletes the Queue view**
+(ADR-006 §5.1.2) — each answering exactly one question and each reachable by one
 global key. A view is not a page and not a route: it is a pane layout plus a focus ring plus the drill
 edges out of it. — ADR-006 (`e0.6`).
 
@@ -659,7 +683,7 @@ on something measurable:
 |---|---|
 | Orient faster (where am I, what is new) | time-to-first-orientation < 60 s (`e1.12`) |
 | Understand an episode faster | episode card renders < 50 ms warm (`e2.10`); diff open latency (ADR-004) |
-| Triage faster | 100-episode queue cleared < 5 min (`e4.5`) |
+| Triage faster | 100 episodes dispositioned in a row < 5 min (`e4.5`, taken from the rail and re-hosted by `e10.2`) |
 | Trust the tool enough to sign | evidence-backed findings, zero silent suppression (`e2.2`, §7.1) |
 | Re-review nothing after a rewrite | ≥ 95 % of sign-offs re-linked after rebase/amend/squash (`e4.6`) |
 | The physical layer: nothing feels slow | warm re-index < 150 ms, query p95, RSS ceiling (ADR-004, `e0.11`) |
@@ -719,7 +743,7 @@ is a signal.
 
 ### 5.4 Guardrail 3 — risk-flag false-positive rate
 
-The attention queue only earns trust if "high risk" means something. This guardrail measures the cost of
+The risk flag only earns trust if "high risk" means something. This guardrail measures the cost of
 crying wolf, because a reviewer who stops believing the flags stops using the product.
 
 ```
@@ -806,7 +830,7 @@ in the same change.
 | `delta.structure.*`, `delta.dependencies.*`, `delta.architecture.*`, `delta.non_code.*`, `delta.tests.*` | risk vector, episode card, `fathom check` | `e2.3`, `e2.6`, `e3.3`, `e2.8`, `e2.9` |
 | `findings[].{detector_id, severity, confidence, evidence_ids[]}` | G3, risk vector, episode card | `e4.3` |
 | `risk.{score, reasons[], weights_version}` | flags, G3, `fathom why` | `e4.4` |
-| `blast_radius.{direct_count, hop1_count}` | risk vector, queue ordering | `e2.10` |
+| `blast_radius.{direct_count, hop1_count}` | risk vector — its second use as a queue ordering factor was retired with the queue (`e10.1`) | `e2.10` |
 | `evidence[].{id, kind, locator}` | "every number is a button" | `e2.10`, `e2.11` |
 | `review.{state, decision, reason_code, actor, signed_at, engaged}` — joined from the ledger | TTC, G1, G3 labels, backlog | `e4.6`, `e4.5` |
 | `rework.{flag, detectors[], checked_successors}` — computed with the maturity lag | TTC `counted`, G2, miss rate | `e4.3`, `e4.6` |
@@ -851,8 +875,15 @@ Amending one requires amending this section.
 2. **Never hide silently.** Suppression, filtering, baselining and collapsing are *views* with a printed
    reason and a one-keypress undo. Silently hidden content is the one failure mode a review tool is not
    allowed.
-3. **The reviewer's attention is the budget.** Defaults follow rank-first: the queue, not the diff; the
-   summary, then the drill-down. Every new feature spends attention and must say what it gives back.
+3. **The reviewer's attention is the budget.** Was "defaults follow rank-first: the queue, not the
+   diff; the summary, then the drill-down", **reversed by `e10.1` (`reco-ydek.1`)**: defaults follow
+   *chronology-first, summary-first* — the timeline, not the diff; the card's bands, then the drill-down.
+   The ranking survives as a per-episode figure beside every row and as the thing `w` and `fathom why`
+   explain; it is no longer the ordering principle of a view, because a second order over a set the
+   reviewer already reads in time order spends attention and returns a second place to be (ADR-006
+   §5.1.2). Every new feature spends attention and must say what it gives back, and — the clause `e10.1`
+   adds, and which settled both of epic 10's questions — **a datum a human is never shown may not decide
+   what that human sees**: not its score, its order, its filter or its bucket.
 4. **Deterministic by default.** Identical input yields identical bytes, in analyses, scores, narratives
    and exports. Byte-stability is what makes golden tests, reproducible sign-offs and trustworthy artefacts
    possible at all.
@@ -918,7 +949,7 @@ Tracked, not hidden. Each is owned by the named ticket; none blocks ADR-001 acce
 | 1 | Metric thresholds above 0/∞: `Δ_session`, `N`, R2's line threshold, `τ`, and the `G1`/`G2`/`G3`/miss-rate gates to be confirmed from spike data and three real repos. | `e0.12` |
 | 2 | Does hooks v1 carry enough session semantics for `in_session` to use the preferred rule rather than the 30-minute fallback in every harness we support? | `e0.5`, `e6.1` |
 | 3 | Does the repo-level `metrics` block live on `fathom stats --json` (`e1.10`) or does §5 need its own ticket? | `e1.10` |
-| 4 | `author kind = unknown` episodes: exclude from `E(W)` (cleaner population) or include with a flag (more honest coverage)? Resolve with `e4.1` accuracy data. | `e4.1` |
+| 4 | `author kind = unknown` episodes: exclude from `E(W)` (cleaner population) or include with a flag (more honest coverage)? Resolve with `e4.1` accuracy data. (`e10.1` retired the *printed label*; this question is about a metric's denominator and stands.) | `e4.1` |
 | 5 | Confirm *Fathom* as the product name and *episode* as the term that survives contact with users (three outside users must be able to name what an episode is — `e7.5`). | `e7.5` |
 
 ---
@@ -1005,3 +1036,73 @@ nouns *episode extent*, *digest tier*, *episode twin*, *fail-visible*.
    metric numerator or denominator — and **sign-off is refused**, because a sign-off must be about content
    that can be reproduced. The boundary cascade, its confidence *prices* (an ordinal, never a probability)
    and the re-link tiers are in ADR-003 §4 and §6, and are the only ones v1 has.
+
+### Amendment 3 — 2026-11-09 — the queue was a pane, not the job, and a datum nobody is shown may not steer the screen
+
+**Amends**: §2 (the *Rank* need), §3 (the reading of the picture), §4.1 (*Attention queue*), §4.2 (*Author
+kind*), §4.5 (*Risk score*, *Disposition*, *Dismiss vocabulary*, *Caught up*), §4.6 (*View*, *Timeline /
+episode rail*), §5.1 (the triage lever), §5.4's opening claim, §5.5 (the blast-radius row), §7 principle 3,
+§9 open question 4's scope.
+**Owned by**: `reco-ydek.1` (`e10.1`), with the surface contract in
+[ADR-006 §5.1.2](../adr/0006-tui.md) and the execution in `e10.2`–`e10.5`. It is a decision ticket: nothing
+in the build moved, and the sections above were edited to the new position in the same change, the way
+Amendment 2 edited §4.3.
+
+1. **The home screen reverses, and the reversal is about use rather than about the argument.** §4.1 said
+   "the timeline is a view, the queue is the job", and §2 sold *rank* as the home-screen need. In daily use
+   the reviewer opens the timeline and works the episodes in the order they happened; the ranked worklist
+   became a second place to be rather than a second insight, because it re-showed the episodes already on
+   the rail under a second ordering. Home is therefore the **timeline** — what opens on start, rail focused,
+   no filter applied, `t` as its letter and the freed `q` retired to the user's set (ADR-006 §7.6). What
+   the queue genuinely owned is not up for reversal and survives on the rail: the four disposition acts and
+   their keys, the write-before-state-change rule, the closed dismiss vocabulary, the retrospective, and the
+   open-work count that keeps *caught up* falsifiable. **"The job" was dispositioning all along**, and
+   dispositioning does not need a pane of its own.
+2. **What a ranking is when it is not a view.** The per-episode 0–100 score, its components, its reasons and
+   its counted ceiling are unchanged and stay printed on the row, expanded in the card and rendered whole by
+   `fathom why`. What dies with the pane is the *ordering function* built on top of it (`queue-1`: risk ×
+   staleness × blast radius) and the `rank N of M` figure, because a place in a set nothing ranked is not a
+   fact. Staleness is not deleted, only un-multiplied — the rail's age column is the same claim in plainer
+   clothes. The model name stays printed beside the numbers so a score never orphaned its explanation, and
+   the strip under the rail now names the order it actually implements (`order: newest first`), because §7.9
+   is a rule about every ordering a reviewer is made to read, not only the clever ones.
+3. **The attribution position, in three parts, because "delete the badge" is three decisions.** The printed
+   **label** goes away everywhere a human reads it. The **datum** stays — `author_kind`, its confidence and
+   its evidence keep being written, keep being correctable, keep being read by segmentation and re-link, and
+   keep shipping in `analyze --json`, where the confidence travels beside the claim and a consumer can weigh
+   one. The rail's author-kind **filter is retired with the label**, because a filter asserts completeness
+   ("these are the agent episodes") on a rung that says `human` for want of evidence, and because the only
+   way to offer it is to print the retired word in the filter editor — which is the §7.7 principle
+   ("confidence is part of the answer") applied to surfaces rather than to numbers: **a datum a human is
+   never shown may not decide what that human sees.** A machine channel may use it, because it gets the
+   uncertainty; a query narrowed over *evidence* (`via=harness`, `via=trailer`, `via=correction`) may come
+   back with its excluded count printed; the collapsed verdict may not. The CLI keeps `episodes --kind` for
+   exactly this reason, and the git **author name** filters (`author=`) are untouched, because git records a
+   name rather than inferring one.
+4. **The third part is the one a later ticket could otherwise miss: the risk vector still spends 8 points on
+   authorship, and they go in `e10.5`, not silently.** Between the label's removal and the component's
+   removal the points fire while the word is gone from the row, and the only thing that keeps that honest is
+   that the *component* keeps its name in the printed vector (`spine-1 62 = surfaces 50 + author 8 + size
+   4`). Striking the word before the points go would hide a live component inside the explanation of a
+   number — the exact inversion of §7.9 that this amendment's rule forbids. So the component and its name
+   leave in one commit, which records what happened to the freed cap and re-measures every gate that quotes
+   the arithmetic, and authorship joins the blind-spot list if it is a gap at all: a reviewer reading the
+   blind spots should learn that the tool does not know who wrote this, which is the truth the badge was
+   covering for.
+5. **What must outlive the pane, and how that is checked rather than promised.** The review ledger is
+   untouched and remains class **M**; the store's act tables keep their names and `SCHEMA_VERSION` does not
+   move, because the tables are about *acts* and the queue was a pane over them — a rename would be a
+   migration, and a migration is how a reviewer's history goes missing. An act's stamped risk and model name
+   are history and are never recomputed, so a sign-off made under `spine-1` still reads `spine-1` after the
+   vector changes. Persisted shell state (a tab naming the dead view, a stored author-kind filter) decodes to
+   the home view and a warning, never to a silently vanishing cursor. The checks are named in ADR-006 §5.1.2
+   §7 and §14: a committed store fixture written before the deletion reads back whole, `fathom review sync`
+   renders its acts and `review status` still calls them `fresh`, the keyboard review arc walks with `t`
+   where it pressed `q`, and `check_docs.py` forbids any page from advertising the retired pane. **Nobody's
+   sign-off may become invisible, and "we deleted a view" is not an excuse for one that did.**
+6. **What would make this reversal wrong.** A reviewer of a large backlog who demonstrably misses
+   high-consequence episodes because nothing put them first — the failure §4.1 was written to prevent. The
+   answer is not the queue back; it is the high-risk band where it already lives (ambient's `Need::HighRisk`,
+   `fathom check`, the row's own figure and `⚑`), and any surface that wants to be a new home for attention
+   has to name, in ADR-006 §4, a question the timeline cannot ask. The two epics' worth of evidence for that
+   would be measured, not argued.

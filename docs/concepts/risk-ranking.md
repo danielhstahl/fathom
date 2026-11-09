@@ -1,4 +1,15 @@
-# Episode risk ranking: the order the queue reads in, and the ceiling printed beside it
+# Episode risk ranking: the figure on the row, and the ceiling printed beside it
+
+- **Amended by `reco-ydek.1` (`e10.1`)**, which retired the queue as a view and the printed `human`/`agent`
+  label — decision in [ADR-006 §5.1.2](../adr/0006-tui.md), product position in
+  [thesis.md Amendment 3](thesis.md#11-product-amendments). Four consequences for this page, and they land
+  with different tickets: **the score is unchanged and stays a per-episode figure** printed on the rail's row,
+  expanded by `w` and rendered whole by `fathom why`; **`queue-1` (§12) dies with the pane in `e10.3`**, along
+  with the `rank N of M` figure and the `order: risk × staleness × blast radius` strip, and the strip under
+  the rail says `order: newest first` instead while still naming the model the row's number came from;
+  **the `author` component (§3) is due for removal in `e10.5`** and may not be struck from the printed vector
+  before its points go; and this page's title used to say *the order the queue reads in*, which is now a
+  sentence about a view that is going away.
 
 - **Status**: Accepted, and implemented — the spine-only half. `reco-884` (`e4.4`) has now replaced its
   *inputs* with a documented feature vector and a calibration set, in
@@ -6,9 +17,11 @@
   function* with risk × staleness × blast radius; neither changes the shape described here, which is the
   shape the queue, the rail and `w` print. This document stays the contract for **that** ranking —
   `spine-1`, which is what the score, the rail's risk column and `fathom why` still compute. The queue
-  orders itself by `queue-1` now (`e4.5`): the score is its first factor and this document's order is not
-  its order. See §12.
-- **Ticket / plan key**: `reco-wsj` (`e4.5`) owns the queue. This ranking was pulled forward out of
+  ordered itself by `queue-1` (`e4.5`): the score was its first factor and this document's order was not
+  its order. See §12 — which since `e10.1` is the record of a **retired** ordering: there is no queue left to
+  order itself, and the score is the rail's per-row figure.
+- **Ticket / plan key**: `reco-wsj` (`e4.5`) owned the queue, and `reco-ydek.3` (`e10.3`) retires it. This
+  ranking was pulled forward out of
   `e4.5` because `reco-glv`'s (`e1.12`) walkthrough could not be completed at all without some
   defensible answer to "which three episodes are the riskiest" — see
   [demo/README.md](../demo/README.md).
@@ -21,8 +34,9 @@
   claim to be.
 - **Executes as**: `fathom-analyze::risk` (`Surface`, `classify`, `Signals`, `rank`, `COMPONENTS`,
   `BLIND_SPOTS`), read through `fathom-store::episode::Store::episode_files`, composed in
-  `fathom-cli::episodes`, and drawn by `fathom-tui::worklist` plus the episode card's ranking band,
-  which `w` expands in place (§13, and [ADR-006](../adr/0006-tui.md) §5.1.1). Measured by
+  `fathom-cli::episodes`, and drawn by the rail's risk cell plus the episode card's ranking band,
+  which `w` expands in place (§13, and [ADR-006](../adr/0006-tui.md) §5.1.1). `fathom-tui::worklist` draws
+  it too until `e10.3` deletes that pane. Measured by
   `crates/fathom-analyze/tests/risk_spine.rs`, `crates/fathom-tui/tests/risk_rank.rs` and
   `crates/fathom-cli/tests/risk_rank.rs`.
 
@@ -32,12 +46,17 @@
 
 One question, per episode:
 
-> **Of everything in this index, which should a human read first, and what sentence justifies that
-> order?**
+> **How much should this episode stop me, and what sentence justifies that?**
+
+(That sentence is `e10.1`'s revision of "of everything in this index, which should a human read first".
+The first form asks about a figure the reviewer can check on one row; the second asked the ranking to
+choose the reviewer's next click, which is what the retired queue was, and what the rail's own chronology
+already does.)
 
 The answer is a number 0–100 with five named parts, a badge naming the kinds of file that earned it,
 and a list of what the inputs cannot see. Everything it needs comes from rows the spine already
-writes — paths, added and removed lines, file counts, author kind — so it exists in a build with no
+writes — paths, added and removed lines, file counts, author kind (until `e10.5`) — so it exists in a
+build with no
 analysis layer, which is the build Epic 1 ships.
 
 Three refusals, all of them load-bearing:
@@ -47,7 +66,9 @@ Three refusals, all of them load-bearing:
   one, it prints that it cannot see one ([§8](#8-what-a-spine-cannot-see)) instead of guessing.
 * **It is not a recommendation.** It orders reading; it never marks an episode acceptable, never
   hides one, and is never the reason a row is absent. `x`/`f`/`-`/`z` dispositioning is
-  `e4.6`'s, and the strip says so.
+  `e4.6`'s, and the strip says so. **`e10.1` retires even the ordering:** after `e10.3` this ranking ranks
+  nothing and orders nothing — it is a figure beside a chronology, printed on a row and explained on
+  request.
 * **It is not computed in the shell.** `fathom-tui` sorts values it is handed; `fathom-cli` computes
   them once per page, in the composition root, because the shell may not run analysis any more than
   it may open a store (ADR-002 §5.2, ADR-006 §2.1).
@@ -86,12 +107,22 @@ in the diff.
 | `size` | 16 | churn (`n_add + n_del`) on a log scale, discounted three-quarters for noise | `episode.n_add`, `n_del`, per-file churn |
 | `deletions` | 14 | how much of the churn is removal, and whether the test surface shrank while source grew | per-file `n_added_lines`, `n_removed_lines` |
 | `breadth` | 12 | distinct surfaces touched, plus files past 12 and past 30 — scope creep | `episode.n_files`, surfaces seen |
-| `author` | 8 | an agent wrote it (8), nobody is credited (6), a human did (0) | `episode.author_kind` |
+| `author` | 8 | an agent wrote it (8), nobody is credited (6), a human did (0) | `episode.author_kind` — **retiring: `e10.5`** |
 
 Caps sum to 100, so a component's share is meaningful beside another's, and the printed `8/50` or
 `12/16` says both the contribution and the ceiling. `author` is first-class because the thesis is
 that unreviewed agent work deserves more attention than unreviewed human work (ADR-001 §7.3); a
 ranking that ignored authorship would be silent about the reason the tool exists.
+
+**`author` is the one row of this table with an expiry date, and `e10.1` recorded why**
+([ADR-006 §5.1.2](../adr/0006-tui.md) item 6c). The label is being withdrawn from every surface a human
+reads (`e10.4`), and a component that scores the episode for something the reviewer cannot see is what
+ADR-001 §7.9 forbids — so
+the component leaves in `e10.5`, with the freed cap's fate written into `COMPONENTS` beside the arithmetic,
+the model string changing, every gate that quotes the arithmetic re-measured rather than restated, and
+authorship moving to the blind-spot list if it is a gap at all. **Until that commit the word stays in the
+printed vector** (`spine-1 62 = surfaces 50 + author 8 + size 4`): striking it before the points go would
+hide a live component inside the explanation of a number, which is the same lie in the other direction.
 
 ## 4. The surface table
 
@@ -183,6 +214,17 @@ row that was never ranked is never folded into the ranking as a zero — "nothin
 statement about the tool, and it prints as `risk ?` with a line saying which ticket will fill it
 (ADR-001 §7.7).
 
+**`e10.3` retires the last reader-facing use of that order, and the sentence above has to be read in the
+two halves it now splits into.** "Score descending, then churn, then recency, then id" is no longer the
+order of any pane: the rail is chronological (§5.1.2 of the ADR), and a reviewer who wants the worst
+first asks with `F` and reads the numbers. What survives is the same tie-break as the order of a
+*measurement*, where reproducibility is not ergonomics but the whole point: `--calibrate`'s top-decile
+cut in [false-positive-calibration](false-positive-calibration.md), the G3 guardrail, and every golden
+that quotes "the top N by score". Those places must stop calling the set "the queue a reviewer would have
+read first" — there is no queue — and say what they measure: the top decile of this corpus by `spine-1`.
+The `?` rule is untouched and outlives the pane, because it was never about ordering: an episode nothing
+scored prints `?` and not `0` wherever a score prints, on the rail as on the retired worklist.
+
 ## 8. What a spine cannot see
 
 Printed with the score — the counted ceiling on the card, the whole list when `w` expands the
@@ -221,7 +263,7 @@ per row.
 | `surfaces` from paths | `e4.4`'s features (a finding, not a path class) | `e4.4` closes |
 | `size`, discounted noise | `e2.2`'s measured noise share instead of a path guess | when the Rust ingest stamps `noise_class` |
 | `deletions`' test heuristic | `e2.9`'s named cases and `e4.4`'s deleted-test feature | `e2.9`'s Rust seam |
-| ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score is now `queue-1`'s first factor, and blast still waits on `e3.2` |
+| ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score was `queue-1`'s first factor, and blast still waits on `e3.2`. **`e10.1` closes `queue-1` itself**: the rail orders by time, `e10.3` deletes the ordering function, and staleness survives as the row's own age column rather than as a multiplier |
 | the blind-spot list | shorter, by closing items 1–7 one at a time | per finding, printed from the findings table |
 
 Nothing in that list changes what the panes print: a number, its vector, its reasons, and the ceiling.
@@ -252,7 +294,27 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   `query.queue.ms.small` and `query.card.ms.small` as measured numbers; all three were blocked on
   exactly this empty worklist, and the blocked reason said so.
 
-## 12. What `e4.5` put on top: `queue-1`
+**Which of these `e10.3` retires rather than updates, said out loud because a retired measurement is a
+hole in a contract.** `cold.queue_visible.ms` and `query.queue.ms` are the queue's cold-start and query
+costs; with the pane gone the keys go, and what replaces them is the rail's own cold start, *named as new*
+rather than quietly re-blessed under the old key — a perf baseline whose subject changed is a baseline that
+stopped meaning anything. `tests/test_risk_ranking_contract.py` asked "is the queue ranked and not
+chronological" of a pty; the surviving question is "does every row print its score, print `?` when nothing
+scored it, and get a strip that names the model the number came from", asked of the rail in the same pty
+style rather than dropped. `crates/fathom-tui/tests/risk_rank.rs` keeps its obligations (order the rows the
+rail's way, keep each row's reason with its row, hand `w` the whole ceiling, keep the frame exact at the
+three sizes); `crates/fathom-cli/tests/risk_rank.rs` keeps `the_cli_and_the_pane_print_one_vector`, which
+is the one assertion on this page that does not care what any list is sorted by.
+
+## 12. What `e4.5` put on top: `queue-1` — **retired by `e10.1`, deleted by `e10.3`**
+
+> **This section is kept as the record of a retired ordering function**, in the same spirit as the retired
+> panes ADR-006 keeps its layout of: `fathom_analyze::queue` (`rank_queue`, `QueuePolicy`, `QueueRow`,
+> `QueuePlacement`) goes away in `e10.3` or is renamed to what it is, and the delta document drops the
+> placement figures with a version bump rather than an accident. Read it as the answer to "what did the
+> strip mean when it said `order: risk × staleness × blast radius`", which is a question about a store
+> written before the deletion — an act's stamped `risk_model` and a reviewer's old sign-off still say
+> `queue-1`, and history is not re-scored (§5.1.2 of the ADR).
 
 `fathom-analyze::queue` orders the worklist as
 
@@ -277,12 +339,27 @@ Three things about it are the contract, not the arithmetic:
 fathom-tui)`. The strip keeps only the name and the open count, because a strip is forty columns wide
 and the name is the part that may not be truncated away.
 
+**What `e10.3` deletes from this section, and what it re-homes.** Deleted with the pane: `rank_queue`,
+`QueuePolicy`, `QueueRanking`, `QueuePlacement` and the delta document's placement figures — a schema
+version bump with `tools/check_delta_compat.py` consulted, not a quiet removal. Re-homed, because each of
+the three bullets above is an honesty mechanism and not a fact about a list: *"a factor with no measurement
+is `1.00` and says so"* becomes the rail's rule for its blast cell (the graph walk is still not paid per
+row, so the basis and its absence still print); *"an unranked row is `?`"* becomes §7's `?`-not-`0` rule
+plus ambient's `Need::Unranked`, so a wall of unscored rows still cannot read as *caught up*; and *"the
+printed number is rounded, the order is not"* survives only inside a measurement's ordering (§7), where a
+decile boundary has to reproduce. `w` after `e10.3` explains the **score** — `fathom why`'s own
+`spine-1 62 = surfaces 50 + author 8 + size 4`, less the author row once `e10.5` lands — because there is
+no ordering left to explain, and the strip's sentence becomes
+`order: newest first · 7 unread · filter: … · risk spine-1` (ADR-006 §5.1.2 §3).
+
 ## 13. One surface, two depths: what the card prints, and what `fathom why` keeps
 
 `reco-5js3.1` (`e9.1`) decided the shell's episode surfaces, and the ranking is where the decision
 lands hardest: one number with two surfaces and three spellings inside a single pane.
 [ADR-006 §5.1.1](../adr/0006-tui.md) is the rule — one episode surface, five bands, one string per
-figure — and this is what it means for a number and its reasons.
+figure — and this is what it means for a number and its reasons. `reco-ydek.1` (`e10.1`) is the second
+decision about where a ranking is allowed to live, and it applies the same discipline one level out: a
+number may have one surface and one deep verb, and it may not also be the reason a pane exists.
 
 **One surface.** The episode card is the only place the shell talks about an episode, so the ranking
 is a *band* of the card, not a pane a key swaps in. `w` keeps its key and loses its pane: it expands
@@ -293,8 +370,8 @@ from.
 
 | the print | where it appears | the bytes it is |
 |---|---|---|
-| the glance | the worklist / rail row | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
-| the ordering's name | the worklist strip | `order: …` — the model name, with (`w`) as the key that explains it |
+| the glance | the rail row (the worklist row until `e10.3` deletes it) | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
+| the ordering's name | the strip under the list pane | was `order: risk × staleness × blast radius`; after `e10.3`, `order: newest first` with the model named as `risk spine-1` — §5.1.2 §3's parts, in their drop order |
 | the argument, brief | card band 4 | the delta document's own `attention` row — `RiskView::headline()` with the place appended when there is one — plus `badge()` and `blind_spot_note()` |
 | the argument, expanded | card band 4 under `w` | every line of `reasons()`, then every line of `BLIND_SPOTS`, then the model's own *reading order, not an all-clear* line |
 | the announcement | the toast, and the `--plain` frame | the same explain sentence, in the channel a screen reader hears: a toast is not a second surface, it is this one's voice |
@@ -305,12 +382,16 @@ no columns for: the feature-by-feature arithmetic, the denominator, the `τ` com
 overrides and `--calibrate`, and the JSON. None of it is drawn in the shell, and no band grows to
 hold any of it — a feature table is a document, and documents have verbs.
 
-The pane keeps the one fact the verb cannot have. `RiskView::rank` and `ranked` are the caller's,
+The pane keeps the one fact the verb cannot have — **and `e10.3` takes that fact away with the queue,
+which is the consequence most worth stating here.** `RiskView::rank` and `ranked` are the caller's,
 because a place in a set is not a fact about one episode: `fathom why` scores one episode and is
-silent about the queue, while the pane knows exactly which set is on screen and says `rank 4 of 7`
-about it. The `--plain` frame, the strip and the `w` sentence all carry the same queue-1 line, which
-is repetition with one owner and is allowed; what is not allowed is two surfaces owning two
-sentences.
+silent about the queue, while the pane knew exactly which set was on screen and could say `rank 4 of 7`
+about it. Once nothing ranks the set on screen, *no place is a fact about it either*: `rank N of M` leaves
+the card's band 4, `RiskView::rank`/`ranked` leave with it, and `w`'s label moves from *why this rank* to
+*why this score* (ADR-006 §5.1.2 §5). The strip and the `--plain` frame keep carrying one line about the
+number, which is repetition with one owner and is allowed; what is not allowed is two surfaces owning two
+sentences — and what is now forbidden outright is a surface printing a place in an ordering nobody
+performed.
 
 **No second narrative.** Every line above comes from the model: `risk::score::render()` for the
 whole form, `RiskView::{headline, badge, reasons, blind_spot_note}` and `BLIND_SPOTS` for the band,

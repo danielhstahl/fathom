@@ -4,7 +4,10 @@
 - **In code**: `crates/fathom-analyze/src/ledger/` (`entry`, `format`, `relink`, `collect`) and
   `crates/fathom-cli/src/review.rs`; the store mirror is `crates/fathom-store/src/ledger.rs`.
 - **Decided by**: ADR-004 §10 (durability classes — class **M** is must-survive *because it is committed*)
-  and [ADR-003](../adr/0003-episodes.md) (identity, which is what a sign-off is keyed to).
+  and [ADR-003](../adr/0003-episodes.md) (identity, which is what a sign-off is keyed to). The acts' host
+  and the retrospective's home changed in [ADR-006 §5.1.2](../adr/0006-tui.md) (`e10.1`); **the ledger did
+  not change at all**, which is what
+  [the last section](#what-a-retired-view-does-not-take-with-it) is on the record for.
 - **Read this if**: you have signed something off and want to know what that actually did, or you want a CI
   gate that means "a human looked".
 
@@ -27,8 +30,8 @@ reviewed it") would keep counting it.
 
 ## What a sign-off says
 
-Four decisions, and they are the whole vocabulary — the same four dispositions the queue offers
-([glossary](thesis.md)):
+Four decisions, and they are the whole vocabulary — the same four dispositions the acts offer, taken from
+the timeline's rail as of `e10.1` ([glossary](thesis.md); the acts and their keys):
 
 | decision | means | clocks the north-star metric |
 |---|---|---|
@@ -49,7 +52,7 @@ fathom review sign <episode> --note "read the migration; deploy order is in the 
 fathom review status            # is every episode covered by a sign-off that still matches?
 fathom review list --state stale
 fathom review verify            # tampering check; reads no index, works in a fresh clone
-fathom review sync              # render the acts the queue wrote as ledger entries
+fathom review sync              # render the acts the shell wrote as ledger entries
 ```
 
 `fathom review status` on a freshly indexed repository with nothing signed off — the miniature from
@@ -166,7 +169,7 @@ accepted still what is here?* The states come from the re-link ladder:
 * **`stale`** — the sign-off re-linked, but the content has since changed. The old judgement is *evidence*,
   not a pass. This is the state that makes an amend after review visible instead of comfortable.
 * **`orphan`** — the entry cannot be re-attached to anything live. Fail-visible by design: the work comes
-  back to the queue rather than being quietly treated as reviewed.
+  back as unread on the rail rather than being quietly treated as reviewed.
 * **`unknown`** — the content digest was never computed, so staleness is undecidable. Reported as stale with
   the reason "content was never measured", because a digest that cannot be computed is not a pass.
 
@@ -187,8 +190,9 @@ the sign-offs is itself an episode, which would want a sign-off, forever), and a
 ## The dismiss vocabulary is closed
 
 Dismissing requires a reason from a fixed set, not free text. That is not pedantry: a closed set is what makes
-systematic dismissing a number on a screen instead of a feeling, and `queue.retrospect` (`r` in the queue) is
-the rollup that reads it. The reasons are also what a *new* reviewer inherits — "why did we stop caring about
+systematic dismissing a number on a screen instead of a feeling, and `review.retrospect` — `r`, which since
+`e10.1` is a state of the timeline's rail listing *acts* rather than the queue's worklist flip (ADR-006
+§5.1.2), with `fathom review list --state dismissed` as the deep form — is the rollup that reads it. The reasons are also what a *new* reviewer inherits — "why did we stop caring about
 this" is a question whose answer has to be in the record, and free text five months later is a shrug in
 prose.
 
@@ -234,6 +238,30 @@ exit=7
 ```
 
 (The digests are truncated here so the line breaks stay readable; the real line prints them in full.)
+
+---
+
+## What a retired view does not take with it
+
+`e10.1` (`reco-ydek.1`) retired the attention queue as a surface, and `e10.3` deletes it. The ledger is the
+reason that is a *pane removal* rather than a *feature removal*, and the boundary is worth writing down
+before the deletion happens, because every part of it is a place a sign-off could go invisible:
+
+| what the queue held | where it is after the pane | what proves it survived |
+|---|---|---|
+| the four acts | bound in `global`, taken from the rail (`e10.2`); write-before-state-change intact | `crates/fathom-tui/tests/queue_triage.rs` moves its write-first, refusal-keeps-the-row and no-ledger cases to the rail rather than being rewritten green |
+| the act log (`triage_event`) | **unchanged, including its name** — the table is about acts, and the queue was a reader of it | no migration: `SCHEMA_VERSION` does not move, so a store written with the queue opens without it and vice versa |
+| the ledger (`.fathom/reviews/`) | untouched; class **M** as ever | `fathom review sync` still renders a queue-era act, `fathom review verify` still passes, and `fathom review status` still calls those episodes `fresh` and counts them in the verdict |
+| the stamped risk on an act | history, never recomputed: an act signed under `spine-1` prints `spine-1` after `e10.5` changes the vector | the store fixture check below reads back risk and model name byte for byte |
+| the retrospective | `r`, a state of the rail listing acts (`e10.1`), with `fathom review list --state dismissed` as the deep form | the rollup prints the same dismissals, actors and reasons it printed in the worklist, and still says out loud when nothing was written this session |
+| persisted shell state | a stored tab naming the dead view, or a stored author-kind filter, decodes to the home view plus a warning — never to a vanished cursor | the session-state decoder's existing *applied / newer / damaged* rule gains the warning |
+
+The check `e10.3` owes, in one sentence: **open a store written by the build that still had the queue** — a
+committed fixture at the last `SCHEMA_VERSION` that build wrote, per
+[fixtures](fixtures.md) — and assert every act reads back (disposition, actor, reason, note, snooze
+condition, stamped risk and model), `fathom review sync` renders each as a ledger entry, `fathom review
+verify` is clean, and `fathom review status` reports every episode those acts signed as `fresh`. A reviewer
+who had forty sign-offs must still see forty, in the new binary, having done nothing.
 
 ## How it is stored, and why markdown
 

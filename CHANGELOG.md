@@ -16,6 +16,57 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The queue was a pane, not the job — what is home once it goes, and what the badge was covering for (`reco-ydek.1`)
+
+Epic 10 takes two features out of the product and both had load-bearing parts welded on, so the decision
+had to be written before the deletion or the ADRs would describe a product nobody ships. `e10.1` is that
+decision and it changed no code: **ADR-006 §5.1.2** is the surface contract, **thesis.md Amendment 3** is
+the product position, and `review-ledger.md` and `risk-ranking.md` were amended in the same commit rather
+than left as a ticket for someone braver.
+
+* **Home is the timeline.** The argument that once made the ranking the home screen is reversed out loud
+  rather than dropped: a second ranked list of the episodes the reviewer already works in time order is a
+  second place to be, not a second insight. `t` keeps the letter — moving home onto the freed `q` would
+  charge the reviewer for a deletion — and `q` retires to the user's set under §7.6, this ADR's second
+  instance of that rule and its first for a whole view. Start lands on the rail with **no filter applied**,
+  and a persisted tab naming the dead view decodes to the home view *with a warning that names what it
+  carried* rather than to a cursor that vanished in an upgrade.
+* **The acts and the audit trail move; the ledger does not move at all.** `x f - z` were already `global`
+  bindings and `App::act_target` already addressed the rail, so what moves is the host of the feedback, not
+  the act — and **the acts stop advancing**, because a chronology's cursor is a place in time and `x` then
+  `d` must be about the episode just signed; the run-of-rows workflow is `F` with `state=unread` and `n`, and
+  `e4.5`'s five-minute bar keeps its test while losing its pane. `r` survives as `review.retrospect` in
+  `global`, flipping the rail to a list of *acts*; the write-before-state-change rule and its three tests
+  move whole; and the one config key welded to the dead name — `[queue] dismiss_reasons` — is renamed with
+  the old spelling honoured and noticed, because a silently ignored vocabulary is a filter that quietly
+  stopped filtering.
+* **The strip's sentence is decided in parts with a drop order**: `order: newest first · 7 unread ·
+  filter: … · risk spine-1`, replacing `order: risk × staleness × blast radius`, on two rules — a list names
+  the order its renderer implements, and a model name beside no number is a citation to nothing. `queue-1`
+  dies with the pane and takes `rank N of M` with it: a place in a set nothing ranked is not a fact, so
+  `w`'s label moves from *why this rank* to *why this score*, and the score itself — components, reasons,
+  counted ceiling — does not move at all.
+* **The author-kind decision is three decisions**, which is why the ticket asked for it in three parts: the
+  printed **label** goes from the rail cell, the card, the glance line and `fathom show`/`fathom episodes`;
+  the **datum** stays in the store and in `analyze --json` with its confidence and evidence, and the rail's
+  kind **filter is retired** while `fathom episodes --kind` survives, which is the whole rule in one line —
+  *a datum a human is never shown may not decide what that human sees* — since a query asserts completeness
+  and cannot carry a confidence, while a machine consumer is handed one; and `spine-1`'s 8-point `author`
+  component is marked due for `e10.5` **with the constraint that it may not be struck from the printed
+  vector before its points leave**, because the vector is the explanation of the number and a hidden live
+  component is the same lie pointing the other way.
+* **Nobody's sign-off may become invisible, and how that gets checked is named**: no migration and no table
+  rename (`SCHEMA_VERSION` does not move — a rename is a migration, and "it is only a name" is what every
+  data-loss migration says about itself on the way in), an act's stamped risk and model never recomputed, the
+  markdown ledger untouched, and four named tests that open a store written *before* the deletion and assert
+  its acts, its rendered ledger entries and its `fresh` sign-offs all come back.
+
+Two strings §5.1.1 wrote about band 4 (*"the vector, with its place"*, *"why is this one in front of me?"*)
+are recorded as superseded, and the section says which child owes which regenerated table — including the
+`check_docs.py` token rule that stops a page advertising a dead pane. No code changed, and none was supposed
+to: `check_docs.py`, `recommender.tui doc --check`, `check_ticket_claims.py`, `gen_docs.py check` and
+`check_workspace.py check` are green.
+
 ### The card's row budget is a number, and the page that spends it now says which one (`reco-5js3`)
 
 Three children closed this epic: `e9.1` decided the surface, `e9.2` cut the card to its budget, `e9.3`
