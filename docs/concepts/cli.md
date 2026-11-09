@@ -156,13 +156,23 @@ remedy, because three near-identical sentences drift, and one of them will be th
 ### The findings that are untidy rather than degraded
 
 `fathom stats` exits 12 for everything above because in each case an answer is missing or wrong. There are
-two findings that are not like that, and printing them with code 12 anyway would make a healthy repository look
-broken:
+three findings that are not like that, and printing them with code 12 anyway would make a healthy repository
+look broken:
 
 | Finding code | State | `stats` | `doctor` | `doctor --strict` | Remedy printed |
 |---|---|---|---|---|---|
 | `index_dead_rows` | commit rows for commits that no longer exist: a `rebase`, a `commit --amend` or a force-push replaced them, and `git gc --prune=now` has usually deleted the objects | 0 | reported, exit 0 | **12** | `fathom index --prune` |
+| `index_complexity_partial` | the `git_commit_file` complexity column is filled on some but not all of the rows that could carry a figure (ADR-007 §9.6) | 0 | reported, exit 0 | **12** | `fathom index` |
 | `config_ignored_key` | a key `fathom.toml` sets that this build cannot use: a `[risk.weights]` name that is not one of the twelve, a weight that is not a number, a value that had to be clamped | 0 | reported, exit 0 | **5** | rename the key or delete the line; `fathom why --weights` prints the twelve |
+
+`index_complexity_partial` is the one of the three whose absence would be the bug. A complexity column nobody
+has filled is honest — every figure prints `?` with `column_not_filled`, and the coverage line says so — while
+a column filled on two thirds of the index puts a confident number beside a `?` and invites a reader to add
+them, which is the quiet lie ADR-007 §9.6 names. So the fraction is printed on every `fathom stats` and
+`fathom doctor` (`complexity 3128 of 4000 file row(s) measured (78 %) …`, with the reason codes and the basis
+token(s) after it), and the *finding* fires only in the half-filled state whose threshold is this verb's own:
+below 100 % of the rows that could carry a figure, and stated in the line rather than in a config key, per
+ADR-007 §8.3.
 
 The index is not wrong in this state — HEAD is indexed, the queue is segmented over the history the refs
 still reach, and every episode answer is the answer. What is wrong is that the store *counts* as the

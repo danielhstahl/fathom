@@ -865,6 +865,39 @@ make adding a code a migration, and a migration is the expensive way to say some
 says. The closed list lives in `structure::UnavailableReason`, and one contract test asserts that enum,
 this table and §7.1's agree.
 
+**As shipped (`e8.3`), each constraint carries two clauses this section does not spell out.** Both live in
+`crates/fathom-store/src/episode.rs`'s `ADDED_COLUMNS`, and both are this section's own rules rather than
+new ones:
+
+* **A row an older fathom wrote must satisfy the constraint.** That is what this section says in words and
+  what the SQL above does not do: such a row has `NULL` figures and `''` reasons, which is §7.4's fourth
+  row, so the literal constraints would reject the very state this ADR spends a section on. Each constraint
+  therefore begins `complexity_basis = ''`: a row with no basis carries no figures to defend, and the basis
+  is already the store's marker for "some build that knew about these columns wrote this row".
+* **A figure always names its basis** — §9.5's "every figure carries `complexity_basis`", which the escape
+  hatch above would otherwise leave a door for: a figure written with `basis = ''` would read as a figure
+  that shares a basis with everything, and §9.5 exists precisely to stop that being the default.
+
+The stamping itself is bookkeeping rather than DDL. `SCHEMA_VERSION` moves to 12 and `MIGRATION_12` is an
+empty batch — the probe list applies the columns whether or not a store reached 12 the ordinary way — but
+`user_version` and `meta.schema_version` move with it (ADR-004 §9.1), so an older fathom refuses this store
+instead of reading columns it cannot name. That is the whole cost of the change: a published
+forward-compatibility rule rather than an accident of this migration, and §9.3 is the proof that no derived
+row pays for it.
+
+So each shipped constraint reads, for each side:
+
+```sql
+CHECK (   (complexity_basis = '' OR complexity_after IS NOT NULL OR complexity_after_reason <> '')
+       AND (complexity_after IS NULL OR complexity_basis <> ''))
+```
+
+Two assertions on it, both executable: `complexity::the_constraints_refuse_a_silent_question_mark_and_an
+_anonymous_figure` proves the schema refuses a `?` with no reason *and* a figure with no basis, and proves
+the never-looked row is still writable — the last of those is a migration-compatibility test wearing a
+short name, because an older store that cannot open is the failure this section's first paragraph is
+about.
+
 No `complexity_delta` column: it is `complexity_after − complexity_before` and both are in the row, and a
 stored derived value is a value that can disagree with its inputs.
 

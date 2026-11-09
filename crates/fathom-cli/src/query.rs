@@ -698,6 +698,11 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
             index["integrity"].as_str().unwrap_or("?"),
             index["pending_derivation"].as_u64().unwrap_or(0),
         ));
+        // How much of the complexity column is real, printed beside the totals it could be confused with
+        // (ADR-007 §9.6). One function, so `fathom stats` and `fathom doctor` cannot disagree about it.
+        if let Some(line) = crate::state::complexity_coverage_line(index) {
+            out.push(line);
+        }
         if let Some(last) = index["last_run"].as_object() {
             out.push(format!(
                 "  last run  {} {} ({}), {} commit(s) added, {}",

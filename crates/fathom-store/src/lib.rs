@@ -92,3 +92,10 @@ pub mod scorecard;
 /// rather than by which binary was invoked (ADR-004 §7.1, `e6.3` / `reco-kvk`). Not SQLite-gated: a
 /// lease is a file, and a daemon that cannot open a store still has to find out whether it is the writer.
 pub mod lease;
+
+/// The complexity columns on `git_commit_file`, the episode roll-up that is a join, and the coverage
+/// `fathom doctor` prints — ADR-007 §9, `e8.3` (`reco-l9bz.3`). Gated with [`spine`] because the columns
+/// are on a spine table, and for the plain reason that a figure with nowhere to be stored is a
+/// recomputation with extra steps.
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod complexity;

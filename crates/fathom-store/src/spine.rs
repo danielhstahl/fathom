@@ -73,7 +73,25 @@ use sha2::Digest as _;
 /// sentence as version 10's: a derived table, re-derived, nothing migrated. It is also the migration that
 /// made the field-9 change above worth paying for — a scorecard table landing cost every reader of this
 /// store a whole re-analysis.
-pub const SCHEMA_VERSION: i64 = 11;
+///
+/// Version 12 is `e8.3`'s complexity columns ([`crate::complexity`], ADR-007 §9.1) and it is the first
+/// version whose DDL is not in a migration string at all: six `ALTER TABLE ADD COLUMN`s on
+/// [`git_commit_file`](MIGRATION_1), which SQLite cannot make idempotent, so they live in
+/// [`crate::episode::ADDED_COLUMNS`] and the migration entry for 12 is empty. What a bump buys and what it
+/// costs, in the order a reader cares:
+///
+/// * **It costs no derived row.** Field 9 is [`crate::cache::ROW_SCHEMA_VERSION`], not this number, and
+///   none of `cache`, `blob` or `blob_ref` is touched — a store written by an older fathom keeps every
+///   cached analysis it has and simply finds the new columns empty. ADR-007 §9.3 states the claim, and
+///   `the_complexity_columns_land_on_an_older_store_and_evict_nothing` tests it against a live cache row
+///   rather than against a comment.
+/// * **It costs an older binary.** `meta.schema_version` and `user_version` move to 12 together (§9.1), so
+///   a fathom built before this one refuses the store instead of reading columns it does not know about,
+///   which is §9.5's published forward-compatibility rule and not an accident of this migration.
+/// * **It re-counts nothing.** An unfilled column is an absent figure, not a stale one: the basis token
+///   ([`crate::complexity`]) is what makes an old figure honest, so §9.5's "invalidate, never migrate" is
+///   here the weaker "invalidate nothing, label what is there".
+pub const SCHEMA_VERSION: i64 = 12;
 
 /// The record shape the canonical export speaks, recorded in `meta.key_schema` so a store written by one
 /// version of the record is not read as if it were another ([`crate::error::Error::NotImplemented`] is the
@@ -138,6 +156,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (9, crate::ceiling::MIGRATION_9),
     (10, crate::notes::MIGRATION_10),
     (11, crate::scorecard::MIGRATION_11),
+    (12, crate::episode::MIGRATION_12),
 ];
 
 /// Migration 1: the spine of ADR-004 Appendix A §4.1 and §4.2, verbatim.
@@ -1981,6 +2000,185 @@ mod tests {
                     .any(|table| names(sql, table))),
             "no migration after the derived-row schema may reshape those tables without the bump"
         );
+    }
+
+    /// The six columns `e8.3` adds, in the order that makes a `DROP` reverse them: the two whose `CHECK`
+    /// names another column go first, because SQLite will not drop a column another constraint still names.
+    const COMPLEXITY_COLUMNS: [&str; 6] = [
+        "complexity_before",
+        "complexity_after",
+        "complexity_basis",
+        "complexity_max",
+        "complexity_before_reason",
+        "complexity_after_reason",
+    ];
+
+    #[test]
+    fn the_complexity_columns_land_on_an_older_store_and_evict_nothing() {
+        // ADR-007 §9.3, as a test and not as a comment: **complexity evicts zero derived rows.**
+        //
+        // The "store written by an older fathom" is built by *removing* what this build adds — the six
+        // columns dropped, the two stamps put back to 11 — so it is the schema an earlier fathom wrote out
+        // of the same DDL this crate carries, rather than a hand-copied fixture that drifts the first time
+        // anybody edits migration 1. A live derived row goes in before the downgrade, so the claim is
+        // measured against a row that could have been evicted rather than asserted over an empty table.
+        //
+        // Field 9 is what the ticket asks about ("schema_version is field 9 of every derived-row cache key,
+        // so decide and test whether this evicts every derived row"). The answer the store ships is *no*,
+        // and the test is written so that both ways of being wrong are visible: a bump of
+        // `cache::ROW_SCHEMA_VERSION` to make this ticket easier fails here in the loud direction, and a
+        // migration that silently reshaped `cache` would fail the check beside this one.
+        let fixture = temp_store();
+        let input = "7".repeat(64);
+        let versions = crate::cache::Versions::current();
+        let config = crate::cache::Config::default();
+        let key = crate::cache::derive_key("diff.per_file", &input, None, &versions, &config)
+            .expect("a key for a shipped analyzer");
+        let oid = "a".repeat(40);
+        let path_hash = "d".repeat(64);
+        {
+            let mut store = Store::open(&fixture).expect("open");
+            let run = store.begin_run("cold", Trigger::Manual, 1).expect("run");
+            store
+                .write_commits(run, 1, &[commit(&oid)])
+                .expect("commit row");
+            store.finish_run(run, 1, &RunStats::default()).expect("run");
+            store
+                .put(&key, b"a per-file diff", None, 3, 1)
+                .expect("a derived row, keyed the way this build keys one");
+
+            // Down to the shape an older fathom wrote. If a `DROP` ever fails, the column has grown a
+            // dependency the probe step has to know about, and that is worth a failing test too.
+            for column in COMPLEXITY_COLUMNS {
+                store
+                    .conn
+                    .execute_batch(&format!(
+                        "ALTER TABLE git_commit_file DROP COLUMN {column};"
+                    ))
+                    .unwrap_or_else(|err| {
+                        panic!("dropping {column} to rebuild an older store: {err}")
+                    });
+            }
+            store
+                .conn
+                .execute_batch("PRAGMA user_version = 11;")
+                .expect("pretend to be an 11-store");
+            store
+                .set_meta("schema_version", "11")
+                .expect("and say so the way §9.1 requires");
+            assert_eq!(store.counts().expect("counts").1, 1, "one file row in it");
+            assert_eq!(cache_rows(&store), 1);
+        }
+
+        let mut store = Store::open(&fixture).expect("reopen: an 11-store is not a newer store");
+        assert_eq!(
+            pragma_int(&store.conn, "user_version").unwrap(),
+            SCHEMA_VERSION,
+            "and the stamp follows the migration, as it does for every other version"
+        );
+        store.check().expect("integrity after the upgrade");
+
+        // The columns arrived, in the never-looked state: no figures, no reasons, no basis. Not stale, not
+        // zero — absent, which is the state ADR-007 §7.4 row 4 and §9.6 are about.
+        let names = columns_of(&store, "git_commit_file");
+        for column in COMPLEXITY_COLUMNS {
+            assert!(
+                names.iter().any(|name| name == column),
+                "the probe step did not land {column}: {names:?}"
+            );
+        }
+        let row = store
+            .file_complexity(&oid, &path_hash)
+            .expect("read")
+            .expect("the file row is the same row it was");
+        assert_eq!(row.before, crate::complexity::Side::NotMeasured);
+        assert_eq!(row.after, crate::complexity::Side::NotMeasured);
+        assert!(!row.filled());
+        assert_eq!(
+            store.complexity_coverage().expect("coverage").unfilled(),
+            1,
+            "and doctor would call that row unfilled rather than zero"
+        );
+
+        // The whole claim, in three assertions. The row is still there; it is under *the same key*, so no
+        // reader has to re-derive it; and a lookup with this build's versions answers from it.
+        assert_eq!(cache_rows(&store), 1, "not one derived row went anywhere");
+        assert_eq!(
+            stored_cache_key(&store),
+            key.raw,
+            "the key did not move, so every reader that had this row still has it"
+        );
+        let found = store
+            .resolve("diff.per_file", &input, None, &versions, &config, 2)
+            .expect("lookup");
+        assert!(
+            found.hit(),
+            "a warm store stays warm through this migration"
+        );
+        assert_eq!(found.payload.as_deref(), Some("a per-file diff".as_bytes()));
+
+        // And the counterfactual that makes the assertion above mean something: field 9 *is* the lever
+        // that evicts everything, which is exactly why §9.3 forbids pulling it here. Anyone who bumps it to
+        // make a complexity change easier is paying a full re-analysis of every store on the planet, and
+        // this is the test that says so.
+        let cold = store
+            .resolve(
+                "diff.per_file",
+                &input,
+                None,
+                &crate::cache::Versions::current()
+                    .with_row_schema(crate::cache::ROW_SCHEMA_VERSION + 1),
+                &config,
+                3,
+            )
+            .expect("lookup");
+        assert_eq!(cold.reason, crate::cache::Reason::KeyChanged, "{cold:?}");
+        drop(store);
+        let _ = std::fs::remove_file(&fixture);
+        let _ = std::fs::remove_file(format!("{}-wal", fixture.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", fixture.display()));
+    }
+
+    #[test]
+    fn field_nine_is_still_the_derived_row_version_and_not_the_migration_counter() {
+        // The one-line tripwire behind `e8.3`: complexity columns cost no invalidation *because* key field 9
+        // is `cache::ROW_SCHEMA_VERSION` rather than `SCHEMA_VERSION`. If this fails, somebody moved field 9
+        // — and then this store, and every other, re-derives every analysis on the next open. ADR-004 §5.2
+        // and ADR-007 §9.3 are the two pages that say why that is the expensive direction.
+        assert_ne!(
+            SCHEMA_VERSION,
+            crate::cache::ROW_SCHEMA_VERSION,
+            "field 9 — the derived-row schema, the highest migration that creates or alters `cache`, `blob` \
+             or `blob_ref` — and the store's migration counter are two different facts, and a derived key that \
+             reads the counter re-derives the whole cache on every migration. That coupling is the defect \
+             `reco-3sa` fixed, and the reason ADR-007 §9.3 can promise this migration evicts nothing"
+        );
+    }
+
+    /// The column names of a table, in declaration order.
+    fn columns_of(store: &Store, table: &str) -> Vec<String> {
+        store
+            .conn
+            .prepare(&format!("PRAGMA table_info({table})"))
+            .unwrap()
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    fn cache_rows(store: &Store) -> i64 {
+        store
+            .conn
+            .query_row("SELECT count(*) FROM cache", [], |row| row.get(0))
+            .unwrap()
+    }
+
+    fn stored_cache_key(store: &Store) -> String {
+        store
+            .conn
+            .query_row("SELECT cache_key FROM cache", [], |row| row.get(0))
+            .unwrap()
     }
 
     #[test]

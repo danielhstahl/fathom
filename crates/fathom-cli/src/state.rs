@@ -488,6 +488,71 @@ fn notice_note(notice: &HealthNotice) -> Option<String> {
     })
 }
 
+/// The remedy for a complexity column the index has not finished measuring.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_COMPLEXITY: &str = "`fathom index` measures complexity as it indexes; a row it has not reached \
+     prints `?` with `column_not_filled` until it has (ADR-007 §9.6)";
+
+/// How much of the complexity column the index carries, as one line of `fathom stats` / `fathom doctor`.
+///
+/// ADR-007 §9.6 asks doctor to report the coverage over the index, split by reason code, and §8.3 gives the
+/// "what counts as low coverage worth warning about" decision to whoever prints the warning — in the line
+/// that prints it, with the number in it. This is that line, and it is one function rather than two so
+/// `fathom stats` and `fathom doctor` cannot print different fractions of the same column.
+#[must_use]
+pub fn complexity_coverage_line(index: &Value) -> Option<String> {
+    use std::fmt::Write as _;
+    let column = index.get("complexity_column")?;
+    let measurable = column.get("measurable").and_then(Value::as_i64)?;
+    let filled = column.get("filled").and_then(Value::as_i64)?;
+    if measurable == 0 {
+        return Some(
+            "  complexity  no file row here can carry a figure (every one git reports as binary)"
+                .to_owned(),
+        );
+    }
+    let mut line = String::from("  complexity  ");
+    let _ = write!(line, "{filled} of {measurable} file row(s) measured");
+    if let Some(percent) = column.get("percent").and_then(Value::as_f64) {
+        let _ = write!(line, " ({percent:.0} %)");
+    }
+    if filled < measurable {
+        line.push_str(" — the rest print `?`, never a figure");
+    }
+    // The basis token(s). Two of them means a re-count is in flight and the column is two columns.
+    let bases: Vec<&str> = column
+        .get("bases")
+        .and_then(Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|row| row.get("basis").and_then(Value::as_str))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !bases.is_empty() {
+        let _ = write!(line, "; basis {}", bases.join(" + "));
+    }
+    // The reason tally, split by code as §9.6 asks, most frequent first, three of them: a line is a line.
+    let reasons: Vec<String> = column
+        .get("reasons")
+        .and_then(Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|row| {
+                    let code = row.get("code").and_then(Value::as_str)?;
+                    let rows = row.get("rows").and_then(Value::as_i64)?;
+                    Some(format!("{code} {rows}"))
+                })
+                .take(3)
+                .collect()
+        })
+        .unwrap_or_default();
+    if !reasons.is_empty() {
+        let _ = write!(line, "; reasons: {}", reasons.join(", "));
+    }
+    Some(line)
+}
+
 /// Everything the repository says about itself that a reviewer should know before trusting an answer,
 /// one line each, each with what to do about it.
 ///
@@ -959,6 +1024,10 @@ fn describe_index(
     let cache_footprint = store.cache_footprint().ok();
     let counters = store.counters("cache.").unwrap_or_default();
     let pending = store.pending_derivation().unwrap_or_default();
+    // How much of the complexity column the index actually carries (ADR-007 §9.6). Read here, next to the
+    // scale and the dead set, because this is the one read `fathom stats` and `fathom doctor` share and the
+    // coverage has to be the same number in both.
+    let complexity = store.complexity_coverage().ok();
     let integrity = match check {
         Check::Structural => store.structural_check().unwrap_or_default(),
         Check::Quick => store.integrity_check(false).unwrap_or_default(),
@@ -1077,6 +1146,30 @@ fn describe_index(
             ExitCode::IndexDegraded,
         ));
     }
+    // The half-filled complexity column, said as untidy. A column nobody has filled prints `?` everywhere —
+    // the coverage line says so and no figure is at risk of being believed — and that is the state of *every*
+    // store until `e8.4` wires the counting pass to this column, so warning on it would be a warning about
+    // this build rather than about the repository. A column filled on part of the index is the one that can
+    // lie: a confident number beside a `?` invites a reader to add them, and ADR-007 §9.6's rule is that
+    // partial progress has to be *observable while it runs*. The threshold is this verb's, named in the line
+    // that prints it (§8.3), and the remedy is the run that fills it.
+    if let Some(coverage) = complexity
+        .as_ref()
+        .filter(|coverage| coverage.half_filled())
+    {
+        findings.push(Finding::untidy(
+            "index_complexity_partial",
+            "index",
+            format!(
+                "the complexity column is filled on {} of {} measurable file row(s); the other {} print `?`",
+                coverage.filled,
+                coverage.measurable,
+                coverage.unfilled()
+            ),
+            REMEDY_COMPLEXITY,
+            ExitCode::IndexDegraded,
+        ));
+    }
 
     let index = json!({
         "present": true,
@@ -1119,6 +1212,27 @@ fn describe_index(
             .unwrap_or_default(),
         "head_indexed": head_indexed,
         "pending_derivation": pending.len(),
+        // How much of the complexity column this index actually carries (ADR-007 §9.6): the numbers, the
+        // reason split, and the basis tokens in use. A half-filled column is a figure that lies quietly, and
+        // the way to stop it lying is to print the fraction next to every total it could be confused with.
+        "complexity_column": complexity.map(|coverage| json!({
+            "rows": coverage.rows,
+            "measurable": coverage.measurable,
+            "filled": coverage.filled,
+            "with_figure": coverage.with_figure,
+            "unfilled": coverage.unfilled(),
+            "percent": coverage.percent(),
+            "reasons": coverage
+                .reasons
+                .iter()
+                .map(|(code, rows)| json!({"code": code, "rows": rows}))
+                .collect::<Vec<_>>(),
+            "bases": coverage
+                .bases
+                .iter()
+                .map(|(basis, rows)| json!({"basis": basis, "rows": rows}))
+                .collect::<Vec<_>>(),
+        })),
         "ref_tips": tips
             .iter()
             .map(|tip| json!({"name": tip.name, "oid": tip.oid, "kind": tip.kind}))

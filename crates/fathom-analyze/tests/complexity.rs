@@ -648,3 +648,40 @@ fn every_language_answers_an_empty_file() {
         );
     }
 }
+
+/// The store's `?` and this crate's vocabulary are the same code (ADR-007 §7.1), and the store cannot say
+/// so for itself: `fathom-store` holds the string it prints for "this column has not been filled" and
+/// `column_not_filled` belongs to [`UnavailableReason`], which lives here because the dependency runs this
+/// way round. So the two ends of that duplication are asserted where both are in scope — which is the only
+/// way a string a store prints and an enum that names it can be kept from becoming two answers to one
+/// question (`ADR-001 §7.10`).
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+#[test]
+fn the_store_prints_the_same_unknown_as_the_vocabulary_names() {
+    assert_eq!(
+        fathom_store::complexity::COLUMN_NOT_FILLED,
+        UnavailableReason::ColumnNotFilled.as_str(),
+        "an unfilled column must print the code whose sentence says `fathom index` will fix it"
+    );
+    assert_eq!(
+        fathom_store::complexity::MIXED_BASIS,
+        UnavailableReason::MixedBasis {
+            bases: String::new()
+        }
+        .as_str(),
+        "and a roll-up that refuses a mixed pair must name it with the §7.1 code, not a store-local word"
+    );
+    // Both are codes that mean *no figure*, and neither is one of the two codes that mean a `0` that is a
+    // fact — a reader who printed either as `0` would be doing the thing §7 exists to stop.
+    for code in [
+        fathom_store::complexity::COLUMN_NOT_FILLED,
+        fathom_store::complexity::MIXED_BASIS,
+    ] {
+        assert!(
+            UnavailableReason::vocabulary()
+                .iter()
+                .any(|reason| reason.as_str() == code && !reason.is_measured_zero()),
+            "`{code}` is not in the §7.1 vocabulary as an unknown"
+        );
+    }
+}

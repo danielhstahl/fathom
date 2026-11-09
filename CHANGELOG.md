@@ -17,6 +17,68 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 ## [Unreleased]
+### Complexity became a column, and the bill for it came due as zero (`reco-l9bz.3`)
+
+ADR-007 §9.1 told `e8.3` to make the primitive a column rather than a computation, and §9.3 told it to say
+what that costs in invalidation. The columns are there — `complexity_before`, `complexity_before_reason`,
+`complexity_after`, `complexity_after_reason`, `complexity_max`, `complexity_basis` on `git_commit_file`,
+beside the `n_add`/`n_del`/`is_binary` they will be read with — and the answer to what they cost is
+**zero derived rows evicted**, now asserted against a live cache row instead of resting in a comment.
+`crates/fathom-store/src/complexity.rs` owns the three reads a later ticket needs: the per-row shape,
+`Store::episode_complexity` for the roll-up, and `Store::complexity_coverage` for the coverage line.
+
+* **Zero evicted, tested both ways so the claim can fail.** A store written by an older fathom is built by
+    *removing* what this build adds — the six columns `DROP`ped, `user_version` and `meta.schema_version` put
+    back to 11 — so it is the same DDL rather than a hand-copied fixture that drifts, and a real derived row
+    goes into it first. Reopen: the columns arrive in the never-looked state, the file row is still the file
+    row, the cache row is still there **under the same key** and still answers a lookup, and nothing was
+    re-derived. Then the counterfactual: `Versions::with_row_schema(+1)` turns that same row into
+    `key_changed`, which is the lever §9.3 forbids pulling here and the reason the assertion means something
+    rather than passing forever. Field 9 is `cache::ROW_SCHEMA_VERSION` because `reco-3sa` measured what the
+    old coupling cost, and a column on a spine table is not a derived-row schema change.
+* **`SCHEMA_VERSION` moves to 12, and migration 12 is empty on purpose.** `MIGRATIONS` has to stay contiguous
+    with the version this build writes, but the DDL is the probe list's, because §9.5 needs a migration to be
+    re-runnable and SQLite has no `ADD COLUMN IF NOT EXISTS`. So version 12 buys exactly one thing: an *older*
+    fathom refuses this store instead of reading columns it cannot name — ADR-004 §9.5's published
+    forward-compatibility rule, written out where the columns are (`episode::ADDED_COLUMNS`) and in the
+    version's own note. It re-counts nothing: an unfilled column is an absent figure, not a stale one, which
+    is the one place §9.5's "invalidate, never migrate" is allowed to be the weaker statement.
+* **The two `CHECK`s needed two clauses the ADR does not spell out, and §9.1 now says so.** As written,
+    `CHECK (complexity_after IS NOT NULL OR complexity_after_reason <> '')` rejects **every row an older
+    fathom wrote** — `NULL` figures and `''` reasons is §7.4's fourth row, the state the same section demands
+    be satisfiable — so each constraint begins with `complexity_basis = ''`: no basis, no figures to defend.
+    The second clause is §9.5's *every figure carries its basis*, without which that escape would let a figure
+    with no basis read as a figure that shares a basis with everything. Both are tested through SQLite, not
+    through a re-statement: `?`-without-a-reason is refused, a figure-without-a-basis is refused, and the
+    never-looked row stays writable.
+* **The episode roll-up is a join, and it is read beside the line counts.** `Store::episode_complexity` is
+    one statement over `episode_member ⋈ git_commit ⋈ git_commit_file` for a whole page of rails — `complexity_before` on
+    a path's **earliest** row, `complexity_after` on its **latest**, then delta, absolute at head, max as a
+    max, coverage, and the reason tally, per ADR-007 §5.2/§9.2 — so `e8.5` fills a delta document without
+    re-walking files. The telescoping identity is asserted on the fixture, and so is the case it protects:
+    with the middle commit gone from the episode, base-to-head still answers 13 and Σ over the two rows
+    present answers 7, and 7 is the wrong answer to "what did this episode do". A pair counted under two
+    basis tokens contributes nothing to a sum and is tallied `mixed_basis` (§9.5); nothing measured at all is
+    `?`, never `±0` (§5.4).
+* **A half-filled column is the one that lies quietly, so doctor prints the fraction.** Every surface that
+    reports the index now carries `complexity 1 of 2 file row(s) measured (50 %) — the rest print `?`, never a
+    figure; basis mccabe-1; reasons: column_not_filled 1`, and the *finding* — `index_complexity_partial`,
+    untidy, exit 12 under `--strict` only — fires in the half-filled state rather than the empty one, because
+    a wholly empty column prints `?` everywhere and invites nobody to average anything. The threshold is
+    doctor's, named in the line that prints it, per §8.3.
+
+Nothing writes a figure yet, and that is stated rather than papered over: counting needs file *contents*, and
+deciding when the index may read them is `e8.4`'s budget. `Store::record_complexity` is the fill half, it
+reports `written`/`missing` so a fill in progress prints as a fraction, and every row it has not reached reads
+back as `Side::NotMeasured` — which prints `?` with `column_not_filled` and never a number. The code that
+names that code is in `fathom-analyze`, one crate over the dependency line, so `tests/complexity.rs` pins the
+two spellings together.
+
+*Asserted by*: `cargo test -p fathom-store --features sqlite-bundled` (13 in `src/complexity.rs` — the
+constraints, the fill, the roll-up and its gap case, the mixed-basis pair, the coverage; 2 new in `spine.rs`,
+the zero-eviction upgrade and the field-9 tripwire), plus `crates/fathom-analyze/tests/complexity.rs` for the
+one-vocabulary claim across the crate boundary.
+
 ### The counting pass landed with a hand-counted corpus under it, and the corpus immediately proved it could count (`reco-l9bz.2`)
 
 `e8.1` wrote ADR-007; this is `e8.2`, the pass it describes: a per-function decision-point count beside
