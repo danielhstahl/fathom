@@ -75,7 +75,7 @@ of them that bytes are what is missing ([§6](#6-the-degradation-contract)).
 
 Seven questions is the model's answer, and it is the answer `fathom card` prints with every pointer
 and every block. The shell has less room than that: at 80×24 the episode pane is twenty-nine columns
-wide in the queue and thirty-five in the timeline, and nineteen content rows deep in both, and a pane
+wide in the queue and thirty-five in the timeline, and eighteen content rows deep in both, and a pane
 that spends its rows is a pane a reviewer reads half of. `reco-5js3.1` (`e9.1`) decided what that
 pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that owns the decision, and
 `e9.2`/`e9.3` are the commits that carry it. The short form, from here:

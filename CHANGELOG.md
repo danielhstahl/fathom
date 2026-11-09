@@ -16,6 +16,46 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The card's row budget is a number, and the page that spends it now says which one (`reco-5js3`)
+
+Three children closed this epic: `e9.1` decided the surface, `e9.2` cut the card to its budget, `e9.3`
+folded the ranking into the card and retired `i`. What the epic asked for and none of the three delivered
+was the second half of its own acceptance criterion — *a named row budget on the pane, with a test that the
+rendered card never exceeds it*. The budget was named, four times, and never once checked against the thing
+that decides it.
+
+* **Eighteen, not nineteen.** ADR-006 §5.1.1 rule 4 spent itself arguing about what fits in "twenty rows:
+  one is the strip, nineteen are content" — a count off a layout mock, in which the pane's own title row was
+  booked as content. `frame_plan`, the renderer's arithmetic and the number `App::pane_body_rows` is
+  documented to agree with, gives the `card` pane **eighteen** body rows at the 80×24 that same page draws:
+  twenty-four at 120×30, ten at the timeline's 61×16 minimum, seven at its 41×9 ladder floor. Those four
+  are now the numbers in the ADR, and
+  `the_budget_is_the_rows_the_frame_gives_the_card_pane` reads them out of the plan rather than off a
+  screenshot and then holds every card the pane draws to them — exactly as deep as the pane, in both band
+  states and with and without a delta document, and wherever the document is deeper than the pane, the row
+  that counts the fall is on screen saying so. `docs/concepts/summary-card.md` and two doc comments in
+  `timeline/card.rs` had copied the nineteen; four copies of a figure is four chances to disagree with the
+  pane that computes it.
+* **What "at most ten rows at 120×30" was actually asking for.** The epic named that ceiling when the card
+  still spent rows on intent. What the measurements say is that at 120×30 the pane has twenty-four rows and
+  the whole card — header, five bands, provenance — is twenty with a delta document in hand and eighteen
+  without one, so at that size nothing falls and there is nothing to hide. The budget is not a ceiling on
+  the card: it is the order the rows are spent in and the count of whatever did not fit, which is rule 4
+  and now also a test.
+* **The window is not owed any more.** The section that created the debt closed with *"the **window** is the
+  other half and `e9.3` owes it … Until then the `card` pane takes no `App::scroll_of` offset, and its
+  overflow row points at `<C-w>o` rather than at a motion it does not implement"*. `e9.3` paid the debt in
+  the code and in the key table and left the paragraph that incurred it standing, so the normative page told
+  a reviewer to expect a pane that cannot scroll and an overflow row that points at a zoom — the same defect
+  §5.1.1 calls "a scroll a pane cannot show is a key that lies", written by the page that wrote the rule.
+  Rule 2's *"moves into `fathom-analyze`"* and the key table's *"`e9.3` owes the window"* were still in the
+  future tense about the same two shipped moves; both now name what landed, including `risk::CEILING_NOTE`
+  by the name the code carries.
+
+No behaviour changed, and none was supposed to: this is the page catching up to the build it governs.
+`cargo test -p fathom-tui`, `tools/check_docs.py` and `PYTHONPATH=src python3 -m recommender.tui doc
+--check` are green, and §14's `e9.1` check block still names the commands that hold §5.1.1.
+
 ### One card, one surface: `w` opens a band inside the card and `i` is retired (`reco-5js3.3`)
 
 Three renderings of one episode had been living behind three keys. `app.rs` branched between the card,

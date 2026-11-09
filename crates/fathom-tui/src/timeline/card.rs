@@ -222,7 +222,7 @@ enum Row {
 ///    index these rows came from.
 ///
 /// Bands come before provenance because a row about the change is what the card is for: a pane that spent
-/// nineteen rows on `intent`, `boundary` and `members` and then told the reviewer to run `fathom analyze`
+/// its eighteen rows on `intent`, `boundary` and `members` and then told the reviewer to run `fathom analyze`
 /// for the code delta had the order backwards (**reco-5js3.2**). Warnings are never demoted; provenance
 /// always is.
 fn detailed(
@@ -248,9 +248,11 @@ fn detailed(
 /// Lay the rows out: one label column for the whole card, values wrapped under it — until the card does
 /// not fit, and then one row per figure.
 ///
-/// The second pass is the row budget doing its job. A figure that wraps over four rows is a figure that
-/// took three rows from another band, and the bands are the questions: a pane that spent nineteen rows on
-/// one long directory rollup had printed one question four times and dropped four others. So when the
+/// The second pass is the row budget doing its job — `budget` is the rows the frame handed the pane
+/// (`App::pane_body_rows`, which is `frame_plan`'s own count: eighteen of them at 80×24), never a number
+/// this pane invents. A figure that wraps over four rows is a figure that took three rows from another
+/// band, and the bands are the questions: a pane that spent its rows on one long directory rollup had
+/// printed one question four times and dropped four others. So when the
 /// card will not fit, every figure gets exactly one row, cut with a visible `…`, and the counted remainder
 /// the document appended (`· +3 more`) is the part that is kept — the row says how much it did not show.
 /// `… N more rows` still counts what fell off the end.

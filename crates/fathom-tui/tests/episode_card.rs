@@ -1,13 +1,17 @@
 //! The episode card's row budget (`e9.2`, ADR-006 §5.1.1 rule 4).
 //!
-//! The card has nineteen content rows at 80×24 and — after the whole degradation ladder has fired —
-//! seven at the timeline's floor, and it had been spending them in the wrong order. Intent, a sentence an
+//! The card has eighteen content rows at 80×24 — the rows `frame_plan` gives the pane, which
+//! `the_budget_is_the_rows_the_frame_gives_the_card_pane` pins rather than assumes — and, after the
+//! whole degradation ladder has fired, seven at the timeline's floor, and it had been spending them in
+//! the wrong order. Intent, a sentence an
 //! agent wrote about its own work, took three; `boundary`, `session` and `members` took five more; and the
 //! rows that tell a reviewer what the change *did* fell off the end behind `… N more rows`. This file is
 //! the budget, stated as what the reviewer can now see:
 //!
 //! * at **80×24** every band is on the screen — the code delta and its noise fold, where it landed, the
 //!   four reach rows, the ranking with its counted ceiling, and one line of intent;
+//! * the **budget is a number, not a sentence**: the rows the frame gives the pane, at the four sizes the
+//!   budget is stated at, and the card never prints past them (`reco-5js3`);
 //! * at the **ladder floor (41×9)** the header, the code delta and the first reach row are what survive,
 //!   and the provenance is what gets cut — warnings are never demoted and provenance always is;
 //! * intent is **one row** in every state, and the states — recorded, digest-only, nothing recorded, and
@@ -22,6 +26,7 @@
 use fathom_analyze::insight::{EpisodeDelta, SectionId, brief};
 use fathom_tui::app::{App, Model};
 use fathom_tui::keymap::Keymap;
+use fathom_tui::render::frame_plan;
 use fathom_tui::timeline::{self, Batch, CardWindow, Episode};
 use fathom_tui::views::ViewId;
 
@@ -227,6 +232,21 @@ fn widths() -> Vec<(&'static str, (u16, u16))> {
     ]
 }
 
+/// The four sizes the row budget is stated at, each with the body rows the frame gives the `card` pane.
+///
+/// The third column is what this file argues about, and it is an expectation and not a measurement: the
+/// test that reads it asks `frame_plan` for the same number, so a ladder that quietly costs the pane a
+/// row fails here instead of quietly shortening the card. `120×30` is the size `reco-5js3` named when it
+/// asked for "a named row budget with a test that the rendered card never exceeds it".
+fn budget_sizes() -> Vec<(&'static str, (u16, u16), usize)> {
+    vec![
+        ("120×30 (the size the epic named)", (120, 30), 24),
+        ("80×24 (drawn at)", DESKTOP, 18),
+        ("61×16 (min)", MINIMUM, 10),
+        ("41×9 (ladder floor)", FLOOR, 7),
+    ]
+}
+
 // ---------------------------------------------------------------------------
 // What the reviewer sees that they did not see before
 // ---------------------------------------------------------------------------
@@ -316,6 +336,111 @@ fn at_the_ladder_floor_the_provenance_is_what_gets_cut() {
             !seen.iter().any(|label| label == provenance),
             "`{provenance}` is provenance, and provenance is what gets cut first:\n{body}"
         );
+    }
+}
+
+/// The budget is a number, and a number nobody checks is a rumour (`reco-5js3`, ADR-006 §5.1.1 rule 4).
+///
+/// Rule 4 used to spend itself describing what fits in "twenty rows: one is the strip, nineteen are
+/// content" — a count off a layout mock, in which the pane's own title row was booked as content. The
+/// renderer's plan is the arithmetic that decides it, and at 80×24 it hands the `card` pane eighteen
+/// rows, not nineteen. So read the plan first, then hold every card the pane is asked to draw to it.
+///
+/// Two assertions, because "never longer than the pane" on its own is satisfied by a card that prints one
+/// row. The cut card is **exactly** as deep as the pane — never a row more, which is the budget, and never
+/// a row less, because a short pane is a torn frame — and whenever the document is deeper than the pane,
+/// the last visible row is the one that counts what fell and names the motion that walks to it. Both band
+/// states and both document states are swept, because `w` and a missing delta document are what move the
+/// card's depth, and 120×30 is the size at which the whole document fits and nothing has to be counted.
+#[test]
+fn the_budget_is_the_rows_the_frame_gives_the_card_pane() {
+    for (name, size, budget) in budget_sizes() {
+        let shell = app(size, with_delta(mock()));
+        let plan = frame_plan(
+            &shell,
+            ViewId::Timeline,
+            usize::from(size.0),
+            usize::from(size.1),
+        );
+        let pane = plan
+            .panes
+            .iter()
+            .find(|rect| rect.pane.name == "card")
+            .unwrap_or_else(|| panic!("{name}: the timeline draws a card pane"));
+        assert_eq!(
+            pane.rows, budget,
+            "{name}: rule 4 spends the renderer's own count of the pane, and the page now says {budget}"
+        );
+        assert_eq!(
+            pane.rows,
+            shell.pane_body_rows(),
+            "{name}: the app's side of the row arithmetic and the renderer's cannot disagree"
+        );
+
+        for has_delta in [true, false] {
+            for expanded in [false, true] {
+                let rows = if has_delta {
+                    with_delta(mock())
+                } else {
+                    mock()
+                };
+                let shell = app(size, rows);
+                let window = CardWindow {
+                    scroll: 0,
+                    expanded,
+                };
+                let state = format!(
+                    "{name}, {}, {}",
+                    if expanded { "`w` open" } else { "band 4 brief" },
+                    if has_delta {
+                        "with a document"
+                    } else {
+                        "no document"
+                    }
+                );
+                let document = timeline::card_document(
+                    shell.timeline.selected(),
+                    NOW,
+                    shell.timeline.origin(),
+                    shell.pane_cols("card"),
+                    shell.pane_body_rows(),
+                    window,
+                );
+                let cut = timeline::card_lines(
+                    shell.timeline.selected(),
+                    NOW,
+                    shell.timeline.origin(),
+                    shell.pane_cols("card"),
+                    shell.pane_body_rows(),
+                    window,
+                );
+                assert_eq!(
+                    cut.len(),
+                    budget,
+                    "{state}: the card fills the rows the frame gave the pane and does not go past them"
+                );
+                let last = cut
+                    .last()
+                    .map(|line| line.text().trim_end().to_owned())
+                    .unwrap_or_default();
+                if document.len() > budget {
+                    let hidden = document.len() - budget + 1;
+                    assert!(
+                        last.starts_with('…')
+                            && last.contains(&hidden.to_string())
+                            && last.contains('j'),
+                        "{state}: {} document rows in {budget} is a window, so the last row counts the \
+                         {hidden} that fell and names the motion that walks them; it printed {last:?}",
+                        document.len()
+                    );
+                } else {
+                    assert!(
+                        !last.starts_with('…'),
+                        "{state}: the whole card fits in {budget} rows, so nothing is counted away: {last:?}"
+                    );
+                }
+            }
+        }
     }
 }
 
