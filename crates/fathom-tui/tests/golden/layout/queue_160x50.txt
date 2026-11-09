@@ -5,17 +5,17 @@
 │6 of 10 open · 6 unranked · blast unmeasured · holding this list at 1.00 · 1 dismissed 1 sno…│a77bb0 — flagged: the migration                                 │
 │▸  · a77bb0 human +140 −12 queue ? risk ? ⚐                                                  │2 commits · 1mo ago · ⚐ flagged · human 0.94                    │
 │     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │size     +140 −12 · 5 files                                     │
-│   · 40c9b3 agent +96 −0 queue ? risk ?                                                      │where    src/store (5) · tests (1)                              │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │delta    no document was handed to this card — fathom analyze   │
-│   · c1f5e2 ? +22 −22 queue ? risk ?                                                         │         <episode> --json is the one source                     │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │risk     unknown — nothing has ranked this episode (`reco-c05`  │
-│   · 2be77f human +8 −3 queue ? risk ?                                                       │         ranks the spine; e4.4 ranks findings)                  │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │intent   not handed to this card — no delta document            │
-│   · 9c4d10 agent +58 −12 queue ? risk ?                                                     │members  a77b:0 a77b:1                                          │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │boundary author 0.75 — a rule, not a fact (ADR-003 §4.7)        │
-│   · e8f1a2 agent +412 −90 queue ? risk ?                                                    │session  no harness session on this episode                     │
-│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │read     fixture index · times UTC                              │
-│                                                                                             │                                                                │
+│   · 40c9b3 agent +96 −0 queue ? risk ?                                                      │where    no rollup for the 6 paths on this row — fathom analyze │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │         <episode> --json writes it                             │
+│   · c1f5e2 ? +22 −22 queue ? risk ?                                                         │delta    no document was handed to this card — fathom analyze   │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │         <episode> --json is the one source                     │
+│   · 2be77f human +8 −3 queue ? risk ?                                                       │risk     unknown — nothing has ranked this episode (`reco-c05`  │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │         ranks the spine; e4.4 ranks findings)                  │
+│   · 9c4d10 agent +58 −12 queue ? risk ?                                                     │intent   not handed to this card — no delta document            │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │members  a77b:0 a77b:1                                          │
+│   · e8f1a2 agent +412 −90 queue ? risk ?                                                    │boundary author 0.75 — a rule, not a fact (ADR-003 §4.7)        │
+│     unranked — reco-c05 ranks the spine, e4.4 ranks findings                                │session  no harness session on this episode                     │
+│                                                                                             │read     fixture index · times UTC                              │
 │                                                                                             │                                                                │
 │                                                                                             │                                                                │
 │                                                                                             │                                                                │

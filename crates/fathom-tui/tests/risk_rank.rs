@@ -279,14 +279,30 @@ fn an_unranked_index_still_draws_a_queue_and_says_what_is_missing() {
     assert!(strip.contains("0 of 4 open"), "{strip}");
 }
 
-// --- the explanation ------------------------------------------------------------------------------
+/// The card pane's own rows at the frame's geometry, so a wrapped sentence is one string here and not
+/// three lines wearing a pane border.
+fn card_rows(app: &App) -> Vec<String> {
+    fathom_tui::timeline::card_lines(
+        app.queue_selected(),
+        NOW,
+        "fixture index",
+        app.pane_cols("card"),
+        app.pane_body_rows(),
+        app.card_window(),
+    )
+    .iter()
+    .map(|line| line.text().trim_end().to_owned())
+    .collect()
+}
+
+// --- the ranking band ----------------------------------------------------------------------------
 
 #[test]
-fn w_explains_the_selected_episode_and_esc_unexplains_it() {
+fn w_expands_the_ranking_band_in_place_and_w_folds_it_again() {
     let app = &mut loaded(rows());
     assert_eq!(
-        app.explain, None,
-        "nothing is explained before it is asked for"
+        app.expanded_rank, None,
+        "nothing is expanded before it is asked for"
     );
     let before = frame_lines(app).join("\n");
     assert!(
@@ -295,11 +311,11 @@ fn w_explains_the_selected_episode_and_esc_unexplains_it() {
     );
     assert!(
         !before.contains("environment variable"),
-        "but it prints one blind spot and a count, not the list — the card has a size:\n{before}"
+        "but it prints the count, not the list — the card has a size:\n{before}"
     );
 
     keystroke(app, "w");
-    assert_eq!(app.explain.as_deref(), Some("e-bbbb"));
+    assert_eq!(app.expanded_rank.as_deref(), Some("e-bbbb"));
     assert!(
         app.toast
             .as_ref()
@@ -308,36 +324,97 @@ fn w_explains_the_selected_episode_and_esc_unexplains_it() {
         app.toast
     );
 
-    let frame = frame_lines(app).join("\n");
+    // Asserted on the card pane's own rows: the frame would break a wrapped sentence with the pane's
+    // borders, and a test that cannot tell a wrapped row from a missing one is not checking anything.
+    let card = card_rows(app);
+    let said = card
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
-        frame.contains("spine-1 88 = surfaces 88"),
-        "the arithmetic is on the screen, never a bare number:\n{frame}"
+        said.contains("spine-1 88 = surfaces 88"),
+        "the arithmetic is on the screen, never a bare number:\n{card:?}"
     );
     assert!(
-        frame.contains("environment variable"),
-        "and the whole ceiling, not a `(1 more)`:\n{frame}"
+        said.contains("whether a new environment variable is ever read by the program"),
+        "and the whole ceiling, in its own words, not a `(1 more)`:\n{card:?}"
     );
-
-    keystroke(app, "<Esc>");
+    assert!(
+        said.contains("read those by hand: the ranking is a reading order, not an all-clear"),
+        "and what to do with a ceiling, in the model's own words:\n{card:?}"
+    );
+    keystroke(app, "w");
     assert_eq!(
-        app.explain, None,
-        "Esc dismisses the explanation before it unselects anything"
+        app.expanded_rank, None,
+        "the same key folds the band it opened, rather than stacking a pane on it"
     );
-    let frame = frame_lines(app).join("\n");
+    let card = card_rows(app);
     assert!(
-        !frame.contains("environment variable"),
-        "and the card is the episode again:\n{frame}"
+        !card.join(" ").contains("environment variable"),
+        "and the card is the brief card again:\n{card:?}"
     );
 }
 
 #[test]
-fn moving_on_ends_the_explanation_instead_of_letting_it_lie() {
+fn expanding_the_band_leaves_every_other_band_on_the_screen() {
+    // The sentence `e9.3` is built on: `w` grows one band in place, it does not swap the pane. So the
+    // change half of the card has to survive the keystroke that opens the ranking half.
+    let app = &mut loaded(rows());
+    // Every band the brief card printed is still printed with the ranking open — read off the card
+    // rather than a hand-typed list, because these fixtures have no delta document with a `what` row:
+    // they print the spine's `size` where a documented episode prints the document's `what`.
+    let before = card_rows(app);
+    keystroke(app, "w");
+    let frame = card_rows(app);
+    let band = |lines: &[String]| -> Vec<String> {
+        lines
+            .iter()
+            .filter_map(|line| {
+                let word = line
+                    .split_whitespace()
+                    .next()?
+                    .trim_start_matches(['~', 'x', '?']);
+                [
+                    "size",
+                    "what",
+                    "noise",
+                    "where",
+                    "risk",
+                    "attention",
+                    "surfaces",
+                    "blind",
+                    "intent",
+                ]
+                .contains(&word)
+                .then(|| word.to_owned())
+            })
+            .collect::<Vec<_>>()
+    };
+    assert!(
+        band(&before).contains(&"size".to_owned()) && band(&before).contains(&"where".to_owned()),
+        "the change bands are on the card before the keystroke:\n{before:?}"
+    );
+    assert!(
+        band(&frame).contains(&"blind".to_owned()),
+        "the ceiling is still counted with the band open:\n{frame:?}"
+    );
+    for label in band(&before) {
+        assert!(
+            band(&frame).contains(&label),
+            "the `{label}` band is still on the card with the expanded ranking:\n{frame:?}"
+        );
+    }
+}
+
+#[test]
+fn moving_on_folds_the_band_instead_of_letting_it_lie() {
     let app = &mut loaded(rows());
     keystroke(app, "w");
     keystroke(app, "j");
     assert_eq!(
-        app.explain, None,
-        "the explanation was of the episode that was selected, not of the pane"
+        app.expanded_rank, None,
+        "the band was opened about the episode that was selected, not about the pane"
     );
     assert_eq!(
         app.queue_selected().map(|episode| episode.id.as_str()),

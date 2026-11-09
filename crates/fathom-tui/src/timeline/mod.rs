@@ -37,9 +37,9 @@ mod rail;
 mod render;
 mod session;
 
-pub use card::intent_lines;
+pub use card::Window as CardWindow;
+pub use card::document as card_document;
 pub use card::lines as card_lines;
-pub use card::risk_lines;
 pub use days::{date_only, date_or_any, day_label, day_start, relative};
 pub use editor::{Editor, Next as EditorNext, Row as EditorRow, Stage as EditorStage, Target};
 pub use episode::{
@@ -402,16 +402,37 @@ impl Timeline {
         self.rail.text(width, visible)
     }
 
-    /// The preview of the selected episode, styled.
+    /// The preview of the selected episode, styled: the pane's window into the card (`e9.3`).
     #[must_use]
-    pub fn preview_lines(&self, width: usize, visible: usize) -> Vec<StyledLine> {
+    pub fn preview_lines(
+        &self,
+        width: usize,
+        visible: usize,
+        window: card::Window,
+    ) -> Vec<StyledLine> {
         card::lines(
             self.rail.selected(),
             self.rail.now(),
             self.rail.origin(),
             width,
             visible,
+            window,
         )
+    }
+
+    /// How many rows the selected episode's card has at this width: what the pane's motion clamps
+    /// against, since the card is a document the reader walks rather than a glance that truncates.
+    #[must_use]
+    pub fn preview_rows(&self, width: usize, budget: usize, window: card::Window) -> usize {
+        card::document(
+            self.rail.selected(),
+            self.rail.now(),
+            self.rail.origin(),
+            width,
+            budget,
+            window,
+        )
+        .len()
     }
 
     /// The rail's footer strip.

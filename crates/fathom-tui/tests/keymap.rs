@@ -20,7 +20,10 @@ use fathom_tui::views::ViewId;
 
 mod tables;
 
-use tables::{EXPECTED_ACTIONS, EXPECTED_DEFAULT_BINDINGS, EXPECTED_TASKS, EXPECTED_UNUSABLE};
+use tables::{
+    EXPECTED_ACTIONS, EXPECTED_DEFAULT_BINDINGS, EXPECTED_RETIRED, EXPECTED_TASKS,
+    EXPECTED_UNUSABLE,
+};
 
 /// The ADR's generated blocks, read from the file rather than copied into this test: the same
 /// reason `tools/check_docs.py` reads them (ADR-005 §12).
@@ -123,6 +126,48 @@ fn every_default_binding_is_in_the_default_table() {
         "the Rust table binds {bound} chords; the normative table has {}",
         EXPECTED_DEFAULT_BINDINGS.len()
     );
+}
+
+/// A retired action leaves the registry, but its row does not leave the table: the letter has to stay
+/// accounted for, or the next person to want a free key rebinds it in silence (ADR-006 §7.6,
+/// `reco-5js3.3`). Pinned against the normative Python table, like every other table here.
+#[test]
+fn a_retired_action_keeps_its_row_and_says_where_the_answer_went() {
+    assert_eq!(
+        keymap::RETIRED_CHORDS.len(),
+        EXPECTED_RETIRED.len(),
+        "the retired list drifted from the normative table"
+    );
+    for (chord, action, says) in EXPECTED_RETIRED {
+        let found = keymap::retired_chord(chord)
+            .unwrap_or_else(|| panic!("`{chord}` is retired in Python and not in Rust"));
+        assert_eq!(found.action, *action, "the retired action changed");
+        assert_eq!(found.says, *says, "the retirement note changed");
+        assert!(
+            keymap::action(action).is_none(),
+            "`{action}` is retired, so it must not be in the registry"
+        );
+        let km = Keymap::defaults();
+        for mode in Mode::PRECEDENCE {
+            assert_eq!(
+                km.resolve(&[mode], chord),
+                None,
+                "`{chord}` is retired, so no mode may resolve it in the default table"
+            );
+        }
+        assert!(
+            !EXPECTED_DEFAULT_BINDINGS
+                .iter()
+                .any(|(_, bound, _)| bound == chord),
+            "`{chord}` is retired, so the normative default table must not bind it either"
+        );
+        assert!(
+            keymap::RESERVED_FOR_USER
+                .iter()
+                .any(|reserved| reserved.chord == *chord),
+            "`{chord}` is retired, so it belongs to the user until §7.6 says otherwise"
+        );
+    }
 }
 
 #[test]

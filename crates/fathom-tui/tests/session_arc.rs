@@ -283,12 +283,24 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
     press(&mut app, "j");
     press(&mut app, "<Tab>");
 
-    // 4 · `w`: why this episode is where it is.
+    // 4 · `w`: why this episode is where it is. It is a band of the card now, not a pane the key
+    //     swapped in, so what the keystroke leaves behind is an opened section about *that* episode.
     press(&mut app, "t");
+    let in_scope = app
+        .timeline
+        .selected()
+        .map(|episode| episode.id.clone())
+        .expect("the rail has a row under the cursor");
     press(&mut app, "w");
-    assert!(
-        app.explain.is_some(),
-        "`w` answered about the episode in scope"
+    assert_eq!(
+        app.expanded_rank.as_deref(),
+        Some(in_scope.as_str()),
+        "`w` opened the ranking band about the episode in scope"
+    );
+    press(&mut app, "w");
+    assert_eq!(
+        app.expanded_rank, None,
+        "the same key folds the band it opened, rather than stacking a pane on it"
     );
 
     // 5 · `/`: one box, and the hit deep-links to whichever view owns it.

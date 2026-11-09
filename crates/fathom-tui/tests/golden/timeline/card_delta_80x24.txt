@@ -13,15 +13,15 @@
 │  40c9b3 1d4h agent +96 −0 ●●●●○○ ? ⚑     │~ surface source 9f +338… · +1 more│
 │  c1f5e2 1d8h ?     +22 −22 ●●●●○○ ? ⚑    │x tests  1 file(s)… · +3 more      │
 │ Thu 18 Sep · session 2 (pi) ── 1 episode │x blast  2 direct, 1 one… · +1 more│
-│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     │~ attention spine-1 62 =… · +2 more│
-│ Sun 14 Sep · session 1 (pi) ── 1 episode │surfaces ci-config                 │
-│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   │blind    a spine cannot see 7 thin…│
-│ Sat 13 Sep ── 1 episode                  │intent   make the store epoch-safe…│
-│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │members  e8f1:0 e8f1:1 e8f1:2 +1 m…│
-│ Thu 11 Sep · session 1 (pi) ── 1 episode │boundary author 0.75 — a rule, not…│
-│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │session  session 4 · turn 12       │
-│                                          │model    fathom-delta/1 v1…        │
-│                                          │read     fixture index · times UTC │
+│  08d4b1 26d0h agent +3 −1 ●●○○○○ ? ✔     │~ attention spine-1 62 = surfaces  │
+│ Sun 14 Sep · session 1 (pi) ── 1 episode │            50 + size 8 + author 4 │
+│  5f2c99 30d0h agent +61 −61 ●●●●●○ ? ×   │            · rank 1 of 7 · +2 more│
+│ Sat 13 Sep ── 1 episode                  │surfaces ci-config                 │
+│  a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    │blind    a spine cannot see 7 thin…│
+│ Thu 11 Sep · session 1 (pi) ── 1 episode │intent   make the store epoch-safe…│
+│  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │members  e8f1:0 e8f1:1 e8f1:2 +1 m…│
+│                                          │boundary author 0.75 — a rule, not…│
+│                                          │… 3 more rows · j · G              │
 │filter: area=any state=any group=day (F e…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
@@ -54,11 +54,11 @@ x dependencies 1 added (… · +1 more
 ~ surface source 9f +338… · +1 more
 x tests  1 file(s)… · +3 more      
 x blast  2 direct, 1 one… · +1 more
-~ attention spine-1 62 =… · +2 more
+~ attention spine-1 62 = surfaces  
+            50 + size 8 + author 4 
+            · rank 1 of 7 · +2 more
 surfaces ci-config                 
-blind    a spine cannot see 7 thin…
-intent   make the store epoch-safe…
-… 5 more rows — `<C-w>o` gives thi…
+… 7 more rows · j · G              
 
 ## card strip
 

@@ -135,6 +135,15 @@ pub const BLIND_SPOTS: &[&str] = &[
     "whether a deleted test was the only cover for the behaviour",
 ];
 
+/// What to do with a ceiling once it has been printed, in the product's own words.
+///
+/// This moved out of the TUI (`reco-5js3.3`, ADR-006 §5.1.1 rule 2): the line is a claim about *the
+/// ranking*, not about the pane that draws it, so a card, a `--plain` frame and a CLI verb printing
+/// three spellings of it is the same defect as printing the score three ways. A surface places this
+/// string; it does not write one.
+pub const CEILING_NOTE: &str =
+    "read those by hand: the ranking is a reading order, not an all-clear";
+
 /// One kind of file an episode can touch, with the attention it deserves.
 ///
 /// A closed list, and not a competition with `e0.9`'s path taxonomy. That taxonomy answers what a path

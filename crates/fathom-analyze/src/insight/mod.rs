@@ -217,7 +217,9 @@ pub fn episodes(
 // copied into every delta's `risk` section, so the card, the queue, the artefact and the MCP tool print one
 // number rather than four close approximations of it.
 pub use crate::risk::FileChange;
-pub use crate::risk::{BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank};
+pub use crate::risk::{
+    BLIND_SPOTS, CEILING_NOTE, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank,
+};
 
 // ---------------------------------------------------------------------------
 // the attention queue, through the same door (`e4.5`, `reco-wsj`)

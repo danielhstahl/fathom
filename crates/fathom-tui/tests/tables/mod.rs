@@ -61,9 +61,8 @@ pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
     ("review.flag", "Flag for attention, with a note", "review", "e4.5", &[Mode::Global], true),
     ("review.dismiss", "Dismiss with a reason", "review", "e4.5", &[Mode::Global], true),
     ("review.snooze", "Snooze until a condition", "review", "e4.5", &[Mode::Global], true),
-    ("risk.explain", "Why this score / this rank (`fathom why`)", "review", "e4.4", &[Mode::Global], true),
+    ("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4", &[Mode::Global], true),
     ("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5", &[Mode::Queue], true),
-    ("intent.show", "Show captured intent and its source", "review", "e4.2", &[Mode::Global], true),
     ("pick.choose", "Choose this entry", "overlay", "e4.5", &[Mode::Pick], false),
     ("prompt.submit", "Submit", "overlay", "e5.2", &[Mode::Prompt], false),
     ("prompt.result_down", "Next result", "overlay", "e5.2", &[Mode::Prompt], false),
@@ -139,7 +138,6 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
     ("global", "-", "review.dismiss"),
     ("global", "z", "review.snooze"),
     ("global", "w", "risk.explain"),
-    ("global", "i", "intent.show"),
     ("global", "m", "compare.mark"),
     ("global", "c", "compare.with_mark"),
     ("global", "F", "filter.edit"),
@@ -331,6 +329,14 @@ pub const EXPECTED_UNUSABLE: &[(&str, &str, &str)] = &[
     ("<C-\\>", "no byte: SIGQUIT while `ISIG` is on", "Same reason as `<C-z>`."),
     ("A-<key>", "ESC + key: byte-identical to `<Esc>` then the key", "So **no Alt/Meta chord is bound in v1**. Two-keystroke chords (`<C-w>h`, `gg`) are the escape hatch and cost nothing to deliver."),
     ("<S-Tab>", "ESC [ Z — only if the terminal sends it", "Bound as an *alias* for `<Tab>`, with `<C-w>h` as the guaranteed route, so a hostile `TERM` loses a convenience and not a capability."),
+];
+
+/// Chords whose action this build retired, with where the answer went. The row stays here
+/// after the action leaves the registry, so a retired letter cannot be quietly reused by
+/// whoever wants a free key next (ADR-006 §7.6, `reco-5js3.3`).
+#[rustfmt::skip]
+pub const EXPECTED_RETIRED: &[(&str, &str, &str)] = &[
+    ("i", "intent.show", "the intent pane is retired — the card's `intent` row is the one line, and `fathom show <episode>` prints the plan and the declared scope behind it"),
 ];
 
 /// The global view keys, which are also the tab bar's order.

@@ -496,14 +496,6 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
-        id: "intent.show",
-        label: "Show captured intent and its source",
-        scope: "review",
-        ticket: "e4.2",
-        modes: &[Mode::Global],
-        palette: true,
-    },
-    Action {
         id: "list.bot_visible",
         label: "Last visible row",
         scope: "motion",
@@ -777,7 +769,7 @@ pub const ACTIONS: &[Action] = &[
     },
     Action {
         id: "risk.explain",
-        label: "Why this score / this rank (`fathom why`)",
+        label: "Why this rank: every reason and the whole ceiling",
         scope: "review",
         ticket: "e4.4",
         modes: &[Mode::Global],
@@ -1082,7 +1074,43 @@ pub const RESERVED_FOR_USER: &[ReservedChord] = &[
         why: "function keys are otherwise unbound in v1: their encodings vary more across terminals than any other group",
         free_in: "all modes",
     },
+    ReservedChord {
+        chord: "i",
+        why: "the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's `intent` row is the one line, and `fathom show` prints the plan and the declared scope behind it. Free for a chord of your own; bringing it back into the default table is §7.6's route, not a quiet rebind.",
+        free_in: "all modes",
+    },
 ];
+
+/// A chord whose action this build retired, and where its answer went.
+///
+/// A letter that used to do something is not the same as a letter that never did: the reviewer who
+/// presses it is asking a real question, and ADR-006 §7.6 says a retired letter goes to the reserved
+/// set rather than being reused in silence. This table is what the shell answers with — the absence,
+/// then where the answer moved to — and what `tests/tables/mod.rs` pins so a retired action is
+/// recorded rather than deleted (`reco-5js3.3`).
+#[derive(Debug, Clone, Copy)]
+pub struct RetiredChord {
+    /// The chord, spelled the way `keys.overrides` spells it.
+    pub chord: &'static str,
+    /// The action that used to live there, kept here after it left the registry.
+    pub action: &'static str,
+    /// Where the answer is now, in the refusal's words.
+    pub says: &'static str,
+}
+
+/// Chords whose action this build retired — ADR-006 §5.1.1, §7.6.
+pub const RETIRED_CHORDS: &[RetiredChord] = &[RetiredChord {
+    chord: "i",
+    action: "intent.show",
+    says: "the intent pane is retired — the card's `intent` row is the one line, and `fathom show \
+           <episode>` prints the plan and the declared scope behind it",
+}];
+
+/// The retired chord a keystroke landed on, if this build retired one.
+#[must_use]
+pub fn retired_chord(chord: &str) -> Option<&'static RetiredChord> {
+    RETIRED_CHORDS.iter().find(|retired| retired.chord == chord)
+}
 
 /// A chord the terminal cannot deliver as itself (ADR-006 §8.1, measured by
 /// `python3 -m recommender.tui probe`). Binding one would ship a key that works on the
@@ -1466,7 +1494,6 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Global, "d", "view.diff");
     bind(Mode::Global, "f", "review.flag");
     bind(Mode::Global, "g", "view.graph");
-    bind(Mode::Global, "i", "intent.show");
     bind(Mode::Global, "m", "compare.mark");
     bind(Mode::Global, "n", "list.next_match");
     bind(Mode::Global, "o", "view.artefact");

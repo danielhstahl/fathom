@@ -23,10 +23,61 @@ use super::days;
 use super::episode::Episode;
 use super::render::compact;
 
-/// The card for the selected episode.
+/// What the card pane is drawing, beyond the episode itself (`e9.3`).
 ///
-/// `width` is the pane's, `rows` the number the shell has for it; the result is exactly `rows` lines,
-/// padded, so a short card never leaves the pane's border ragged.
+/// Two things, because the card is a document now and one of its bands opens: how deep into the
+/// document the reader has walked, and whether band 4 is showing its full rows. Both live on the
+/// shell rather than on the pane — the scroll offset is `App::scroll_of` like every other secondary
+/// pane's, and the expansion is an answer about one episode — and the pane is handed both so it can
+/// draw the same card the keystrokes say it is drawing.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Window {
+    /// The pane's scroll offset, in rows: the first row of the card to draw.
+    pub scroll: usize,
+    /// Band 4 open: every reason line, then the whole ceiling, in place (`w`, `risk.explain`).
+    pub expanded: bool,
+}
+
+impl Window {
+    /// The card as the shell draws it with no keystroke spent on it: top of the document, band 4 brief.
+    pub const BRIEF: Self = Self {
+        scroll: 0,
+        expanded: false,
+    };
+}
+
+/// The card for the selected episode, in full: every row the pane has been asked to lay out, with no
+/// window cut into it.
+///
+/// `width` is the pane's; `rows` is the number the shell has for it, which the row budget
+/// ([ADR-006 §5.1.1 rule 4](https://github.com/)) spends — it is what decides whether figures wrap or
+/// each take exactly one row. It is *not* a cap on the result: the card is a document a reader moves
+/// inside (`e9.3`), so the rows past the pane's depth are returned rather than dropped, and
+/// [`lines`] cuts the window and counts what is below it.
+///
+/// [`lines`]: crate::timeline::card::lines
+#[must_use]
+pub fn document(
+    episode: Option<&Episode>,
+    now: Timestamp,
+    origin: &str,
+    width: usize,
+    rows: usize,
+    window: Window,
+) -> Vec<StyledLine> {
+    match episode {
+        None => stated(width),
+        Some(episode) => detailed(episode, now, origin, width, rows, window),
+    }
+}
+
+/// The card for the selected episode, cut to the pane: exactly `rows` lines, padded, starting at
+/// `window.scroll`.
+///
+/// The overflow note is what the `Body` pane's `trim_rows` rule requires and what `e9.2`'s budget
+/// promised: the last thing on screen counts the rows below it and names the motion that walks to
+/// them. Before `e9.3` it could only name `<C-w>o`, because the pane owned no scroll offset and a
+/// scroll a pane cannot show is a key that lies; now it names `j`, and the rows are really there.
 #[must_use]
 pub fn lines(
     episode: Option<&Episode>,
@@ -34,23 +85,33 @@ pub fn lines(
     origin: &str,
     width: usize,
     rows: usize,
+    window: Window,
 ) -> Vec<StyledLine> {
-    let mut body: Vec<StyledLine> = match episode {
-        None => stated(width),
-        Some(episode) => detailed(episode, now, origin, width, rows),
-    };
-    // The overflow note is what the `Body` pane's `trim_rows` rule requires: content goes from the
-    // end, and the last thing on screen says that happened rather than letting a line vanish.
-    if body.len() > rows && rows > 0 {
-        let hidden = body.len() - rows + 1;
+    let card = document(episode, now, origin, width, rows, window);
+    let from = window.scroll.min(card.len());
+    let mut body: Vec<StyledLine> = card[from..].iter().take(rows).cloned().collect();
+    // The note costs one of the pane's rows, so it replaces the last visible row rather than pushing
+    // one off the bottom of the frame.
+    if from + rows < card.len() && rows > 0 {
+        let hidden = card.len() - from - rows + 1;
         body.truncate(rows.saturating_sub(1));
-        body.push(StyledLine::with_face(
-            format!(
-                "… {hidden} more {} — `<C-w>o` gives this pane the frame",
-                super::rail::plural(hidden, "row"),
-            ),
-            Face::Faint,
-        ));
+        // The note is itself one of the pane's rows, and at the ladder floor the card is twelve columns
+        // wide: a sentence about what fell off the bottom, clipped to `… 21 more r…`, is the silent cut
+        // wearing the honesty badge. So it has a short form, and both of its facts survive either way —
+        // how many, and the key that walks them (`reco-5js3.3`).
+        let many = super::rail::plural(hidden, "row");
+        let long = format!("… {hidden} more {many} — `j` walks them, `G` walks to the end");
+        let note = if crate::text::width(&long) <= width {
+            long
+        } else {
+            let short = format!("… {hidden} more {many} · j · G");
+            if crate::text::width(&short) <= width {
+                short
+            } else {
+                format!("… +{hidden} j·G")
+            }
+        };
+        body.push(StyledLine::with_face(note, Face::Faint));
     }
     while body.len() < rows {
         body.push(StyledLine::plain(""));
@@ -110,6 +171,23 @@ const COMPLEXITY_FIGURE: &str = "complexity";
 enum Row {
     /// A line of its own: the identity, the attribution, a warning that says the card cannot be trusted.
     Line(StyledLine),
+    /// One item of a list the row above it announced: `− text`, wrapped under its own bullet.
+    ///
+    /// Used by the ranking band's blind spots, which are seven separate figures with no label of
+    /// their own — a label per row would read as seven figures of one kind the card invented, and the
+    /// list is the model's, counted by the `blind` row that sits beside it.
+    Item { text: String, face: Face },
+    /// A line of the model's prose, placed under the row it belongs to and indented to the value column,
+    /// so a sentence that happens to open with a word like `read` never reads as a label of its own
+    /// (`reco-5js3.3`, ADR-006 §5.1.1 rule 2).
+    Note { text: String, face: Face },
+    /// `label  value`, wrapped under the label in **both** passes: the figure's sentence is the answer,
+    /// and a cut-off half of it is not an answer. The ranking vector lives here (`reco-5js3.3`).
+    Wrapped {
+        label: String,
+        value: String,
+        face: Face,
+    },
     /// `label  value`, wrapped under the label when it will not fit.
     Field {
         label: String,
@@ -153,6 +231,7 @@ fn detailed(
     origin: &str,
     width: usize,
     rows: usize,
+    window: Window,
 ) -> Vec<StyledLine> {
     let sections: Option<Vec<BriefRow>> = episode.delta.as_ref().map(brief);
     let mut card: Vec<Row> = Vec::new();
@@ -160,7 +239,7 @@ fn detailed(
     push_code_delta(&mut card, episode, sections.as_deref());
     push_landing(&mut card, episode, sections.as_deref());
     push_reach(&mut card, episode, sections.as_deref());
-    push_ranking(&mut card, episode, sections.as_deref());
+    push_ranking(&mut card, episode, sections.as_deref(), window.expanded);
     push_intent(&mut card, episode);
     push_provenance(&mut card, episode, origin);
     layout(card, width, rows)
@@ -192,6 +271,22 @@ fn render(rows: &[Row], width: usize, field: usize, compact: bool) -> Vec<Styled
     for row in rows {
         match row {
             Row::Line(line) => out.push(line.clone()),
+            Row::Note { text, face } => {
+                // Indented to the value column and wrapped, in both passes: the note is the model's
+                // sentence about the row above it, and shrinking it to a fragment would be the pane
+                // re-wording the model.
+                push_note(&mut out, width, text, *face);
+            }
+            Row::Item { text, face } => {
+                // A list item keeps its words whatever pass the card is laid out in. The compact pass
+                // exists so a *glance* figure takes one row instead of four; the expanded ranking band
+                // is the one place the card is not glancing, and a blind spot clipped to `− whether a
+                // migrat…` is the honest half of the ranking dropped by arithmetic (`e9.3`).
+                push_item(&mut out, width, text, *face);
+            }
+            Row::Wrapped { label, value, face } => {
+                push_field(&mut out, width, field, label, value, *face);
+            }
             Row::Field { label, value, face } => {
                 if compact {
                     let (head, remainder) = split_remainder(value);
@@ -391,17 +486,20 @@ fn push_landing(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
             face: Face::Warning,
         });
     } else {
-        // The reclaimed rows land here: the list is what answers "where", so it is allowed as many
-        // prefixes as the card has room for, and it wraps under its own label rather than being cut to
-        // four. `e9.3` retires this rollup in favour of the document's own, which is ranked by churn.
-        let list: Vec<String> = top_paths(&episode.paths)
-            .iter()
-            .map(|(path, count)| format!("{path} ({count})"))
-            .collect();
+        // No document, and this row has no spine column to fall back on the way band 1 has: counting the
+        // index's path list into two-level prefixes was `card::top_paths`, a second answer to the
+        // document's question, computed in the pane and free to disagree with it (`e9.1`'s worst of four).
+        // It goes, and the gap it leaves is drawn as a gap: the count the index really holds, and the verb
+        // that writes the row this one reads.
         rows.push(Row::Field {
             label: "where".to_owned(),
-            value: list.join(" · "),
-            face: Face::Text,
+            value: format!(
+                "no rollup for the {} path{} on this row — {} writes it",
+                thousands(u64::try_from(episode.paths.len()).unwrap_or(u64::MAX)),
+                if episode.paths.len() == 1 { "" } else { "s" },
+                insight::UNDELIVERED_VERB
+            ),
+            face: Face::Warning,
         });
     }
 }
@@ -441,10 +539,20 @@ fn push_reach(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[BriefRo
 
 /// Band 4 — why this one is in front of the reviewer: the vector, what it is made of, and the ceiling.
 ///
-/// Three rows, and one spelling each. The vector row is the document's own `attention` row, which is
-/// `RiskView::headline()` with the place in the ranking appended — so it is *not* printed again as a
-/// separate `risk` and `vector` pair, which is how one frame came to carry the same string twice.
-fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[BriefRow]>) {
+/// Two depths, one order, and one spelling each. Brief, the band is three rows: the document's own
+/// `attention` row (which *is* `RiskView::headline()` with the place appended, so the arithmetic is not
+/// printed a second time as a `risk`/`vector` pair), the surfaces badge, and the counted ceiling.
+/// Expanded — what `w` does now that the pane it used to swap for is gone (ADR-006 §5.1.1) — the band
+/// prints the model's whole argument in place, with every other band still on the screen: every line of
+/// [`RiskView::reasons()`], then every line of `BLIND_SPOTS`, then the counted ceiling, then the model's
+/// own line about what a ceiling is for. No second narrative: every row's bytes come out of a `RiskView`
+/// accessor, and the pane only places them and wraps them.
+fn push_ranking(
+    rows: &mut Vec<Row>,
+    episode: &Episode,
+    sections: Option<&[BriefRow]>,
+    expanded: bool,
+) {
     match brief_row(sections, SectionId::Attention) {
         Some(row) => {
             let value = row.value.trim();
@@ -457,7 +565,7 @@ fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
             } else {
                 value.to_owned()
             };
-            rows.push(Row::Field {
+            rows.push(Row::Wrapped {
                 label: row.label(),
                 value,
                 face: Face::Text,
@@ -468,11 +576,7 @@ fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
             label: "risk".to_owned(),
             value: match episode.risk() {
                 Some(risk) => headline(Some(risk)),
-                None => {
-                    "unknown — nothing has ranked this episode (`reco-c05` ranks the spine; e4.4 \
-                        ranks findings)"
-                        .to_owned()
-                }
+                None => UNRANKED.to_owned(),
             },
             face: if episode.risk().is_some() {
                 Face::Text
@@ -482,6 +586,14 @@ fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
         }),
     }
     let Some(risk) = episode.risk() else {
+        // An unranked episode asked "why is this one here" of, and the answer is a fact about the build,
+        // not an empty section: say it as one, and say it whether or not `w` is holding the band open.
+        if expanded {
+            rows.push(Row::Line(StyledLine::with_face(
+                UNRANKED_EXPANDED,
+                Face::Warning,
+            )));
+        }
         return;
     };
     let badge = risk.badge();
@@ -492,9 +604,26 @@ fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
             face: Face::Muted,
         });
     }
-    // The ceiling on its own row, in the model's words (`RiskView::blind_spot_note`), and counted: the
-    // whole list is `w`'s, and a card that printed it would be a card that had run out of room for the
-    // change. One ceiling row per card — two rows both labelled `blind` is the defect `e9.1` named.
+    if expanded {
+        // Every reason the model gave, in its own words, largest component first.
+        for reason in risk.reasons() {
+            rows.push(Row::Field {
+                label: "reason".to_owned(),
+                value: reason,
+                face: Face::Text,
+            });
+        }
+        // Then the whole ceiling: `blind_spot_note()` counts it for the brief band, and this is the
+        // list it counts — which is the promise the model ships in that string ("`w` lists them all").
+        for spot in &risk.blind_spots {
+            rows.push(Row::Item {
+                text: spot.clone(),
+                face: Face::Warning,
+            });
+        }
+    }
+    // The ceiling on its own row, in the model's words (`RiskView::blind_spot_note`), and counted: one
+    // ceiling row per card, brief or expanded — two rows both labelled `blind` is the defect `e9.1` named.
     if let Some(note) = risk.blind_spot_note() {
         rows.push(Row::Field {
             label: "blind".to_owned(),
@@ -502,7 +631,23 @@ fn push_ranking(rows: &mut Vec<Row>, episode: &Episode, sections: Option<&[Brief
             face: Face::Warning,
         });
     }
+    if expanded {
+        // What to do with a ceiling, in the voice of the thing that has it (moved into `fathom-analyze`
+        // with this row, so no pane gets to word it).
+        if let Some(line) = risk.ceiling_note() {
+            rows.push(Row::Note {
+                text: line,
+                face: Face::Faint,
+            });
+        }
+    }
 }
+
+/// What an unranked episode's ranking band says, and what it says once `w` asks it for the argument.
+const UNRANKED: &str = "unknown — nothing has ranked this episode (`reco-c05` ranks the spine; e4.4 \
+    ranks findings)";
+const UNRANKED_EXPANDED: &str = "nothing to expand — no ranking, so no reasons and no ceiling to list \
+    (`reco-c05` ranks the spine; e4.4 ranks findings)";
 
 /// The ranking line, from [`RiskView`]'s own accessors: the arithmetic when there is any, the score when
 /// there is not, and the place in the ranked set beside it.
@@ -726,195 +871,6 @@ fn figure_value(figure: &Figure) -> String {
     figure.value.clone()
 }
 
-/// The `i` pane: one episode's intent, in full (`e4.2`, `reco-c54`).
-///
-/// The lines come from [`insight::intent_block`] — the function `fathom show` and the delta document
-/// render through — because the card, the CLI and an exported document must not be three places that spell
-/// an intent differently (ADR-001 §7.10). What this pane adds over the card's one-line `intent` field is
-/// the *plan* and the *declared scope*: the two things a reviewer checks a change against, which do not fit
-/// in a field and are useless one at a time.
-#[must_use]
-pub fn intent_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<StyledLine> {
-    let mut body: Vec<StyledLine> = match episode {
-        None => vec![StyledLine::with_face(
-            "no episode selected — `j`/`k` choose one, then `i`",
-            Face::Muted,
-        )],
-        Some(episode) => {
-            let mut out: Vec<StyledLine> = Vec::new();
-            out.push(StyledLine::with_face(
-                format!("{} — {}", episode.short_id(), episode.summary),
-                Face::Emphasis,
-            ));
-            match episode
-                .delta
-                .as_ref()
-                .and_then(|delta| delta.episode.intent.as_ref())
-            {
-                None => {
-                    out.push(StyledLine::with_face(
-                        "this row carries no intent document — it was written before intent capture, \
-                         and `fathom index --rebuild` reads the trailers and the stream again",
-                        Face::Warning,
-                    ));
-                    out.push(StyledLine::with_face(
-                        "`none recorded` and `never looked` are different facts; this is the second one",
-                        Face::Faint,
-                    ));
-                }
-                Some(intent) => {
-                    out.push(StyledLine::plain(""));
-                    for line in insight::intent_block(intent) {
-                        let face = if line.starts_with("intent    no ") {
-                            // Both absences — "no recorded intent" and "no text captured" — are warnings:
-                            // each is the card saying it looked and came back empty.
-                            Face::Warning
-                        } else if line.starts_with("reason") || line.starts_with("scope") {
-                            Face::Muted
-                        } else {
-                            Face::Text
-                        };
-                        // The label is kept, with a hanging indent on the wrap. Stripping it would save six
-                        // columns and lose the one thing that tells `scope` from `reason` from `plan` once a
-                        // long value has wrapped past the first row.
-                        let (label, value) = match line.split_once("  ") {
-                            Some((label, value)) => (label.trim_end(), value.trim()),
-                            None => ("", line.trim()),
-                        };
-                        let indent = " ".repeat(label.len() + 1);
-                        let body = width.saturating_sub(label.len() + 1).max(8);
-                        for (index, chunk) in wrap(value, body).into_iter().enumerate() {
-                            let mut row = StyledLine::plain("");
-                            row.push(
-                                Face::Muted,
-                                if index == 0 || label.is_empty() {
-                                    label
-                                } else {
-                                    indent.as_str()
-                                },
-                            );
-                            if !label.is_empty() {
-                                row.push(face, &format!(" {chunk}"));
-                            } else {
-                                row.push(face, &chunk);
-                            }
-                            out.push(row);
-                        }
-                    }
-                    out.push(StyledLine::with_face(
-                        "the scope is what was *declared*; the scope-creep finding over it is `e4.3`'s",
-                        Face::Faint,
-                    ));
-                }
-            }
-            out
-        }
-    };
-    if body.len() > rows && rows > 0 {
-        let hidden = body.len() - rows + 1;
-        body.truncate(rows.saturating_sub(1));
-        body.push(StyledLine::with_face(
-            format!("… {hidden} more rows — `i` again, or `<Esc>`, to go back"),
-            Face::Faint,
-        ));
-    }
-    while body.len() < rows {
-        body.push(StyledLine::plain(""));
-    }
-    body.truncate(rows);
-    body.into_iter().map(|line| line.padded(width)).collect()
-}
-
-/// The `w` pane: one episode's ranking, in full, with the ceiling it comes under.
-///
-/// This is the answer to "why that one", which ADR-006 §5.1 insists is a sentence and not a
-/// recommendation ("rank 4 of 7 because risk 82 = 0.4·size + 0.3·test + 0.3·blast" is checkable;
-/// "recommended for you" is not).
-#[must_use]
-pub fn risk_lines(episode: Option<&Episode>, width: usize, rows: usize) -> Vec<StyledLine> {
-    let mut body: Vec<StyledLine> = match episode {
-        None => vec![StyledLine::with_face(
-            "no episode selected — `j`/`k` choose one, then `w`",
-            Face::Muted,
-        )],
-        Some(episode) => {
-            let mut out: Vec<StyledLine> = Vec::new();
-            out.push(StyledLine::with_face(
-                format!("{} — {}", episode.short_id(), episode.summary),
-                Face::Emphasis,
-            ));
-            match episode.risk() {
-                None => out.push(StyledLine::with_face(
-                    "nothing has ranked this episode, so there is nothing to explain (reco-c05 \
-                     ranks the spine; e4.4 ranks findings)",
-                    Face::Warning,
-                )),
-                Some(risk) => {
-                    out.push(StyledLine::plain(format!(
-                        "{} · {}",
-                        if risk.vector.is_empty() {
-                            format!("risk {}", risk.score)
-                        } else {
-                            risk.vector.clone()
-                        },
-                        risk.place()
-                    )));
-                    let badge = risk.badge();
-                    if !badge.is_empty() {
-                        out.push(StyledLine::with_face(
-                            format!("surfaces {badge}"),
-                            Face::Muted,
-                        ));
-                    }
-                    out.push(StyledLine::plain(""));
-                    for reason in risk.reasons() {
-                        for chunk in wrap(&reason, width.saturating_sub(2).max(8)) {
-                            out.push(StyledLine::with_face(format!("· {chunk}"), Face::Text));
-                        }
-                    }
-                    if !risk.blind_spots.is_empty() {
-                        out.push(StyledLine::plain(""));
-                        out.push(StyledLine::with_face(
-                            format!(
-                                "a spine cannot see {} thing{}:",
-                                risk.blind_spots.len(),
-                                if risk.blind_spots.len() == 1 { "" } else { "s" }
-                            ),
-                            Face::Warning,
-                        ));
-                        for spot in &risk.blind_spots {
-                            for chunk in wrap(spot, width.saturating_sub(4).max(8)) {
-                                out.push(StyledLine::with_face(
-                                    format!("  − {chunk}"),
-                                    Face::Warning,
-                                ));
-                            }
-                        }
-                        out.push(StyledLine::with_face(
-                            "read those by hand: the ranking is a reading order, not an all-clear",
-                            Face::Faint,
-                        ));
-                    }
-                }
-            }
-            out
-        }
-    };
-    if body.len() > rows && rows > 0 {
-        let hidden = body.len() - rows + 1;
-        body.truncate(rows.saturating_sub(1));
-        body.push(StyledLine::with_face(
-            format!("… {hidden} more rows — `<C-w>o` gives this pane the frame"),
-            Face::Faint,
-        ));
-    }
-    while body.len() < rows {
-        body.push(StyledLine::plain(""));
-    }
-    body.truncate(rows);
-    body.into_iter().map(|line| line.padded(width)).collect()
-}
-
 /// `label  value`, wrapped at the pane's width with the continuation lined up under the value.
 ///
 /// The column is nine cells because that is what a 35-column pane can pay for and still leave the value
@@ -962,32 +918,53 @@ fn push_one_line(
 ) {
     let start = field.max(crate::text::width(label) + 1);
     let room = width.saturating_sub(start).max(1);
-    // The head is guaranteed half the row — or its own length, when it is shorter than that — and the tail
-    // takes whatever the head did not need. A one-word sentence therefore carries all of its provenance,
-    // and a long paragraph is cut before its citation is.
+    // The head is guaranteed half the row — or its own length, when it is shorter than that — and the
+    // tail takes whatever the head did not need. A one-word sentence therefore carries all of its
+    // provenance, and a long paragraph is cut before its citation is.
     let head_floor = HEAD_FLOOR.min(room);
     let head_cost = crate::text::width(head).clamp(head_floor, (room / 2).max(head_floor));
-    let mut kept: Vec<&str> = Vec::new();
+    let mut kept: Vec<String> = Vec::new();
     for part in tail {
-        let candidate: Vec<&str> = kept
+        let candidate: Vec<String> = kept
             .iter()
-            .copied()
-            .chain(std::iter::once(part.as_str()))
+            .cloned()
+            .chain(std::iter::once(part.clone()))
             .collect();
         if tail_cells(&candidate) + TAIL_SEPARATOR.chars().count() + head_cost > room {
             break;
         }
-        kept.push(part);
+        kept = candidate;
     }
+    // A tail part that did not fit is counted, not silently dropped: `· +2 more` says the row has
+    // provenance it could not show. When not even one part of the tail fits, the marker would eat exactly
+    // the text it exists to report on, so the row's own `…` is left to carry the cut (`reco-5js3.3`).
+    let mut dropped = tail.len() - kept.len();
+    let mut marker = String::new();
+    if dropped > 0 && !kept.is_empty() {
+        loop {
+            let candidate = format!("{TAIL_SEPARATOR}+{dropped} more");
+            let cost = tail_cells(&kept) + crate::text::width(&candidate) + head_cost;
+            if cost <= room {
+                marker = candidate;
+                break;
+            }
+            if kept.len() <= 1 {
+                // Paying for the marker would push off the last part of the provenance, which is the one
+                // thing the row may not cut. The row's own `…` carries the cut instead.
+                break;
+            }
+            kept.pop();
+            dropped = tail.len() - kept.len();
+        }
+    }
+    let tail_cells_used = tail_cells(&kept)
+        + if kept.is_empty() && marker.is_empty() {
+            0
+        } else {
+            TAIL_SEPARATOR.chars().count()
+        };
     let head_room = room
-        .saturating_sub(
-            tail_cells(&kept)
-                + if kept.is_empty() {
-                    0
-                } else {
-                    TAIL_SEPARATOR.chars().count()
-                },
-        )
+        .saturating_sub(tail_cells_used + crate::text::width(&marker))
         .max(1);
     let mut line = StyledLine::new();
     line.push(Face::Muted, &format!("{label:<start$}"));
@@ -1000,10 +977,16 @@ fn push_one_line(
         }
         None => line.push(face, &clipped),
     }
-    if !kept.is_empty() {
+    if !kept.is_empty() || !marker.is_empty() {
+        let shown: Vec<&str> = kept
+            .iter()
+            .map(String::as_str)
+            .chain(std::iter::once(marker.as_str()))
+            .filter(|part| !part.is_empty())
+            .collect();
         line.push(
             Face::Muted,
-            &format!("{TAIL_SEPARATOR}{}", kept.join(TAIL_SEPARATOR)),
+            &format!("{TAIL_SEPARATOR}{}", shown.join(TAIL_SEPARATOR)),
         );
     }
     out.push(line);
@@ -1040,39 +1023,98 @@ fn clip_head(head: &str, room: usize) -> String {
 const TAIL_SEPARATOR: &str = " · ";
 
 /// How many cells a joined tail costs.
-fn tail_cells(parts: &[&str]) -> usize {
-    crate::text::width(&parts.join(TAIL_SEPARATOR))
+fn tail_cells<T: AsRef<str>>(parts: &[T]) -> usize {
+    crate::text::width(
+        &parts
+            .iter()
+            .map(|part| part.as_ref())
+            .collect::<Vec<_>>()
+            .join(TAIL_SEPARATOR),
+    )
+}
+
+/// One item of a list, wrapped under its own bullet.
+///
+/// The bullet is two cells and the continuation lines line up under the text, which is what makes a
+/// seven-item list read as a list at 26 columns instead of as a paragraph that has lost its shape.
+fn push_item(out: &mut Vec<StyledLine>, width: usize, text: &str, face: Face) {
+    let room = width.saturating_sub(crate::text::width(ITEM_BULLET));
+    if room < PROSE_ROOM_MIN {
+        // Too narrow to wrap legibly: one row per blind spot, cut where it has to be cut, with the cut
+        // on the screen. The list is still there and the `blind` row above still counts it.
+        let mut line = StyledLine::new();
+        line.push(Face::Muted, ITEM_BULLET);
+        line.push(face, &crate::text::clip(text, room.max(VALUE_FLOOR)));
+        out.push(line);
+        return;
+    }
+    for (index, chunk) in wrap(text, room).into_iter().enumerate() {
+        let mut line = StyledLine::new();
+        if index == 0 {
+            line.push(Face::Muted, ITEM_BULLET);
+        } else {
+            line.push(Face::Muted, &" ".repeat(crate::text::width(ITEM_BULLET)));
+        }
+        line.push(face, &chunk);
+        out.push(line);
+    }
+}
+
+/// The bullet a list item leads with.
+const ITEM_BULLET: &str = "  − ";
+
+/// One of the model's own sentences, placed under the row it belongs to. It starts at the value column
+/// rather than the label column: a note that opens with a word like `read` would otherwise read as a
+/// figure the reviewer has to parse (`reco-5js3.3`, ADR-006 §5.1.1 rule 2).
+fn push_note(out: &mut Vec<StyledLine>, width: usize, text: &str, face: Face) {
+    push_prose(out, width, NOTE_MARK, text, face);
+}
+
+/// The mark a note leads with: the row above it is what the sentence is about, and a note that opened
+/// flush-left with a word like `read` would read as a figure of its own.
+const NOTE_MARK: &str = "↳ ";
+
+/// Fewest cells a sentence of the model's gets before the card stops wrapping it. Below this the wrap
+/// turns prose into a narrow column of fragments — `− whether` / `a` / `migratio` / `n can be` — which
+/// is neither the figure nor a visible cut, so the row is clipped with `…` instead, the same way every
+/// other over-long value is (`e9.3`).
+const PROSE_ROOM_MIN: usize = 20;
+
+/// One of the model's sentences in the value column: wrapped while it is readable, cut with a visible
+/// `…` when the pane is too narrow to wrap it legibly. Never dropped, and never a silent truncation.
+fn push_prose(out: &mut Vec<StyledLine>, width: usize, mark: &str, text: &str, face: Face) {
+    let indent = " ".repeat(LABEL_CELLS);
+    let room = width.saturating_sub(LABEL_CELLS + crate::text::width(mark));
+    if room < PROSE_ROOM_MIN {
+        let mut line = StyledLine::new();
+        line.push(Face::Muted, &indent);
+        line.push(Face::Muted, mark);
+        line.push(
+            face,
+            &crate::text::clip(
+                text,
+                width.saturating_sub(LABEL_CELLS + crate::text::width(mark)),
+            ),
+        );
+        out.push(line);
+        return;
+    }
+    for (index, chunk) in wrap(text, room.max(1)).into_iter().enumerate() {
+        let mut line = StyledLine::new();
+        line.push(Face::Muted, &indent);
+        if index == 0 {
+            line.push(Face::Muted, mark);
+        } else {
+            line.push(Face::Muted, &" ".repeat(crate::text::width(mark)));
+        }
+        line.push(face, &chunk);
+        out.push(line);
+    }
 }
 
 /// The wrap lives with the rail's renderer now (`render::wrap`): the empty rail and the card
 /// fold text the same way, and two copies of a word-wrap drift.
 use super::render::wrap;
-
-/// The path prefixes that account for the most of the episode's files — `where`, the way the card
-/// prints it when no delta document was handed over (`src/store (7) · tests (2)`).
-///
-/// Six, not four: `e9.2` moved the intent row from three rows to one and the reclaimed space goes to the
-/// code delta, of which this row is a part. The row wraps under its own label, so the cap is what the
-/// reviewer can *read* at the documented width rather than what fits on one line.
-#[must_use]
-pub fn top_paths(paths: &[String]) -> Vec<(String, usize)> {
-    let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for path in paths {
-        // Two levels: `src/store/epoch.rs` counts as `src/store`, a root file counts as itself.
-        let key = match path.split_once('/') {
-            Some((head, rest)) => match rest.split_once('/') {
-                Some((second, _)) => format!("{head}/{second}"),
-                None => head.to_owned(),
-            },
-            None => path.clone(),
-        };
-        *counts.entry(key).or_insert(0) += 1;
-    }
-    let mut rows: Vec<(String, usize)> = counts.into_iter().collect();
-    rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    rows.truncate(6);
-    rows
-}
 
 /// A number with its thousands separators, for counts the card states in words.
 fn thousands(value: u64) -> String {

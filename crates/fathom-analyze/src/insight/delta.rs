@@ -3313,6 +3313,19 @@ impl RiskView {
         })
     }
 
+    /// What to do with the ceiling, in the model's own voice: the line a surface prints *after* it has
+    /// listed what the ranking cannot see.
+    ///
+    /// [`blind_spot_note`] counts the ceiling for a pane that has room for one row; this is what the
+    /// counted ceiling means, and it belongs beside it rather than in whichever pane expands the list
+    /// (`reco-5js3.3`, ADR-006 §5.1.1 rule 2). `None` when there is no ceiling to explain.
+    ///
+    /// [`blind_spot_note`]: Self::blind_spot_note
+    #[must_use]
+    pub fn ceiling_note(&self) -> Option<String> {
+        (!self.blind_spots.is_empty()).then(|| risk::CEILING_NOTE.to_owned())
+    }
+
     /// The surfaces as a row's badge: `migration+ci`, capped at three with a counted remainder.
     ///
     /// Moved here from `fathom-cli` in `e2.11`: the badge is how the model words its own output, and a

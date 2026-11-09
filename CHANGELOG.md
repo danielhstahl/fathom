@@ -16,6 +16,57 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### One card, one surface: `w` opens a band inside the card and `i` is retired (`reco-5js3.3`)
+
+Three renderings of one episode had been living behind three keys. `app.rs` branched between the card,
+`card::risk_lines` and `card::intent_lines`; `w` swapped the card pane for a ranking pane and `i` swapped
+it for an intent pane, and each swap re-laid-out figures the card had already printed — the churn as
+`size` and as the document's `what` row, the ranking as `risk`, as `vector`, and as an `attention` row
+carrying the same bytes, the ceiling as two rows both labelled `blind`. `e9.1` wrote the rule that ends
+it (ADR-006 §5.1.1: one row per figure, the pane authors no prose about a figure, one surface per figure);
+this is the diff that pays for it.
+
+* **The ranking is a band of the card again.** `w` toggles band 4 between its brief rows and its full
+  rows **in place**: the vector row — the exact string `fathom why` prints, `spine-1 88 = surfaces 88 +
+  size 8 + author 4 · rank 1 of 3`, from `RiskView`'s own accessor and no other source — then every line
+  of `reasons()`, then every blind spot, then the counted ceiling and the model's own line about what a
+  ceiling is for. Every other band prints what it printed before, in the order it printed it; the test
+  asserts that against the unwindowed document rather than a hand-picked width. `intent.show` is deleted,
+  not unbound: `i` joins §8.2's reserved-for-user set and refuses with where the answer went (the card's
+  `intent` row, and `fathom show <episode>` for the plan and the declared scope behind it), because a key
+  that cannot apply has to say so (`reco-xf8`'s rule, applied to a key this build retired).
+* **The pane stopped authoring prose about figures.** *"read those by hand: the ranking is a reading
+  order, not an all-clear"* moved into `fathom-analyze` as `risk::CEILING_NOTE`, reached through
+  `RiskView::ceiling_note()` beside the `blind_spot_note()` it belongs to, so the ceiling is the model's
+  words in the model's voice and the card only places them — indented under the row it explains, because a
+  note that opens flush-left with a word like `read` reads as a figure of its own. The other pane-authored
+  line went the same way: the pane no longer rolls the index's paths up into a `where` row of its own and
+  says, in the gap, which verb writes the document that answers it.
+* **Blind spots are not the first thing cut.** They are the honest half of the ranking, so they are exempt
+  from the one-row-per-figure compaction and wrap instead — and where the pane is too narrow to wrap a
+  sentence legibly, they take one row each, cut with a visible `…`, rather than a column of fragments or
+  nothing. The card is a windowed document now: what falls below the frame is counted by a row that names
+  the motion, which has its own short form for a twelve-column card (`… 21 more rows — j walks them, G
+  walks to the end` becomes `… +21 j·G`, because a counted remainder that gets clipped to `… 21 more r…`
+  is the silent cut wearing the honesty badge). `j`/`k`, `H M L`, `gg`/`G`, `<C-d>`/`<C-u>` and the wheel
+  walk it through the one shared motion; `<Esc>` no longer pops a mode, because there is no mode.
+* **Three absences, three readings.** An unranked episode, an episode with no delta document, and an
+  episode with neither all say which of them they are — the document's own gap string where the document
+  has one, the card's own gap string where it does not, and `nothing to expand — no ranking, so no reasons
+  and no ceiling to list` when `w` is asked for an argument that was never computed. No zero is printed
+  for a figure that was never measured, and no band is an empty section.
+
+The keymap table, the action registry, the palette, the hint line, §8.2's reserved set,
+`docs/reference/cheatsheet.md` and the ADR-006 layouts were regenerated from the Python tables in the
+same change — `w` is `Why this rank: every reason and the whole ceiling` everywhere, and the Queue and
+Timeline layout samples now draw the card that actually ships. `tools/tui_tables.py` emits a
+`EXPECTED_RETIRED` table so a retired letter stays accounted for in `tests/tables/mod.rs` and cannot be
+quietly rebound by whoever wants a free key next. `tests/episode_card.rs` grew the band-in-place,
+one-string-per-figure, walk-the-window and three-absences cases; `tests/intent_card.rs` asserts `i` is
+unbound in every view and every pane and that no keystroke swaps the card pane; `tests/risk_rank.rs` and
+`tests/session_arc.rs` assert the `w` case against the card instead of a swapped pane; the timeline and
+layout-matrix goldens are re-baked.
+
 ### The episode card gets its rows back: intent to one line, the code delta into the space (`reco-5js3.2`)
 
 `e9.1` wrote the rule and left the card unchanged, so the card was a rule waiting on twenty rows. Intent was

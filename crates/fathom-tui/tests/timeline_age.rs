@@ -80,11 +80,18 @@ fn rail(app: &mut App) -> String {
 
 /// The card's body for one episode, as text.
 fn card(episode: &Episode, now: Timestamp) -> String {
-    timeline::card_lines(Some(episode), now, "fixture index", 60, 12)
-        .into_iter()
-        .map(|line| line.text().to_owned())
-        .collect::<Vec<_>>()
-        .join("\n")
+    timeline::card_lines(
+        Some(episode),
+        now,
+        "fixture index",
+        60,
+        12,
+        timeline::CardWindow::BRIEF,
+    )
+    .into_iter()
+    .map(|line| line.text().to_owned())
+    .collect::<Vec<_>>()
+    .join("\n")
 }
 
 // ---------------------------------------------------------------------------------------------

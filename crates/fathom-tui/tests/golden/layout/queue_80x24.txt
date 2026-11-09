@@ -5,7 +5,7 @@
 │6 of 10 open · 6 unranked · blast unmeasured · …│a77bb0 — flagged: the migrat…│
 │▸  · a77bb0 human +140 −12 queue ? risk ? ⚐     │2 commits · 1mo ago · ⚐ flag…│
 │     unranked — reco-c05 ranks the spine, e4.4… │size     +140 −12 · 5 files  │
-│   · 40c9b3 agent +96 −0 queue ? risk ?         │where    src/store (5)…      │
+│   · 40c9b3 agent +96 −0 queue ? risk ?         │where    no rollup for the 6…│
 │     unranked — reco-c05 ranks the spine, e4.4… │delta    no document was han…│
 │   · c1f5e2 ? +22 −22 queue ? risk ?            │risk     unknown — nothing h…│
 │     unranked — reco-c05 ranks the spine, e4.4… │intent   not handed to this …│

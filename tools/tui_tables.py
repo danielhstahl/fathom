@@ -159,6 +159,17 @@ def render() -> str:
 
     out += [
         "",
+        "/// Chords whose action this build retired, with where the answer went. The row stays here",
+        "/// after the action leaves the registry, so a retired letter cannot be quietly reused by",
+        "/// whoever wants a free key next (ADR-006 §7.6, `reco-5js3.3`).",
+        "#[rustfmt::skip]\npub const EXPECTED_RETIRED: &[(&str, &str, &str)] = &[",
+    ]
+    for chord, action, says in keymap.RETIRED_ACTIONS:
+        out.append(f"    ({_q(chord)}, {_q(action)}, {_q(says)}),")
+    out.append("];")
+
+    out += [
+        "",
         "/// The global view keys, which are also the tab bar's order.",
         "#[rustfmt::skip]\npub const EXPECTED_VIEW_KEYS: &[(&str, &str)] = &[",
     ]

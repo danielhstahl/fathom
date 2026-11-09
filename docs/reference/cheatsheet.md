@@ -150,13 +150,12 @@ mode has to be live (§4).
 | **Move around** | `<C-w>7` | Go to tab 7 | global |
 | **Move around** | `<C-w>8` | Go to tab 8 | global |
 | **Move around** | `<C-w>9` | Go to tab 9 | global |
-| **Review the episode** | `i` | Show captured intent and its source | global |
 | **Review the episode** | `r` | Queue: what you skipped, and why | `queue` |
 | **Review the episode** | `x` | Mark reviewed (accept) | global |
 | **Review the episode** | `-` | Dismiss with a reason | global |
 | **Review the episode** | `f` | Flag for attention, with a note | global |
 | **Review the episode** | `z` | Snooze until a condition | global |
-| **Review the episode** | `w` | Why this score / this rank (`fathom why`) | global |
+| **Review the episode** | `w` | Why this rank: every reason and the whole ceiling | global |
 | **Change what you are looking at** | `m` | Mark this endpoint for comparison | global |
 | **Change what you are looking at** | `c` | Compare the live scope with the mark | global |
 | **Change what you are looking at** | `F` | Edit filters (author, area, state, date) | global |
@@ -382,7 +381,6 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `global` | `d` | `view.diff` | Go to: Diff |
 | `global` | `f` | `review.flag` | Flag for attention, with a note |
 | `global` | `g` | `view.graph` | Go to: Graph |
-| `global` | `i` | `intent.show` | Show captured intent and its source |
 | `global` | `m` | `compare.mark` | Mark this endpoint for comparison |
 | `global` | `n` | `list.next_match` | Next match |
 | `global` | `o` | `view.artefact` | Go to: Artefact |
@@ -390,7 +388,7 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `global` | `q` | `view.queue` | Go to: Queue |
 | `global` | `s` | `view.structure` | Go to: Structure |
 | `global` | `t` | `view.timeline` | Go to: Timeline |
-| `global` | `w` | `risk.explain` | Why this score / this rank (`fathom why`) |
+| `global` | `w` | `risk.explain` | Why this rank: every reason and the whole ceiling |
 | `global` | `x` | `review.accept` | Mark reviewed (accept) |
 | `global` | `z` | `review.snooze` | Snooze until a condition |
 <!-- END GENERATED: keymap -->
@@ -442,7 +440,6 @@ makes "unbound" different from "unreachable".
 | `help.open` | Help: this keymap as the merged table | overlay | `?` | yes | `global` | `e1.5` |
 | `history.back` | Back to the previous place (drill history) | frame | `<C-o>` | yes | `global` | `e1.5` |
 | `index.reindex` | Re-index this repository | index | `<C-r>` | yes | `global` | `e1.4` |
-| `intent.show` | Show captured intent and its source | review | `i` | yes | `global` | `e4.2` |
 | `list.bot_visible` | Last visible row | motion | `L` | yes | `list` | `e5.4` |
 | `list.down` | Move down one row | motion | `<Down>` `j` | yes | `list`, `body`, `pick` | `e1.5` |
 | `list.expand` | Expand / collapse node | motion | `<Space>` | yes | `list` | `e1.7` |
@@ -477,7 +474,7 @@ makes "unbound" different from "unreachable".
 | `review.dismiss` | Dismiss with a reason | review | `-` | yes | `global` | `e4.5` |
 | `review.flag` | Flag for attention, with a note | review | `f` | yes | `global` | `e4.5` |
 | `review.snooze` | Snooze until a condition | review | `z` | yes | `global` | `e4.5` |
-| `risk.explain` | Why this score / this rank (`fathom why`) | review | `w` | yes | `global` | `e4.4` |
+| `risk.explain` | Why this rank: every reason and the whole ceiling | review | `w` | yes | `global` | `e4.4` |
 | `screen.redraw` | Repaint the screen | frame | `<C-l>` | yes | `global` | `e1.5` |
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | overlay | `/` | yes | `global` | `e5.2` |
 | `structure.level_down` | Structure: drill one level down | view | `]` | yes | `structure` | `e2.3` |
@@ -546,6 +543,7 @@ and [ADR-006 §7.2](../adr/0006-tui.md).
 | **reserved for user override** | <C-x> | a byte, simply unbound | all modes | one of the most-requested personal chords in vim keymap threads; free |
 | **reserved for user override** | <C-6> | a byte, simply unbound | all modes | vim's alternate-file |
 | **reserved for user override** | <S-F1> | a byte, simply unbound | all modes | function keys are otherwise unbound in v1: their encodings vary more across terminals than any other group |
+| **reserved for user override** | i | a byte, simply unbound | all modes | the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's `intent` row is the one line, and `fathom show` prints the plan and the declared scope behind it. Free for a chord of your own; bringing it back into the default table is §7.6's route, not a quiet rebind. |
 <!-- END GENERATED: reserved -->
 
 ## 8 Making a key yours
@@ -591,7 +589,7 @@ key the build does not bind ([ADR-006 §5](../adr/0006-tui.md), `keymap.HINT_ACT
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | `/` |
 | `palette.open` | Command palette | `,` |
 | `review.accept` | Mark reviewed (accept) | `x` |
-| `risk.explain` | Why this score / this rank (`fathom why`) | `w` |
+| `risk.explain` | Why this rank: every reason and the whole ceiling | `w` |
 | `help.open` | Help: this keymap as the merged table | `?` |
 <!-- END GENERATED: hint -->
 

@@ -110,6 +110,21 @@ RESERVED_FOR_USER: tuple[tuple[str, str, str], ...] = (
     ("<C-6>", "vim's alternate-file", "all modes"),
     ("<S-F1>", "function keys are otherwise unbound in v1: their encodings vary more "
                "across terminals than any other group", "all modes"),
+    ("i", "the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's "
+          "`intent` row is the one line, and `fathom show` prints the plan and the declared "
+          "scope behind it. Free for a chord of your own; bringing it back into the default "
+          "table is §7.6's route, not a quiet rebind.", "all modes"),
+)
+
+#: A chord whose action this build **retired**: the letter is free (§8.2), the action is gone
+#: from the registry, and the shell still has to answer the reviewer who presses it. The row is
+#: kept here rather than deleted so a retired action is recorded — `tests/tables/mod.rs` pins
+#: it, so the letter cannot be reused by whoever wants a free key next without this table
+#: saying it happened (ADR-006 §7.6, `reco-5js3.3`).
+RETIRED_ACTIONS: tuple[tuple[str, str, str], ...] = (
+    ("i", "intent.show",
+     "the intent pane is retired — the card's `intent` row is the one line, and `fathom show "
+     "<episode>` prints the plan and the declared scope behind it"),
 )
 
 #: Chords that **cannot** be used as distinct bindings, with the measured reason. The
@@ -237,12 +252,11 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
        doc="Opens the closed dismiss-vocabulary chooser (`pick`)."),
     _a("review.snooze", "Snooze until a condition", "review", "e4.5",
        doc="Opens the snooze-window chooser (`pick`)."),
-    _a("risk.explain", "Why this score / this rank (`fathom why`)", "review", "e4.4"),
+    _a("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4"),
     _a("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5",
        modes=("queue",),
        doc="Toggles the worklist pane between the ranked queue and the dismissed-with-reason "
            "rollup, so systematic dismissing is a number on a screen."),
-    _a("intent.show", "Show captured intent and its source", "review", "e4.2"),
     _a("pick.choose", "Choose this entry", "overlay", "e4.5", modes=("pick",),
        palette=False),
     _a("prompt.submit", "Submit", "overlay", "e5.2", modes=("prompt",), palette=False),
@@ -352,7 +366,6 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "-": "review.dismiss",
         "z": "review.snooze",
         "w": "risk.explain",
-        "i": "intent.show",
         "m": "compare.mark",
         "c": "compare.with_mark",
         "F": "filter.edit",

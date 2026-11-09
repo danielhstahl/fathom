@@ -526,7 +526,10 @@ fn with_episodes() -> App {
 fn the_acts_over_an_empty_rail_name_the_motion_that_would_fill_it() {
     let mut app = shell();
     app.set_view(ViewId::Timeline);
-    for key in ["x", "f", "-", "z", "i", "m"] {
+    // `i` is not in this list any more: it is an unbound chord now that the intent pane is gone, and it
+    // refuses with where the answer went rather than with the motion that would fill the rail
+    // (`reco-5js3.3`; `tests/intent_card.rs` pins what it says).
+    for key in ["x", "f", "-", "z", "m"] {
         let (changed, toast) = chord(&mut app, key);
         assert!(
             !changed && has_a_way_out(&toast) && toast.contains("j"),

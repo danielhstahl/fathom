@@ -512,13 +512,14 @@ pub struct App {
     pub diff_episode: Option<String>,
     /// The timeline rail's own state: its rows, its filter, its cursor (`e1.6`).
     pub timeline: Timeline,
-    /// `w` (`risk.explain`) has been pressed on the episode named here: the card pane shows that
-    /// ranking in full instead of the card itself (`reco-c05`).
+    /// `w` (`risk.explain`) has been pressed on the episode named here: the card's ranking band shows
+    /// that episode's full argument — every reason, then the whole ceiling — in place of its brief rows.
     ///
     /// Keyed by episode id rather than a bare flag, because the question "why is *this one* here" is
     /// about an episode: moving the cursor to another row leaves the answer about the previous one on
-    /// screen would be a lie about the new selection.
-    pub explain: Option<String>,
+    /// screen would be a lie about the new selection. It was a pane until `e9.3`; what it is now is one
+    /// band of the card, opened, which is why it survives the cursor moving no better and no worse.
+    pub expanded_rank: Option<String>,
     /// What the shell knows about triage: the vocabulary, the actor, the ledger, and every act taken since
     /// the frame opened (`e4.5`, `reco-wsj`).
     ///
@@ -526,13 +527,6 @@ pub struct App {
     /// retrospective all live in `fathom_analyze::queue`; what is here is which chooser is open, which
     /// episodes are already decided, and the handle that writes.
     pub queue: crate::queue::State,
-    /// `i` (`intent.show`) has been pressed on the episode named here: the card pane shows that episode's
-    /// captured intent — the request, its source, its plan and its declared scope — instead of the card
-    /// itself (`e4.2`, `reco-c54`).
-    ///
-    /// Keyed by episode id for the same reason [`App::explain`] is: the answer belongs to the episode it was
-    /// asked about, and leaving it up while the cursor has moved would describe the wrong commit.
-    pub intent: Option<String>,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
     /// The last search submitted with `/` then `<Enter>` (`e1.11`).
@@ -743,9 +737,8 @@ impl App {
             recent_step: 0,
             diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
-            explain: None,
+            expanded_rank: None,
             queue: crate::queue::State::absent(),
-            intent: None,
             prompt: String::new(),
             last_search: None,
             opened: Vec::new(),
@@ -1203,22 +1196,17 @@ impl App {
         match pane.name {
             "rail" => Some(self.timeline.rail_text(cols, rows)),
             "card" => Some(
-                if self.explaining(self.timeline.selected()) {
-                    timeline::risk_lines(self.timeline.selected(), cols, rows)
-                } else if self.showing_intent(self.timeline.selected()) {
-                    timeline::intent_lines(self.timeline.selected(), cols, rows)
-                } else {
-                    self.timeline.preview_lines(cols, rows)
-                }
-                .into_iter()
-                .map(|line| line.text().to_owned())
-                .collect(),
+                self.timeline
+                    .preview_lines(cols, rows, self.card_window())
+                    .into_iter()
+                    .map(|line| line.text().to_owned())
+                    .collect(),
             ),
             _ => None,
         }
     }
 
-    /// The timeline's panes as styled rows: the rail is a windowed list, the card a short document,
+    /// The timeline's panes as styled rows: the rail is a windowed list, the card a windowed document,
     /// and neither is a list of strings the shell can slice on its own.
     #[must_use]
     pub fn timeline_body(&self, pane: &Pane, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
@@ -1227,13 +1215,7 @@ impl App {
         }
         match pane.name {
             "rail" => Some(self.timeline.rail_lines(width, rows)),
-            "card" => Some(if self.explaining(self.timeline.selected()) {
-                timeline::risk_lines(self.timeline.selected(), width, rows)
-            } else if self.showing_intent(self.timeline.selected()) {
-                timeline::intent_lines(self.timeline.selected(), width, rows)
-            } else {
-                self.timeline.preview_lines(width, rows)
-            }),
+            "card" => Some(self.timeline.preview_lines(width, rows, self.card_window())),
             _ => None,
         }
     }
@@ -1362,21 +1344,35 @@ impl App {
             .and_then(|id| self.timeline.find(id))
     }
 
-    /// Is `w`'s explanation up, for the episode currently in scope?
+    /// Is `w`'s ranking band open, for the episode currently in scope?
     #[must_use]
-    pub fn explaining(&self, episode: Option<&Episode>) -> bool {
-        match (&self.explain, episode) {
+    pub fn ranking_expanded(&self, episode: Option<&Episode>) -> bool {
+        match (&self.expanded_rank, episode) {
             (Some(id), Some(episode)) => id == &episode.id,
             _ => false,
         }
     }
 
-    /// Is `i`'s intent pane up, for the episode currently in scope?
+    /// The card pane's window: how deep into the document the reader has walked, and whether band 4 is
+    /// open for the episode in scope (`e9.3`).
+    ///
+    /// One place, because the queue and the timeline draw the same renderer at different widths and the
+    /// two channels — `--plain` text and styled rows — must not disagree about which card they are
+    /// printing. The scroll offset is read for the pane by name, not for whichever pane is focused:
+    /// the card keeps its place when the cursor goes back to the rail.
     #[must_use]
-    pub fn showing_intent(&self, episode: Option<&Episode>) -> bool {
-        match (&self.intent, episode) {
-            (Some(id), Some(episode)) => id == &episode.id,
-            _ => false,
+    pub fn card_window(&self) -> timeline::CardWindow {
+        let expanded = match self.view {
+            ViewId::Queue => self.ranking_expanded(self.queue_selected()),
+            _ => self.ranking_expanded(self.timeline.selected()),
+        };
+        timeline::CardWindow {
+            scroll: self
+                .scroll
+                .get(&(self.view, "card".to_owned()))
+                .copied()
+                .unwrap_or(0),
+            expanded,
         }
     }
 
@@ -1395,25 +1391,19 @@ impl App {
         )
     }
 
-    /// The queue's panes as styled rows: the ranked worklist, and the card (or the explanation `w`
-    /// opened) beside it.
+    /// The queue's panes as styled rows: the ranked worklist, and the card beside it — one episode
+    /// surface, with the band `w` opens drawn inside it (`e9.3`).
     #[must_use]
     pub fn queue_body(&self, pane: &Pane, width: usize, rows: usize) -> Vec<StyledLine> {
-        let selected = self.queue_selected();
         if pane.name == "card" {
-            return if self.explaining(selected) {
-                timeline::risk_lines(selected, width, rows)
-            } else if self.showing_intent(selected) {
-                timeline::intent_lines(selected, width, rows)
-            } else {
-                timeline::card_lines(
-                    selected,
-                    self.timeline.now(),
-                    self.timeline.origin(),
-                    width,
-                    rows,
-                )
-            };
+            return timeline::card_lines(
+                self.queue_selected(),
+                self.timeline.now(),
+                self.timeline.origin(),
+                width,
+                rows,
+                self.card_window(),
+            );
         }
         let ranking = self.queue_ranking();
         if self.queue.retrospective {
@@ -1868,21 +1858,43 @@ impl App {
         self.diff.build(file, &request)
     }
 
+    /// How many rows the card has at this pane's width: the whole document, not the pane's window into
+    /// it, because it is the document the motion walks (`e9.3`).
+    #[must_use]
+    fn card_rows(&self, pane: &Pane) -> usize {
+        let width = self.pane_cols(pane.name).max(12);
+        let budget = self.pane_body_rows();
+        let episode = match self.view {
+            ViewId::Queue => self.queue_selected(),
+            _ => self.timeline.selected(),
+        };
+        timeline::card_document(
+            episode,
+            self.timeline.now(),
+            self.timeline.origin(),
+            width,
+            budget,
+            self.card_window(),
+        )
+        .len()
+    }
+
     /// How many rows a pane has, from whatever owns them — the number a selection or a scroll is
     /// clamped against.
     #[must_use]
     pub fn row_count(&self, pane: &Pane) -> usize {
         if self.view == ViewId::Queue {
-            // The worklist's rows belong to the ranking: one row per episode the rail's filter keeps,
-            // and the card is a document, not a list (`reco-c05`). With no episodes in the shell there
-            // is nothing to rank, and the caller's own lines are what the motion keys walk — a test
-            // frame or an embedding shell that hands the pane text directly still moves through it.
+            // The worklist's rows belong to the ranking: one row per episode the rail's filter keeps.
+            // The card is a document, and its rows are the rows the renderer laid out (`e9.3`) — the
+            // number its motion clamps against, which is why it is counted here and not guessed there.
             return if pane.name == "worklist" {
                 if self.timeline.is_empty() {
                     self.model.rows_for(self.view, pane.name).len()
                 } else {
                     self.timeline.ranked_len()
                 }
+            } else if pane.name == "card" && !self.timeline.is_empty() {
+                self.card_rows(pane)
             } else {
                 0
             };
@@ -1892,6 +1904,8 @@ impl App {
             // do not, and the number the motion keys clamp against is the number of slots.
             return if pane.name == "rail" {
                 self.timeline.len()
+            } else if pane.name == "card" {
+                self.card_rows(pane)
             } else {
                 0
             };
@@ -2318,19 +2332,6 @@ impl App {
             ));
             return;
         }
-        if self.intent.take().is_some() {
-            // `i` opened the intent pane over the card, and `<Esc>` closes the topmost transient thing it
-            // finds — the pane, not the selection under it (ADR-006 §1 R2).
-            self.toast("intent dismissed — `i` shows the captured intent again");
-            return;
-        }
-        if self.explain.take().is_some() {
-            // `w` opened an explanation over the card, and `<Esc>` dismisses the topmost transient thing
-            // it finds — here that is the explanation, not the selection underneath it, and certainly not
-            // the view (ADR-006 §1 R2: `<Esc>` never quits and never does two things).
-            self.toast("explanation dismissed — `w` explains the ranking again");
-            return;
-        }
         if self.zoomed {
             self.zoomed = false;
             return;
@@ -2498,18 +2499,43 @@ impl App {
             .unwrap_or(0)
     }
 
+    /// Fold an opened ranking band when the cursor has moved to a different episode.
+    ///
+    /// `w` answers a question about one episode, so an expansion that outlives the row it was asked on
+    /// would be a card describing the wrong episode. Moving on is the same gesture as folding it
+    /// (`reco-c05`; `reco-5js3.3` made it a band inside the card instead of a pane of its own).
+    fn fold_rank_off_the_old_episode(&mut self, was: Option<&str>) {
+        if let Some(was) = was
+            && self.scope.episode.as_deref() != Some(was)
+        {
+            self.expanded_rank = None;
+        }
+    }
+
     /// Move the selection of the focused pane, clamped to what it has.
+    ///
+    /// In a *document* pane there is no cursor for these keys to move, so the row a motion names becomes
+    /// the top of the window instead (`e9.3`, ADR-006 §5.1.1's card-focus row).
     pub fn set_selection(&mut self, row: usize) {
         let Some(pane) = self.focused_pane() else {
             return;
         };
+        if self.is_document_pane(pane) {
+            // A document has no cursor for these keys to move, so the row a motion names is the top of
+            // the window: `gg` and `G` walk the card the way `<C-d>` and `j` do, rather than sliding an
+            // invisible caret the reader will never see (`e9.3`, ADR-006 §5.1.1's card-focus row).
+            self.set_scroll(row);
+            return;
+        }
         if self.view == ViewId::Timeline && pane.name == "rail" {
             // The rail owns its cursor, because the cursor is an *episode* and not a row: moving it
             // updates the anchor, the scope and the window together (ADR-006 §5.2).
+            let before = self.expanded_rank.clone();
             self.timeline.move_to(row);
             self.scope.episode = self.timeline.selected().map(|episode| episode.id.clone());
             self.selection
                 .insert((self.view, pane.name.to_owned()), self.timeline.cursor());
+            self.fold_rank_off_the_old_episode(before.as_deref());
             return;
         }
         let count = self.row_count(pane);
@@ -2541,14 +2567,9 @@ impl App {
             // since `reco-c05` the queue has rows worth acting on (`reco-glv`'s step (b) could not
             // even try, because there was nothing to select).
             let moved = self.queue_selected().map(|episode| episode.id.clone());
-            if self.explain.as_deref() != moved.as_deref() {
-                // An explanation is an answer about one episode. Leaving it up while the cursor sits on
-                // the next row down would be a card that describes the wrong episode, so moving on is
-                // the same gesture as `<Esc>` here (`reco-c05`).
-                self.explain = None;
-                self.intent = None;
-            }
+            let was = self.expanded_rank.clone();
             self.scope.episode = moved;
+            self.fold_rank_off_the_old_episode(was.as_deref());
         }
         if self.view == ViewId::Diff && pane.name == "tree" {
             // The tree cursor *is* the file selection in this view: moving the cursor to a file row
@@ -2605,12 +2626,45 @@ impl App {
             }
             return;
         }
-        let rows = self.row_count(pane);
         let current = i32::try_from(self.scroll_of()).unwrap_or(i32::MAX);
-        let max = i32::try_from(rows).unwrap_or(i32::MAX).saturating_sub(1);
-        let next = (current + delta).clamp(0, max.max(0));
-        let next = usize::try_from(next).unwrap_or(0);
+        let next = current + delta;
+        self.set_scroll(usize::try_from(next.max(0)).unwrap_or(usize::MAX));
+    }
+
+    /// Move the focused pane's window to an absolute row, clamped to what it has.
+    ///
+    /// The clamp is the interesting part, and it differs by pane. A list clamps against its own last
+    /// row, because its cursor is a row. A *document* — the card, now that it is a windowed one —
+    /// clamps against the last **page**, so `G` leaves the pane full of the tail rather than holding
+    /// up its final row with the rest of the frame empty. `max_scroll` is the one place that arithmetic
+    /// lives, so `scroll_by`, `G` and the refusal that explains them cannot disagree.
+    pub fn set_scroll(&mut self, target: usize) {
+        let Some(pane) = self.focused_pane() else {
+            return;
+        };
+        let max = self.max_scroll(pane);
+        let next = target.min(max);
         self.scroll.insert((self.view, pane.name.to_owned()), next);
+    }
+
+    /// How far a pane's window may go.
+    #[must_use]
+    fn max_scroll(&self, pane: &Pane) -> usize {
+        let rows = self.row_count(pane);
+        if self.is_document_pane(pane) {
+            rows.saturating_sub(self.pane_body_rows())
+        } else {
+            rows.saturating_sub(1)
+        }
+    }
+
+    /// Is this pane a windowed document rather than a list with a cursor?
+    ///
+    /// The card is the one the shell windows by row and moves by window (`e9.3`): it has no cursor of
+    /// its own, so every motion that names a row in it means "put that row at the top".
+    #[must_use]
+    fn is_document_pane(&self, pane: &Pane) -> bool {
+        pane.name == "card" && matches!(self.view, ViewId::Queue | ViewId::Timeline)
     }
 
     /// Recompute the layout after a size change.
@@ -3044,6 +3098,14 @@ impl App {
                     };
                     if let Some(text) = text {
                         self.prompt.push_str(text);
+                    } else if let Some(retired) = crate::keymap::retired_chord(&chord) {
+                        // A letter this build retired is not merely unbound: somebody pressed it because
+                        // it used to answer their question, so the refusal names the absence *and* the
+                        // surface the answer moved to (`reco-xf8`'s shape, applied to `e9.3`'s `i`).
+                        self.toast(format!(
+                            "`{chord}` is unbound — {}. `?` lists every key",
+                            retired.says
+                        ));
                     } else if !chord.is_empty() {
                         self.toast(format!(
                             "`{chord}` is unbound in {} — `?` lists every key",
@@ -3288,9 +3350,10 @@ impl App {
             "review.dismiss" => self.open_reason(),
             "review.snooze" => self.open_snooze(),
             "queue.retrospect" => self.toggle_retrospective(),
-            // `w`: why this episode is where it is. The answer is a pane, not a toast line, because
-            // the arithmetic and the ceiling do not fit in one line (`reco-c05`); the toast names what
-            // changed so a screen reader gets the same news.
+            // `w`: why this episode is where it is. The toast says the sentence in one line, because a
+            // screen reader gets the news from the hint row; what it *names* is now a band of the card
+            // rather than a pane the key swapped in, and the toast says which band and how to fold it
+            // (`reco-c05`, re-worded by `e9.3` when the pane became a section).
             "risk.explain" => {
                 let id = match self.view {
                     ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
@@ -3325,69 +3388,26 @@ impl App {
                         ),
                     (_, other) => crate::worklist::explain_words(other, self.timeline.now()),
                 };
-                let shown = match &id {
-                    Some(id) if self.explain.as_deref() == Some(id.as_str()) => {
-                        self.explain = None;
+                let opened = match &id {
+                    Some(id) if self.expanded_rank.as_deref() == Some(id.as_str()) => {
+                        self.expanded_rank = None;
                         false
                     }
                     Some(id) => {
-                        self.explain = Some(id.clone());
+                        self.expanded_rank = Some(id.clone());
                         true
                     }
                     None => false,
                 };
                 self.scope.episode = id;
-                if shown {
+                if opened {
+                    // The band grew in place, so the key that has to say so is the one the pane's own
+                    // ceiling string already names.
                     self.toast(format!(
-                        "{words} — the card pane explains it; `w` again to go back"
+                        "{words} — the card lists every reason and the whole ceiling; `w` again folds it"
                     ));
                 } else {
                     self.toast(words);
-                }
-            }
-            // `i`: what this episode was for, and how Fathom knows. A pane and not a toast because the
-            // answer is the text, the plan and the declared scope, and none of them fit in a status line
-            // (`e4.2`, `reco-c54`).
-            "intent.show" => {
-                let id = match self.view {
-                    ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
-                    _ => self.timeline.selected().map(|episode| episode.id.clone()),
-                };
-                let shown = match &id {
-                    Some(id) if self.intent.as_deref() == Some(id.as_str()) => {
-                        self.intent = None;
-                        false
-                    }
-                    Some(id) => {
-                        self.intent = Some(id.clone());
-                        true
-                    }
-                    None => false,
-                };
-                self.scope.episode = id.clone();
-                if shown {
-                    let state = id
-                        .as_deref()
-                        .and_then(|id| self.timeline.find(id))
-                        .and_then(|episode| {
-                            episode
-                                .delta
-                                .as_ref()
-                                .and_then(|delta| delta.episode.intent.as_ref())
-                        })
-                        .map(|intent| match intent.state.as_str() {
-                            insight::INTENT_RECORDED => "intent recorded",
-                            insight::INTENT_DIGEST_ONLY => "intent digest only — no text",
-                            _ => "no recorded intent",
-                        })
-                        .unwrap_or("no intent document on this row");
-                    self.toast(format!(
-                        "{state} — the card pane shows it; `i` again to go back"
-                    ));
-                } else if id.is_some() {
-                    self.toast("intent dismissed — `i` shows it again".to_owned());
-                } else {
-                    self.toast("no episode in scope — `j`/`k` choose one, then `i`".to_owned());
                 }
             }
             "compare.mark" => {
@@ -4293,8 +4313,8 @@ impl App {
                     )
                 );
             }
-            // A document pane (the card, the hunks before a file is picked) has no cursor for these
-            // keys at all, and the honest answer names the pane that does.
+            // A document pane with no rows (the hunks pane before a file is picked) has nothing to move
+            // at all, and the honest answer names the pane that does.
             let list = self
                 .current()
                 .panes
@@ -4316,6 +4336,25 @@ impl App {
                 | "list.bot_visible"
                 | "list.mid_visible"
         );
+        if self.is_document_pane(pane) {
+            // Every motion in a document pane moves the window, so a refusal that talks about a cursor
+            // would be describing a thing the pane does not have (`e9.3`).
+            return if rows <= self.pane_body_rows() {
+                format!(
+                    "the {} pane's {} row{} fit the frame — there is nothing to scroll",
+                    pane.name,
+                    rows,
+                    if rows == 1 { "" } else { "s" }
+                )
+            } else {
+                format!(
+                    "the {} pane's window is already at the {} · {} row(s) · `gg` and `G` jump to the ends",
+                    pane.name,
+                    if downward { "bottom" } else { "top" },
+                    rows
+                )
+            };
+        }
         if Self::moves_window(action, self.rail_focus()) {
             return if rows <= self.pane_body_rows() {
                 format!(
