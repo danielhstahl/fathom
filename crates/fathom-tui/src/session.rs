@@ -404,7 +404,9 @@ pub fn restore(app: &mut App, entries: &[(String, String)]) -> Restored {
     // The rail's half, last: the filter decides which rows exist, then the cursor lands on one.
     if entries.iter().any(|(key, _)| key.starts_with("timeline.")) {
         let said = app.timeline.apply_session(entries);
-        if said != "nothing to restore" {
+        // "nothing to restore" is the silence; everything else — including a stored value this build
+        // had to drop — is a sentence for the resume toast.
+        if !said.starts_with("nothing to restore") {
             out.applied.push(said);
         }
     }

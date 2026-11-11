@@ -154,7 +154,10 @@ pub struct Latest {
     pub id: String,
     /// The one-line summary the rail prints.
     pub summary: String,
-    /// `agent`, `human`, `unknown` — the text channel, never an icon alone.
+    /// `agent`, `human`, `unknown` — **data, not a printed fact.** `e10.4` (`reco-ydek.4`) took it off
+    /// the glance line: ADR-006 §5.1.2 §6 retires the verdict wherever a human reads it, because a
+    /// reader handed `agent` with no confidence and no evidence cannot weigh it. The field stays because
+    /// `fathom ambient --json` still ships it to a machine consumer that can.
     pub author: String,
     /// When the episode began; `None` is "the row did not say", which prints `unknown`.
     pub created: Option<Timestamp>,
@@ -494,7 +497,12 @@ pub fn age_since(now: Timestamp, then: Timestamp) -> String {
     age(secs)
 }
 
-/// The first line: `latest e8f1a2 · agent · 12m · risk 82 ✱ · unread`.
+/// The first line: `latest e8f1a2 · 12m · risk 82 ✱ · unread`.
+///
+/// Four facts, and no fifth: identity, age, risk, review state. The author word used to sit between the
+/// id and the age, and `e10.4` (`reco-ydek.4`) took it out — ADR-006 §5.1.2 §6 retires the verdict
+/// wherever a human reads it, and this line's 40-column budget was already spent on the four facts a
+/// reviewer acts on, so nothing is added in its place.
 fn latest_line(glance: &Glance, dim: bool) -> StyledLine {
     let mut line = StyledLine::new();
     let Some(latest) = &glance.latest else {
@@ -517,8 +525,6 @@ fn latest_line(glance: &Glance, dim: bool) -> StyledLine {
         // Marked distinctly and never folded into a committed count (docs/concepts/episode.md).
         line.push(ink(dim, Face::Marker), " · provisional");
     }
-    line.push(Face::Muted, " · ");
-    line.push(ink(dim, Face::Text), &latest.author);
     line.push(Face::Muted, " · ");
     line.push(
         ink(dim, Face::Text),

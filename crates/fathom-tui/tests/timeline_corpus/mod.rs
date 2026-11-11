@@ -483,7 +483,7 @@ pub fn with_delta(mut rows: Vec<Episode>) -> Vec<Episode> {
 pub fn delta_for(episode: &Episode) -> EpisodeDelta {
     let mut input = Input::new(EpisodeRef::sparse(&episode.id, &episode.summary));
     input.episode.n_commits = i64::try_from(episode.n_commits()).unwrap_or(1);
-    input.episode.author_kind = episode.author.badge().to_owned();
+    input.episode.author_kind = episode.author.as_str().to_owned();
     input.episode.author_name = episode.author_name.clone();
     input.episode.author_confidence = episode.author_confidence;
     input.episode.members = episode.members.clone();

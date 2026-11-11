@@ -87,18 +87,28 @@ fathom --demo --plain show HEAD~1
 episode d367b98 — HEAD~1
   message   add toml to the dependency surface
   author    Dana Stahl <dana@example.com>  2025-04-30T18:00:00Z
+  tree      6fbc7798501616ba723c7b0befcb739594702c84
+  parents   85b4f18
   scale     1 file(s), +1 -0, 0 binary
-  grouping  ep-06cf9f46eaf35e6b071c · 1 commit(s) · boundary time-gap 0.60 · author human 0.50
+  grouping  ep-06cf9f46eaf35e6b071c · 1 commit(s) · boundary time-gap 0.60
   intent    no recorded intent · no harness events for this repository, and no `Intent:` or `Task:` trailer …
-  attribution  human · — · 0.50 via identity
+  attribution  via identity · confidence 0.50
+  evidence    identity 0.50 · an ordinary identity with no agent evidence anywhere on the episode
+  store     .fathom/index.sqlite3
   files     1
     modify      +1    -0  unknown      Cargo.toml
 ```
 
 That `grouping` line is the episode: this commit is one member of it, and `ep-06cf…` is the address that
 survives a rebase. The `boundary time-gap 0.60` beside it names the rung of the cascade that drew the line
-([episode](concepts/episode.md)), and the `0.50` is how sure the tool is about who wrote it — printed as a
-number because "we think a person did" is a claim, not a fact.
+([episode](concepts/episode.md)).
+
+The `attribution` block is separate, and it is sparse on purpose. The verdict word is gone from that first
+line: since `e10.4` no surface prints `human` or `agent` where a reviewer reads, because a verdict beside a
+commit count reads as a fact about the author when it is an inference from who owns the email address
+(`0.50` here is the bottom rung — nothing said otherwise). What is printed instead is what the claim is
+made of: the source, the confidence, and the evidence, with the correction verb named inline.
+`fathom analyze --json` still ships the verdict itself, as a datum for a machine that can weigh it.
 
 ## 4 · Read one, and ask why it ranked
 

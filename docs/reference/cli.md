@@ -275,8 +275,11 @@ Options:
 
 ## `fathom episodes`
 
-The reviewer's main list, without a screen: one row per episode — id, time, author kind, `+add`/`−del`,
+The reviewer's main list, without a screen: one row per episode — id, time, `+add`/`−del`,
 path count, review state, session/turn — as text or as `--json` ([`fathom.cli.episodes/1`](../../schemas/episodes.schema.json)).
+`--kind` filters on the author kind and `--json` carries `author_kind`, but the text rows print no
+`human`/`agent` word: that verdict left the human-facing surfaces with `e10.4`
+([ADR-006 §5.1.2 §6](../adr/0006-tui.md)).
 `fathom show` answers a question about one episode; this answers the question the rail asks about the whole
 index, which is what ADR-006 §6.7 means by "every view has a headless equivalent" (`reco-11b`).
 

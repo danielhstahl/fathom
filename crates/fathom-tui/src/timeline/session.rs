@@ -21,7 +21,7 @@
 //! collapsed group the reviewer cannot remember collapsing is a rail that lies about why rows are
 //! missing.
 
-use super::filter::Filter;
+use super::filter::{self, Filter};
 
 /// How many member SHAs ride along for the tier-3 re-attach. A rebase rewrites them all, so the list
 /// is a hint and three is enough to be one without letting a session row grow without bound.
@@ -43,6 +43,12 @@ pub struct Session {
     pub selection: Option<String>,
     /// Its member SHAs, for the tier-3 re-attach.
     pub members: Vec<String>,
+    /// One line per stored value this build had to drop, in the reviewer's words.
+    ///
+    /// The retired `kind=` dimension is what fills this today (`e10.4`): the reviewer set that filter,
+    /// the rail cannot honour it any more, and ADR-006 §7 forbids letting that happen quietly. Empty is
+    /// the normal case.
+    pub notices: Vec<String>,
 }
 
 impl Session {
@@ -58,6 +64,7 @@ impl Session {
         };
         Session {
             filter: get(KEY_FILTER).map_or_else(Filter::default, |text| Filter::decode(&text)),
+            notices: get(KEY_FILTER).map_or_else(Vec::new, |text| filter::retired_keys(&text)),
             selection: get(KEY_SELECTION).filter(|value| !value.is_empty()),
             members: get(KEY_MEMBERS).map_or_else(Vec::new, |text| {
                 text.split(',')
@@ -99,6 +106,9 @@ impl Session {
     /// "restored" when it did, "re-attached through a member commit" when it rode across a rewrite
     /// (ADR-003 §6 tier 3 — the reviewer should know the row is a *different episode*), and "not in
     /// this index" when it is gone, which is the case where a confident toast would be a lie.
+    ///
+    /// Anything in [`Session::notices`] is appended after them: a stored value this build dropped is not
+    /// a restoration, but it is exactly as much a thing the reviewer had to be told.
     #[must_use]
     pub fn report(&self, restored_filter: bool, selection: Restore) -> String {
         let mut parts: Vec<String> = Vec::with_capacity(2);
@@ -122,10 +132,18 @@ impl Session {
             )),
         }
         if parts.is_empty() {
-            "nothing to restore".to_owned()
-        } else {
-            format!("session restored — {}", parts.join(", "))
+            if self.notices.is_empty() {
+                return "nothing to restore".to_owned();
+            }
+            // Nothing came back, but there is still something to say: a stored constraint this build
+            // dropped is a fact about the rail the reviewer is about to look at.
+            return format!("nothing to restore — {}", self.notices.join("; "));
         }
+        let mut out = format!("session restored — {}", parts.join(", "));
+        for notice in &self.notices {
+            out.push_str(&format!("; {notice}"));
+        }
+        out
     }
 }
 

@@ -251,15 +251,14 @@ fn score_one(
         ));
     } else {
         if let Some(row) = row.as_ref() {
+            // The id, the subject, the size — and not the attribution verdict, which `e10.4` took off every
+            // surface that prints it for a person to read (`reco-ydek.4`). The score's own vector below
+            // still names its `author` component, because a component that is still scoring has to be
+            // spelled while it scores (ADR-006 §5.1.2 §6c, and `e10.5` retires the two together); the
+            // verdict itself is in `--json`.
             output::line(format_args!(
-                "{}  {:?}  ·  {} {}  ·  +{} −{}  ·  {} file(s)",
-                row.id,
-                row.summary,
-                row.author_kind,
-                row.author_confidence,
-                row.n_add,
-                row.n_del,
-                row.n_files
+                "{}  {:?}  ·  +{} −{}  ·  {} file(s)",
+                row.id, row.summary, row.n_add, row.n_del, row.n_files
             ));
         }
         for line in risk_score::render(&scored) {

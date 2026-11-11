@@ -45,7 +45,7 @@ pub use editor::{Editor, Next as EditorNext, Row as EditorRow, Stage as EditorSt
 pub use episode::{
     AuthorKind, Batch, Episode, EpisodeSource, GroupKey, MemorySource, NoIndex, ReviewState, Risk,
 };
-pub use filter::{Dimension, FACET_CAP, Facets, Filter, GroupBy};
+pub use filter::{Dimension, FACET_CAP, Facets, Filter, GroupBy, retired_keys};
 pub use rail::{Anchor, Rail, RailStats, Slot};
 pub use render::{Columns, SPARK_CELLS, Scale, compact};
 pub use session::{KEY_FILTER, KEY_MEMBERS, KEY_SELECTION, Restore, SESSION_MAX, Session};
@@ -523,6 +523,9 @@ impl Timeline {
             filter: self.rail.filter().clone(),
             selection: self.rail.selection_id().map(str::to_owned),
             members: self.rail.anchor_members(),
+            // Nothing to report on the way out: a notice is about what a *stored* value could no longer
+            // mean here, and this is the value this build is choosing to store.
+            notices: Vec::new(),
         }
     }
 

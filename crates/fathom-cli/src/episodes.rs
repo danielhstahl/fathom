@@ -690,16 +690,19 @@ fn render(report: &Report) -> Vec<String> {
         }
     ));
     out.push(String::new());
+    // No author-kind column (`e10.4`, `reco-ydek.4`): ADR-006 §5.1.2 §6 retires the verdict wherever a
+    // human reads it, and this table is where a human reads it. `--kind` still filters (the machine
+    // channel is the named exception, and a filter echoes the reviewer's own words back), and
+    // `--json` still ships `author_kind` with `author_confidence` beside it.
     out.push(format!(
-        "{:<24}  {:<22}  {:<7}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
-        "ID", "WHEN (UTC)", "KIND", "+ADD", "-DEL", "FILES", "STATE", "SESSION/TURN", "SUMMARY"
+        "{:<24}  {:<22}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
+        "ID", "WHEN (UTC)", "+ADD", "-DEL", "FILES", "STATE", "SESSION/TURN", "SUMMARY"
     ));
     for row in report.page.rows() {
         out.push(format!(
-            "{:<24}  {:<22}  {:<7}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
+            "{:<24}  {:<22}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
             row.episode.id,
             stamp(row.episode.last_utc),
-            row.episode.author_kind,
             format!("+{}", row.episode.n_add),
             format!("-{}", row.episode.n_del),
             row.episode.n_files,

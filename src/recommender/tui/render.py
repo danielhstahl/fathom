@@ -235,8 +235,11 @@ def refuse_below_cols(view: View) -> int:
 
     The number is the primary pane's hard minimum taken *without* its frame, because the
     frame is sold two steps earlier on the ladder: `Queue` refuses at 32 columns because
-    a worklist narrower than that cannot show `sha · age · author kind · +n −n · risk`
-    at all, and there is nothing left on the ladder to sell. Ambient has no frame to
+    a worklist narrower than that cannot show `sha · age · +n −n · risk` at all, and
+    there is nothing left on the ladder to sell. (The author kind was in that list until
+    `e10.4` took the printed verdict off every row; the floor did not move with it — see
+    `views.py`, whose rail/worklist floors are about identity and the risk phrase, and
+    ADR-006 §5.1.2 §6a: a retired cell buys thresholds, not a narrower floor.) Ambient has no frame to
     sell, so its floor is its own line budget — see §6.2.
     """
     if view.id == "ambient":
@@ -355,8 +358,8 @@ def fit(view: View, cols: int, rows: int) -> Fit:
     The terminal states are decided on facts, not on the running deficit: after the
     ladder has sold what it can sell, the primary pane must still reach its hard minimum
     width and three content rows. Below that, drawing is a lie — a worklist that cannot
-    show `sha · age · author kind · +n −n · risk` is not a narrow worklist, it is an
-    ellipsis with a header.
+    show `sha · age · +n −n · risk` is not a narrow worklist, it is an ellipsis with a
+    header.
     """
     out = Fit(view, cols, rows)
     need_c = min_cols_view(view) - cols

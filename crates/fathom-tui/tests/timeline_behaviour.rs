@@ -80,8 +80,9 @@ fn kept_by(filter: &Filter, rows: &[Episode]) -> Vec<String> {
 
 #[test]
 fn the_rail_draws_the_adrs_row_at_80_columns() {
-    // §5.2's row: `▸ e8f1a2 0:12 agent  +412 −90 ●●●●○○ 82 ⚑`, minus the risk number this build cannot
-    // cite (it prints `?` instead of inventing 82 — ADR-001 §7.7).
+    // §5.2's row: `▸ e8f1a2 0:12  +412 −90 ●●●●○○ 82 ⚑`, minus the risk number this build cannot
+    // cite (it prints `?` instead of inventing 82 — ADR-001 §7.7). Five cells: the author badge that
+    // used to stand after the time is retired (`e10.4`, ADR-006 §5.1.2 §6).
     let mut app = fixture((80, 24));
     let lines = rail(&mut app);
     let first = lines
@@ -93,7 +94,6 @@ fn the_rail_draws_the_adrs_row_at_80_columns() {
         "the cursor marks its row: {first:?}"
     );
     assert!(first.contains("0:12"), "relative time: {first:?}");
-    assert!(first.contains("agent"), "the author badge: {first:?}");
     assert!(first.contains("+412 −90"), "the change size: {first:?}");
     assert!(
         first.contains('●'),
@@ -111,36 +111,58 @@ fn the_rail_draws_the_adrs_row_at_80_columns() {
 }
 
 #[test]
-fn the_unknown_author_and_the_missing_risk_print_a_value_not_a_blank() {
-    // ADR-001 §7.7: `unknown` is a value. A blank badge would read as "no author", a blank risk as
-    // "no risk", and both are different claims from the one that is true.
+fn no_rail_row_prints_the_attribution_verdict_at_all() {
+    // ADR-006 §5.1.2 §6a, asserted over every row the fixture can draw — including the `unknown` one,
+    // which is the case the badge got wrong. The datum is not printed here in any spelling: not
+    // `agent`, not `human`, not the `?` the unknown rung used to draw. The row still says everything a
+    // reviewer acts on, and `fathom analyze --json` still carries the claim with its evidence.
+    let mut app = fixture((80, 24));
+    let lines = rail(&mut app);
+    assert!(lines.len() > 3, "the fixture drew its rows: {lines:?}");
+    for line in &lines {
+        for word in ["agent", "human"] {
+            assert!(
+                !line.contains(word),
+                "a rail row printed the retired verdict {word:?}: {line:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn the_missing_risk_prints_a_value_not_a_blank() {
+    // ADR-001 §7.7: `unknown` is a value. A blank risk column reads as "no risk", which is a different
+    // claim from "nothing has ranked it yet". The author cell beside it is gone (`e10.4`) and the `?`
+    // that survives is the risk's alone.
     let mut app = fixture((80, 24));
     let lines = rail(&mut app);
     let unknown = lines
         .iter()
         .find(|line| line.contains("c1f5e2"))
-        .expect("the unknown-author row is on screen");
+        .expect("the unranked row is on screen");
     assert!(
         unknown.contains('?'),
-        "the unknown badge and the unranked risk both print `?`: {unknown:?}"
+        "the unranked risk prints `?` rather than a blank: {unknown:?}"
     );
     assert!(!unknown.contains("agent"), "nobody guessed: {unknown:?}");
 }
 
 #[test]
 fn the_columns_drop_in_the_order_the_adr_fixes_and_the_glyph_survives_every_one() {
-    // §6.3: "sparkline, relative-time→date, author, then the risk *number*, and finally the risk
-    // *glyph* last of all". The assertion is about the *order*, which is what the ADR fixes, plus the
-    // promise behind it: a row that has been squeezed must never be squeezed out of its state marker,
-    // because that cell is also the state under `NO_COLOR` (§5.2, `e5.6`).
+    // §6.3: "sparkline, relative time to date-only, then the risk *number*, and finally the risk
+    // *glyph* last of all" — the author rung that used to sit in the middle is gone (`e10.4`), and the
+    // six cells it cost came off every threshold above the floor instead. The assertion is about the
+    // *order*, which is what the ADR fixes, plus the promise behind it: a row that has been squeezed
+    // must never be squeezed out of its state marker, because that cell is also the state under
+    // `NO_COLOR` (§5.2, `e5.6`).
     let mut drops = String::new();
     let mut previous: Option<Vec<bool>> = None;
-    for width in [44, 36, 33, 28, 23, 18] {
+    for width in [38, 30, 28, 26, 23, 18] {
         let line = rail_at(width);
         let first = line.lines().next().unwrap_or_default().to_owned();
         let present = [
             first.contains('●'),
-            first.contains("agent"),
+            first.contains("0:12"),
             first.contains("82"),
         ];
         // Once a column in the ladder's order is gone, no narrower rung puts it back.
@@ -164,13 +186,19 @@ fn the_columns_drop_in_the_order_the_adr_fixes_and_the_glyph_survives_every_one(
         ));
     }
     assert!(
-        drops.contains("all six columns") && drops.contains("id and state only"),
+        drops.contains("all five columns") && drops.contains("id and state only"),
         "the ladder reaches both ends of itself: {drops}"
     );
     assert_eq!(
         Columns::for_width(42).name(),
-        "all six columns",
+        "all five columns",
         "the ADR's own rail is 42 wide and its own row must fit in it"
+    );
+    assert_eq!(
+        Columns::for_width(34).name(),
+        "all five columns",
+        "the six cells the badge cost came off `Full`'s threshold, so a 34-wide rail keeps the \
+         sparkline it used to need 40 for"
     );
 }
 
@@ -508,7 +536,6 @@ fn the_filter_round_trips_through_session_state() {
         authors: vec!["pi".to_owned(), "stahl".to_owned()],
         area: Some("src/store".to_owned()),
         state: Some(ReviewState::Unread),
-        kinds: vec![AuthorKind::Agent],
         group: GroupBy::Session,
         ..Filter::default()
     };
@@ -521,7 +548,6 @@ fn the_filter_round_trips_through_session_state() {
     assert_eq!(back.authors, filter.authors, "{encoded}");
     assert_eq!(back.area, filter.area, "{encoded}");
     assert_eq!(back.state, filter.state, "{encoded}");
-    assert_eq!(back.kinds, filter.kinds, "{encoded}");
     assert_eq!(back.group, filter.group, "{encoded}");
     assert_eq!(
         back.since, filter.since,
@@ -543,6 +569,49 @@ fn session_state_survives_an_unknown_key_and_a_missing_one() {
         "a missing group is the default"
     );
     assert!(Filter::decode("").is_clear(), "an empty row is no filter");
+}
+
+#[test]
+fn a_stored_kind_filter_degrades_with_a_sentence_and_not_a_shrug() {
+    // ADR-006 §7: session state degrades *with a warning*. A store written by the build that had the
+    // `kind=` dimension must not come back as a rail that quietly stopped honouring it — the reviewer
+    // who filtered to `agent` and upgraded would be looking at everything and told nothing.
+    let decoded = Filter::decode("author=pi;kind=agent;state=unread");
+    assert_eq!(decoded.authors, vec!["pi".to_owned()]);
+    assert_eq!(decoded.state, Some(ReviewState::Unread));
+    assert!(
+        !decoded.summary().contains("kind="),
+        "the summary still spells a retired dimension: {}",
+        decoded.summary()
+    );
+
+    let notices = fathom_tui::timeline::retired_keys("author=pi;kind=agent;group=day");
+    assert_eq!(
+        notices.len(),
+        1,
+        "one retired key, one sentence: {notices:?}"
+    );
+    assert!(
+        notices[0].contains("kind") && notices[0].contains("retired"),
+        "the sentence names the key and says what happened to it: {:?}",
+        notices[0]
+    );
+    // A cleared constraint is not a lost one: `kind=any` is the reviewer who already removed it.
+    assert!(
+        fathom_tui::timeline::retired_keys("kind=any;group=day").is_empty(),
+        "a cleared retired filter is not a missing one"
+    );
+
+    // And the notice reaches the resume toast, which is the only place a reviewer will read it.
+    let said = fathom_tui::timeline::Session::from_entries(&[(
+        fathom_tui::timeline::KEY_FILTER.to_owned(),
+        "kind=human;group=day".to_owned(),
+    )])
+    .report(false, fathom_tui::timeline::Restore::Nothing);
+    assert!(
+        said.contains("kind") && said.contains("retired"),
+        "the toast swallowed the notice: {said}"
+    );
 }
 
 #[test]
@@ -890,31 +959,63 @@ fn choosing_a_value_sets_the_filter_and_shows_it_in_the_strip() {
 
 #[test]
 fn a_multi_valued_dimension_toggles_and_the_chooser_stays_open() {
+    // The `author` dimension (git's name) is the multi-valued one now that the kind toggles are gone:
+    // "stahl *and* pi *and* unread" is built one `<Enter>` at a time, and the chooser stays open to
+    // take the next one.
     let mut app = fixture((80, 24));
     keystroke(&mut app, "F");
     let rows = app.filter_rows();
-    let kind = rows
+    let author = rows
         .iter()
-        .position(|row| row.label.starts_with("kind"))
-        .expect("kind");
-    app.timeline.editor_move(kind, rows.len());
+        .position(|row| row.label.starts_with("author"))
+        .expect("author");
+    app.timeline.editor_move(author, rows.len());
     keystroke(&mut app, "<Enter>");
     let rows = app.filter_rows();
-    let agent = rows
+    let pi = rows
         .iter()
-        .position(|row| row.label == "agent")
-        .expect("agent");
-    app.timeline.editor_move(agent, rows.len());
+        .position(|row| row.label == "pi")
+        .expect("an author the fixture actually has");
+    app.timeline.editor_move(pi, rows.len());
     keystroke(&mut app, "<Enter>");
-    assert_eq!(app.timeline.filter().kinds, vec![AuthorKind::Agent]);
+    assert_eq!(app.timeline.filter().authors, vec!["pi".to_owned()]);
     assert!(
         app.timeline.editor_in_value(),
         "toggling keeps the chooser open"
     );
     keystroke(&mut app, "<Enter>");
     assert!(
-        app.timeline.filter().kinds.is_empty(),
+        app.timeline.filter().authors.is_empty(),
         "and choosing it again takes it off"
+    );
+}
+
+#[test]
+fn the_filter_editor_offers_no_attribution_dimension() {
+    // `F` is a chooser over what exists (the editor's whole argument), so a retired dimension must not
+    // be listable, typeable or tickable. Before `e10.4` this surface printed `agent`/`human`/`unknown`
+    // as filter values, which asserted the verdict with neither confidence nor evidence.
+    let mut app = fixture((80, 24));
+    keystroke(&mut app, "F");
+    let rows = app.filter_rows();
+    assert!(
+        !rows.iter().any(|row| row.label.starts_with("kind")),
+        "the retired dimension is still on the list: {rows:?}"
+    );
+    for row in &rows {
+        for word in ["agent", "human"] {
+            assert!(
+                !row.label.contains(word),
+                "the editor is offering the retired verdict {word:?}: {row:?}"
+            );
+        }
+    }
+    // And the strip cannot be made to spell a kind filter any more: with no dimension to set, there is
+    // no summary segment to print.
+    assert!(
+        !app.timeline.strip().contains("kind="),
+        "the strip still spells a kind filter: {}",
+        app.timeline.strip()
     );
 }
 
@@ -1056,7 +1157,13 @@ fn every_e1_6_action_actually_does_something() {
 
 #[test]
 fn the_rail_reports_the_column_ladder_it_used() {
-    assert_eq!(Columns::for_width(44).name(), "all six columns");
+    assert_eq!(Columns::for_width(44).name(), "all five columns");
+    assert_eq!(
+        Columns::for_width(34).name(),
+        "all five columns",
+        "34 is the new `Full`: the row is six cells narrower and the rung moved with it"
+    );
+    assert_eq!(Columns::for_width(33).name(), "no sparkline");
     assert_eq!(Columns::for_width(20).name(), "id and state only");
 }
 

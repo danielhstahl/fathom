@@ -382,8 +382,7 @@ fn render(case: &Case) -> String {
 fn ladder_golden() -> String {
     let mut out = String::new();
     out.push_str(
-        "# ladder\n# the column ladder, §5.2's fixed order: sparkline, relative time to \
-                  date, author, risk number, and the state glyph last of all.\n\n",
+        "# ladder\n# the column ladder, §5.2's fixed order: sparkline, relative time to \n# date, the risk number, and the state glyph last of all. There is no author rung: e10.4 took\n# the cell out, spent its six cells on the three upper thresholds, and left the floor where\n# §3 puts it.\n\n",
     );
     let mut rows = mock();
     // A risk number, so the rung that drops it has something to drop. A bare ranked delta is the bare form:
@@ -395,7 +394,7 @@ fn ladder_golden() -> String {
     ));
     let mut rail = timeline::Rail::new(NOW);
     rail.load(Batch::new("fixture index", rows));
-    for width in [42, 40, 38, 34, 32, 30, 27, 24, 22, 18] {
+    for width in [42, 40, 38, 34, 33, 30, 28, 27, 26, 24, 22, 18] {
         let text = rail.text(width, 1);
         let line = text.first().map(String::as_str).unwrap_or_default();
         assert_eq!(

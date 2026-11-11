@@ -237,7 +237,6 @@ pub const VIEWS: &[View] = &[
                 reads: &[
                     "episode.identity",
                     "episode.created_at",
-                    "episode.attribution.kind",
                     "risk.score",
                     "risk.reasons[]",
                     "blast_radius.direct_count",
@@ -320,7 +319,6 @@ pub const VIEWS: &[View] = &[
                 reads: &[
                     "episode.identity",
                     "episode.created_at",
-                    "episode.attribution.kind",
                     "delta.structure.*",
                     "review.state",
                     "episode.members[].sha",

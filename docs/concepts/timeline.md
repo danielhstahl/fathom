@@ -14,10 +14,12 @@ The timeline is the screen a reviewer arrives at first and returns to whenever t
 *what happened, in what order, and which of it have I not read?* It is a list of episodes — one row per
 episode — with grouping, composable filters, quick jumps, and a details pane about the row under the
 cursor. Everything below follows from the same rule the diff viewer plays by: **the rail never lies and
-never goes quiet.** A row with no author prints `unknown`; a risk nothing could rank prints `?`, and a
-risk the spine did rank prints its number with `w` beside it
-([risk-ranking.md](risk-ranking.md)); a group that is collapsed says how many rows are behind it; a
-rail with nothing loaded names the command that fills it.
+never goes quiet.** A risk nothing could rank prints `?`, and a risk the spine did rank prints its
+number with `w` beside it ([risk-ranking.md](risk-ranking.md)); a group that is collapsed says how many
+rows are behind it; a rail with nothing loaded names the command that fills it. Attribution is not one of
+the things the rail went quiet *about*: since `e10.4` it prints no `human`/`agent` word at all, in any
+spelling, in any column — the verdict is a datum for `fathom analyze --json` and not a fact to hand a
+reviewer ([ADR-006 §5.1.2 §6](../adr/0006-tui.md)).
 
 ## 1 What it reads, and what it refuses to read
 
@@ -84,21 +86,30 @@ boundary rule and confidence, an optional risk, and whether the episode is still
 `structure` field, no `findings`, no `risk_score` — the card cites the delta fields `e2.11` publishes, and
 where the run handed it no document it prints the verb that would fill the row (§8).
 
-## 2 The row, and the six columns it is made of
+## 2 The row, and the five columns it is made of
 
 ```
-▸ e8f1a2 0:12 agent  +412 −90 ●●●●●● ? ⚑
+▸ e8f1a2 0:12  +412 −90 ●●●●●● ? ⚑
 ```
 
 | Column | Source | What it cannot say |
 |---|---|---|
 | `e8f1a2` | `Episode::short_id` | — (never dropped) |
 | `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser; `<1m` below a minute, `ahead` for a row the frame has not reached |
-| `agent` | `AuthorKind` badge: `agent`, `human`, `?` | the `?` **is** the answer: attribution failed, and blank would read as "no author" |
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
 | `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
+
+There was a sixth column here, `agent`/`human`/`?` after the age, and `e10.4` (**reco-ydek.4**) deleted it
+rather than narrowed it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md)). The reason was the rung, not the
+reader: an episode with no session arc, no claim trailer and a person-shaped git author string fell
+through to `human` at `0.50`, so the cell was confidently wrong in exactly the cases a reviewer cared
+about — and the `?` that was meant to be the honest bucket was reserved for a *missing* identity, a
+different failure. The datum is untouched: `author_kind`, `author_confidence` and the evidence list are
+still written, still correctable with `fathom attribution correct`, and still shipped by
+`fathom analyze --json` as an `AttributionRef` carrying all three, so a consumer can weigh the claim
+instead of inheriting it. What changed is that no surface prints the verdict where a human reads it.
 
 The age column has four shapes and none of them is a zero (**reco-5oe**): `<1m` below a minute, `h:mm`
 below a day, `2d4h`, then `3mo`. `0:00` was what the `h:mm` arithmetic said at forty seconds, and it
@@ -119,14 +130,17 @@ binary prints `bin` rather than a chart of nothing.
 ## 3 The column ladder
 
 `Columns::for_width` (ADR-006 §6.3) drops columns in the order the ADR fixes — sparkline, then
-relative time to a date, then author, then the risk *number*, then the risk glyph last of all:
+relative time to a date, then the risk *number*, then the risk glyph last of all. There is no author rung
+any more: `e10.4` deleted the cell, and the six columns it cost were spent on the thresholds rather than
+on new content. Every rung above the floor moved down by what the cell cost — 40→34 for the full row,
+34→28, 32→26 — and the floor itself did not move, because ADR-006 §3 says where a row stops being a row
+and one ticket's tidiness is not a reason to move a line another ticket is standing on.
 
 | Pane columns | Rung | Row |
 |---:|---|---|
-| ≥ 40 | all six columns | `▸ e8f1a2 0:12 agent +412 −90 ●●●●●● 82 ⚑` |
-| ≥ 34 | no sparkline | `▸ e8f1a2 0:12 agent +412 −90 82 ⚑` |
-| ≥ 32 | date instead of age | `▸ e8f1a2 14 Oct agent +412 −90 82 ⚑` |
-| ≥ 27 | no author | `▸ e8f1a2 14 Oct +412 −90 82 ⚑` |
+| ≥ 34 | all five columns | `▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑` |
+| ≥ 28 | no sparkline | `▸ e8f1a2 0:12 +412 −90 82 ⚑` |
+| ≥ 26 | date instead of age | `▸ e8f1a2 14 Oct +412 −90 82 ⚑` |
 | ≥ 22 | no risk number | `▸ e8f1a2 14 Oct +412 −90 ⚑` |
 | below | id and state only | `▸ e8f1a2 14 Oct ⚑` |
 
@@ -162,21 +176,29 @@ content is deliberately off screen, which is exactly why it is annotated.
 
 ## 5 Filters
 
-Seven dimensions, and the rule is the store's rule: **OR inside a dimension, AND across them**, so the
+Six dimensions, and the rule is the store's rule: **OR inside a dimension, AND across them**, so the
 same filter means the same rows in the rail and in an `EpisodeQuery` (`filter::Filter::matches` is
 written against the same semantics, and `timeline_behaviour.rs` cross-checks the composition against
 the model rather than against the rail's own arithmetic).
 
 | Dimension | Values | Notes |
 |---|---|---|
-| `author` | names, with counts | multi-valued; `unknown` is a value |
-| `kind` | `agent`, `human`, `unknown` | multi-valued |
+| `author` | names, with counts | multi-valued; git's **name**, recorded at commit time — not the retired author-*kind* verdict, which is not a filter any more (below) |
 | `state` | `unread`, `read`, `accepted`, `refused`, `dismissed`, `flagged`, `snoozed` | `read` means *opened* — read or any verdict — which is the store's rule, not a shortcut |
 | `area` | a path fragment, facet-suggested | matched case-insensitively against every path, so `tests` finds `tests/test_epoch.rs` |
 | `since`, `until` | `2026-10-14`, `today`, `yesterday`, `week`, `7d`, `2w`, `month`, `year`, `any` | typed spans resolve to a **bound**, not a suggestion: `7d` becomes the start of the day seven days back and does not move as the frame redraws |
 | `group` | `day`, `session`, `none` | the view option, editable here because the surface that edits filters is where a reviewer expects it |
 
-Facets (`Facets::of`) are computed from the loaded rows in one pass: authors, kinds, path areas up to
+There is no `kind=` dimension, and it went in the same commit as the badge for the same reason
+([ADR-006 §5.1.2 §6b](../adr/0006-tui.md)): a rail filter cannot carry a confidence, so offering
+`agent`/`human`/`unknown` in the `F` editor meant asserting the verdict in the one surface that had
+neither confidence nor evidence beside it — and a rail reporting 300 rows under such a filter asserts that
+300 *is* the number of human-authored episodes, which the rung that answers `human` because nothing said
+otherwise cannot support. The token the epic did not touch survives: `author=` matches a git name, which
+is a fact git states. (`fathom episodes --kind` survives too, on the CLI, where the rows ship their
+uncertainty beside the claim.)
+
+Facets (`Facets::of`) are computed from the loaded rows in one pass: authors, path areas up to
 three segments, and the states present, each with a count, each capped at `FACET_CAP` values so a
 repository with 900 authors does not produce a chooser nobody can scroll. A capped list says it is
 capped; typing a value that is not on the list is always allowed.
@@ -198,13 +220,18 @@ contract: the keys, the damage rules, two TUIs in one repository, `--fresh`. Thr
 `ui_state_all("timeline.")`:
 
 ```
-timeline.filter     = author=pi&author=stahl;kind=agent;state=unread;area=src/store;since=…;group=session
+timeline.filter     = author=pi&author=stahl;state=unread;area=src/store;since=…;group=session
 timeline.selection  = e8f1a2…            (the id, first tier of §6)
 timeline.members    = e8f1a2:0,e8f1a2:1  (up to SESSION_MAX, the tier-3 ride)
 ```
 
 `Filter::decode` ignores keys it does not know and defaults what is missing, so a filter written by a
-newer fathom degrades to the parts this one understands instead of refusing to start. Restoring applies
+newer fathom degrades to the parts this one understands instead of refusing to start. A key this build
+*used* to know is a different case, and it does not go silently: a store written when `kind=` was a
+dimension still names a constraint the reviewer set, so `filter::retired_keys` turns it into a sentence on
+the resume toast — `session restored — filter state=unread, cursor on 40c9b3; stored ``kind`` filter —
+the author-kind filter is retired …` — because a rail that quietly stopped honouring a filter is a rail
+lying about what it is showing. Restoring applies
 the filter first (it decides which rows exist), then the cursor, then reports what actually came back —
 "session restored — filter state=unread, cursor on `40c9b3`", or "`e8f1a2` is not in this index — it
 moved or left, and the cursor is at the top instead". A resume that guessed silently is worse than one
@@ -292,10 +319,14 @@ verb produces it, rather than rendering a confident `0` or an empty box. The `ri
 is the one that changed: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
 name, its vector and its own ceiling, and `w` opens all of it
 ([risk-ranking.md](risk-ranking.md)). What it *can*
-say it says precisely: commit count, author kind with its confidence, age, review state, the timezone
+say it says precisely: commit count, age, review state, the timezone
 the day bounds use, where the change landed (top path prefixes with file counts), the boundary rule and
 its confidence labelled "a rule, not a fact" (ADR-003 §4.7), the session and turn, and the member SHAs
-the review is keyed to — truncated with `…` and `+N more`, never mid-token.
+the review is keyed to — truncated with `…` and `+N more`, never mid-token. The attribution word used to
+close that row, as `4 commits · agent 0.94 · 0:12 ago · unread`; `e10.4` struck the word and its
+confidence together ([ADR-006 §5.1.2 §6a](../adr/0006-tui.md)). A reader handed a bare conclusion cannot
+argue with it, and the row had no room for what would make one arguable — the rung, the evidence, the
+reason a label was refused. The card says nothing about attribution now, rather than saying less of it.
 
 ## 9 Empty, filtered and partial states
 
@@ -425,10 +456,11 @@ review verify` — and the ledger itself did not change at all ([review ledger](
 `e10.1` retired the queue as the home view; `e10.3` deletes it. The risk number in the rail and in the
 card is still the spine-only ranking, and its published ceiling is
 [risk-ranking.md](risk-ranking.md) §12 — which since `e10.1` is the record of a **retired** ordering and
-no longer describes what the product ranks by. `e10.4` takes the `human`/`agent` badge out of this view's
-row and out of the card's attribution line — the cell goes, `NoAuthor` stops being a rung, and the six
-freed cells buy back rungs rather than new content ([ADR-006 §5.1.2
-§6](../adr/0006-tui.md)) — and `e10.5` replaces what the risk number is computed from.
+no longer describes what the product ranks by. `e10.4` took the `human`/`agent` badge out of this view's
+row, out of the card's header and out of the `F` editor, and spent the six freed cells on the ladder's
+thresholds instead of on new content ([ADR-006 §5.1.2
+§6](../adr/0006-tui.md)) — and `e10.5` replaces what the risk number is computed from, including the
+`author` component §8's line still spends points on.
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
 queue once ordered by — what it orders by is the spine-only ranking and its stated ceiling

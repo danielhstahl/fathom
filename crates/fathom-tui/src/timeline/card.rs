@@ -169,7 +169,7 @@ const COMPLEXITY_FIGURE: &str = "complexity";
 
 /// One card row, before it is laid out.
 enum Row {
-    /// A line of its own: the identity, the attribution, a warning that says the card cannot be trusted.
+    /// A line of its own: the identity, the facts row, a warning that says the card cannot be trusted.
     Line(StyledLine),
     /// One item of a list the row above it announced: `− text`, wrapped under its own bullet.
     ///
@@ -208,7 +208,7 @@ enum Row {
 ///
 /// The order is the row budget, and it is the whole of the pane's layout policy:
 ///
-/// 1. **the header** — the identity, then the attribution line with the review state on it, then one row
+/// 1. **the header** — the identity, then the facts row with the review state on it, then one row
 ///    for every warning that says the row cannot be trusted at all (ADR-003 §6.3's `gone —`, a failed
 ///    `integrity` self-check);
 /// 2. **the code delta** (`what`): the churn, the noise/reformat fold on its own row, and the reserved
@@ -321,30 +321,32 @@ fn split_remainder(value: &str) -> (&str, Vec<String>) {
     (value, Vec::new())
 }
 
-/// The header: who this episode is, who did it and when, and every warning that outranks the analysis.
+/// The header: what this episode is, how big it is, when it happened, and every warning that outranks
+/// the analysis.
 fn push_header(rows: &mut Vec<Row>, episode: &Episode, now: Timestamp) {
     rows.push(Row::Line(StyledLine::with_face(
         format!("{} — {}", episode.short_id(), episode.summary),
         Face::Emphasis,
     )));
-    let confidence = episode
-        .author_confidence
-        .map_or_else(|| "?".to_owned(), |value| format!("{value:.2}"));
-    // The review state moved onto the attribution line (**reco-5js3.2**): it is one more fact about the
-    // row the reviewer is looking at, and the row it used to own also carried `UTC`, which is not a fact
-    // about anything. The order is by what a 35-column pane cannot afford to lose — how many commits, how
-    // long ago, which review state (the glyph stays because `NO_COLOR` is a real terminal, `e5.6`) — and
-    // the attribution confidence, which is a fact about the *record*, goes last.
+    // The review state moved onto the facts row (**reco-5js3.2**): it is one more fact about the row the
+    // reviewer is looking at, and the row it used to own also carried `UTC`, which is not a fact about
+    // anything. The order is by what a 35-column pane cannot afford to lose — how many commits, how
+    // long ago, which review state (the glyph stays because `NO_COLOR` is a real terminal, `e5.6`).
+    //
+    // The attribution used to close this row as `agent 0.94`, and `e10.4` struck it (`reco-ydek.4`,
+    // ADR-006 §5.1.2 §6): the rung's verdict is not printed at a human, with its confidence beside it
+    // or without one — a reader handed the conclusion cannot weigh it. What did not change is the
+    // datum: `author_kind`, its confidence and its evidence are still written, still correctable, and
+    // still shipped as an `AttributionRef` in `fathom analyze --json` for a consumer that can use a
+    // confidence.
     rows.push(Row::Line(StyledLine::with_face(
         format!(
-            "{} commit{} · {} · {} {} · {} {}",
+            "{} commit{} · {} · {} {}",
             thousands(u64::try_from(episode.n_commits()).unwrap_or(u64::MAX)),
             if episode.n_commits() == 1 { "" } else { "s" },
             days::relative_ago(now, episode.created),
             episode.state.glyph(),
-            episode.state,
-            episode.author.badge(),
-            confidence
+            episode.state
         ),
         Face::Muted,
     )));

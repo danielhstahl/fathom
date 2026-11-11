@@ -130,11 +130,16 @@ fn a_clean_machine_goes_from_nothing_to_a_frame_in_under_a_minute() {
         text.contains("risk") && text.contains('+') && text.contains('−'),
         "the queue pane is showing no ranked episode:\n{text}"
     );
-    assert!(
-        text.contains("agent") && text.contains("human"),
-        "the miniature is supposed to be mixed agent and human work, so the queue can rank them \
-         against each other:\n{text}"
-    );
+    // …and the attribution verdict is *not* on it. The miniature is still mixed agent and human work —
+    // the guide line on stderr below says so in prose, and `fathom episodes --json` still ships the kind
+    // with its confidence for anything that can weigh one — but `e10.4` (`reco-ydek.4`, ADR-006 §5.1.2 §6)
+    // retired the printed label, and the first frame a stranger sees is where that shows.
+    for word in ["agent", "human"] {
+        assert!(
+            !text.contains(word),
+            "the first frame printed the retired verdict {word:?}:\n{text}"
+        );
+    }
 
     let advice = stderr(&out);
     for line in [

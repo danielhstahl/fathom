@@ -202,11 +202,15 @@ pub fn prompt_line(label: &str, typed: &str, width: usize) -> StyledLine {
     line.padded(width)
 }
 
-/// Row one: `▸  1 e8f1a2 agent  +412 −90  queue 123 risk 82 migration+ci`.
+/// Row one: `▸  1 e8f1a2  +412 −90  queue 123 risk 82 migration+ci`.
 ///
 /// The leading column is the *queue* rank when the queue has placed the row (`e4.5`), because the number
 /// a worklist row leads with is the one that explains why this row is above the next one; the risk rank
 /// stays inside the risk phrase, where it came from.
+///
+/// The author badge used to stand after the id. `e10.4` retired it here too (`reco-ydek.4`): a label this
+/// epic deletes from the rail does not get to stay in a pane that is only waiting to be deleted. The whole
+/// worklist goes with `e10.3`.
 fn head(
     out: &mut Vec<StyledLine>,
     episode: &Episode,
@@ -231,7 +235,6 @@ fn head(
         &format!("{}{:>3} ", if cursor { "▸" } else { " " }, rank),
     );
     line.push(Face::Muted, &episode.short_id());
-    line.push(Face::Text, &format!(" {}", episode.author.badge()));
     line.push(
         Face::Text,
         &format!(" +{} −{}", compact(episode.n_add), compact(episode.n_del)),

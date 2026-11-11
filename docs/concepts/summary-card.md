@@ -102,8 +102,9 @@ pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that
   absence. The plan items and the declared scope are evidence, and evidence lives in the delta
   document — printed whole by `fathom show <episode>`, from the same document this card summarizes.
   A row that says *what the agent claimed* is a summary; the whole brief is not a row.
-* **The row budget spends the bands first.** Two rows of header (identity, then attribution with the
-  review state folded into it), one row for every warning that says this row cannot be trusted at all,
+* **The row budget spends the bands first.** Two rows of header (identity, then the facts row — commit
+  count, age, review state — with the author-kind verdict struck from it by `e10.4`), one row for every
+  warning that says this row cannot be trusted at all,
   then the five bands in order, and only after them the provenance — `members`, `boundary`, `session`,
   the model stamp, the read line — cut first when the card does not fit. Intent's share of that budget
   is the one row above, and what it gave back went to the code delta: the noise fold on a row of its own

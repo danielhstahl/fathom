@@ -35,7 +35,7 @@ Session state is the reviewer's posture, has no evidentiary value, and is worth 
 | `tui.search` | a pattern | the search field's default (`/`) |
 | `timeline.filter` | `timeline::session::encode`, six segments | the rail's filters — [timeline §5](timeline.md#5-filters) |
 | `timeline.selection` | one episode id | the rail's cursor, by identity through the relink tiers |
-| `timeline.members` | `author:` / `kind:` / `area:` / `repo:` / `remote:` / `sha:` prefixes | each filter's multi-member set |
+| `timeline.members` | `author:` / `area:` / `repo:` / `remote:` / `sha:` prefixes | each filter's multi-member set — no `kind:` any more, the author-kind dimension was retired with the badge (`e10.4`) |
 | `unread:<episode-id>` | `opened` / `read`, written when the card materialised | the read set, and therefore where `goto.first_unread` lands |
 
 `session_state` is the store's own table (`episode.rs`, since `e1.3`) with `key TEXT PRIMARY KEY, value

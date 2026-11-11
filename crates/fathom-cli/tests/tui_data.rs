@@ -213,8 +213,8 @@ fn rail_rows(frame: &str) -> usize {
 /// the episode rows in the rail, with no further work.
 ///
 /// Every clause below is a fact the shipped binary had to produce by reading its own store — the row,
-/// the author badge, the day header, the strip's count, and the card's `where` line, whose paths come
-/// from the join this ticket added. Nothing here hands a fixture to the view.
+/// the absence of the author word, the day header, the strip's count, and the card's `where` line, whose
+/// paths come from the join this ticket added. Nothing here hands a fixture to the view.
 #[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_rail_lists_the_episodes_the_index_holds() {
@@ -239,9 +239,17 @@ fn the_rail_lists_the_episodes_the_index_holds() {
         rows >= 30,
         "the rail drew {rows} rows over an index of 500 episodes:\n{frame}"
     );
+    // The author kind is a store column, and it stays one; what `e10.4` (`reco-ydek.4`) settled is that no
+    // rail row prints it. Asserted here on the real binary rather than on a fixture because this is the
+    // one place the rail is drawn from a real index — the only version of "nobody is printing the word"
+    // that a reviewer's actual screen could fail.
     assert!(
-        frame.contains(" agent ") && frame.contains(" human "),
-        "the author kind is a store column, and the rail should show both it knows:\n{frame}"
+        !frame.contains(" agent ") && !frame.contains(" human "),
+        "the rail prints no author-kind verdict in any column:\n{frame}"
+    );
+    assert!(
+        frame.contains(" +") && frame.contains(" ●"),
+        "the rail still draws the columns it has: scale and the sparkline:\n{frame}"
     );
     assert!(
         frame

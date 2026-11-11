@@ -232,29 +232,71 @@ fn a_wake_up_inside_the_same_minute_buys_no_frame() {
 }
 
 #[test]
-fn a_rail_printing_dates_not_ages_does_not_draw_for_a_minute() {
-    // Below `Columns::NoSparkline` the age column is a date read off the row, and the only `now` the
-    // rail prints is the footer's day label. A minute there is a draw that repaints the frame,
-    // unchanged — which is exactly what §0.1 forbids — so the day is what has to turn.
-    let mut app = shell((46, 20), 4 * MICROS_PER_SEC);
+fn the_pane_floor_now_prints_the_age_the_badge_used_to_cost() {
+    // The freed six cells were spent on the rungs, and this is the spend. The narrowest rail the
+    // timeline's own layout can produce used to be a date-only row (`e10.4` before: 28 columns drew
+    // `14 Oct`), and now it draws an age — so a minute is a change on it, and the tickless loop owes
+    // the frame for it.
+    let mut app = shell((42, 20), 4 * MICROS_PER_SEC);
     let width = app.pane_cols("rail").max(12);
-    assert!(
-        !matches!(
-            Columns::for_width(width),
-            Columns::Full | Columns::NoSparkline
-        ),
-        "the fixture's rail must be on a date-only rung, and is {width} columns"
+    assert_eq!(
+        Columns::for_width(width),
+        Columns::NoSparkline,
+        "the fixture's rail must sit on the rung the freed cells bought back, and is {width} columns"
     );
-
     let opened = Instant::now();
     app.age_clock(opened);
     assert!(
-        !app.age_clock(opened + Duration::from_secs(40 * 60)),
-        "forty minutes turn nothing on a rail that prints no ages"
+        app.age_clock(opened + Duration::from_secs(61)),
+        "a rail that prints `h:mm` has to redraw for the minute"
+    );
+}
+
+#[test]
+fn a_rail_on_the_date_rung_draws_for_a_day_and_not_for_a_minute() {
+    // The date-only rung now lives below the timeline pane's own floor, so it is pinned at the rail
+    // rather than at a frame: a caller that draws the rail that narrow (§5.2's ladder is a ladder for
+    // every width, not only the ones the layout reaches) shows a date and no age.
+    //
+    // The half that used to be tested through `App::age_clock` is the caller's rule, and it is asserted
+    // as the rule rather than through the app: the rail's own clock is minute-based whatever it prints
+    // (`Rail::set_now` cannot know its rung), and the caller decides that on an ageless rail only a day
+    // is a change (`App::age_clock`, same arithmetic). Pinning that seam here means a rail drawn at 26
+    // columns does not redraw forty times a day to print a date that has not moved.
+    let mut rail = timeline::Rail::new(NOW);
+    rail.load(Batch::new(
+        "fixture",
+        vec![episode("e8f1a2", MICROS_PER_HOUR)],
+    ));
+    rail.set_visible(1);
+    let date_only = rail.text(26, 1).join("\n");
+    assert!(
+        Columns::for_width(26) == Columns::DateOnly,
+        "26 columns is the date rung"
     );
     assert!(
-        app.age_clock(opened + Duration::from_secs(24 * 60 * 60)),
-        "a day turns the footer's date, and that one is worth a frame"
+        !date_only.contains("1:"),
+        "a date rung prints no age: {date_only:?}"
+    );
+    let later = |offset: i64| Timestamp::from_unix_micros(NOW.as_unix_micros() + offset);
+    assert!(
+        timeline::day_start(NOW) == timeline::day_start(later(40 * MICROS_PER_MIN)),
+        "forty minutes is not a day"
+    );
+    assert!(
+        timeline::day_start(NOW) != timeline::day_start(later(MICROS_PER_DAY)),
+        "a day is a day, and that is the only tick a date rung gets"
+    );
+    // And the row is the created day, which `now` does not move: on this rung the only `now` a frame
+    // prints is the footer's day label, which is exactly why the caller's rule above waits for a day.
+    let after = rail.text(26, 1).join("\n");
+    assert_eq!(
+        after, date_only,
+        "a date rung prints the episode's own day, so a frame's `now` moving a day changes no row"
+    );
+    assert!(
+        after.contains("Oct"),
+        "the row is on a date, not an age: {after:?}"
     );
 }
 

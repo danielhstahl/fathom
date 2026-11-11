@@ -2,10 +2,18 @@
 //! narrow.
 //!
 //! ADR-006 §5.2 fixes the drop order and this file implements exactly it: **sparkline first, then
-//! relative time to date-only, then author, then the risk number — and the state glyph survives
-//! last**, because the marker is the one column that also carries *state* with colour switched off
-//! (§10.2). Deciding that in one function means the ladder is testable at every width instead of
-//! being a rumour in a comment, and `tests/timeline_behaviour.rs` walks it.
+//! relative time to date-only, then the risk number — and the state glyph survives last**, because
+//! the marker is the one column that also carries *state* with colour switched off (§10.2).
+//! Deciding that in one function means the ladder is testable at every width instead of being a
+//! rumour in a comment, and `tests/timeline_behaviour.rs` walks it.
+//!
+//! The author badge used to stand between the time and the risk number, and `e10.4`
+//! (`reco-ydek.4`) took it out: ADR-006 §5.1.2 §6 retires the printed verdict, because the rung
+//! that says `human` says it because nothing said otherwise. Its rung went with it and its six cells
+//! bought back rungs rather than content — every threshold below moved down by exactly those six
+//! cells, so a 34-column pane now shows what a 40-column one used to. The floor does not move: the
+//! 18-column identity strip, the view's `min`/`floor` and the card's row budget are different
+//! currencies and stay where §3 leaves them (§5.1.2 §6a).
 //!
 //! Nothing here touches the rail's own state: the row is a pure function of one episode, the frame's
 //! instant and the loaded corpus's scale, which is what lets a golden file pin a row without a whole
@@ -17,7 +25,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::style::{Face, StyledLine};
 
 use super::days;
-use super::episode::{AuthorKind, Episode};
+use super::episode::Episode;
 
 /// How many cells the change-size sparkline draws.
 pub const SPARK_CELLS: usize = 6;
@@ -29,7 +37,6 @@ mod face {
     use super::Face;
     pub(super) const ID: Face = Face::Muted;
     pub(super) const TIME: Face = Face::Text;
-    pub(super) const AUTHOR: Face = Face::Text;
     pub(super) const SIZE: Face = Face::Text;
     pub(super) const SPARK: Face = Face::Faint;
     pub(super) const RISK: Face = Face::Number;
@@ -42,14 +49,13 @@ mod face {
 /// Which columns a rail row has room for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Columns {
-    /// Everything: `▸ e8f1a2 0:12 agent  +412 −90 ●●●●○○ 82 ⚑` (ADR-006 §5.2's own row).
+    /// Everything: `▸ e8f1a2 0:12 +412 −90 ●●●●○○ 82 ⚑` (ADR-006 §5.2's own row, five columns since
+    /// `e10.4` took the author cell out of it).
     Full,
     /// No sparkline — the first thing the ADR sells.
     NoSparkline,
     /// Relative time collapses to a date: `14 Oct` instead of `0:12`.
     DateOnly,
-    /// No author badge.
-    NoAuthor,
     /// No risk *number*; the state glyph stays, because it is also the state.
     NoRisk,
     /// Identity and state only — the 18-column strip the ladder sells the rail down to.
@@ -62,16 +68,20 @@ impl Columns {
     /// The thresholds are the pane's own documented numbers from the view registry (`ideal_cols` 42,
     /// `min_cols` 32, `strip_width` 18, `hard_min` 28) with the columns' own widths added up, so the
     /// ladder and the layout come from the same arithmetic rather than two guesses.
+    ///
+    /// `e10.4`'s six freed cells are spent here and nowhere else: the three upper rungs each moved
+    /// down by 6 — the width of the author cell that went — and the two lower ones did not move at
+    /// all, because the identity floor is the 18-column strip §3 documents and selling the badge
+    /// does not re-open it. So `Full`'s content is 34 cells exactly, and a rail that is 34 wide still
+    /// gets the sparkline it used to need 40 for.
     #[must_use]
     pub const fn for_width(width: usize) -> Columns {
-        if width >= 40 {
+        if width >= 34 {
             Columns::Full
-        } else if width >= 34 {
+        } else if width >= 28 {
             Columns::NoSparkline
-        } else if width >= 32 {
+        } else if width >= 26 {
             Columns::DateOnly
-        } else if width >= 27 {
-            Columns::NoAuthor
         } else if width >= 22 {
             Columns::NoRisk
         } else {
@@ -83,10 +93,9 @@ impl Columns {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            Columns::Full => "all six columns",
+            Columns::Full => "all five columns",
             Columns::NoSparkline => "no sparkline",
             Columns::DateOnly => "date instead of age",
-            Columns::NoAuthor => "no author",
             Columns::NoRisk => "no risk number",
             Columns::Identity => "id and state only",
         }
@@ -170,7 +179,9 @@ pub fn episode_line(
     width: usize,
 ) -> StyledLine {
     // Every cell carries the priority it surrenders at on overflow: the bigger the number, the sooner
-    // it goes. `0` is the identity, `1` the state — the two cells that are never surrendered.
+    // it goes. `0` is the identity, `1` the state — the two cells that are never surrendered. The run of
+    // priorities keeps a gap where the author badge used to stand (`3`), so a number quoted by an older
+    // comment, golden or bisected blame still means the cell it always meant.
     let mut cells: Vec<(Face, String, u8)> = vec![(
         face::CURSOR,
         if cursor {
@@ -186,17 +197,6 @@ pub fn episode_line(
         _ => days::date_only(episode.created),
     };
     cells.push((face::TIME, format!(" {time}"), 2));
-    if columns < Columns::NoAuthor {
-        cells.push((
-            if episode.author == AuthorKind::Unknown {
-                face::MISSING
-            } else {
-                face::AUTHOR
-            },
-            format!(" {:<5}", episode.author.badge()),
-            3,
-        ));
-    }
     cells.push((
         face::SIZE,
         format!(" +{} −{}", compact(episode.n_add), compact(episode.n_del)),

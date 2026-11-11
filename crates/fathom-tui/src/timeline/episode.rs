@@ -28,8 +28,14 @@ use crate::diff::Unavailable;
 use super::days;
 use super::filter::{Filter, GroupBy};
 
-/// Who wrote the episode (ADR-003 §2.6). `unknown` is a value, not a failure: the rail prints `?`
-/// rather than guessing that an unfamiliar identity is a human.
+/// Who wrote the episode (ADR-003 §2.6). `unknown` is a value, not a failure: the rung that found
+/// nothing says so rather than guessing that an unfamiliar identity is a human.
+///
+/// **This is data, not a label.** `e10.4` (`reco-ydek.4`) retired the printed badge everywhere a human
+/// reads it (ADR-006 §5.1.2 §6), and what is left of the type is the vocabulary the store, the re-link
+/// ladder and `fathom analyze --json` speak. `as_str` is the only spelling it prints, and only into a
+/// machine channel: the `?` the rail used to draw for `unknown` was a badge's shorthand, and it went
+/// with the badge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AuthorKind {
     /// Written by a coding agent.
@@ -41,9 +47,6 @@ pub enum AuthorKind {
 }
 
 impl AuthorKind {
-    /// Every kind, in the order the filter editor lists them.
-    pub const ALL: [AuthorKind; 3] = [AuthorKind::Agent, AuthorKind::Human, AuthorKind::Unknown];
-
     /// The store's spelling, so a facet read back from the index compares equal.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -62,17 +65,6 @@ impl AuthorKind {
             "agent" => AuthorKind::Agent,
             "human" => AuthorKind::Human,
             _ => AuthorKind::Unknown,
-        }
-    }
-
-    /// The rail's badge. `unknown` is `?` because a badge that guesses is worse than a badge that says
-    /// it does not know.
-    #[must_use]
-    pub const fn badge(self) -> &'static str {
-        match self {
-            AuthorKind::Agent => "agent",
-            AuthorKind::Human => "human",
-            AuthorKind::Unknown => "?",
         }
     }
 }

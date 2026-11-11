@@ -16,6 +16,57 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The `human`/`agent` word is printed nowhere a human reads it, and the filter built on it goes with it (`reco-ydek.4`)
+
+`reco-ydek.1` decided this in [ADR-006 §5.1.2 §6](docs/adr/0006-tui.md) and changed no code; this is the
+half that prints nothing. What made the badge a bug rather than a rough edge is the rung underneath it: an
+episode with no session arc, no claim trailer and a person-shaped git author string falls through the
+classifier to `human` at `0.50` — *nobody said otherwise* — so the one case a reviewer most needed the
+label to be right about was the case it was guessing about, and the `?` that was supposed to be the honest
+bucket was reserved for a *missing* identity, a different failure. The datum survives all of this untouched;
+what is gone is the collapsed verdict in a place that could not show its working.
+
+* **Five print surfaces, and the one nobody asked for.** The rail's author cell and the ladder's `NoAuthor`
+  rung; the card's facts row, which stops being an attribution line and becomes `4 commits · 0:12 ago · ⚑
+  unread`; the ambient glance (`latest e8f1a2 · 0:12 · risk 82 ✱ · unread`); `fathom episodes`, whose `KIND`
+  column is deleted rather than blanked; and `fathom show`, where the verdict leaves the `grouping` line it
+  was riding at the end of and the block below it prints what it was made of instead — `attribution via
+  identity · confidence 0.50` over the evidence and the reason a label was refused. `fathom why`'s header
+  loses the same verdict for the same reason. The sixth surface was the **worklist** row: the ticket names
+  the rail, and leaving the badge on a pane `e10.3` deletes would have kept the word on screen one ticket
+  longer than the decision allows.
+* **The filter retires with the label, because it asserted what the label could not.** `Dimension::Kind`, the
+  `F` editor's toggles, the facet counts, the `kind=` segment of the filter summary and `timeline.members`'
+  `kind:` prefix are gone: a rail filter cannot carry a confidence, so offering the narrowing at all meant
+  re-printing the retired word in the one surface with neither confidence nor evidence beside it, and a rail
+  reporting 300 rows under `kind=human` asserts that 300 *is* the number of human-authored episodes.
+  Degrading is not deleting: a store written while `kind=` was a dimension names a constraint the reviewer
+  set, so `filter::retired_keys` puts a sentence on the resume toast — `stored `kind` filter — the
+  author-kind filter is retired …` — beside what did come back, because a rail that quietly stops honouring
+  a filter is a rail lying about what it is showing.
+* **Two survivors, named so a later tidy hand does not delete them.** The rail's `author=` and search's
+  `author:` match a git **name**, which git records rather than infers. `fathom episodes --kind` stays a
+  CLI filter: it is the machine channel the rule excepts, because those rows ship `author_kind` with
+  `author_confidence` beside the claim and the consumer decides what a 0.50 is worth. `fathom analyze --json`
+  and `fathom show --json` are unchanged — the verdict was already travelling there with its confidence and
+  its evidence as an `AttributionRef`, which is why no schema was bumped and no gate needed a waiver.
+* **The freed six cells bought thresholds, not content.** `Columns::for_width` is 34 / 28 / 26 / 22 where it
+  was 40 / 34 / 32 / 27 / 22: every rung above the floor moved down by exactly what the cell cost, and the
+  18-column identity floor did not move, because `e10.4`, `e9.2` and `e8.6` were all about to assume they
+  alone owned that space. The rail's ideal, minimum and refusal values are untouched, so the generated layout
+  tables and the matrix screenshots move only in their rows.
+
+Tests moved with the print, including one added for the absence: no rail row may contain `agent`, `human` or
+`?` as a standalone cell in any rung; the retired `kind=` degrades with a sentence and an `F` editor that
+offers eight rows where it offered nine; and the real-binary rail over a 500-commit index is now asserted to
+print no author word at all — the version of the claim a reviewer's actual screen could fail. Goldens were
+reblessed, the generated tables re-run from `src/recommender/tui/views.py` and the ADR's own layouts, and the
+hand-written pages that showed the word were corrected rather than left to rot: the rail's column table,
+the ladder, the filter dimensions, the card's facts row, the glance samples in two recipes, and the
+quickstart's `fathom show` transcript. **Flagged for the ADR's owner, not spent here:** whether the freed
+cells pay for a rung no ticket owns (three columns spare at a 34-wide rail, enough for an absolute date) is
+[ADR-006 §5.1.2 §6a](docs/adr/0006-tui.md)'s call, not this ticket's.
+
 ### The four acts and the audit trail move onto the timeline, and the write still comes first (`reco-ydek.2`)
 
 `e10.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and changed no code; this is the move, and the

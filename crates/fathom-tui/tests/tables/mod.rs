@@ -257,9 +257,9 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
 #[rustfmt::skip]
 #[allow(clippy::type_complexity)]
 pub const EXPECTED_PANES: &[(&str, &str, &str, u8, &str, u16, u16, u16, u16, u16, bool, &str, &[&str])] = &[
-    ("queue", "worklist", "Primary", 1, "List", 48, 36, 18, 32, 0, true, "e4.5", &["episode.identity", "episode.created_at", "episode.attribution.kind", "risk.score", "risk.reasons[]", "blast_radius.direct_count", "review.state", "noise.share"]),
+    ("queue", "worklist", "Primary", 1, "List", 48, 36, 18, 32, 0, true, "e4.5", &["episode.identity", "episode.created_at", "risk.score", "risk.reasons[]", "blast_radius.direct_count", "review.state", "noise.share"]),
     ("queue", "card", "Secondary", 2, "Body", 29, 24, 16, 20, 0, true, "e2.10", &["delta.structure.*", "delta.dependencies.*", "delta.non_code.*", "delta.tests.*", "blast_radius.*", "findings[].severity", "intent.*", "review.state"]),
-    ("timeline", "rail", "Primary", 1, "List", 42, 32, 18, 28, 0, true, "e1.6", &["episode.identity", "episode.created_at", "episode.attribution.kind", "delta.structure.*", "review.state", "episode.members[].sha"]),
+    ("timeline", "rail", "Primary", 1, "List", 42, 32, 18, 28, 0, true, "e1.6", &["episode.identity", "episode.created_at", "delta.structure.*", "review.state", "episode.members[].sha"]),
     ("timeline", "card", "Secondary", 2, "Body", 35, 26, 16, 22, 0, true, "e2.10", &["delta.structure.*", "delta.dependencies.*", "delta.architecture.*", "findings[].{detector_id,severity}", "risk.*", "blast_radius.*"]),
     ("diff", "tree", "Primary", 1, "List", 28, 20, 16, 18, 0, true, "e1.7", &["delta.structure.* (file list)", "path taxonomy class", "noise class", "per-file +/- counts", "review state"]),
     ("diff", "hunks", "Secondary", 2, "Body", 49, 30, 24, 26, 0, true, "e1.7", &["hunk text", "evidence ids", "word-diff", "whitespace policy"]),

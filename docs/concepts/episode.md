@@ -76,7 +76,16 @@ change to a rung has to be argued.
 
 Every episode is labelled `agent`, `human` or `unknown`, with a confidence and a list of evidence — trailers,
 hook events, committer-versus-author shape, and a learned correction. The label is an *estimate*, and
-`fathom attribution` is the correction path:
+`fathom attribution` is the correction path.
+
+It is an estimate that **nothing prints** since `e10.4` (`reco-ydek.4`): the word is off the rail's row, the
+episode card, the ambient glance, `fathom show`, `fathom episodes` and `fathom why`, and the `kind=` filter
+dimension is gone with it — everywhere it was printed with no confidence and no evidence attached to argue
+with it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md), [timeline §2](timeline.md#2-the-row-and-the-five-columns-it-is-made-of)).
+What is printed now is the *evidence*: the source, the confidence, and the reason a label was refused. The
+field itself, `episode.author_kind`, is unchanged in the store and unchanged in `fathom analyze --json`, where
+it ships as an `AttributionRef` carrying kind, confidence and evidence together — a machine consumer that can
+weigh a claim still gets to weigh it; a human is no longer handed the verdict as if it were a fact.
 
 ```bash
 fathom attribution list                        # what the classifier currently believes

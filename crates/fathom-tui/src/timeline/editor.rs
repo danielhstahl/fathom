@@ -22,12 +22,11 @@
 //!   you can see.
 //!
 //! Two stages: dimensions (what to change) and values (what to change it to). `<Enter>` on a
-//! multi-valued dimension (author, kind) toggles and stays, because "agent *and* stahl *and* unread"
-//! is built one choice at a time; single-valued dimensions go back to the dimension list.
+//! multi-valued dimension (author) toggles and stays, because "stahl *and* unread" is built one choice
+//! at a time; single-valued dimensions go back to the dimension list.
 
 use fathom_core::time::Timestamp;
 
-use super::episode::AuthorKind;
 use super::filter::{Dimension, Facets, Filter, GroupBy};
 
 /// Where the editor is.
@@ -45,7 +44,7 @@ pub enum Stage {
 pub enum Target {
     /// Go to a dimension's value list, or open its text field.
     Dimension(Dimension),
-    /// Choose a value. `toggle` means add-or-remove (author, kind) rather than replace.
+    /// Choose a value. `toggle` means add-or-remove (author) rather than replace.
     Choose {
         /// Which dimension.
         dimension: Dimension,
@@ -194,17 +193,13 @@ impl Editor {
                         target: Target::Clear(dimension),
                     });
                 }
-                let toggle = matches!(dimension, Dimension::Author | Dimension::Kind);
+                let toggle = matches!(dimension, Dimension::Author);
                 for (value, count) in with_always(dimension, facets) {
                     if !keep(&value) {
                         continue;
                     }
                     let current = match dimension {
                         Dimension::Author => filter.authors.contains(&value),
-                        Dimension::Kind => filter
-                            .kinds
-                            .iter()
-                            .any(|have| have.as_str() == value || have.badge() == value),
                         Dimension::State => {
                             filter.state.is_some_and(|state| state.to_string() == value)
                         }
@@ -266,7 +261,6 @@ impl Editor {
             Stage::Dimensions => "filters — which one?",
             Stage::Value(dimension) => match dimension {
                 Dimension::Author => "filters — which author?",
-                Dimension::Kind => "filters — agent, human or unknown?",
                 Dimension::Area => "filters — which path fragment?",
                 Dimension::State => "filters — which review state?",
                 Dimension::Since => "filters — from which day?",
@@ -417,13 +411,6 @@ fn describe(dimension: Dimension, filter: &Filter) -> String {
 pub fn with_always(dimension: Dimension, facets: &Facets) -> Vec<(String, usize)> {
     let mut rows = facets.values(dimension);
     match dimension {
-        Dimension::Kind => {
-            for kind in AuthorKind::ALL {
-                if !rows.iter().any(|(value, _)| value == kind.as_str()) {
-                    rows.push((kind.as_str().to_owned(), 0));
-                }
-            }
-        }
         Dimension::State => {
             for state in super::episode::ReviewState::ALL {
                 if !rows.iter().any(|(value, _)| value == state.as_str()) {

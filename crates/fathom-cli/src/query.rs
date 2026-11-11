@@ -453,7 +453,6 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
         id,
         boundary_rule,
         boundary_confidence,
-        author_kind,
         author_confidence,
         overridden,
         session_id,
@@ -461,11 +460,14 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
         members,
         ..
     } = row;
+    // The grouping line is about the *boundary*: which rung drew the line, and how sure it was. The
+    // attribution verdict used to ride at the end of it (`author human 0.50`) and `e10.4` took it out
+    // (`reco-ydek.4`, ADR-006 §5.1.2 §6) — a card may not hand a human a conclusion the reviewer cannot
+    // weigh. What the rung based itself on is still printed, two lines down, as evidence.
     let mut out = vec![format!(
-        "  grouping  {id} · {} commit(s) · boundary {boundary_rule} {:.2} · author {author_kind} {:.2}",
+        "  grouping  {id} · {} commit(s) · boundary {boundary_rule} {:.2}",
         members.len(),
-        boundary_confidence,
-        author_confidence
+        boundary_confidence
     )];
     // The intent block (`e4.2`, `reco-c54`) — through the same renderer the delta document uses, so the
     // three places an intent appears say it the same way. A row with no document says that too: the ticket's
@@ -486,23 +488,28 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
             row.intent_state
         )),
     }
-    // The attribution block (`e4.1`, `reco-w7q`): the rung that decided, the agent it named, and — when the
+    // The attribution block (`e4.1`, `reco-w7q`): the rung that decided, the tool it named, and — when the
     // label was refused — the reason for refusing it. A card that printed `?` with no reason is the silent
-    // bucket the ticket forbids, and a card that printed `agent` with no evidence could not be argued with.
+    // bucket the ticket forbids, and a card that printed a verdict with no evidence could not be argued
+    // with. Since `e10.4` the block is *only* the evidence: the collapsed verdict is not printed here, or
+    // anywhere else a human reads (`reco-ydek.4`); it is in `--json`, in this same block, with the
+    // confidence this line prints.
     let evidence: Vec<fathom_analyze::insight::AttributionEvidence> =
         serde_json::from_str(&row.attribution_evidence).unwrap_or_default();
     if !row.attribution_source.is_empty() || !evidence.is_empty() {
-        let agent = if row.attribution_agent.is_empty() {
-            "—"
-        } else {
-            row.attribution_agent.as_str()
-        };
         out.push(format!(
-            "  attribution  {author_kind} · {agent} · {author_confidence:.2} via {}",
+            "  attribution  via {} · confidence {:.2}{}",
             if row.attribution_source.is_empty() {
                 "(rung not recorded)"
             } else {
                 &row.attribution_source
+            },
+            author_confidence,
+            if row.attribution_agent.is_empty() {
+                String::new()
+            } else {
+                // The tool the evidence named — a recorded string, not the retired verdict.
+                format!(" · tool {}", row.attribution_agent)
             }
         ));
         for item in evidence.iter().take(3) {
@@ -514,7 +521,7 @@ fn identity_lines(episode: &Option<fathom_store::episode::EpisodeRow>) -> Vec<St
         if !row.attribution_reason.is_empty() {
             out.push(format!("  why         {}", row.attribution_reason));
             out.push(
-                "  correct     fathom attribution correct <identity> --kind agent|human — `fathom attribution list` prints the keys stored so far".to_owned(),
+                "  correct     fathom attribution correct <identity> --kind <kind> — `fathom attribution list` prints the keys stored so far, `fathom attribution --help` the values they take".to_owned(),
             );
         }
     }

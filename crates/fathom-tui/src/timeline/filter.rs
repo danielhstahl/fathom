@@ -22,12 +22,51 @@
 use fathom_core::time::Timestamp;
 
 use super::days;
-use super::episode::{AuthorKind, Episode, ReviewState};
+use super::episode::{Episode, ReviewState};
 
 /// The most the facet list will offer per dimension. A facet list is a chooser, not a directory: past
 /// a dozen entries a reviewer is scrolling instead of choosing, and the enumeration of a 10 000-row
 /// index has to cost the same as the enumeration of a 3 000-row one.
 pub const FACET_CAP: usize = 12;
+
+/// A filter key this build no longer has, with the sentence that says so.
+///
+/// `kind` is `e10.4`'s (`reco-ydek.4`): the author-**kind** dimension was retired because a rail filter
+/// cannot carry a confidence, so the only way to offer the narrowing was to print the words the epic
+/// retires — in the one surface that would have asserted them with neither confidence nor evidence
+/// (ADR-006 §5.1.2 §6b). It is listed here rather than quietly forgotten, because a store written by the
+/// build that had it must degrade with a sentence and not a shrug (ADR-006 §7).
+///
+/// `author` is **not** here: that token matches a git name, and git records it rather than inferring it.
+pub const RETIRED_KEYS: [(&str, &str); 1] = [(
+    "kind",
+    "the author-kind filter is retired — attribution is data for `fathom analyze --json`, not a rail filter",
+)];
+
+/// The retired keys an encoded filter still names, each as one line to print.
+///
+/// A value of `any`/`all`/`none`/`*` is a cleared constraint, so it is not reported: the reviewer who
+/// cleared the kind filter and then upgraded is not the reviewer who is missing one.
+#[must_use]
+pub fn retired_keys(text: &str) -> Vec<String> {
+    RETIRED_KEYS
+        .iter()
+        .filter(|(key, _)| {
+            text.split(';').any(|pair| {
+                pair.split_once('=').is_some_and(|(have, value)| {
+                    let value = value.trim();
+                    have.trim().eq_ignore_ascii_case(key)
+                        && !value.is_empty()
+                        && !matches!(
+                            value.to_ascii_lowercase().as_str(),
+                            "any" | "all" | "none" | "*"
+                        )
+                })
+            })
+        })
+        .map(|(key, why)| format!("stored `{key}` filter — {why}"))
+        .collect()
+}
 
 /// How the rail groups its rows (ADR-006 §5.2: "grouped by day or by agent session").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -70,9 +109,12 @@ impl GroupBy {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Dimension {
     /// Author name, matched case-insensitively, several at a time.
+    ///
+    /// This is git's **name**, recorded at commit time — not the author-*kind* verdict the rail used to
+    /// print and the `kind=` dimension used to filter on. `e10.4` retired that one (`reco-ydek.4`,
+    /// ADR-006 §5.1.2 §6b) and left this one alone on purpose: git knows this name, an inference does
+    /// not.
     Author,
-    /// Agent vs human vs unknown attribution, several at a time.
-    Kind,
     /// A path fragment (the strip's `area=`, and the store's `path`).
     Area,
     /// Reviewed state.
@@ -87,9 +129,8 @@ pub enum Dimension {
 
 impl Dimension {
     /// Every dimension, in the order the editor lists them.
-    pub const ALL: [Dimension; 7] = [
+    pub const ALL: [Dimension; 6] = [
         Dimension::Author,
-        Dimension::Kind,
         Dimension::Area,
         Dimension::State,
         Dimension::Since,
@@ -102,7 +143,6 @@ impl Dimension {
     pub const fn label(self) -> &'static str {
         match self {
             Dimension::Author => "author",
-            Dimension::Kind => "kind",
             Dimension::Area => "area",
             Dimension::State => "state",
             Dimension::Since => "since",
@@ -127,8 +167,6 @@ impl Dimension {
 pub struct Filter {
     /// Exact author names (case-insensitive). Empty means no constraint.
     pub authors: Vec<String>,
-    /// Attribution kinds. Empty means no constraint.
-    pub kinds: Vec<AuthorKind>,
     /// Reviewed state. `Some(ReviewState::Read)` means *opened* — read or any verdict — which is the
     /// store's rule, restated: `Some(Read)` is not "specifically read".
     pub state: Option<ReviewState>,
@@ -157,9 +195,6 @@ impl Filter {
             if name.is_empty() || !self.authors.iter().any(|want| name == want.to_lowercase()) {
                 return false;
             }
-        }
-        if !self.kinds.is_empty() && !self.kinds.contains(&episode.author) {
-            return false;
         }
         if let Some(state) = self.state {
             let keeps = match state {
@@ -194,7 +229,6 @@ impl Filter {
     #[must_use]
     pub fn active(&self) -> usize {
         usize::from(!self.authors.is_empty())
-            + usize::from(!self.kinds.is_empty())
             + usize::from(self.state.is_some())
             + usize::from(self.area.is_some())
             + usize::from(self.since.is_some())
@@ -226,10 +260,6 @@ impl Filter {
         if !self.authors.is_empty() {
             out.push_str(&format!(" author={}", self.authors.join("+")));
         }
-        if !self.kinds.is_empty() {
-            let kinds: Vec<&str> = self.kinds.iter().map(|kind| kind.as_str()).collect();
-            out.push_str(&format!(" kind={}", kinds.join("+")));
-        }
         if self.since.is_some() || self.until.is_some() {
             out.push_str(&format!(
                 " {}…{}",
@@ -247,17 +277,6 @@ impl Filter {
     pub fn value_of(&self, dimension: Dimension) -> String {
         match dimension {
             Dimension::Author => join_or_any(&self.authors),
-            Dimension::Kind => {
-                if self.kinds.is_empty() {
-                    "any".to_owned()
-                } else {
-                    self.kinds
-                        .iter()
-                        .map(|kind| kind.badge())
-                        .collect::<Vec<_>>()
-                        .join("+")
-                }
-            }
             Dimension::Area => self.area.clone().unwrap_or_else(|| "any".to_owned()),
             Dimension::State => self
                 .state
@@ -307,35 +326,6 @@ impl Filter {
                 self.authors = names;
                 Ok(format!("author = {}", self.authors.join("+")))
             }
-            Dimension::Kind => {
-                if clear {
-                    self.kinds.clear();
-                    return Ok("kind filter cleared".to_owned());
-                }
-                let kinds: Vec<AuthorKind> = text
-                    .split(['+', ','])
-                    .filter_map(|kind| match kind.trim().to_ascii_lowercase().as_str() {
-                        "agent" | "a" => Some(AuthorKind::Agent),
-                        "human" | "h" => Some(AuthorKind::Human),
-                        "unknown" | "?" => Some(AuthorKind::Unknown),
-                        _ => None,
-                    })
-                    .collect();
-                if kinds.is_empty() {
-                    return Err(format!(
-                        "`{text}` is not a kind — try agent, human or unknown"
-                    ));
-                }
-                self.kinds = kinds;
-                Ok(format!(
-                    "kind = {}",
-                    self.kinds
-                        .iter()
-                        .map(|kind| kind.badge())
-                        .collect::<Vec<_>>()
-                        .join("+")
-                ))
-            }
             Dimension::Area => {
                 self.area = if clear { None } else { Some(text.to_owned()) };
                 Ok(format!("area = {}", self.value_of(Dimension::Area)))
@@ -370,26 +360,17 @@ impl Filter {
     }
 
     /// Toggle one value inside a multi-valued dimension (the editor's `<Enter>` on a facet row):
-    /// `agent` twice means "not agent any more", and nothing else is surprised by it.
+    /// one author name twice means "not that author any more", and nothing else is surprised by it.
+    /// Only `author` is multi-valued since `e10.4` took `kind` out (`reco-ydek.4`), which is why the
+    /// other dimensions fall straight through.
     pub fn toggle(&mut self, dimension: Dimension, value: &str) {
-        match dimension {
-            Dimension::Author => {
-                let name = value.trim();
-                if self.authors.iter().any(|have| have == name) {
-                    self.authors.retain(|have| have != name);
-                } else {
-                    self.authors.push(name.to_owned());
-                }
+        if dimension == Dimension::Author {
+            let name = value.trim();
+            if self.authors.iter().any(|have| have == name) {
+                self.authors.retain(|have| have != name);
+            } else {
+                self.authors.push(name.to_owned());
             }
-            Dimension::Kind => {
-                let kind = AuthorKind::parse(value);
-                if self.kinds.contains(&kind) {
-                    self.kinds.retain(|have| *have != kind);
-                } else {
-                    self.kinds.push(kind);
-                }
-            }
-            _ => {}
         }
     }
 
@@ -402,10 +383,6 @@ impl Filter {
         let mut parts: Vec<String> = Vec::new();
         if !self.authors.is_empty() {
             parts.push(format!("author={}", escape(&self.authors.join("+"))));
-        }
-        if !self.kinds.is_empty() {
-            let kinds: Vec<&str> = self.kinds.iter().map(|kind| kind.as_str()).collect();
-            parts.push(format!("kind={}", escape(&kinds.join("+"))));
         }
         if let Some(state) = self.state {
             parts.push(format!("state={}", state.as_str()));
@@ -426,6 +403,11 @@ impl Filter {
     /// Read a [`Filter::encode`] string back. Unknown keys and unknown values are ignored, not
     /// rejected: a filter written by a newer fathom degrades to the parts this one understands, and
     /// the strip prints what was applied — never a silent partial.
+    ///
+    /// A key this build *used* to know — `kind`, the retired attribution dimension ([`RETIRED_KEYS`]) —
+    /// is not merely unknown: it named a constraint the reviewer set, and it no longer means anything.
+    /// [`retired_keys`] lists those, so the restore can say out loud that the rail it restored is wider
+    /// than the one the reviewer left (ADR-006 §7: session state degrades with a warning).
     #[must_use]
     pub fn decode(text: &str) -> Filter {
         let mut filter = Filter {
@@ -439,12 +421,6 @@ impl Filter {
             let value = unescape(value);
             match key.trim().to_ascii_lowercase().as_str() {
                 "author" => filter.authors = split_values(&value),
-                "kind" => {
-                    filter.kinds = split_values(&value)
-                        .into_iter()
-                        .map(|kind| AuthorKind::parse(&kind))
-                        .collect();
-                }
                 "state" => filter.state = Some(ReviewState::parse(&value)),
                 "area" => filter.area = Some(value),
                 "since" => filter.since = parse_iso(&value),
@@ -465,8 +441,6 @@ impl Filter {
 pub struct Facets {
     /// Author names, most episodes first.
     pub authors: Vec<(String, usize)>,
-    /// Attribution kinds present, with counts.
-    pub kinds: Vec<(AuthorKind, usize)>,
     /// Path prefixes down to three deep, most touched first — `src`, `src/store`, `tests`.
     pub areas: Vec<(String, usize)>,
     /// States present, with counts.
@@ -482,8 +456,6 @@ impl Facets {
     pub fn of(episodes: &[Episode]) -> Facets {
         let mut authors: std::collections::BTreeMap<String, usize> =
             std::collections::BTreeMap::new();
-        let mut kinds: std::collections::BTreeMap<&'static str, usize> =
-            std::collections::BTreeMap::new();
         let mut areas: std::collections::BTreeMap<String, usize> =
             std::collections::BTreeMap::new();
         let mut states: std::collections::BTreeMap<&'static str, usize> =
@@ -492,7 +464,6 @@ impl Facets {
             if !episode.author_name.is_empty() {
                 *authors.entry(episode.author_name.clone()).or_insert(0) += 1;
             }
-            *kinds.entry(episode.author.as_str()).or_insert(0) += 1;
             *states.entry(episode.state.as_str()).or_insert(0) += 1;
             for path in &episode.paths {
                 // Depth is capped, and a path contributes its ancestors: `src/store/x.rs` is offered
@@ -514,10 +485,6 @@ impl Facets {
         }
         Facets {
             authors: ranked(authors),
-            kinds: ranked(kinds)
-                .into_iter()
-                .map(|(kind, count)| (AuthorKind::parse(kind), count))
-                .collect(),
             areas: ranked(areas),
             states: ranked(states)
                 .into_iter()
@@ -531,11 +498,6 @@ impl Facets {
     pub fn values(&self, dimension: Dimension) -> Vec<(String, usize)> {
         match dimension {
             Dimension::Author => self.authors.clone(),
-            Dimension::Kind => self
-                .kinds
-                .iter()
-                .map(|(kind, count)| (kind.as_str().to_owned(), *count))
-                .collect(),
             Dimension::Area => self.areas.clone(),
             Dimension::State => self
                 .states

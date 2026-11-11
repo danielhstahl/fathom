@@ -20,8 +20,8 @@ footer strips. That is not a simplified view of the product, it is the product a
 work, and it is the reason ambient is the floor every other view degrades toward.
 
 ```text
-latest e8f1a2 · agent · 0:12 · risk 82 ✱
-queue  7 open · 2 snoozed · 1 over 24 h
+latest e8f1a2 · 0:12 · risk 82 ✱
+open   7 unread · 2 snoozed · 1 over 24 h
 index  epoch 41 · warm · 3 412 eps · 0:03 ago
 
 look now  e8f1a2 adds a cycle and 288 untested source lines
