@@ -1,19 +1,17 @@
-//! The attention queue's four acts, in the shipped shell (`e4.5`, `reco-wsj`).
+//! The attention queue's own half of `e4.5`, in the shipped shell (`reco-wsj`).
 //!
-//! The ranking, the act vocabulary and the retrospective are `fathom_analyze::queue`; what is under test
-//! here is the *shell's* half, which is the half that can lie: the row that moves when nothing was written,
-//! the picker whose cursor names a different episode than the act, the `f` that flags without a note, the
-//! dismiss that leaves a row on screen. Those are shell facts, so they are tested through the frame the
-//! terminal actually gets, exactly as `shell.rs`, `timeline_behaviour.rs` and `risk_rank.rs` do — and
-//! through `feed_key`, so the bindings themselves (`x`, `f`, `-`, `z`, `r`) are part of the assertion.
+//! The four acts are no longer this file's subject: `e10.2` moved the host of their feedback onto the
+//! timeline's rail, and `timeline_acts.rs` is where the write-before-state-change, the refusing ledger and
+//! the no-ledger run now live — because that is the pane a reviewer takes an act from, and ADR-006 §5.1.2 §2
+//! named those tests as moving rather than being rewritten green. What is under test *here* is what the
+//! queue owns and nothing else: the ranking and the factor it names, the closed dismiss vocabulary and the
+//! snooze conditions as the worklist offers them, and the counts of a worklist — numbers that stop meaning
+//! anything when the pane goes away in `e10.3`.
 //!
-//! The tests play the composition root's role and install a [`Ledger`] of their own — the shell is not
+//! The tests still play the composition root's role and install a [`Ledger`] of their own — the shell is not
 //! allowed to open a store (ADR-002 §3, lint `E01`), so a fake is the only thing that can stand in for the
-//! real one. The interesting fake is the refusing one: a ledger that says *no* is the case that separates
-//! "the queue moved the row" from "the reviewer signed the episode off".
-//!
-//! The last-but-one test is the ticket's timed budget: dispositioning is a keystroke, and a keystroke that
-//! cost half a second would be felt on every single act.
+//! real one — and they still go through the frame the terminal actually gets, via `feed_key`, so the
+//! bindings themselves (`f`, `-`, `z`, `w`) are part of the assertion.
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
 use std::sync::{Arc, Mutex};
@@ -36,48 +34,26 @@ const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
 const DAY: i64 = 86_400_000_000;
 const SIZE: (u16, u16) = (110, 40);
 
-/// The ledger the tests install: it records what it was asked to write, and can be told to refuse.
+/// The ledger the tests install: it records what it was asked to write.
 ///
 /// `Mutex` rather than `RefCell` because [`Ledger`] is `Send + Sync` — a real ledger may be called from a
-/// worker — and a fake that dodged that bound would not be testing the same shape the CLI installs.
+/// worker — and a fake that dodged that bound would not be testing the same shape the CLI installs. The
+/// refusing ledger is `timeline_acts.rs`'s now: the act's host moved, and the case that separates "the
+/// reviewer signed it off" from "a key was pressed" belongs beside the row that changes.
 #[derive(Debug, Default)]
 struct Recorder {
-    /// Every act the shell tried to write, in order.
+    /// Every act the shell wrote, in order.
     written: Mutex<Vec<TriageRecord>>,
-    /// When `Some`, every write and read fails with this reason.
-    refusal: Mutex<Option<String>>,
 }
 
 impl Recorder {
     fn share(self) -> LedgerHandle {
         LedgerHandle(Arc::new(self))
     }
-
-    fn refuse(&self, why: &str) {
-        *self
-            .refusal
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(why.to_owned());
-    }
-
-    fn written(&self) -> Vec<TriageRecord> {
-        self.written
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone()
-    }
 }
 
 impl Ledger for Recorder {
     fn record(&self, record: &TriageRecord) -> Result<(), String> {
-        if let Some(why) = self
-            .refusal
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clone()
-        {
-            return Err(why);
-        }
         self.written
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -86,14 +62,6 @@ impl Ledger for Recorder {
     }
 
     fn history(&self, limit: i64) -> Result<Vec<TriageRecord>, String> {
-        if let Some(why) = self
-            .refusal
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clone()
-        {
-            return Err(why);
-        }
         Ok(self
             .written
             .lock()
@@ -210,6 +178,11 @@ fn said(app: &App) -> String {
     app.toast.clone().unwrap_or_default()
 }
 
+/// A dispatch that lets the frame settle, the way a real keypress does.
+fn dispatch(app: &mut App, key: &str) {
+    app.feed_key(key, Instant::now());
+}
+
 fn type_text(app: &mut App, text: &str) {
     for ch in text.chars() {
         app.feed_key(&ch.to_string(), Instant::now());
@@ -303,98 +276,6 @@ fn w_prints_the_ranking_the_way_fathom_why_prints_a_ranking() {
     assert!(
         said.contains("no caller handed over a dependent count"),
         "and what was missing from the factor that had no number: `{said}`"
-    );
-}
-
-#[test]
-fn accept_writes_before_it_moves_and_the_row_leaves_the_queue() {
-    let mut app = shell();
-    dispatch(&mut app, "x");
-    let text = frame(&app);
-    let said = said(&app);
-    assert!(
-        said.contains("reviewed") && said.contains("stalem"),
-        "the toast says what happened, to which row, and who did it: `{said}`"
-    );
-    assert!(
-        said.contains("risk 60") && said.contains("ada <ada@example.com>"),
-        "the same sentence the ledger will print later: `{said}`"
-    );
-    assert_eq!(open_count(&text), 3, "the row left the queue:\n{text}");
-    assert!(
-        text.contains("3 reviewed") || text.contains("reviewed"),
-        "and the count says how the queue got smaller:\n{text}"
-    );
-    let written = app
-        .queue
-        .history
-        .iter()
-        .filter(|record| record.disposition == Disposition::Accepted)
-        .count();
-    assert_eq!(written, 1, "one act, written once");
-    let record = app
-        .queue
-        .history
-        .iter()
-        .find(|record| record.disposition == Disposition::Accepted)
-        .cloned()
-        .unwrap();
-    assert_eq!(
-        record.actor, "ada <ada@example.com>",
-        "signed by who the root said"
-    );
-    assert_eq!(
-        record.risk,
-        Some(60),
-        "and with the risk at the time of the act — the stale medium, which is what the queue put first"
-    );
-    assert_eq!(
-        record.fingerprint, "sha256:stalemedium",
-        "against a fingerprint, so `e4.6` can re-link the sign-off"
-    );
-}
-
-/// A dispatch that lets the frame settle, the way a real keypress does.
-fn dispatch(app: &mut App, key: &str) {
-    app.feed_key(key, Instant::now());
-}
-
-#[test]
-fn a_ledger_that_refuses_keeps_the_row_exactly_where_it_was() {
-    // The ADR-001 §7.7 case, and the reason the write goes first: a badge meaning "a key was pressed"
-    // would be a lie about a decision nobody recorded.
-    let recorder = Arc::new(Recorder::default());
-    recorder.refuse("the disk is full");
-    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
-    app.timeline.set_now(NOW);
-    app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
-        actor: "ada <ada@example.com>".to_owned(),
-        ledger: Some(LedgerHandle(Arc::clone(&recorder) as Arc<dyn Ledger>)),
-        total: 4,
-        ..Setup::default()
-    }
-    .state();
-    app.set_view(ViewId::Queue);
-
-    let before = frame(&app);
-    dispatch(&mut app, "x");
-    let after = frame(&app);
-    let said = said(&app);
-    assert!(
-        said.contains("the disk is full") && said.contains("NOT written"),
-        "the refusal is the news, in the ledger's own words: `{said}`"
-    );
-    assert!(recorder.written().is_empty(), "nothing was written");
-    assert_eq!(
-        open_count(&after),
-        open_count(&before),
-        "the list did not move: a refusal changes nothing on screen"
-    );
-    assert!(app.queue.decided.is_empty(), "and nothing was remembered");
-    assert!(
-        !after.contains("1 reviewed"),
-        "and the counts did not quietly count it anyway:\n{after}"
     );
 }
 
@@ -597,175 +478,6 @@ fn snooze_picks_a_condition_and_the_row_comes_back_when_it_happens() {
 }
 
 #[test]
-fn the_retrospective_names_what_was_skipped_and_says_pattern_out_loud() {
-    let mut app = shell();
-    // Eight of ten dismissals under one code, by two reviewers: over both thresholds, so the shell has
-    // to say "pattern" rather than leave a pile of rows unexplained.
-    let history: Vec<TriageRecord> = (0..10)
-        .map(|n| TriageRecord {
-            episode: format!("episode-{n:02}"),
-            fingerprint: format!("sha256:{n}"),
-            disposition: Disposition::Dismissed,
-            reason: if n < 8 { "not-my-area" } else { "low-stakes" }.to_owned(),
-            note: String::new(),
-            until: String::new(),
-            actor: if n % 2 == 0 {
-                "ada".to_owned()
-            } else {
-                "bo".to_owned()
-            },
-            utc: NOW,
-            risk: Some(70 + n),
-            risk_model: "spine-1".to_owned(),
-        })
-        .collect();
-    app.queue = Setup {
-        vocabulary: ReasonVocabulary::shipped(),
-        policy: QueuePolicy::default(),
-        actor: "ada <ada@example.com>".to_owned(),
-        ledger: Some(Recorder::default().share()),
-        history,
-        notices: Vec::new(),
-        total: 40,
-    }
-    .state();
-    app.queue.sessions = State::sessions_of(&rows());
-    dispatch(&mut app, "r");
-    let text = frame(&app);
-    assert!(
-        text.contains("what you skipped, and why"),
-        "`r` says what the pane is now:\n{text}"
-    );
-    assert!(
-        text.contains("not-my-area"),
-        "the rollup prints the code and its count:\n{text}"
-    );
-    assert!(
-        text.contains("pattern"),
-        "eight of ten dismissals under one reason is the pattern this view exists to show:\n{text}"
-    );
-    assert!(
-        text.contains("coverage:") && text.contains("40"),
-        "coverage is a share of the index, not of the ledger:\n{text}"
-    );
-    dispatch(&mut app, "r");
-    assert!(
-        frame(&app).contains("order: queue-1"),
-        "`r` toggles back to the worklist"
-    );
-}
-
-#[test]
-fn an_unreadable_ledger_is_said_rather_than_shown_as_a_clean_sheet() {
-    let recorder = Arc::new(Recorder::default());
-    recorder.refuse("the ledger is on a network disk that is not mounted");
-    let mut app = shell();
-    app.queue
-        .notices
-        .push("the ledger is on a network disk that is not mounted".to_owned());
-    dispatch(&mut app, "r");
-    let text = frame(&app);
-    assert!(
-        text.contains("network disk"),
-        "an unreadable ledger is reported, not hidden:\n{text}"
-    );
-    assert!(
-        !text.contains("nothing dismissed"),
-        "and it must not read as a clean sheet:\n{text}"
-    );
-    let _ = recorder;
-}
-
-#[test]
-fn with_no_ledger_an_act_is_honest_about_living_only_in_memory() {
-    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
-    app.timeline.set_now(NOW);
-    app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
-        actor: "ada".to_owned(),
-        total: 4,
-        ..Setup::default()
-    }
-    .state();
-    app.set_view(ViewId::Queue);
-    dispatch(&mut app, "x");
-    let text = frame(&app);
-    assert!(
-        text.contains("in memory only"),
-        "the count line carries the marker too, so it is on the screen and not only in a toast that fades:\n{text}"
-    );
-    assert!(
-        said(&app).contains("in memory only"),
-        "no ledger is a real configuration and the shell says so: `{}`",
-        said(&app)
-    );
-    assert_eq!(
-        app.queue
-            .decided
-            .values()
-            .filter(|disposition| **disposition == Disposition::Accepted)
-            .count(),
-        1,
-        "the act still works for this run, so the queue is still usable"
-    );
-}
-
-#[test]
-fn clearing_a_hundred_episode_queue_costs_the_shell_seconds_not_minutes() {
-    // The ticket's timed criterion, taken literally: "clearing a 100-episode queue where most episodes
-    // are low risk takes under 5 minutes". A reviewer has to read each row, and reading is theirs; what
-    // this test owns is the shell's share of those 300 seconds — the keystrokes, the ranking, the write.
-    // It is measured by emptying the whole queue, one act per episode, because a benchmark that does half
-    // the job and extrapolates is how a 5-minute budget quietly becomes a 50-minute one.
-    let many: Vec<Episode> = (0..100u32)
-        .map(|n| {
-            let n = u64::from(n);
-            // Most rows low: the fixture matches the criterion's "most episodes are low risk".
-            episode(
-                &format!("episode{n:03}"),
-                i64::try_from(n).unwrap_or(0),
-                n % 34,
-            )
-        })
-        .collect();
-    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
-    app.timeline.set_now(NOW);
-    app.timeline.load(batch(many, 1));
-    app.queue = Setup {
-        actor: "ada <ada@example.com>".to_owned(),
-        ledger: Some(Recorder::default().share()),
-        total: 100,
-        ..Setup::default()
-    }
-    .state();
-    app.set_view(ViewId::Queue);
-    assert_eq!(open_count(&frame(&app)), 100, "the queue starts full");
-
-    let started = Instant::now();
-    for round in 0..100 {
-        dispatch(&mut app, "-");
-        dispatch(&mut app, "<Enter>");
-        assert!(
-            said(&app).contains("dismissed"),
-            "act {} of 100 did not take effect: `{}`",
-            round + 1,
-            said(&app)
-        );
-    }
-    let elapsed = started.elapsed();
-    let end = frame(&app);
-    assert!(
-        end.contains("caught up") && open_count(&end) == 0,
-        "an emptied queue says so in words, and counts itself as nothing left: {end}"
-    );
-    println!("100 acts on a 100-row queue: {elapsed:?}");
-    assert!(
-        elapsed.as_secs_f64() < 30.0,
-        "emptying a 100-episode queue took the shell {elapsed:?}. The reviewer's budget is 300 s and          most of it is reading; anything in this neighbourhood would mean the shell, not the reviewer,          is what blows the ticket's five minutes"
-    );
-}
-
-#[test]
 fn the_state_a_shell_gets_with_nothing_installed_still_orders_and_still_refuses_nothing_silently() {
     // `Setup::default()` is what `--plain` over an unindexed directory, a test harness, or an embedder
     // gets. It must still draw a queue, and its acts must still be truthful about having no ledger.
@@ -780,7 +492,7 @@ fn the_state_a_shell_gets_with_nothing_installed_still_orders_and_still_refuses_
         8,
         "the shipped vocabulary is always there"
     );
-    let (line, written) = state.clone().commit(TriageRecord {
+    let (line, landed) = state.clone().commit(TriageRecord {
         episode: "episode-x".to_owned(),
         fingerprint: "sha256:x".to_owned(),
         disposition: Disposition::Accepted,
@@ -792,7 +504,14 @@ fn the_state_a_shell_gets_with_nothing_installed_still_orders_and_still_refuses_
         risk: None,
         risk_model: String::new(),
     });
-    assert!(!written, "nothing was written, and the shell knows it");
+    assert!(
+        !landed.written(),
+        "nothing was written, and the shell knows it"
+    );
+    assert!(
+        landed.taken(),
+        "and the act was still taken, honestly, for this run"
+    );
     assert!(line.contains("in memory only"), "{line}");
     let _ = ReviewState::Accepted;
 }

@@ -16,6 +16,60 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The four acts and the audit trail move onto the timeline, and the write still comes first (`reco-ydek.2`)
+
+`e10.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and changed no code; this is the move, and the
+rule it had to carry intact is the one sentence `e4.5` built the queue on: **an act is not taken until it is
+written**. What the reviewer sees change, and what had to be true for that to be a move rather than a loss:
+
+* **The rail is where a disposition reads back.** `x f - z` were already `global` and already addressed the
+  rail's cursor row, so what moved was the host of the feedback: the row's state glyph is the confirmation
+  (`⚑`→`✔`, `⚐`, `×`, `z`) — the one cell the column ladder promises never to drop — and the rail strip now
+  **leads** with the open-work count (`4 unread · 1 snoozed · filter: … · 10 of 10`), because §5.1.2 §3's
+  drop order sells the strip from the right and a count at the end of that line is a count nobody at the
+  rail's 42 columns ever sees. An act re-counts it where it stands, and re-filters when a filter is in force,
+  so a `state=unread` rail loses the accepted row in the same frame instead of lying about a decision it just
+  made.
+* **The acts stop advancing, and the reason is the cursor's.** A queue's whole content is undispositioned
+  work; a chronology's cursor is a *place in time*, and a keystroke that jumped forward would break the next
+  keystroke — which is `d` on the episode just signed nine times in ten. The run-of-rows workflow is the
+  filter that already exists (`F` → `state=unread`, which reads the marker, so an accepted row leaves it) or
+  `j`. `e4.5`'s five-minute bar keeps its test, re-hosted on the rail with the filter and motion in it.
+* **The ledger write still runs first, and the answer comes back in three ways.** `Ledger::record` keeps its
+  `Result` — it is still the first thing that runs, and nothing on screen changes before it returns — but
+  `State::commit` now answers where the act landed (`Landed::Recorded`, `Landed::Refused` with the store's own
+  words, or `Landed::InMemory` because there is no ledger at all). A refusal moves no glyph, no count and no
+  cursor, and the toast says `NOT
+  written` in the shell's sentence rather than in Rust's; a run with no ledger marks the row for the session
+  and says so on the toast **and** in the strip, because `e4.5`'s no-ledger case hid that difference behind
+  the queue's own `decided` map, which the rail has no excuse for rebuilding.
+* **`r` is the rail's other subject, not the queue's flip back.** `queue.retrospect` in the `queue` mode
+  became `review.retrospect` in `global`, so the audit trail is one keystroke from wherever the reviewer was
+  standing: the rail lists *acts* — dismissals by reason and actor over the coverage denominator — and its
+  strip says `ledger: 41 acts · 12 dismissed · 3 reasons · Dana Stahl` or `no ledger — nothing written this
+  run`, because a footer describing a filter would be a strip about a list the pane is not showing. `r`
+  again, or `<Esc>`, puts the episodes back without leaving the timeline. The rollup itself is
+  `fathom_analyze::queue::retrospect` and did not change, including its honesty rule: an unreadable ledger
+  prints its complaint and the *nothing dismissed* line is withheld.
+* **The keymap's generated projections are regenerated, not hand-written**: §7's binding and action tables,
+  §9's canonical walkthrough, the palette dump, the cheatsheet and the Rust test fixture all move together —
+  which is how a key that only existed in the retired view's mode (`r`) ends up with a `global` entry that
+  the shipped docs and the built table agree about, how the one entry whose text was welded to the dead view
+  (`Queue: what you skipped, and why`) got renamed without anyone editing a generated file by hand, and how
+  **T1 — "triage the top of the queue and sign it off"** became `t j <Enter> d x` in `keymap.TASKS` rather
+  than quietly disappearing with the pane it was written against. `docs/recipes/review-a-session.md`, which
+  says out loud that it is T1 in prose, moved with it.
+
+Three of the queue's proofs are moved rather than rewritten green — write-before-mark, refusal-keeps-the-row,
+and the no-ledger case — and `crates/fathom-tui/tests/timeline_acts.rs` is where they live now, with the
+retrospective's four states and the rail's counts beside them; `queue_triage.rs` keeps only what the queue
+still owns until `e10.3` deletes it. The whole-session walk is re-hosted with them, not just the act tests:
+`session_arc.rs` picks its row off the rail — `t` where it pressed `q`, which is §5.1.2 §7's migration check
+— and its sign-off reads the written record *and* the row's state cell instead of a toast.
+`docs/concepts/timeline.md` gains §12 and §13, and `docs/concepts/review-ledger.md`'s *«what proves it
+survived»* row is pointed at the file the proofs moved to — that document's boundary is otherwise untouched,
+which is the point of it.
+
 ### The queue was a pane, not the job — what is home once it goes, and what the badge was covering for (`reco-ydek.1`)
 
 Epic 10 takes two features out of the product and both had load-bearing parts welded on, so the decision

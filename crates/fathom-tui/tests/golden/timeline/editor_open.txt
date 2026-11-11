@@ -22,7 +22,7 @@
 │ │ clear all filters                                              0 active  │ │
 │ │ close — the rail keeps what is set                                <Esc>  │ │
 │ │ 1 of 9 · <C-n>/<C-p> move · <Enter> choose · <Esc> close                 │ │
-│f└──────────────────────────────────────────────────────────────────────────┘…│
+│4└──────────────────────────────────────────────────────────────────────────┘…│
 └──────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
 10 episodes from fixture index
@@ -42,7 +42,7 @@
  Sat 13 Sep ── 1 episode                  
 
 ## rail strip
-filter: area=any state=any group=day (F edits) · 10 of 10
+4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 

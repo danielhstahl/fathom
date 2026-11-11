@@ -1,9 +1,13 @@
 # The timeline
 
-Status: built by `reco-bjo` (stage `e1.6`). Code: `crates/fathom-tui/src/timeline/`.
+Status: built by `reco-bjo` (stage `e1.6`), and home since `e10.1` (`reco-ydek.1`) — the view a start
+lands on, and the host of the four review acts and their audit trail since `e10.2`
+(`reco-ydek.2`, §12 and §13; [ADR-006 §5.1.2](../adr/0006-tui.md)).
+Code: `crates/fathom-tui/src/timeline/`.
 Surface: view `Timeline` (`t`) in `crates/fathom-tui/src/views.rs`, panes `rail` → `card`; the
 state lives in `crates/fathom-tui/src/timeline/mod.rs` (`Timeline`) and is held by `App` next to the
-diff viewer's own state. Bindings: `src/recommender/tui/keymap.py` (the source of truth, generated
+diff viewer's own state, with the acts' rollup the rail's second subject (§13). Bindings:
+`src/recommender/tui/keymap.py` (the source of truth, generated
 into `crates/fathom-tui/src/keymap.rs` and `docs/adr/0006-tui.md` §7).
 
 The timeline is the screen a reviewer arrives at first and returns to whenever they lose the thread:
@@ -206,6 +210,29 @@ the filter first (it decides which rows exist), then the cursor, then reports wh
 moved or left, and the cursor is at the top instead". A resume that guessed silently is worse than one
 that admits it found nothing.
 
+### The strip, and the number that leads it
+
+One line under the rail, built by `Rail::strip`, and it leads with the open-work count since `e10.2`
+(ADR-006 §5.1.2 §3 part 2) rather than trailing it:
+
+```text
+4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
+```
+
+| Part | Said when | Why it sits where it sits |
+|---|---|---|
+| `4 unread` | always, over the rows on screen | the number the four acts move (§12). The strip is sold from the right at narrow panes, so a count at the end of the line is a count nobody at the rail's 42 columns ever sees — and "the strip's unread count drops by one" is worth nothing as a sentence about a hidden part |
+| `1 snoozed` | only while it is true | a snoozed row is neither unread nor decided; `z` is what puts rows in that state (§12) |
+| `filter: …` | always, and `F edits` is inside it | a live filter is a claim about the *set* and the thing most worth undoing — but it is a claim about the same 10 rows the next two parts count |
+| `10 of 10` | always | what the filter kept over what the rail holds; beside a longer page this is where `index holds 3 412 (index epoch 41)` joins it (§9) |
+| `3 opened, not marked` | only while it is true | rows that read `unread` in the ledger and were opened anyway — `opened` is not `marked` (`e1.11`) |
+
+Both counts are counted when the order is built, never at draw time, and an act re-counts them where it
+stands: a strip that costs O(episodes) per frame is what `timeline_bench` exists to catch (§10), and a
+strip that said `4 unread` about a row the reviewer had just signed off would be the rail lying about a
+decision (§12). The same rule makes an act re-filter where it stands when a filter is in force — a
+`state=unread` rail that went on listing a row that no longer matches is the same lie wearing a filter.
+
 ## 6 Selection follows the episode
 
 The rail's cursor is a slot index, but the thing the reviewer is *holding* is an identity. `Anchor`
@@ -330,6 +357,11 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
   author AND area AND unread, the store's OR-inside/AND-across rule, date bounds, session round-trip,
   every relink tier, the column ladder, grouping and collapse, every motion key, the `F` surface, and the
   four registry entries this view owns.
+* `timeline_acts.rs` — the four review acts taken from the rail (`e10.2`, §12 and §13): the ledger write
+  that comes first, the refusing ledger that changes nothing, the run with no ledger that says so, the
+  cursor that does not move, the counts the acts move, and `r`'s two states. Three of them are
+  `queue_triage.rs`'s, moved rather than rewritten green, and the timed 100-episode budget is `e4.5`'s bar
+  re-hosted with the filter and motion in it.
 * `timeline_golden.rs` — pinned frames and panes: the ADR's own 80×24 picture, the view's documented
   minimum 61×16, each degenerate state, and `ladder.txt`. Re-bake with
   `FATHOM_GOLDEN=write cargo test -p fathom-tui --test timeline_golden`, then read the diff.
@@ -339,10 +371,67 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
   that "a fixture handed to the view" is never mistaken for "the binary can fill a rail" — the check
   the walkthrough's first P1 asked for.
 
-## 12 Deliberately not here yet
+## 12 The four acts, taken from the rail
+
+`x` accepts, `f` flags, `-` dismisses with a reason from the closed vocabulary, `z` snoozes until a
+condition (`e4.5`, `reco-wsj`). All four are `global` bindings and always were, and `App::act_target`
+already addressed the rail's cursor row; what `e10.2` (`reco-ydek.2`) moved is the **host of the
+feedback** — the queue's worklist used to be the pane that showed an act happening, and the rail is now
+(ADR-006 §5.1.2 §2). Three things had to be true of the rail for that to be a move rather than a loss:
+
+* **The row says it, in the same frame.** The state column is the confirmation: `⚑`→`✔` for `x`, `⚐` for
+  `f`, `×` for `-`, `z` for `z`. It is the one cell the ladder promises never to drop, which is why a
+  one-cell change is proof and not a thin excuse for it. The strip's open-work count moves beside it (§5).
+* **The cursor stays put.** A queue's whole content is undispositioned work, so `x` advancing was the queue
+  being useful; a chronology's cursor is a *place in time*, and a keystroke that jumped forward would break
+  the next keystroke — which is `d` on *that* episode nine times in ten. The reviewer working a run of rows
+  uses the filter that already exists (`F` → `state=unread`, and then an accepted row leaves the filter
+  because the filter reads the marker) or walks with `j`. `timeline_acts.rs`
+  (`an_act_leaves_the_cursor_on_the_row_it_just_changed`) pins all three acts to one row.
+* **Nothing is marked until it is written.** `Ledger::record` runs before any shell state changes and
+  `State::commit` returns where the act landed — `Landed::Recorded`, `Landed::InMemory`, `Landed::Refused`.
+  A refusal changes nothing anywhere: not the row, not the counts, not the cursor, and the toast says the
+  ledger's own words with `NOT written` in front of it. `None` (no ledger at all — a `--plain` frame over an
+  unindexed directory, a test, an embedder) is the third answer and not a failure: the act is taken, the
+  row marks, and both the toast and §13's strip say out loud that nothing was written this run. That
+  three-way answer is why the rule could move to the rail whole; a bare "was it written?" flag marked
+  nothing on a rail, because the queue had been hiding the difference behind its own `decided` map.
+
+The pickers are the acts' other half and their host moved with them: `-`, `z` and `f`'s note draw their
+chooser in the rail pane, about the row the rail's cursor is on, and the picker's own cursor — not the
+rail's — names the reason that gets written.
+
+## 13 The rail's other subject: what was skipped, and why
+
+`r` (`review.retrospect`, `global` since `e10.2`; it was `queue.retrospect` in the `queue` mode) puts the
+timeline on screen from wherever the reviewer was standing and has the rail list *acts* instead of
+episodes: what was dismissed, by whom, under which reason, over what coverage denominator. `r` again puts
+the episodes back; `<Esc>` pops exactly one thing (§R2), which is this listing and nothing else.
+
+What it prints is `fathom_analyze::queue::retrospect`'s rollup, unchanged, and the honesty rule came with
+it verbatim: an unreadable ledger prints its complaint and the *nothing dismissed* line is withheld,
+because silence about the ledger plus a clean sheet is the lie a reviewer would act on. The strip is
+replaced wholesale while the rail is on this subject — `ledger: 41 acts · 12 dismissed · 3 reasons ·
+Dana Stahl`, or `no ledger — nothing written this run` — because a footer describing the filter would be
+a strip about a list the pane is not showing.
+
+This is not the queue back under another name: the queue showed one set of episodes twice under two
+orderings, and this is a different subject with different rows, a different count and its own denominator.
+The deep form is still the verbs' — `fathom review list --state dismissed`, `fathom review status`, `fathom
+review verify` — and the ledger itself did not change at all ([review ledger](review-ledger.md)).
+
+## 14 Deliberately not here yet
+
+`e10.1` retired the queue as the home view; `e10.3` deletes it. The risk number in the rail and in the
+card is still the spine-only ranking, and its published ceiling is
+[risk-ranking.md](risk-ranking.md) §12 — which since `e10.1` is the record of a **retired** ordering and
+no longer describes what the product ranks by. `e10.4` takes the `human`/`agent` badge out of this view's
+row and out of the card's attribution line — the cell goes, `NoAuthor` stops being a rung, and the six
+freed cells buy back rungs rather than new content ([ADR-006 §5.1.2
+§6](../adr/0006-tui.md)) — and `e10.5` replaces what the risk number is computed from.
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
-queue now orders by — what it orders by is the spine-only ranking and its stated ceiling
+queue once ordered by — what it orders by is the spine-only ranking and its stated ceiling
 ([risk-ranking.md](risk-ranking.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
 ordering function itself with risk × staleness × blast radius (`e1.8`'s worklist); the queue's own
 selection history and per-view scroll (one cursor and one filter are what the session carries,
@@ -353,3 +442,12 @@ bigger than a page; saved, named filters and
 filter history (`e1.11`'s session state stores one filter, which is the honest amount); `gone` derived
 from the store's dead-episode markers rather than handed in per row (`e1.3`'s ledger edge); colour-blind
 verification of the glyph set (`e5.6`).
+
+`e10.2` left its own list behind, and these are the parts of it that are *decisions* rather than unfinished
+work: the queue's pane is still on screen and still owns `s`, `J`/`K`, its run mode and its flip until
+`e10.3` deletes it, so until then a disposition reads the same marker in two places; the rail's act listing
+is a **read** of the ledger and nothing else — retracting, reclassifying and bulk-applying stay the verbs'
+(`fathom review retract`, `fathom review apply --all`, `fathom review verify`), because a rail that could
+edit an act would be a second place a decision could change and the ledger is one place on purpose; and the
+`-`/`z`/`f` chooser is `e4.5`'s, re-hosted unchanged into the rail pane — it is not `F`'s filter editor and
+never was, and the two surfaces did not merge.

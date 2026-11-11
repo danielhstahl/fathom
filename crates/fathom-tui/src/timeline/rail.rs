@@ -197,6 +197,9 @@ pub struct Rail {
     /// may be a pass over the index at draw time.
     risked: usize,
     unread: usize,
+    /// How many on-screen rows a snooze is holding (`e10.2`): the strip says it only while it is
+    /// true, but the keystroke that makes it true must not have to wait for a rebuild to be seen.
+    snoozed: usize,
     /// The last re-attach: the tier that fired, and its words.
     pub reattached: Option<(u8, String)>,
     /// The counters.
@@ -232,6 +235,7 @@ impl Default for Rail {
             ranked: Vec::new(),
             risked: 0,
             unread: 0,
+            snoozed: 0,
             dirty: true,
             reattached: None,
             stats: RailStats::default(),
@@ -380,11 +384,49 @@ impl Rail {
     /// difference between a badge that means "a reviewer decided this" and one that means "a key was
     /// pressed". Returns whether the row was found, so the caller can say which it did.
     pub fn set_state(&mut self, id: &str, state: ReviewState) -> bool {
-        if let Some(row) = self.episodes.iter_mut().find(|episode| episode.id == id) {
-            row.state = state;
+        let Some(row) = self.episodes.iter_mut().find(|episode| episode.id == id) else {
+            return false;
+        };
+        row.state = state;
+        // Two numbers and one order depend on this marker. The counts are the strip's `N unread` and
+        // `N snoozed` — the numbers an act is supposed to move in the same frame (ADR-006 §5.1.2 §2: the
+        // glyph *and* the count are the confirmation) — and a live filter may read the marker too
+        // (`state=unread` is a filter over review state, not over time). So an act with a filter in force
+        // re-filters where it stands: the draw paths take `&self` and cannot rebuild for themselves, and a
+        // `state=unread` rail that went on displaying a row the reviewer had just signed off would be the
+        // rail lying about a decision. Re-ordering never happens: the row keeps its place in the
+        // chronology, and the cursor goes with it.
+        if self.filter.active() > 0 {
+            self.dirty = true;
+            self.rebuild();
             return true;
         }
-        false
+        let on_screen = self.order();
+        let (risked, unread, snoozed) = self.count_over(&on_screen);
+        self.risked = risked;
+        self.unread = unread;
+        self.snoozed = snoozed;
+        true
+    }
+
+    /// `(ranked, unread, snoozed)` over the given rows — the three numbers the strip and the status
+    /// line print, counted once here so the rebuild and an act cannot give different answers.
+    #[must_use]
+    fn count_over(&self, on_screen: &[usize]) -> (usize, usize, usize) {
+        (
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].risk().is_some())
+                .count(),
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].is_unread())
+                .count(),
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].state == ReviewState::Snoozed)
+                .count(),
+        )
     }
 
     /// The rows on screen as episode indices, collapsed groups excluded — what a test counts when it
@@ -480,14 +522,10 @@ impl Rail {
         // The queue's order over the same rows the rail is showing, so a filter is one question
         // answered once: the worklist ranks what the filter kept (`reco-c05`).
         let on_screen: Vec<usize> = self.slots.iter().filter_map(Slot::index).collect();
-        self.risked = on_screen
-            .iter()
-            .filter(|index| self.episodes[**index].risk().is_some())
-            .count();
-        self.unread = on_screen
-            .iter()
-            .filter(|index| self.episodes[**index].is_unread())
-            .count();
+        let (risked, unread, snoozed) = self.count_over(&on_screen);
+        self.risked = risked;
+        self.unread = unread;
+        self.snoozed = snoozed;
         let mut ranked = on_screen;
         ranked.sort_by(|left, right| {
             crate::worklist::precede(&self.episodes[*left], &self.episodes[*right])
@@ -850,9 +888,31 @@ impl Rail {
     pub fn strip(&self) -> String {
         let mut out = self.filter.summary();
         if self.episodes.is_empty() {
+            // No open-work count on an empty rail: `0 unread` beside a rail that is empty because the
+            // index was empty and `0 unread` beside one the filter emptied are different facts, and the
+            // sentence printed in place of the rows already says which it is.
             out.push_str(&format!(" · {}", self.empty_words()));
             return out;
         }
+        // The open-work count leads the line (`e10.2`, ADR-006 §5.1.2 §3 part 2), for two reasons that
+        // are one reason: it is the number the four acts are supposed to move in the same frame the glyph
+        // changes — `accept_writes_before_it_moves` was the queue's proof, and a rail that only moves one
+        // cell proves less than a row leaving a list did — and the strip is sold from the right, so a part
+        // at the end of this line is a part the reviewer at the rail's 42 columns never sees. The count
+        // the acts move has to be a count that survives the pane.
+        out = format!(
+            "{} unread",
+            format_thousands(u64::try_from(self.unread).unwrap_or(u64::MAX))
+        );
+        // Said only when it is true, like every other conditional part of this line: a snoozed row is
+        // neither unread nor decided, and `z` is the act that puts rows into that state.
+        if self.snoozed > 0 {
+            out.push_str(&format!(
+                " · {} snoozed",
+                format_thousands(u64::try_from(self.snoozed).unwrap_or(u64::MAX))
+            ));
+        }
+        out.push_str(&format!(" · {}", self.filter.summary()));
         out.push_str(&format!(
             " · {} of {}",
             format_thousands(u64::try_from(self.kept).unwrap_or(u64::MAX)),

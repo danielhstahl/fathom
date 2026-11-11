@@ -19,7 +19,9 @@
 //! `None` is a real configuration: a `--plain` frame over an unindexed directory, a test, an embedder with
 //! no store. Then acts stay in memory for the length of the run, the retrospective says so out loud, and
 //! the strip carries `no ledger — nothing written this run`. `fathom-tui` does not pretend a write
-//! happened because a keystroke did.
+//! happened because a keystroke did. [`Landed`] is the three-way answer the shell passes back so a pane can
+//! tell *recorded*, *tonight only* and *refused* apart: the rail marks a row for the first two and will not
+//! mark it for the third.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -138,7 +140,10 @@ pub struct State {
     pub until: BTreeMap<String, String>,
     /// Which harness session holds which episodes, so a `new-in-session` snooze can be evaluated.
     pub sessions: BTreeMap<String, Vec<String>>,
-    /// Whether the worklist pane is showing the retrospective instead of the worklist (`r`).
+    /// Whether the rail is listing *acts* instead of episodes (`r`, `e10.2`).
+    ///
+    /// State of the rail's pane, held here because the ledger, the vocabulary and the history are the
+    /// rollup's own; the queue's worklist stopped being where it showed in `e10.2` (ADR-006 §5.1.2 §4).
     pub retrospective: bool,
     /// The episode the open chooser is about, fixed when the chooser opens (`e4.5`).
     ///
@@ -171,6 +176,38 @@ impl Default for State {
             notices: Vec::new(),
             total: 0,
         }
+    }
+}
+
+/// Where an act landed, once the write was attempted.
+///
+/// Three answers, not a boolean, because *the ledger refused* and *there is no ledger* are different
+/// sentences and the panes have to draw them differently: a refused act changes nothing anywhere, and a
+/// remembered act is real for this run and says out loud that it will not survive it. `e4.5` shipped this
+/// as a `bool` and the queue's own worklist got away with it because it reads dispositions out of the
+/// shell's `decided` map; the rail marks the row itself, and on a bare `written` flag a run with no ledger
+/// never marked anything — a rail going quiet about a decision that was taken.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Landed {
+    /// The ledger has it. The row may say the decision is recorded.
+    Recorded,
+    /// No ledger attached: the act is this run's and the shell says so.
+    InMemory,
+    /// The ledger refused, in its own words. Nothing changed anywhere.
+    Refused,
+}
+
+impl Landed {
+    /// Did it reach the ledger?
+    #[must_use]
+    pub const fn written(self) -> bool {
+        matches!(self, Landed::Recorded)
+    }
+
+    /// Was the act taken at all? — "recorded, or honestly remembered".
+    #[must_use]
+    pub const fn taken(self) -> bool {
+        !matches!(self, Landed::Refused)
     }
 }
 
@@ -209,19 +246,13 @@ impl State {
 
     /// Take an act: write it, and change nothing unless the write landed.
     ///
-    /// # Errors
-    ///
-    /// The ledger's own reason, verbatim, when it refused. With no ledger attached the act is kept in
-    /// memory and the caller is told so in the returned `Err` — which is not a failure and not a success
-    /// either, and the toast line has to carry the difference.
-    /// Take an act: write it, and change the shell's own state only if the write landed.
-    ///
-    /// Returns the line to show and whether it was actually written. The line is
-    /// [`TriageRecord::line`] — the same sentence `fathom queue --retrospect` prints — so what the reviewer
-    /// is told at the keystroke and what the ledger later says about the act are one string produced in
-    /// one place, not two wordings that can drift.
+    /// Returns the line to show and where the act landed. The line is [`TriageRecord::line`] — the same
+    /// sentence `fathom queue --retrospect` prints — so what the reviewer is told at the keystroke and what
+    /// the ledger later says about the act are one string produced in one place, not two wordings that can
+    /// drift. With no ledger attached the act is kept in memory and [`Landed::InMemory`] says so: not a
+    /// failure and not a recorded sign-off either, and the toast line has to carry the difference.
     #[must_use]
-    pub fn commit(&mut self, record: TriageRecord) -> (String, bool) {
+    pub fn commit(&mut self, record: TriageRecord) -> (String, Landed) {
         let written = self.ledger.is_some();
         // The write, before anything at all changes. A refusal returns here: the row keeps its state, the
         // history keeps nothing, and the reviewer hears the reason — a queue that moved on anyway would be
@@ -234,17 +265,17 @@ impl State {
                     "{} — NOT written: {why}",
                     record.line(record.utc, &self.vocabulary)
                 ),
-                false,
+                Landed::Refused,
             );
         }
         let line = record.line(record.utc, &self.vocabulary);
         self.apply(record);
         if written {
-            (line, true)
+            (line, Landed::Recorded)
         } else {
             (
                 format!("{line} — in memory only: no ledger attached to this run"),
-                false,
+                Landed::InMemory,
             )
         }
     }
@@ -446,12 +477,48 @@ pub fn retrospective(state: &State, now: Timestamp) -> QueueRetrospective {
     )
 }
 
-/// Draw the retrospective in the worklist pane (`r`).
+/// The strip the rail carries while it lists acts (ADR-006 §5.1.2 §3's last paragraph).
+///
+/// Replaced wholesale rather than appended to, for the same reason the rows are: a footer describing the
+/// rail's filter while the pane prints acts is a strip about a list the reviewer is not being shown. The
+/// no-ledger sentence is the one the shell owes out loud — an act nobody wrote down is not an audit trail,
+/// and a rollup printed above a clean-looking strip would read as a ledger that happened to be quiet.
+#[must_use]
+pub fn ledger_strip(state: &State, now: Timestamp) -> String {
+    if state.ledger.is_none() {
+        return "no ledger — nothing written this run".to_owned();
+    }
+    let view = retrospective(state, now);
+    let dismissed = view
+        .by_disposition
+        .iter()
+        .find(|(disposition, _)| *disposition == Disposition::Dismissed)
+        .map_or(0, |(_, count)| *count);
+    let who = state.actor.trim();
+    format!(
+        "ledger: {} acts · {} dismissed · {} {} · {}",
+        view.acts,
+        dismissed,
+        view.dismissals.len(),
+        if view.dismissals.len() == 1 {
+            "reason"
+        } else {
+            "reasons"
+        },
+        if who.is_empty() { "unknown" } else { who },
+    )
+}
+
+/// Draw the retrospective in the rail pane (`r`).
 ///
 /// The lines come from `fathom_analyze::queue::retrospect` as plain text — the analysis owns what the
 /// sentence says — and the faces are chosen here, because colour belongs to the shell (ADR-006 §6.4). The
 /// ledger's own read errors are printed as `!` lines: a retrospective that could not read the ledger must
 /// not be allowed to look like a clean sheet.
+///
+/// It used to be drawn in the queue's worklist. `e10.2` moved the subject to the rail (ADR-006 §5.1.2 §4)
+/// and the renderer came with it unchanged, because the honesty rule below is the pane's contract and does
+/// not care which list it is standing in.
 #[must_use]
 pub fn retrospective_lines(
     state: &State,

@@ -15,7 +15,7 @@
   a77bb0 1mo human +140 −12 ●●●●●○ ? ⚐    
 
 ## rail strip
-filter: area=any state=any group=day (F edits) · 10 of 10
+2 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
 
 ## card (35 columns × 14 rows)
 no episode selected                

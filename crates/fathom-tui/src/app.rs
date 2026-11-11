@@ -654,9 +654,10 @@ fn own(steps: Vec<KeyStep<'_>>) -> Vec<Step> {
 /// What the queue's cached ordering was built from, so a stale order is impossible by construction.
 ///
 /// Every field is an input the ordering reads: the rows, the epoch (a new index can move a row's blast
-/// or add rows), the day (staleness steps in days and in nothing finer), the acts taken this session, and
-/// whether the pane is showing the retrospective — the last one only because switching views recomputes
-/// rather than waiting for a stamp that will not arrive.
+/// or add rows), the day (staleness steps in days and in nothing finer), and the acts taken this
+/// session. It used to carry whether the retrospective was on screen, which was only ever there because
+/// the worklist pane flipped in place; the rollup left that pane for the rail in `e10.2` (ADR-006
+/// §5.1.2 §4) and the stamp lost a field that had never ranked anything.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct QueueStamp {
     /// How many rows the rail holds.
@@ -667,8 +668,6 @@ pub struct QueueStamp {
     pub day: i64,
     /// How many acts the shell has taken.
     pub decided: usize,
-    /// Whether the retrospective is on screen.
-    pub retrospective: bool,
 }
 
 /// How long a toast keeps the hint row: long enough to read once, short enough that it never
@@ -1194,7 +1193,10 @@ impl App {
         let cols = self.pane_cols(pane.name).max(12);
         let rows = self.pane_body_rows();
         match pane.name {
-            "rail" => Some(self.timeline.rail_text(cols, rows)),
+            "rail" => Some(
+                self.rail_subject_text(cols, rows)
+                    .unwrap_or_else(|| self.timeline.rail_text(cols, rows)),
+            ),
             "card" => Some(
                 self.timeline
                     .preview_lines(cols, rows, self.card_window())
@@ -1206,12 +1208,52 @@ impl App {
         }
     }
 
+    /// The rail's other subjects, in the order they take the pane (`e10.2`, ADR-006 §5.1.2 §2 and §4).
+    ///
+    /// Two things displace the episode rows, and only one at a time: the chooser an act opens (`-`, `z`,
+    /// the note `f` demands) is the thing under the reviewer's hands and wins outright; otherwise `r`
+    /// has the rail listing *acts* — what was skipped, by whom, under which reason. `None` is "neither:
+    /// draw the rail", which is what every other frame does.
+    #[must_use]
+    fn rail_subject(&self, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
+        if let Some(lines) = self.chooser_body(width, rows) {
+            return Some(lines);
+        }
+        if self.queue.retrospective {
+            return Some(crate::queue::retrospective_lines(
+                &self.queue,
+                self.timeline.now(),
+                width,
+                rows,
+            ));
+        }
+        None
+    }
+
+    /// [`Self::rail_subject`] as plain text — the `--plain` and golden projection of the same choice,
+    /// because a second subject for the rail that only existed in colour would be a fact a pipe could
+    /// not see (`reco-11b`'s rule).
+    #[must_use]
+    fn rail_subject_text(&self, width: usize, rows: usize) -> Option<Vec<String>> {
+        self.rail_subject(width, rows).map(|lines| {
+            lines
+                .into_iter()
+                .map(|line| line.text().to_owned())
+                .collect()
+        })
+    }
+
     /// The timeline's panes as styled rows: the rail is a windowed list, the card a windowed document,
     /// and neither is a list of strings the shell can slice on its own.
     #[must_use]
     pub fn timeline_body(&self, pane: &Pane, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
         if self.view != ViewId::Timeline {
             return None;
+        }
+        if pane.name == "rail"
+            && let Some(lines) = self.rail_subject(width, rows)
+        {
+            return Some(lines);
         }
         match pane.name {
             "rail" => Some(self.timeline.rail_lines(width, rows)),
@@ -1253,10 +1295,17 @@ impl App {
 
     /// The strip a timeline pane carries: the rail prints its filter and what survived it (the
     /// ADR's `filter: area=any state=unread (F edits)` line), the preview keeps the citation strip.
+    ///
+    /// While `r` has the rail listing acts the strip is replaced wholesale (ADR-006 §5.1.2 §3): a
+    /// footer that describes the filter while the rows describe acts is a strip about a list the pane
+    /// is not showing.
     #[must_use]
     pub fn timeline_strip(&self, pane: &Pane) -> Option<String> {
         if self.view != ViewId::Timeline || pane.name != "rail" {
             return None;
+        }
+        if self.queue.retrospective {
+            return Some(crate::queue::ledger_strip(&self.queue, self.timeline.now()));
         }
         Some(self.timeline.strip())
     }
@@ -1288,7 +1337,6 @@ impl App {
             epoch: self.timeline.epoch().unwrap_or(0),
             day: self.timeline.now().as_unix_seconds() / 86_400,
             decided: self.queue.decided.len(),
-            retrospective: self.queue.retrospective,
         };
         let mut cache = self.queue_ranking_cache.borrow_mut();
         if cache.as_ref().is_none_or(|(last, _)| *last != stamp) {
@@ -1406,14 +1454,6 @@ impl App {
             );
         }
         let ranking = self.queue_ranking();
-        if self.queue.retrospective {
-            return crate::queue::retrospective_lines(
-                &self.queue,
-                self.timeline.now(),
-                width,
-                rows,
-            );
-        }
         if let Some(lines) = self.chooser_body(width, rows) {
             return lines;
         }
@@ -1531,10 +1571,6 @@ impl App {
         if self.view != ViewId::Queue || pane.name != "worklist" || self.timeline.is_empty() {
             return None;
         }
-        if self.queue.retrospective {
-            return Some("what you skipped, and why — `r` goes back to the queue".to_owned());
-        }
-        let _ = (pane,);
         Some(self.queue_ranking().strip())
     }
 
@@ -2330,6 +2366,18 @@ impl App {
                 "{} closed — the view behind it kept its selection",
                 overlay.name()
             ));
+            return;
+        }
+        if self.view == ViewId::Timeline && self.queue.retrospective {
+            // The rail listing acts is a state of a pane, not a view, so it pops like one: `<Esc>` puts
+            // the episodes back and does not also throw the reviewer out of the timeline they were
+            // reading (ADR-006 §5.1.2 §4, §R2's "exactly one"). It is checked after the overlay because
+            // the chooser an act opens draws *over* this listing, and the topmost thing is what `<Esc>`
+            // owes. It is checked only on the timeline because the listing is the rail's own state, like
+            // the rail's filter: leaving the view keeps it, and `<Esc>` in the diff viewer has no business
+            // quietly un-flipping a pane the reviewer cannot see.
+            self.queue.retrospective = false;
+            self.toast("the rail lists episodes again — `r` shows what was skipped, and why");
             return;
         }
         if self.zoomed {
@@ -3181,7 +3229,7 @@ impl App {
                 self.refresh_search();
             }
             "overlay.close" => self.drill_out(),
-            "queue.retrospect" => self.toggle_retrospective(),
+            "review.retrospect" => self.toggle_retrospective(),
             "pane.focus_next" => self.focus_next(),
             "pane.focus_prev" => self.focus_prev(),
             "pane.zoom" => self.toggle_zoom(),
@@ -3349,7 +3397,7 @@ impl App {
             "review.flag" => self.open_note(),
             "review.dismiss" => self.open_reason(),
             "review.snooze" => self.open_snooze(),
-            "queue.retrospect" => self.toggle_retrospective(),
+            "review.retrospect" => self.toggle_retrospective(),
             // `w`: why this episode is where it is. The toast says the sentence in one line, because a
             // screen reader gets the news from the hint row; what it *names* is now a band of the card
             // rather than a pane the key swapped in, and the toast says which band and how to fold it
@@ -3476,16 +3524,25 @@ impl App {
     }
 
     /// `<Enter>` in a prompt: run the palette row, or hand the search query to the search owner.
-    /// `r` (`queue.retrospect`): the worklist pane flips between the work and what was skipped.
+    /// `r` (`review.retrospect`): the rail flips between episodes and the acts the ledger holds.
+    ///
+    /// It asks for the timeline from whichever view it was pressed in (ADR-006 §5.1.2 §4): the question
+    /// *what did I wave through, and under which excuse* is asked one keystroke from the acts that make
+    /// the records, and since `e10.2` the pane that answers it is the rail. The view switch is a history
+    /// push, so `<Esc>` — which pops exactly one thing (§R2) — is the way back out of the listing.
     fn toggle_retrospective(&mut self) {
-        self.queue.retrospective = !self.queue.retrospective;
-        if self.queue.retrospective {
+        let showing = !self.queue.retrospective;
+        self.queue.retrospective = showing;
+        if showing {
             // The pane prints whatever the ledger holds, including the notice that it could not be read;
-            // the toast says which of the two views the screen is now showing, because the rows and the
+            // the toast says which of the two subjects the screen is now showing, because the rows and the
             // rollup occupy the same box and a silent swap would read as a bug (`reco-wsj`).
-            self.toast("what you skipped, and why — `r` goes back to the queue");
+            self.set_view(ViewId::Timeline);
+            self.toast(
+                "the rail is listing acts — `r` lists episodes again, `<Esc>` pops one thing back",
+            );
         } else {
-            self.toast("the queue again — `r` shows what was dismissed");
+            self.toast("the rail lists episodes again — `r` shows what was skipped, and why");
         }
     }
 
@@ -3567,11 +3624,14 @@ impl App {
         };
         let short = record.episode.clone();
         let disposition = record.disposition;
-        let (line, written) = self.queue.commit(record);
+        let (line, landed) = self.queue.commit(record);
         self.overlay = None;
         self.prompt.clear();
         // The rail's marker is the store's marker, and the shell is the only thing holding it between
-        // renders; keeping the two in step is what lets `t` and `q` show the same truth.
+        // renders; keeping the two in step is what lets `t` and `q` show the same truth. A refusal marks
+        // nothing — that is the whole of it — and a run with no ledger marks the row for tonight and says
+        // so in the toast, because the act really was taken and a rail that stayed `⚑` would be the rail
+        // going quiet about a decision (`e10.2`).
         let marker = match disposition {
             Disposition::Accepted => Some(crate::timeline::ReviewState::Accepted),
             Disposition::Flagged => Some(crate::timeline::ReviewState::Flagged),
@@ -3580,7 +3640,7 @@ impl App {
             Disposition::Read => Some(crate::timeline::ReviewState::Read),
             Disposition::Unread => None,
         };
-        if let (Some(marker), true) = (marker, written) {
+        if let (Some(marker), true) = (marker, landed.taken()) {
             self.timeline.set_state(&short, marker);
         }
         self.toast(line);

@@ -36,7 +36,7 @@
 │                                                                            │                                         │
 │                                                                            │                                         │
 │                                                                            │                                         │
-│filter: area=any state=any group=day (F edits) · 10 of 10                   │card · reads delta.structure.* · owner e…│
+│4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 …│card · reads delta.structure.* · owner e…│
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
 10 episodes from fixture index

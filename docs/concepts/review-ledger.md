@@ -249,7 +249,7 @@ before the deletion happens, because every part of it is a place a sign-off coul
 
 | what the queue held | where it is after the pane | what proves it survived |
 |---|---|---|
-| the four acts | bound in `global`, taken from the rail (`e10.2`); write-before-state-change intact | `crates/fathom-tui/tests/queue_triage.rs` moves its write-first, refusal-keeps-the-row and no-ledger cases to the rail rather than being rewritten green |
+| the four acts | bound in `global`, taken from the rail (`e10.2`); write-before-state-change intact | `crates/fathom-tui/tests/timeline_acts.rs` holds the write-first, refusal-keeps-the-row and no-ledger cases, moved whole out of `queue_triage.rs` by `e10.2` rather than rewritten green |
 | the act log (`triage_event`) | **unchanged, including its name** — the table is about acts, and the queue was a reader of it | no migration: `SCHEMA_VERSION` does not move, so a store written with the queue opens without it and vice versa |
 | the ledger (`.fathom/reviews/`) | untouched; class **M** as ever | `fathom review sync` still renders a queue-era act, `fathom review verify` still passes, and `fathom review status` still calls those episodes `fresh` and counts them in the verdict |
 | the stamped risk on an act | history, never recomputed: an act signed under `spine-1` prints `spine-1` after `e10.5` changes the vector | the store fixture check below reads back risk and model name byte for byte |

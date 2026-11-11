@@ -62,7 +62,7 @@ pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
     ("review.dismiss", "Dismiss with a reason", "review", "e4.5", &[Mode::Global], true),
     ("review.snooze", "Snooze until a condition", "review", "e4.5", &[Mode::Global], true),
     ("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4", &[Mode::Global], true),
-    ("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5", &[Mode::Queue], true),
+    ("review.retrospect", "Rail: what you skipped, and why", "review", "e4.5", &[Mode::Global], true),
     ("pick.choose", "Choose this entry", "overlay", "e4.5", &[Mode::Pick], false),
     ("prompt.submit", "Submit", "overlay", "e5.2", &[Mode::Prompt], false),
     ("prompt.result_down", "Next result", "overlay", "e5.2", &[Mode::Prompt], false),
@@ -137,6 +137,7 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
     ("global", "f", "review.flag"),
     ("global", "-", "review.dismiss"),
     ("global", "z", "review.snooze"),
+    ("global", "r", "review.retrospect"),
     ("global", "w", "risk.explain"),
     ("global", "m", "compare.mark"),
     ("global", "c", "compare.with_mark"),
@@ -250,7 +251,6 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
     ("artefact", "[", "artefact.scope_narrow"),
     ("artefact", "]", "artefact.scope_widen"),
     ("artefact", "<Enter>", "artefact.write"),
-    ("queue", "r", "queue.retrospect"),
 ];
 
 /// Every pane with the numbers the layout ladder is built from.
@@ -309,7 +309,7 @@ pub const EXPECTED_DRILL: &[(&str, &[(&str, &str, &str)])] = &[
 #[rustfmt::skip]
 #[allow(clippy::type_complexity)]
 pub const EXPECTED_TASKS: &[(&str, &str, &str, &[(&str, &str, &str)])] = &[
-    ("T1", "Triage the top of the queue and sign it off", "What is the next thing I have to look at, and am I happy with it?", &[("q", "view.queue", "Home. Focus lands on the worklist, ranked by risk (pane 1)."), ("j", "list.down", "Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too."), ("<Enter>", "drill.in", "Drill into the episode card (pane 2): what changed, where, blast radius, every figure a button."), ("d", "view.diff", "Same scope, diff view: file tree first, `j` then `<Enter>` to read a file's hunks."), ("x", "review.accept", "Mark reviewed: disposition `accepted` + identity + time to the ledger; the queue advances.")]),
+    ("T1", "Triage the top of the rail and sign it off", "What is the next thing I have to look at, and am I happy with it?", &[("t", "view.timeline", "The rail — the chronology `e10.1` made home — newest first, focused (pane 1). No filter on entry: the strip's unread count is the signal."), ("j", "list.down", "Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too."), ("<Enter>", "drill.in", "Drill into the episode card (pane 2): what changed, where, blast radius, every figure a button."), ("d", "view.diff", "Same scope, diff view: file tree first, `j` then `<Enter>` to read a file's hunks."), ("x", "review.accept", "Mark reviewed: disposition `accepted` + identity + time are written first, and only then does the row's glyph go `⚑`→`✔` and the strip's count drop — same frame, cursor where it was.")]),
     ("T2", "Read what the newest turn did, and whether the shape moved", "The agent has been busy: what landed, and did the architecture get worse?", &[("a", "view.ambient", "Glance mode: latest episode, its risk, queue count, index state."), ("<Enter>", "drill.in", "Drill into that episode's card: one keypress, per ADR-001 §4.1."), ("s", "view.structure", "Where it landed: treemap with churn heat; `[`/`]` move the aggregation level."), ("g", "view.graph", "Module graph with this episode's delta overlay; `!` shows only the delta, `[`/`]` aggregate, `<`/`>` set the hop limit."), ("<Esc>", "drill.out", "Up one level, then again to ambient. Nothing was lost on the way.")]),
     ("T3", "Find a thing and land on it", "Where is `parse_lockfile`, who touched `Cargo.lock`, what flagged this?", &[("/", "search.open", "Search overlay, cursor already in the query field."), ("<text>", "(typing)", "Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `since:` `risk>` `kind:` `path:` `dep:` tokens compose with text."), ("<C-n>", "prompt.result_down", "Walk results without leaving the field; `<C-p>` walks back."), ("<Enter>", "prompt.submit", "Jump into the right view with the right selection: a deep link, not a list of paths.")]),
 ];

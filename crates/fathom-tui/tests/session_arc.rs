@@ -262,15 +262,20 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
         frame(&app)
     );
 
-    // 2 · the queue, and the row the reviewer picks up.
-    press(&mut app, "q");
-    assert_eq!(app.view, ViewId::Queue);
+    // 2 · the rail, and the row the reviewer picks up. `e10.2` moved the acts' feedback here, so the
+    //     arc walks the chronology now (ADR-006 §5.1.2 §7: *t* where this pressed *q*): the published T1
+    //     is `t j <Enter> d x`, and this arc is that task with the rest of the session bolted on. The
+    //     entry cursor is already the newest episode — the one the glance pane led with — and `j`/`k`
+    //     walk the rail's slots, day header included.
+    press(&mut app, "t");
+    assert_eq!(app.view, ViewId::Timeline);
     press(&mut app, "j");
     press(&mut app, "k");
     let selected = app
-        .queue_selected()
+        .timeline
+        .selected()
         .map(|episode| episode.id.clone())
-        .expect("the worklist has a row under the cursor");
+        .expect("the rail has a row under the cursor");
 
     // 3 · drill in, then the diff: patch bytes, not a shrug.
     press(&mut app, "<Enter>");
@@ -348,6 +353,16 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
     assert_eq!(
         written[0].episode, in_scope,
         "the act is about the episode that was in scope"
+    );
+    // And the row says it. `e10.2`'s acceptance criterion is that the state glyph *is* the feedback —
+    // same frame, no second view to confirm it — so the arc checks the cell and not the toast.
+    assert_eq!(
+        app.timeline
+            .find(&in_scope)
+            .map(|episode| episode.state)
+            .unwrap_or(ReviewState::Unread),
+        ReviewState::Accepted,
+        "the rail's state cell reads accepted in the frame the keystroke caused"
     );
 
     // 8 · the artefact: `o` is the shell's half of the record, and it says which verb writes it.

@@ -40,23 +40,23 @@ precedence chain, so a rename that breaks a published sequence breaks the build
 ([ADR-006 §9](../adr/0006-tui.md)).
 
 <!-- BEGIN GENERATED: tasks -->
-#### T1 — Triage the top of the queue and sign it off
+#### T1 — Triage the top of the rail and sign it off
 
 *The question that brings the reviewer here:* What is the next thing I have to look at, and am I happy with it?
 
 ```
-q   j   <Enter>   d   x
+t   j   <Enter>   d   x
 ```
 
 | # | Key | Resolves in mode | Action | What it does |
 |---|---|---|---|---|
-| 1 | `q` | `global` | `view.queue` | Home. Focus lands on the worklist, ranked by risk (pane 1). |
-| 2 | `j` | `list` | `list.down` | Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too. |
+| 1 | `t` | `global` | `view.timeline` | The rail — the chronology `e10.1` made home — newest first, focused (pane 1). No filter on entry: the strip's unread count is the signal. |
+| 2 | `j` | `list` | `list.down` | Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too. |
 | 3 | `<Enter>` | `list` | `drill.in` | Drill into the episode card (pane 2): what changed, where, blast radius, every figure a button. |
 | 4 | `d` | `global` | `view.diff` | Same scope, diff view: file tree first, `j` then `<Enter>` to read a file's hunks. |
-| 5 | `x` | `global` | `review.accept` | Mark reviewed: disposition `accepted` + identity + time to the ledger; the queue advances. |
+| 5 | `x` | `global` | `review.accept` | Mark reviewed: disposition `accepted` + identity + time are written first, and only then does the row's glyph go `⚑`→`✔` and the strip's count drop — same frame, cursor where it was. |
 
-`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does.
+`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does, `r` lists what was skipped and why. A run of rows is `F` → `state=unread`, then `j`.
 
 #### T2 — Read what the newest turn did, and whether the shape moved
 
@@ -150,10 +150,10 @@ mode has to be live (§4).
 | **Move around** | `<C-w>7` | Go to tab 7 | global |
 | **Move around** | `<C-w>8` | Go to tab 8 | global |
 | **Move around** | `<C-w>9` | Go to tab 9 | global |
-| **Review the episode** | `r` | Queue: what you skipped, and why | `queue` |
 | **Review the episode** | `x` | Mark reviewed (accept) | global |
 | **Review the episode** | `-` | Dismiss with a reason | global |
 | **Review the episode** | `f` | Flag for attention, with a note | global |
+| **Review the episode** | `r` | Rail: what you skipped, and why | global |
 | **Review the episode** | `z` | Snooze until a condition | global |
 | **Review the episode** | `w` | Why this rank: every reason and the whole ceiling | global |
 | **Change what you are looking at** | `m` | Mark this endpoint for comparison | global |
@@ -319,7 +319,7 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `body` | `j` | `list.scroll_down` | Scroll one line down |
 | `body` | `k` | `list.scroll_up` | Scroll one line up |
 | `body` | `l` | `drill.in` | Drill in (follow selection / evidence) |
-| `queue` | `r` | `queue.retrospect` | Queue: what you skipped, and why |
+| `queue` | — | — | inherits the shared motion set: no view-local bindings |
 | `timeline` | — | — | inherits the shared motion set: no view-local bindings |
 | `diff` | `=` | `diff.ws_toggle` | Diff: ignore whitespace |
 | `diff` | `E` | `diff.open_editor` | Diff: open file at line in $EDITOR |
@@ -386,6 +386,7 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `global` | `o` | `view.artefact` | Go to: Artefact |
 | `global` | `p` | `view.deps` | Go to: Deps |
 | `global` | `q` | `view.queue` | Go to: Queue |
+| `global` | `r` | `review.retrospect` | Rail: what you skipped, and why |
 | `global` | `s` | `view.structure` | Go to: Structure |
 | `global` | `t` | `view.timeline` | Go to: Timeline |
 | `global` | `w` | `risk.explain` | Why this rank: every reason and the whole ceiling |
@@ -469,10 +470,10 @@ makes "unbound" different from "unreachable".
 | `prompt.result_down` | Next result | overlay | `<C-n>` `<Down>` `<Tab>` | no | `prompt` | `e5.2` |
 | `prompt.result_up` | Previous result | overlay | `<C-p>` `<Up>` | no | `prompt` | `e5.2` |
 | `prompt.submit` | Submit | overlay | `<Enter>` | no | `prompt` | `e5.2` |
-| `queue.retrospect` | Queue: what you skipped, and why | review | `r` | yes | `queue` | `e4.5` |
 | `review.accept` | Mark reviewed (accept) | review | `x` | yes | `global` | `e4.5` |
 | `review.dismiss` | Dismiss with a reason | review | `-` | yes | `global` | `e4.5` |
 | `review.flag` | Flag for attention, with a note | review | `f` | yes | `global` | `e4.5` |
+| `review.retrospect` | Rail: what you skipped, and why | review | `r` | yes | `global` | `e4.5` |
 | `review.snooze` | Snooze until a condition | review | `z` | yes | `global` | `e4.5` |
 | `risk.explain` | Why this rank: every reason and the whole ceiling | review | `w` | yes | `global` | `e4.4` |
 | `screen.redraw` | Repaint the screen | frame | `<C-l>` | yes | `global` | `e1.5` |

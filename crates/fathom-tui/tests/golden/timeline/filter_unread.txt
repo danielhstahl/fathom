@@ -15,7 +15,7 @@
                                           
 
 ## rail strip
-filter: area=any state=unread group=day (F edits) · 4 of 10
+4 unread · filter: area=any state=unread group=day (F edits) · 4 of 10
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 

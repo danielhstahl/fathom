@@ -752,19 +752,19 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
-        id: "review.snooze",
-        label: "Snooze until a condition",
+        id: "review.retrospect",
+        label: "Rail: what you skipped, and why",
         scope: "review",
         ticket: "e4.5",
         modes: &[Mode::Global],
         palette: true,
     },
     Action {
-        id: "queue.retrospect",
-        label: "Queue: what you skipped, and why",
+        id: "review.snooze",
+        label: "Snooze until a condition",
         scope: "review",
         ticket: "e4.5",
-        modes: &[Mode::Queue],
+        modes: &[Mode::Global],
         palette: true,
     },
     Action {
@@ -1242,22 +1242,22 @@ pub struct Task {
 pub const TASKS: &[Task] = &[
     Task {
         id: "T1",
-        name: "Triage the top of the queue and sign it off",
+        name: "Triage the top of the rail and sign it off",
         asks: "What is the next thing I have to look at, and am I happy with it?",
         ticket: "e4.5",
-        note: "`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does.",
+        note: "`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does, `r` lists what was skipped and why. A run of rows is `F` → `state=unread`, then `j`.",
         steps: &[
             TaskStep {
-                key: "q",
-                action: "view.queue",
+                key: "t",
+                action: "view.timeline",
                 mode: "global",
-                effect: "Home. Focus lands on the worklist, ranked by risk (pane 1).",
+                effect: "The rail — the chronology `e10.1` made home — newest first, focused (pane 1). No filter on entry: the strip's unread count is the signal.",
             },
             TaskStep {
                 key: "j",
                 action: "list.down",
                 mode: "list",
-                effect: "Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
+                effect: "Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
             },
             TaskStep {
                 key: "<Enter>",
@@ -1275,7 +1275,7 @@ pub const TASKS: &[Task] = &[
                 key: "x",
                 action: "review.accept",
                 mode: "global",
-                effect: "Mark reviewed: disposition `accepted` + identity + time to the ledger; the queue advances.",
+                effect: "Mark reviewed: disposition `accepted` + identity + time are written first, and only then does the row's glyph go `⚑`→`✔` and the strip's count drop — same frame, cursor where it was.",
             },
         ],
     },
@@ -1431,7 +1431,8 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Body, "j", "list.scroll_down");
     bind(Mode::Body, "k", "list.scroll_up");
     bind(Mode::Body, "l", "drill.in");
-    // `queue` adds no bindings of its own: it inherits the shared motion set.
+    // `queue` adds no bindings of its own: it inherits the shared motion set. `r` used to live
+    // here and went to `global` as `review.retrospect` with the rollup (`e10.2`, ADR-006 §5.1.2 §4).
     // `timeline` adds no bindings of its own: it inherits the shared motion set.
     bind(Mode::Diff, "E", "diff.open_editor");
     bind(Mode::Diff, "W", "diff.word_toggle");
@@ -1442,7 +1443,8 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Diff, "]", "diff.hunk_next");
     bind(Mode::Diff, "b", "diff.noise_toggle");
     bind(Mode::Diff, "y", "diff.copy_path");
-    bind(Mode::Queue, "r", "queue.retrospect");
+    bind(Mode::Global, "x", "review.accept");
+    bind(Mode::Global, "z", "review.snooze");
     bind(Mode::Structure, "<", "structure.sort_cycle");
     bind(Mode::Structure, "[", "structure.level_up");
     bind(Mode::Structure, "]", "structure.level_down");
@@ -1499,11 +1501,10 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Global, "o", "view.artefact");
     bind(Mode::Global, "p", "view.deps");
     bind(Mode::Global, "q", "view.queue");
+    bind(Mode::Global, "r", "review.retrospect");
     bind(Mode::Global, "s", "view.structure");
     bind(Mode::Global, "t", "view.timeline");
     bind(Mode::Global, "w", "risk.explain");
-    bind(Mode::Global, "x", "review.accept");
-    bind(Mode::Global, "z", "review.snooze");
     table
 }
 

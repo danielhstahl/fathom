@@ -246,17 +246,20 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
     _a("tab.close", "Close the current tab", "frame", "e1.5"),
     # --- review actions: act on the live scope (ADR-001 §4.5 dispositions) ----
     _a("review.accept", "Mark reviewed (accept)", "review", "e4.5",
-       doc="Disposition `accepted` + identity + time to the ledger (`e4.6`)."),
+       doc="Disposition `accepted` + identity + time to the ledger (`e4.6`), taken on the frame's "
+           "selected episode — the rail's cursor row since `e10.2`. The write happens before the "
+           "row changes, so a row that reads `✔` is a decision the ledger holds."),
     _a("review.flag", "Flag for attention, with a note", "review", "e4.5"),
     _a("review.dismiss", "Dismiss with a reason", "review", "e4.5",
        doc="Opens the closed dismiss-vocabulary chooser (`pick`)."),
     _a("review.snooze", "Snooze until a condition", "review", "e4.5",
        doc="Opens the snooze-window chooser (`pick`)."),
     _a("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4"),
-    _a("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5",
-       modes=("queue",),
-       doc="Toggles the worklist pane between the ranked queue and the dismissed-with-reason "
-           "rollup, so systematic dismissing is a number on a screen."),
+    _a("review.retrospect", "Rail: what you skipped, and why", "review", "e4.5",
+       doc="Puts the timeline on screen with the rail listing *acts* instead of episodes: the "
+           "dismissed-with-reason rollup, so systematic dismissing is a number on a screen. `r` "
+           "again lists episodes, `<Esc>` pops the drill (ADR-006 §5.1.2 §4; the rollup left the "
+           "queue's worklist in `e10.2` and the ledger did not change at all)."),
     _a("pick.choose", "Choose this entry", "overlay", "e4.5", modes=("pick",),
        palette=False),
     _a("prompt.submit", "Submit", "overlay", "e5.2", modes=("prompt",), palette=False),
@@ -365,6 +368,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "f": "review.flag",
         "-": "review.dismiss",
         "z": "review.snooze",
+        "r": "review.retrospect",
         "w": "risk.explain",
         "m": "compare.mark",
         "c": "compare.with_mark",
@@ -505,9 +509,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
     # Views whose whole job is a list plus a card add nothing of their own: the
     # shared motion set *is* the whole keymap, which is what "identical motion
     # behaviour across timeline, queue, file tree and search results" (e5.4) demands.
-    "queue": {
-        "r": "queue.retrospect",
-    },
+    # `queue` used to hold `r`; `e10.2` moved the rollup onto the rail and the key with it
+    # (ADR-006 §5.1.2 §4), and the mode is left standing empty rather than deleted so the view
+    # keeps its mode row until `e10.3` deletes the view.
+    "queue": {},
     "timeline": {},
     "ambient": {},
 }
@@ -559,15 +564,16 @@ class Task:
 TASKS: tuple[Task, ...] = (
     Task(
         id="T1",
-        name="Triage the top of the queue and sign it off",
+        name="Triage the top of the rail and sign it off",
         asks="What is the next thing I have to look at, and am I happy with it?",
         ticket="e4.5",
         steps=(
-            TaskStep("q", "view.queue",
-                     "Home. Focus lands on the worklist, ranked by risk (pane 1).",
+            TaskStep("t", "view.timeline",
+                     "The rail — the chronology `e10.1` made home — newest first, focused "
+                     "(pane 1). No filter on entry: the strip's unread count is the signal.",
                      "global"),
             TaskStep("j", "list.down",
-                     "Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
+                     "Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
                      "list"),
             TaskStep("<Enter>", "drill.in",
                      "Drill into the episode card (pane 2): what changed, where, blast "
@@ -576,11 +582,13 @@ TASKS: tuple[Task, ...] = (
                      "Same scope, diff view: file tree first, `j` then `<Enter>` to "
                      "read a file's hunks.", "global"),
             TaskStep("x", "review.accept",
-                     "Mark reviewed: disposition `accepted` + identity + time to the "
-                     "ledger; the queue advances.", "global"),
+                     "Mark reviewed: disposition `accepted` + identity + time are written "
+                     "first, and only then does the row's glyph go `⚑`→`✔` and the strip's "
+                     "count drop — same frame, cursor where it was.", "global"),
         ),
         note="`f` flags instead, `-` dismisses with a reason from the closed vocabulary, "
-             "`z` snoozes, `w` prints the ranking the way `fathom why` does.",
+             "`z` snoozes, `w` prints the ranking the way `fathom why` does, `r` lists what "
+             "was skipped and why. A run of rows is `F` → `state=unread`, then `j`.",
     ),
     Task(
         id="T2",

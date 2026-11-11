@@ -20,7 +20,7 @@
 │  b31c00 1mo agent +18 −6 ●●●○○○ ? z      │                                   │
 │                                          │                                   │
 │                                          │                                   │
-│filter: area=any state=any group=day (F e…│card · reads delta.structure.* · o…│
+│4 unread · 1 snoozed · filter: area=any s…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
 ⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
 10 episodes from fixture index

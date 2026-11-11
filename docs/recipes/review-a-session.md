@@ -1,11 +1,12 @@
 # Recipe: review a session
 
-- **You get**: a session's worth of agent commits turned into reviewed, signed-off work — with the queue
-  having told you why it ordered things the way it did, and a record that survives the rebase you are about
+- **You get**: a session's worth of agent commits turned into reviewed, signed-off work — with the risk
+  figure on each row having told you why it sits where it does, and a record that survives the rebase you are about
   to do.
 - **Time**: about ten minutes for a session of a few dozen commits.
 - **Needs**: `fathom` indexed on the repository; a terminal you are allowed to leave.
-- **Plan keys**: `e4.5` (the queue), `e4.4` (the score), `e4.6` (the ledger), `e1.6`/`e1.7` (rail and diff).
+- **Plan keys**: `e4.5` (the acts), `e4.4` (the score), `e4.6` (the ledger), `e1.6`/`e1.7` (rail and diff),
+  `e10.2` (the acts taken from the rail).
 
 This is the tool's reason for existing, so it is the one sequence that is fixed as data
 (`keymap.TASKS`, `T1`) and printed by the help overlay, the hint line and
@@ -20,18 +21,20 @@ fathom index            # one self-overwriting row on a terminal; silent on a pi
 Already indexed and only commits arrived? The same verb is incremental, and `fathom stats` says whether it
 owes anything: `state epoch 1 ready, integrity ok, 0 commit(s) owed an analysis`.
 
-## 2 · Let it rank the work
+## 2 · Get to the work, and let it say why it is work
 
 ```text
-q          home: the queue, ranked by risk × staleness × blast, focus on the worklist
+t          the rail: every episode, newest first, focus on the list
 j          move down; H/M/L and <C-d>/<C-u> too
 ```
 
-The queue is not a file list and not a timeline: it is the episodes you have not dispositioned, ordered so
-that *which three are riskiest* is answerable on the first screen. The kind of file outranks the amount of
-file — a three-line CI edit and a migration that drops a column come before a 400-line documentation edit —
-and every row carries a reason naming a file you can open
-([risk ranking](../concepts/risk-ranking.md)).
+The rail is a chronology, not a worklist: it shows what happened in the order it happened, and the risk
+figure on the row is what makes *which three are riskiest* answerable on the first screen. The kind of file
+outranks the amount of file — a three-line CI edit and a migration that drops a column come before a 400-line
+documentation edit — and every row's figure has a reason naming a file you can open
+([risk ranking](../concepts/risk-ranking.md)). To work only what is still open, `F` and set `state=unread`: it
+is the filter the acts read, so a row you sign off leaves the list rather than waiting for you to walk past it.
+(`q` still opens the ranked worklist until `e10.3` deletes it, and every act below works from either.)
 
 Press `w` on the selected episode and the model shows its arithmetic: the feature vector, the rank, and the
 list of what it could not see ([risk score](../concepts/risk-score.md)). An episode nothing ranked prints
@@ -62,7 +65,8 @@ z          snoozed until a condition
 Each writes a [ledger](../concepts/review-ledger.md) entry with your identity and the four digests that let
 the tool tell you later whether what you accepted is still what is there. The vocabulary is closed because a
 dismissal whose reason is prose cannot be counted, and systematic dismissing is the thing you most want
-counted: press `r` in the queue to see the rollup of what you skipped and why.
+counted: press `r` — from any view, and it answers on the rail — to see the rollup of what you skipped and
+why.
 
 ## 5 · Ask whether you are done
 
