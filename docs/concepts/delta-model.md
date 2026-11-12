@@ -107,6 +107,20 @@ repository where a generated client was rewritten is not the number on its own: 
 that makes the number true, and it sits on the document rather than only in the policy file. See
 [noise suppression](noise-suppression.md).
 
+And since `e8.5` (`reco-l9bz.5`) `what` carries a second qualifying figure: **complexity**, beside the line
+counts it qualifies, from the same roll-up every surface reads. It is a top-level optional `complexity`
+object as well as a figure — delta against the episode's base, absolute at head over the touched paths,
+the coverage that sum was taken over, and the ADR-007 §7.1 reason code for every path that could not be
+counted — because ADR-007 §5.4's grain is *this change*, and no consumer may derive its own instead. Two
+of its honesty rules are the reason it is a model rather than a field: the absence of a roll-up prints as no
+figure at all while an unmeasurable one prints as `?` with its reason and its owner (`measured: false`, never
+`delta: 0`), and `provenance.models.complexity` names the basis the sum was taken under — more than one
+basis token in it is ADR-007 §9.5's `mixed_basis` episode, stated in the same place the sum is
+([cyclomatic complexity](../adr/0007-complexity.md) §5.2–§5.4). Its gap is the document's first gap that
+belongs to one *figure* rather than to a section: `gap.section` stays `what`, where the figure sits, and
+`integrity` checks that pairing — plus that the one-line `short` plus its owner still fits a card's
+thirty-five columns — instead of the flat `gaps` list being derived from sections alone.
+
 ## 5. Why the TUI is not allowed to compute
 
 `M02` keeps `fathom-tui` and `fathom-mcp` behind `fathom_analyze::insight` and `fathom_analyze::export`.

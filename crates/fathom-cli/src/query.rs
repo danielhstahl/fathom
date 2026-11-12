@@ -135,29 +135,60 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
             }
         })?;
 
+        // The episode's two side reads, taken once for whichever rendering is about to print them.
+        let roll = complexity_for(&store, &episode);
+        let read = EpisodeRead {
+            episode: &episode,
+            complexity: roll.as_ref(),
+        };
         if as_json {
             output::line(format_args!(
                 "{}",
-                show_json(&snapshot, &redactor, &store_path, &row, &episode, target)
+                show_json(&snapshot, &redactor, &store_path, &row, &read, target)
             ));
             return Ok(snapshot.worst_code());
         }
         // Paths and the commit go through the link printer (`e5.8`): clickable where the terminal
         // advertised, byte-identical to these same lines where it did not.
         let links = crate::links::Printer::for_root(root_path);
-        for line in show_text(
-            &snapshot,
-            &redactor,
-            &store_path,
-            &row,
-            &episode,
-            target,
-            &links,
-        ) {
+        for line in show_text(&snapshot, &redactor, &store_path, &row, &read, target, &links) {
             output::line(format_args!("{line}"));
         }
         Ok(snapshot.worst_code())
     }
+}
+
+/// The two episode-side reads a commit card prints beside the commit's own counters (`e8.5`).
+///
+/// They travel together because they answer one question — what does the index say about the episode this
+/// commit belongs to — and because passing them as two arguments is how one of them quietly acquires a
+/// different idea of "absent": no episode, an episode with no roll-up, and a roll-up that measured nothing
+/// are three facts, and they belong next to each other rather than in two argument lists.
+#[cfg(feature = "sqlite-bundled")]
+struct EpisodeRead<'a> {
+    /// The segmentation row, when the index groups this commit into an episode.
+    episode: &'a Option<fathom_store::episode::EpisodeRow>,
+    /// The complexity roll-up over the paths that episode touched, when the read made one.
+    complexity: Option<&'a fathom_analyze::insight::ComplexityView>,
+}
+
+/// The episode's complexity roll-up, in the shape the delta document carries it (`e8.5`).
+///
+/// `fathom show` is a commit card, not a delta document, so it reads the roll-up directly rather than
+/// composing a document to print one figure — but through the façade's own converter, so the state, the
+/// coverage and the gap are settled by the same rules `fathom analyze` uses and the two verbs cannot call
+/// one number a floor and a measurement (ADR-001 §7.10). `None` when the commit belongs to no episode or
+/// the episode has no file rows to roll up; a store that cannot be asked is not the card's failure, so a
+/// read error degrades to the same absence the missing roll-up prints.
+#[cfg(feature = "sqlite-bundled")]
+fn complexity_for(
+    store: &fathom_store::spine::Store,
+    episode: &Option<fathom_store::episode::EpisodeRow>,
+) -> Option<fathom_analyze::insight::ComplexityView> {
+    let row = episode.as_ref()?;
+    fathom_analyze::insight::episode_complexity(store, &row.id)
+        .ok()
+        .flatten()
 }
 
 /// The short oid every human-facing line uses, in the seven-character form git uses.
@@ -172,7 +203,7 @@ fn show_json(
     redactor: &crate::sanitize::Redactor,
     store_path: &std::path::Path,
     row: &fathom_store::spine::CommitRow,
-    episode: &Option<fathom_store::episode::EpisodeRow>,
+    read: &EpisodeRead<'_>,
     asked: &str,
 ) -> serde_json::Value {
     let files = row
@@ -221,7 +252,7 @@ fn show_json(
             },
             "files": files,
             "noise": noise_split(row),
-            "identity": identity_json(episode),
+            "identity": identity_json(read.episode, read.complexity),
         },
         "degraded": snapshot.worst_code() != ExitCode::Ok,
         "diagnostics": snapshot.findings_json(),
@@ -233,7 +264,10 @@ fn show_json(
 /// written before `e1.3`, or a commit the walk can no longer reach — because "we do not have that" and
 /// "the boundary is weak" are different statements (ADR-006 §10.3).
 #[cfg(feature = "sqlite-bundled")]
-fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_json::Value {
+fn identity_json(
+    episode: &Option<fathom_store::episode::EpisodeRow>,
+    complexity: Option<&fathom_analyze::insight::ComplexityView>,
+) -> serde_json::Value {
     use fathom_store::episode::EpisodeRow;
     let Some(EpisodeRow {
         id,
@@ -286,6 +320,12 @@ fn identity_json(episode: &Option<fathom_store::episode::EpisodeRow>) -> serde_j
         "files": n_files,
         "add": n_add,
         "del": n_del,
+        // The complexity figure beside the line counts it belongs with (`e8.5`): the same block
+        // `fathom analyze --json` writes, from the same join, or `null` when there was no roll-up to
+        // read — which is "not said here", not "it changed nothing".
+        "complexity": complexity.map_or(serde_json::Value::Null, |view| {
+            serde_json::to_value(view).unwrap_or(serde_json::Value::Null)
+        }),
         "first_utc": first_utc,
         "last_utc": last_utc,
     })
@@ -312,7 +352,7 @@ fn show_text(
     redactor: &crate::sanitize::Redactor,
     store_path: &std::path::Path,
     row: &fathom_store::spine::CommitRow,
-    episode: &Option<fathom_store::episode::EpisodeRow>,
+    read: &EpisodeRead<'_>,
     asked: &str,
     links: &crate::links::Printer,
 ) -> Vec<String> {
@@ -350,7 +390,13 @@ fn show_text(
         "  scale     {} file(s), +{} -{}, {} binary",
         row.n_files, row.n_add, row.n_del, row.n_binary
     ));
-    out.extend(identity_lines(episode));
+    // The complexity figure, printed beside the line counts it qualifies (`e8.5`). Same string the delta
+    // document prints, because `fathom show` and `fathom analyze` disagreeing about one number is the
+    // exact thing ADR-001 §7.10 was written to end — including the `?`, and including its reason.
+    if let Some(line) = complexity_line(read.episode.is_some(), read.complexity) {
+        out.push(line);
+    }
+    out.extend(identity_lines(read.episode));
     out.push(format!("  store     {}", redactor.path(store_path)));
     out.push(format!("  files     {}", row.files.len()));
     for file in &row.files {
@@ -373,6 +419,34 @@ fn show_text(
         out.push(line);
     }
     out
+}
+
+/// The card's complexity row, or no row at all when this commit belongs to no episode — the grouping
+/// line below already says that, and saying it twice under two labels is a second answer, not a clearer
+/// one.
+///
+/// `?` is printed with its reason and never as a zero (ADR-007 §5.4), and the measured form is
+/// [`fathom_analyze::insight::complexity_headline`]'s own string rather than a re-formatting of the
+/// number, so this line and the delta document cannot part company.
+#[cfg(feature = "sqlite-bundled")]
+fn complexity_line(
+    has_episode: bool,
+    complexity: Option<&fathom_analyze::insight::ComplexityView>,
+) -> Option<String> {
+    if !has_episode {
+        return None;
+    }
+    Some(match complexity {
+        None => "  complexity  nothing to count: the index holds no file rows for this episode"
+            .to_owned(),
+        Some(view) if view.measured => {
+            format!(
+                "  complexity  {}",
+                fathom_analyze::insight::complexity_headline(view)
+            )
+        }
+        Some(view) => format!("  complexity  ? — {}", view.unknown_sentence()),
+    })
 }
 
 /// The intent block for `--json` (`e4.2`, `reco-c54`): the stored document, verbatim.

@@ -109,9 +109,10 @@ pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that
   the model stamp, the read line — cut first when the card does not fit. Intent's share of that budget
   is the one row above, and what it gave back went to the code delta: the noise fold on a row of its own
   instead of inside a `+N more`, the top-paths list long enough to answer "where" instead of naming four
-  directories, and a reserved row in band 1 labelled `complexity`, which is where `e8.6` draws the figure
-  [ADR-007 §5](../adr/0007-complexity.md) gives it — no row until the figure exists, because a row that
-  reads "not measured" under every episode is a row that prints nothing.
+  directories, and the row in band 1 labelled `complexity`, which draws the figure
+  [ADR-007 §5](../adr/0007-complexity.md) gives it — the figure has been in the document since `e8.5`
+  (`reco-l9bz.5`), and an episode whose read made no complexity roll-up has no row rather than a row of
+  `0`, because a row that reads "not measured" under every episode is a row that prints nothing.
   What the budget cannot fit is cut in the same order and never silently: every figure takes exactly
   one row (cut at the row's end, keeping the document's own `· +3 more` as the tail), and the row that
   says how many fell off names the key that brings them back. The card takes no scroll offset until

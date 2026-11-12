@@ -178,6 +178,11 @@ pub fn from_store(store: &Store, lend: &Lend) -> Result<Corpus, Error> {
             stats,
             states.get(&row.id).copied().unwrap_or(ReviewState::Unread),
             files.truncated,
+            // No complexity roll-up: this corpus indexes a title, an intent and a risk score, and reads
+            // nothing else out of the document. A query paid for a figure no consumer here prints would be
+            // the search index buying a column nobody sorts on; `None` says "not read", which is what it
+            // is, and the document prints no complexity figure rather than a wrong one.
+            None,
         );
         let body = document_body(&row.summary, &row.intent_text, &row.intent);
         let mut entry = Entry::episode(

@@ -120,6 +120,7 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
         states,
         paths,
         files,
+        complexity,
     } = raw;
     let held = u64::try_from(rows.len()).unwrap_or(u64::MAX);
     let mut episodes: Vec<Episode> = rows
@@ -128,7 +129,8 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
             let state = states.get(&row.id).copied().unwrap_or_default();
             let touched = paths.get(&row.id).cloned().unwrap_or_default();
             let stats = files.by_episode.get(&row.id).map(Vec::as_slice);
-            into_episode(row, state, touched, stats, files.truncated)
+            let roll = complexity.get(&row.id);
+            into_episode(row, state, touched, stats, files.truncated, roll)
         })
         .collect();
     rank_page(&mut episodes);
@@ -150,7 +152,7 @@ pub fn load(_root: &Path, _facts: &Facts) -> Option<Batch> {
     None
 }
 
-/// The three reads one page of the rail needs, kept together so "the read failed" is one branch.
+/// The four reads one page of the rail needs, kept together so "the read failed" is one branch.
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 struct Raw {
     /// The live episodes the page selects, newest first.
@@ -162,6 +164,9 @@ struct Raw {
     /// What happened to each path (`reco-c05`): the per-file adds and deletes the ranking reads, and
     /// whether the read had to stop early.
     files: fathom_store::episode::EpisodeFiles,
+    /// What each selected episode did to complexity (`e8.5`): the same join, one statement for the page,
+    /// so the card's complexity row costs the rail a query and not a file walk (ADR-007 §9.2).
+    complexity: BTreeMap<String, fathom_store::complexity::EpisodeComplexity>,
 }
 
 /// Run them. The order is deliberate: the path join is keyed by the ids the episode read returned.
@@ -177,6 +182,7 @@ fn read(store: &Store, page: &PageWindow) -> Result<Raw, StoreError> {
         states: store.review_states()?,
         paths: store.episode_paths(&ids)?,
         files: store.episode_files(&ids)?,
+        complexity: store.episode_complexity(&ids)?,
         rows,
     })
 }
@@ -202,6 +208,7 @@ fn into_episode(
     paths: Vec<String>,
     stats: Option<&[fathom_store::episode::EpisodeFile]>,
     partial: bool,
+    complexity: Option<&fathom_store::complexity::EpisodeComplexity>,
 ) -> Episode {
     let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
     let micros = |millis: i64| Timestamp::from_unix_micros(millis.saturating_mul(1_000));
@@ -217,6 +224,7 @@ fn into_episode(
             StoredState::Snoozed => fathom_store::episode::ReviewState::Snoozed,
         },
         partial,
+        complexity,
     );
     Episode {
         id: row.id,

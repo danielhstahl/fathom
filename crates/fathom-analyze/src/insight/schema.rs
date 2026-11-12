@@ -226,6 +226,26 @@ pub fn document() -> Value {
             "required": ["author_email", "author_kind", "author_name", "boundary_rule", "fallback_fingerprint", "first_utc", "fingerprint", "id", "last_utc", "lineage_ref", "lineage_seq", "live", "members", "n_commits", "review", "shape_fingerprint", "summary"],
             "type": "object"
         },
+        "complexity": {
+            "additionalProperties": true,
+            "description": "What the episode did to the complexity of the files it touched (`e8.5`, ADR-007 §5.2–§5.4): the delta against the episode's base, the absolute at head over the touched paths, the coverage the sum was taken over, and the §7.1 reason code for every path that could not be counted. Absent when the read made no roll-up, which is a different claim from a figure of zero; `measured: false` is that other case — nothing could be counted — and it travels with a gap, never with a zero.",
+            "properties": {
+                "absolute": {"description": "Σ of the head figures over the paths this episode touched. Never a repository figure, and never one to add down a rail (ADR-007 §8.1).", "type": "integer"},
+                "basis": {"description": "The basis tokens the figures were counted under; more than one is ADR-007 §9.5's `mixed_basis` episode.", "items": {"type": "string"}, "type": "array"},
+                "coverage": {"description": "`measured_paths / touched`; absent when there is no denominator, which is not the same claim as 0 (ADR-007 §5.4).", "maximum": 1.0, "minimum": 0.0, "type": "number"},
+                "delta": {"description": "Σ(`head − base`) over the paths whose two sides were counted under one basis. Absent when no path could be subtracted — printed `?`, never `0`.", "type": "integer"},
+                "gap": {"$ref": "#/$defs/gap"},
+                "max": {"description": "The largest head figure over the episode's paths — a max, never a sum (ADR-007 §5.1).", "type": "integer"},
+                "measured": {"description": "Whether `delta` holds a number. `false` prints `?` with its reason and its owner, and never a zero (ADR-007 §5.4).", "type": "boolean"},
+                "measured_paths": {"description": "Paths whose two sides could be subtracted, and so are inside `delta`.", "minimum": 0, "type": "integer"},
+                "reasons": {"additionalProperties": {"type": "integer"}, "description": "Why each unmeasurable path could not be, by ADR-007 §7.1 code, counted once per path.", "type": "object"},
+                "state": {"$ref": "#/$defs/sectionState"},
+                "touched": {"description": "Paths in scope — the denominator of every coverage number in this block.", "minimum": 0, "type": "integer"},
+                "unmeasurable_paths": {"description": "Paths that could not be subtracted, each tallied in `reasons`.", "minimum": 0, "type": "integer"}
+            },
+            "required": ["basis", "measured", "measured_paths", "reasons", "state", "touched", "unmeasurable_paths"],
+            "type": "object"
+        },
         "totals": {
             "additionalProperties": true,
             "description": "The episode's scale, and what of it a review reads. The derived four are arithmetic, and `verify` re-does it.",
@@ -316,9 +336,10 @@ pub fn document() -> Value {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$defs": defs,
         "additionalProperties": true,
-        "description": "One episode as one versioned document: identity, rows, derived totals, the seven analysis sections with their evidence, the ranking, the gaps and a self-check. The TUI card, `fathom analyze --json`, the review artefact (`e5.7`) and the MCP tools (`e6.4`) are renderings of this and compute nothing of their own.",
+        "description": "One episode as one versioned document: identity, rows, derived totals, the complexity roll-up beside those totals, the seven analysis sections with their evidence, the ranking, the gaps and a self-check. The TUI card, `fathom analyze --json`, the review artefact (`e5.7`) and the MCP tools (`e6.4`) are renderings of this and compute nothing of their own.",
         "properties": {
             "contract": {"const": CONTRACT},
+            "complexity": {"$ref": "#/$defs/complexity"},
             "episode": {"$ref": "#/$defs/episode"},
             "files": {"description": "The rows the figures are derived from, in path order.", "items": {"$ref": "#/$defs/file"}, "type": "array"},
             "gaps": {"description": "Every gap in one list, section order — the same objects the sections carry.", "items": {"$ref": "#/$defs/gap"}, "type": "array"},

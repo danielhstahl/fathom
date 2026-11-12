@@ -178,6 +178,13 @@
               "description": "How many commits the episode holds; `members` is the same list.",
               "type": "integer"
             },
+            "complexity": {
+              "description": "What the episode did to the complexity of the paths it touched - the same roll-up `episode-delta.schema.json` declares under `$defs/complexity` (`e8.5`), printed beside the line counts and never as a second opinion of them. Absent when the read made no roll-up at all; `measured: false` when a roll-up exists but nothing could be counted, and then `gap` names who owns the fix.",
+              "type": [
+                "object",
+                "null"
+              ]
+            },
             "del": {
               "type": "integer"
             },

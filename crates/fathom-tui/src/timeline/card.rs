@@ -154,16 +154,17 @@ const VALUE_FLOOR: usize = 8;
 /// The fewest cells the head of a one-row value keeps before its tail starts eating it.
 const HEAD_FLOOR: usize = 6;
 
-/// The label `e8.6`'s complexity figure is drawn under, and the name of the figure it is drawn from
-/// (`e8.5` puts the figure in the document; `e8.6` draws the row).
+/// The label the complexity figure is drawn under, and the name of the figure it is drawn from
+/// (`e8.5`, `reco-l9bz.5` puts the figure in the document; the row below draws it).
 ///
 /// The word is ADR-007's — §10.4 binds `e8.6` to one word for the rail column, the card row and the
 /// diff-tree sort, and it is `complexity` — and the *slot* is this band's: complexity is a figure of the
 /// `what` section (ADR-007 §5.3), so its row belongs beside the churn it qualifies, after the noise row
 /// and before `where`. Reserving it here, in code and in [the card's own
 /// document](../../../../docs/concepts/summary-card.md), is what keeps `e8.6` and `e9.2` from each
-/// inventing a home for the same row and one of them losing. Until the figure is written there is
-/// nothing to draw and nothing is invented in its place: an absent figure is an absent row, never a `0`.
+/// inventing a home for the same row and one of them losing. The figure is in the document now; where the
+/// read made no roll-up there is nothing to draw and nothing is invented in its place: an absent figure is
+/// an absent row, never a `0`.
 const COMPLEXITY_ROW: &str = "complexity";
 const COMPLEXITY_FIGURE: &str = "complexity";
 
@@ -211,8 +212,9 @@ enum Row {
 /// 1. **the header** — the identity, then the facts row with the review state on it, then one row
 ///    for every warning that says the row cannot be trusted at all (ADR-003 §6.3's `gone —`, a failed
 ///    `integrity` self-check);
-/// 2. **the code delta** (`what`): the churn, the noise/reformat fold on its own row, and the reserved
-///    complexity row [`COMPLEXITY_ROW`];
+/// 2. **the code delta** (`what`): the churn, the noise/reformat fold on its own row, and the complexity
+///    row [`COMPLEXITY_ROW`] — a slot reserved here before the figure existed, now drawn from the figure
+///    `e8.5` (`reco-l9bz.5`) writes;
 /// 3. **where it landed** (`where`);
 /// 4. **what it touches and could break** — `dependencies`, `surface`, `tests`, `blast`, in the
 ///    document's order;
@@ -446,8 +448,8 @@ fn push_noise(rows: &mut Vec<Row>, delta: Option<&EpisodeDelta>) {
     }
 }
 
-/// The reserved complexity row: drawn from `e8.6`'s figure — the one `e8.5` puts in the document — and
-/// from nothing else.
+/// The complexity row: drawn from the document's `what`-section figure — the one `e8.5` (`reco-l9bz.5`)
+/// writes, from `fathom-store`'s roll-up — and from nothing else.
 fn push_complexity(rows: &mut Vec<Row>, delta: Option<&EpisodeDelta>) {
     let Some(figure) = delta.and_then(|delta| figure(delta, SectionId::What, COMPLEXITY_FIGURE))
     else {

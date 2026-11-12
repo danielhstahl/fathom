@@ -389,6 +389,12 @@ fn pointer_link(episode: &EpisodeView, pointer: &str) -> String {
     if pointer.starts_with("#/totals") {
         return format!("[`{pointer}`](#{})", card_anchor(id));
     }
+    // The complexity block is a roll-up too, and it is printed on the card beside the line counts it
+    // qualifies — so its pointer resolves to the same place the totals' does rather than to a string a
+    // reader cannot follow (`e8.5`).
+    if pointer.starts_with("#/complexity") && episode.delta.complexity.is_some() {
+        return format!("[`{pointer}`](#{})", card_anchor(id));
+    }
     if pointer.starts_with("#/risk") && episode.delta.risk.is_some() {
         return format!("[`{pointer}`](#{})", risk_anchor(id));
     }

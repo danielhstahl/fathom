@@ -58,6 +58,38 @@ fathom analyze <episode> --json | jq .sections.attention
 fathom analyze --schema                  # the JSON Schema, from the types that produce it
 ```
 
+## A figure that qualifies the other figures: complexity
+
+The `what` section carries the line counters (`+add`, `−del`, churn, reviewable churn) and, beside them
+since `e8.5` (**reco-l9bz.5**), a **complexity** figure: what this episode did to how hard the code it
+is to follow. It is in the document rather than in the card because [ADR-007 §5.4](../adr/0007-complexity.md)
+names the grain — *this change* — and because four consumers summing the same columns are four consumers
+that will eventually disagree in public.
+
+The block travels with the figure (`complexity` at the document's top level, which the figure's evidence
+pointer resolves into) and carries the four things a figure has to travel with: the **delta** against the
+episode's base, the **absolute** at head over the paths this episode touched, the **coverage** that sum was
+taken over, and the **reason codes** for every path that could not be counted. Its unknown rules are the
+document's, not a surface's:
+
+* **no roll-up read** — no figure at all. Not a `?`, not a `0`: an absent row.
+* **a roll-up that measured nothing** — `measured: false`, printed `?` with its ADR-007 §7.1 code, its
+  remedy, and a one-line gap that names the plan key owning the columns and fits the card's width: the
+  narrowest card prints `complexity: not measured yet` with four characters and a parenthesis beside it for
+  the key. The full reason says `column_not_filled` and the verb that fills it, `fathom index`. Never
+  `delta: 0`: a file that was never parsed has no figure, and a zero would
+  be a claim about the code rather than about the index.
+* **a floor** — some paths counted, some refused: printed `~+6 (2 of 5 measured · 3 unmeasured: …)` with
+  `state: partial`, because a percentage that does not name its denominator is a number whose reliability
+  nobody can see.
+* **two bases in one episode** — also `partial`, with both basis tokens in the string and in
+  `provenance.models`, because subtracting `mccabe-1` from `cc-shannon-1` is arithmetic on unlike units
+  (ADR-007 §9.5).
+
+`EpisodeDelta::verify` checks the pair — that the figure is the block and not an opinion of it, that
+measured plus unmeasurable is the paths in scope, that the state and the coverage are what the counts make
+them, and that the gap's one-line form plus its owner fits the thirty-five columns the narrowest card has.
+
 ## Versioning, and what a breaking change costs
 
 The document carries a version. Additive changes keep it; breaking changes bump it, and

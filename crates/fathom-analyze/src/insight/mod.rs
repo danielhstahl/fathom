@@ -28,10 +28,11 @@ mod schema;
 use crate::error::Error;
 
 pub use delta::{
-    AttributionEvidence, AttributionRef, BriefRow, EpisodeDelta, EpisodeRef, Evidence, Figure,
-    FileDelta, Finding, Gap, INTENT_DIGEST_ONLY, INTENT_NONE, INTENT_RECORDED, Input, Integrity,
-    Provenance, RiskComponent, RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL,
-    STATE_UNAVAILABLE, Section, SectionId, Supplied, SuppliedBlock, Totals, brief, compose,
+    AttributionEvidence, AttributionRef, BriefRow, CARD_COLUMNS, COMPLEXITY_LABEL, ComplexityView,
+    EpisodeDelta, EpisodeRef, Evidence, Figure, FileDelta, Finding, Gap, INTENT_DIGEST_ONLY,
+    INTENT_NONE, INTENT_RECORDED, Input, Integrity, Provenance, REFUSAL_CODES, RiskComponent,
+    RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL, STATE_UNAVAILABLE, Section, SectionId,
+    Supplied, SuppliedBlock, Totals, brief, complexity_headline, complexity_signed, compose,
     dependency_block, glyph_of, intent_block, render, short_id,
 };
 pub use schema::{
@@ -40,7 +41,10 @@ pub use schema::{
 };
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
-pub use delta::{for_commit, for_commit_with_repo, for_episode, for_episode_with_repo, for_rows};
+pub use delta::{
+    episode_complexity, for_commit, for_commit_with_repo, for_episode, for_episode_with_repo,
+    for_rows,
+};
 
 /// The version of the shapes this façade publishes.
 ///
@@ -165,7 +169,7 @@ pub struct Page {
 ///
 /// The window is clamped here and nowhere else; the count and the page come from one query pair, so the
 /// "3 of 5 000" a strip prints is the same denominator the store gave the page. Rows are read with the
-/// summed per-path rollup — the rail's basis — so a page of five hundred deltas costs four statements,
+/// summed per-path rollup — the rail's basis — so a page of five hundred deltas costs five statements,
 /// not fifteen hundred. A caller that wants the per-commit detail for one episode uses [`delta::for_episode`],
 /// which says so in its own `provenance.files_detail`.
 ///
@@ -185,6 +189,9 @@ pub fn episodes(
     let ids: Vec<String> = rows.iter().map(|row| row.id.clone()).collect();
     let files = store.episode_files(&ids)?;
     let states = store.review_states()?;
+    // One statement for the page's complexity roll-ups, for the same reason the file rollup is one
+    // statement: a rail page pays per query, not per row (ADR-007 §9.2).
+    let complexity = store.episode_complexity(&ids)?;
     let deltas = rows
         .iter()
         .map(|row| {
@@ -195,6 +202,7 @@ pub fn episodes(
                 rows.unwrap_or_default(),
                 review,
                 files.truncated || rows.is_none(),
+                complexity.get(&row.id),
             )
         })
         .collect();

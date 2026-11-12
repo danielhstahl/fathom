@@ -937,7 +937,9 @@ fn an_episode_carries_its_attribution_with_the_evidence_that_says_so() {
 
     // The delta document is what the card draws and `--json` prints, so the attribution has to
     // be *in it* — a card that could not show its evidence could not be argued with either.
-    let delta = fathom_analyze::insight::for_rows(episode, &[], ReviewState::Unread, false);
+    // No complexity roll-up: this fixture is an attribution case, and the bridge says "not read" rather
+    // than inventing a figure — the document carries no `complexity` row, which is the honest shape.
+    let delta = fathom_analyze::insight::for_rows(episode, &[], ReviewState::Unread, false, None);
     let attribution = delta
         .episode
         .attribution
