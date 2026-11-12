@@ -16,7 +16,9 @@
 //!    not to store a second copy of a result in `cache` when it has a dedicated table. Its counters
 //!    therefore come from [`record_spine`], which is what lets `--stats` print a truthful row for it.
 //! 2. **the analyses**: `diff.per_file` at `path_pair` scope and `structure.delta` at `tree` scope, one
-//!    `cache` row each, read and written through [`Store::resolve`] and [`Store::put`].
+//!    `cache` row each, read and written through [`Store::resolve`] and [`Store::put`] — and beside them,
+//!    the [`fill`](crate::fill) pass, whose figures are *columns* on the spine rather than cache rows, for
+//!    the reasons that module states (`e8.4`).
 //! 3. **the worktree** (§6.4): uncommitted paths, analysed exactly like committed ones and keyed the same
 //!    way, so a staged analysis *is* the committed analysis once the commit lands (§6.4 R6) — which is the
 //!    difference between "speculative work is cheap" and "speculative work is a second index".
@@ -42,7 +44,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::cancel::Cancel;
 use crate::error::Error;
+use crate::fill::{self, Fill};
 use crate::sink::StoreSink;
+use crate::structure::ExtractPolicy;
 
 /// The analyzers this driver runs, in the order `--stats` prints them.
 ///
@@ -88,6 +92,14 @@ pub struct Options {
     pub ingest: IngestOptions,
     /// The `fathom.toml` table, as plain values; §5.5 digests only the keys each analyzer declared.
     pub config: Config,
+    /// The `[extract]` limits the complexity fill obeys, including its three ceilings
+    /// (`extract.complexity.max_file_bytes`, `…max_run_bytes`, `…max_run_ms`).
+    ///
+    /// Handed over as a value because ADR-002 §4.5 gives the config file to `fathom-cli` and to nothing
+    /// below it — the same reason [`Options::segment`] and [`Options::now`] arrive this way. A library caller
+    /// that does not name one gets the shipped defaults, which are the numbers the config reference
+    /// documents rather than a second, undocumented set.
+    pub extract: ExtractPolicy,
     /// Analyzer version overrides — the knob that makes "what if `taxonomy.path` were version 3" a query
     /// rather than an edit to the source (§5.1).
     pub versions: Versions,
@@ -250,6 +262,15 @@ pub struct Tick {
     pub done: u64,
     /// Units of it there are, once known.
     pub of: Option<u64>,
+    /// Something true about the phase that its own counts cannot show, in the words to append to the row.
+    ///
+    /// This exists for one case, and it is the case ADR-006 §10.3's row is not allowed to get wrong: a
+    /// ceiling spent part-way through a phase. The analyses phase still finishes every commit it was asked
+    /// to analyse, so its percentage is true and *incomplete* — the complexity figure was declined for most
+    /// of the history, and a row that reaches `100 % · done` without saying so is read as "the index is
+    /// finished". The note is how the row says it, and it is a `&'static str` because a tick is `Copy` and
+    /// printed on a clock; the counts stay in the run report, which has the room for them.
+    pub note: Option<&'static str>,
 }
 
 /// Where a run reports its progress.
@@ -286,6 +307,7 @@ impl Default for Options {
         Options {
             ingest: IngestOptions::default(),
             config: Config::empty(),
+            extract: ExtractPolicy::default(),
             versions: crate::build::manifest_versions(),
             scope: Scope::default(),
             refresh: false,
@@ -348,6 +370,12 @@ pub struct Report {
     pub graph: crate::graph::revise::Report,
     /// Per-analyzer counters for *this run*, keyed by analyzer id.
     pub analyzers: BTreeMap<String, AnalyzerStats>,
+    /// What the index-time complexity fill did on this run (`e8.4`): rows answered, refusals by §7.1 code,
+    /// content read, and which ceiling stopped it if one did.
+    ///
+    /// A field rather than a fourth analyzer in [`AnalyzerStats`], because a cache analyzer's counters are
+    /// lookups and hits and this pass has neither: its memo is the column it writes.
+    pub complexity: fill::Ledger,
     /// The provisional records (§6.4).
     pub worktree: Vec<ProvisionalRecord>,
     /// Worktree paths that could not be analysed, with the reason — a stated absence (§7.6).
@@ -548,6 +576,7 @@ pub fn run(
             phase: Phase::Walking,
             done: seen,
             of: Some(seen),
+            note: None,
         });
     }
     // Which run the spine opened, and therefore which one this function closes at the end. `None` means the
@@ -594,12 +623,19 @@ pub fn run(
     // loop below is measured against it, which is what makes the CLI's `indexing 62 % · ~14 s left` a
     // measured figure rather than a guess (`e5.9`).
     let analyses = u64::try_from(targets.len()).unwrap_or(u64::MAX);
+    // The complexity fill rides this loop instead of following it, because this loop is the only place the
+    // bytes a figure needs are in hand — the whole argument is in [`crate::fill`]. It is also the only place
+    // its two per-run ceilings can be counted from, which is what lets a spent ceiling be *reported* on the
+    // progress row rather than discovered as a slow run.
+    let mut fill = Fill::new(options.extract.clone());
+    let mut note: Option<&'static str> = None;
     for (index, oid) in targets.iter().enumerate() {
         if let Some(sink) = &options.progress {
             sink.report(&Tick {
                 phase: Phase::Analysing,
                 done: u64::try_from(index).unwrap_or(u64::MAX),
                 of: Some(analyses),
+                note,
             });
         }
         if triggered(options) {
@@ -619,9 +655,13 @@ pub fn run(
                 continue;
             }
         };
-        match analyse_commit(repo, store, options, &commit, now) {
+        match analyse_commit(repo, store, options, &commit, now, &mut fill) {
             Ok(made) => {
                 computed += made;
+                // A ceiling spent mid-run is stated on the row from the next commit onward, and kept there:
+                // the phase still finishes every commit it was asked to, so the percentage stays true and the
+                // note is what stops it being read as "the figures are in".
+                note = fill.declined().map(fill::Declined::word);
                 if matches!(options.park_after_units, Some(stop) if computed >= stop) {
                     park_forever();
                 }
@@ -645,10 +685,16 @@ pub fn run(
             phase: Phase::Analysing,
             done: analyses,
             of: Some(analyses),
+            note: fill.declined().map(fill::Declined::word).or(note),
         });
     }
 
     phases.push((PHASE_ANALYSES, started.elapsed()));
+    // The fill's own numbers, closed out and made durable before the counters flush at the end of the run:
+    // `fathom doctor` answers "has this store ever run out of complexity budget?" from the counter table,
+    // and a run report that dies with the process would answer it for one run only.
+    let complexity = fill.finish();
+    complexity.count_in(store);
 
     // 3b. The analysis working set goes back before anything else runs.
     //
@@ -669,6 +715,7 @@ pub fn run(
                 phase: Phase::Worktree,
                 done: 0,
                 of: None,
+                note: None,
             });
         }
         let (rows, skipped) = analyse_worktree(repo, store, options, now)?;
@@ -681,6 +728,7 @@ pub fn run(
                 phase: Phase::Worktree,
                 done: n,
                 of: Some(n),
+                note: None,
             });
         }
         (rows, skipped)
@@ -700,6 +748,7 @@ pub fn run(
                 phase: Phase::Episodes,
                 done: 0,
                 of: None,
+                note: None,
             });
         }
         let rebuilt =
@@ -712,6 +761,7 @@ pub fn run(
                 phase: Phase::Episodes,
                 done: n,
                 of: Some(n),
+                note: None,
             });
         }
         rebuilt
@@ -782,6 +832,7 @@ pub fn run(
         episodes,
         graph,
         analyzers,
+        complexity,
         worktree,
         worktree_skipped,
         interrupted: interrupted.is_some(),
@@ -964,6 +1015,9 @@ fn quiet_report(
         commits_new: 0,
         commits_considered: 0,
         spine: RunReport::default(),
+        // Nothing was derived on the quiet path, so the fill has no numbers of its own. A default `Ledger`
+        // prints as "this run read no file contents", which is exactly what happened.
+        complexity: fill::Ledger::default(),
         // The store's own tally, because a rebuild did not run to produce a fresh one. Printing zeroes here
         // would be printing a sentence about the repository that is not true of it.
         episodes,
@@ -1132,12 +1186,18 @@ struct Unit {
 }
 
 /// The analyses one commit is worth. Returns how many were *computed*, which is what a budget counts.
+///
+/// Two of the three things that happen here are cache-keyed and one is not, and that is the whole shape of
+/// `e8.4`'s decision: `diff.per_file` and `structure.delta` are derived rows in `cache`, and the complexity
+/// figure is a column on the rows this commit already wrote ([`crate::fill`]). The pass runs here, in the
+/// same breath, because this is where the object database has just been asked for these paths.
 fn analyse_commit(
     repo: &Repository,
     store: &mut Store,
     options: &Options,
     commit: &Oid,
     now: i64,
+    fill: &mut Fill,
 ) -> Result<usize, Error> {
     let row = store
         .read_commit(&commit.hex())
@@ -1200,6 +1260,15 @@ fn analyse_commit(
         computed += analyse_path_pair(repo, store, options, unit, now)?;
     }
     computed += analyse_structure(store, repo, options, tree, parent_tree, &units, now)?;
+    // The complexity fill, last, and deliberately after the two analyzers rather than interleaved with
+    // them: the cache lookups above are the part a warm run exists to make free, and nothing about the fill
+    // should be able to slow them down.
+    //
+    // The parent whose row may already carry the base-side figure is the first parent — the same commit
+    // `structure.delta` keyed its link against, and the same base `e8.3`'s roll-up telescopes over.
+    let parent = row.parent_oids.first().map(String::as_str);
+    let owed = store.complexity_owed(&commit.hex(), crate::structure::complexity::BASIS)?;
+    fill.fill_commit(repo, store, &commit.hex(), parent, &row.files, &owed)?;
     Ok(computed)
 }
 

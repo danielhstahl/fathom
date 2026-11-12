@@ -233,3 +233,11 @@ required-features = ["sqlite-bundled"]
 [[test]]
 name = "api_surface"
 required-features = ["langs-all"]
+
+# The index-time complexity fill (`e8.4`, `reco-l9bz.4`): the three ceilings, the §7.1 reason codes and the
+# owed-set rules, driven through `index::run`. It needs a grammar because the thing under test is a figure
+# counted from a parse — an answer that is `?` because `lang-rust` was not compiled is an answer about the
+# build, which is a different refusal with a different code and its own test (`grammar_not_compiled`).
+[[test]]
+name = "complexity_fill"
+required-features = ["sqlite-bundled", "lang-rust"]

@@ -132,6 +132,11 @@ pub mod hotspots;
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub mod episodes;
 
+/// The index-time complexity fill: the pass that reads file contents to count decision points, the three
+/// ceilings that bound it, and the reason codes it leaves where it declines (`e8.4`).
+#[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
+pub mod fill;
+
 /// The incremental index: what the cache is *for_ (ADR-004 §6). Present only when a SQLite backend is
 /// compiled in, because an index with nowhere to store its rows is not an index.
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]

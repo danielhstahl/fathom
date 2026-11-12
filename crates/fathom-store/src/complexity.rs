@@ -69,6 +69,25 @@ pub const COLUMN_NOT_FILLED: &str = "column_not_filled";
 /// contributes nothing to a sum, and [`Store::episode_complexity`] implements exactly that.
 pub const MIXED_BASIS: &str = "mixed_basis";
 
+/// The code a **spent run budget** leaves behind (ADR-007 §7.1's `scan_budget`, produced by `e8.4`'s two
+/// per-run ceilings as well as by `e3.1b`'s Ruby scan caps).
+///
+/// The store names it because [`Store::complexity_owed`] treats it as the one refusal that re-opens a row:
+/// every other §7.1 code is a fact about the bytes, and a budget is a fact about the run. The spelling
+/// belongs to `fathom_analyze::structure::UnavailableReason::ScanBudget`, exactly as
+/// [`COLUMN_NOT_FILLED`]'s does, and the same test in `fathom-analyze`'s `tests/complexity.rs` keeps them
+/// equal.
+pub const BUDGET_REASON: &str = "scan_budget";
+
+/// The code a **per-file ceiling** leaves behind (ADR-007 §7.1's `too_large`, produced by
+/// `extract.complexity.max_file_bytes` as well as by `e3.1`'s `extract.max_file_bytes`).
+///
+/// Named here for the same reason [`BUDGET_REASON`] is: raising the ceiling has to be able to change the
+/// answer, so a size refusal re-opens a row in [`Store::complexity_owed`] instead of closing it. The §7.1
+/// table already says as much in its "Filled by" column — "raise it, then `fathom index`" — and this is
+/// that sentence made executable.
+pub const SIZE_REASON: &str = "too_large";
+
 /// One side of one file row's figure: what the row says about the base side or the head side.
 ///
 /// The three variants are ADR-007 §7.4's rows 1–3 as read from one side. Row 4 — the side this build never
@@ -430,6 +449,48 @@ impl ComplexityCoverage {
 }
 
 impl Store {
+    /// Which file rows of one commit still owe a complexity figure (`e8.4`).
+    ///
+    /// Three shapes owe one, and the third is the one a run budget makes unavoidable:
+    ///
+    /// * `complexity_basis <> basis` covers both "nothing has ever looked at this row" (`''`, ADR-007 §7.4's
+    ///   fourth row) and "this build counts under a different token" (§9.5's re-count) — one comparison, so
+    ///   long as an unfilled row and a stale row are both rows whose claim this build cannot defend;
+    /// * a row with **no figure on either side** whose reason is a ceiling — a spent per-run budget
+    ///   ([`BUDGET_REASON`]) or a file over the per-file cap ([`SIZE_REASON`]) — owes one again, because
+    ///   such a refusal is a fact about a number somebody set and not about the file: raise the key and the
+    ///   next index has to be allowed to answer, which is only true if the refusal did not close the row.
+    ///   A `language_unknown`, a `binary` or a `parse_failed` *does* close it — those are properties of the
+    ///   bytes, and re-reading them answers the same way, which is why re-opening them would be a warm run
+    ///   that never converges.
+    ///
+    /// The predicate is a `commit_oid` prefix scan of the `PRIMARY KEY`, which is what makes it cheap enough
+    /// to ask of every commit of every warm run: a store whose column is filled pays one index probe per
+    /// commit and reads nothing else.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::StoreCorrupt`] if the read fails.
+    pub fn complexity_owed(&self, commit: &str, basis: &str) -> Result<BTreeSet<String>, Error> {
+        let mut statement = self
+            .connection()
+            .prepare(
+                "SELECT path_hash FROM git_commit_file \
+                  WHERE commit_oid = ?1 \
+                    AND (complexity_basis <> ?2 \
+                       OR complexity_before_reason IN (?3, ?4) \
+                       OR complexity_after_reason IN (?3, ?4))",
+            )
+            .map_err(|err| corrupt("asking which file rows owe a complexity figure", &err))?;
+        let rows = statement
+            .query_map(params![commit, basis, BUDGET_REASON, SIZE_REASON], |row| {
+                row.get::<_, String>(0)
+            })
+            .map_err(|err| corrupt("asking which file rows owe a complexity figure", &err))?;
+        rows.collect::<Result<BTreeSet<String>, _>>()
+            .map_err(|err| corrupt("reading which file rows owe a complexity figure", &err))
+    }
+
     /// Write the complexity columns for the named file rows, in one transaction.
     ///
     /// A fill, not an insert: it only ever updates a row the spine already wrote, because a complexity

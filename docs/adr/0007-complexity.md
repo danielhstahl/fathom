@@ -672,10 +672,10 @@ revision, `episode` = a roll-up, `scope` = a container the pass cannot enumerate
 | `language_unknown` | file | language detection (`e3.1`) | `?` | *complexity unavailable: not one of the grammars fathom reads* | nothing — it is a ceiling |
 | `grammar_not_compiled` | file | the pass, naming its ADR-002 §6.5 feature | `?` | *complexity unavailable: this build was compiled without the `lang-x` grammar* | a build with the feature |
 | `extractor_not_shipped` | file | the pass, for a seventh language before its extractor | `?` | *complexity unavailable: this language's extractor has not shipped yet* | the ticket that ships it |
-| `too_large` | file | `extract.max_file_bytes` exceeded | `?` | *complexity unavailable: the file is larger than the {limit} byte extraction limit* | raise `extract.max_file_bytes`, then `fathom index` |
+| `too_large` | file | `extract.max_file_bytes` exceeded, or — since §9.7 — the complexity pass's own `extract.complexity.max_file_bytes`, which is a smaller number on purpose | `?` | *complexity unavailable: the file is larger than the {limit} byte extraction limit* | the key that refused, naming itself, then `fathom index` |
 | `not_utf8` | file | the pass, after reading | `?` | *complexity unavailable: the file is not text* | nothing |
 | `binary` | file | the spine: git says binary, contents never read (distinct from `not_utf8` — a different layer knows this one) | `?` | *complexity unavailable: git reports the file as binary* | nothing |
-| `contents_not_kept` | file | the spine: no blob kept for that side (`e8.4`'s cap) | `?` on that side | *complexity unavailable: the file's contents were not kept at this revision* | `e8.4`'s retention knob + re-index |
+| `contents_not_kept` | file | the spine: no blob kept for that side — over `ingest.size_cap_mib`, a tree object where a blob was expected, or an object the database will not serve (a grafted shallow clone, a gc'd loose object) | `?` on that side | *complexity unavailable: the file's contents were not kept at this revision* | a fuller fetch (unshallow, re-clone) and `fathom index --refresh`; `fathom doctor` names the commits the object database is hiding |
 | `parse_failed` | file | parse produced more error than code | `?` | *complexity unavailable: the parse reported {n} errors and returned no structure* | fixing the file |
 | `parser` | file | the grammar could not be handed to the parser | `?` | *complexity unavailable: the parser could not be initialised* | a bug report |
 | `scan_budget` | file | a per-run cap spent (Ruby's, or `e8.4`'s new ones), naming the key | `?` | *complexity unavailable: the per-run scan budget `{key}` was already spent; raise it or reorder `priority` if this file matters* | the named key, then re-index |
@@ -982,7 +982,89 @@ over the index (`rows with a figure / rows that could have one`, split by reason
 makes that meaningful is §7.4's fourth row: a `NULL`-with-`''` row prints `?` and the coverage line, and
 the fill path is either the next index run over that revision or nothing. A lazy fill must be **observable
 while it runs**: partial progress prints as `~ (filling: 61 % of rows)`, never as a confident number over
-a third of the store.
+a third of the store. §9.7 is where that fill lives, what it may spend, and what it has to say when it spends
+out.
+
+### 9.7 Where the measurement runs, and what stops it (`e8.4`)
+
+**Decision: the figure is computed during the index run, in the pass that already has the bytes in hand, and
+stored in §9.1's columns. It is not a derived row produced by an analyzer that re-reads the contents through
+the cache.** §12.11 keeps the rejected alternative; this section is the argument, and the ceilings that make
+the choice survivable on a monorepo.
+
+The reason is §9.3's own argument run in the other direction. A figure is a function of blob bytes, and the
+run that writes a file row has already asked the object database for those bytes to compute churn: the choice
+on the table was never "read the contents or don't", it was "count them while they are in hand, or inflate
+them a second time from a cache that has already decided they are too large to keep". A deferred reader is
+downstream of three ceilings that are not its own:
+
+* the `e7.3` memory ceiling **evicts `analyzer = structure.extract` payloads first** — the analyzer a
+  derived-row fill would be — so a monorepo run that spilled its payloads has already dropped the structure
+  payload by the time a fill comes asking, and the deferred read is not a lookup, it is an inflate that has
+  to win the whole cost back;
+* the same ceiling **refuses a `structure.extract` row over `cache.select.structure_extract_max_payload_bytes`
+  durably** — a byte ceiling on *keeping* a structural result, so a fill downstream of it answers
+  `contents_not_kept` for exactly the large files a reviewer is most suspicious of, which is §7.1's row for a
+  spine that kept nothing arriving dressed as a claim about the file;
+* the spine's `ingest.size_cap_mib` already declines to keep a blob that is too large, so a deferred fill
+  inherits a second, unrelated reason for the same `?`; and
+* the throughput §11.2 measured — 24 MB/s for Ruby at the worst, four orders of magnitude below the blob-copy
+  path — is affordable only if each blob is inflated once. Twice is the same bill plus a gzip.
+
+What the index-time choice buys is paid for on the other side: the pass runs over every commit, including the
+ones nobody will ever review. So it gets three ceilings, in the shape `e7.3`'s memory ceilings already
+established — a key per quantity, `0` spelling "no cap" where that is meaningful, the reason code naming which
+key ran out, and a durable counter of how often one bit:
+
+| key | default | what it bounds | the code it leaves behind |
+|---|---|---|---|
+| `extract.complexity.max_file_bytes` | 2 000 000 | one blob, decided from the object header before anything is inflated | `too_large` (§7.1; the same code `e3.1`'s `extract.max_file_bytes` leaves) |
+| `extract.complexity.max_run_bytes` | 128 000 000 | decompressed content this pass may read in one `fathom index` | `scan_budget` |
+| `extract.complexity.max_run_ms` | 60 000 | this pass's own clock, summed over the commits it filled | `scan_budget` |
+
+The two per-run numbers are measurements, not round guesses. Reading 512 MB for one cold index of a
+5 501-commit generated-Go history — 66 885 file rows, mostly not source — cost the pass **60.9 s of its own
+clock**, an effective 8.4 MB/s that sits exactly where spike §11.2 put the worst grammar, and that was half
+again the rest of the run. Shipped a quarter of the way down, the same corpus's pass costs about 16 s and
+the cold index's overhead is a seventh of that run instead of half again — a sixth of this repository's,
+where a graph pass nobody was arguing about is the larger share of the wall clock; the committed reports
+(`benchmarks/reports/e8-4-index-time-complexity.json` for this repository and
+`e8-4-index-time-complexity-monorepo.json` for that corpus — a shallow clone of `aws-sdk-go`, named in the
+report because a benchmark that fetches its own corpus has a corpus that changes on its own), produced by
+`tools/complexity_cost.py`, are the before/after measurement that declared the allowance and caught the
+default being wrong. Each report carries the ceiling it spent, so the second one is also the evidence that a
+byte ceiling actually spends on a corpus nobody engineered rather than only on a test.
+
+Three properties make a ceiling a ceiling rather than a hole in the index, and all are rules rather than
+defaults:
+
+* **A refusal by a ceiling is not a memo.** A `scan_budget` or `too_large` row stays in §9.6's owed set — the
+  predicate that decides what a run may skip — because a refusal caused by a number somebody set has to be
+  re-askable once the number changes. Every other reason (`language_unknown`, `binary`, `parse_failed`,
+  `not_utf8`, `grammar_not_compiled`) is a property of the bytes and *does* close the row: re-reading answers
+  the same way, and a warm run that re-refused them would be a run that never converges. This is the second
+  time the distinction carried weight in this epic — §7.1's `scan_budget` row already promised "raise it, then
+  re-index", and that promise is a property of the store or it is nothing.
+* **A per-run budget is checked before a read, never after.** A budget discovered by overspending bounds
+  nothing, so the byte ceiling declines the *next* blob instead of inflating one byte past the line. It is
+  also why `0` is a working "decline everything" spelling rather than a division by zero: `0 >= 0` declines
+  the first row, which is the CI shape the config reference documents.
+* **The time ceiling bounds this pass, not the run it lives in.** It is accumulated around each commit the
+  pass filled rather than read off a deadline set when the analyses phase began — a deadline would charge the
+  complexity budget for the structural pass, the dependency pass and everything else sharing the phase, and
+  then the number reported would not be the number bounded. `tools/complexity_cost.py` is what caught this:
+  the pass's first self-reported figure, 143.8 s, was really the analyses phase, of which the pass itself had
+  spent 60.9 s.
+
+And the third thing a ceiling owes, which is what an honest degradation is actually made of: **the progress
+row is told.** §9.6 forbids a confident number over an unfinished fill, and the row a watcher operator
+watches is ADR-006 §10.3's `analysing … 100 % · done`. A run whose pass was declined after three rows still
+finished every commit it was asked to analyse, so its percentage is true *and incomplete* in a way a
+percentage cannot show. The tick therefore carries a note naming the spent ceiling and the row appends it; the
+run report ends with a line saying how much content was read, what was refused and under which basis, and
+which key would have read more; and `fathom doctor` carries the durable half — the coverage line §9.6 asked
+for, the pass line, and a finding that fires on a store holding `scan_budget` rows, with a remedy naming the
+key to raise.
 
 ---
 
@@ -1195,6 +1277,14 @@ error would be a sign flip a reviewer cannot see.
    `fathom-tui` renders values it is handed; the arithmetic lives in `fathom-analyze`) and by ADR-001
    §7.10. Not really an alternative; listed because it keeps being proposed in review.
 9. **Storing the delta as a column.** Rejected (§9.1): it is `after − before`, both of which are stored.
+11. **A derived analyzer row, filled lazily through the cache, instead of an index-time pass.** Rejected
+    (§9.7) — and it belongs on the list precisely because §9.3 is written in its image: the figure is a
+    function of blob bytes, and the run that has them is the run that writes the file row. A deferred reader
+    pays for a second inflation of the same bytes, inherits `e7.3`'s eviction and selection ceilings as
+    *reasons* (its answer for a large file becomes `contents_not_kept`, because a payload was evicted or a
+    row was refused, not because the file was unreadable), and cannot honour §9.2's telescoping identity
+    without inventing a second order of operations to enforce it in. The cost of choosing the index instead —
+    work spent on commits nobody reviews — is paid by §9.7's three ceilings rather than pretended away.
 10. **A threshold with a sensible default baked in, "just for a starting point".** Rejected (§8.3), and
     this is the alternative that will be proposed again: the sentence "just a default, it is configurable"
     is how a metric acquires a meaning nobody argued about in the place where the consequence lives.
@@ -1210,8 +1300,10 @@ error would be a sign flip a reviewer cannot see.
 * **`e8.3`** gets six columns, two `CHECK`s, one claim to assert in a test (**zero derived rows evicted**,
   §9.3), a join instead of a roll-up column (§9.2), and a doctor coverage line it already asked for.
 * **`e8.4`** gets a reason-code list it must fill rather than invent, an existing vocabulary to reuse
-  (`scan_budget`, `too_large`) in the e7.3 ceiling shape it asked for, and the fact that content-addressing
-  (§9.3) is what makes its budget satisfiable on a monorepo.
+  (`scan_budget`, `too_large`) in the e7.3 ceiling shape it asked for, the fact that content-addressing
+  (§9.3) is what makes its budget satisfiable on a monorepo, and a decided version of the question this ADR
+  left open: the figure is computed at index time while the bytes are in hand, under three ceilings (§9.7),
+  with the progress row told when one of them bites.
 * **`e8.5`** gets the figure's exact `raw` keys, its label, its 35-column gap line prefix, and the
   constraint that the delta document stays additive at its current version.
 * **`e8.6`** gets the glance decision (delta, signed), the formatting that survives `NO_COLOR`, the

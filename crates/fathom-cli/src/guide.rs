@@ -103,6 +103,7 @@ impl Guide {
                 // screen, and a `\r` in a log file is a corrupt line.
                 tty,
                 phase: None,
+                note: None,
                 estimate: Estimate::new("walking", "commit"),
                 started: Instant::now(),
                 printed: Instant::now(),
@@ -140,6 +141,10 @@ struct Printer {
     /// Overwrite in place (`\r`) rather than append. True for a terminal; a pipe gets one line each.
     tty: bool,
     phase: Option<Phase>,
+    /// The state of the current phase that its counts cannot show, to append to every row of it
+    /// (`e8.4`'s spent complexity ceiling). Sticky within a phase on purpose: a row that showed the note and
+    /// then stopped showing it would read as the note having been resolved.
+    note: Option<&'static str>,
     estimate: Estimate,
     started: Instant,
     printed: Instant,
@@ -158,19 +163,31 @@ impl Printer {
         if changed {
             self.newline();
             self.phase = Some(tick.phase);
+            self.note = None;
             self.estimate = Estimate::new(tick.phase.word(), tick.phase.unit());
+        }
+        // A note appears once and stays for the rest of the phase, and its appearance is worth a row now
+        // rather than at the next tick interval: the fact being reported is that the run has *stopped*
+        // doing part of its work, which is the fact a reviewer would most want to have seen before the
+        // row printed `100 % · done`.
+        let noted = tick.note.is_some() && tick.note != self.note;
+        if noted {
+            self.note = tick.note;
         }
         // The driver counts what is *left* to derive and reports how far through that list it is, so
         // the denominator the reviewer sees is the whole phase: what the spine already had is work the
         // walk did and the analyses did not need.
         let at = self.started.elapsed();
         let progress = self.estimate.observe(tick.done, tick.of, at);
-        let important = changed || progress.finished || progress.stalled;
+        let important = changed || noted || progress.finished || progress.stalled;
         if !important && self.printed.elapsed() < TICK_INTERVAL {
             return;
         }
         self.printed = Instant::now();
-        let line = self.estimate.line();
+        let mut line = self.estimate.line();
+        if let Some(note) = self.note {
+            line.push_str(&format!(" \u{b7} {note}"));
+        }
         if self.tty {
             // `\r` plus erase-to-end-of-line: the tail of a longer previous row has to go, or the new,
             // shorter row leaves its ghost behind it.

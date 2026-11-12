@@ -16,6 +16,66 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+## [Unreleased]
+### Complexity is counted while the bytes are in hand, under three ceilings, and the run says when one of them bites (`reco-l9bz.4`)
+
+`e8.3` built the columns and nothing wrote them: a figure could be read out of the store only if some other
+pass had already paid for the file contents, so the review question "did this episode make this file harder to
+follow?" answered `?` for the entire history. [ADR-007 §12.11](docs/adr/0007-complexity.md) had left the
+question of *where* the counting happens open on purpose. It is decided now: **during the index run, in the
+pass that already asked the object database for those bytes to compute churn**, and stored in
+`git_commit_file`'s complexity columns — not later as a derived row produced by an analyzer re-reading the
+contents through a cache whose ceilings had already decided they were not worth keeping. The argument, and the
+measurement that priced it, are [ADR-007 §9.7](docs/adr/0007-complexity.md) and
+[the concept page](docs/concepts/complexity-ceilings.md); what landed is this.
+
+* **`fathom index` fills the columns, in cost order.** `fathom_analyze::fill` answers a commit's owed file
+  rows and writes one transaction per commit: an absent side, a binary file and an unsupported extension are
+  refused for free, a base side already in the store is taken back from the first parent's row instead of
+  recomputed (a rename is excluded, because the parent's figure lives under the *old* path hash), and only
+  then does anything get inflated. Over the 5 501-commit generated-Go history that is 66 885 file rows and
+  122 MiB read in 15.6 s, of which one file row in five had a figure — the refusals are what the pass is
+  mostly made of, and they are nearly free because the order makes them free.
+* **Three ceilings, in the vocabulary `e7.3` already established.** `extract.complexity.max_file_bytes`
+  (2 000 000, decided from the object header, so a 400 MB vendored file costs a header read and nothing
+  else), `extract.complexity.max_run_bytes` (128 000 000) and `extract.complexity.max_run_ms` (60 000 —
+  this pass's own clock, summed over the commits it filled, not a deadline that would charge it for the
+  structural pass). Each one spent leaves `?` with `scan_budget` or `too_large`, names the key that ran out,
+  and counts itself in the `counter` table. The two per-run numbers are measurements, not round guesses:
+  512 MB cost the pass 60.9 s of its own clock on that corpus — half again the rest of the run — so the
+  shipped byte ceiling is a quarter of it.
+* **A ceiling is not a hole in the index.** A row refused by a budget or a size cap stays in the owed set
+  that decides what a run may skip, so raising the key and re-indexing fills what this run declined, and a
+  series of budgeted runs converges instead of calcifying. Every other reason — `language_unknown`, `binary`,
+  `parse_failed`, `not_utf8`, `grammar_not_compiled` — is a property of the bytes, closes the row, and is
+  never asked again. A refusal is also never a figure: only `absent_revision` and `no_bodies` are zeros that
+  feed a sum.
+* **The progress row is told, because a percentage cannot show an absence.** A run whose pass was declined
+  still finishes every commit it was asked to analyse, so `analysing … 100 % · done` would have been true and
+  misleading at once; the tick now carries a note naming the spent ceiling, the row keeps it for the rest of
+  the phase, and the run report closes with what was read, what was refused, under which basis, and which key
+  would have read more. `fathom doctor` carries the durable half: the coverage line `e8.3` asked for — with
+  "measured" and "carries a figure" kept as two numbers, because collapsing them is how a half-filled column
+  lies quietly — a pass line, and a finding that fires only on `scan_budget`, whose remedy is a person raising
+  a number.
+* **The cost is a committed measurement with a gate on it.** `tools/complexity_cost.py` runs one binary twice
+  — once with the pass declining everything, once at the shipped ceilings — interleaved so the page-cache
+  advantage of going second is shared rather than charged to the pass, and it never clones: each report names
+  the corpus it measured and `--check` refuses a run against anything else. Two are committed.
+  `benchmarks/reports/e8-4-index-time-complexity.json`: **+18.0 %** of cold index time and **+4.0 MiB** of
+  peak RSS on this repository, where the complexity pass is 18.4 s reading 93.9 MiB inside a run whose module
+  graph pass is 108.8 s on its own.
+  `benchmarks/reports/e8-4-index-time-complexity-monorepo.json`: a shallow `aws-sdk-go` clone, 5 501 commits,
+  66 885 file rows, **+11.8 %** and **+1.6 MiB** — and the one place the byte ceiling is observed actually
+  spending, `declined: "extract.complexity.max_run_bytes"`, with 75 847 sides left `scan_budget` and owed and
+  46 785 more refused for free because no grammar reads generated Go.
+  The declared allowance is **+40 % and +256 MiB**, and the `complexity corpus` workflow re-measures this
+  repository and gates it. `--audit` re-derives a report's own arithmetic from its own medians without
+  measuring anything, which is what the contract test runs on both reports on every commit. That harness also
+  caught a bug worth naming: the pass's first self-reported figure, 143.8 s, was the whole analyses phase,
+  and the pass itself had spent 60.9 s — which is why the reported milliseconds are now the same accumulated
+  quantity the time ceiling compares against.
+
 ### The `human`/`agent` word is printed nowhere a human reads it, and the filter built on it goes with it (`reco-ydek.4`)
 
 `reco-ydek.1` decided this in [ADR-006 §5.1.2 §6](docs/adr/0006-tui.md) and changed no code; this is the

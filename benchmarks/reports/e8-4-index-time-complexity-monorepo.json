@@ -1,0 +1,147 @@
+{
+  "arms": {
+    "declined": {
+      "config": "[extract.complexity]\nmax_run_ms = 0\n",
+      "pass": {
+        "base_reused": 0,
+        "bytes_read": 0,
+        "ceilings": {
+          "max_file_bytes": 2000000,
+          "max_run_bytes": 128000000,
+          "max_run_ms": 0
+        },
+        "declined": "extract.complexity.max_run_ms",
+        "measured": 9714,
+        "missing": 0,
+        "ms": 851,
+        "refused": [
+          {
+            "code": "binary",
+            "rows": 17
+          },
+          {
+            "code": "language_unknown",
+            "rows": 46785
+          },
+          {
+            "code": "scan_budget",
+            "rows": 77254
+          }
+        ],
+        "rows": 66885,
+        "written": 66885
+      },
+      "peak_rss_mib": 3530.7,
+      "phases_ms": {
+        "analyses": 79509,
+        "close": 1,
+        "episodes": 2638,
+        "graph": 22184,
+        "refs": 12,
+        "spine": 15924,
+        "worktree": 13
+      },
+      "proved": true,
+      "wall_ms_median": 121212.9,
+      "wall_ms_samples": [
+        122012.0,
+        120413.7
+      ],
+      "wall_ms_store_side": 120283
+    },
+    "shipped": {
+      "config": "",
+      "pass": {
+        "base_reused": 27,
+        "bytes_read": 128207301,
+        "ceilings": {
+          "max_file_bytes": 2000000,
+          "max_run_bytes": 128000000,
+          "max_run_ms": 60000
+        },
+        "declined": "extract.complexity.max_run_bytes",
+        "measured": 10403,
+        "missing": 0,
+        "ms": 15279,
+        "refused": [
+          {
+            "code": "binary",
+            "rows": 17
+          },
+          {
+            "code": "language_unknown",
+            "rows": 46785
+          },
+          {
+            "code": "scan_budget",
+            "rows": 75847
+          },
+          {
+            "code": "too_large",
+            "rows": 12
+          }
+        ],
+        "rows": 66885,
+        "written": 66885
+      },
+      "peak_rss_mib": 3532.3,
+      "phases_ms": {
+        "analyses": 93852,
+        "close": 1,
+        "episodes": 2641,
+        "graph": 22262,
+        "refs": 12,
+        "spine": 16163,
+        "worktree": 14
+      },
+      "proved": true,
+      "wall_ms_median": 135477.6,
+      "wall_ms_samples": [
+        135854.4,
+        135100.8
+      ],
+      "wall_ms_store_side": 134948
+    }
+  },
+  "binary": {
+    "path": "/workspace/target/release/fathom",
+    "version": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all"
+  },
+  "gate": {
+    "max_index_time_over_pct": 40.0,
+    "max_peak_rss_over_mib": 256.0
+  },
+  "host": {
+    "cpu_count": 8,
+    "machine": "aarch64",
+    "memtotal_gib": 7.7,
+    "python": "3.14.5",
+    "release": "7.0.14-linuxkit",
+    "system": "Linux"
+  },
+  "measured_at": "2026-11-12T03:04:51Z",
+  "overhead": {
+    "declined_proved": true,
+    "index_time_ms": 14264.7,
+    "index_time_pct": 11.8,
+    "peak_rss_mib": 1.6,
+    "per_rep_pct": [
+      11.3,
+      12.2
+    ],
+    "shipped_proved": true
+  },
+  "repository": {
+    "commits": 5501,
+    "corpus": "shallow clone of https://github.com/aws/aws-sdk-go at depth 5000",
+    "git_dir_mib": 508.3,
+    "head": "070853e88d22854d2355c2543d0958a5f76ad407",
+    "head_subject": "release v1.55.8 (2025-07-31)",
+    "name": "aws-sdk-go",
+    "path": "/tmp/repos/aws-sdk-go",
+    "shallow_clone": false,
+    "tracked_files": 5509
+  },
+  "reps": 2,
+  "ticket": "reco-l9bz.4"
+}

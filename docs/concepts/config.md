@@ -535,6 +535,9 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `graph.max_corpus_mib` | `integer` | `64` | `replace` | `any` | MiB | graph.build | `e3.11` |
 | `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
+| `extract.complexity.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | — | `e8.4` |
+| `extract.complexity.max_run_bytes` | `integer` | `128000000` | `replace` | `any` | bytes per run | — | `e8.4` |
+| `extract.complexity.max_run_ms` | `integer` | `60000` | `replace` | `any` | milliseconds per run | — | `e8.4` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
 | `extract.resolution.max_hops` | `integer` | `4` | `replace` | `any` | hops | structure.extract | `e3.1` |
 | `extract.ruby.max_files_per_run` | `integer` | `4000` | `replace` | `any` | files per run | structure.extract | `e3.1b` |

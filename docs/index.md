@@ -65,6 +65,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [the headless verbs](concepts/cli.md) · [config and its five layers](concepts/config.md) ·
 [path taxonomy and noise policy](concepts/paths.md) · [the fixture corpus](concepts/fixtures.md) ·
 [privacy: no network by default](concepts/privacy.md) · [memory ceilings and bounded caches](concepts/memory.md) ·
+[complexity at index time: three ceilings and an honest refusal](concepts/complexity-ceilings.md) ·
 [the watch daemon](concepts/watch-daemon.md) ·
 [the beta feedback loop: one channel, one weekly triage](concepts/feedback.md) ·
 [release and adoption](concepts/release.md)

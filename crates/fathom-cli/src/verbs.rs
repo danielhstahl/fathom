@@ -1926,6 +1926,12 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
         } else {
             Worktree::Analyse
         },
+        // The complexity fill's three ceilings, and the node budget it counts under, read from the same
+        // file (`e8.4`): a run has to be able to say which budget it ran out of, and it cannot do that from
+        // a number it did not resolve.
+        extract: crate::verbs::extract_policy(root, |line: String| {
+            output::problem(format_args!("config: {line}"))
+        }),
         // The module graph (`e3.11`, `reco-dlp`): on unless this run or this repository said not to, and
         // reading its knobs out of the repository's own `fathom.toml` — the CLI is the crate ADR-002 §4.5
         // lets open that file, and everything downstream gets the text as a value.
@@ -2045,6 +2051,37 @@ pub(crate) fn index(args: &IndexArgs, globals: &Globals) -> eyre::Result<ExitCod
                 report.computed(),
                 report.elapsed.as_millis()
             ));
+        }
+        // The complexity fill's own two lines, whenever it answered a row (`e8.4`). The progress row above
+        // said `analysing … done` truthfully about the commits; these are what it could not say from there —
+        // how much content the pass read, what it refused, and which ceiling was responsible.
+        if report.complexity.rows > 0 {
+            // The ceilings travel with the line whether or not one of them was spent: the question a reader
+            // of a degraded run asks first is "what was it working under", and a number nobody can see the
+            // bound of is not yet a number they can judge.
+            say(format_args!(
+                "  {} · ceilings {}",
+                report.complexity.line(),
+                report.complexity.ceilings.as_text()
+            ));
+            if report.complexity.measured < report.complexity.rows {
+                let refused: Vec<String> = report
+                    .complexity
+                    .refused
+                    .iter()
+                    .map(|(code, rows)| format!("{code} {rows}"))
+                    .collect();
+                say(format_args!(
+                    "  complexity figures: {} row(s) measured, {} side(s) print `?` ({})",
+                    report.complexity.measured,
+                    report.complexity.refusals(),
+                    if refused.is_empty() {
+                        "no reason codes recorded".to_owned()
+                    } else {
+                        refused.join(", ")
+                    }
+                ));
+            }
         }
         // The intent tally, on the same line the run reports (`e4.2`). Every bucket is printed, including
         // the empty one and the "nothing recorded" one: the ticket's rule is that missing intent is a state,
@@ -2179,6 +2216,25 @@ pub(crate) fn graph_pass(
     fathom_analyze::index::GraphPass::on(text)
 }
 
+/// The `[extract]` limits for a run, read from the repository's own `fathom.toml` (`e8.4`).
+///
+/// The complexity fill obeys three ceilings — one per file and two per run — and a cloned repository gets a
+/// vote in all three, so the numbers are resolved here, the one crate ADR-002 §4.5 lets open the file, and
+/// handed downhill as a value. A file that does not parse is not fatal: every limit keeps its built-in
+/// default and the notice says so in the run's own output, because "your config was ignored" and "your
+/// config was missing" are different statements and only one of them is true.
+pub(crate) fn extract_policy(
+    root: &std::path::Path,
+    mut notice: impl FnMut(String),
+) -> fathom_analyze::structure::ExtractPolicy {
+    let text = std::fs::read_to_string(root.join("fathom.toml")).unwrap_or_default();
+    let (policy, notices) = fathom_analyze::structure::ExtractPolicy::from_repo_config_text(&text);
+    for line in notices {
+        notice(line);
+    }
+    policy
+}
+
 /// The module-graph lines of a run report: what it wrote, and the notices it brought back.
 ///
 /// Printed only when there is something to print. A run that wrote no graph rows because the store already
@@ -2303,6 +2359,11 @@ fn json_report(
         // statement as "asked, and the store already held every revision", and a CI consumer has to be able
         // to tell them apart before it can gate on either.
         "graph": report.graph.json(),
+        // The index-time complexity pass (`e8.4`): rows answered, refusals by §7.1 code, content read, and
+        // the ceiling that stopped it — `null` in `declined` when nothing stopped it. A consumer gating on
+        // "did this index measure complexity" has to be able to tell "nothing owed a figure" from "the
+        // budget ran out", and this is the only place the two differ.
+        "complexity_fill": report.complexity.to_json(),
         "commits": {
             "walked": report.commits_walked,
             "new": report.commits_new,
@@ -2452,6 +2513,30 @@ fn print_stats(store: &std::path::Path, report: &fathom_analyze::index::Report) 
             record.path,
             record.reason.as_str()
         ));
+    }
+    // The complexity fill's own line, printed whenever it did anything (`e8.4`). This is the sentence the
+    // progress row could not carry: the row said `analysing 100 % · done`, which was true of the commits and
+    // silent about the figures, and the note on the row named the ceiling while the counts live here.
+    if report.complexity.rows > 0 {
+        output::line(format_args!("  {}", report.complexity.line()));
+        if report.complexity.measured < report.complexity.rows {
+            let refused: Vec<String> = report
+                .complexity
+                .refused
+                .iter()
+                .map(|(code, rows)| format!("{code} {rows}"))
+                .collect();
+            output::line(format_args!(
+                "  complexity figures: {} measured, {} refused with `?` ({})",
+                report.complexity.measured,
+                report.complexity.refusals(),
+                if refused.is_empty() {
+                    "no reason codes recorded".to_owned()
+                } else {
+                    refused.join(", ")
+                }
+            ));
+        }
     }
     for (path, reason) in &report.worktree_skipped {
         output::line(format_args!("  not analysed {path}: {reason}"));

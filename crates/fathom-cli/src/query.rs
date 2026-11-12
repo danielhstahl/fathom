@@ -710,6 +710,11 @@ pub fn stats_text(snapshot: &Snapshot) -> Vec<String> {
         if let Some(line) = crate::state::complexity_coverage_line(index) {
             out.push(line);
         }
+        // What the complexity pass spent, and which ceiling stopped it (`e8.4`) — the other half of the
+        // fraction above, and the half that says whether it is the repository's size or a chosen budget.
+        if let Some(line) = crate::state::complexity_pass_line(index) {
+            out.push(line);
+        }
         if let Some(last) = index["last_run"].as_object() {
             out.push(format!(
                 "  last run  {} {} ({}), {} commit(s) added, {}",

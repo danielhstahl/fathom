@@ -166,6 +166,12 @@ impl IndexJob {
                 graph: crate::verbs::graph_pass(&self.root, false, |line| {
                     tracing::debug!(target: "fathom::watch", "{line}");
                 }),
+                // The same three complexity ceilings the CLI's own run resolves (`e8.4`), read again each
+                // tick for the same reason `[layers]` is: a `fathom.toml` edit should take effect on the next
+                // slice rather than after a restart.
+                extract: crate::verbs::extract_policy(&self.root, |line| {
+                    tracing::debug!(target: "fathom::watch", "{line}");
+                }),
                 ..index::Options::head()
             };
             let report = index::run(&repository, &mut store, &Unclassified, &options)
