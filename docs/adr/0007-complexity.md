@@ -24,8 +24,13 @@
   evict), §5.7 (the version-bump gate), §9.5 (migrations never migrate derived data), and a node-kind
   audit of the six pinned grammars run for this document (§11.1) whose method is in §11.1 and whose
   finding is that the shipped complexity proxy counts fourteen node kinds the pinned grammars never emit.
-- **Executed by**: nothing yet — this is the ADR written before its code, the way ADR-002 … ADR-006
-  were. The children named above are the execution; §14 lists the command each of them owes this page.
+- **Executed by**: all seven named children, and closed by `python3 tools/epic8_acceptance.py` (`e8`,
+  `reco-l9bz`) — the epic-level gate that runs this page's decisions end to end: a hand-authored
+  six-language corpus whose figures are literals in the gate, the store's six columns and their two
+  `CHECK`s, both ceilings spent for real, the roll-up re-added in a second implementation, the rail, card
+  and diff tree read off a pty, and `--self-test`, which doctors the store four ways and fails unless the
+  gate notices. §14 lists the command each child owes this page; the epic owes one more, and it is that
+  gate.
 
 > **The rule this ADR exists to make unavoidable.**
 > Complexity is a count of the decision points in a body a parser can read. Where the parser cannot read
@@ -1327,6 +1332,12 @@ error would be a sign flip a reviewer cannot see.
 * **Two shipped surfaces are now known to be mislabelled** (§10.3's hotspots axis and heat-basis sentence).
   They are named with owners rather than silently fixed by a child of this epic, because renaming a printed
   axis is a schema change on a surface this ticket does not own.
+* **A third mislabel was found by the close-out gate, and is named the same way.** `spine-2`'s complexity
+  component prints *“the worst single unit at head is V(G) N”*, but the `N` it prints is §5.1's episode
+  `max` — the largest *path* figure — so on a file with two functions the number is right and the noun is
+  not (the epic-8 gate reproduces it on a corpus file whose functions are V(G) 4 and 1, and prints 5).
+  The fix is one sentence in `risk::score`'s component detail and a blessed golden, which is a ticket,
+  not a close-out edit: §5.1's definition is not moving, and neither is a protected golden for a noun.
 
 ---
 
@@ -1351,6 +1362,24 @@ And this document's own two checks, run before it was committed:
 python3 tools/check_docs.py                       # plan keys, bead ids, ADR references, links
 python3 tools/check_docs_site.py                  # the page is reachable, its anchors resolve, it renders
 ```
+
+And one more, added when the epic closed rather than when this page was written, because it needs the
+seven children to exist before it can run anything:
+
+```bash
+python3 tools/epic8_acceptance.py                 # every row above, in one run, against the built binary
+python3 tools/epic8_acceptance.py --self-test     # and the proof that it can fail
+```
+
+`tools/epic8_acceptance.py` is this page read as a program. It authors its own corpus (six grammars,
+three refusals, four episode shapes), indexes it with the shipped binary, and asks the six questions this
+ADR answers in prose: does the figure come out of the parser at the hand-counted number (§3, §4), does it
+reach the store without a zero being invented (§7.4), does the delta document carry it rather than
+re-derive it (§5.2), do the rail, the card, the tree, `fathom why` and the export print *one* number
+(§5.3, §10), do both rankings use it (§6 of `e8.7`), and is every printed figure traceable to the basis
+that made it (§9.5). The `--self-test` row is the one that keeps the others honest: it doctors the store
+so that a zero stands in for an unknown, a reason code goes private, a basis is renamed and a figure
+moves, and the run is red unless each is caught.
 
 ---
 

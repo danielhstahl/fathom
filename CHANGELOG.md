@@ -16,6 +16,61 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Epic 8 closes, and its exit criteria became a program that can be told to lie to it (`reco-l9bz`, `e8`)
+
+Seven tickets made complexity a primitive: `e8.1` defined it, `e8.2` counted it in six grammars against a
+hand-authored corpus, `e8.3` gave it six columns and a roll-up that is a join, `e8.4` budgeted the reading
+of file contents and made a spent ceiling talk, `e8.5` wrote the figure into the delta model, `e8.6` put it
+on the rail, in the card and in the tree, and `e8.7` taught both rankings to use it and re-read G3
+afterwards. Every one of those has its own contract. What none of them had was the epic's own sentence —
+*measured, stored, carried, printed at a glance* — as something that runs, so the close is
+`tools/epic8_acceptance.py`: six clauses, 50 checks, ~9 s, and `tests/test_epic8_contract.py` pins it the
+way `e6` and `e7`'s gates are pinned. It is the third gate of that shape and it adds one rule to the
+pattern: **a gate that has never been seen to fail is a print statement**, so the gate ships
+`--self-test`, which doctors its own store four ways and is red unless each fault is caught.
+
+* **The corpus is authored in the open, and the figures are literals.** Six grammars, one hand-countable
+  file each, plus prose, a binary and a file whose syntax is broken, committed in four sittings six hours
+  apart so that a partial roll-up, an addition, a deletion and an uncountable path are four episodes
+  instead of one standing in for four. Twelve `(commit, path)` figures are written in the gate as numbers
+  it chose before it ran anything, and all twelve come out of one `fathom index` — which is also what makes
+  "all six shipped grammars" a measured sentence rather than a paraphrase of the `langs-all` feature. The
+  three refusals arrive from the files themselves (`binary`, `language_unknown`, `parse_failed`), so the
+  `?`-is-not-`0` rule is tested on bytes that cannot be read rather than on a row somebody marked up.
+* **The seams are the point, and the seam with no owner is the one that leaks.** One store, one episode,
+  the figure asked of seven readers: the store's rows re-added in Python, `fathom analyze --json`, `fathom
+  show --plain`, `fathom show --json`, `fathom why --json`, the JSON export, and the rail cell read off a
+  real pty after `t`. They agree on `+2` and every one of them names `mccabe-1`. The episode with nothing
+  to count prints `?` on all of them and carries no `delta` key at all. `spine-2`'s sixth component is
+  recomputed from `COMPLEXITY_CEILING = 20` and `features-2`'s thirteenth axis is checked against the
+  delta document rather than against itself, and the committed G3 report has to show
+  `complexity_axis.pass` writing every row it was owed — because an axis measured from parsed source is
+  silently absent in a build without the grammars, which is the one thing a byte-exact `--check` must not
+  be able to miss.
+* **The four things a doctor cannot see, the gate looks for.** A `CHECK` constraint is read out of the
+  table's own DDL, not assumed; **zero derived rows evicted** is measured by counting `cache`/`blob`/
+  `blob_ref` across a cold index and a warm one and requiring nothing went down (they moved +2/+4/+2 while
+  file rows with a figure went 8 → 9); both ceilings are spent for real — `max_file_bytes = 40` refuses
+  nine rows with `too_large`, `max_run_ms = 0` declines the pass and names its key, `doctor` prints the
+  remedy naming that key, and after the key is raised the next row for that path is counted again, which is
+  what makes a budget a fact about a run and not a fact about a file; and every change this epic made to a
+  **protected golden** has to name itself — by the commit message or by the primitive's own vocabulary —
+  which is a real constraint, since `e8.7` moved three card goldens without saying so and is legal only
+  because the lines it moved are `spine-1` → `spine-2`.
+* **The gate found one mislabel, and named it instead of fixing it.** `spine-2`'s complexity bullet prints
+  *"the worst single unit at head is V(G) 5"* from a figure that is ADR-007 §5.1's max over *path* figures:
+  one file, two functions, V(G) 4 + 1. The number follows the ADR and the noun does not. It is recorded in
+  the run as a `note` that disappears if the sentence is ever corrected, and written into
+  [ADR-007 §13](docs/adr/0007-complexity.md) beside the two older mislabels, because correcting it means
+  blessing a golden and an epic close does not get to do that quietly.
+* **What the gate refuses to pretend.** It does not re-score the corpus or re-fetch the Guardrail 3
+  repositories: `complexity_harness --check` and `g3_calibration --check` are CI's, and a second scorer in
+  Python is how a measurement goes quiet — so those two are `note`s naming what they own, not passes. It
+  claims nothing about whether the count predicts anything a reviewer cares about (§8.3's refusal still
+  stands; `e8.7`'s G3 moved up in two of four cuts and that argument lives on the calibration page). And
+  `--skip-tui` reports the rail/card/tree clause as **blocked**, never as passed: the clause the epic is
+  about cannot be earned by a run that skipped it.
+
 ### The ranking learned to count decision points, and the corpus had to be read again because of it (`reco-l9bz.7`)
 
 `e8.3` measured V(G) per function, `e8.4` filled the column, `e8.5` wrote the episode roll-up into the delta
