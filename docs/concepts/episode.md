@@ -81,7 +81,7 @@ hook events, committer-versus-author shape, and a learned correction. The label 
 It is an estimate that **nothing prints** since `e10.4` (`reco-ydek.4`): the word is off the rail's row, the
 episode card, the ambient glance, `fathom show`, `fathom episodes` and `fathom why`, and the `kind=` filter
 dimension is gone with it — everywhere it was printed with no confidence and no evidence attached to argue
-with it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md), [timeline §2](timeline.md#2-the-row-and-the-five-columns-it-is-made-of)).
+with it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md), [timeline §2](timeline.md#2-the-row-and-the-six-columns-it-is-made-of)).
 What is printed now is the *evidence*: the source, the confidence, and the reason a label was refused. The
 field itself, `episode.author_kind`, is unchanged in the store and unchanged in `fathom analyze --json`, where
 it ships as an `AttributionRef` carrying kind, confidence and evidence together — a machine consumer that can

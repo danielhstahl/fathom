@@ -33,7 +33,9 @@ use fathom_tui::views::ViewId;
 #[path = "timeline_corpus/mod.rs"]
 mod corpus;
 
-use corpus::{DAY, NOW, generated, mock, rebased, reworded, squashed, without};
+use corpus::{
+    Complexioned, DAY, NOW, generated, mock, rebased, reworded, squashed, with_complexity, without,
+};
 
 /// A timeline app at the ADR's documented size, over the ADR's own rows.
 fn fixture(size: (u16, u16)) -> App {
@@ -186,19 +188,25 @@ fn the_columns_drop_in_the_order_the_adr_fixes_and_the_glyph_survives_every_one(
         ));
     }
     assert!(
-        drops.contains("all five columns") && drops.contains("id and state only"),
+        drops.contains("all six columns") && drops.contains("id and state only"),
         "the ladder reaches both ends of itself: {drops}"
     );
     assert_eq!(
         Columns::for_width(42).name(),
-        "all five columns",
+        "all six columns",
         "the ADR's own rail is 42 wide and its own row must fit in it"
     );
     assert_eq!(
         Columns::for_width(34).name(),
-        "all five columns",
-        "the six cells the badge cost came off `Full`'s threshold, so a 34-wide rail keeps the \
-         sparkline it used to need 40 for"
+        "no complexity Δ",
+        "`e8.6` added a rung rather than widening an old one: a 34-column rail draws the five cells it \
+         always drew, because selling the sparkline would leave `+412 −90 +7` — a third line count, and \
+         the one reading ADR-007 §10.1 forbids"
+    );
+    assert_eq!(
+        Columns::for_width(30).name(),
+        "no sparkline",
+        "and the rung below it is still where §5.2 puts it"
     );
 }
 
@@ -1157,14 +1165,169 @@ fn every_e1_6_action_actually_does_something() {
 
 #[test]
 fn the_rail_reports_the_column_ladder_it_used() {
-    assert_eq!(Columns::for_width(44).name(), "all five columns");
+    assert_eq!(Columns::for_width(44).name(), "all six columns");
+    assert_eq!(
+        Columns::for_width(37).name(),
+        "all six columns",
+        "37 is `Full`'s content: the row the ADR draws, with the complexity delta in it"
+    );
     assert_eq!(
         Columns::for_width(34).name(),
-        "all five columns",
-        "34 is the new `Full`: the row is six cells narrower and the rung moved with it"
+        "no complexity Δ",
+        "a 34-wide rail keeps the five cells it always kept and sells the new column instead (`e8.6` \
+         added a rung; `e10.4` moved this one)"
     );
     assert_eq!(Columns::for_width(33).name(), "no sparkline");
     assert_eq!(Columns::for_width(20).name(), "id and state only");
+}
+
+/// The rail's complexity column (`e8.6`): what each of the three states prints, what it gives up when
+/// the row will not fit, and what the strip says when the column is not drawn.
+///
+/// Every assertion is on the text channel, which is the `NO_COLOR` test: ADR-007 §10.1 fixes the sign
+/// as a glyph rather than a hue precisely so that a monochrome terminal loses a colour and not a fact.
+#[test]
+fn the_complexity_column_prints_three_states_and_no_fourth() {
+    let row = |kind, width: usize| {
+        let mut rail = timeline::Rail::new(NOW);
+        rail.load(Batch::new("fixture", with_complexity(mock(), kind)));
+        rail.text(width, 1).first().cloned().unwrap_or_default()
+    };
+    // Measured: the signed delta, nothing else. `+6`, not `6`, not `+6 (5/5)`.
+    let measured = row(Complexioned::Measured, 42);
+    assert!(
+        measured.contains(" +6 "),
+        "a measured delta prints signed: {measured:?}"
+    );
+    assert!(
+        !measured.contains("(5/5)"),
+        "full coverage is not a coverage line: {measured:?}"
+    );
+    // Partial: a floor, with its denominator when the pane can pay for it (§5.4).
+    let floor = row(Complexioned::Floor, 46);
+    assert!(
+        floor.contains("~+6 (2/5)"),
+        "a floor says what it is a floor of: {floor:?}"
+    );
+    // …and at the documented width the tilde survives the coverage half, because a floor that lost its
+    // warning would be a plain `+6` wearing someone else's claim.
+    let tight = row(Complexioned::Floor, 42);
+    assert!(
+        tight.contains("~+6") && !tight.contains("(2/5)"),
+        "the half that goes is the parenthesised \
+         half: {tight:?}"
+    );
+    // Unmeasured: `?`, never `0`, never a blank. The row's risk number is on screen too (the fixture
+    // composes a ranking with its roll-up), which is what makes this `?` provably the complexity one.
+    let unknown = row(Complexioned::Unmeasured, 42);
+    assert!(
+        unknown.contains("62"),
+        "the ranking is on the row, so the `?` below is not it: {unknown:?}"
+    );
+    assert!(
+        unknown.contains(" ? "),
+        "zero coverage is not a zero delta: {unknown:?}"
+    );
+    assert!(
+        !unknown.contains(" 0 "),
+        "no zero is invented for an unknown: {unknown:?}"
+    );
+    // And a row whose document carries no block at all prints neither the `?` nor a zero: absence is a
+    // third thing, and it is the shape `e9.2` reserved the card's row for.
+    let mut plain = timeline::Rail::new(NOW);
+    plain.load(Batch::new("fixture", mock()));
+    let absent = plain.text(42, 1).first().cloned().unwrap_or_default();
+    assert!(
+        !absent.contains('~') && !absent.contains(" ("),
+        "no roll-up draws no complexity cell: {absent:?}"
+    );
+}
+
+#[test]
+fn complexity_is_the_first_cell_a_narrow_row_gives_up_and_the_strip_says_so() {
+    // ADR-007 §5.3: the delta may be dropped before the change-size cell, and a dropped column must not
+    // read as an unknown figure. The two halves of that are checked together, because the second one is
+    // only honest if the first one is true.
+    let mut rail = timeline::Rail::new(NOW);
+    rail.load(Batch::new(
+        "fixture",
+        with_complexity(mock(), Complexioned::Floor),
+    ));
+    // 42: `all six columns`, and the floor's parenthesised half is what a tight row loses first (§5.3:
+    // "the delta alone plus, when width allows, the coverage").
+    let wide = rail.text(42, 1).first().cloned().unwrap_or_default();
+    assert!(
+        wide.contains("~+6") && wide.contains("+412"),
+        "the delta is drawn where the rung can pay \
+         for it: {wide:?}"
+    );
+    // 34: the new rung. The delta goes and the sparkline stays, because without the sparkline's cell the
+    // figure would sit against `−90` and read as a third line count (ADR-007 §10.1).
+    rail = timeline::Rail::new(NOW);
+    rail.load(Batch::new(
+        "fixture",
+        with_complexity(mock(), Complexioned::Floor),
+    ));
+    let middle = rail.text(34, 1).first().cloned().unwrap_or_default();
+    assert!(
+        !middle.contains("~+6"),
+        "the Δ is what this rung gives up: {middle:?}"
+    );
+    assert!(
+        middle.contains('●') || middle.contains('○'),
+        "and the sparkline that separates the size \
+         cell is what it keeps: {middle:?}"
+    );
+    // 26: the rung that has no room for figures at all — the size and the glyph stay.
+    rail = timeline::Rail::new(NOW);
+    rail.load(Batch::new(
+        "fixture",
+        with_complexity(mock(), Complexioned::Floor),
+    ));
+    let narrow = rail.text(26, 1).first().cloned().unwrap_or_default();
+    assert!(
+        !narrow.contains("~+6"),
+        "the delta is the figure the narrow rail gives up: {narrow:?}"
+    );
+    assert!(
+        narrow.contains("+412") && narrow.contains('✓') || narrow.contains('⚑'),
+        "the size cell and the state glyph outlive it: {narrow:?}"
+    );
+    // …and the footer says the column is not drawn, so the missing cell is not read as `?`.
+    let strip = rail.strip();
+    assert!(
+        strip.contains("complexity Δ not drawn at this width"),
+        "a dropped column is named, not silently absent: {strip:?}"
+    );
+}
+
+#[test]
+fn a_row_too_wide_for_its_pane_loses_the_coverage_before_the_figure() {
+    // The overflow loop, not the ladder: a wide size cell and a floor together do not fit a wide rail,
+    // and what has to go is the parenthesised half, then the delta — never the glyph.
+    let mut rows = with_complexity(mock(), Complexioned::Floor);
+    rows[0].n_add = 1_204_004;
+    rows[0].n_del = 900_004;
+    let mut rail = timeline::Rail::new(NOW);
+    rail.load(Batch::new("fixture", rows));
+    let line = rail.text(42, 1).first().cloned().unwrap_or_default();
+    assert!(
+        !line.contains("(2/5)"),
+        "the coverage is the first cell out: {line:?}"
+    );
+    assert!(
+        !line.contains("~+6"),
+        "and then the delta goes, ahead of the risk number: {line:?}"
+    );
+    assert!(
+        line.contains("62") || line.contains('⚑'),
+        "the row keeps its state: {line:?}"
+    );
+    assert!(
+        rail.strip()
+            .contains("complexity Δ dropped to fit this row"),
+        "and the strip says which kind of absence this is"
+    );
 }
 
 #[test]

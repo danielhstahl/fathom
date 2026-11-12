@@ -337,6 +337,12 @@ pub struct PathComplexity {
     /// `head − base`, or `None` when the pair cannot be subtracted — one side uncounted, or the two sides
     /// counted under different bases ([`MIXED_BASIS`]).
     pub delta: Option<i64>,
+    /// `complexity_max` on the **latest** row: the largest single `V(G)` in the file at head (§5.1).
+    ///
+    /// Carried per path because the diff tree sorts on it next to the delta (§5.3): the delta says how much
+    /// this change added and the maximum says what the worst thing in the file now is. One is a fact about
+    /// the episode, the other a fact about the revision, and the tree pane is where both are proved.
+    pub max: Option<i64>,
     /// The basis tokens the two sides carry, `''` excluded. Two entries is a mixed pair.
     pub bases: BTreeSet<String>,
 }
@@ -686,7 +692,7 @@ impl Store {
                 .connection()
                 .prepare(&format!(
                     "SELECT episode_id, new_path, rn_first, rn_last, figure_before, before_reason, \
-                            figure_after, after_reason, basis \
+                            figure_after, after_reason, basis, figure_max \
                      FROM ( \
                        SELECT m.episode_id AS episode_id, f.new_path AS new_path, \
                               ROW_NUMBER() OVER (PARTITION BY m.episode_id, f.new_path \
@@ -697,6 +703,7 @@ impl Store {
                               f.complexity_before_reason AS before_reason, \
                               f.complexity_after AS figure_after, \
                               f.complexity_after_reason AS after_reason, \
+                              f.complexity_max AS figure_max, \
                               f.complexity_basis AS basis \
                        FROM episode_member m \
                             JOIN git_commit c ON c.oid = m.commit_oid \
@@ -717,11 +724,12 @@ impl Store {
                         Side::stored(row.get::<_, Option<i64>>(4)?, &row.get::<_, String>(5)?),
                         Side::stored(row.get::<_, Option<i64>>(6)?, &row.get::<_, String>(7)?),
                         row.get::<_, String>(8)?,
+                        row.get::<_, Option<i64>>(9)?,
                     ))
                 })
                 .map_err(|err| corrupt("reading episode complexity", &err))?;
             for row in rows {
-                let (episode, path, first, last, base, head, basis) =
+                let (episode, path, first, last, base, head, basis, head_max) =
                     row.map_err(|err| corrupt("reading episode complexity", &err))?;
                 let entry = seen
                     .entry(episode)
@@ -732,7 +740,7 @@ impl Store {
                     entry.0 = Some((base, basis.clone()));
                 }
                 if last == 1 {
-                    entry.1 = Some((head, basis));
+                    entry.1 = Some((head, basis, head_max));
                 }
             }
         }
@@ -831,11 +839,13 @@ impl Store {
 }
 
 /// One path's two sides as the episode read found them: `(base, head)`, each the side plus the basis token
-/// of the row it came from, each `None` when the episode holds no row on that end for this path.
+/// of the row it came from, each `None` when the episode holds no row on that end for this path. The head
+/// side also carries its row's `complexity_max`, because that is the only side a file's worst unit is
+/// worth reporting for (§5.1).
 ///
 /// Named because both halves of the roll-up carry it, and because four nested anonymous levels in a
 /// signature is not a thing a reviewer can hold in their head (clippy's `type_complexity` agrees).
-type Sides = (Option<(Side, String)>, Option<(Side, String)>);
+type Sides = (Option<(Side, String)>, Option<(Side, String, Option<i64>)>);
 
 /// Fold one episode's per-path first/last rows into its roll-up (ADR-007 §5.1, §5.2, §5.4).
 ///
@@ -857,7 +867,8 @@ fn roll_up(paths: BTreeMap<String, Sides>) -> EpisodeComplexity {
     let mut max: Option<i64> = None;
     for (path, (base_row, head_row)) in paths {
         let (base, base_basis) = base_row.unwrap_or((Side::NotMeasured, String::new()));
-        let (head, head_basis) = head_row.unwrap_or((Side::NotMeasured, String::new()));
+        let (head, head_basis, head_max) =
+            head_row.unwrap_or((Side::NotMeasured, String::new(), None));
         let mut pair: BTreeSet<String> = BTreeSet::new();
         for token in [&base_basis, &head_basis] {
             if !token.is_empty() {
@@ -901,6 +912,7 @@ fn roll_up(paths: BTreeMap<String, Sides>) -> EpisodeComplexity {
             base,
             head,
             delta,
+            max: head_max,
             bases: pair,
         });
     }

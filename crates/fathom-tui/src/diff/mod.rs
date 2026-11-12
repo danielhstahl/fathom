@@ -44,13 +44,19 @@ pub use handoff::{
 };
 pub use materialize::{FromCache, Key, Materializer, Warm};
 pub use model::{
-    FileEntry, FileKind, Hunk as HunkRecord, Layout, Row, SPLIT_MIN_COLS, Shape, Side, Sign, slot,
+    Annotation, FileComplexity, FileEntry, FileKind, Hunk as HunkRecord, Layout, Row,
+    SPLIT_MIN_COLS, Shape, Side, Sign, slot,
 };
 pub use scan::Scan;
 pub use source::{
     BytesSource, NoSource, PatchProvider, PatchReader, PatchSource, Provider, Unavailable,
 };
-pub use tree::{Group, Target as TreeTarget, Tree, TreeRow, TreeShape};
+pub use tree::{Group, Sort, Target as TreeTarget, Tree, TreeRow, TreeShape};
+
+/// What the tree's structure cache is keyed on: which load it was built from, whether noise was shown,
+/// and what the rows were sorted by — `e8.6` adds the third, because `<` is the one keystroke that makes
+/// the O(files) pass worth paying for a second time.
+type TreeCache = (u64, bool, Sort, Arc<TreeShape>);
 
 use std::cell::RefCell;
 use std::fmt;
@@ -82,9 +88,9 @@ pub struct DiffView {
     index: Option<Arc<Scan>>,
     /// Which load the index came from, so the tree cache can tell a re-scan from a repeat.
     scan_id: u64,
-    /// The tree's structure, cached per `(load, noise)`: the O(files) pass happens once, not once per
-    /// pane per frame (`e1.8`).
-    tree_cache: RefCell<Option<(u64, bool, Arc<TreeShape>)>>,
+    /// The tree's structure, cached per `(load, noise, sort)`: the O(files) pass happens once, not once
+    /// per pane per frame (`e1.8`), and `<` is the one keystroke that pays for it again (`e8.6`).
+    tree_cache: RefCell<Option<TreeCache>>,
     /// Why there is no index, in the source's own words.
     pub unavailable: Option<String>,
     /// Unified or split.
@@ -95,6 +101,9 @@ pub struct DiffView {
     pub word_diff: bool,
     /// Show the files the noise rule hides.
     pub show_noise: bool,
+    /// What the tree orders its rows by inside their groups (`e8.6`): path, or the complexity delta the
+    /// reviewer is hunting for.
+    pub sort: Sort,
     /// The file the pane is reading.
     pub file: Option<usize>,
     /// The hunk the pane was last showing, for `Y`'s "copy this hunk".
@@ -128,6 +137,7 @@ impl Default for DiffView {
             ignore_ws: false,
             word_diff: false,
             show_noise: false,
+            sort: Sort::default(),
             file: None,
             hunk: None,
             handoff: None,
@@ -150,6 +160,7 @@ impl fmt::Debug for DiffView {
             .field("ignore_ws", &self.ignore_ws)
             .field("word_diff", &self.word_diff)
             .field("show_noise", &self.show_noise)
+            .field("sort", &self.sort)
             .field("file", &self.file)
             .field("decode", &self.materializer.stats())
             .finish()
@@ -444,17 +455,20 @@ impl DiffView {
     pub fn tree_shape(&self) -> Arc<TreeShape> {
         let id = self.scan_id;
         let noise = self.show_noise;
-        if let Some((cached_id, cached_noise, shape)) = self.tree_cache.borrow().as_ref()
+        let sort = self.sort;
+        if let Some((cached_id, cached_noise, cached_sort, shape)) =
+            self.tree_cache.borrow().as_ref()
             && *cached_id == id
             && *cached_noise == noise
+            && *cached_sort == sort
         {
             return Arc::clone(shape);
         }
         let shape = Arc::new(match &self.index {
-            Some(scan) => TreeShape::build(scan, noise),
+            Some(scan) => TreeShape::build(scan, noise, sort),
             None => TreeShape::empty(),
         });
-        *self.tree_cache.borrow_mut() = Some((id, noise, Arc::clone(&shape)));
+        *self.tree_cache.borrow_mut() = Some((id, noise, sort, Arc::clone(&shape)));
         shape
     }
 
@@ -776,6 +790,22 @@ impl DiffView {
         }
     }
 
+    /// Cycle what the tree orders by, and say what it chose (`e8.6`).
+    ///
+    /// Two orders, not a cycle of five: the tree has exactly two questions worth ordering by — "what is
+    /// this file, in the reader's order" and "what made the code harder" — and a third would be an axis
+    /// nobody hunts with. The complexity order is §5.3's: the delta first, the worst single unit second.
+    #[must_use]
+    pub fn cycle_sort(&mut self) -> String {
+        self.sort = self.sort.next();
+        match self.sort {
+            Sort::Path => "tree sorted by path — `<` sorts it by complexity Δ".to_owned(),
+            Sort::Complexity => {
+                "tree sorted by complexity Δ, worst unit next — `<` sorts it by path".to_owned()
+            }
+        }
+    }
+
     /// The tree pane's footer strip: what a keystroke would act on, and how the pane is shaped.
     #[must_use]
     pub fn tree_strip(&self, selection: usize) -> String {
@@ -794,7 +824,8 @@ impl DiffView {
                 |entry| entry.path.clone(),
             );
         format!(
-            "{path} · {} · {} · {}",
+            "{path} · sort: {} · {} · {} · {}",
+            tree.sort().name(),
             self.layout.name(),
             if self.word_diff { "word-diff" } else { "plain" },
             if self.ignore_ws {

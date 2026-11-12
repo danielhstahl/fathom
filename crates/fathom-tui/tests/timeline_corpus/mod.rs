@@ -21,11 +21,12 @@
 #![allow(dead_code)] // each test binary uses part of it
 
 use fathom_analyze::insight::{
-    self, EpisodeDelta, EpisodeRef, FileDelta, Input, Provenance, RiskComponent, RiskView,
-    Supplied, SuppliedBlock,
+    self, ComplexityView, EpisodeDelta, EpisodeRef, FileDelta, Input, Provenance, RiskComponent,
+    RiskView, Supplied, SuppliedBlock,
 };
 use fathom_core::time::Timestamp;
 use fathom_tui::timeline::{AuthorKind, Episode, ReviewState};
+use std::collections::BTreeMap;
 
 /// The instant every timeline fixture is drawn for: Tue 14 Oct 2025, 12:00 UTC. Fixed, not `now`.
 pub const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
@@ -481,7 +482,90 @@ pub fn with_delta(mut rows: Vec<Episode>) -> Vec<Episode> {
 /// ranking with its ceiling, and the intent the harness recorded.
 #[must_use]
 pub fn delta_for(episode: &Episode) -> EpisodeDelta {
+    compose_delta(episode, None)
+}
+
+/// The complexity roll-up the fixture lends a document (`e8.6`).
+///
+/// Built here rather than in each test because the three shapes the rail, the card and the goldens have
+/// to draw are exactly three: a figure with every path counted, a floor with some paths missing, and a
+/// roll-up that counted nothing. The numbers are the ADR's own example figures, so a golden that prints
+/// `+6 (2 of 5)` is checkable against [ADR-007 §5.4](../../../../docs/adr/0007-complexity.md).
+#[must_use]
+pub fn complexity(kind: Complexioned) -> ComplexityView {
+    let (touched, measured, delta, reasons) = match kind {
+        Complexioned::Measured => (5_i64, 5_i64, Some(6_i64), BTreeMap::new()),
+        Complexioned::Floor => (
+            5,
+            2,
+            Some(6),
+            [("language_unknown".to_owned(), 3_i64)]
+                .into_iter()
+                .collect(),
+        ),
+        Complexioned::Unmeasured => (
+            5,
+            0,
+            None,
+            [("column_not_filled".to_owned(), 5_i64)]
+                .into_iter()
+                .collect(),
+        ),
+    };
+    ComplexityView {
+        basis: vec!["mccabe-1".to_owned()],
+        delta,
+        absolute: delta.map(|d| 41 + d),
+        max: delta.map(|_| 9),
+        touched,
+        measured_paths: measured,
+        unmeasurable_paths: touched - measured,
+        reasons,
+        measured: measured > 0,
+        state: if measured == 0 {
+            "unavailable".to_owned()
+        } else if measured < touched {
+            "partial".to_owned()
+        } else {
+            "measured".to_owned()
+        },
+        // `compose` settles the state, the coverage and the gap from the counts (`e8.5`), so the fixture
+        // leaves all three for the composition to write — a fixture that invented its own coverage would
+        // be a second answer, and the one it would disagree with is the one the card prints.
+        coverage: None,
+        gap: None,
+    }
+}
+
+/// Which of the three shapes [`complexity`] builds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Complexioned {
+    /// Every path in scope was counted.
+    Measured,
+    /// Some were: the figure is a floor and says its own denominator.
+    Floor,
+    /// None were: `?`, with its reason and its owner.
+    Unmeasured,
+}
+
+/// Attach a complexity figure to the first row, composed into the document the way the shipped bridge
+/// composes it — so the rail's cell and the card's row are the same figure and not two fixtures that
+/// happen to agree (`e8.6`, ADR-001 §7.10).
+#[must_use]
+pub fn with_complexity(mut rows: Vec<Episode>, kind: Complexioned) -> Vec<Episode> {
+    let Some(episode) = rows.first_mut() else {
+        return rows;
+    };
+    let delta = compose_delta(episode, Some(complexity(kind)));
+    episode.delta = Some(delta);
+    rows
+}
+
+/// Compose the document for one row, optionally with the complexity roll-up `e8.5` carries beside the
+/// line counts.
+fn compose_delta(episode: &Episode, complexity: Option<ComplexityView>) -> EpisodeDelta {
     let mut input = Input::new(EpisodeRef::sparse(&episode.id, &episode.summary));
+    input.complexity = complexity;
     input.episode.n_commits = i64::try_from(episode.n_commits()).unwrap_or(1);
     input.episode.author_kind = episode.author.as_str().to_owned();
     input.episode.author_name = episode.author_name.clone();

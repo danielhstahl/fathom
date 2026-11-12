@@ -4,10 +4,10 @@
 # the cell out, spent its six cells on the three upper thresholds, and left the floor where
 # §3 puts it.
 
- 42 all five columns |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑        |
- 40 all five columns |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑      |
- 38 all five columns |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑    |
- 34 all five columns |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑|
+ 42 all six columns  |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑        |
+ 40 all six columns  |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑      |
+ 38 all six columns  |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑    |
+ 34 no complexity Δ  |▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑|
  33 no sparkline     |▸ e8f1a2 0:12 +412 −90 82 ⚑      |
  30 no sparkline     |▸ e8f1a2 0:12 +412 −90 82 ⚑   |
  28 no sparkline     |▸ e8f1a2 0:12 +412 −90 82 ⚑ |

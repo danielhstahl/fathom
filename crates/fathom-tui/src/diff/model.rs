@@ -225,6 +225,12 @@ pub struct Annotation {
     pub dirty: Option<bool>,
     /// Evidence ids attached to this file (`ev-1 epoch.rs:1-10`).
     pub evidence: Vec<String>,
+    /// What this file did to its own complexity (`e8.6`, ADR-007 §5.1 at file grain).
+    ///
+    /// A whole struct rather than two more `Option`s on [`Annotation`] because the fields are one
+    /// claim — a figure, the code that replaces it, and the worst unit behind either — and the tree pane
+    /// sorts on all three together.
+    pub complexity: FileComplexity,
 }
 
 impl Annotation {
@@ -250,6 +256,65 @@ impl Annotation {
             && self.read.is_none()
             && self.dirty.is_none()
             && self.evidence.is_empty()
+            && self.complexity.is_empty()
+    }
+}
+
+/// One file's complexity, as the patch carried it (`e8.6`).
+///
+/// The states are ADR-007 §5.1's, at file grain: a figure, or no figure and the §7.1 code that says
+/// why, or nothing at all because the patch said nothing (a hand-written `.diff`, an older
+/// materialisation). The first two print a cell in the tree; the third prints no cell, because a `?` is
+/// a claim about the file and silence is a claim about the patch.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileComplexity {
+    /// `head − base`, when both sides were counted under one basis.
+    pub delta: Option<i64>,
+    /// The ADR-007 §7.1 code naming why there is no delta — `binary`, `too_large`, `parse_failed`,
+    /// `column_not_filled`, … — which is the reason a `?` never travels alone.
+    pub reason: Option<String>,
+    /// The largest single `V(G)` on the head side: the tree's secondary sort (§5.3), and the answer to
+    /// "what is the worst thing in here" that a sum cannot give.
+    pub max: Option<i64>,
+}
+
+impl FileComplexity {
+    /// Did the patch say nothing at all?
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.delta.is_none() && self.reason.is_none() && self.max.is_none()
+    }
+
+    /// The tree's cell: ADR-007 §10.1's `+7` / `−3` / `±0`, or `?`.
+    ///
+    /// The signed spelling is `fathom-analyze`'s own, so a rail row, a card row and a tree row print one
+    /// sign for one figure (ADR-002 §5.3, lint `M02`) — and it is a glyph, not a hue, which is what has
+    /// to survive `NO_COLOR` (ADR-006 §10.2).
+    #[must_use]
+    pub fn printed(&self) -> Option<String> {
+        self.delta
+            .map(fathom_analyze::insight::complexity_signed)
+            // A `?` that travels alone is the shape §7.4 refuses to let the store represent, and the tree
+            // has the room to honour that: the code the patch carried comes with the glyph, in the same
+            // cell. A patch that carried no code prints no cell at all — nothing was said about the file.
+            .or_else(|| self.reason.as_deref().map(|reason| format!("? {reason}")))
+    }
+
+    /// §5.3's sort order: biggest delta first, the file with the worst single unit second, and the files
+    /// nobody could count last of all rather than shuffled in among the ones that measured nothing.
+    ///
+    /// `Reverse` on the two figures because a *smaller* key must mean a *hotter* file: the tree sorts
+    /// with one `sort_by_key` and no comparator that can disagree with itself.
+    #[must_use]
+    pub fn sort_key(&self) -> (u8, std::cmp::Reverse<i64>, std::cmp::Reverse<i64>) {
+        match self.delta {
+            Some(delta) => (
+                0,
+                std::cmp::Reverse(delta),
+                std::cmp::Reverse(self.max.unwrap_or(i64::MIN)),
+            ),
+            None => (1, std::cmp::Reverse(0), std::cmp::Reverse(0)),
+        }
     }
 }
 

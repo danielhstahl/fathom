@@ -448,16 +448,56 @@ fn push_noise(rows: &mut Vec<Row>, delta: Option<&EpisodeDelta>) {
     }
 }
 
-/// The complexity row: drawn from the document's `what`-section figure — the one `e8.5` (`reco-l9bz.5`)
-/// writes, from `fathom-store`'s roll-up — and from nothing else.
+/// The complexity row: drawn from the document's `what`-section figure — the one `e8.5`
+/// (`reco-l9bz.5`) writes, from `fathom-store`'s roll-up — and from nothing else.
+///
+/// ADR-007 §5.3 names the three things this row carries and the order it carries them in: **delta**
+/// first, **absolute at head** second, **coverage** third, and the unknowns with their reason codes.
+/// The figure's `value` is the delta (and, for a floor, the floor's own sentence); the other two come
+/// out of the same figure's `raw` members, which `EpisodeDelta::verify()` already proves agree with
+/// the block beside them — so the row is one figure read three ways, not three sources that can drift
+/// (ADR-001 §7.10).
+///
+/// Coverage is on the card *always*, including at 100 %: §5.4's rule is that a reader has to be able to
+/// see the reliability of a number where the number is explained, and `5 of 5 files measured` is a
+/// different claim from a silent one — it is the difference between "everything was counted" and "we
+/// did not say". A floor states its own coverage inside the figure's value, which is why the clause
+/// below is only added when there was nothing to warn about.
 fn push_complexity(rows: &mut Vec<Row>, delta: Option<&EpisodeDelta>) {
     let Some(figure) = delta.and_then(|delta| figure(delta, SectionId::What, COMPLEXITY_FIGURE))
     else {
         return;
     };
     let (value, face) = if figure.known {
-        (figure_value(figure), Face::Text)
+        // The card's own thousands grouping, on the store's i64s: a negative figure is not a thing this
+        // column can hold (ADR-007 §5.1 sums `V(G)`s, each at least 1), so the clamp is a width guard
+        // and not a claim about sign.
+        let count = |value: i64| thousands(u64::try_from(value).unwrap_or(u64::MAX));
+        let mut value = figure.value.clone();
+        if let Some(absolute) = figure.raw.get("absolute") {
+            value.push_str(&format!(" · {} at head", count(*absolute)));
+        }
+        let measured = figure.raw.get("coverage_measured").copied().unwrap_or(0);
+        let touched = figure.raw.get("coverage_total").copied().unwrap_or(0);
+        let unmeasured = figure.raw.get("unmeasurable").copied().unwrap_or(0);
+        // A floor already carries its own denominator: `complexity_headline` is the one string every
+        // surface prints for a measured figure, and §5.3 makes it spell "2 of 5 measured · 3 unmeasured:
+        // …" beside the tilde. Adding a second denominator would be the same claim twice, in two widths,
+        // from one figure (ADR-001 §7.10). So what is added here is the coverage of a count that needed
+        // no warning — and even that is worth the cells.
+        if touched > 0 && unmeasured == 0 {
+            value.push_str(&format!(
+                " · {} of {} file{} measured",
+                count(measured),
+                count(touched),
+                if touched == 1 { "" } else { "s" }
+            ));
+        }
+        (value, Face::Text)
     } else {
+        // `?` and its reason arrive together, always. ADR-006 §10.3: a shrug is not a remedy, and a
+        // blank is not an unknown — the reason sentence names the codes, the dominant one in words, and
+        // the command that would fill the column.
         (
             format!(
                 "? — {}",

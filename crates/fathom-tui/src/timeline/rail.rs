@@ -158,6 +158,13 @@ pub struct Rail {
     rows_built: Cell<usize>,
     /// Characters the last frame built, for the bench.
     chars_built: Cell<usize>,
+    /// Why the complexity column was not drawn in the last frame, if it was not (`e8.6`).
+    ///
+    /// ADR-007 §5.3's second sentence: a dropped column must not be confusable with an unknown figure,
+    /// so the strip says the column is not drawn rather than letting a missing cell read as `?`. Set
+    /// while the rows are drawn — the frame paints bodies before footers, so the note is always the
+    /// current frame's — and read by [`Rail::strip`].
+    complexity_absent: Cell<Option<&'static str>>,
     /// Collapsed groups.
     collapsed: BTreeSet<GroupKey>,
     /// Episodes this reviewer opened — in this session, or in one it resumed (`e1.11`).
@@ -216,6 +223,7 @@ impl Default for Rail {
             visible: Cell::new(1),
             rows_built: Cell::new(0),
             chars_built: Cell::new(0),
+            complexity_absent: Cell::new(None),
             collapsed: BTreeSet::new(),
             seen: BTreeSet::new(),
             anchor: None,
@@ -940,6 +948,13 @@ impl Rail {
                 format_thousands(u64::try_from(opened).unwrap_or(u64::MAX))
             ));
         }
+        // Said only when it is true, and said last: every part of this line is sold from the right, so a
+        // clause about what a *narrow* pane could not draw belongs at the end of a line a narrow pane is
+        // going to clip anyway. ADR-007 §5.3 makes it mandatory — a column the ladder dropped and a
+        // figure that could not be read are two claims, and silence is not allowed to spell either one.
+        if let Some(why) = self.complexity_absent.get() {
+            out.push_str(&format!(" · {why}"));
+        }
         out
     }
 
@@ -958,6 +973,8 @@ impl Rail {
             // to do — `fathom index`, or `F` to widen the filter — and it fills the pane with that
             // rather than with rows nobody can read.
             let out = render::empty_lines(&self.empty_words(), width, visible);
+            // No rows, so no column was dropped: the emptiness is already stated, twice over.
+            self.complexity_absent.set(None);
             self.rows_built.set(out.len());
             self.chars_built
                 .set(out.iter().map(StyledLine::cells).sum());
@@ -965,6 +982,14 @@ impl Rail {
         }
         let mut out: Vec<StyledLine> = Vec::with_capacity(visible);
         let mut chars = 0_usize;
+        // Whether the complexity column went out of a row that was drawn too wide for the pane. The
+        // rung rule is decided before any row is built; this is the other way the column can be absent,
+        // and both belong in the footer for the same reason (§5.3).
+        let mut surrendered = false;
+        // Whether there was anything to draw at all. A read that produced no complexity block says
+        // nothing about complexity, and the rail must not say something (`e8.3`: absence is not `?`) —
+        // so the footer stays quiet instead of announcing a column nobody claimed.
+        let mut offered = false;
         for row in 0..visible {
             let index = offset + row;
             let Some(slot) = self.slots.get(index) else {
@@ -975,18 +1000,32 @@ impl Rail {
             let line = match slot {
                 Slot::Group { label, .. } => render::group_line(label, cursor),
                 Slot::Hidden { count } => render::hidden_line(*count, cursor),
-                Slot::Episode { index } => render::episode_line(
-                    &self.episodes[*index],
-                    self.now,
-                    self.scale,
-                    columns,
-                    cursor,
-                    width,
-                ),
+                Slot::Episode { index } => {
+                    let row = render::episode_line(
+                        &self.episodes[*index],
+                        self.now,
+                        self.scale,
+                        columns,
+                        cursor,
+                        width,
+                    );
+                    surrendered |= row.dropped_complexity;
+                    offered |= self.episodes[*index].complexity().is_some();
+                    row.line
+                }
             };
             chars += line.cells();
             out.push(line.padded(width));
         }
+        self.complexity_absent.set(if !offered {
+            None
+        } else if !columns.carries_complexity() {
+            Some("complexity Δ not drawn at this width")
+        } else if surrendered {
+            Some("complexity Δ dropped to fit this row")
+        } else {
+            None
+        });
         self.rows_built.set(out.len());
         self.chars_built.set(chars);
         out

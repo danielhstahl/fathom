@@ -16,6 +16,53 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Complexity became a column you can glance at, a row that says its coverage, and a tree you can sort by it (`reco-l9bz.6`)
+
+`e8.3` built the columns and `e8.4` filled them; `e8.5` carried the figure into the delta model. The review
+question — *did this episode make the code harder to follow?* — still needed a reviewer to open something to
+answer it. [ADR-007 §5.3](docs/adr/0007-complexity.md) says the episode delta belongs on the rail "as a
+signed delta (`+7`, `−3`, `±0`)" and [ADR-006 §5.2](docs/adr/0006-tui.md) owns the row that has to carry it,
+including the order the row surrenders in when the pane is narrow. This is the glance.
+
+* **The rail grew a sixth column, and a new rung to hold it.** `state · sha · age · size · sparkline · Δ ·
+  risk · state-marker`, printing `+6`, or `~+6 (2/5)` for a floor, or `?` where the analyzer could not count
+  the file — glyphs and digits, never a hue, so a `NO_COLOR` terminal loses a colour and not a fact
+  (§10.1). The surrender priority is `7`, above the risk number (`6`) and the change size (`5`), and the
+  justification is that this is the only figure on the row whose proof is a keystroke away and getting
+closer: `d` now prints it per file and can sort by it. §5.3 fixes the bottom of that choice itself ("the
+  figure is allowed to be dropped before the change-size cell"), because `+412 −90` is what every other
+  surface states a change's size in.
+* **It is a new rung, not a wider one.** Full stays at 34 columns' worth of the old five cells and the Δ gets
+  37; between them the rail reads `no complexity Δ` and draws exactly what it drew before. Below the
+  sparkline rung the Δ is never drawn at all, because `+412 −90 +6` is a third line count with a plus on it
+  — the exact misreading §10.1 allows this column only when it sits *apart* from the size columns. And a row
+  that lost the cell says so in the strip (`complexity Δ dropped to fit this row`), because a column that
+  vanished silently is a column a reviewer reads as a `?`, which is a different claim (`e8.3`).
+* **The card's reserved row states its coverage, and `?` never travels alone.** Delta first, absolute at
+  head second, coverage third — read out of the one figure `e8.5` writes, so the card cannot recount and
+  disagree with itself. A floor's denominator arrives inside the figure's own string, so the card adds one
+  only where there was nothing to warn about; an episode with nothing counted prints `?` with its reason and
+  the verb that would fill the column, never `±0`.
+* **`d` is where the number is proved, per file.** `X-Fathom-Complexity: +7` / `? generated` and
+  `X-Fathom-Complexity-Max:` travel in the patch from the roll-up `e8.4`'s pass already wrote (the
+  episode scope reads `Store::episode_complexity`, a bare `d <oid>` reads `commit_complexity`), the tree
+  prints them beside each file's `+adds −dels`, and the counts row carries the legend — `complexity +6 (1?)
+· worst 14` — so the column stays bare numbers on the rows without becoming a guess. `<` cycles the sort:
+  path, or complexity Δ with the worst single unit behind it, uncountable files last (§5.3), always inside
+  the taxonomy groups and never dissolving them.
+* **`tests/tables/mod.rs` is regenerated, not edited**, for the one new action (`diff.sort_cycle`, `<` in
+  the diff mode) and the rail's new read of `delta.complexity.*`; ADR-006 §5.2's column set, §7.3 and §7.4
+  and the generated layout frames were re-derived from the same tables.
+
+Asserted by `crates/fathom-tui/tests/timeline_behaviour.rs` (the three states, the surrender order, the
+strip's two different sentences, coverage-before-figure), `tests/diff_behaviour.rs` (per-file cells, the
+`?` that names its reason, the sort and its cycle, group order surviving a re-sort, and a patch with no
+headers drawing no column), `tests/episode_card.rs` (the denominator stated once), and the goldens —
+`timeline/ladder.txt` (four rung *names* changed: three to `all six columns`, 34 to `no complexity Δ`; every
+row byte-identical, because that corpus has no complexity figures to draw), `diff/frame_mixed.txt` (the tree
+strip gained `sort: path` after the path), and one new golden, `timeline/rail_complexity.txt`. Docs:
+[the timeline](docs/concepts/timeline.md) §2 and §3, [ADR-006 §5.2](docs/adr/0006-tui.md).
+
 ### Complexity arrives inside the delta, beside the line counts it qualifies, so no surface has to derive its own (`reco-l9bz.5`)
 
 `e8.3` built the columns, `e8.4` filled them, and the review question — *did this episode make the code harder

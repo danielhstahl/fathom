@@ -320,6 +320,14 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
+        id: "diff.sort_cycle",
+        label: "Diff: sort the file tree by path / complexity delta",
+        scope: "view",
+        ticket: "e8.6",
+        modes: &[Mode::Diff],
+        palette: true,
+    },
+    Action {
         id: "diff.open_editor",
         label: "Diff: open file at line in $EDITOR",
         scope: "view",
@@ -1442,6 +1450,7 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Diff, "\\", "diff.split_toggle");
     bind(Mode::Diff, "]", "diff.hunk_next");
     bind(Mode::Diff, "b", "diff.noise_toggle");
+    bind(Mode::Diff, "<", "diff.sort_cycle");
     bind(Mode::Diff, "y", "diff.copy_path");
     bind(Mode::Global, "x", "review.accept");
     bind(Mode::Global, "z", "review.snooze");

@@ -331,6 +331,21 @@ impl Episode {
         self.delta.as_ref().and_then(|delta| delta.risk.as_ref())
     }
 
+    /// What this episode did to the complexity of the files it touched, or `None` when its document
+    /// carries no answer at all.
+    ///
+    /// The rail's complexity column (`e8.6`, ADR-007 §5.3) and nothing else, and it reads the same
+    /// document the card reads for the same reason [`Episode::risk`] does: two surfaces with two
+    /// readings of one figure is the ADR-001 §7.10 fork this model exists to close. `None` is not `?` —
+    /// "the read made no roll-up" prints no cell on the rail and no row on the card, while a roll-up
+    /// that counted nothing prints `?` with its reasons (ADR-007 §7.4's fourth row).
+    #[must_use]
+    pub fn complexity(&self) -> Option<&fathom_analyze::insight::ComplexityView> {
+        self.delta
+            .as_ref()
+            .and_then(|delta| delta.complexity.as_ref())
+    }
+
     /// The minimum an episode has to have to be a row: an identity, a date and a subject.
     #[must_use]
     pub fn new(id: impl Into<String>, created: Timestamp, summary: impl Into<String>) -> Self {

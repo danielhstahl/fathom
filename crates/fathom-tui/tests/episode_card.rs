@@ -735,8 +735,30 @@ fn the_complexity_row_lands_in_the_code_delta_band() {
     );
     let row = rows_labelled(&lines, "complexity")[0];
     assert!(
-        row.contains("+7 (4/5 files measured)"),
-        "the figure's own bytes, coverage and all (ADR-007 §5.4):\n{row}"
+        row.contains("~+7 (4 of 5 measured"),
+        "the figure's own bytes, floor and denominator included (ADR-007 §5.4):\n{row}"
+    );
+    assert_eq!(
+        row.matches("measured").count(),
+        1,
+        "the denominator is stated once — the card reads the one figure, it does not recount it \
+         (ADR-001 §7.10):\n{row}"
+    );
+    // …and at a width the tail survives at, §5.3's second figure is on the same row as the word that
+    // makes it a complexity figure rather than a count (§10.1's rule about a bare number).
+    let wide_rows = plant_with_complexity();
+    let wide_lines: Vec<String> =
+        timeline::card_lines(wide_rows.first(), NOW, "fixture index", 96, 40, BRIEF)
+            .iter()
+            .map(|line| line.text().trim_end().to_owned())
+            .collect();
+    let wide_row = rows_labelled(&wide_lines, "complexity")
+        .first()
+        .unwrap_or_else(|| panic!("a wide card has the row a narrow one has"))
+        .to_owned();
+    assert!(
+        wide_row.contains("~+7") && wide_row.contains("48 at head"),
+        "delta, then the absolute it was taken against, on the row that names the word:\n{wide_row}"
     );
 }
 
@@ -776,15 +798,32 @@ fn an_unmeasured_complexity_figure_prints_as_unknown() {
 
 /// Add a `complexity` figure to the `what` section, the way `e8.6` will: through the document, with its
 /// evidence pointer attached, at the unchanged document version.
+fn plant_with_complexity() -> Vec<Episode> {
+    let mut rows = with_delta(mock());
+    plant_complexity(&mut rows);
+    rows
+}
+
 fn plant_complexity(rows: &mut [Episode]) {
     let episode = rows.first_mut().unwrap();
     let delta = episode.delta.as_mut().unwrap();
     let mut document = serde_json::to_value(&*delta).unwrap();
     figures_of(&mut document, SectionId::What).push(serde_json::json!({
         "label": "complexity",
-        "value": "+7 (4/5 files measured)",
+        // The shape `complexity_headline` actually prints for a floor (`e8.5`): the tilde, the delta, and
+        // the denominator inside the value. A plant that left the denominator out of the value while
+        // still counting an unmeasurable path would be a figure no producer writes.
+        "value": "~+7 (4 of 5 measured · 1 unmeasured: language_unknown)",
         "known": true,
-        "raw": {"delta": 7, "coverage_measured": 4, "coverage_total": 5},
+        "raw": {
+            "delta": 7,
+            "measured": 4,
+            "unmeasurable": 1,
+            "coverage_measured": 4,
+            "coverage_total": 5,
+            "absolute": 48,
+            "max": 9
+        },
         "evidence": {"pointer": "#/files"}
     }));
     *delta = serde_json::from_value(document).unwrap();

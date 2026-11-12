@@ -201,6 +201,7 @@ mode has to be live (§4).
 | **View-local** | `[` | Diff: previous hunk | `diff` |
 | **View-local** | `b` | Diff: show suppressed noise (the rule is printed) | `diff` |
 | **View-local** | `E` | Diff: open file at line in $EDITOR | `diff` |
+| **View-local** | `<` | Diff: sort the file tree by path / complexity delta | `diff` |
 | **View-local** | `\` | Diff: split / unified | `diff` |
 | **View-local** | `W` | Diff: word-diff on / off | `diff` |
 | **View-local** | `=` | Diff: ignore whitespace | `diff` |
@@ -321,6 +322,7 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `body` | `l` | `drill.in` | Drill in (follow selection / evidence) |
 | `queue` | — | — | inherits the shared motion set: no view-local bindings |
 | `timeline` | — | — | inherits the shared motion set: no view-local bindings |
+| `diff` | `<` | `diff.sort_cycle` | Diff: sort the file tree by path / complexity delta |
 | `diff` | `=` | `diff.ws_toggle` | Diff: ignore whitespace |
 | `diff` | `E` | `diff.open_editor` | Diff: open file at line in $EDITOR |
 | `diff` | `W` | `diff.word_toggle` | Diff: word-diff on / off |
@@ -420,6 +422,7 @@ makes "unbound" different from "unreachable".
 | `diff.hunk_prev` | Diff: previous hunk | view | `[` | yes | `diff` | `e1.7` |
 | `diff.noise_toggle` | Diff: show suppressed noise (the rule is printed) | view | `b` | yes | `diff` | `e2.2` |
 | `diff.open_editor` | Diff: open file at line in $EDITOR | view | `E` | yes | `diff` | `e5.8` |
+| `diff.sort_cycle` | Diff: sort the file tree by path / complexity delta | view | `<` | yes | `diff` | `e8.6` |
 | `diff.split_toggle` | Diff: split / unified | view | `\` | yes | `diff` | `e1.7` |
 | `diff.word_toggle` | Diff: word-diff on / off | view | `W` | yes | `diff` | `e1.7` |
 | `diff.ws_toggle` | Diff: ignore whitespace | view | `=` | yes | `diff` | `e1.7` |

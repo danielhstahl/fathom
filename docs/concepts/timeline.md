@@ -86,10 +86,10 @@ boundary rule and confidence, an optional risk, and whether the episode is still
 `structure` field, no `findings`, no `risk_score` — the card cites the delta fields `e2.11` publishes, and
 where the run handed it no document it prints the verb that would fill the row (§8).
 
-## 2 The row, and the five columns it is made of
+## 2 The row, and the six columns it is made of
 
 ```
-▸ e8f1a2 0:12  +412 −90 ●●●●●● ? ⚑
+▸ e8f1a2 0:12  +412 −90 ●●●●●● +7 82 ⚑
 ```
 
 | Column | Source | What it cannot say |
@@ -98,8 +98,17 @@ where the run handed it no document it prints the verb that would fill the row (
 | `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser; `<1m` below a minute, `ahead` for a row the frame has not reached |
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
+| `+7` / `~+7 (4/5)` / `?` | `delta.complexity` — `EpisodeDelta::complexity`, the roll-up `e8.5` put in the document and `fathom-store` computed at the path grain | a line count: it is a **delta**, signed for exactly that reason, and the sparkline cell between it and `−90` is what keeps ADR-007 §10.1's warning from being true of this row. A floor prints its tilde and its denominator; nothing counted prints `?`, never a `0` |
 | `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
+
+The complexity column is `e8.6` (**reco-l9bz.6**), and it is the sixth in the sense that ADR-006 §5.2 counts
+them, not in the sense that it is the newest thing on the row: the `?` in the risk column and the `?` in
+the complexity column are different unknowns about different things, which is why neither one is allowed
+to be the other. A rail whose episodes carry no complexity block prints no cell at all — "this read never
+looked" is not the same claim as "this file could not be counted", and the second one is what `?` means
+([ADR-007 §7.4](../adr/0007-complexity.md)). When the column is not drawn because the pane is narrow, the
+rail's strip says so out loud rather than leaving the gap to be read as a `?`.
 
 There was a sixth column here, `agent`/`human`/`?` after the age, and `e10.4` (**reco-ydek.4**) deleted it
 rather than narrowed it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md)). The reason was the rung, not the
@@ -129,27 +138,40 @@ binary prints `bin` rather than a chart of nothing.
 
 ## 3 The column ladder
 
-`Columns::for_width` (ADR-006 §6.3) drops columns in the order the ADR fixes — sparkline, then
-relative time to a date, then the risk *number*, then the risk glyph last of all. There is no author rung
-any more: `e10.4` deleted the cell, and the six columns it cost were spent on the thresholds rather than
-on new content. Every rung above the floor moved down by what the cell cost — 40→34 for the full row,
-34→28, 32→26 — and the floor itself did not move, because ADR-006 §3 says where a row stops being a row
-and one ticket's tidiness is not a reason to move a line another ticket is standing on.
+`Columns::for_width` (ADR-006 §6.3) drops columns in the order the ADR fixes — complexity Δ, then the
+sparkline, then relative time to a date, then the risk *number*, then the risk glyph last of all. There is
+no author rung any more: `e10.4` deleted the cell, and the six columns it cost were spent on the
+thresholds rather than on new content. Every rung above the floor moved down by what the cell cost —
+40→34 for the full row, 34→28, 32→26 — and the floor itself did not move, because ADR-006 §3 says where a
+row stops being a row and one ticket's tidiness is not a reason to move a line another ticket is standing
+on.
+
+`e8.6` then added a rung rather than widening one. A rail between 34 and 37 columns reads `no complexity Δ`
+and draws exactly what it drew before, which is the honest shape of the trade: the new column pays for its
+own three cells instead of taxing every row that has no figure to draw. And it is the only honest shape for
+a second reason — below the sparkline rung there is no cell between `−90` and `+7`, and a bare `+7` after
+`+412 −90` reads as a third line count, which is the misreading ADR-007 §10.1 names this column as only
+being allowed to exist when it is *apart* from the size columns. So the rail sells the new column before it
+sells the separator that makes the new column legible.
 
 | Pane columns | Rung | Row |
 |---:|---|---|
-| ≥ 34 | all five columns | `▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑` |
+| ≥ 37 | all six columns | `▸ e8f1a2 0:12 +412 −90 ●●●●●● +7 82 ⚑` |
+| ≥ 34 | no complexity Δ | `▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑` |
 | ≥ 28 | no sparkline | `▸ e8f1a2 0:12 +412 −90 82 ⚑` |
 | ≥ 26 | date instead of age | `▸ e8f1a2 14 Oct +412 −90 82 ⚑` |
 | ≥ 22 | no risk number | `▸ e8f1a2 14 Oct +412 −90 ⚑` |
 | below | id and state only | `▸ e8f1a2 14 Oct ⚑` |
 
 Then a **fit rule**, because the ladder's thresholds cannot promise arithmetic for every terminal: if a
-built row is still wider than its pane, the risk cell goes, then the change size — never the identity
-and never the state glyph (`render::episode_line`). The ADR's promise is that the *glyph* is the last
-cell standing; a row that kept a risk number and clipped the glyph would be keeping the more decorative
-of the two. `tests/golden/timeline/ladder.txt` prints every rung over one corpus, widths 42 down to 18,
-so a rung that comes back into existence at a narrower width is visible in a diff.
+built row is still wider than its pane, the cells go in the same priority order the rungs do — the
+complexity coverage ` (4/5)`, then the complexity Δ, then the risk cell, then the change size — and never
+the identity and never the state glyph (`render::episode_line`). The ADR's promise is that the *glyph* is
+the last cell standing; a row that kept a risk number and clipped the glyph would be keeping the more
+decorative of the two. And a row that lost the Δ says so in the strip, because a column that vanished
+silently is a column a reviewer will read as an unknown. `tests/golden/timeline/ladder.txt` prints every
+rung over one corpus, widths 42 down to 18, so a rung that comes back into existence at a narrower width is
+visible in a diff.
 
 ## 4 Grouping, and what a collapsed group must say
 

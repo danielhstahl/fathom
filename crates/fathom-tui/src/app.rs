@@ -2054,6 +2054,16 @@ impl App {
                 self.toast(said);
                 true
             }
+            "diff.sort_cycle" => {
+                let said = self.diff.cycle_sort();
+                // Same reason as the noise toggle: the rows moved, so the selection goes back to the top
+                // of what the reviewer is now hunting for rather than riding along with a file that just
+                // changed position (`e8.6`).
+                self.diff.ensure_file();
+                self.set_selection(1);
+                self.toast(said);
+                true
+            }
             "diff.hunk_next" | "diff.hunk_prev" => {
                 let Some(file) = self.diff.file else {
                     self.toast("no file is selected — `j` walks the tree");

@@ -42,7 +42,7 @@ use fathom_tui::views::{self, ViewId};
 #[path = "timeline_corpus/mod.rs"]
 mod corpus;
 
-use corpus::{NOW, generated, mock, with_delta, without};
+use corpus::{Complexioned, NOW, generated, mock, with_complexity, with_delta, without};
 
 /// The rail's golden width: the view registry's `ideal_cols` for the rail pane.
 const RAIL_COLS: usize = 42;
@@ -84,6 +84,9 @@ enum Rows {
     /// The mock rows with a delta document attached to the selected one — the card with figures in it,
     /// which is the shape no other case in this file has ever drawn (`e9.2`).
     Delta,
+    /// The delta rows, plus a complexity roll-up on the selected episode: the rail's Δ column, the floor
+    /// form with its coverage, and the card row that spells the word out (`e8.6`).
+    Complexity,
     /// Nothing at all.
     None,
 }
@@ -162,6 +165,16 @@ fn cases() -> Vec<Case> {
             golden: "rail_wide",
             note: "one pane at the rail's ideal width: all six columns, `?` standing for the risk no \
                    build has computed",
+            ..Case::default()
+        },
+        Case {
+            golden: "rail_complexity",
+            note: "the rail's sixth column, at its ideal width: `~+6 (2/5)` is a floor - three of the \
+                   five files this episode touched could not be counted - and the tilde, the sign and \
+                   the denominator are glyphs and digits, so a monochrome rail loses no fact (`e8.6`, \
+                   ADR-007 §5.3, §10.1). The card row below is the same figure with the word on it.",
+            rows: Rows::Complexity,
+            cursor: 0,
             ..Case::default()
         },
         Case {
@@ -276,6 +289,7 @@ fn build(case: &Case, size: (u16, u16)) -> App {
         }
         Rows::Big => generated(),
         Rows::Delta => with_delta(mock()),
+        Rows::Complexity => with_complexity(with_delta(mock()), Complexioned::Floor),
         Rows::None => {
             app.timeline.set_filter(case.filter.clone());
             return app;
